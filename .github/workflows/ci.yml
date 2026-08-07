@@ -349,8 +349,17 @@ jobs:
           key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
       - name: Install xcodegen
         run: brew install xcodegen
-      # project.yml is checked in; regenerating the .xcodeproj from it needs
-      # no Rust/bindings step here (that already happened in native-ios-build).
+      # project.yml declares IntradaCoreFFI/SharedTypes as local Swift
+      # packages under ios/generated — xcodegen fails ("Invalid local
+      # package") if that directory is missing, even though this job runs no
+      # Rust toolchain and regenerates nothing. native-ios-build always
+      # populates this cache first (restore or regenerate-then-save), so
+      # restoring it here is a guaranteed hit.
+      - name: Restore generated Swift bindings
+        uses: actions/cache@v6
+        with:
+          path: ios/generated
+          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
@@ -426,6 +435,14 @@ jobs:
           key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
       - name: Install xcodegen
         run: brew install xcodegen
+      # See the identical step + comment in native-ios-test-unit: xcodegen
+      # fails without ios/generated present, even though this job regenerates
+      # nothing itself.
+      - name: Restore generated Swift bindings
+        uses: actions/cache@v6
+        with:
+          path: ios/generated
+          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
