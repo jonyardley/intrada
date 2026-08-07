@@ -863,16 +863,18 @@ final class LibraryStore: ItemStore {
   private static func evidenceSource(from raw: String) -> EvidenceSource {
     switch raw {
     case "tap_verdict": return .tapVerdict
+    case "tap_verdict_untimed": return .tapVerdictUntimed
     case "midi": return .midi
     case "audio": return .audio
     default:
       report(UnknownStoredEnum(kind: "EvidenceSource", raw: raw), decodeContext)
-      return .tapVerdict  // conservative: the lowest-weight evidence class
+      return .tapVerdictUntimed  // conservative: the lowest-weight evidence class
     }
   }
 
   private static func clickLevel(from raw: String) -> ClickLevel {
     switch raw {
+    case "no_click": return .noClick
     case "every_beat": return .everyBeat
     case "two_and_four": return .twoAndFour
     case "bar_downbeat": return .barDownbeat
@@ -933,6 +935,7 @@ final class LibraryStore: ItemStore {
   private static func evidenceSourceString(_ source: EvidenceSource) -> String {
     switch source {
     case .tapVerdict: "tap_verdict"
+    case .tapVerdictUntimed: "tap_verdict_untimed"
     case .midi: "midi"
     case .audio: "audio"
     }
@@ -940,6 +943,7 @@ final class LibraryStore: ItemStore {
 
   private static func clickLevelString(_ level: ClickLevel) -> String {
     switch level {
+    case .noClick: "no_click"
     case .everyBeat: "every_beat"
     case .twoAndFour: "two_and_four"
     case .barDownbeat: "bar_downbeat"

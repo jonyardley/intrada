@@ -192,17 +192,21 @@ struct DrillScreen: View {
     [state.section, "about \(state.minutes) min"].compactMap { $0 }.joined(separator: " · ")
   }
 
-  private var tempo: some View {
-    HStack(alignment: .firstTextBaseline, spacing: scale == .compact ? 9 : 12) {
-      Text("♩")
-        .font(IntradaFont.drillTitle(scale.tempo * 0.88))
-      Text("= \(state.tempoBpm)")
-        .font(IntradaFont.drillTitle(scale.tempo))
-        .monospacedDigit()
+  /// Nothing at all where the rung has no tempo (l0): the core says so by
+  /// sending none, and a marking the music does not carry is worse than a gap.
+  @ViewBuilder private var tempo: some View {
+    if let bpm = state.tempoBpm {
+      HStack(alignment: .firstTextBaseline, spacing: scale == .compact ? 9 : 12) {
+        Text("♩")
+          .font(IntradaFont.drillTitle(scale.tempo * 0.88))
+        Text("= \(bpm)")
+          .font(IntradaFont.drillTitle(scale.tempo))
+          .monospacedDigit()
+      }
+      .foregroundStyle(IntradaColor.ink)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("\(bpm) beats per minute")
     }
-    .foregroundStyle(IntradaColor.ink)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("\(state.tempoBpm) beats per minute")
   }
 
   private var clickPill: some View {

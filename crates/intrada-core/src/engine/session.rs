@@ -329,7 +329,13 @@ impl BlockState {
             level: spec.level,
             bars: spec.bars,
             beats_per_bar: spec.beats_per_bar,
-            count_in_beats: spec.count_in_beats,
+            // An l0 rung has nothing to count in, whatever the content's
+            // default says: the count-in belongs to the click, not the block.
+            count_in_beats: if spec.level.is_untimed() {
+                0
+            } else {
+                spec.count_in_beats
+            },
             beat_index: 0,
             attempts: Vec::new(),
             consecutive_fails: 0,
@@ -343,6 +349,18 @@ impl BlockState {
             reps_after_gate: 0,
             cold: false,
             gate_open_since: None,
+        }
+    }
+
+    /// Where the hands come back in: at l0 there is no count-in to sit through,
+    /// and one nothing clicks through would never end (decision 20).
+    fn opening_phase(&self) -> Phase {
+        if self.level.is_untimed() {
+            Phase::Listening
+        } else {
+            Phase::CountIn {
+                beats_remaining: self.count_in_beats,
+            }
         }
     }
 
@@ -633,9 +651,7 @@ impl EngineSession {
                     block.phase = Phase::GateOpen;
                 } else {
                     block.gate_open_since = None;
-                    block.phase = Phase::CountIn {
-                        beats_remaining: block.count_in_beats,
-                    };
+                    block.phase = block.opening_phase();
                 }
             }
             SessionState::OffPiste { started_at } | SessionState::Unmonitored { started_at } => {
@@ -659,6 +675,10 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
+        // Nothing sounds at l0, so nothing can be reported from it.
+        if block.level.is_untimed() {
+            return;
+        }
         if matches!(
             block.phase,
             Phase::CountIn { .. } | Phase::Escalating { .. }
@@ -673,6 +693,11 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
+        // There is no grid at l0, so nothing can finish a phrase on one: the
+        // tap is what bounds an attempt there.
+        if block.level.is_untimed() {
+            return;
+        }
         let phrase = block.body_beats();
         match block.phase {
             // A pulse reports its first body beat as 0, so anything else here
@@ -719,9 +744,7 @@ impl EngineSession {
         }
         block.started_at = now;
         block.now = now;
-        block.phase = Phase::CountIn {
-            beats_remaining: block.count_in_beats,
-        };
+        block.phase = block.opening_phase();
     }
 
     fn skip_block(&mut self, now: DateTime<Utc>) {
@@ -764,6 +787,9 @@ impl EngineSession {
         // With a window open this voids the pass it asks about, not the one in
         // flight. Voiding the pass in flight reads as well: open, see #1237.
         match block.phase {
+            // At l0 nothing is pending: the tap is the only thing that records,
+            // so the discarded pass is simply the one not tapped for.
+            Phase::Listening if block.level.is_untimed() => {}
             Phase::Listening => block.discarded = true,
             Phase::AwaitingVerdict => block.phase = Phase::Listening,
             _ => return,
@@ -776,7 +802,15 @@ impl EngineSession {
         let trigger = self.config.consecutive_fail_trigger;
         let node = self.spec()?.node.clone();
         let block = self.block_mut()?;
-        if block.phase != Phase::AwaitingVerdict {
+        // At l0 the tap is what bounds the attempt (decision 20), so it is
+        // taken from the pass in flight rather than from an open window.
+        let untimed = block.level.is_untimed();
+        let bounded = if untimed {
+            Phase::Listening
+        } else {
+            Phase::AwaitingVerdict
+        };
+        if block.phase != bounded {
             return None;
         }
 
@@ -789,7 +823,11 @@ impl EngineSession {
         block.attempts.push(AttemptSummary {
             at: now,
             verdict,
-            source: EvidenceSource::TapVerdict,
+            source: if untimed {
+                EvidenceSource::TapVerdictUntimed
+            } else {
+                EvidenceSource::TapVerdict
+            },
             cold: block.cold && block.attempts.is_empty(),
             self_predicted: None,
             level: block.level,
@@ -870,7 +908,13 @@ impl EngineSession {
                         };
                         block.consecutive_fails = 0;
                         block.restart_pulse();
-                        block.phase = Phase::Escalating { rung };
+                        // Nothing counts an l0 block back in, so a hold for the
+                        // count-in would freeze the loop.
+                        block.phase = if block.level.is_untimed() {
+                            Phase::Listening
+                        } else {
+                            Phase::Escalating { rung }
+                        };
                         return true;
                     }
                 }
@@ -918,6 +962,9 @@ impl EngineSession {
             return false;
         };
         match rung {
+            // There is no tempo to drop at l0, and handing the block the floor
+            // tempo would move it onto a rung it has never practised at.
+            Rung::TempoDown if block.level.is_untimed() => false,
             Rung::TempoDown => {
                 let dropped = block
                     .level
@@ -1115,6 +1162,12 @@ impl EngineSession {
         self.start(Plan::fixture(), now);
     }
 
+    /// The same fixture at l0, for the clickless half of the machine.
+    #[cfg(test)]
+    pub(crate) fn start_untimed_fixture(&mut self, now: DateTime<Utc>) {
+        self.start(Plan::fixture_untimed(), now);
+    }
+
     fn block_mut(&mut self) -> Option<&mut BlockState> {
         match &mut self.state {
             SessionState::Running { block, .. } => Some(block),
@@ -1126,7 +1179,7 @@ impl EngineSession {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::gate::Requirement;
+    use crate::engine::gate::{ClickLevel, Requirement};
     use chrono::TimeZone;
 
     fn at(second: i64) -> DateTime<Utc> {
@@ -2739,5 +2792,181 @@ mod tests {
         assert_eq!(session.unmonitored_seconds, 600);
         assert!(session.closed_blocks.is_empty());
         assert!(session.wanders.is_empty(), "decision 16: nothing inferred");
+    }
+
+    // ── l0: the clickless acquisition block (decision 20) ──
+
+    /// An l0 block, started. There is no count-in to sit through, so the hands
+    /// are already on the material.
+    fn untimed() -> EngineSession {
+        let mut session = EngineSession::default();
+        session.start_untimed_fixture(at(0));
+        session.apply(&CoachEvent::StartBlock { now: at(0) });
+        session
+    }
+
+    #[test]
+    fn an_l0_block_starts_playing_rather_than_counting_in() {
+        let mut session = EngineSession::default();
+        session.start_untimed_fixture(at(0));
+
+        session.apply(&CoachEvent::StartBlock { now: at(0) });
+
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Listening),
+            "with no click there is nothing to count in, and a count-in nothing \
+             clicks through would never end"
+        );
+    }
+
+    #[test]
+    fn the_tap_bounds_the_attempt_at_l0() {
+        let mut session = untimed();
+
+        let writes = session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+
+        assert_eq!(
+            writes.evidence.len(),
+            1,
+            "with no phrase boundary to open a window on, the tap is what says \
+             that pass is judged (Jon's ruling, 7 Aug 2026)"
+        );
+        assert_eq!(session.block().unwrap().attempts.len(), 1);
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Listening),
+            "and the next pass is already the one being played"
+        );
+    }
+
+    #[test]
+    fn an_l0_attempt_is_tagged_as_untimed_evidence() {
+        let mut session = untimed();
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+
+        assert_eq!(
+            session.block().unwrap().attempts[0].source,
+            EvidenceSource::TapVerdictUntimed,
+            "knowing it out of time and owning it at tempo must never silently \
+             share a number"
+        );
+    }
+
+    #[test]
+    fn a_stray_beat_at_l0_opens_no_verdict_window() {
+        let mut session = untimed();
+        let phrase = session.block().unwrap().body_beats();
+
+        session.apply(&CoachEvent::Beat { beat_index: phrase });
+
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Listening),
+            "there is no grid at l0, so nothing can finish a phrase on one"
+        );
+    }
+
+    #[test]
+    fn a_discard_at_l0_writes_nothing_off_that_has_not_been_played() {
+        let mut session = untimed();
+
+        let writes = session.apply(&CoachEvent::DiscardAttempt { now: at(10) });
+        assert!(writes.evidence.is_empty());
+        assert!(session.block().unwrap().attempts.is_empty());
+
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+        assert_eq!(
+            session.block().unwrap().attempts.len(),
+            1,
+            "nothing was pending when the user discarded, so the pass they went \
+             on to play still counts"
+        );
+    }
+
+    #[test]
+    fn the_gate_opens_at_l0_on_the_taps_alone() {
+        let mut session = untimed();
+        for second in [10, 20, 30] {
+            session.apply(&CoachEvent::Tap {
+                clean: true,
+                now: at(second),
+            });
+        }
+
+        assert_eq!(session.phase(), Some(&Phase::GateOpen));
+        assert_eq!(session.block().unwrap().gate_opened_at_attempt, Some(3));
+    }
+
+    #[test]
+    fn the_tempo_rung_cannot_hand_a_tempo_to_a_block_that_has_none() {
+        let mut session = untimed();
+
+        session.apply(&CoachEvent::Stuck { now: at(10) });
+
+        let block = session.block().expect("the ladder acted, it did not close");
+        assert_eq!(
+            block.level,
+            ParameterLevel {
+                tempo_bpm: 0,
+                click_level: ClickLevel::NoClick,
+            },
+            "dropping a tempo that does not exist would move the block onto a \
+             mastery key it never practised at"
+        );
+    }
+
+    #[test]
+    fn an_acting_rung_at_l0_returns_to_playing_rather_than_waiting_to_be_counted_in() {
+        let mut session = untimed();
+
+        session.apply(&CoachEvent::Stuck { now: at(10) });
+
+        assert_eq!(
+            session.block().unwrap().bars,
+            4,
+            "the scope rung is the one that can act without a tempo"
+        );
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Listening),
+            "nothing counts an l0 block back in, so waiting for it would freeze \
+             the loop"
+        );
+    }
+
+    #[test]
+    fn a_recovered_l0_block_comes_back_playing() {
+        let mut crashed = untimed();
+        crashed.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+
+        assert_eq!(
+            restored.phase(),
+            Some(&Phase::Listening),
+            "there is no count-in to come back to"
+        );
+        assert_eq!(
+            restored.block().unwrap().attempts.len(),
+            1,
+            "and the evidence banked before the crash survives it"
+        );
     }
 }

@@ -57,6 +57,12 @@ of attempts, and its pass is a derived event triggering a level-up. State is per
 > tag — a flag on the attempt, not an `EvidenceSource` variant, since a cold
 > MIDI-scored attempt must be expressible later. Nothing else in
 > this section changes: the Beta update is source-agnostic.
+>
+> **Extended 7 Aug 2026 (decision 20, #1244):** a fourth tag,
+> `TapVerdictUntimed`, for a tap at l0, where nothing bounds the pass but the
+> tap itself (§4). The Beta update is still source-agnostic — l0 is a
+> `parameter_level`, so acquisition evidence is held apart by the key it lands
+> under rather than by a weight.
 
 ```rust
 struct Mastery { alpha: f32, beta: f32, prior: (f32, f32), last_attempt_at: Timestamp }
@@ -310,6 +316,38 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 >   phase, closes the block and advances to the next card (or `Closing` on the
 >   last). A block skipped from its card still writes a `BlockRecord` with no
 >   attempts: a skip is a fact worth keeping, not an absence.
+
+> **Clickless from 7 Aug 2026 (#1244), decision 20.** `ClickLevel` gains `l0`
+> at the bottom of the ladder, and a block at it has no click, no tempo and no
+> count-in. Three rows of the table read differently there, all for the same
+> reason — there is no grid:
+>
+> - **`StartBlock` lands in `Listening`.** There is no count-in to sit through,
+>   and one nothing clicks through would never end. `RecoverSession` and an
+>   acting escalation rung come back the same way, rather than to `CountIn` or
+>   `Escalating`.
+> - **The tap bounds the attempt** (Jon's ruling on #1244, 7 Aug 2026). With no
+>   phrase boundary to open a verdict window on, `AwaitingVerdict` never opens
+>   and the tap is taken from the pass in flight: tap = "that pass is judged".
+>   Squared with decision 17 by the evidence class below — the bound is looser,
+>   and the record says so. `CountInBeat` and `Beat` are inert.
+> - **`DiscardAttempt` has nothing pending to void**, since the tap is the only
+>   thing that records, so it clears the glance and writes nothing off. The pass
+>   the user goes on to play still counts.
+>
+> Evidence is tagged `EvidenceSource::TapVerdictUntimed`, its own class so
+> acquisition evidence never reads as evidence earned against a click. The Beta
+> update stays source-agnostic (§2 as amended): the separation that matters is
+> already structural, because mastery is per `(node, parameter_level)` and l0 is
+> a level. `Rung::TempoDown` cannot act at l0 — dropping a tempo that does not
+> exist would move the block onto a rung it never practised at — so the ladder
+> spends it and moves on to `ShrinkScope`.
+>
+> **The bridge says so rather than implying it.** `DrillView::tempo_bpm` is
+> `Option<u16>`, `None` at l0, and `pulse_running` is false throughout: the
+> shell cannot draw a tempo or schedule a click that the rung does not have.
+> The l0 drill screen itself is unbuilt (#1260) and no content authors an l0
+> gate until #1245, so nothing reaches it yet.
 
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,

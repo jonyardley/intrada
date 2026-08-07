@@ -54,6 +54,8 @@ pub enum ContentError {
     NodeMismatch(String, String, String),
     #[error("gate \"{0}\" is unreachable: no drill runs it")]
     UnreachableGate(String),
+    #[error("gate \"{0}\" is l0 and names a tempo; acquisition happens out of time")]
+    TimedAcquisitionGate(String),
     #[error("gate \"{0}\" states no requirement anything can count")]
     UncountableGate(String),
     #[error("node \"{0}\" is a stub and a stub has no drills")]
@@ -379,6 +381,7 @@ enum JudgeToken {
 #[derive(Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 enum ClickLevelToken {
+    L0,
     L1,
     L2,
     L3,
@@ -427,6 +430,7 @@ impl From<JudgeToken> for Judge {
 impl ClickLevelToken {
     fn key(self) -> &'static str {
         match self {
+            ClickLevelToken::L0 => "l0",
             ClickLevelToken::L1 => "l1",
             ClickLevelToken::L2 => "l2",
             ClickLevelToken::L3 => "l3",
@@ -438,6 +442,7 @@ impl ClickLevelToken {
 impl From<ClickLevelToken> for ClickLevel {
     fn from(token: ClickLevelToken) -> Self {
         match token {
+            ClickLevelToken::L0 => ClickLevel::NoClick,
             ClickLevelToken::L1 => ClickLevel::EveryBeat,
             ClickLevelToken::L2 => ClickLevel::TwoAndFour,
             ClickLevelToken::L3 => ClickLevel::BarDownbeat,
@@ -531,12 +536,7 @@ impl RawContent {
                         applied: raw_drill.applied,
                         bars: raw_drill.bars.unwrap_or(self.defaults.bars),
                         minutes: raw_drill.minutes,
-                        level: raw_gate.tempo_bpm.zip(raw_gate.click_level).map(
-                            |(tempo_bpm, click_level)| ParameterLevel {
-                                tempo_bpm,
-                                click_level: click_level.into(),
-                            },
-                        ),
+                        level: raw_gate.level(&raw_drill.gate)?,
                     },
                 );
             }
@@ -634,6 +634,29 @@ impl RawContent {
 }
 
 impl RawGate {
+    /// The rung this gate is played at, where the file states a runnable one.
+    /// An l0 gate carries no `tempo_bpm` by construction (decision 20), so one
+    /// that names a tempo states two contradictory things and fails rather than
+    /// having one of them quietly win.
+    fn level(&self, id: &str) -> Result<Option<ParameterLevel>, ContentError> {
+        match (self.click_level, self.tempo_bpm) {
+            (Some(ClickLevelToken::L0), Some(_)) => {
+                Err(ContentError::TimedAcquisitionGate(id.to_string()))
+            }
+            (Some(ClickLevelToken::L0), None) => Ok(Some(ParameterLevel {
+                tempo_bpm: 0,
+                click_level: ClickLevel::NoClick,
+            })),
+            (Some(click_level), Some(tempo_bpm)) => Ok(Some(ParameterLevel {
+                tempo_bpm,
+                click_level: click_level.into(),
+            })),
+            // A rung the loop cannot run: the planner defers it rather than
+            // prescribing a block with nothing to play against.
+            (Some(_), None) | (None, _) => Ok(None),
+        }
+    }
+
     /// One resolution order, so an unrepresentable gate fails to parse rather
     /// than silently losing the field that made it what it is (spec §8).
     fn requirement(&self, id: &str) -> Result<Requirement, ContentError> {
@@ -759,6 +782,50 @@ mod tests {
                 .unwrap()
                 .requirement,
             Requirement::Chained { min_keys: 4 }
+        );
+    }
+
+    // ── l0, the acquisition rung (decision 20) ──
+
+    /// The shells cycle gate, rewritten as the clickless rung it would be while
+    /// the hands are still finding the shapes.
+    fn shells_cycle_at_l0(tempo: &str) -> String {
+        SHIPPED.replace(
+            "criterion = \"ii-V-I shells through the full cycle of fourths, no stops\"\n\
+             clean_passes = 1\n\
+             tempo_bpm = 100\n\
+             click_level = \"l2\"",
+            &format!(
+                "criterion = \"ii-V-I shells through the full cycle of fourths, no stops\"\n\
+                 clean_passes = 1\n{tempo}click_level = \"l0\""
+            ),
+        )
+    }
+
+    #[test]
+    fn an_l0_gate_is_runnable_without_a_tempo() {
+        let content = ContentIndex::parse(&shells_cycle_at_l0("")).expect("an l0 gate parses");
+
+        assert_eq!(
+            content.drill("shells-cycle").expect("the drill").level,
+            Some(ParameterLevel {
+                tempo_bpm: 0,
+                click_level: ClickLevel::NoClick,
+            }),
+            "no click and no tempo is a rung the loop can run, not a rung it \
+             has to skip for want of a click"
+        );
+    }
+
+    #[test]
+    fn an_l0_gate_that_names_a_tempo_fails_to_parse() {
+        let error = error_of(ContentIndex::parse(&shells_cycle_at_l0(
+            "tempo_bpm = 100\n",
+        )));
+        assert!(
+            error.contains("shells-cycle"),
+            "a tempo at l0 states two contradictory things, and a gate that \
+             cannot be represented fails rather than losing one of them: {error}"
         );
     }
 

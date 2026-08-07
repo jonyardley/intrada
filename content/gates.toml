@@ -40,11 +40,12 @@ bars = 8
 beats_per_bar = 4
 count_in_beats = 4
 
-# Sparse-click ladder: gate levels *within* click-always (decision 2).
-# l0 (no click: the acquisition rung, decision 20) is deliberately absent:
-# no gate can reference it (the click enum is l1-l4, and an l0 gate fails
-# startup), so an entry here would be dead content. Lands with #1244.
+# Sparse-click ladder: gate levels *within* click-always (decision 2), plus the
+# rung beneath them where the clock has not arrived yet (decision 20, #1244).
+# An l0 gate names no `tempo_bpm` — a tempo at l0 is a contradiction, and fails
+# the parse. The know-it/own-it gate pairs that use it are #1245.
 [click_levels]
+l0 = "no click at all"
 l1 = "click on every beat"
 l2 = "click on 2 and 4"
 l3 = "click on beat 1 of each bar"

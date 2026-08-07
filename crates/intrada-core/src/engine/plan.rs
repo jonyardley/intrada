@@ -49,8 +49,18 @@ pub enum Mode {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ParameterLevel {
+    /// Meaningless at l0, where there is no clock to state one against: read it
+    /// through [`ParameterLevel::is_untimed`] rather than on its own.
     pub tempo_bpm: u16,
     pub click_level: ClickLevel,
+}
+
+impl ParameterLevel {
+    /// The acquisition rung (decision 20): no click, so no tempo, no count-in
+    /// and no phrase boundary to bound an attempt on.
+    pub fn is_untimed(&self) -> bool {
+        self.click_level == ClickLevel::NoClick
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -733,6 +743,17 @@ impl Plan {
             rng_seed: 0,
             deferred: Vec::new(),
         }
+    }
+
+    /// The same block at l0 (decision 20). Only the rung changes: everything
+    /// the clock implied — the count-in included — falls out of it.
+    pub(crate) fn fixture_untimed() -> Self {
+        let mut plan = Self::fixture();
+        plan.blocks[0].spec.level = ParameterLevel {
+            tempo_bpm: 0,
+            click_level: ClickLevel::NoClick,
+        };
+        plan
     }
 }
 

@@ -207,9 +207,13 @@ private final class Click {
     engine.onBeat = { index, _ in
       store.send(.coach(.beat(beatIndex: UInt32(max(0, index)))))
     }
+    // A pulse needs a tempo. The core sends none at l0, where it also holds
+    // `pulseRunning` false, so this is unreachable rather than a state to
+    // invent a bpm for.
+    guard let bpm = drill.tempoBpm else { return false }
     do {
       try engine.start(
-        bpm: Double(drill.tempoBpm), beatsPerBar: Int(drill.beatsPerBar),
+        bpm: Double(bpm), beatsPerBar: Int(drill.beatsPerBar),
         countInBeats: Int(drill.countInBeats), clickPattern: drill.clickPattern)
       return true
     } catch {
