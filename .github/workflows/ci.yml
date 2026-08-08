@@ -97,7 +97,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.rust == 'true'
+    # Runs on push to main as well as on PRs, and it has to: a PR comment is a
+    # comparison, so with no report on the base commit there is nothing to
+    # compare and Codecov posts nothing. `main` had never uploaded once, which
+    # is why the dashboard was empty and no PR had been commented on (#1288).
+    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
