@@ -15,7 +15,9 @@ mod mastery;
 mod plan;
 mod session;
 
-pub use coach::{CoachState, CoachView, DrillPhase, DrillView, PlanView, PlannedBlockView};
+pub use coach::{
+    CoachState, CoachView, DrillPhase, DrillView, PlanView, PlannedBlockView, RunThroughView,
+};
 pub use content::ContentIndex;
 pub use gate::{
     ClickLevel, EvidenceSource, GateCriteria, GateProgress, Judge, Requirement, Verdict,
@@ -26,6 +28,6 @@ pub use plan::{
     PlannedBlock, Stage, Why,
 };
 pub use session::{
-    AttemptSummary, BlockRecord, BlockState, CoachEvent, CoachWrites, EngineConfig, EngineSession,
-    Exit, Phase, Rung, SessionState, SnapshotAction, WanderRecord,
+    Altitude, AttemptSummary, BlockRecord, BlockState, CoachEvent, CoachWrites, EngineConfig,
+    EngineSession, Exit, Phase, RunThroughState, Rung, SessionState, SnapshotAction, WanderRecord,
 };

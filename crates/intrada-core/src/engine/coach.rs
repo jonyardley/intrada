@@ -14,8 +14,10 @@ use super::gate::{Requirement, Verdict};
 use super::mastery::MasteryStore;
 use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext};
 use super::session::{
-    BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase, SessionState,
+    section_evidence, Altitude, BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase,
+    SessionState,
 };
+use crate::domain::built_session::PlayThroughRecord;
 use crate::domain::item::ItemKind;
 
 /// Spec §1 gives this five fields; the judgement track and the interruption
@@ -57,10 +59,7 @@ impl CoachState {
     /// session machine must still be the one that runs it, or a steer would be
     /// a second drill loop.
     pub fn adopt_plan(&mut self, plan: Plan, now: DateTime<Utc>) -> CoachWrites {
-        if !matches!(
-            self.session.state,
-            SessionState::Idle | SessionState::Planned { .. }
-        ) {
+        if !self.session.state.accepts_something_new() {
             // A session already running is not something a steer may replace:
             // the blocks in flight have evidence riding on them.
             return CoachWrites::default();
@@ -76,9 +75,13 @@ impl CoachState {
     /// the same one-way replay as the live path in [`Self::apply`]. Replaces
     /// rather than adds, like every other load handler, so a repeated load can
     /// never double-count.
-    pub fn rebuild_mastery(&mut self, records: Vec<BlockRecord>) {
+    pub fn rebuild_mastery(&mut self, records: Vec<BlockRecord>, runs: Vec<PlayThroughRecord>) {
         self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
         let mut replay = Vec::new();
+        // A run-through's section verdicts are evidence the live close already
+        // recorded, so the rebuild has to know about them too — the same rule
+        // in both paths, through the same function (key decision 7).
+        let run_evidence: Vec<_> = runs.iter().flat_map(section_evidence).collect();
         for record in &records {
             // Decision 17, on the replay path too: a judgement-track block's
             // taps were never evidence, so they must not become evidence at
@@ -89,8 +92,8 @@ impl CoachState {
             for attempt in &record.attempts {
                 replay.push((
                     attempt.at,
+                    record.node.clone(),
                     Replay::Attempt(attempt.verdict, attempt.level),
-                    record,
                 ));
             }
             // `level_up` declines a rung that already has evidence, so a banked
@@ -99,17 +102,29 @@ impl CoachState {
                 .next()
                 .and_then(next_rung)
             {
-                replay.push((record.ended_at, Replay::LevelUp(next), record));
+                replay.push((
+                    record.ended_at,
+                    record.node.clone(),
+                    Replay::LevelUp {
+                        from: record.level,
+                        to: next,
+                    },
+                ));
             }
         }
+        for attempt in run_evidence {
+            replay.push((
+                attempt.at,
+                attempt.node,
+                Replay::Attempt(attempt.verdict, attempt.level),
+            ));
+        }
         replay.sort_by_key(|(at, _, _)| *at);
-        for (at, step, record) in replay {
+        for (at, node, step) in replay {
             match step {
-                Replay::Attempt(verdict, level) => {
-                    self.mastery.record(&record.node, level, verdict, at)
-                }
+                Replay::Attempt(verdict, level) => self.mastery.record(&node, level, verdict, at),
                 // The gate was passed at the level the block closed on.
-                Replay::LevelUp(to) => self.mastery.level_up(&record.node, record.level, to),
+                Replay::LevelUp { from, to } => self.mastery.level_up(&node, from, to),
             }
         }
     }
@@ -161,7 +176,23 @@ impl CoachState {
         CoachView {
             drill: self.drill_view(),
             plan: self.plan_view(),
+            altitude: self.session.state.altitude(),
+            run_through: self.run_through_view(),
         }
+    }
+
+    fn run_through_view(&self) -> Option<RunThroughView> {
+        let run = self.session.run_through()?;
+        Some(RunThroughView {
+            title: run.title.clone(),
+            sections: run.sections.clone(),
+            // Held / broke down, in the order the sections were judged. The
+            // shell draws the dots from this and counts nothing itself.
+            held: run.verdicts.iter().map(|verdict| verdict.held).collect(),
+            current_section: run.current_section().cloned(),
+            complete: run.complete(),
+            elapsed_seconds: run.elapsed_seconds(),
+        })
     }
 
     /// The press-start surface: what today's session is, before it runs. Gone
@@ -264,7 +295,10 @@ impl CoachState {
 
 enum Replay {
     Attempt(Verdict, ParameterLevel),
-    LevelUp(ParameterLevel),
+    LevelUp {
+        from: ParameterLevel,
+        to: ParameterLevel,
+    },
 }
 
 /// The gate passes allowed to move a cursor. One definition, called by both the
@@ -338,6 +372,28 @@ pub struct CoachView {
     pub drill: Option<DrillView>,
     /// `Some` while a session is planned but not yet running.
     pub plan: Option<PlanView>,
+    /// What the AltitudeChip shows, for the whole run. `None` for a prescribed
+    /// session, which is not one of the three altitudes (decision 16).
+    pub altitude: Option<Altitude>,
+    /// `Some` only while a gated run-through is in flight.
+    pub run_through: Option<RunThroughView>,
+}
+
+/// What the run-through screen draws: which section the next tap judges, and
+/// what the ones behind it said.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct RunThroughView {
+    pub title: String,
+    pub sections: Vec<String>,
+    /// One entry per verdict given so far, in order.
+    pub held: Vec<bool>,
+    /// `None` once every section has a verdict.
+    pub current_section: Option<String>,
+    /// Every section judged. The exit is still an explicit tap: "Don't count
+    /// this run" has to stay reachable after the last verdict (B1).
+    pub complete: bool,
+    pub elapsed_seconds: u32,
 }
 
 /// What press-start shows: today's session before it starts.
@@ -1096,11 +1152,14 @@ mod tests {
     #[test]
     fn replaying_a_persisted_record_rebuilds_the_evidence_it_holds() {
         let mut coach = CoachState::default();
-        coach.rebuild_mastery(vec![closed_block(
-            "b1",
-            &[(true, 9), (false, 18)],
-            Exit::SessionEnded,
-        )]);
+        coach.rebuild_mastery(
+            vec![closed_block(
+                "b1",
+                &[(true, 9), (false, 18)],
+                Exit::SessionEnded,
+            )],
+            vec![],
+        );
 
         let mastery = coach
             .mastery
@@ -1122,11 +1181,14 @@ mod tests {
             .get("rootless-a-b", next_rung())
             .expect("the content seeds every runnable rung");
 
-        coach.rebuild_mastery(vec![closed_block(
-            "b1",
-            &[(true, 9), (true, 18), (true, 27)],
-            Exit::GatePassed,
-        )]);
+        coach.rebuild_mastery(
+            vec![closed_block(
+                "b1",
+                &[(true, 9), (true, 18), (true, 27)],
+                Exit::GatePassed,
+            )],
+            vec![],
+        );
 
         let above = coach.mastery.get("rootless-a-b", next_rung()).unwrap();
         assert_ne!(above.prior, seed.prior, "the level-up replayed too");
@@ -1158,7 +1220,7 @@ mod tests {
         );
 
         let mut replayed = CoachState::default();
-        replayed.rebuild_mastery(vec![judgement]);
+        replayed.rebuild_mastery(vec![judgement], vec![]);
         assert_eq!(
             replayed.mastery,
             CoachState::default().mastery,
@@ -1170,10 +1232,10 @@ mod tests {
     fn a_second_load_replaces_what_the_first_one_built() {
         let record = closed_block("b1", &[(true, 9)], Exit::SessionEnded);
         let mut coach = CoachState::default();
-        coach.rebuild_mastery(vec![record.clone()]);
+        coach.rebuild_mastery(vec![record.clone()], vec![]);
         let once = coach.mastery.clone();
 
-        coach.rebuild_mastery(vec![record]);
+        coach.rebuild_mastery(vec![record], vec![]);
 
         assert_eq!(
             coach.mastery, once,
@@ -1187,10 +1249,10 @@ mod tests {
         let later = closed_block("b2", &[(false, 100)], Exit::SessionEnded);
 
         let mut coach = CoachState::default();
-        coach.rebuild_mastery(vec![later.clone(), earlier.clone()]);
+        coach.rebuild_mastery(vec![later.clone(), earlier.clone()], vec![]);
 
         let mut sorted = CoachState::default();
-        sorted.rebuild_mastery(vec![earlier, later]);
+        sorted.rebuild_mastery(vec![earlier, later], vec![]);
         assert_eq!(coach.mastery, sorted.mastery);
         assert_eq!(
             coach
@@ -1215,7 +1277,7 @@ mod tests {
         assert!(!records.is_empty(), "the run must have closed a block");
 
         let mut rebuilt = CoachState::default();
-        rebuilt.rebuild_mastery(records);
+        rebuilt.rebuild_mastery(records, vec![]);
 
         assert_eq!(
             rebuilt.mastery, live.mastery,
@@ -1246,7 +1308,7 @@ mod tests {
         assert!(!records.is_empty(), "the block it ended is written down");
 
         let mut rebuilt = CoachState::default();
-        rebuilt.rebuild_mastery(records);
+        rebuilt.rebuild_mastery(records, vec![]);
 
         assert_eq!(
             rebuilt.mastery, live.mastery,
@@ -1309,7 +1371,25 @@ mod tests {
             CoachEvent::Tick { now: at(3) },
             CoachEvent::LeaveSession { now: at(4) },
             CoachEvent::ClickUnavailable { now: at(8) },
-            CoachEvent::GoOffPiste { now: at(5) },
+            CoachEvent::GoOffPiste {
+                item_id: None,
+                now: at(5),
+            },
+            CoachEvent::GoOffPiste {
+                item_id: Some("01J000000000000000000PIECE".into()),
+                now: at(5),
+            },
+            CoachEvent::StartRunThrough {
+                item_id: "01J000000000000000000PIECE".into(),
+                title: "Alice in Wonderland".into(),
+                sections: vec!["A".into(), "Bridge".into()],
+                now: at(5),
+            },
+            CoachEvent::JudgeSection {
+                held: true,
+                now: at(6),
+            },
+            CoachEvent::DiscardRunThrough { now: at(7) },
             CoachEvent::GoUnmonitored { now: at(6) },
             CoachEvent::KeepWanderAsDrill { keep: true },
             CoachEvent::CloseSession { now: at(7) },
@@ -1378,6 +1458,28 @@ mod tests {
             now: at(20),
         });
         assert_round_trips(untimed.view());
+
+        // The altitudes, whose view fields are `None` in every case above.
+        let mut run = CoachState::default();
+        run.apply(&CoachEvent::StartRunThrough {
+            item_id: "01J000000000000000000PIECE".into(),
+            title: "Alice in Wonderland".into(),
+            sections: vec!["A".into(), "Bridge".into()],
+            now: at(0),
+        });
+        assert_round_trips(run.view());
+        run.apply(&CoachEvent::JudgeSection {
+            held: false,
+            now: at(30),
+        });
+        assert_round_trips(run.view());
+
+        let mut wandering = CoachState::default();
+        wandering.apply(&CoachEvent::GoOffPiste {
+            item_id: Some("01J000000000000000000PIECE".into()),
+            now: at(0),
+        });
+        assert_round_trips(wandering.view());
     }
 
     #[test]

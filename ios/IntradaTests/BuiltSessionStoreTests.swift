@@ -91,7 +91,8 @@ struct BuiltSessionStoreTests {
         SectionVerdict(section: "Out head", held: false, at: "2026-08-07T10:03:00Z"),
       ],
       updatedAt: "2026-08-07T10:04:00Z", deletedAt: nil)
-    try store.savePlayThrough(record)
+    try store.saveCoachRecords(
+      blocks: [], wanders: [], playThroughs: [record], updatedAt: "2026-08-07T10:04:00Z")
     let data = try store.loadBuiltSessionData()
     #expect(data.playThroughs == [record])
   }

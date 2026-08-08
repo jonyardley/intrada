@@ -11,6 +11,7 @@
 pub mod blocks;
 pub mod compose;
 pub mod criterion;
+pub mod playthrough;
 #[cfg(test)]
 pub(crate) mod tests_support;
 
@@ -19,7 +20,7 @@ use crux_core::command::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
-use crate::engine::Circle;
+use crate::engine::{Altitude, Circle, CoachEvent};
 use crate::model::Model;
 use crate::persistence;
 use crate::validation;
@@ -202,16 +203,6 @@ pub struct CreateUserDrill {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct RecordPlayThrough {
-    pub item_id: String,
-    pub started_at: DateTime<Utc>,
-    pub ended_at: DateTime<Utc>,
-    pub counted: bool,
-    pub sections: Vec<SectionVerdict>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateJournalItem {
     pub name: String,
     pub notes: Option<String>,
@@ -242,7 +233,6 @@ pub enum BuiltSessionEvent {
     SaveBuiltSession {
         session: BuiltSession,
     },
-    RecordPlayThrough(RecordPlayThrough),
     RecordReflection {
         kind: ReflectionKind,
         session_ref: Option<String>,
@@ -303,6 +293,16 @@ pub enum BuiltSessionEvent {
     /// Start the composed session in the canonical drill loop (A6 → A7).
     StartBuiltSession {
         session_id: String,
+        now: DateTime<Utc>,
+    },
+
+    // ── The altitudes (Journey B) ────────────────────────────────────
+    /// B0's answer to "Play it through — how should it count?". The piece is
+    /// resolved here, where the library lives; the engine is handed the named
+    /// sections and never does a lookup of its own.
+    StartPlayThrough {
+        item_id: String,
+        altitude: Altitude,
         now: DateTime<Utc>,
     },
 }
@@ -409,20 +409,6 @@ pub fn handle_built_session_event(
                 None => model.built_sessions.push(session.clone()),
             }
             save_and_render(persistence::save_built_session(session))
-        }
-        BuiltSessionEvent::RecordPlayThrough(input) => {
-            let record = PlayThroughRecord {
-                id: mint_id(),
-                item_id: input.item_id,
-                started_at: input.started_at,
-                ended_at: input.ended_at,
-                counted: input.counted,
-                sections: input.sections,
-                updated_at: now,
-                deleted_at: None,
-            };
-            model.play_throughs.push(record.clone());
-            save_and_render(persistence::save_play_through(record))
         }
         BuiltSessionEvent::RecordReflection {
             kind,
@@ -671,6 +657,46 @@ pub fn handle_built_session_event(
             }
             model.built_session_today = Some(session_id);
             let writes = model.coach.adopt_plan(plan, now);
+            let mut commands = crate::app::coach_write_commands(model, writes);
+            commands.push(crux_core::render::render());
+            Command::all(commands)
+        }
+
+        BuiltSessionEvent::StartPlayThrough {
+            item_id,
+            altitude,
+            now,
+        } => {
+            let offer = model
+                .items
+                .iter()
+                .find(|item| item.id == item_id)
+                .and_then(playthrough::altitude_offer);
+            let Some(offer) = offer else {
+                model.surface_error("That piece is no longer there.");
+                return crux_core::render::render();
+            };
+            if !offer.allows(altitude) {
+                model.surface_error("Add some section labels to the chart first.");
+                return crux_core::render::render();
+            }
+            let event = match altitude {
+                Altitude::RunThrough => CoachEvent::StartRunThrough {
+                    item_id: offer.item_id.clone(),
+                    title: offer.title.clone(),
+                    sections: offer.sections,
+                    now,
+                },
+                Altitude::OffPiste => CoachEvent::GoOffPiste {
+                    item_id: Some(offer.item_id.clone()),
+                    now,
+                },
+                // The piece is dropped on purpose: this altitude captures
+                // nothing, so there is no record to tag and nothing that could
+                // later say what was played. See `SessionState::Unmonitored`.
+                Altitude::Unmonitored => CoachEvent::GoUnmonitored { now },
+            };
+            let writes = model.coach.apply(&event);
             let mut commands = crate::app::coach_write_commands(model, writes);
             commands.push(crux_core::render::render());
             Command::all(commands)
@@ -1119,55 +1145,6 @@ mod tests {
             },
         );
         assert_eq!(model.built_sessions.len(), 1);
-    }
-
-    #[test]
-    fn record_play_through_mints_a_ulid_and_persists() {
-        let mut model = Model::test_default();
-        let effects = update(
-            &mut model,
-            BuiltSessionEvent::RecordPlayThrough(RecordPlayThrough {
-                item_id: "piece".into(),
-                started_at: at(),
-                ended_at: at(),
-                counted: true,
-                sections: vec![SectionVerdict {
-                    section: "The bridge".into(),
-                    held: false,
-                    at: at(),
-                }],
-            }),
-        );
-        assert_eq!(model.play_throughs.len(), 1);
-        assert_eq!(model.play_throughs[0].id.len(), 26);
-        assert_eq!(model.play_throughs[0].deleted_at, None);
-        assert_eq!(model.play_throughs[0].sections.len(), 1);
-        assert_eq!(
-            persistence_ops(&effects),
-            vec![PersistenceOperation::SavePlayThrough(
-                model.play_throughs[0].clone()
-            )]
-        );
-        assert_no_http(&effects);
-    }
-
-    #[test]
-    fn two_play_throughs_are_two_records() {
-        let mut model = Model::test_default();
-        let input = RecordPlayThrough {
-            item_id: "piece".into(),
-            started_at: at(),
-            ended_at: at(),
-            counted: true,
-            sections: vec![],
-        };
-        update(
-            &mut model,
-            BuiltSessionEvent::RecordPlayThrough(input.clone()),
-        );
-        update(&mut model, BuiltSessionEvent::RecordPlayThrough(input));
-        assert_eq!(model.play_throughs.len(), 2);
-        assert_ne!(model.play_throughs[0].id, model.play_throughs[1].id);
     }
 
     #[test]
@@ -1823,6 +1800,259 @@ mod tests {
         assert_no_http(&effects);
     }
 
+    // ── The altitudes, end to end (Journey B) ───────────────────────────
+
+    fn charted_piece(id: &str) -> crate::domain::item::Item {
+        let mut item = sample_item(id, "Alice in Wonderland", ItemKind::Piece);
+        item.chord_chart = Some(
+            crate::domain::chart::parse_chart(
+                "[A]\n| Cmaj7 | Am7 |\n[Bridge]\n| Dm7 | G7 |",
+                "C",
+                crate::domain::item::Modality::Major,
+            )
+            .expect("a valid chart"),
+        );
+        item
+    }
+
+    fn start_altitude(model: &mut Model, item_id: &str, altitude: Altitude) -> Vec<Effect> {
+        update(
+            model,
+            BuiltSessionEvent::StartPlayThrough {
+                item_id: item_id.into(),
+                altitude,
+                now: at(),
+            },
+        )
+    }
+
+    #[test]
+    fn b0_runs_a_charted_piece_through_its_own_sections() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        let effects = start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        let run = view(&model)
+            .coach
+            .run_through
+            .expect("the run-through screen has something to draw");
+        assert_eq!(run.sections, vec!["A", "Bridge"]);
+        assert_eq!(run.current_section.as_deref(), Some("A"));
+        assert_eq!(run.title, "Alice in Wonderland");
+        assert_eq!(view(&model).coach.altitude, Some(Altitude::RunThrough));
+        assert_no_http(&effects);
+    }
+
+    #[test]
+    fn a_piece_with_no_named_sections_is_refused_rather_than_run_on_nothing() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Untitled", ItemKind::Piece));
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        assert!(view(&model).coach.run_through.is_none());
+        assert!(
+            model.last_error.is_some(),
+            "a refusal with no surface is the silent-no-op bug (#846)"
+        );
+    }
+
+    #[test]
+    fn the_lower_altitudes_need_nothing_authored() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Untitled", ItemKind::Piece));
+
+        start_altitude(&mut model, "p1", Altitude::OffPiste);
+        assert_eq!(view(&model).coach.altitude, Some(Altitude::OffPiste));
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn a_finished_run_lands_its_verdicts_and_its_record() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        for held in [true, false] {
+            app_update(
+                &mut model,
+                Event::Coach(CoachEvent::JudgeSection { held, now: at() }),
+            );
+        }
+        let effects = app_update(
+            &mut model,
+            Event::Coach(CoachEvent::CloseSession { now: at() }),
+        );
+
+        assert_eq!(model.play_throughs.len(), 1, "the record is the user's");
+        assert_eq!(model.play_throughs[0].sections.len(), 2);
+        assert!(
+            matches!(
+                persistence_ops(&effects).first(),
+                Some(PersistenceOperation::SaveCoachRecords { play_throughs, .. })
+                    if play_throughs.len() == 1
+            ),
+            "a run rides the coach batch, so a failed write is offered again"
+        );
+        assert_no_http(&effects);
+
+        let held = model
+            .coach
+            .mastery
+            .get(
+                "piece:p1#A",
+                crate::engine::ParameterLevel {
+                    tempo_bpm: 0,
+                    click_level: crate::engine::ClickLevel::NoClick,
+                },
+            )
+            .expect("the section that held has evidence");
+        assert!(held.evidence() > 0.0);
+    }
+
+    #[test]
+    fn the_launch_replay_rebuilds_a_run_throughs_evidence_too() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+        for held in [true, true] {
+            app_update(
+                &mut model,
+                Event::Coach(CoachEvent::JudgeSection { held, now: at() }),
+            );
+        }
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::CloseSession { now: at() }),
+        );
+        let live = model.coach.mastery.clone();
+
+        // Relaunch: the two loads race, and the run-throughs are on the second.
+        let mut relaunched = Model::test_default();
+        app_update(
+            &mut relaunched,
+            Event::CoachRecordsLoaded(PersistenceOutput::CoachRecords(vec![])),
+        );
+        app_update(
+            &mut relaunched,
+            Event::BuiltStoreLoaded(PersistenceOutput::BuiltSessionData(BuiltSessionData {
+                user_drills: vec![],
+                journal_items: vec![],
+                built_sessions: vec![],
+                play_throughs: model.play_throughs.clone(),
+                reflections: vec![],
+                feel_entries: vec![],
+            })),
+        );
+
+        assert_eq!(
+            relaunched.coach.mastery, live,
+            "a rule the live path enforces and the replay does not is not a rule (#1214)"
+        );
+    }
+
+    #[test]
+    fn an_uncounted_run_rebuilds_to_nothing() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::JudgeSection {
+                held: true,
+                now: at(),
+            }),
+        );
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::DiscardRunThrough { now: at() }),
+        );
+
+        let mut relaunched = Model::test_default();
+        app_update(
+            &mut relaunched,
+            Event::BuiltStoreLoaded(PersistenceOutput::BuiltSessionData(BuiltSessionData {
+                user_drills: vec![],
+                journal_items: vec![],
+                built_sessions: vec![],
+                play_throughs: model.play_throughs.clone(),
+                reflections: vec![],
+                feel_entries: vec![],
+            })),
+        );
+        assert_eq!(
+            relaunched.coach.mastery,
+            Model::test_default().coach.mastery,
+            "\"don't count this run\" has to mean it at launch as well as live"
+        );
+    }
+
+    #[test]
+    fn a_reload_mid_session_never_undoes_what_has_already_been_practised() {
+        // Both legs of the rebuild in one session — a closed block and a closed
+        // run-through — because a failed built-session write reissues the load,
+        // so `BuiltStoreLoaded` is reachable mid-session, not only at launch.
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        // The shape puts the user drill first, which is the block whose taps
+        // are evidence — a judgement block's would prove nothing here.
+        update(&mut model, BuiltSessionEvent::UseSuggestedShape);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let node = model.coach.session.spec().expect("a spec").node.clone();
+        let level = model.coach.session.block().expect("a block").level;
+        for _ in 0..3 {
+            play_one_pass(&mut model);
+        }
+        // The gate opens on the third pass; the hold is what closes the block.
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::Tick {
+                now: at() + chrono::TimeDelta::seconds(600),
+            }),
+        );
+        assert!(
+            !model.coach_blocks.is_empty(),
+            "the gate opened and the block closed, so there is a record to lose"
+        );
+        let practised = model.coach.mastery.reading(&node, level, at()).evidence;
+        assert!(practised > 0.0, "it is in the live track before the reload");
+
+        let reloaded = BuiltSessionData {
+            user_drills: model.user_drills.clone(),
+            journal_items: model.journal_items.clone(),
+            built_sessions: model.built_sessions.clone(),
+            play_throughs: model.play_throughs.clone(),
+            reflections: vec![],
+            feel_entries: vec![],
+        };
+        app_update(
+            &mut model,
+            Event::BuiltStoreLoaded(PersistenceOutput::BuiltSessionData(reloaded)),
+        );
+        assert_eq!(
+            model.coach.mastery.reading(&node, level, at()).evidence,
+            practised,
+            "a rebuild replays everything the live track was fed, not the launch snapshot"
+        );
+    }
+
+    #[test]
+    fn starting_an_altitude_on_a_piece_that_has_gone_says_so() {
+        let mut model = Model::test_default();
+        start_altitude(&mut model, "gone", Altitude::RunThrough);
+        assert!(model.last_error.is_some());
+        assert!(view(&model).coach.altitude.is_none());
+    }
+
     // ── Bridge payloads (#846) ──────────────────────────────────────────
 
     fn sample_journal_item() -> JournalItem {
@@ -1901,17 +2131,6 @@ mod tests {
             BuiltSessionEvent::SaveBuiltSession {
                 session: sample_built_session(),
             },
-            BuiltSessionEvent::RecordPlayThrough(RecordPlayThrough {
-                item_id: "piece".into(),
-                started_at: at(),
-                ended_at: at(),
-                counted: false,
-                sections: vec![SectionVerdict {
-                    section: "Out head".into(),
-                    held: false,
-                    at: at(),
-                }],
-            }),
             BuiltSessionEvent::RecordReflection {
                 kind: ReflectionKind::VoiceNote,
                 session_ref: Some("built".into()),
@@ -1957,8 +2176,24 @@ mod tests {
                 session_id: "01J000000000000000000BSESH".into(),
                 now: at(),
             },
+            BuiltSessionEvent::StartPlayThrough {
+                item_id: "01J000000000000000000PIECE".into(),
+                altitude: Altitude::RunThrough,
+                now: at(),
+            },
         ] {
             assert_round_trips(Event::BuiltSession(event));
+        }
+    }
+
+    #[test]
+    fn every_altitude_crosses_the_wire() {
+        for altitude in [
+            Altitude::RunThrough,
+            Altitude::OffPiste,
+            Altitude::Unmonitored,
+        ] {
+            assert_round_trips(altitude);
         }
     }
 
@@ -1969,7 +2204,6 @@ mod tests {
         assert_round_trips(PersistenceOperation::SaveBuiltSession(
             sample_built_session(),
         ));
-        assert_round_trips(PersistenceOperation::SavePlayThrough(sample_play_through()));
         assert_round_trips(PersistenceOperation::SaveReflection(sample_reflection()));
         assert_round_trips(PersistenceOperation::SaveFeelEntry(sample_feel_entry()));
         assert_round_trips(PersistenceOperation::LoadBuiltSessionData);

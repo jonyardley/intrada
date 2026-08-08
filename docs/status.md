@@ -31,8 +31,21 @@ countable criteria.
   session with declinable shape advice, and the canonical drill loop running a
   user drill with its evidence on its own node. `BlockOrigin` on the spec *and*
   the record enforces decision 17 on the live path and the launch replay
-  (GRDB v12); #1269 is closed by the row-quarantine rule. Next: Phase C,
-  Journey B's three altitudes
+  (GRDB v12); #1269 is closed by the row-quarantine rule.
+  **Phase C's core landed Journey B's three altitudes** (screens follow in
+  their own PR, per the two-PR rule). Open question 1 is resolved: **v1 has no
+  pipeline** — a run-through gates on the piece's own named chart sections,
+  and a piece with none is offered the two lower altitudes instead. The
+  run-through is a peer state of the drill loop (`SessionState::RunThrough`),
+  one "Held / Broke down" tap per section, closing to a `PlayThroughRecord`
+  whose verdicts land per section at l0; the launch replay reads them through
+  the same function the live close does. Off-piste is now reachable from a
+  piece and carries the tag (GRDB v13); unmonitored stays untagged on purpose.
+  Crash-recovery key bumped to v5. The superseded `RecordPlayThrough` /
+  `SavePlayThrough` door is deleted — run-throughs ride the coach batch, so a
+  failed write is retried rather than silently leaving the mastery track ahead
+  of the store. Next: Phase C's screens (B0 sheet, run-through screen,
+  AltitudeChip)
 
 ## Recently landed
 

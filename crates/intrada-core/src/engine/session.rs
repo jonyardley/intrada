@@ -5,8 +5,10 @@ use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::content::ContentIndex;
-use super::gate::{EvidenceSource, GateProgress, Verdict};
+use super::gate::{ClickLevel, EvidenceSource, GateProgress, Verdict};
 use super::plan::{BlockOrigin, BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
+use crate::domain::built_session::playthrough::section_node;
+use crate::domain::built_session::{PlayThroughRecord, SectionVerdict};
 
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
@@ -88,10 +90,32 @@ pub enum CoachEvent {
     ClickUnavailable {
         now: DateTime<Utc>,
     },
+    /// `item_id` is the piece B0 was opened from, where there was one. `None`
+    /// when off-piste was reached mid-session, which has no piece behind it.
     GoOffPiste {
+        item_id: Option<String>,
         now: DateTime<Utc>,
     },
     GoUnmonitored {
+        now: DateTime<Utc>,
+    },
+    /// Journey B's top altitude: play the piece through, one verdict per named
+    /// section. `sections` comes from the caller because resolving them is a
+    /// library lookup, and the engine never does one.
+    StartRunThrough {
+        item_id: String,
+        title: String,
+        sections: Vec<String>,
+        now: DateTime<Utc>,
+    },
+    /// "Held" / "Broke down" — one tap for the section the run is on.
+    JudgeSection {
+        held: bool,
+        now: DateTime<Utc>,
+    },
+    /// B1's "Don't count this run". Writes the record so the time is still the
+    /// user's, and lands no evidence.
+    DiscardRunThrough {
         now: DateTime<Utc>,
     },
     /// Answer to the off-piste *keep this as a drill?* prompt.
@@ -118,9 +142,29 @@ pub struct CoachWrites {
     /// so a crash costs at most the block in flight.
     pub blocks: Vec<BlockRecord>,
     pub wanders: Vec<WanderRecord>,
+    pub play_throughs: Vec<PlayThroughRecord>,
     /// Attempts the mastery track has yet to hear about (spec §2).
     pub evidence: Vec<ScoredAttempt>,
     pub snapshot: SnapshotAction,
+}
+
+/// What one applied event produced that the session does not keep: evidence for
+/// the mastery track, and the run-through record if one closed. Not held on
+/// `EngineSession`, because a field that is empty at rest would ride the
+/// crash-recovery wire for nothing.
+#[derive(Debug, Default)]
+struct Applied {
+    evidence: Vec<ScoredAttempt>,
+    play_throughs: Vec<PlayThroughRecord>,
+}
+
+impl Applied {
+    fn from_evidence(attempt: Option<ScoredAttempt>) -> Self {
+        Self {
+            evidence: attempt.into_iter().collect(),
+            ..Self::default()
+        }
+    }
 }
 
 /// One attempt, told to the mastery store in the terms it holds state in:
@@ -154,6 +198,8 @@ struct RecoveryKey {
     closed_blocks: usize,
     wanders: usize,
     keep_as_drill: Option<Option<bool>>,
+    /// A verdict already given is the one thing a run-through cannot rebuild.
+    section_verdicts: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -283,6 +329,105 @@ pub struct WanderRecord {
     pub attempts: Vec<AttemptSummary>,
     /// `None` = not yet asked.
     pub keep_as_drill: Option<bool>,
+    /// The piece B0 was opened from (#1256). `None` for a wander reached
+    /// mid-session, which has no piece behind it. No `serde(default)`: this
+    /// crosses a positional wire with no "absent", so one would read as a
+    /// safety it cannot provide — the crash-recovery key bump is what makes
+    /// adding it safe.
+    pub item_id: Option<String>,
+}
+
+/// Journey B's three altitudes (decision 16). Named on the session rather than
+/// inferred by the shell, because the chip that shows which one is running is
+/// the consent signal: absence of instrumentation is what the user is agreeing
+/// to, so it has to be the core that says which altitude they are at.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum Altitude {
+    RunThrough,
+    OffPiste,
+    Unmonitored,
+}
+
+/// A gated run-through in flight: one verdict per named section, in reading
+/// order, given as the music passes. No gate, no ladder and no ceiling — the
+/// piece is what bounds it.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct RunThroughState {
+    pub item_id: String,
+    pub title: String,
+    pub started_at: DateTime<Utc>,
+    pub now: DateTime<Utc>,
+    /// Never empty: a run with nothing to gate on would be a whole-piece
+    /// verdict, and the domain refuses to start one (open question 1).
+    pub sections: Vec<String>,
+    pub verdicts: Vec<SectionVerdict>,
+}
+
+impl RunThroughState {
+    /// The section the next tap judges. `None` once every section has one.
+    pub fn current_section(&self) -> Option<&String> {
+        self.sections.get(self.verdicts.len())
+    }
+
+    pub fn complete(&self) -> bool {
+        self.verdicts.len() >= self.sections.len()
+    }
+
+    pub fn elapsed_seconds(&self) -> u32 {
+        (self.now - self.started_at).num_seconds().max(0) as u32
+    }
+
+    /// Sections reached but not judged are simply absent. A run left half-way
+    /// through says what it saw and invents nothing about the rest.
+    fn record(&self, counted: bool, now: DateTime<Utc>) -> PlayThroughRecord {
+        PlayThroughRecord {
+            id: ulid::Ulid::generate().to_string(),
+            item_id: self.item_id.clone(),
+            started_at: self.started_at,
+            ended_at: now,
+            counted,
+            sections: self.verdicts.clone(),
+            updated_at: now,
+            deleted_at: None,
+        }
+    }
+}
+
+/// The rung a section verdict is given at: l0, where nothing bounds the pass
+/// but the tap itself. Per the #1244 ruling the tap is what bounds the attempt
+/// there, and `TapVerdictUntimed` is already the class that says so.
+pub(crate) fn section_level() -> ParameterLevel {
+    ParameterLevel {
+        tempo_bpm: 0,
+        click_level: ClickLevel::NoClick,
+    }
+}
+
+/// What one run-through's verdicts are worth to the mastery track. One
+/// function, called by the live close and by the launch replay, so a section
+/// cannot be scored one way live and another on rebuild (key decision 7, the
+/// #1214 class).
+pub(crate) fn section_evidence(record: &PlayThroughRecord) -> Vec<ScoredAttempt> {
+    if !record.counted {
+        return Vec::new();
+    }
+    record
+        .sections
+        .iter()
+        .map(|verdict| ScoredAttempt {
+            node: section_node(&record.item_id, &verdict.section),
+            level: section_level(),
+            verdict: if verdict.held {
+                Verdict::Clean
+            } else {
+                Verdict::Missed
+            },
+            at: verdict.at,
+        })
+        .collect()
 }
 
 /// Thresholds the engine must not hard-code: `[escalation]` in
@@ -472,12 +617,19 @@ pub enum SessionState {
     },
     /// A peer of `Running`, not a sub-state: no plan and no gates, still capturing.
     OffPiste {
+        item_id: Option<String>,
         started_at: DateTime<Utc>,
     },
-    /// Nothing captured, nothing inferred (decision 16).
+    /// Nothing captured, nothing inferred (decision 16). Untagged even when B0
+    /// was opened from a piece: off-piste has a record to hang a tag on because
+    /// it captures, and this one captures nothing. The asymmetry is the consent
+    /// gradient, not an oversight.
     Unmonitored {
         started_at: DateTime<Utc>,
     },
+    /// A peer of `Running` too: gated, but by the piece's sections rather than
+    /// by a drill's gate.
+    RunThrough(RunThroughState),
     /// Spec §4 carries a `Summary` here; it arrives with the closing screen.
     Closing,
 }
@@ -495,7 +647,33 @@ impl SessionState {
             SessionState::Running { .. }
                 | SessionState::OffPiste { .. }
                 | SessionState::Unmonitored { .. }
+                | SessionState::RunThrough(_)
         )
+    }
+
+    /// Whether something new may start here. The guard exists to protect a
+    /// session *in flight*, which has evidence riding on it; a closed one has
+    /// no such stake, because its records and evidence left with the event that
+    /// closed it. `Closing` counts, or the first thing the user plays is the
+    /// only thing they can play until the app restarts (#1256 Phase C found
+    /// this; the dead end predates it).
+    pub(crate) fn accepts_something_new(&self) -> bool {
+        matches!(
+            self,
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing
+        )
+    }
+
+    /// Which altitude is running, for the chip that stays up for the whole run.
+    /// A prescribed session is not one of the three: it is the top of the map,
+    /// not a rung on it.
+    pub fn altitude(&self) -> Option<Altitude> {
+        match self {
+            SessionState::RunThrough(_) => Some(Altitude::RunThrough),
+            SessionState::OffPiste { .. } => Some(Altitude::OffPiste),
+            SessionState::Unmonitored { .. } => Some(Altitude::Unmonitored),
+            _ => None,
+        }
     }
 }
 
@@ -532,6 +710,13 @@ impl EngineSession {
         }
     }
 
+    pub fn run_through(&self) -> Option<&RunThroughState> {
+        match &self.state {
+            SessionState::RunThrough(run) => Some(run),
+            _ => None,
+        }
+    }
+
     fn recovery_key(&self) -> RecoveryKey {
         RecoveryKey {
             state: std::mem::discriminant(&self.state),
@@ -546,6 +731,7 @@ impl EngineSession {
             closed_blocks: self.closed_blocks.len(),
             wanders: self.wanders.len(),
             keep_as_drill: self.wanders.last().map(|wander| wander.keep_as_drill),
+            section_verdicts: self.run_through().map_or(0, |run| run.verdicts.len()),
         }
     }
 
@@ -572,7 +758,7 @@ impl EngineSession {
         let blocks_written = self.closed_blocks.len();
         let wanders_written = self.wanders.len();
 
-        let evidence = self.handle(event, plan);
+        let applied = self.handle(event, plan);
 
         // Recovery replaces the session wholesale, so it can hand back fewer
         // records than the live one had (a swallowed snapshot write leaves an
@@ -591,7 +777,8 @@ impl EngineSession {
         let mut writes = CoachWrites {
             blocks: self.closed_blocks[blocks_from..].to_vec(),
             wanders: self.wanders[wanders_from..].to_vec(),
-            evidence: evidence.into_iter().collect(),
+            play_throughs: applied.play_throughs,
+            evidence: applied.evidence,
             snapshot: if matches!(self.state, SessionState::Closing) {
                 if was_closing {
                     SnapshotAction::Unchanged
@@ -611,7 +798,7 @@ impl EngineSession {
         writes
     }
 
-    fn handle(&mut self, event: &CoachEvent, planned: Option<Plan>) -> Option<ScoredAttempt> {
+    fn handle(&mut self, event: &CoachEvent, planned: Option<Plan>) -> Applied {
         match event {
             CoachEvent::PlanSession { .. } => {
                 if self.accepts_plan(event) {
@@ -622,35 +809,46 @@ impl EngineSession {
             }
             CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
                 SessionState::Planned { plan } => self.start(plan, *now),
-                SessionState::Idle => {
+                SessionState::Idle | SessionState::Closing => {
                     if let Some(plan) = planned {
                         self.start(plan, *now);
                     }
                 }
-                running_or_closing => self.state = running_or_closing,
+                running => self.state = running,
             },
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
-            CoachEvent::Tap { clean, now } => return self.tap(*clean, *now),
+            CoachEvent::Tap { clean, now } => {
+                return Applied::from_evidence(self.tap(*clean, *now))
+            }
             CoachEvent::StartBlock { now } => self.start_block(*now),
             CoachEvent::SkipBlock { now } => self.skip_block(*now),
             CoachEvent::DiscardAttempt { now } => self.discard(*now),
             CoachEvent::ClickInterrupted { now } => self.click_interrupted(*now),
             CoachEvent::Stuck { now } => self.stuck(*now),
             CoachEvent::Tick { now } => self.tick(*now),
-            CoachEvent::LeaveSession { now } => self.leave_session(*now),
-            CoachEvent::ClickUnavailable { now } => self.leave_session(*now),
-            CoachEvent::GoOffPiste { now } => self.go_off_piste(*now),
+            CoachEvent::LeaveSession { now } | CoachEvent::ClickUnavailable { now } => {
+                return self.leave_session(*now)
+            }
+            CoachEvent::GoOffPiste { item_id, now } => self.go_off_piste(item_id.clone(), *now),
             CoachEvent::GoUnmonitored { now } => self.go_unmonitored(*now),
+            CoachEvent::StartRunThrough {
+                item_id,
+                title,
+                sections,
+                now,
+            } => self.start_run_through(item_id, title, sections, *now),
+            CoachEvent::JudgeSection { held, now } => self.judge_section(*held, *now),
+            CoachEvent::DiscardRunThrough { now } => return self.close_run_through(false, *now),
             CoachEvent::KeepWanderAsDrill { keep } => {
                 if let Some(wander) = self.wanders.last_mut() {
                     wander.keep_as_drill = Some(*keep);
                 }
             }
-            CoachEvent::CloseSession { now } => self.close_session(*now),
+            CoachEvent::CloseSession { now } => return self.close_session(*now),
             CoachEvent::RecoverSession { session, now } => self.recover(session.clone(), *now),
         }
-        None
+        Applied::default()
     }
 
     /// When the mastery store's cold read applies: the events that carry a
@@ -668,8 +866,11 @@ impl EngineSession {
             | CoachEvent::Tick { now }
             | CoachEvent::LeaveSession { now }
             | CoachEvent::ClickUnavailable { now }
-            | CoachEvent::GoOffPiste { now }
+            | CoachEvent::GoOffPiste { now, .. }
             | CoachEvent::GoUnmonitored { now }
+            | CoachEvent::StartRunThrough { now, .. }
+            | CoachEvent::JudgeSection { now, .. }
+            | CoachEvent::DiscardRunThrough { now }
             | CoachEvent::CloseSession { now }
             | CoachEvent::RecoverSession { now, .. } => Some(*now),
             CoachEvent::CountInBeat { .. }
@@ -706,8 +907,17 @@ impl EngineSession {
                     block.phase = block.opening_phase();
                 }
             }
-            SessionState::OffPiste { started_at } | SessionState::Unmonitored { started_at } => {
+            SessionState::OffPiste { started_at, .. }
+            | SessionState::Unmonitored { started_at } => {
                 *started_at = now;
+            }
+            // The verdicts already given survive; the outage does not become
+            // playing time, so the run comes back having taken what it had
+            // taken and no more.
+            SessionState::RunThrough(run) => {
+                let spent = (run.now - run.started_at).num_milliseconds().max(0);
+                run.started_at = now - TimeDelta::milliseconds(spent);
+                run.now = now;
             }
             SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => {}
         }
@@ -979,12 +1189,11 @@ impl EngineSession {
     /// not run the planner for an answer that would be discarded.
     pub(crate) fn accepts_plan(&self, event: &CoachEvent) -> bool {
         match event {
-            CoachEvent::PlanSession { .. } => matches!(
-                self.state,
-                SessionState::Idle | SessionState::Planned { .. }
-            ),
+            CoachEvent::PlanSession { .. } => self.state.accepts_something_new(),
             // A plan already made wins; from anywhere else the event is ignored.
-            CoachEvent::StartPlannedSession { .. } => matches!(self.state, SessionState::Idle),
+            CoachEvent::StartPlannedSession { .. } => {
+                matches!(self.state, SessionState::Idle | SessionState::Closing)
+            }
             _ => false,
         }
     }
@@ -1083,6 +1292,12 @@ impl EngineSession {
     }
 
     fn tick(&mut self, now: DateTime<Utc>) {
+        // A run-through has no ceiling: the piece is what ends it, so the clock
+        // only ever reports how long it has taken.
+        if let SessionState::RunThrough(run) = &mut self.state {
+            run.now = now;
+            return;
+        }
         let ceiling = self.spec().map(|spec| u32::from(spec.minutes) * 60);
         let hold = self.config.gate_open_hold_s;
         let glance = self.config.glance_hold_s;
@@ -1107,7 +1322,13 @@ impl EngineSession {
         }
     }
 
-    fn leave_session(&mut self, now: DateTime<Utc>) {
+    fn leave_session(&mut self, now: DateTime<Utc>) -> Applied {
+        // A run-through the user walked out of still says what it saw: the
+        // verdicts already given are theirs, and dropping them on the way out
+        // would be the silent-no-op bug one layer up.
+        if matches!(self.state, SessionState::RunThrough(_)) {
+            return self.close_run_through(true, now);
+        }
         match self.block_mut() {
             Some(block) => {
                 block.now = now;
@@ -1118,52 +1339,119 @@ impl EngineSession {
             // recover a session the user has already left.
             None => self.state = SessionState::Closing,
         }
+        Applied::default()
     }
 
-    fn go_off_piste(&mut self, now: DateTime<Utc>) {
+    /// Two doors: mid-session, where the block in flight is skipped and there is
+    /// no piece behind it, and B0, where the user picked the altitude for a
+    /// piece before anything was running.
+    fn go_off_piste(&mut self, item_id: Option<String>, now: DateTime<Utc>) {
         match &mut self.state {
             SessionState::Running { block, .. } => {
                 block.now = now;
                 self.close_block(Exit::Skipped, false);
-                self.state = SessionState::OffPiste { started_at: now };
+                self.state = SessionState::OffPiste {
+                    item_id,
+                    started_at: now,
+                };
             }
-            SessionState::Planned { .. } => {
-                self.state = SessionState::OffPiste { started_at: now };
+            state if state.accepts_something_new() => {
+                self.state = SessionState::OffPiste {
+                    item_id,
+                    started_at: now,
+                };
             }
             _ => {}
+        }
+    }
+
+    fn start_run_through(
+        &mut self,
+        item_id: &str,
+        title: &str,
+        sections: &[String],
+        now: DateTime<Utc>,
+    ) {
+        // Nothing to gate on is not a run-through, and a session already in
+        // flight has evidence riding on it that a new altitude must not replace.
+        if sections.is_empty() || !self.state.accepts_something_new() {
+            return;
+        }
+        self.state = SessionState::RunThrough(RunThroughState {
+            item_id: item_id.to_string(),
+            title: title.to_string(),
+            started_at: now,
+            now,
+            sections: sections.to_vec(),
+            verdicts: Vec::new(),
+        });
+    }
+
+    fn judge_section(&mut self, held: bool, now: DateTime<Utc>) {
+        let SessionState::RunThrough(run) = &mut self.state else {
+            return;
+        };
+        run.now = now;
+        // Past the last section there is nothing left to judge, and a tap that
+        // invented a verdict would put evidence on a section nobody played.
+        let Some(section) = run.current_section().cloned() else {
+            return;
+        };
+        run.verdicts.push(SectionVerdict {
+            section,
+            held,
+            at: now,
+        });
+    }
+
+    /// The exit is always an explicit tap, even once every section has a
+    /// verdict: auto-closing on the last one would write the record before
+    /// "Don't count this run" could be reached.
+    fn close_run_through(&mut self, counted: bool, now: DateTime<Utc>) -> Applied {
+        let SessionState::RunThrough(run) = &self.state else {
+            return Applied::default();
+        };
+        let record = run.record(counted, now);
+        self.state = SessionState::Closing;
+        Applied {
+            evidence: section_evidence(&record),
+            play_throughs: vec![record],
         }
     }
 
     fn go_unmonitored(&mut self, now: DateTime<Utc>) {
         // Never from mid-`Running`: switching part-way would make the
         // already-captured half of the session retrospectively unconsented.
-        if matches!(
-            self.state,
-            SessionState::Idle | SessionState::Planned { .. }
-        ) {
+        if self.state.accepts_something_new() {
             self.state = SessionState::Unmonitored { started_at: now };
         }
     }
 
-    fn close_session(&mut self, now: DateTime<Utc>) {
-        match self.state {
-            SessionState::OffPiste { started_at } => {
+    fn close_session(&mut self, now: DateTime<Utc>) -> Applied {
+        match &self.state {
+            SessionState::OffPiste {
+                item_id,
+                started_at,
+            } => {
                 self.wanders.push(WanderRecord {
                     id: ulid::Ulid::generate().to_string(),
-                    started_at,
+                    started_at: *started_at,
                     ended_at: now,
                     attempts: Vec::new(),
                     keep_as_drill: None,
+                    item_id: item_id.clone(),
                 });
                 self.state = SessionState::Closing;
             }
             SessionState::Unmonitored { started_at } => {
-                self.unmonitored_seconds = (now - started_at).num_seconds().max(0) as u32;
+                self.unmonitored_seconds = (now - *started_at).num_seconds().max(0) as u32;
                 self.state = SessionState::Closing;
             }
-            SessionState::Running { .. } => self.leave_session(now),
+            SessionState::RunThrough(_) => return self.close_run_through(true, now),
+            SessionState::Running { .. } => return self.leave_session(now),
             _ => self.state = SessionState::Closing,
         }
+        Applied::default()
     }
 
     /// Abandoning must never be what the app teaches, so a closed block either
@@ -1248,9 +1536,9 @@ mod tests {
     // wire with no field names. The shell must read the new shape under a new
     // key. Missed three times (#1223, #1244, #1256), each caught by a person.
 
-    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v4";
-    const SNAPSHOT_WIRE_LEN: usize = 1390;
-    const SNAPSHOT_WIRE_HASH: u64 = 0x090a125921cf96fc;
+    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v5";
+    const SNAPSHOT_WIRE_LEN: usize = 1425;
+    const SNAPSHOT_WIRE_HASH: u64 = 0x944c03cb25cfd23e;
 
     /// FNV-1a rather than `DefaultHasher`, whose output is explicitly unstable
     /// across Rust releases — this value is committed.
@@ -1331,6 +1619,9 @@ mod tests {
                 level: spec.level,
             }],
             keep_as_drill: Some(true),
+            // `Some` for the same reason as the record's other options: a
+            // `None` here would hide this field's width from the pin.
+            item_id: Some("01J000000000000000000PIECE".to_string()),
         });
         session.unmonitored_seconds = 90;
         session
@@ -1354,6 +1645,21 @@ mod tests {
              SNAPSHOT_WIRE_LEN = {} and SNAPSHOT_WIRE_HASH = {:#018x} here.",
             bytes.len(),
             fingerprint(&bytes)
+        );
+    }
+
+    /// The key above is only useful if it is the key the shell actually reads.
+    /// Left unchecked it drifts, and then the failure message tells the next
+    /// person to bump past a version that was already retired — which read as
+    /// "the bump was skipped" on #1284 when it had not been.
+    #[test]
+    fn the_pinned_key_is_the_one_the_shell_reads() {
+        let store = include_str!("../../../../ios/Intrada/Core/Store.swift");
+        assert!(
+            store.contains(&format!(
+                "coachSessionInProgressKey = \"{SHELL_SNAPSHOT_KEY}\""
+            )),
+            "SHELL_SNAPSHOT_KEY is {SHELL_SNAPSHOT_KEY}, which Store.swift does not declare"
         );
     }
 
@@ -2814,7 +3120,10 @@ mod tests {
     fn a_recovered_wander_never_counts_the_outage_as_practice() {
         let mut crashed = EngineSession::default();
         crashed.start_fixture(at(0));
-        crashed.apply(&CoachEvent::GoOffPiste { now: at(30) });
+        crashed.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(30),
+        });
 
         let mut restored = EngineSession::default();
         restored.apply(&CoachEvent::RecoverSession {
@@ -2888,7 +3197,10 @@ mod tests {
     fn a_closed_wander_is_handed_over_for_persistence() {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
-        session.apply(&CoachEvent::GoOffPiste { now: at(0) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(0),
+        });
 
         let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
         assert_eq!(writes.wanders.len(), 1);
@@ -2899,7 +3211,10 @@ mod tests {
     fn answering_the_keep_prompt_rewrites_the_record() {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
-        session.apply(&CoachEvent::GoOffPiste { now: at(0) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(0),
+        });
         session.apply(&CoachEvent::CloseSession { now: at(600) });
 
         let writes = session.apply(&CoachEvent::KeepWanderAsDrill { keep: true });
@@ -2917,7 +3232,10 @@ mod tests {
     fn off_piste_banks_its_time_and_asks_about_keeping_it() {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
-        session.apply(&CoachEvent::GoOffPiste { now: at(30) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(30),
+        });
         assert!(matches!(session.state, SessionState::OffPiste { .. }));
 
         session.apply(&CoachEvent::CloseSession { now: at(400) });
@@ -2934,7 +3252,10 @@ mod tests {
     fn going_off_piste_closes_the_block_it_left() {
         let mut session = listening();
         rep(&mut session, true, 9);
-        session.apply(&CoachEvent::GoOffPiste { now: at(30) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(30),
+        });
 
         assert_eq!(session.closed_blocks.len(), 1);
         assert_eq!(session.closed_blocks[0].exit, Exit::Skipped);
@@ -3139,5 +3460,348 @@ mod tests {
             1,
             "and the evidence banked before the crash survives it"
         );
+    }
+
+    // ── The run-through altitude (Journey B, #1256) ─────────────────────
+
+    fn sections() -> Vec<String> {
+        vec!["A".to_string(), "B".to_string(), "Bridge".to_string()]
+    }
+
+    fn run_through(now_s: i64) -> EngineSession {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartRunThrough {
+            item_id: "p1".into(),
+            title: "Alice in Wonderland".into(),
+            sections: sections(),
+            now: at(now_s),
+        });
+        session
+    }
+
+    fn judge(session: &mut EngineSession, held: bool, second: i64) -> CoachWrites {
+        session.apply(&CoachEvent::JudgeSection {
+            held,
+            now: at(second),
+        })
+    }
+
+    #[test]
+    fn a_run_through_gates_on_the_pieces_sections_in_order() {
+        let mut session = run_through(0);
+        let run = session.run_through().expect("a run is in flight");
+        assert_eq!(run.current_section().map(String::as_str), Some("A"));
+        assert!(!run.complete());
+
+        judge(&mut session, true, 30);
+        assert_eq!(
+            session.run_through().unwrap().current_section(),
+            Some(&"B".to_string()),
+            "one tap moves on one section"
+        );
+    }
+
+    #[test]
+    fn a_run_with_nothing_to_gate_on_never_starts() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartRunThrough {
+            item_id: "p1".into(),
+            title: "Untitled".into(),
+            sections: vec![],
+            now: at(0),
+        });
+        assert_eq!(
+            session.state,
+            SessionState::Idle,
+            "a sectionless run would be a whole-piece verdict, which nothing can make"
+        );
+    }
+
+    #[test]
+    fn a_closed_session_is_not_a_session_in_flight() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        session.apply(&CoachEvent::CloseSession { now: at(60) });
+        assert_eq!(session.state, SessionState::Closing);
+
+        session.apply(&CoachEvent::StartRunThrough {
+            item_id: "p2".into(),
+            title: "Blue in Green".into(),
+            sections: vec!["Head".into()],
+            now: at(90),
+        });
+        let run = session
+            .run_through()
+            .expect("the second piece of the day starts");
+        assert_eq!(run.item_id, "p2");
+        assert!(
+            run.verdicts.is_empty(),
+            "and it starts fresh rather than inheriting the closed run's taps"
+        );
+    }
+
+    #[test]
+    fn a_closed_session_takes_the_lower_altitudes_too() {
+        let mut session = run_through(0);
+        session.apply(&CoachEvent::CloseSession { now: at(60) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: Some("p2".into()),
+            now: at(90),
+        });
+        assert_eq!(session.state.altitude(), Some(Altitude::OffPiste));
+
+        session.apply(&CoachEvent::CloseSession { now: at(120) });
+        session.apply(&CoachEvent::GoUnmonitored { now: at(150) });
+        assert_eq!(session.state.altitude(), Some(Altitude::Unmonitored));
+    }
+
+    #[test]
+    fn a_run_through_never_replaces_a_session_already_in_flight() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::StartRunThrough {
+            item_id: "p1".into(),
+            title: "Alice in Wonderland".into(),
+            sections: sections(),
+            now: at(30),
+        });
+        assert!(
+            matches!(session.state, SessionState::Running { .. }),
+            "the blocks in flight have evidence riding on them"
+        );
+    }
+
+    #[test]
+    fn a_tap_past_the_last_section_invents_no_verdict() {
+        let mut session = run_through(0);
+        for (index, held) in [true, false, true].into_iter().enumerate() {
+            judge(&mut session, held, 30 * (index as i64 + 1));
+        }
+        assert!(session.run_through().unwrap().complete());
+
+        judge(&mut session, false, 200);
+        assert_eq!(
+            session.run_through().unwrap().verdicts.len(),
+            3,
+            "a fourth tap would put evidence on a section nobody played"
+        );
+    }
+
+    #[test]
+    fn a_complete_run_still_waits_for_an_explicit_exit() {
+        let mut session = run_through(0);
+        for (index, _) in sections().iter().enumerate() {
+            judge(&mut session, true, 30 * (index as i64 + 1));
+        }
+        assert!(
+            session.run_through().is_some(),
+            "auto-closing would write the record before \"Don't count this run\" could be reached"
+        );
+    }
+
+    #[test]
+    fn closing_a_run_writes_the_record_and_lands_the_verdicts() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        judge(&mut session, false, 60);
+
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(90) });
+        assert_eq!(writes.play_throughs.len(), 1);
+        let record = &writes.play_throughs[0];
+        assert!(record.counted);
+        assert_eq!(record.item_id, "p1");
+        assert_eq!(
+            record.sections.len(),
+            2,
+            "the section never reached is absent"
+        );
+        assert_eq!(record.sections[0].section, "A");
+
+        assert_eq!(writes.evidence.len(), 2);
+        assert_eq!(writes.evidence[0].node, "piece:p1#A");
+        assert_eq!(writes.evidence[0].verdict, Verdict::Clean);
+        assert_eq!(writes.evidence[1].node, "piece:p1#B");
+        assert_eq!(writes.evidence[1].verdict, Verdict::Missed);
+        assert!(
+            writes.evidence[0].level.is_untimed(),
+            "the tap is what bounds the attempt at l0 (#1244)"
+        );
+        assert_eq!(writes.snapshot, SnapshotAction::Clear);
+        assert_eq!(session.state, SessionState::Closing);
+    }
+
+    #[test]
+    fn nothing_lands_on_the_piece_as_a_whole() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(60) });
+        assert!(
+            writes
+                .evidence
+                .iter()
+                .all(|attempt| attempt.node != "piece:p1"),
+            "nothing can count a whole piece yet, so nothing claims to"
+        );
+    }
+
+    #[test]
+    fn dont_count_this_run_keeps_the_time_and_lands_no_evidence() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        judge(&mut session, true, 60);
+
+        let writes = session.apply(&CoachEvent::DiscardRunThrough { now: at(90) });
+        assert_eq!(
+            writes.play_throughs.len(),
+            1,
+            "the time is still the user's"
+        );
+        assert!(!writes.play_throughs[0].counted);
+        assert_eq!(
+            writes.play_throughs[0].sections.len(),
+            2,
+            "what was tapped is still what was tapped"
+        );
+        assert!(
+            writes.evidence.is_empty(),
+            "an uncounted run is not evidence about anything"
+        );
+    }
+
+    #[test]
+    fn walking_out_of_a_run_keeps_the_verdicts_already_given() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+
+        let writes = session.apply(&CoachEvent::LeaveSession { now: at(45) });
+        assert_eq!(writes.play_throughs.len(), 1);
+        assert_eq!(writes.evidence.len(), 1);
+        assert_eq!(
+            session.state,
+            SessionState::Closing,
+            "an open run would leave a blob recovering a session the user has left"
+        );
+    }
+
+    #[test]
+    fn a_run_has_no_ceiling_and_the_clock_only_reports() {
+        let mut session = run_through(0);
+        session.apply(&CoachEvent::Tick { now: at(4000) });
+        let run = session.run_through().expect("the piece is what ends it");
+        assert_eq!(run.elapsed_seconds(), 4000);
+    }
+
+    #[test]
+    fn every_verdict_earns_a_blob_because_it_is_the_one_thing_a_run_cannot_rebuild() {
+        let mut session = run_through(0);
+        assert_eq!(judge(&mut session, true, 30).snapshot, SnapshotAction::Save);
+        assert_eq!(
+            session.apply(&CoachEvent::Tick { now: at(40) }).snapshot,
+            SnapshotAction::Unchanged,
+            "a tick moves the clock a recovered run restarts anyway"
+        );
+    }
+
+    #[test]
+    fn a_recovered_run_keeps_its_verdicts_and_never_counts_the_outage() {
+        let mut crashed = run_through(0);
+        judge(&mut crashed, true, 30);
+        crashed.apply(&CoachEvent::Tick { now: at(60) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+
+        assert_eq!(
+            restored
+                .run_through()
+                .expect("the run comes back")
+                .verdicts
+                .len(),
+            1,
+            "a verdict given is a verdict kept"
+        );
+        // Ticked past the recovery, because that is the only reading that can
+        // tell a re-anchored clock from one that kept the crash in it.
+        restored.apply(&CoachEvent::Tick { now: at(3700) });
+        assert_eq!(
+            restored.run_through().unwrap().elapsed_seconds(),
+            160,
+            "the hour the app was gone is not playing time, and the minute before it is"
+        );
+    }
+
+    // ── Off-piste, reached from a piece (B2) ────────────────────────────
+
+    #[test]
+    fn off_piste_from_a_piece_keeps_the_piece_on_the_record() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: Some("p1".into()),
+            now: at(0),
+        });
+        assert!(
+            matches!(session.state, SessionState::OffPiste { .. }),
+            "B0 reaches this altitude with nothing else running"
+        );
+
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
+        assert_eq!(writes.wanders[0].item_id.as_deref(), Some("p1"));
+        assert!(
+            writes.evidence.is_empty(),
+            "off-piste produces time entries only, with zero inference (decision 16)"
+        );
+    }
+
+    #[test]
+    fn a_mid_session_wander_has_no_piece_behind_it() {
+        let mut session = listening();
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(30),
+        });
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
+        assert_eq!(writes.wanders[0].item_id, None);
+    }
+
+    #[test]
+    fn unmonitored_banks_time_and_tags_nothing() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::GoUnmonitored { now: at(0) });
+        assert_eq!(session.state.altitude(), Some(Altitude::Unmonitored));
+
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
+        assert_eq!(session.unmonitored_seconds, 600);
+        assert!(
+            writes.wanders.is_empty(),
+            "nothing captured, nothing to write"
+        );
+        assert!(writes.play_throughs.is_empty());
+        assert!(writes.evidence.is_empty());
+    }
+
+    #[test]
+    fn the_chip_names_the_altitude_for_the_whole_run() {
+        assert_eq!(
+            run_through(0).state.altitude(),
+            Some(Altitude::RunThrough),
+            "absence of instrumentation is the consent signal, so the core says which"
+        );
+        let mut prescribed = EngineSession::default();
+        prescribed.start_fixture(at(0));
+        assert_eq!(
+            prescribed.state.altitude(),
+            None,
+            "a prescribed session is the top of the map, not a rung on it"
+        );
+    }
+
+    #[test]
+    fn a_run_through_round_trips_on_the_wire() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        crate::domain::types::assert_round_trips(session.state.clone());
     }
 }

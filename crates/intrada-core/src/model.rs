@@ -22,7 +22,7 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
-use crate::engine::{CoachState, CoachView, ContentIndex};
+use crate::engine::{BlockRecord, CoachState, CoachView, ContentIndex};
 use crate::persistence::PersistenceOperation;
 
 /// Internal application state — not exposed to shells.
@@ -96,6 +96,11 @@ pub struct Model {
     /// One slot, because the shell resolves persistence synchronously
     /// (`Store.process`), so only one coach write is ever in flight.
     pub coach_write_in_flight: Option<PersistenceOperation>,
+    /// The block records the store handed back at launch. Kept rather than
+    /// consumed, because the mastery rebuild also needs the run-throughs and
+    /// those arrive on a second, independently-ordered load: whichever lands
+    /// last has to be able to rebuild from both.
+    pub coach_blocks: Vec<BlockRecord>,
     // Built-session entities (#1256, `specs/built-session.md`). Tombstoned
     // rows stay out of these: the shell loads live rows only.
     pub user_drills: Vec<UserDrill>,

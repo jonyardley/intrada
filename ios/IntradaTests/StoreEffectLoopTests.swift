@@ -131,7 +131,7 @@ final class StoreEffectLoopTests: XCTestCase {
       id: id,
       effect: .persistence(
         .saveCoachRecords(
-          blocks: [coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")))
+          blocks: [coachBlock], wanders: [], playThroughs: [], updatedAt: "2026-08-04T10:00:30Z")))
   }
 
   func testCoachRecordsWriteResolvesAck() {
@@ -162,7 +162,7 @@ final class StoreEffectLoopTests: XCTestCase {
   func testCoachRecordsReadResolvesWhatWasWritten() throws {
     let libraryStore = try LibraryStore.inMemory()
     try libraryStore.saveCoachRecords(
-      blocks: [Self.coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")
+      blocks: [Self.coachBlock], wanders: [], playThroughs: [], updatedAt: "2026-08-04T10:00:30Z")
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 22, effect: .persistence(.loadCoachRecords))]
@@ -768,10 +768,9 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(view.error, "hydration must not surface an error")
   }
 
-  /// Real-bridge journal + play-through writes (#846, #1256): the two write
-  /// legs the other bridge tests don't reach. `CreateJournalItem` carries two
-  /// optional Strings; `RecordPlayThrough` carries a nested struct array.
-  func testRealBridgeJournalAndPlayThroughWritesDecodeOnWire() throws {
+  /// Real-bridge journal write (#846, #1256): `CreateJournalItem` carries two
+  /// optional Strings, the absent-vs-present hazard on a positional wire.
+  func testRealBridgeJournalWriteDecodesOnWire() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
 
@@ -787,24 +786,55 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(journal.id.count, 26, "core-minted ulid")
     XCTAssertNil(journal.notes, "an absent optional stays absent across the wire")
     XCTAssertEqual(journal.linkedItemId, "p1")
+  }
 
-    let playRequests = try bridge.update(
-      .builtSession(
-        .recordPlayThrough(
-          RecordPlayThrough(
-            itemId: "p1", startedAt: "2026-08-07T10:00:00Z", endedAt: "2026-08-07T10:04:00Z",
-            counted: false,
-            sections: [
-              SectionVerdict(section: "The bridge", held: true, at: "2026-08-07T10:01:00Z"),
-              SectionVerdict(section: "Out head", held: false, at: "2026-08-07T10:03:00Z"),
-            ]))))
-    let record = try XCTUnwrap(
-      playRequests.compactMap { request -> PlayThroughRecord? in
-        if case .persistence(.savePlayThrough(let record)) = request.effect { return record }
+  /// Real-bridge run-through (#846, #1256 Phase C): the whole altitude, driven
+  /// over the live bridge to the batch it writes. `SaveCoachRecords` carries a
+  /// nested struct array (`playThroughs[].sections[]`) that a stub bridge could
+  /// not catch a wire break in.
+  func testRealBridgeRunThroughDecodesOnWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    let addRequests = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Alice in Wonderland", kind: .piece, composer: "Sammy Fain", key: nil,
+            modality: nil, tempo: nil, notes: nil, tags: []))))
+    let pieceId = try XCTUnwrap(
+      addRequests.compactMap { request -> String? in
+        if case .persistence(.saveItem(let item)) = request.effect { return item.id }
         return nil
-      }.first, "RecordPlayThrough must emit a SavePlayThrough persistence op")
+      }.first, "the piece is written with a core-minted id")
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: pieceId, rawChart: "[A]\n| Cmaj7 | Am7 |\n[B]\n| Dm7 | G7 |")))
+
+    _ = try bridge.update(
+      .builtSession(
+        .startPlayThrough(
+          itemId: pieceId, altitude: .runThrough, now: "2026-08-07T10:00:00Z")))
+    let run = try XCTUnwrap(
+      try bridge.view().coach.runThrough, "the run-through screen has something to draw")
+    XCTAssertEqual(run.sections, ["A", "B"], "the piece's own named sections cross the wire")
+    XCTAssertEqual(try bridge.view().coach.altitude, .runThrough)
+
+    _ = try bridge.update(.coach(.judgeSection(held: true, now: "2026-08-07T10:01:00Z")))
+    _ = try bridge.update(.coach(.judgeSection(held: false, now: "2026-08-07T10:03:00Z")))
+    let closing = try bridge.update(.coach(.closeSession(now: "2026-08-07T10:04:00Z")))
+
+    let records = try XCTUnwrap(
+      closing.compactMap { request -> [PlayThroughRecord]? in
+        if case .persistence(.saveCoachRecords(_, _, let playThroughs, _)) = request.effect {
+          return playThroughs
+        }
+        return nil
+      }.first, "a closed run must ride the coach batch")
+    let record = try XCTUnwrap(records.first)
     XCTAssertEqual(record.id.count, 26, "core-minted ulid")
-    XCTAssertEqual(record.counted, false)
+    XCTAssertEqual(record.itemId, pieceId)
+    XCTAssertTrue(record.counted)
+    XCTAssertEqual(record.sections.map(\.section), ["A", "B"])
     XCTAssertEqual(record.sections.map(\.held), [true, false], "verdict order survives the wire")
   }
 
@@ -1602,14 +1632,16 @@ private struct FailingStore: ItemStore {
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
-  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
+  func saveCoachRecords(
+    blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
+    updatedAt: String
+  ) throws {
     throw TestError()
   }
   func loadCoachRecords() throws -> [BlockRecord] { throw TestError() }
   func saveUserDrill(_ drill: UserDrill) throws { throw TestError() }
   func saveJournalItem(_ journal: JournalItem) throws { throw TestError() }
   func saveBuiltSession(_ session: BuiltSession) throws { throw TestError() }
-  func savePlayThrough(_ record: PlayThroughRecord) throws { throw TestError() }
   func saveReflection(_ reflection: Reflection) throws { throw TestError() }
   func saveFeelEntry(_ entry: FeelEntry) throws { throw TestError() }
   func loadBuiltSessionData() throws -> BuiltSessionData { throw TestError() }

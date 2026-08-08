@@ -193,6 +193,17 @@ impl App for Intrada {
     }
 }
 
+/// Replay every kind of evidence the store holds, from whichever load has
+/// landed. `rebuild_mastery` replaces rather than adds, so running it twice
+/// costs a rebuild and can never double-count (#1214) — but only while the
+/// model holds *everything* the live track was fed, which is why
+/// [`coach_write_commands`] banks each record as it closes.
+fn rebuild_mastery(model: &mut Model) {
+    model
+        .coach
+        .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
+}
+
 /// What one applied coach event leaves for the shell: the evidence batch and
 /// the crash-recovery blob. Shared, because a built session enters the same
 /// state machine by a different door (#1256) and its writes must not go
@@ -202,6 +213,12 @@ pub(crate) fn coach_write_commands(
     writes: crate::engine::CoachWrites,
 ) -> Vec<Command<Effect, Event>> {
     let mut commands = Vec::new();
+    // Banked as they close, not just handed to the store: a later reload — a
+    // failed built-session write reissues one — rebuilds the mastery track from
+    // the model, and a record the model dropped is evidence the rebuild would
+    // silently undo.
+    model.coach_blocks.extend(writes.blocks.clone());
+    model.play_throughs.extend(writes.play_throughs.clone());
     // Append-only rows, so `updated_at` is the instant the record closed on the
     // engine's own clock — the shell never formats a timestamp of its own (the
     // `saveSession` convention).
@@ -209,11 +226,13 @@ pub(crate) fn coach_write_commands(
         .blocks
         .last()
         .map(|record| record.ended_at)
-        .or_else(|| writes.wanders.last().map(|record| record.ended_at));
+        .or_else(|| writes.wanders.last().map(|record| record.ended_at))
+        .or_else(|| writes.play_throughs.last().map(|record| record.ended_at));
     if let Some(recorded_at) = recorded_at {
         let batch = PersistenceOperation::SaveCoachRecords {
             blocks: writes.blocks,
             wanders: writes.wanders,
+            play_throughs: writes.play_throughs,
             updated_at: recorded_at,
         };
         model.coach_write_in_flight = Some(batch.clone());
@@ -459,7 +478,8 @@ impl Intrada {
                 // No render: nothing in `ViewModel` derives from the mastery
                 // track; it reaches a screen only through the plan, computed later.
                 PersistenceOutput::CoachRecords(blocks) => {
-                    model.coach.rebuild_mastery(blocks);
+                    model.coach_blocks = blocks;
+                    rebuild_mastery(model);
                     Command::done()
                 }
                 PersistenceOutput::Items(_)
@@ -501,6 +521,10 @@ impl Intrada {
                     model.play_throughs = data.play_throughs;
                     model.reflections = data.reflections;
                     model.feel_entries = data.feel_entries;
+                    // A run-through's section verdicts are mastery evidence, and
+                    // they arrive here rather than with the block records. The
+                    // two loads race, so both rebuild.
+                    rebuild_mastery(model);
                     crux_core::render::render()
                 }
                 PersistenceOutput::Ack
