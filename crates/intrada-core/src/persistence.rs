@@ -13,7 +13,7 @@ use crate::domain::built_session::{
 };
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
-use crate::engine::{BlockRecord, WanderRecord};
+use crate::engine::{BlockRecord, UnmonitoredRecord, WanderRecord};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -47,10 +47,12 @@ pub enum PersistenceOperation {
         blocks: Vec<BlockRecord>,
         wanders: Vec<WanderRecord>,
         play_throughs: Vec<PlayThroughRecord>,
+        unmonitored: Vec<UnmonitoredRecord>,
         updated_at: DateTime<Utc>,
     },
     /// The closed blocks back, so the mastery track can rebuild at launch
-    /// (#1214). Wanders stay unread: they carry no `(node, level)` to score.
+    /// (#1214). Wanders and unmonitored minutes stay unread: they carry no
+    /// `(node, level)` to score, and inferring one is what decision 16 forbids.
     LoadCoachRecords,
     // Built-session entities (#1256). Saves are upserts by id; deletes are
     // tombstoned saves (invariant 2) — no hard-delete op exists on purpose.
@@ -1069,6 +1071,11 @@ mod tests {
                     }],
                     updated_at: at(30),
                     deleted_at: None,
+                }],
+                unmonitored: vec![crate::engine::UnmonitoredRecord {
+                    id: "01J000000000000000000QUIET".into(),
+                    started_at: at(0),
+                    ended_at: at(30),
                 }],
                 updated_at: at(30),
             });

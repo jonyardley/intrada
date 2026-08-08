@@ -131,7 +131,8 @@ final class StoreEffectLoopTests: XCTestCase {
       id: id,
       effect: .persistence(
         .saveCoachRecords(
-          blocks: [coachBlock], wanders: [], playThroughs: [], updatedAt: "2026-08-04T10:00:30Z")))
+          blocks: [coachBlock], wanders: [], playThroughs: [], unmonitored: [],
+          updatedAt: "2026-08-04T10:00:30Z")))
   }
 
   func testCoachRecordsWriteResolvesAck() {
@@ -825,7 +826,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
     let records = try XCTUnwrap(
       closing.compactMap { request -> [PlayThroughRecord]? in
-        if case .persistence(.saveCoachRecords(_, _, let playThroughs, _)) = request.effect {
+        if case .persistence(.saveCoachRecords(_, _, let playThroughs, _, _)) = request.effect {
           return playThroughs
         }
         return nil
@@ -1634,7 +1635,7 @@ private struct FailingStore: ItemStore {
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
   func saveCoachRecords(
     blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
-    updatedAt: String
+    unmonitored: [UnmonitoredRecord], updatedAt: String
   ) throws {
     throw TestError()
   }

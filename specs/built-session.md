@@ -62,7 +62,8 @@ full). New domain surface, sketched for Phase A:
 - **Entities** (GRDB, client ulids, `updated_at`/`deleted_at`): `UserDrill`
   (criterion text, parsed gate params, serves tag, low-band mastery state),
   `JournalItem`, `BuiltSession` (ordered blocks + provenance), `PlayThrough`
-  (altitude, per-section verdicts for run-throughs, elapsed for the others),
+  (per-section verdicts for run-throughs; Phase C split the other two
+  altitudes into `WanderRecord` and `UnmonitoredRecord`, which carry elapsed),
   `Reflection` / feel entries (judgement track: never feed mastery, may retire
   a target, decision 17).
 - **Events/Effects**: compose/resolve/reorder events; existing drill-loop
@@ -136,10 +137,24 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    row, not the library, and a newer binary still reads it whole.
 7. **Off-piste carries the piece; unmonitored carries nothing** (Phase C). B0
    is reached from a piece for all three altitudes, but only off-piste keeps
-   the tag: it already writes a record, because it captures. Unmonitored writes
-   no record at all, so there is nothing to tag and nothing that could later say
-   what was played. The asymmetry is the consent gradient, not an oversight —
-   "minutes only" means minutes.
+   the tag: it already writes a record, because it captures. Unmonitored's
+   record is an id and two instants and nothing else, so there is nothing to
+   tag and nothing that could later say what was played. The asymmetry is the
+   consent gradient, not an oversight — "minutes only" means minutes.
+
+   **Amended 2026-08-08 (#1285).** This decision originally read "unmonitored
+   writes no record at all", and the engine took it literally: the minutes were
+   computed on close into a field nothing persisted, so decision 16's one
+   promised output died with the process. The consent rule was never about
+   writing nothing — it is about writing nothing *attributable*. So the minutes
+   land in their own `unmonitored_play` table (v14), whose columns are `id`,
+   `started_at`, `ended_at` and the two sync columns. Deliberately **not** a
+   discriminated `wander_record`: that table has an `item_id`, an `attempts`
+   blob and the keep-prompt answer, so reusing it would leave "minutes only"
+   resting on every future writer remembering the discriminator. A table with
+   no column for a piece cannot be made to name one. The rows are write-only,
+   as wanders already are — nothing reads them back, because reading them into
+   anything is the inference decision 16 forbids.
 8. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
    It rides the spec *and* the record, because the mastery track is rebuilt
    from records at launch: a decision-17 rule the live path enforces and the

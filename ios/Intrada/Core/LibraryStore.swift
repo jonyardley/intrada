@@ -11,14 +11,15 @@ protocol ItemStore {
   func delete(id: String, deletedAt: String) throws
   func loadSessions() throws -> [PracticeSession]
   func saveSession(_ session: PracticeSession) throws
-  /// Append coach evidence in one transaction — blocks, wanders, run-throughs
-  /// and their attempts land together or not at all (#1181).
+  /// Append coach evidence in one transaction — blocks, wanders, run-throughs,
+  /// unmonitored minutes and their attempts land together or not at all (#1181).
   func saveCoachRecords(
     blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
-    updatedAt: String
+    unmonitored: [UnmonitoredRecord], updatedAt: String
   ) throws
   /// The closed blocks back, so the core can rebuild the mastery track at
-  /// launch (#1214). Wanders stay write-only: no `(node, level)` to score.
+  /// launch (#1214). Wanders and unmonitored minutes stay write-only: no
+  /// `(node, level)` to score, and decision 16 forbids inferring one.
   func loadCoachRecords() throws -> [BlockRecord]
   // Built-session entities (#1256): upserts by id; deletes arrive as
   // tombstoned saves, so no delete methods exist.
@@ -194,7 +195,7 @@ final class LibraryStore: ItemStore {
   /// wander row already written rather than duplicating it.
   func saveCoachRecords(
     blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
-    updatedAt: String
+    unmonitored: [UnmonitoredRecord] = [], updatedAt: String
   ) throws {
     try dbQueue.write { db in
       for block in blocks {
@@ -205,6 +206,9 @@ final class LibraryStore: ItemStore {
       }
       for record in playThroughs {
         try Self.upsert(record, in: db)
+      }
+      for record in unmonitored {
+        try Self.upsert(record, updatedAt: updatedAt, in: db)
       }
     }
   }
@@ -460,6 +464,21 @@ final class LibraryStore: ItemStore {
       // mid-session door has no piece behind it and every existing row came
       // through it.
       try db.execute(sql: "ALTER TABLE wander_record ADD COLUMN item_id TEXT")
+    }
+    migrator.registerMigration("v14_unmonitored_play") { db in
+      // #1285: its own table rather than a discriminated `wander_record`,
+      // because a table with no column for a piece cannot be made to name one —
+      // decision 7's "minutes only", enforced by the schema rather than stated.
+      try db.execute(
+        sql: """
+          CREATE TABLE unmonitored_play (
+            id TEXT PRIMARY KEY NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
     }
     return migrator
   }()
@@ -891,6 +910,19 @@ final class LibraryStore: ItemStore {
         record.id, record.startedAt, record.endedAt, try encodeAttempts(record.attempts),
         record.keepAsDrill, record.itemId, updatedAt,
       ])
+  }
+
+  private static func upsert(
+    _ record: UnmonitoredRecord, updatedAt: String, in db: Database
+  ) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO unmonitored_play (id, started_at, ended_at, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+          ended_at = excluded.ended_at, updated_at = excluded.updated_at
+        """,
+      arguments: [record.id, record.startedAt, record.endedAt, updatedAt])
   }
 
   /// Throws rather than substituting `[]`: losing the attempts would make a

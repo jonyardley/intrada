@@ -29,5 +29,6 @@ pub use plan::{
 };
 pub use session::{
     Altitude, AttemptSummary, BlockRecord, BlockState, CoachEvent, CoachWrites, EngineConfig,
-    EngineSession, Exit, Phase, RunThroughState, Rung, SessionState, SnapshotAction, WanderRecord,
+    EngineSession, Exit, Phase, RunThroughState, Rung, SessionState, SnapshotAction,
+    UnmonitoredRecord, WanderRecord,
 };
