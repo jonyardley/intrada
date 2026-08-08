@@ -19,7 +19,11 @@ comment:
   # Show the Codecov PR comment but keep it compact.
   layout: "reach,diff,flags,files"
   behavior: default
-  require_changes: true      # only comment when coverage data changes
+  # Comment on every PR that has a report, changed coverage or not. Always(6)
+  # has the author compare this comment against the PR's `Coverage:` line, and
+  # a check that only sometimes produces the thing being compared is one nobody
+  # can tell has stopped running (#1288).
+  require_changes: false
   require_base: false        # don't fail if base commit has no coverage
   require_head: true
 
