@@ -1122,16 +1122,9 @@ mod tests {
 
     fn closed_block(id: &str, verdicts: &[(bool, i64)], exit: Exit) -> BlockRecord {
         use crate::engine::gate::EvidenceSource;
-        use crate::engine::plan::{BlockOrigin, Circle, Mode};
         use crate::engine::session::AttemptSummary;
         BlockRecord {
             id: id.to_string(),
-            node: "rootless-a-b".to_string(),
-            drill: "rootless-under-melody".to_string(),
-            gate: "rootless-under-melody".to_string(),
-            level: fixture_level(),
-            circle: Circle::Hands,
-            mode: Mode::Keys,
             started_at: at(0),
             ended_at: at(verdicts.last().map(|(_, second)| *second).unwrap_or(0)),
             attempts: verdicts
@@ -1151,11 +1144,8 @@ mod tests {
                 .collect(),
             attempts_to_pass: None,
             gate_opened_at_attempt: None,
-            reps_after_gate: 0,
-            active_ms: 0,
-            escalation_fired: vec![],
             exit,
-            origin: BlockOrigin::Authored,
+            ..BlockRecord::fixture()
         }
     }
 

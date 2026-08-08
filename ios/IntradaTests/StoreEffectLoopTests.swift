@@ -123,17 +123,8 @@ final class StoreEffectLoopTests: XCTestCase {
       "a failing local store must resolve .failed, not a phantom .ack")
   }
 
-  private static let coachBlock = BlockRecord(
-    id: "b1", node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
-    level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour), circle: .hands, mode: .keys,
-    startedAt: "2026-08-04T10:00:00Z", endedAt: "2026-08-04T10:00:30Z",
-    attempts: [
-      AttemptSummary(
-        at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
-        selfPredicted: nil, level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour))
-    ],
-    attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
-    escalationFired: [], exit: .gatePassed, origin: .authored)
+  private static let coachBlock = CoachFixture.blockRecord(
+    attempts: [CoachFixture.attempt(cold: true)])
 
   private static func saveCoachRecords(id: UInt32) -> Request {
     Request(
@@ -1134,21 +1125,14 @@ final class StoreEffectLoopTests: XCTestCase {
   /// enough back to be overdue by the time the plan is asked for.
   private static var overdueEvidence: [BlockRecord] {
     (0..<12).map { day in
-      BlockRecord(
+      let level = ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour)
+      let date = String(format: "%02d", day + 1)
+      return CoachFixture.blockRecord(
         id: "b\(day)", node: "phrase-transposition", drill: "phrase-home-key",
-        gate: "phrase-home-key",
-        level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour),
-        circle: .head, mode: .keys,
-        startedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:00Z",
-        endedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:30Z",
-        attempts: [
-          AttemptSummary(
-            at: "2026-08-\(String(format: "%02d", day + 1))T10:00:09Z", verdict: .clean,
-            source: .tapVerdict, cold: false, selfPredicted: nil,
-            level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour))
-        ],
-        attemptsToPass: nil, gateOpenedAtAttempt: nil, repsAfterGate: 0, activeMs: 30_000,
-        escalationFired: [], exit: .ceilingHit, origin: .authored)
+        gate: "phrase-home-key", level: level, circle: .head,
+        startedAt: "2026-08-\(date)T10:00:00Z", endedAt: "2026-08-\(date)T10:00:30Z",
+        attempts: [CoachFixture.attempt(at: "2026-08-\(date)T10:00:09Z", level: level)],
+        attemptsToPass: nil, gateOpenedAtAttempt: nil, exit: .ceilingHit)
     }
   }
 
