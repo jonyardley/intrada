@@ -1536,9 +1536,9 @@ mod tests {
     // wire with no field names. The shell must read the new shape under a new
     // key. Missed three times (#1223, #1244, #1256), each caught by a person.
 
-    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v4";
-    const SNAPSHOT_WIRE_LEN: usize = 1390;
-    const SNAPSHOT_WIRE_HASH: u64 = 0x090a125921cf96fc;
+    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v5";
+    const SNAPSHOT_WIRE_LEN: usize = 1425;
+    const SNAPSHOT_WIRE_HASH: u64 = 0x944c03cb25cfd23e;
 
     /// FNV-1a rather than `DefaultHasher`, whose output is explicitly unstable
     /// across Rust releases — this value is committed.
@@ -1619,6 +1619,9 @@ mod tests {
                 level: spec.level,
             }],
             keep_as_drill: Some(true),
+            // `Some` for the same reason as the record's other options: a
+            // `None` here would hide this field's width from the pin.
+            item_id: Some("01J000000000000000000PIECE".to_string()),
         });
         session.unmonitored_seconds = 90;
         session
@@ -1642,6 +1645,21 @@ mod tests {
              SNAPSHOT_WIRE_LEN = {} and SNAPSHOT_WIRE_HASH = {:#018x} here.",
             bytes.len(),
             fingerprint(&bytes)
+        );
+    }
+
+    /// The key above is only useful if it is the key the shell actually reads.
+    /// Left unchecked it drifts, and then the failure message tells the next
+    /// person to bump past a version that was already retired — which read as
+    /// "the bump was skipped" on #1284 when it had not been.
+    #[test]
+    fn the_pinned_key_is_the_one_the_shell_reads() {
+        let store = include_str!("../../../../ios/Intrada/Core/Store.swift");
+        assert!(
+            store.contains(&format!(
+                "coachSessionInProgressKey = \"{SHELL_SNAPSHOT_KEY}\""
+            )),
+            "SHELL_SNAPSHOT_KEY is {SHELL_SNAPSHOT_KEY}, which Store.swift does not declare"
         );
     }
 
