@@ -37,12 +37,8 @@ struct CoachRecordStoreTests {
     repsAfterGate: UInt16 = 0, activeMs: UInt64 = 30_000,
     origin: BlockOrigin = .authored
   ) -> BlockRecord {
-    BlockRecord(
-      id: id, node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
-      level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour),
-      circle: .hands, mode: .keys,
-      startedAt: "2026-08-04T10:00:00Z", endedAt: Self.updatedAt,
-      attempts: attempts, attemptsToPass: attemptsToPass,
+    CoachFixture.blockRecord(
+      id: id, endedAt: Self.updatedAt, attempts: attempts, attemptsToPass: attemptsToPass,
       gateOpenedAtAttempt: gateOpenedAtAttempt, repsAfterGate: repsAfterGate,
       activeMs: activeMs, escalationFired: escalations, exit: exit, origin: origin)
   }

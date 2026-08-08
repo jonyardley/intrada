@@ -742,43 +742,52 @@ fn block_spec(content: &ContentIndex, candidate: &Candidate) -> BlockSpec {
 }
 
 #[cfg(test)]
+impl BlockSpec {
+    /// The one place a test `BlockSpec` is spelt out in full — compose with
+    /// `BlockSpec { minutes: 3, ..fixture() }` so a new field costs one edit.
+    pub(crate) fn fixture() -> Self {
+        Self {
+            node: "rootless-a-b".to_string(),
+            drill: "rootless-under-melody".to_string(),
+            drill_title: "Rootless voicings".to_string(),
+            section: Some("A section".to_string()),
+            destination: Some("Strasbourg / St. Denis".to_string()),
+            kind: ItemKind::Exercise,
+            circle: Circle::Hands,
+            mode: Mode::Keys,
+            gate: GateCriteria {
+                id: "rootless-under-melody".to_string(),
+                node: "rootless-a-b".to_string(),
+                criterion: "Strasbourg A section, melody over rootless LH".to_string(),
+                requirement: Requirement::CleanPasses {
+                    count: 3,
+                    consecutive: false,
+                },
+                judge: Judge::TapVerdict,
+                time_ceiling_s: Some(360),
+            },
+            level: ParameterLevel {
+                tempo_bpm: 120,
+                click_level: ClickLevel::TwoAndFour,
+            },
+            bars: 8,
+            beats_per_bar: 4,
+            count_in_beats: 4,
+            minutes: 6,
+            origin: BlockOrigin::Authored,
+            serves: None,
+        }
+    }
+}
+
+#[cfg(test)]
 impl Plan {
     /// A stable plan for the state-machine tests, so what they assert is the
     /// machine rather than whatever the authored content currently says.
     pub(crate) fn fixture() -> Self {
         Self {
             blocks: vec![PlannedBlock {
-                spec: BlockSpec {
-                    node: "rootless-a-b".to_string(),
-                    drill: "rootless-under-melody".to_string(),
-                    drill_title: "Rootless voicings".to_string(),
-                    section: Some("A section".to_string()),
-                    destination: Some("Strasbourg / St. Denis".to_string()),
-                    kind: ItemKind::Exercise,
-                    circle: Circle::Hands,
-                    mode: Mode::Keys,
-                    gate: GateCriteria {
-                        id: "rootless-under-melody".to_string(),
-                        node: "rootless-a-b".to_string(),
-                        criterion: "Strasbourg A section, melody over rootless LH".to_string(),
-                        requirement: Requirement::CleanPasses {
-                            count: 3,
-                            consecutive: false,
-                        },
-                        judge: Judge::TapVerdict,
-                        time_ceiling_s: Some(360),
-                    },
-                    level: ParameterLevel {
-                        tempo_bpm: 120,
-                        click_level: ClickLevel::TwoAndFour,
-                    },
-                    bars: 8,
-                    beats_per_bar: 4,
-                    count_in_beats: 4,
-                    minutes: 6,
-                    origin: BlockOrigin::Authored,
-                    serves: None,
-                },
+                spec: BlockSpec::fixture(),
                 why: Why {
                     destination: Some("Strasbourg / St. Denis".to_string()),
                     node_state: NodeState {

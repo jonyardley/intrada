@@ -214,6 +214,53 @@ contract, the split cost more than it bought. Measured on that PR:
 The rule that came out of it — one agent per vertical slice, fan out only on
 genuinely independent work — is in CLAUDE.md under *Parallel work streams*.
 
+## Where #1256 Phase B's time actually went (2026-08-07)
+
+A retrospective measured rather than estimated, after Phase B felt slow. It is
+the source of the split-the-phase rule, the wire-shape gate, the shared fixtures
+and `just ios-snapshots-record`.
+
+**The tooling was not the bottleneck.** Timed on the worktree that built it:
+
+| Loop | Wall clock |
+|------|-----------|
+| `just ios-test`, warm | 43s |
+| `just ios-test` after one Swift edit | 31s |
+| One scoped test via `_ios-test-without-building` | 24s |
+| Whole CI run | ~10 min |
+
+Roughly, across about two hours: writing code and tests ~55%, review-and-then-
+re-run-everything ~20%, local gates ~15%, flakes and dead ends ~10%.
+
+**What actually cost time, in order:**
+
+1. **One PR for a phase spanning core and screens.** 4,300 insertions, seven
+   designed frames, a bridge change and a migration. Both self-review blockers
+   were in core code written in the first third; finding them at the end meant
+   re-running every gate and rebasing onto a main that had moved.
+2. **Reviewing once, at the end.** `requesting-code-review` says "review early,
+   often". A review after the core landed would have caught both blockers before
+   any SwiftUI existed.
+3. **The field-addition tax.** Adding `origin` to `BlockSpec`/`BlockRecord` broke
+   six construction sites, each found by a separate build, because errors were
+   read one at a time rather than with `cargo check --all-targets`.
+4. **Snapshot recording by hand.** Delete, run, run, optimise, check — five
+   steps, done five times. `ios-snapshots-optimize` over the whole suite cost
+   more than the test run it followed (94s → 50s once scoped).
+5. **Fighting the size ceiling before reading it.** Four cycles trying crops on
+   gradient-heavy references, when `check-snapshots.sh`'s own comment says
+   cropping cannot help those.
+
+**Tests, judged honestly.** Duration is fine. One real flake —
+`ClickEngineTests` stands up an `AVAudioEngine` inside a merge gate (#1282).
+The simulator's own "Busy / preflight checks" cost four local cycles. And the
+criterion parser's fourteen green unit tests all used sentences written to match
+the scanner, which is why it shipped misreading the likeliest real one.
+
+**What was worth keeping**: the code-reviewer subagent (two blockers for
+fourteen minutes), driving the simulator rather than trusting green tests, TDD
+on the core, and reading the spec and mockups properly.
+
 ## Mutate-response variants, in full
 
 Writes reconcile with the server response directly, with no full-list refetch.

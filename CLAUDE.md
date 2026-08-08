@@ -85,6 +85,12 @@ wastes a ~3-minute roundtrip. Keep the justfile recipes and `ci.yml` in lockstep
 when either changes. Changes under `ios/` additionally need `just ios-fmt-check`
 (fix with `just ios-fmt`).
 
+**Read every compile error before fixing the first.** `cargo check --all-targets`
+(not `cargo build`) surfaces test-code breakage in the same pass as the lib —
+adding a field to a widely-constructed type otherwise costs one build per call
+site, discovered one at a time. Same for Swift: read the whole `just ios-test`
+error list, then fix.
+
 **Simulator safety.** The iOS Simulator and `CoreSimulatorService` are
 machine-global. Before any global reset (`simctl shutdown all`,
 `killall CoreSimulatorService`) or a fresh test run, check for another live
@@ -239,9 +245,20 @@ the only UI quality gate, so keep the suite but keep it lean:
 - **Snapshot load-bearing states, not the cross-product.** Prefer
   component-level (`sizeThatFits`) or structural/text snapshots where the
   assertion isn't pixel-perfect.
-- **Optimize before committing.** Run `just ios-snapshots-optimize` after
-  recording. CI's **Snapshot Hygiene** job enforces a per-file size ceiling and
-  fails on un-optimized references.
+- **Re-record with `just ios-snapshots-record <filter>`**, not by hand. It
+  deletes the matching references, runs only those tests (recording is
+  fail-then-pass by design), optimises what it wrote and re-checks hygiene —
+  one command instead of five, and scoped, so it is seconds rather than the
+  whole suite.
+- **Optimize before committing.** `ios-snapshots-record` does it; if you record
+  another way, run `just ios-snapshots-optimize`. CI's **Snapshot Hygiene** job
+  enforces a per-file size ceiling and fails on un-optimized references.
+- **Over the ceiling? Read `scripts/check-snapshots.sh` before reacting.** It
+  carries an allowlist for references that stay large as lossless PNG — the
+  smooth gradients (practice hero, player radial) and dense-control screens.
+  **Cropping does not help those**: flat paper costs almost nothing and the
+  gradient is the whole bill. Add to the allowlist with the reason, and keep the
+  list tight.
 - **No orphans.** Delete a test → delete its PNG. The same job fails any
   reference with no matching `func test…`. Check locally with
   `just ios-snapshots-check`.
@@ -507,6 +524,23 @@ fails) before hardening. If nothing can distinguish the behaviour being present
 from absent, the honest fix is to **delete** the test, not to bulk it out with
 assertions about something else while keeping the name.
 
+**A parser or validator gets a table test against its consumer, not cases you
+invented.** Hand-picked inputs are picked to match the implementation you just
+wrote, so they agree with it by construction. Write the table as a list of
+inputs a *user* would actually produce, and assert the property the next stage
+needs — `every_parse_is_a_drill_validation_will_accept` is the shape.
+
+Why (2026-08-07, #1256): the criterion parser shipped with fourteen green unit
+tests and still read "three clean passes **in a row**" as the key of A, which at
+two keys silently doubled the gate. Every one of those tests used a sentence
+written to match the scanner.
+
+**Test fixtures for a type with many fields live in one place.** Rust:
+`BlockSpec::fixture()` / `BlockRecord::fixture()`, composed with struct update
+(`BlockRecord { exit: Exit::Skipped, ..fixture() }`). Swift: `CoachFixture`,
+whose default arguments do the same job for the generated types. Adding a field
+should cost one edit, not one per call site found a build at a time.
+
 When skipping tests, say so explicitly in the PR description with the reason.
 "All 157 tests pass" is not coverage — those are existing tests.
 
@@ -530,6 +564,16 @@ the diagnosis and the fix: [`docs/reference.md`](docs/reference.md).
   crash (#846).
 - **Stub-bridge tests can't catch a wire break.** Cover bridge-crossing types
   with a *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`).
+- **Adding a field inside `EngineSession` invalidates every crash-recovery blob
+  on every device.** The blob is positional bincode in UserDefaults, written by
+  one build and read by the next, so a new field anywhere in its transitive
+  graph (`Plan` → `PlannedBlock` → `BlockSpec`, `BlockState`, `BlockRecord`,
+  `WanderRecord`, `EngineConfig`) makes an old blob decode into a valid-looking
+  wrong session. `#[serde(default)]` does nothing here — serde never reaches the
+  default on a non-self-describing wire. Missed three times (#1223, #1244,
+  #1256); now gated by
+  `the_crash_recovery_wire_is_pinned_to_the_shell_key_that_reads_it`, whose
+  failure prints the exact two-line fix.
 - **`option_env!` needs `cargo:rerun-if-env-changed`.** Without it cargo caches
   the macro expansion and your "I changed the env var" rebuild silently uses
   stale values. Hit on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
@@ -559,6 +603,22 @@ questions), then Claude Design for UI, then Plan mode, then implement.
 is the first commit on the Phase A branch; Phase A scaffold is the rest, and the
 PR title and body reflect both. Reviewers sanity-check the spec against working
 code rather than abstract diagrams. Phases B/C/D still ship as their own PRs.
+
+**A phase spanning core *and* screens ships as two PRs: core first, screens
+second.** The core PR carries the domain types, the events, the migration and
+the tests; the screens PR carries the SwiftUI and its snapshots. Only split when
+the phase really does span both — a core-only or screens-only phase stays one PR.
+
+Why (2026-08-07, #1256 Phase B): one PR of 4,300 insertions covering seven
+designed frames, a bridge change and a migration. Both blockers the self-review
+found were in core code written in the first third, and finding them at the end
+meant re-running every gate and rebasing. Two PRs would each have been ~45
+minutes, each independently reviewable, and the bridge risk would have landed
+away from the UI churn.
+
+**Review the core PR before starting the screens.** `requesting-code-review`
+says "review early, review often"; on a multi-surface phase, once at the end is
+too late to be cheap.
 
 Do not run `/speckit-*` slash commands. Historical SpecKit folders under
 `specs/` are reference only.

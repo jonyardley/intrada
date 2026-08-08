@@ -244,6 +244,34 @@ pub struct BlockRecord {
     pub origin: BlockOrigin,
 }
 
+#[cfg(test)]
+impl BlockRecord {
+    /// The one place a test `BlockRecord` is spelt out in full — compose with
+    /// `BlockRecord { exit: Exit::Skipped, ..fixture() }`.
+    pub(crate) fn fixture() -> Self {
+        let spec = crate::engine::plan::BlockSpec::fixture();
+        Self {
+            id: "01J000000000000000000BREC".to_string(),
+            node: spec.node,
+            drill: spec.drill,
+            gate: spec.gate.id,
+            level: spec.level,
+            circle: spec.circle,
+            mode: spec.mode,
+            started_at: DateTime::UNIX_EPOCH,
+            ended_at: DateTime::UNIX_EPOCH,
+            attempts: Vec::new(),
+            attempts_to_pass: None,
+            gate_opened_at_attempt: None,
+            reps_after_gate: 0,
+            active_ms: 0,
+            escalation_fired: Vec::new(),
+            exit: Exit::SessionEnded,
+            origin: BlockOrigin::Authored,
+        }
+    }
+}
+
 /// A wander has no node, drill, gate or level, so it gets its own type rather
 /// than turning every id on `BlockRecord` into an `Option` (spec §4).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1204,10 +1232,129 @@ impl EngineSession {
 mod tests {
     use super::*;
     use crate::engine::gate::{ClickLevel, Requirement};
+    use crate::engine::plan::Alternative;
     use chrono::TimeZone;
 
     fn at(second: i64) -> DateTime<Utc> {
         Utc.timestamp_opt(1_754_300_000 + second, 0).unwrap()
+    }
+
+    // ── The crash-recovery blob's wire shape ────────────────────────────
+    //
+    // `EngineSession` goes to UserDefaults as positional bincode, written by one
+    // build and read by the next. A field added anywhere in its transitive graph
+    // makes an old blob decode into a valid-looking wrong session, and
+    // `#[serde(default)]` cannot help — serde never reaches the default on a
+    // wire with no field names. The shell must read the new shape under a new
+    // key. Missed three times (#1223, #1244, #1256), each caught by a person.
+
+    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v4";
+    const SNAPSHOT_WIRE_LEN: usize = 1390;
+    const SNAPSHOT_WIRE_HASH: u64 = 0x090a125921cf96fc;
+
+    /// FNV-1a rather than `DefaultHasher`, whose output is explicitly unstable
+    /// across Rust releases — this value is committed.
+    fn fingerprint(bytes: &[u8]) -> u64 {
+        bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x1000_0000_01b3)
+        })
+    }
+
+    /// Saturated: every `Vec` non-empty and every `Option` `Some`, or a new
+    /// field nested inside one would not reach the wire. `Plan::fixture` is
+    /// deliberately not this.
+    fn saturated_session() -> EngineSession {
+        let mut plan = Plan::fixture();
+        plan.deferred.push("nothing here can count it".to_string());
+        plan.blocks[0].new_keys = Some(2);
+        plan.blocks[0].spec.serves = Some("Adds to what your hands know".to_string());
+        let alternative = Alternative {
+            rung: Rung::TempoDown,
+            spec: plan.blocks[0].spec.clone(),
+            why: plan.blocks[0].why.clone(),
+        };
+        plan.blocks[0].alternatives.push(alternative);
+
+        let mut session = EngineSession::default();
+        session.start(plan, at(0));
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+        session.apply(&CoachEvent::Beat { beat_index: 32 });
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(9),
+        });
+        if let Some(block) = session.block_mut() {
+            // `BlockState::open` mints a ulid — the one random thing on this
+            // wire, and the fingerprint must move only when the shape does.
+            block.id = "01J00000000000000000LIVEB".to_string();
+            block.escalation_fired.push(Rung::ShrinkScope);
+            block.gate_open_since = Some(at(9));
+            block.gate_opened_at_attempt = Some(1);
+            if let Some(attempt) = block.attempts.first_mut() {
+                attempt.self_predicted = Some(Verdict::Clean);
+            }
+        }
+
+        let spec = BlockSpec::fixture();
+        session.closed_blocks.push(BlockRecord {
+            id: "b0".to_string(),
+            started_at: at(0),
+            ended_at: at(60),
+            attempts: vec![AttemptSummary {
+                at: at(30),
+                verdict: Verdict::Missed,
+                source: EvidenceSource::TapVerdict,
+                cold: true,
+                self_predicted: Some(Verdict::Clean),
+                level: spec.level,
+            }],
+            // `Some` against the fixture's `None`: see `saturated_session`.
+            attempts_to_pass: Some(3),
+            gate_opened_at_attempt: Some(3),
+            reps_after_gate: 1,
+            active_ms: 60_000,
+            escalation_fired: vec![Rung::SwapDrill],
+            exit: Exit::GatePassed,
+            origin: BlockOrigin::Judgement,
+            ..BlockRecord::fixture()
+        });
+        session.wanders.push(WanderRecord {
+            id: "w0".to_string(),
+            started_at: at(70),
+            ended_at: at(130),
+            attempts: vec![AttemptSummary {
+                at: at(80),
+                verdict: Verdict::Clean,
+                source: EvidenceSource::TapVerdictUntimed,
+                cold: false,
+                self_predicted: None,
+                level: spec.level,
+            }],
+            keep_as_drill: Some(true),
+        });
+        session.unmonitored_seconds = 90;
+        session
+    }
+
+    /// Never re-pin this on its own: bumping the shell key is the other half,
+    /// and skipping it is the bug this exists to catch. The failure says how.
+    #[test]
+    fn the_crash_recovery_wire_is_pinned_to_the_shell_key_that_reads_it() {
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, &saturated_session()).expect("serialize");
+
+        assert_eq!(
+            (bytes.len(), fingerprint(&bytes)),
+            (SNAPSHOT_WIRE_LEN, SNAPSHOT_WIRE_HASH),
+            "the crash-recovery wire changed, so a blob written by the last \
+             build no longer means what it says.\n\
+             Bump coachSessionInProgressKey past {SHELL_SNAPSHOT_KEY} in \
+             ios/Intrada/Core/Store.swift, retire the old key, then set \
+             SNAPSHOT_WIRE_LEN = {} and SNAPSHOT_WIRE_HASH = {:#018x} here.",
+            bytes.len(),
+            fingerprint(&bytes)
+        );
     }
 
     /// Started, count-in done, one body beat played — the state every rep runs in.
