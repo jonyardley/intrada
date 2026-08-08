@@ -143,6 +143,7 @@ pub struct CoachWrites {
     pub blocks: Vec<BlockRecord>,
     pub wanders: Vec<WanderRecord>,
     pub play_throughs: Vec<PlayThroughRecord>,
+    pub unmonitored: Vec<UnmonitoredRecord>,
     /// Attempts the mastery track has yet to hear about (spec §2).
     pub evidence: Vec<ScoredAttempt>,
     pub snapshot: SnapshotAction,
@@ -156,6 +157,7 @@ pub struct CoachWrites {
 struct Applied {
     evidence: Vec<ScoredAttempt>,
     play_throughs: Vec<PlayThroughRecord>,
+    unmonitored: Vec<UnmonitoredRecord>,
 }
 
 impl Applied {
@@ -335,6 +337,17 @@ pub struct WanderRecord {
     /// safety it cannot provide — the crash-recovery key bump is what makes
     /// adding it safe.
     pub item_id: Option<String>,
+}
+
+/// Minutes played, and deliberately nothing else (decision 7, #1285): no
+/// `item_id`, no attempts, and there must never be one. The type is what
+/// enforces "minutes only", so a later tag fails to compile, not at review.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct UnmonitoredRecord {
+    pub id: String,
+    pub started_at: DateTime<Utc>,
+    pub ended_at: DateTime<Utc>,
 }
 
 /// Journey B's three altitudes (decision 16). Named on the session rather than
@@ -684,8 +697,6 @@ pub struct EngineSession {
     pub config: EngineConfig,
     pub closed_blocks: Vec<BlockRecord>,
     pub wanders: Vec<WanderRecord>,
-    /// Banked but never interpreted — the whole point of decision 16.
-    pub unmonitored_seconds: u32,
 }
 
 impl EngineSession {
@@ -778,6 +789,7 @@ impl EngineSession {
             blocks: self.closed_blocks[blocks_from..].to_vec(),
             wanders: self.wanders[wanders_from..].to_vec(),
             play_throughs: applied.play_throughs,
+            unmonitored: applied.unmonitored,
             evidence: applied.evidence,
             snapshot: if matches!(self.state, SessionState::Closing) {
                 if was_closing {
@@ -1416,6 +1428,7 @@ impl EngineSession {
         Applied {
             evidence: section_evidence(&record),
             play_throughs: vec![record],
+            ..Applied::default()
         }
     }
 
@@ -1444,8 +1457,16 @@ impl EngineSession {
                 self.state = SessionState::Closing;
             }
             SessionState::Unmonitored { started_at } => {
-                self.unmonitored_seconds = (now - *started_at).num_seconds().max(0) as u32;
+                let record = UnmonitoredRecord {
+                    id: ulid::Ulid::generate().to_string(),
+                    started_at: *started_at,
+                    ended_at: now,
+                };
                 self.state = SessionState::Closing;
+                return Applied {
+                    unmonitored: vec![record],
+                    ..Applied::default()
+                };
             }
             SessionState::RunThrough(_) => return self.close_run_through(true, now),
             SessionState::Running { .. } => return self.leave_session(now),
@@ -1536,9 +1557,9 @@ mod tests {
     // wire with no field names. The shell must read the new shape under a new
     // key. Missed three times (#1223, #1244, #1256), each caught by a person.
 
-    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v5";
-    const SNAPSHOT_WIRE_LEN: usize = 1425;
-    const SNAPSHOT_WIRE_HASH: u64 = 0x944c03cb25cfd23e;
+    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v6";
+    const SNAPSHOT_WIRE_LEN: usize = 1421;
+    const SNAPSHOT_WIRE_HASH: u64 = 0x08c6899544e9c504;
 
     /// FNV-1a rather than `DefaultHasher`, whose output is explicitly unstable
     /// across Rust releases — this value is committed.
@@ -1623,7 +1644,6 @@ mod tests {
             // `None` here would hide this field's width from the pin.
             item_id: Some("01J000000000000000000PIECE".to_string()),
         });
-        session.unmonitored_seconds = 90;
         session
     }
 
@@ -3279,11 +3299,46 @@ mod tests {
         session.apply(&CoachEvent::GoUnmonitored { now: at(0) });
         assert!(matches!(session.state, SessionState::Unmonitored { .. }));
 
-        session.apply(&CoachEvent::CloseSession { now: at(600) });
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
         assert_eq!(session.state, SessionState::Closing);
-        assert_eq!(session.unmonitored_seconds, 600);
+        assert_eq!(writes.unmonitored.len(), 1);
         assert!(session.closed_blocks.is_empty());
         assert!(session.wanders.is_empty(), "decision 16: nothing inferred");
+    }
+
+    #[test]
+    fn closing_unmonitored_writes_the_minutes_it_banked() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::GoUnmonitored { now: at(0) });
+
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
+
+        let record = writes
+            .unmonitored
+            .first()
+            .expect("the minutes are the only output this altitude has (#1285)");
+        assert_eq!(record.started_at, at(0));
+        assert_eq!(record.ended_at, at(600));
+        assert!(!record.id.is_empty(), "a client-minted ulid, invariant 3");
+    }
+
+    /// A tag added to the type fails here rather than at review (decision 7).
+    #[test]
+    fn an_unmonitored_record_is_nothing_but_an_id_and_two_instants() {
+        let record = UnmonitoredRecord {
+            id: "u0".to_string(),
+            started_at: at(0),
+            ended_at: at(600),
+        };
+        let json = serde_json::to_value(&record).expect("serialize");
+        let mut fields: Vec<&str> = json
+            .as_object()
+            .expect("an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        fields.sort_unstable();
+        assert_eq!(fields, ["ended_at", "id", "started_at"]);
     }
 
     // ── l0: the clickless acquisition block (decision 20) ──
@@ -3773,7 +3828,7 @@ mod tests {
         assert_eq!(session.state.altitude(), Some(Altitude::Unmonitored));
 
         let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
-        assert_eq!(session.unmonitored_seconds, 600);
+        assert_eq!(writes.unmonitored.len(), 1, "minutes only");
         assert!(
             writes.wanders.is_empty(),
             "nothing captured, nothing to write"

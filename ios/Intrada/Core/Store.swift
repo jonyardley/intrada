@@ -35,12 +35,16 @@ final class Store {
   /// `WanderRecord` gained `item_id`, both inside `EngineSession`. The new
   /// variant alone would be safe — old blobs never carry it — but the field is
   /// positional, so a v4 blob would read a wander's tail as the next record.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v5"
+  /// v6 (#1285): `EngineSession` lost `unmonitored_seconds`, which the minutes
+  /// now leave as a record instead. A shorter struct means a v5 blob has four
+  /// trailing bytes nothing reads, and everything before them shifts meaning.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v6"
   /// Retired keys, cleared on the next write so a dead blob doesn't sit in
   /// UserDefaults for the life of the install.
   static let retiredCoachSessionKeys = [
     "intrada.coach-session-in-progress.v1", "intrada.coach-session-in-progress.v2",
     "intrada.coach-session-in-progress.v3", "intrada.coach-session-in-progress.v4",
+    "intrada.coach-session-in-progress.v5",
   ]
 
   private let bridge: CoreBridge
@@ -189,9 +193,11 @@ final class Store {
       case .saveSession(let session):
         try store.saveSession(session)
         return .ack
-      case .saveCoachRecords(let blocks, let wanders, let playThroughs, let updatedAt):
+      case .saveCoachRecords(
+        let blocks, let wanders, let playThroughs, let unmonitored, let updatedAt):
         try store.saveCoachRecords(
-          blocks: blocks, wanders: wanders, playThroughs: playThroughs, updatedAt: updatedAt)
+          blocks: blocks, wanders: wanders, playThroughs: playThroughs, unmonitored: unmonitored,
+          updatedAt: updatedAt)
         return .ack
       case .loadCoachRecords: return .coachRecords(try store.loadCoachRecords())
       case .saveUserDrill(let drill):
