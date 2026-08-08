@@ -41,7 +41,15 @@ countable criteria.
   whose verdicts land per section at l0; the launch replay reads them through
   the same function the live close does. Off-piste is now reachable from a
   piece and carries the tag (GRDB v13); unmonitored stays untagged on purpose.
-  Crash-recovery key bumped to v5. The superseded `RecordPlayThrough` /
+  **#1285 gave unmonitored play somewhere to land**: its minutes were computed
+  on close into a field nothing persisted, so decision 16's one output died
+  with the process. They now write an `UnmonitoredRecord` (an id and two
+  instants, nothing else) to its own `unmonitored_play` table (GRDB v14),
+  rather than a discriminated `wander_record`: a table with no column for a
+  piece cannot be made to name one, so "minutes only" is enforced by the
+  schema rather than by every future writer remembering. `unmonitored_seconds`
+  is gone from `EngineSession`, so the crash-recovery key is now v6.
+  The superseded `RecordPlayThrough` /
   `SavePlayThrough` door is deleted — run-throughs ride the coach batch, so a
   failed write is retried rather than silently leaving the mastery track ahead
   of the store. Next: Phase C's screens (B0 sheet, run-through screen,

@@ -114,7 +114,7 @@ pub enum BuiltTarget {
 
 /// One gated run-through (Journey B's run-through altitude): section-level
 /// verdicts only, never note-level. Off-piste and unmonitored play are
-/// already the engine's `WanderRecord` and `unmonitored_seconds`.
+/// already the engine's `WanderRecord` and `UnmonitoredRecord`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PlayThroughRecord {
@@ -1856,6 +1856,40 @@ mod tests {
             model.last_error.is_some(),
             "a refusal with no surface is the silent-no-op bug (#846)"
         );
+    }
+
+    /// #1285: the minutes were computed on close and dropped, because nothing
+    /// in the batch carried them and `recorded_at` therefore stayed `None`.
+    #[test]
+    fn unmonitored_minutes_reach_the_store() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Untitled", ItemKind::Piece));
+        start_altitude(&mut model, "p1", Altitude::Unmonitored);
+
+        let closed_at = at() + chrono::TimeDelta::minutes(10);
+        let effects = app_update(
+            &mut model,
+            Event::Coach(CoachEvent::CloseSession { now: closed_at }),
+        );
+
+        let (unmonitored, updated_at) = persistence_ops(&effects)
+            .into_iter()
+            .find_map(|op| match op {
+                PersistenceOperation::SaveCoachRecords {
+                    unmonitored,
+                    updated_at,
+                    ..
+                } => Some((unmonitored, updated_at)),
+                _ => None,
+            })
+            .expect("a SaveCoachRecords op carrying the minutes");
+        assert_eq!(unmonitored.len(), 1);
+        assert_eq!(unmonitored[0].started_at, at());
+        assert_eq!(unmonitored[0].ended_at, closed_at);
+        assert_eq!(updated_at, closed_at, "core-stamped, not shell-formatted");
+        assert_no_http(&effects);
     }
 
     #[test]

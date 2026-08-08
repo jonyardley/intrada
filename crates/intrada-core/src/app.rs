@@ -227,12 +227,16 @@ pub(crate) fn coach_write_commands(
         .last()
         .map(|record| record.ended_at)
         .or_else(|| writes.wanders.last().map(|record| record.ended_at))
-        .or_else(|| writes.play_throughs.last().map(|record| record.ended_at));
+        .or_else(|| writes.play_throughs.last().map(|record| record.ended_at))
+        // Never omit an arm: unmonitored's whole output is this record, and
+        // leaving it out of the chain is how its minutes went unwritten (#1285).
+        .or_else(|| writes.unmonitored.last().map(|record| record.ended_at));
     if let Some(recorded_at) = recorded_at {
         let batch = PersistenceOperation::SaveCoachRecords {
             blocks: writes.blocks,
             wanders: writes.wanders,
             play_throughs: writes.play_throughs,
+            unmonitored: writes.unmonitored,
             updated_at: recorded_at,
         };
         model.coach_write_in_flight = Some(batch.clone());
