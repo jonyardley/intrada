@@ -52,6 +52,13 @@ struct CoachRecordStoreTests {
       attempts: attempts, keepAsDrill: keepAsDrill, itemId: itemId)
   }
 
+  private func unmonitored(
+    _ id: String = "u1", startedAt: String = "2026-08-04T11:00:00Z",
+    endedAt: String = "2026-08-04T11:25:00Z"
+  ) -> UnmonitoredRecord {
+    UnmonitoredRecord(id: id, startedAt: startedAt, endedAt: endedAt)
+  }
+
   /// A store plus its queue, so the write tests can pin the stored rows with
   /// raw SQL rather than trusting the production decoder they share (#1214).
   private func makeStore() throws -> (LibraryStore, DatabaseQueue) {
@@ -69,10 +76,10 @@ struct CoachRecordStoreTests {
 
   // ── Schema (offline-first invariant 2) ────────────────────────────────
 
-  @Test("both evidence tables carry the sync columns")
+  @Test("every evidence table carries the sync columns")
   func syncColumns() throws {
     let (store, _) = try makeStore()
-    for table in ["block_record", "wander_record"] {
+    for table in ["block_record", "wander_record", "unmonitored_play"] {
       let columns = try store.columnNames(ofTable: table)
       #expect(columns.contains("updated_at"), "\(table) must carry updated_at; has \(columns)")
       #expect(columns.contains("deleted_at"), "\(table) must carry deleted_at; has \(columns)")
@@ -213,6 +220,30 @@ struct CoachRecordStoreTests {
     let row = try #require(try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w1'"))
     #expect(row["keep_as_drill"] as Bool? == true)
     #expect(row["updated_at"] as String? == "2026-08-04T10:10:00Z")
+  }
+
+  @Test("unmonitored play writes its minutes and survives the process")
+  func unmonitoredWrite() throws {
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [], wanders: [], playThroughs: [], unmonitored: [unmonitored()],
+      updatedAt: Self.updatedAt)
+
+    let row = try #require(try self.row(queue, "SELECT * FROM unmonitored_play WHERE id = 'u1'"))
+    #expect(row["started_at"] as String? == "2026-08-04T11:00:00Z")
+    #expect(row["ended_at"] as String? == "2026-08-04T11:25:00Z")
+    #expect(row["updated_at"] as String? == Self.updatedAt)
+    #expect(row["deleted_at"] as String? == nil)
+  }
+
+  /// Decision 7's consent gradient, enforced rather than stated: no column a
+  /// piece could be written into means no later write can tag these minutes.
+  @Test("the unmonitored table has nowhere to record what was played")
+  func unmonitoredIsUntaggable() throws {
+    let (store, _) = try makeStore()
+    let columns = try store.columnNames(ofTable: "unmonitored_play").sorted()
+
+    #expect(columns == ["deleted_at", "ended_at", "id", "started_at", "updated_at"])
   }
 
   @Test("rewriting a record after a failed write is idempotent")
@@ -477,11 +508,39 @@ struct CoachRecordStoreTests {
     #expect(tagged["item_id"] as String? == "p1", "a migrated database accepts the tag")
   }
 
+  @Test("a database populated at v13 keeps its evidence and gains the minutes table")
+  func upgradeFromV13() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v13_wander_item")
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO wander_record
+            (id, started_at, ended_at, attempts, keep_as_drill, item_id, updated_at, deleted_at)
+          VALUES ('w-legacy', '2026-01-01T00:00:00Z', '2026-01-01T00:10:00Z', '[]', 1, 'p1',
+                  '2026-01-01T00:10:00Z', NULL)
+          """)
+    }
+
+    let store = try LibraryStore(queue)
+
+    let row = try #require(
+      try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w-legacy'"),
+      "the pre-v14 wander survives")
+    #expect(row["item_id"] as String? == "p1", "its tag survives the migration")
+
+    #expect(try count(queue, "unmonitored_play") == 0, "the new table arrives empty")
+    try store.saveCoachRecords(
+      blocks: [], wanders: [], playThroughs: [], unmonitored: [unmonitored()],
+      updatedAt: Self.updatedAt)
+    #expect(try count(queue, "unmonitored_play") == 1, "a migrated database banks the minutes")
+  }
+
   @Test("the migration chain runs cleanly on a fresh database")
   func freshDatabaseReachesHead() throws {
     let queue = try DatabaseQueue()
     _ = try LibraryStore(queue)
     let applied = try queue.read { db in try LibraryStore.migrator.appliedMigrations(db) }
-    #expect(applied.contains("v13_wander_item"), "applied \(applied)")
+    #expect(applied.contains("v14_unmonitored_play"), "applied \(applied)")
   }
 }
