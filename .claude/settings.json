@@ -29,7 +29,6 @@
       "Bash(just testflight:*)",
       "Bash(just ios-test-sim-clean)",
       "Bash(just ios-test-sim-clean:*)",
-      "Bash(gh pr merge:*)",
       "Bash(git push origin main)",
       "Bash(git push origin main:*)",
       "Bash(fly:*)",
