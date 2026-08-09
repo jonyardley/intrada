@@ -45,7 +45,7 @@ base64 = "0.23"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-sentry = { version = "0.48", default-features = false, features = ["backtrace", "contexts", "panic", "tracing", "tower-axum-matched-path", "reqwest", "native-tls"] }
+sentry = { version = "0.49", default-features = false, features = ["backtrace", "contexts", "panic", "tracing", "tower-axum-matched-path", "reqwest", "native-tls"] }
 
 [dev-dependencies]
 libsql = { version = "0.9", default-features = false, features = ["core"] }
