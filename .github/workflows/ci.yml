@@ -414,7 +414,7 @@ jobs:
           restore-keys: |
             ios-spm-v1-${{ runner.os }}-
       - name: Download built test products
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: native-ios-test-products
           path: ios/build/dd/Build/Products
@@ -502,7 +502,7 @@ jobs:
           restore-keys: |
             ios-spm-v1-${{ runner.os }}-
       - name: Download built test products
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: native-ios-test-products
           path: ios/build/dd/Build/Products
