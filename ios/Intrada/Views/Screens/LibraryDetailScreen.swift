@@ -128,9 +128,8 @@ struct LibraryDetailScreen: View {
       AddStepsSheet(itemId: item.id)
         .environment(store)
     }
-    // Core-driven, and matched on the id: under `LibrarySplitView` a stale
-    // detail pane is still in the hierarchy, and an unmatched sheet would open
-    // on both panes at once.
+    // Matched on the id: under `LibrarySplitView` a stale detail pane is
+    // still in the hierarchy, and an unmatched sheet opens on both at once.
     .sheet(isPresented: playThroughBinding) {
       if let offer = playThroughOffer {
         PlayThroughSheet(offer: offer)
@@ -149,10 +148,9 @@ struct LibraryDetailScreen: View {
 
   // ── Play it through (B0) ──
 
-  /// The one door to Journey B's altitudes (decision 11: reached from the
-  /// piece, never from a mode menu). Offered on every piece, charted or not —
-  /// the two lower altitudes need nothing authored, and the sheet is where the
-  /// core says which of the three this piece can take.
+  /// The one door to Journey B's altitudes (decision 11: from the piece, never
+  /// from a mode menu). On every piece, charted or not — the two lower
+  /// altitudes need nothing authored.
   private var playItThroughButton: some View {
     BrandBarButton(prominent: true, action: openPlayThrough) {
       Image(systemName: "play.circle")

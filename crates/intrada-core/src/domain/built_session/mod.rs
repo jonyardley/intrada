@@ -297,10 +297,9 @@ pub enum BuiltSessionEvent {
     },
 
     // ── The altitudes (Journey B) ────────────────────────────────────
-    /// Open B0 for a piece. The sheet asks the core rather than reading the
-    /// chart itself: which altitudes a piece can be played at is
-    /// [`playthrough::altitude_offer`]'s call, and a shell that worked it out
-    /// from `chord_chart` would be a second answer to the same question.
+    /// Open B0 for a piece. Which altitudes it can take is
+    /// [`playthrough::altitude_offer`]'s call, so a shell reading `chord_chart`
+    /// itself would be a second answer to the same question.
     OpenPlayThrough {
         item_id: String,
     },
@@ -723,12 +722,10 @@ pub fn handle_built_session_event(
                 Altitude::Unmonitored => CoachEvent::GoUnmonitored { now },
             };
             let writes = model.coach.apply(&event);
-            // Every altitude guards on `accepts_something_new`, so a session
-            // already in flight swallows this. Asked against the altitude
-            // requested, not merely "is one running", or starting a run-through
-            // while off-piste reads as success. Saying so is the difference
-            // between a refusal and the #846 silent no-op: without it the sheet
-            // closes on a success haptic having started nothing.
+            // Every altitude guards on `accepts_something_new`, so one already
+            // running swallows this; silently, it would close the sheet on a
+            // success haptic having started nothing (#846). Asked against the
+            // altitude requested, or off-piste answers for a run-through.
             if model.coach.view().altitude != Some(altitude) {
                 model.surface_error("Finish what you're playing first.");
                 return crux_core::render::render();
@@ -1948,9 +1945,6 @@ mod tests {
         assert!(view(&model).built.play_through.is_none());
     }
 
-    /// Every altitude guards on `accepts_something_new`, so this event is
-    /// swallowed mid-session. Swallowed *and* silent is what closes the sheet
-    /// on a success haptic having started nothing (#846).
     #[test]
     fn b0_refused_mid_session_says_so_rather_than_closing_on_nothing() {
         let mut model = Model::test_default();
@@ -1978,8 +1972,8 @@ mod tests {
         );
     }
 
-    /// Decision 7 at the view layer: off-piste can name the piece because it
-    /// writes a record that carries the tag; unmonitored has neither.
+    /// Decision 7 at the view layer: off-piste has a record to tag, and so a
+    /// piece to name; unmonitored has neither.
     #[test]
     fn off_piste_names_the_piece_and_unmonitored_never_does() {
         let mut model = Model::test_default();
@@ -2417,8 +2411,7 @@ mod tests {
         }
     }
 
-    /// The two view payloads Journey B's screens read. A stub bridge cannot
-    /// catch a bincode break here (#846), so they cross for real.
+    /// A stub bridge cannot catch a bincode break here (#846).
     #[test]
     fn journey_bs_view_payloads_cross_the_wire() {
         assert_round_trips(playthrough::AltitudeOffer {

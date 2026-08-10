@@ -9,10 +9,10 @@ struct GateDots: View {
   let target: Int
   /// Replaces the default "2 of 3" — "gate open", "3 clean at 120".
   var caption: String?
-  /// A run-through's per-section verdicts, oldest first (#1256 Phase C). A gate
-  /// counts clean reps, so its dots are binary; a run gives every section a
-  /// verdict either way, and a broke-down section that drew as "not yet" would
-  /// read as a run still to finish. Entries beyond this array are unjudged.
+  /// A run-through's per-section verdicts, oldest first; entries beyond it are
+  /// unjudged. A gate's dots are binary because it counts clean reps; a run
+  /// judges every section, and a broke-down one drawn as "not yet" would read
+  /// as a run still to finish.
   var verdicts: [Bool]?
 
   @Environment(\.coachScale) private var scale
@@ -54,9 +54,8 @@ struct GateDots: View {
     return verdicts[index] ? .held : .brokeDown
   }
 
-  /// Composed, not chosen: the caption says where the run is, the verdicts say
-  /// what happened behind it, and a sighted reader gets both off the dots. A
-  /// caption alone would drop the taupe ones silently.
+  /// Composed, not chosen: a caption alone drops the taupe dots, which a
+  /// sighted reader gets for free.
   private var spoken: String {
     guard let verdicts else { return caption ?? "\(clamped) clean of \(target)" }
     let held = verdicts.filter { $0 }.count

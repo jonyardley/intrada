@@ -1,15 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// Presents whichever of Journey B's three altitudes the core has running, and
-/// nothing else. A dumb pipe like `DrillLoopHost`: taps in, events out, and no
-/// decision about what an altitude means.
-///
-/// No click: none of the three has a gate, a ladder or a ceiling. The seconds
-/// are still reported, because a run-through's elapsed time lives on the engine
-/// (`RunThroughState.now`) and otherwise advances only when a section is judged
-/// — a clock that jumps a minute per tap. The two lower altitudes have nothing
-/// for a tick to move and draw their own clocks from `startedAt`.
+/// Presents whichever of Journey B's three altitudes the core has running. A
+/// dumb pipe like `DrillLoopHost`: taps in, events out, no decision about what
+/// an altitude means. No click — none of the three has a gate or a ceiling.
 struct PlayThroughHost: View {
   @Environment(Store.self) private var store
 
@@ -26,8 +20,7 @@ struct PlayThroughHost: View {
               .coach(.judgeSection(held: held, now: SessionClock.nowRFC3339())),
               onSuccess: held ? .impact : .selection)
           },
-          // Writes the record so the time is still the user's, and lands no
-          // evidence (B1).
+          // Writes the record so the time is still the user's; no evidence (B1).
           onDiscard: { store.send(.coach(.discardRunThrough(now: SessionClock.nowRFC3339()))) },
           onFinish: close,
           onDismiss: close)
@@ -47,8 +40,9 @@ struct PlayThroughHost: View {
     .task { await reportSeconds() }
   }
 
-  /// A tick moves the run-through's clock and nothing else: `recovery_key`
-  /// ignores the instant, so a second passing writes no crash-recovery blob.
+  /// `RunThroughState.now` otherwise advances only when a section is judged —
+  /// a clock that jumps a minute per tap. Free: `recovery_key` ignores the
+  /// instant, so a second passing writes no crash-recovery blob.
   private func reportSeconds() async {
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
