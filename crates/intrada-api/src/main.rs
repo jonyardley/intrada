@@ -11,14 +11,9 @@ async fn main() {
     // Sentry first, so panics + tracing events from startup are captured.
     // No-op when SENTRY_DSN is unset (local dev without Sentry).
     let _sentry_guard = std::env::var("SENTRY_DSN").ok().map(|dsn| {
-        // ClientOptions is #[non_exhaustive] as of sentry 0.49, so it is
-        // built by mutating a default rather than a struct expression.
+        // 0.49 made ClientOptions #[non_exhaustive]; build via a mutated default.
         let mut options = sentry::ClientOptions::default();
-        // Filter the empty string explicitly: `option_env!` returns
-        // `Some("")` (not `None`) when the env var is set to "" at
-        // build time — which would tag every event with an empty
-        // release rather than no release. Mirrors the same guard in
-        // `intrada-mobile/src-tauri/src/lib.rs`.
+        // option_env! returns Some("") rather than None when unset at build time.
         options.release = option_env!("GIT_SHA")
             .filter(|s| !s.is_empty())
             .map(Into::into);
@@ -30,15 +25,10 @@ async fn main() {
             }
             .into(),
         );
-        // Bumped from 0.1 → 1.0 while traffic is single-digit-user
-        // (just @jonyardley testing). Dial back to 0.1 (or 0.01) once
-        // real traffic arrives — every transaction counts against quota.
+        // 1.0 sample rate while traffic is single-digit-user; dial back later.
         options.traces_sampling_strategy = sentry::TracesSamplingStrategy::FixedRate(1.0);
         options.send_default_pii = false;
-        // Defensive scrubber alongside send_default_pii: false. Strip
-        // auth-bearing headers from both request data and any
-        // breadcrumbs (tower-http's TraceLayer + sentry's tracing
-        // integration can record request headers as breadcrumb data).
+        // Extra scrubber for auth headers, on top of send_default_pii: false.
         options.before_send = Some(std::sync::Arc::new(|mut event| {
             fn is_auth_key(k: &str) -> bool {
                 let k = k.to_ascii_lowercase();
