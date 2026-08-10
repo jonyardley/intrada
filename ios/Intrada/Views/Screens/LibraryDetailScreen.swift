@@ -64,6 +64,10 @@ struct LibraryDetailScreen: View {
           }
 
           if item.itemType == .piece {
+            playItThroughButton
+          }
+
+          if item.itemType == .piece {
             chordChartSection
           }
 
@@ -130,6 +134,15 @@ struct LibraryDetailScreen: View {
       AddStepsSheet(itemId: item.id)
         .environment(store)
     }
+    // Core-driven, and matched on the id: under `LibrarySplitView` a stale
+    // detail pane is still in the hierarchy, and an unmatched sheet would open
+    // on both panes at once.
+    .sheet(isPresented: playThroughBinding) {
+      if let offer = playThroughOffer {
+        PlayThroughSheet(offer: offer)
+          .environment(store)
+      }
+    }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
     .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
@@ -138,6 +151,40 @@ struct LibraryDetailScreen: View {
     } message: {
       Text("This can't be undone.")
     }
+  }
+
+  // ── Play it through (B0) ──
+
+  /// The one door to Journey B's altitudes (decision 11: reached from the
+  /// piece, never from a mode menu). Offered on every piece, charted or not —
+  /// the two lower altitudes need nothing authored, and the sheet is where the
+  /// core says which of the three this piece can take.
+  private var playItThroughButton: some View {
+    BrandBarButton(prominent: true, action: openPlayThrough) {
+      Image(systemName: "play.circle")
+      Text("Play it through")
+    }
+    .accessibilityHint("Choose how a play-through of this piece should count")
+  }
+
+  private func openPlayThrough() {
+    store.send(.builtSession(.openPlayThrough(itemId: item.id)), onSuccess: .selection)
+  }
+
+  private var playThroughOffer: AltitudeOffer? {
+    guard let offer = store.viewModel?.built.playThrough, offer.itemId == item.id else {
+      return nil
+    }
+    return offer
+  }
+
+  private var playThroughBinding: Binding<Bool> {
+    Binding(
+      get: { playThroughOffer != nil },
+      // A swipe-to-dismiss has to reach the core, or the sheet reopens on the
+      // next render. `PlayThroughSheet.onDisappear` sends it; this only stops
+      // SwiftUI fighting the derived value in the meantime.
+      set: { _ in })
   }
 
   // ── Chord chart ──

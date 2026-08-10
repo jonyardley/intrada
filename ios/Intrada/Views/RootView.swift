@@ -42,6 +42,12 @@ struct RootView: View {
     .fullScreenCover(isPresented: playerBinding) {
       PlayerHost().environment(store)
     }
+    // Journey B's altitudes take over the same way, and from RootView rather
+    // than from the piece they were started on: an altitude outlives the screen
+    // that opened it, and a crash recovered into one has no such screen at all.
+    .fullScreenCover(isPresented: altitudeBinding) {
+      PlayThroughHost().environment(store)
+    }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
@@ -73,6 +79,14 @@ struct RootView: View {
     Binding(
       get: { store.viewModel?.activeSession != nil || store.viewModel?.summary != nil },
       set: { _ in })  // no interactive dismiss — the core owns the session phase
+  }
+
+  private var altitudeBinding: Binding<Bool> {
+    Binding(
+      get: {
+        store.viewModel?.coach.runThrough != nil || store.viewModel?.coach.openPlay != nil
+      },
+      set: { _ in })  // no interactive dismiss — the core owns the altitude
   }
 
   private var seedSampleData: Bool { UITestFlags.seedSampleData }

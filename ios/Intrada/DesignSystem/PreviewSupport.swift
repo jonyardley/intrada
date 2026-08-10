@@ -151,17 +151,21 @@
       Store(
         bridge: PreviewBridge(
           items: [.previewPiece],
-          built: BuiltView(compose: .previewFirstUse, session: nil)))
+          built: BuiltView(compose: .previewFirstUse, session: nil, playThrough: nil)))
     }
 
     /// Repeat use (A2r): every row lands already known, so the price is zero.
     static var previewComposingAllKnown: Store {
-      Store(bridge: PreviewBridge(built: BuiltView(compose: .previewAllKnown, session: nil)))
+      Store(
+        bridge: PreviewBridge(
+          built: BuiltView(compose: .previewAllKnown, session: nil, playThrough: nil)))
     }
 
     /// A3 — the proposed authored-node match, evidence on the card.
     static var previewResolvingNodeMatch: Store {
-      Store(bridge: PreviewBridge(built: BuiltView(compose: .previewNodeMatch, session: nil)))
+      Store(
+        bridge: PreviewBridge(
+          built: BuiltView(compose: .previewNodeMatch, session: nil, playThrough: nil)))
     }
 
     /// A6 — the composed session, shape offered.
@@ -169,7 +173,7 @@
       Store(
         bridge: PreviewBridge(
           sessions: [.previewCompleted],
-          built: BuiltView(compose: nil, session: .preview)))
+          built: BuiltView(compose: nil, session: .preview, playThrough: nil)))
     }
 
     /// Practice home with a crash-recovery blob pending (#962) — drives the
