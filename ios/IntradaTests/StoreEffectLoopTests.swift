@@ -255,6 +255,118 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(drill.drillTitle.isEmpty, "the recovered block keeps its identity")
   }
 
+  // ── Journey B's altitudes across the real bridge (#1256 Phase C) ──
+
+  /// A live core holding one charted piece, as B0 is actually reached: the
+  /// chart is parsed by the core from the same raw text the edit sheet sends.
+  private func bridgeWithChartedPiece() throws -> (LiveBridge, String) {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Alice in Wonderland", kind: .piece, composer: "Sammy Fain", key: "C",
+            modality: .major, tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id, "the piece must be in the library")
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: id, rawChart: "[A]\n| Cmaj7 | Am7 |\n[Bridge]\n| Dm7 | G7 |")))
+    return (bridge, id)
+  }
+
+  /// The B0 offer crosses the wire as the core derived it — a stub bridge would
+  /// agree with whatever the shell invented (#846).
+  func testRealBridgeOffersTheAltitudesAPieceCanTake() throws {
+    let (bridge, id) = try bridgeWithChartedPiece()
+    XCTAssertNil(try bridge.view().built.playThrough, "the sheet is shut until it is opened")
+
+    _ = try bridge.update(.builtSession(.openPlayThrough(itemId: id)))
+
+    let offer = try XCTUnwrap(try bridge.view().built.playThrough, "B0 has something to draw")
+    XCTAssertEqual(offer.title, "Alice in Wonderland")
+    XCTAssertTrue(offer.runThroughAvailable)
+    XCTAssertEqual(offer.sections, ["A", "Bridge"], "the piece's own labels, in reading order")
+  }
+
+  /// The whole gated run through the shell's own events: start, one verdict per
+  /// section, close. The section dots the screen draws come straight off `held`.
+  func testRealBridgeRunsAPieceThroughItsSections() throws {
+    let (bridge, id) = try bridgeWithChartedPiece()
+    _ = try bridge.update(
+      .builtSession(
+        .startPlayThrough(itemId: id, altitude: .runThrough, now: "2026-08-07T10:00:00Z")))
+
+    var run = try XCTUnwrap(try bridge.view().coach.runThrough)
+    XCTAssertEqual(try bridge.view().coach.altitude, .runThrough, "the chip has its answer")
+    XCTAssertEqual(run.currentSection, "A")
+    XCTAssertTrue(run.held.isEmpty)
+
+    _ = try bridge.update(.coach(.judgeSection(held: true, now: "2026-08-07T10:01:00Z")))
+    run = try XCTUnwrap(try bridge.view().coach.runThrough)
+    XCTAssertEqual(run.held, [true])
+    XCTAssertEqual(run.currentSection, "Bridge", "the run moves on by itself")
+
+    _ = try bridge.update(.coach(.judgeSection(held: false, now: "2026-08-07T10:02:00Z")))
+    run = try XCTUnwrap(try bridge.view().coach.runThrough)
+    XCTAssertEqual(run.held, [true, false])
+    XCTAssertNil(run.currentSection)
+    XCTAssertTrue(run.complete)
+
+    _ = try bridge.update(.coach(.closeSession(now: "2026-08-07T10:03:00Z")))
+    XCTAssertNil(try bridge.view().coach.runThrough, "the run is over and the screen goes")
+  }
+
+  /// Decision 7, across the wire: off-piste can name the piece it was on, and
+  /// unmonitored must not be able to.
+  func testRealBridgeNamesThePieceOffPisteAndNeverOffTheRecord() throws {
+    let (offPiste, id) = try bridgeWithChartedPiece()
+    _ = try offPiste.update(
+      .builtSession(
+        .startPlayThrough(itemId: id, altitude: .offPiste, now: "2026-08-07T10:00:00Z")))
+
+    let wandering = try XCTUnwrap(try offPiste.view().coach.openPlay)
+    XCTAssertEqual(wandering.altitude, .offPiste)
+    XCTAssertEqual(wandering.title, "Alice in Wonderland")
+    // The instant, not its spelling: `OpenPlayScreen` parses this to draw the
+    // clock, so what matters is that `SessionClock` can read what the core sent.
+    XCTAssertEqual(
+      SessionClock.parseRFC3339(wandering.startedAt),
+      SessionClock.parseRFC3339("2026-08-07T10:00:00Z"),
+      "the screen counts up from here")
+
+    let (silent, silentId) = try bridgeWithChartedPiece()
+    _ = try silent.update(
+      .builtSession(
+        .startPlayThrough(itemId: silentId, altitude: .unmonitored, now: "2026-08-07T10:00:00Z")))
+
+    let offTheRecord = try XCTUnwrap(try silent.view().coach.openPlay)
+    XCTAssertEqual(offTheRecord.altitude, .unmonitored)
+    XCTAssertNil(offTheRecord.itemId)
+    XCTAssertNil(
+      offTheRecord.title, "minutes only: the screen must not be able to say what was played")
+  }
+
+  /// A piece with nothing to gate on is refused, and the refusal reaches the
+  /// shell as an error rather than as a screen that never appears (#846).
+  func testRealBridgeRefusesARunThroughWithNoLabelledSections() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Untitled", kind: .piece, composer: "Anon", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(
+      .builtSession(
+        .startPlayThrough(itemId: id, altitude: .runThrough, now: "2026-08-07T10:00:00Z")))
+
+    XCTAssertNil(try bridge.view().coach.runThrough)
+    XCTAssertNotNil(try bridge.view().error, "a refusal with no surface is a silent no-op")
+  }
+
   func testPendingCoachSessionIsNilWithNoStoredBlob() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
     let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
