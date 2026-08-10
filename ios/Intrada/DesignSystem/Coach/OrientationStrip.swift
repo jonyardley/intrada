@@ -9,10 +9,15 @@ struct OrientationStrip: View {
   /// orientation.
   let elapsedSeconds: Int?
   var ceilingSeconds: Int?
-  /// One entry per block in today's session, in order.
+  /// One entry per block in today's session, in order. Empty at an altitude,
+  /// which has no plan behind it to draw a track for.
   let blockKinds: [ItemKind]
   /// Zero-based index of the running block.
   let blockIndex: Int
+  /// Set at one of Journey B's three altitudes: the chip takes the eyebrow's
+  /// place, so what is being recorded is readable at the same glance as the
+  /// clock, for the whole run (decision 16).
+  var altitude: Altitude?
   /// The chevron that stops the drill — one gesture, no resident chrome.
   var onDismiss: (() -> Void)?
 
@@ -35,25 +40,35 @@ struct OrientationStrip: View {
           .accessibilityLabel("Stop the drill")
         }
         Spacer(minLength: 0)
-        Text(blockCount > 0 ? "BLOCK \(blockIndex + 1) OF \(blockCount)" : "")
-          .font(IntradaFont.ambientStrong(scale.eyebrow))
-          .tracking(1.5)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.7)
+        eyebrow
         Spacer(minLength: 0)
         clock
       }
       // Past this it wraps, and a wrapped clock reads as an alarm.
       .dynamicTypeSize(...(.accessibility1))
-      SegmentedProgress(
-        types: blockKinds, filled: min(blockIndex + 1, blockCount),
-        height: scale == .compact ? 4 : 5
-      )
-      // The eyebrow already says it, and "Item" is the wrong noun for a block.
-      .accessibilityHidden(true)
+      if blockCount > 0 {
+        SegmentedProgress(
+          types: blockKinds, filled: min(blockIndex + 1, blockCount),
+          height: scale == .compact ? 4 : 5
+        )
+        // The eyebrow already says it, and "Item" is the wrong noun for a block.
+        .accessibilityHidden(true)
+      }
     }
     .accessibilityElement(children: .contain)
+  }
+
+  @ViewBuilder private var eyebrow: some View {
+    if let altitude {
+      AltitudeChip(altitude: altitude)
+    } else {
+      Text(blockCount > 0 ? "BLOCK \(blockIndex + 1) OF \(blockCount)" : "")
+        .font(IntradaFont.ambientStrong(scale.eyebrow))
+        .tracking(1.5)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
   }
 
   @ViewBuilder private var clock: some View {
@@ -84,7 +99,10 @@ struct OrientationStrip: View {
   }
 
   private func accessibilityClock(_ elapsedSeconds: Int) -> String {
-    let elapsed = "\(Self.duration(elapsedSeconds)) spent on this block"
+    // An altitude has no block and no ceiling, so "spent on this block" would
+    // name something that is not on screen.
+    let subject = altitude == nil ? " spent on this block" : " so far"
+    let elapsed = Self.duration(elapsedSeconds) + subject
     guard let ceilingSeconds else { return elapsed }
     return "\(elapsed), of \(Self.duration(ceilingSeconds))"
   }
@@ -108,6 +126,16 @@ struct OrientationStrip: View {
           elapsedSeconds: nil,
           blockKinds: [.exercise, .piece, .piece],
           blockIndex: 0, onDismiss: {})
+        // The three altitudes: no plan track, the chip in the eyebrow's place.
+        OrientationStrip(
+          elapsedSeconds: 252, blockKinds: [], blockIndex: 0,
+          altitude: .runThrough, onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: 698, blockKinds: [], blockIndex: 0,
+          altitude: .offPiste, onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: 1380, blockKinds: [], blockIndex: 0,
+          altitude: .unmonitored, onDismiss: {})
         Spacer()
       }
       .padding(IntradaSpacing.card)
