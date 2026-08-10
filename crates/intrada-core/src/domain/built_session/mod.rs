@@ -1912,6 +1912,31 @@ mod tests {
         );
     }
 
+    /// The sheet has no offer to draw either way, so a refusal that said
+    /// nothing would leave the button dead under the finger (#846).
+    #[test]
+    fn b0_refuses_to_open_on_something_that_cannot_be_played_through() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        model
+            .items
+            .push(sample_item("e1", "Two-fives", ItemKind::Exercise));
+
+        for id in ["gone", "e1"] {
+            model.last_error = None;
+            update(
+                &mut model,
+                BuiltSessionEvent::OpenPlayThrough { item_id: id.into() },
+            );
+
+            assert!(view(&model).built.play_through.is_none(), "{id}");
+            assert!(
+                model.last_error.is_some(),
+                "{id}: an exercise is drilled, not played through — and a deleted piece is gone"
+            );
+        }
+    }
+
     #[test]
     fn starting_a_run_closes_the_sheet_that_asked_for_it() {
         let mut model = Model::test_default();
