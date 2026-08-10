@@ -52,8 +52,23 @@ countable criteria.
   The superseded `RecordPlayThrough` /
   `SavePlayThrough` door is deleted — run-throughs ride the coach batch, so a
   failed write is retried rather than silently leaving the mastery track ahead
-  of the store. Next: Phase C's screens (B0 sheet, run-through screen,
-  AltitudeChip)
+  of the store.
+  **Phase C's screens landed Journey B end to end**: "Play it through" on a
+  piece opens B0, the sheet asks the core which altitudes that piece can take
+  (a piece with no labelled sections keeps the run-through on screen and says
+  why), and the run itself is `RunThroughScreen` — one "Held / Broke down" tap
+  per named section, the AltitudeChip in the orientation strip for the whole
+  run, GateDots carrying per-section verdicts. Off-piste and off-the-record
+  ship as `OpenPlayScreen`, drawing their clocks from the core's `started_at`.
+  `PlayThroughHost` presents from RootView, because an altitude outlives the
+  screen that opened it, and closes with `CloseSession` so the minutes are
+  written. Two small read-only view projections were added to the core for it
+  (`BuiltView.play_through`, `CoachView.open_play`) — no behaviour, no wire
+  change. Deferred with issues: off-piste's mic and its keep-as-drill exit,
+  which need an audio effect that does not exist yet (#1304), and resuming a
+  crash mid-altitude without pressing start on the hero (#1305).
+  Next: Phase D (Journey C — feel moments, reflection at close, the morning
+  proposal)
 
 ## Recently landed
 
