@@ -116,6 +116,10 @@ pub struct Model {
     /// Which composed session is today's steer, so a rebuilt view and a
     /// restarted loop agree on which one they mean.
     pub built_session_today: Option<String>,
+    /// The piece B0 is open for (#1256 Phase C). Only the id is held: the offer
+    /// itself is re-derived per render, so the sheet cannot go stale against a
+    /// chart edited behind it.
+    pub play_through_item: Option<String>,
 }
 
 impl Model {

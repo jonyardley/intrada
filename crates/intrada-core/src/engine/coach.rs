@@ -178,6 +178,28 @@ impl CoachState {
             plan: self.plan_view(),
             altitude: self.session.state.altitude(),
             run_through: self.run_through_view(),
+            open_play: self.open_play_view(),
+        }
+    }
+
+    fn open_play_view(&self) -> Option<OpenPlayView> {
+        match &self.session.state {
+            SessionState::OffPiste {
+                item_id,
+                started_at,
+            } => Some(OpenPlayView {
+                altitude: Altitude::OffPiste,
+                item_id: item_id.clone(),
+                title: None,
+                started_at: *started_at,
+            }),
+            SessionState::Unmonitored { started_at } => Some(OpenPlayView {
+                altitude: Altitude::Unmonitored,
+                item_id: None,
+                title: None,
+                started_at: *started_at,
+            }),
+            _ => None,
         }
     }
 
@@ -377,6 +399,26 @@ pub struct CoachView {
     pub altitude: Option<Altitude>,
     /// `Some` only while a gated run-through is in flight.
     pub run_through: Option<RunThroughView>,
+    /// `Some` while one of the two lower altitudes is running (B2, B3).
+    pub open_play: Option<OpenPlayView>,
+}
+
+/// What off-piste and unmonitored draw: a clock and, off-piste only, the piece.
+/// The elapsed number is rendered from `started_at` rather than sent as a count,
+/// because these two states have no ceiling and no tick — the core re-anchors
+/// the instant on recovery, so an outage still never becomes playing time.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct OpenPlayView {
+    pub altitude: Altitude,
+    /// Always `None` at unmonitored, and `None` for an off-piste reached
+    /// mid-session. Decision 7's asymmetry, read straight off the state: the
+    /// screen can name the piece exactly where a record could carry it.
+    pub item_id: Option<String>,
+    /// Filled from the library where there is an `item_id` — the join is the
+    /// core's, so the shell never resolves a domain id itself.
+    pub title: Option<String>,
+    pub started_at: DateTime<Utc>,
 }
 
 /// What the run-through screen draws: which section the next tap judges, and

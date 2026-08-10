@@ -297,6 +297,14 @@ pub enum BuiltSessionEvent {
     },
 
     // ── The altitudes (Journey B) ────────────────────────────────────
+    /// Open B0 for a piece. The sheet asks the core rather than reading the
+    /// chart itself: which altitudes a piece can be played at is
+    /// [`playthrough::altitude_offer`]'s call, and a shell that worked it out
+    /// from `chord_chart` would be a second answer to the same question.
+    OpenPlayThrough {
+        item_id: String,
+    },
+    ClosePlayThrough,
     /// B0's answer to "Play it through — how should it count?". The piece is
     /// resolved here, where the library lives; the engine is handed the named
     /// sections and never does a lookup of its own.
@@ -662,6 +670,24 @@ pub fn handle_built_session_event(
             Command::all(commands)
         }
 
+        BuiltSessionEvent::OpenPlayThrough { item_id } => {
+            let Some(offer) = model
+                .items
+                .iter()
+                .find(|item| item.id == item_id)
+                .and_then(playthrough::altitude_offer)
+            else {
+                model.surface_error("That piece is no longer there.");
+                return crux_core::render::render();
+            };
+            model.play_through_item = Some(offer.item_id);
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::ClosePlayThrough => {
+            model.play_through_item = None;
+            crux_core::render::render()
+        }
+
         BuiltSessionEvent::StartPlayThrough {
             item_id,
             altitude,
@@ -697,6 +723,7 @@ pub fn handle_built_session_event(
                 Altitude::Unmonitored => CoachEvent::GoUnmonitored { now },
             };
             let writes = model.coach.apply(&event);
+            model.play_through_item = None;
             let mut commands = crate::app::coach_write_commands(model, writes);
             commands.push(crux_core::render::render());
             Command::all(commands)
@@ -1827,6 +1854,133 @@ mod tests {
     }
 
     #[test]
+    fn b0_asks_the_core_what_the_piece_may_be_played_at() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        update(
+            &mut model,
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "p1".into(),
+            },
+        );
+
+        let offer = view(&model).built.play_through.expect("the sheet is open");
+        assert_eq!(offer.title, "Alice in Wonderland");
+        assert!(offer.run_through_available);
+        assert_eq!(offer.sections, vec!["A", "Bridge"]);
+    }
+
+    /// The sheet holds an id, not a snapshot: editing the chart behind it must
+    /// not leave B0 offering a run-through the piece can no longer support.
+    #[test]
+    fn the_b0_offer_follows_the_chart_rather_than_the_moment_it_opened() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Alice in Wonderland", ItemKind::Piece));
+        update(
+            &mut model,
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "p1".into(),
+            },
+        );
+        assert!(
+            !view(&model)
+                .built
+                .play_through
+                .expect("open")
+                .run_through_available,
+            "nothing to gate on yet"
+        );
+
+        model.items[0].chord_chart = charted_piece("p1").chord_chart;
+
+        assert!(
+            view(&model)
+                .built
+                .play_through
+                .expect("still open")
+                .run_through_available,
+            "the offer is re-derived, so the chart the user just wrote counts"
+        );
+    }
+
+    #[test]
+    fn starting_a_run_closes_the_sheet_that_asked_for_it() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        update(
+            &mut model,
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "p1".into(),
+            },
+        );
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        assert!(
+            view(&model).built.play_through.is_none(),
+            "a sheet left open over the run it started would cover the first section"
+        );
+    }
+
+    #[test]
+    fn closing_b0_leaves_nothing_running() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        update(
+            &mut model,
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "p1".into(),
+            },
+        );
+        update(&mut model, BuiltSessionEvent::ClosePlayThrough);
+
+        assert!(view(&model).built.play_through.is_none());
+        assert_eq!(view(&model).coach.altitude, None, "cancel starts nothing");
+    }
+
+    /// Decision 7 at the view layer: off-piste can name the piece because it
+    /// writes a record that carries the tag; unmonitored has neither.
+    #[test]
+    fn off_piste_names_the_piece_and_unmonitored_never_does() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::OffPiste);
+
+        let open = view(&model).coach.open_play.expect("off-piste is drawable");
+        assert_eq!(open.altitude, Altitude::OffPiste);
+        assert_eq!(open.title.as_deref(), Some("Alice in Wonderland"));
+        assert_eq!(open.started_at, at(), "the clock the screen counts from");
+
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::Unmonitored);
+
+        let open = view(&model)
+            .coach
+            .open_play
+            .expect("unmonitored is drawable");
+        assert_eq!(open.altitude, Altitude::Unmonitored);
+        assert_eq!(open.item_id, None);
+        assert_eq!(
+            open.title, None,
+            "minutes only: the screen must not be able to say what was played"
+        );
+    }
+
+    #[test]
+    fn a_gated_run_draws_no_open_play_clock() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        assert!(
+            view(&model).coach.open_play.is_none(),
+            "the run-through has its own view; two clocks would be two answers"
+        );
+    }
+
+    #[test]
     fn b0_runs_a_charted_piece_through_its_own_sections() {
         let mut model = Model::test_default();
         model.items.push(charted_piece("p1"));
@@ -2215,8 +2369,39 @@ mod tests {
                 altitude: Altitude::RunThrough,
                 now: at(),
             },
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "01J000000000000000000PIECE".into(),
+            },
+            BuiltSessionEvent::ClosePlayThrough,
         ] {
             assert_round_trips(Event::BuiltSession(event));
+        }
+    }
+
+    /// The two view payloads Journey B's screens read. A stub bridge cannot
+    /// catch a bincode break here (#846), so they cross for real.
+    #[test]
+    fn journey_bs_view_payloads_cross_the_wire() {
+        assert_round_trips(playthrough::AltitudeOffer {
+            item_id: "01J000000000000000000PIECE".into(),
+            title: "Alice in Wonderland".into(),
+            run_through_available: true,
+            sections: vec!["A".into(), "Bridge".into()],
+        });
+        for (altitude, item_id, title) in [
+            (
+                Altitude::OffPiste,
+                Some("01J000000000000000000PIECE".to_string()),
+                Some("Alice in Wonderland".to_string()),
+            ),
+            (Altitude::Unmonitored, None, None),
+        ] {
+            assert_round_trips(crate::engine::OpenPlayView {
+                altitude,
+                item_id,
+                title,
+                started_at: at(),
+            });
         }
     }
 
