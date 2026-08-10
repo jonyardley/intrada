@@ -1,6 +1,6 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase C core landed (Journey B's altitudes; screens next) ·
+**Status**: Phase C landed (Journey B end to end); Phase D next ·
 **Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and

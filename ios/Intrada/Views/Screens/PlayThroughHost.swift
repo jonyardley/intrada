@@ -5,9 +5,11 @@ import SwiftUI
 /// nothing else. A dumb pipe like `DrillLoopHost`: taps in, events out, and no
 /// decision about what an altitude means.
 ///
-/// There is no click and no tick here — none of the three has a gate, a ladder
-/// or a ceiling, so the core has nothing to decide per second and the screens
-/// draw their own clocks from `startedAt`.
+/// No click: none of the three has a gate, a ladder or a ceiling. The seconds
+/// are still reported, because a run-through's elapsed time lives on the engine
+/// (`RunThroughState.now`) and otherwise advances only when a section is judged
+/// — a clock that jumps a minute per tap. The two lower altitudes have nothing
+/// for a tick to move and draw their own clocks from `startedAt`.
 struct PlayThroughHost: View {
   @Environment(Store.self) private var store
 
@@ -41,6 +43,17 @@ struct PlayThroughHost: View {
       if let error = store.viewModel?.error {
         GlobalBanner(message: error) { store.send(.clearError) }
       }
+    }
+    .task { await reportSeconds() }
+  }
+
+  /// A tick moves the run-through's clock and nothing else: `recovery_key`
+  /// ignores the instant, so a second passing writes no crash-recovery blob.
+  private func reportSeconds() async {
+    while !Task.isCancelled {
+      try? await Task.sleep(for: .seconds(1))
+      guard !Task.isCancelled else { return }
+      store.send(.coach(.tick(now: SessionClock.nowRFC3339())))
     }
   }
 

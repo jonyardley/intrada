@@ -65,13 +65,7 @@ struct LibraryDetailScreen: View {
 
           if item.itemType == .piece {
             playItThroughButton
-          }
-
-          if item.itemType == .piece {
             chordChartSection
-          }
-
-          if item.itemType == .piece {
             linkedExercisesSection
           }
 
@@ -181,10 +175,10 @@ struct LibraryDetailScreen: View {
   private var playThroughBinding: Binding<Bool> {
     Binding(
       get: { playThroughOffer != nil },
-      // A swipe-to-dismiss has to reach the core, or the sheet reopens on the
-      // next render. `PlayThroughSheet.onDisappear` sends it; this only stops
-      // SwiftUI fighting the derived value in the meantime.
-      set: { _ in })
+      // A sheet has interactive dismissal, so the setter is really called and
+      // has to reach the core: swallowing it leaves the getter reading `true`
+      // through the dismissal and SwiftUI slides the sheet back up.
+      set: { if !$0 { store.send(.builtSession(.closePlayThrough)) } })
   }
 
   // ── Chord chart ──

@@ -23,41 +23,37 @@ struct PlayThroughSheet: View {
   var body: some View {
     PlainBottomSheet(
       title: offer.title, detents: [.large],
-      leadingAction: {
-        Button("Cancel") {
-          store.send(.builtSession(.closePlayThrough))
-          dismiss()
-        }
-      }
-    ) {
-      VStack(spacing: 0) {
-        ScrollView {
-          VStack(alignment: .leading, spacing: IntradaSpacing.card) {
-            Text("Play it through — how should it count?")
-              .font(IntradaFont.cardTitle(21))
-              .foregroundStyle(IntradaColor.ink)
-              .fixedSize(horizontal: false, vertical: true)
-              .padding(.bottom, IntradaSpacing.controlGap)
+      // Cancel and a swipe are the same answer, and both reach the core through
+      // the presenting binding's setter.
+      leadingAction: { Button("Cancel") { dismiss() } },
+      content: { sheetBody })
+  }
 
-            // The sheet occludes RootView's banner, so a refusal surfaces here
-            // or nowhere (#846).
-            if let error = store.viewModel?.error {
-              FormErrorBanner(message: error)
-            }
+  private var sheetBody: some View {
+    VStack(spacing: 0) {
+      ScrollView {
+        VStack(alignment: .leading, spacing: IntradaSpacing.card) {
+          Text("Play it through — how should it count?")
+            .font(IntradaFont.cardTitle(21))
+            .foregroundStyle(IntradaColor.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, IntradaSpacing.controlGap)
 
-            ForEach(Altitude.allOrdered, id: \.self) { altitude in
-              card(altitude)
-            }
+          // The sheet occludes RootView's banner, so a refusal surfaces here
+          // or nowhere (#846).
+          if let error = store.viewModel?.error {
+            FormErrorBanner(message: error)
           }
-          .padding(IntradaSpacing.card)
+
+          ForEach(Altitude.allOrdered, id: \.self) { altitude in
+            card(altitude)
+          }
         }
-        .scrollEdgeShadow()
-        startBar
+        .padding(IntradaSpacing.card)
       }
+      .scrollEdgeShadow()
+      startBar
     }
-    // Closing by swipe is the same answer as Cancel, and a sheet the core still
-    // thinks is open would reopen itself on the next render.
-    .onDisappear { store.send(.builtSession(.closePlayThrough)) }
   }
 
   private func card(_ altitude: Altitude) -> some View {

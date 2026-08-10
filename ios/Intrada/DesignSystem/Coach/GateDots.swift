@@ -54,11 +54,14 @@ struct GateDots: View {
     return verdicts[index] ? .held : .brokeDown
   }
 
+  /// Composed, not chosen: the caption says where the run is, the verdicts say
+  /// what happened behind it, and a sighted reader gets both off the dots. A
+  /// caption alone would drop the taupe ones silently.
   private var spoken: String {
-    if let caption { return caption }
-    guard let verdicts else { return "\(clamped) clean of \(target)" }
+    guard let verdicts else { return caption ?? "\(clamped) clean of \(target)" }
     let held = verdicts.filter { $0 }.count
-    return "\(held) of \(verdicts.count) sections held, \(target) in the piece"
+    let summary = "\(held) of \(verdicts.count) so far held"
+    return [caption, summary].compactMap { $0 }.joined(separator: ", ")
   }
 
   private func dot(_ state: DotState) -> some View {

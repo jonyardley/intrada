@@ -723,6 +723,16 @@ pub fn handle_built_session_event(
                 Altitude::Unmonitored => CoachEvent::GoUnmonitored { now },
             };
             let writes = model.coach.apply(&event);
+            // Every altitude guards on `accepts_something_new`, so a session
+            // already in flight swallows this. Asked against the altitude
+            // requested, not merely "is one running", or starting a run-through
+            // while off-piste reads as success. Saying so is the difference
+            // between a refusal and the #846 silent no-op: without it the sheet
+            // closes on a success haptic having started nothing.
+            if model.coach.view().altitude != Some(altitude) {
+                model.surface_error("Finish what you're playing first.");
+                return crux_core::render::render();
+            }
             model.play_through_item = None;
             let mut commands = crate::app::coach_write_commands(model, writes);
             commands.push(crux_core::render::render());
@@ -1936,7 +1946,36 @@ mod tests {
         update(&mut model, BuiltSessionEvent::ClosePlayThrough);
 
         assert!(view(&model).built.play_through.is_none());
-        assert_eq!(view(&model).coach.altitude, None, "cancel starts nothing");
+    }
+
+    /// Every altitude guards on `accepts_something_new`, so this event is
+    /// swallowed mid-session. Swallowed *and* silent is what closes the sheet
+    /// on a success haptic having started nothing (#846).
+    #[test]
+    fn b0_refused_mid_session_says_so_rather_than_closing_on_nothing() {
+        let mut model = Model::test_default();
+        model.items.push(charted_piece("p1"));
+        start_altitude(&mut model, "p1", Altitude::OffPiste);
+        model.last_error = None;
+
+        update(
+            &mut model,
+            BuiltSessionEvent::OpenPlayThrough {
+                item_id: "p1".into(),
+            },
+        );
+        start_altitude(&mut model, "p1", Altitude::RunThrough);
+
+        assert_eq!(
+            view(&model).coach.altitude,
+            Some(Altitude::OffPiste),
+            "the session already in flight is not replaced"
+        );
+        assert!(model.last_error.is_some(), "the refusal has a surface");
+        assert!(
+            view(&model).built.play_through.is_some(),
+            "the sheet stays up, because the user still has a choice to make"
+        );
     }
 
     /// Decision 7 at the view layer: off-piste can name the piece because it
