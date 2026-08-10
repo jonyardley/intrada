@@ -2,9 +2,8 @@ import SharedTypes
 import SwiftUI
 
 /// B0 — "Play it through, how should it count?" (#1256, decision 16). Reached
-/// from a piece, never from a mode menu (decision 11). Each card states in one
-/// clause what will be recorded, so the consent contract is made before a note
-/// is played.
+/// from a piece, never from a mode menu (decision 11). Each card states what
+/// will be recorded, so the consent contract is made before a note is played.
 struct PlayThroughSheet: View {
   let offer: AltitudeOffer
 
@@ -13,12 +12,9 @@ struct PlayThroughSheet: View {
 
   @State private var selection: Altitude?
 
-  /// A run-through where the piece can carry one; otherwise the honest
-  /// fallback, which is the altitude below it rather than nothing.
   private var recommended: Altitude { offer.runThroughAvailable ? .runThrough : .offPiste }
-  /// A selection the offer no longer allows falls back rather than sticking: the
-  /// offer is re-derived per render, so editing the chart behind the sheet can
-  /// retract the altitude that was picked.
+  /// Falls back rather than sticking: the offer is re-derived per render, so
+  /// editing the chart behind the sheet can retract the altitude already picked.
   private var chosen: Altitude {
     guard let selection, allows(selection) else { return recommended }
     return selection
@@ -120,9 +116,9 @@ struct PlayThroughSheet: View {
     }
   }
 
-  /// One clause each, saying what is kept. Off-piste stops at the time it logs:
-  /// the voice-note moment the design pairs with it is not built yet (#1256
-  /// Phase D), and a card must not promise an instrument that is not on screen.
+  /// Off-piste stops at the time it logs: the voice-note moment the design
+  /// pairs with it is not built yet (#1304), and a card must not promise an
+  /// instrument that is not on screen.
   private func contract(_ altitude: Altitude) -> String {
     switch altitude {
     case .runThrough:
@@ -162,8 +158,7 @@ struct PlayThroughSheet: View {
     .accessibilityHint(contract(chosen))
   }
 
-  /// The core decides whether the altitude may start; the sheet only asks, and
-  /// stays up if it is refused — dismissing on a rejected event is the
+  /// Stays up if the core refuses: dismissing on a rejected event is the
   /// optimistic-UI half of the #846 silent no-op.
   private func start() {
     let accepted = store.send(
@@ -175,9 +170,8 @@ struct PlayThroughSheet: View {
 }
 
 extension Altitude {
-  /// Highest first, which is the order B0 reads in and the order the consent
-  /// gradient runs in: most recorded to least. Computed, not stored — the
-  /// generated types are not `Sendable`.
+  /// Most recorded to least — the consent gradient's own order. Computed, not
+  /// stored: the generated types are not `Sendable`.
   static var allOrdered: [Altitude] { [.runThrough, .offPiste, .unmonitored] }
 }
 

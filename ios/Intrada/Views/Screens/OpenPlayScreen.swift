@@ -1,10 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// B2 and B3 — the two lower altitudes (decision 16). Off-piste logs the time
-/// and the piece it was on; unmonitored logs minutes and nothing else. Neither
-/// has a gate, a verdict or a prompt, and the absence of instrumentation is
-/// itself the consent signal, so nothing may quietly appear here later.
+/// B2 and B3 — the two lower altitudes (decision 16). Neither has a gate, a
+/// verdict or a prompt, and the absence of instrumentation is itself the
+/// consent signal, so nothing may quietly appear here later.
 struct OpenPlayScreen: View {
   let state: OpenPlayView
   /// Set only by previews and snapshots, to freeze the clock at a known
@@ -24,9 +23,8 @@ struct OpenPlayScreen: View {
       if let frozenNow {
         content(elapsed: elapsedSeconds(at: frozenNow))
       } else {
-        // One second is the finest either screen reads at, and the core has no
-        // tick at these altitudes on purpose — there is nothing here for it to
-        // decide, so the clock is the shell's to draw from `startedAt`.
+        // The core has no tick at these altitudes on purpose — nothing here for
+        // it to decide — so the clock is the shell's to draw from `startedAt`.
         TimelineView(.periodic(from: .now, by: 1)) { context in
           content(elapsed: elapsedSeconds(at: context.date))
         }
@@ -63,8 +61,7 @@ struct OpenPlayScreen: View {
       }
       Text(face(elapsed))
         .font(IntradaFont.timer(scale.tempo))
-        // Ink for a piece you are working on, inkSecondary off the record —
-        // even the number refuses to perform there.
+        // inkSecondary off the record: even the number refuses to perform.
         .foregroundStyle(offPiste ? IntradaColor.ink : IntradaColor.inkSecondary)
         .monospacedDigit()
         .accessibilityLabel(spokenClock(elapsed))
@@ -78,8 +75,8 @@ struct OpenPlayScreen: View {
   }
 
   /// Off-piste counts in seconds, because a voice note will one day land at one
-  /// (#1256 Phase D). Off the record rounds to minutes: a second-by-second
-  /// count is a measurement, and this altitude takes none.
+  /// (#1304). Off the record rounds to minutes: a second-by-second count is a
+  /// measurement, and this altitude takes none.
   private func face(_ elapsed: Int) -> String {
     guard offPiste else { return "\(max(0, elapsed) / 60) min" }
     return SessionClock.clockDisplay(elapsed)
@@ -91,8 +88,8 @@ struct OpenPlayScreen: View {
     return "\(minutes) \(unit) so far"
   }
 
-  /// One primary off-piste, and deliberately none off the record: there is
-  /// nothing the app wants from you there, so Done is quiet too.
+  /// No primary off the record: nothing there is wanted from you, so Done is
+  /// quiet too.
   @ViewBuilder private var footer: some View {
     if offPiste {
       BrandBarButton(prominent: true, action: onDone) {

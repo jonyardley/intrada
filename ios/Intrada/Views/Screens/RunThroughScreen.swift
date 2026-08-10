@@ -6,7 +6,6 @@ import SwiftUI
 /// ladder, no ceiling, because the piece is what bounds it.
 struct RunThroughScreen: View {
   let state: RunThroughView
-  /// `true` = "Yes — held", `false` = "No — broke down".
   var onVerdict: (Bool) -> Void
   /// B1's "Don't count this run": the time is still logged, the evidence is not.
   var onDiscard: () -> Void
@@ -18,8 +17,6 @@ struct RunThroughScreen: View {
 
   private var scale: CoachScale { sizeClass == .regular ? .regular : .compact }
   private var gutter: CGFloat { scale == .compact ? IntradaSpacing.card : IntradaSpacing.stage }
-  /// The tune line gives way first; the section, the question and the pair
-  /// survive at any size.
   private var showsIdentityDetail: Bool { !typeSize.isAccessibilitySize }
 
   private var sectionCount: Int { state.sections.count }
@@ -77,9 +74,8 @@ struct RunThroughScreen: View {
           .font(IntradaFont.ambient(scale == .compact ? 16 : 22))
           .foregroundStyle(IntradaColor.inkSecondary)
       } else {
-        // Every section judged, and still nothing written: the exit stays an
-        // explicit tap so "Don't count this run" is reachable after the last
-        // verdict (B1).
+        // Nothing written yet: the exit stays an explicit tap so "Don't count
+        // this run" is reachable after the last verdict (B1).
         RepVerdict(outcome: .clean, fact: "Run complete")
       }
       GateDots(
@@ -118,9 +114,8 @@ struct RunThroughScreen: View {
 
 #if DEBUG
   extension RunThroughView {
-    /// The design's worked example: *Alice in Wonderland*, an AABA-ish chart. A
-    /// fixture for previews and snapshots only — at runtime every field comes
-    /// from the core's `CoachView`.
+    /// Previews and snapshots only — at runtime every field comes from the
+    /// core's `CoachView`.
     static func preview(
       held: [Bool] = [true, false], elapsedSeconds: UInt32 = 252,
       sections: [String] = ["A", "B", "Bridge", "A'"]
