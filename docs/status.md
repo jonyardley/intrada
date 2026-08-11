@@ -83,8 +83,20 @@ countable criteria.
   beyond never asking again. A transcript that lands late reaches its
   reflection through `AttachTranscript`, so keeping the audio never waits on
   transcription.
-  Next: Phase D's screens (the feel moment, the reflection sheet, the morning
-  proposed-steer card)
+  **Phase D's screens landed Journey C end to end**: `FeelScreen` is the feel
+  moment (three chips on the `TapVerdict` key shape, only "It sang" tinted,
+  Skip a first-class exit), `SessionReflectionScreen` is the question at close,
+  and `ProposedSteerCard` is the morning card above the untouched hero. The
+  drill loop's cover stays up until both questions have an answer, so the last
+  block's feel is never taken down with the session; a gated run-through's
+  close reaches the same host through the altitude cover. An accepted steer
+  wears "you added this" where the minutes go in today's shape. Deferred with
+  issues: C2's mic still waits on the audio effect (#1309), so the reflection
+  arrives as text (keyboard dictation included) and keeps no audio; the feel
+  screen shows no block position because the prompt does not carry one
+  (#1315); the reflection is not linked to its session (#1314); and the card
+  is not offered on a day the user composed their own session (#1316).
+  #1256 closes with it
 
 ## Recently landed
 

@@ -68,6 +68,7 @@ struct PracticeScreen: View {
             ComposedSessionScreen(session: built, onStart: { start(built: built.id) })
               .fadeUp(0)
           } else {
+            if let steer = store.viewModel?.built.steer { steerCard(steer).fadeUp(0) }
             hero
               .fadeUp(0)
             steerLine
@@ -145,6 +146,25 @@ struct PracticeScreen: View {
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+
+  /// C3 — last night's words above the untouched hero (#1256). Not offered over
+  /// a composed session: that list is already the user's own, so the core
+  /// refuses to place a steer in it, and a card whose accept lands nowhere is
+  /// the silent no-op (#846).
+  private func steerCard(_ steer: ProposedSteer) -> some View {
+    ProposedSteerCard(
+      steer: steer,
+      onAccept: {
+        store.send(
+          .builtSession(.acceptProposedSteer(reflectionId: steer.reflectionId)),
+          onSuccess: .impact)
+      },
+      onDecline: {
+        store.send(
+          .builtSession(.declineProposedSteer(reflectionId: steer.reflectionId)),
+          onSuccess: .selection)
+      })
   }
 
   /// Entering the drill loop is the core's call: it hands back a block, or it
@@ -308,6 +328,16 @@ struct PracticeScreen: View {
   #Preview("Planned") {
     PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
       .environment(Store.previewPracticePlanned)
+  }
+
+  #Preview("Proposed steer") {
+    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
+      .environment(Store.previewProposedSteer)
+  }
+
+  #Preview("Accepted steer") {
+    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
+      .environment(Store.previewAcceptedSteer)
   }
 
   #Preview("Empty") {

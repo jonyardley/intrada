@@ -1,6 +1,6 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase D core landed (Journey C's rules); D-screens next ·
+**Status**: Phase D landed (Journey C, core and screens) — all four phases in ·
 **Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
@@ -115,7 +115,9 @@ system together; no hand-rolled clones.
 - **D**: Journey C (feel moments, reflection at close, morning proposal).
   **Ships as two PRs** like C: D-core (the feel budget, the close offer, the
   rule-based steer and its migration) is reviewed first, D-screens follows
-  against a settled contract.
+  against a settled contract. Both landed. C2 ships without audio: the mic
+  needs the capture effect #1304 asks for, so the reflection arrives as text
+  and the row carries no `audio_path` (#1309).
 
 Each phase is its own PR; every screen ships with snapshots, VoiceOver labels,
 Dynamic Type and iPad SplitView per the per-screen quality rule.

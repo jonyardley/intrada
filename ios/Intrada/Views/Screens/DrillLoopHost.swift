@@ -22,10 +22,29 @@ struct DrillLoopHost: View {
   }
 
   private var drill: DrillView? { store.viewModel?.coach.drill }
+  /// Journey C's two questions, both owned by the core: it decides whether
+  /// either is asked, and clears them when they are answered.
+  private var feel: FeelPrompt? { store.viewModel?.built.feel }
+  private var reflection: Bool { store.viewModel?.built.reflection ?? false }
+  /// Nothing left on screen and nothing left to ask, so the cover may go. A
+  /// close that only watched the drill would take the last block's feel
+  /// question down with it, unasked (#846's class).
+  private var loopIsIdle: Bool { drill == nil && feel == nil && !reflection }
 
   var body: some View {
     Group {
-      if let drill {
+      // The question the block just earned comes first: the next block opens on
+      // its silent entry card, which bills nothing while this is up.
+      if let feel {
+        FeelScreen(
+          prompt: feel,
+          onFeel: { chosen in
+            store.send(
+              .builtSession(.recordFeel(blockId: feel.blockId, feel: chosen)),
+              onSuccess: .impact)
+          },
+          onSkip: { store.send(.builtSession(.skipFeel), onSuccess: .selection) })
+      } else if let drill {
         DrillScreen(
           state: drill,
           onVerdict: { clean in
@@ -45,6 +64,8 @@ struct DrillLoopHost: View {
             store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
           },
           onDismiss: dismiss)
+      } else if reflection {
+        SessionReflectionHost()
       } else {
         Color.clear
       }
@@ -61,10 +82,11 @@ struct DrillLoopHost: View {
     .onChange(of: drill.map { PulseState(from: $0) }) { _, _ in
       syncClick()
     }
-    .onChange(of: drill == nil) { _, ended in
+    .onChange(of: loopIsIdle) { _, idle in
       // The core closed the block — ceiling, ladder or gate. It has already
-      // ended the session, so this only tears down.
-      if ended { close() }
+      // ended the session, so this only tears down, and only once Journey C's
+      // questions have had their answer.
+      if idle { close() }
     }
     // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
     // while its host times run on: the pulse is dead the moment we background.
@@ -105,7 +127,10 @@ struct DrillLoopHost: View {
 
   /// The shell's whole click rule, with no domain reasoning in it.
   private func syncClick() {
-    guard let drill else { return }
+    // No drill is no pulse. The cover now outlives the session while Journey C's
+    // questions are up, so teardown is no longer what stops the last block's
+    // click — this is.
+    guard let drill else { return silencePulse() }
     guard drill.pulseRunning else { return silencePulse() }
     let pulse = Pulse(block: drill.blockIndex, seq: drill.pulseSeq)
     guard startedPulse != pulse else { return }
@@ -153,9 +178,11 @@ struct DrillLoopHost: View {
     onClose()
   }
 
+  /// Leaving still closes the block that was running, so it can still earn C1's
+  /// question and C2's — the cover goes when there is nothing left to ask.
   private func dismiss() {
     store.send(.coach(.leaveSession(now: SessionClock.nowRFC3339())))
-    close()
+    if loopIsIdle { close() }
   }
 
   private func close() {

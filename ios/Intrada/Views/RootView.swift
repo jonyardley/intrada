@@ -9,6 +9,8 @@ struct RootView: View {
   }
 
   @State private var selectedTab: AppTab = .library
+  /// Presentation only: whether the cover that is up was opened by an altitude.
+  @State private var openedAltitude = false
 
   private let apiBaseURL = "https://intrada-api.fly.dev"
 
@@ -48,6 +50,8 @@ struct RootView: View {
     .fullScreenCover(isPresented: altitudeBinding) {
       PlayThroughHost().environment(store)
     }
+    .onChange(of: altitudeRunning) { _, _ in trackAltitudeCover() }
+    .onChange(of: reflectionOwed) { _, _ in trackAltitudeCover() }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
@@ -81,12 +85,32 @@ struct RootView: View {
       set: { _ in })  // no interactive dismiss — the core owns the session phase
   }
 
+  private var altitudeRunning: Bool {
+    store.viewModel?.coach.runThrough != nil || store.viewModel?.coach.openPlay != nil
+  }
+
+  private var reflectionOwed: Bool { store.viewModel?.built.reflection ?? false }
+
+  /// Held open past the altitude itself while C2's question is still owed: a
+  /// gated run writes a record, so its close may ask, and a cover that went the
+  /// moment the run ended would take the question with it (#846's class).
+  ///
+  /// `openedAltitude` is what keeps the two doors apart. The drill loop asks the
+  /// same question inside its own cover, and two covers presented at once from
+  /// different ancestors is a presentation SwiftUI drops — so this one only
+  /// lingers for a reflection *it* opened for.
   private var altitudeBinding: Binding<Bool> {
     Binding(
-      get: {
-        store.viewModel?.coach.runThrough != nil || store.viewModel?.coach.openPlay != nil
-      },
+      get: { altitudeRunning || (openedAltitude && reflectionOwed) },
       set: { _ in })  // no interactive dismiss — the core owns the altitude
+  }
+
+  /// Stays true only while the cover on screen is the altitude's: it survives
+  /// the run's close for as long as the reflection it earned is up, and is
+  /// dropped the moment both are gone — so a later session's reflection, asked
+  /// inside the drill loop's own cover, can't reopen this one over it.
+  private func trackAltitudeCover() {
+    openedAltitude = altitudeRunning || (openedAltitude && reflectionOwed)
   }
 
   private var seedSampleData: Bool { UITestFlags.seedSampleData }

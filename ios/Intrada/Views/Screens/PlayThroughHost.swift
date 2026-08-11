@@ -9,6 +9,11 @@ struct PlayThroughHost: View {
 
   private var runThrough: RunThroughView? { store.viewModel?.coach.runThrough }
   private var openPlay: OpenPlayView? { store.viewModel?.coach.openPlay }
+  /// C2, at the one altitude that earns it: a gated run wrote a record, so the
+  /// close may ask. Off-piste has already asked twice on the way out and
+  /// unmonitored promised minutes and nothing else — the core decides which,
+  /// and only ever sets this where the question is owed (decision 8).
+  private var reflection: Bool { store.viewModel?.built.reflection ?? false }
 
   var body: some View {
     Group {
@@ -26,6 +31,8 @@ struct PlayThroughHost: View {
           onDismiss: close)
       } else if let openPlay {
         OpenPlayScreen(state: openPlay, onDone: close)
+      } else if reflection {
+        SessionReflectionHost()
       } else {
         Color.clear
       }
