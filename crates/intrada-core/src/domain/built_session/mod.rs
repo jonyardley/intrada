@@ -277,9 +277,9 @@ pub enum BuiltSessionEvent {
     SkipFeel,
     /// C2's "Not tonight", respected without a follow-up nudge.
     DismissReflection,
-    /// C3's "Add it to today". Carries only the reflection: the target is
-    /// re-derived here, so a card left up while the library changed cannot
-    /// insert a block for something that is no longer there.
+    /// C3's "Add it to today": takes the card down and puts the block in
+    /// today's plan. Carries only the reflection, because the target is
+    /// re-derived from it rather than taken from the card.
     AcceptProposedSteer {
         reflection_id: String,
     },
@@ -489,11 +489,11 @@ pub fn handle_built_session_event(
             reflection_id,
             transcript,
         } => {
-            let Some(reflection) = model
-                .reflections
-                .iter_mut()
-                .find(|reflection| reflection.id == reflection_id)
-            else {
+            // A tombstoned row is one the user deleted while the transcription
+            // was still running: writing to it would resurrect their words.
+            let Some(reflection) = model.reflections.iter_mut().find(|reflection| {
+                reflection.id == reflection_id && reflection.deleted_at.is_none()
+            }) else {
                 return crux_core::render::render();
             };
             reflection.transcript = Some(transcript);
@@ -834,6 +834,12 @@ fn save_and_render(save: Command<Effect, Event>) -> Command<Effect, Event> {
 
 /// Both answers to the morning card write the same column: the offer is spent
 /// either way, and that is what stops it coming back tomorrow.
+///
+/// Accepting also places the block *now*, in this handler. The plan is remade
+/// only when the Practice screen has none, so a steer that waited for the next
+/// planning run would land after the session it was meant for — the card would
+/// stay up over an unchanged plan, and neither half of the contract the frame
+/// shows would be true.
 fn answer_steer(
     model: &mut Model,
     reflection_id: &str,
@@ -843,8 +849,9 @@ fn answer_steer(
     let Some(reflection) = model
         .reflections
         .iter_mut()
-        .find(|reflection| reflection.id == reflection_id)
+        .find(|reflection| reflection.id == reflection_id && reflection.deleted_at.is_none())
     else {
+        model.surface_error("That note is no longer there.");
         return crux_core::render::render();
     };
     // Answering twice is a double tap, not a change of mind: the second would
@@ -856,6 +863,18 @@ fn answer_steer(
     reflection.steer_at = Some(now);
     reflection.updated_at = now;
     let reflection = reflection.clone();
+    // The card is answered whichever way it went, so it comes down either way.
+    model.proposed_steer = None;
+    if answer == SteerState::Accepted {
+        // Re-derived here rather than taken from the card: a proposal left up
+        // while the library changed behind it must not insert a block for
+        // something that is no longer there.
+        if let Some(block) = steer::target_of(&reflection, &model.steer_context())
+            .and_then(|target| blocks::steer_block(&target, &model.build_context()))
+        {
+            model.coach.place_steer(block);
+        }
+    }
     save_and_render(persistence::save_reflection(reflection))
 }
 

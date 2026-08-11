@@ -74,17 +74,28 @@ impl CoachState {
     /// Place C3's accepted steer in today's plan (#1256 Phase D). One block,
     /// added to the plan the planner made rather than replacing it: decision 12
     /// is propose, confirm, never plan, and a proposal that reshaped the
-    /// session would be planning.
+    /// session would be planning. The extra minutes are the user's own, so the
+    /// plan runs longer rather than dropping one of the planner's blocks to pay
+    /// for it.
     ///
-    /// Second, not last. The plan's first block is the warm-up the template
-    /// puts there, and a steer the user accepted this morning should be the
-    /// first real thing they do, not the thing they run out of time for.
-    ///
-    /// Idempotent by node, because the steer is re-derived on every plan rather
-    /// than banked: re-planning must not stack a second copy of it.
+    /// Second, not last, in a plan not yet started: its first block is the
+    /// warm-up the template puts there, and a steer accepted this morning
+    /// should be the first real thing the session does, not the thing it runs
+    /// out of time for. In a session already running it goes after the block in
+    /// flight, never before — `BlockState::spec_index` points into this vector,
+    /// so an insert at or below it would silently re-aim the running block.
+    /// Placing the same steer twice is a live risk, not a theoretical one: the
+    /// accept places it in the plan on screen, and starting that plan carries it
+    /// into the running one, where the start-from-`Idle` door would otherwise
+    /// place it again.
     pub fn place_steer(&mut self, block: PlannedBlock) -> bool {
-        let SessionState::Planned { plan } = &mut self.session.state else {
-            return false;
+        let (plan, floor) = match &mut self.session.state {
+            SessionState::Planned { plan } => (plan, 1),
+            SessionState::Running {
+                plan,
+                block: running,
+            } => (plan, running.spec_index + 1),
+            _ => return false,
         };
         if plan
             .blocks
@@ -93,7 +104,8 @@ impl CoachState {
         {
             return false;
         }
-        plan.blocks.insert(plan.blocks.len().min(1), block);
+        let at = floor.min(plan.blocks.len());
+        plan.blocks.insert(at, block);
         true
     }
 

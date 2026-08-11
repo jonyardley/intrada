@@ -16,12 +16,24 @@ use super::playthrough::named_sections;
 use super::{BuiltTarget, JournalItem, Reflection, ReflectionKind, SteerState, UserDrill};
 use crate::domain::item::{Item, ItemKind};
 
-/// Older than this and "you said, last night" is not true any more.
-const MAX_AGE_HOURS: i64 = 48;
+/// Older than this and the card's own words stop being true: it says "you
+/// said, last night", so it may not quote the night before that.
+const MAX_AGE_HOURS: i64 = 20;
 /// Younger than this and the reflection is still the evening it was said in.
 /// The morning card is a return, not an echo: quoting someone back to
 /// themselves twenty minutes later is the app being strange at them.
 const MIN_AGE_HOURS: i64 = 6;
+/// A name shorter than this may not resolve a sentence on its own. Chart
+/// sections are routinely labelled `[A]`, which normalises to "a" — the
+/// commonest word in English — so without a floor "It was a good session"
+/// proposes the piece that has an A section, which is exactly the confidently
+/// wrong quote-back the whole module is built to avoid.
+const MIN_MATCHABLE_CHARS: usize = 3;
+/// Longer than this and the card is quoting a paragraph, not a sentence.
+/// Dictation often returns a whole reflection with no full stop in it, and the
+/// serif quote is designed around one short thought; past the cap the honest
+/// answer is the one the rest of this module gives — no card.
+const MAX_QUOTE_WORDS: usize = 30;
 /// How long an accepted steer rides today's plan. Today, approximated in hours
 /// because the core is handed UTC and never the user's calendar.
 const ACCEPTED_ACTIVE_HOURS: i64 = 24;
@@ -29,8 +41,7 @@ const ACCEPTED_ACTIVE_HOURS: i64 = 24;
 /// the proposal never reshapes the rest of the session.
 pub const STEER_MINUTES: u16 = 8;
 
-/// What the resolver may name a target from. The same shape as composition's
-/// context, minus everything a quote-back has no use for.
+/// What the resolver may name a target from.
 pub struct SteerContext<'a> {
     pub items: &'a [Item],
     pub user_drills: &'a [UserDrill],
@@ -62,16 +73,16 @@ pub struct SteerTarget {
 
 /// The reflection worth proposing this morning, if there is one.
 ///
-/// One at a time, and only the most recent: a queue of yesterdays is a nag, and
-/// decision 12 allows one offer.
+/// **The most recent one, or none** — never the one behind it. Falling through
+/// to an older reflection would put a different night's words under a card
+/// headed "you said, last night", and decision 12 allows one offer anyway.
 pub fn propose(
     reflections: &[Reflection],
     ctx: &SteerContext,
     now: DateTime<Utc>,
 ) -> Option<ProposedSteer> {
-    let reflection = candidates(reflections, now)
-        .filter(|reflection| reflection.steer == SteerState::Unoffered)
-        .find(|reflection| target_of(reflection, ctx).is_some())?;
+    let reflection = most_recent(reflections, now)
+        .filter(|reflection| reflection.steer == SteerState::Unoffered)?;
     let (quote, target) = quoted_target(reflection, ctx)?;
     Some(ProposedSteer {
         reflection_id: reflection.id.clone(),
@@ -95,10 +106,14 @@ pub fn accepted(
         .iter()
         .filter(|reflection| reflection.deleted_at.is_none())
         .filter(|reflection| reflection.steer == SteerState::Accepted)
+        // Upper bound only. The accept is stamped on the core's clock and the
+        // plan is made against the shell's, so a reading a few milliseconds
+        // apart can put the answer marginally "ahead" of now — and dropping the
+        // block over that would lose a steer the user explicitly asked for.
         .filter(|reflection| {
             reflection
                 .steer_at
-                .is_some_and(|at| within(at, now, 0, ACCEPTED_ACTIVE_HOURS))
+                .is_some_and(|at| now - at <= TimeDelta::hours(ACCEPTED_ACTIVE_HOURS))
         })
         .max_by_key(|reflection| reflection.steer_at)?;
     target_of(reflection, ctx)
@@ -110,18 +125,13 @@ pub fn target_of(reflection: &Reflection, ctx: &SteerContext) -> Option<SteerTar
     quoted_target(reflection, ctx).map(|(_, target)| target)
 }
 
-fn candidates(
-    reflections: &[Reflection],
-    now: DateTime<Utc>,
-) -> impl Iterator<Item = &Reflection> + '_ {
-    let mut ordered: Vec<&Reflection> = reflections
+fn most_recent(reflections: &[Reflection], now: DateTime<Utc>) -> Option<&Reflection> {
+    reflections
         .iter()
         .filter(|reflection| reflection.deleted_at.is_none())
         .filter(|reflection| reflection.kind == ReflectionKind::SessionClose)
         .filter(|reflection| within(reflection.at, now, MIN_AGE_HOURS, MAX_AGE_HOURS))
-        .collect();
-    ordered.sort_by_key(|reflection| std::cmp::Reverse(reflection.at));
-    ordered.into_iter()
+        .max_by_key(|reflection| reflection.at)
 }
 
 fn within(at: DateTime<Utc>, now: DateTime<Utc>, min_hours: i64, max_hours: i64) -> bool {
@@ -133,9 +143,11 @@ fn within(at: DateTime<Utc>, now: DateTime<Utc>, min_hours: i64, max_hours: i64)
 /// resolve, and what it named.
 fn quoted_target(reflection: &Reflection, ctx: &SteerContext) -> Option<(String, SteerTarget)> {
     let transcript = reflection.transcript.as_deref()?;
-    sentences(transcript).find_map(|sentence| {
-        resolve_sentence(&sentence, ctx).map(|target| (sentence.clone(), target))
-    })
+    sentences(transcript)
+        .filter(|sentence| sentence.split_whitespace().count() <= MAX_QUOTE_WORDS)
+        .find_map(|sentence| {
+            resolve_sentence(&sentence, ctx).map(|target| (sentence.clone(), target))
+        })
 }
 
 /// Sentence-ended, and nothing cleverer. A dash or a comma inside a thought is
@@ -222,10 +234,11 @@ fn piece_target(item: &Item, section: Option<String>) -> SteerTarget {
 }
 
 /// Word-boundary containment over normalised text: "bridge" must be a word the
-/// sentence said, not a run of letters inside "bridges".
+/// sentence said, not a run of letters inside "bridges". A name below
+/// [`MIN_MATCHABLE_CHARS`] never matches at all.
 fn mentions(said: &str, name: &str) -> bool {
     let wanted = normalised(name);
-    if wanted.is_empty() {
+    if wanted.chars().count() < MIN_MATCHABLE_CHARS {
         return false;
     }
     let said_words: Vec<&str> = said.split(' ').collect();
@@ -247,7 +260,7 @@ fn only<T>(mut candidates: impl Iterator<Item = T>) -> Option<T> {
 /// what the session will do (T13).
 fn offer_line(target: &SteerTarget) -> String {
     let what = match &target.section {
-        Some(section) => format!("{}, {}", target.title, lower_first(section)),
+        Some(section) => format!("the {} of {}", lower_first(section), target.title),
         None => target.title.clone(),
     };
     format!("Give {what} {STEER_MINUTES} minutes today?")
@@ -335,9 +348,85 @@ mod tests {
         );
         assert_eq!(
             proposed.offer,
-            "Give Alice in Wonderland, bridge 8 minutes today?"
+            "Give the bridge of Alice in Wonderland 8 minutes today?"
         );
         assert_eq!(proposed.minutes, STEER_MINUTES);
+    }
+
+    // ── What a musician actually dictates ─────────────────────────────
+    //
+    // Not sentences written to match the scanner (CLAUDE.md's parser rule, off
+    // the back of this feature's own criterion parser). The property every row
+    // asserts is the one the card rests on: **a proposal names something the
+    // sentence is really about, and there is no proposal otherwise.** The
+    // library underneath is the ordinary one — a charted piece with `[A]` and
+    // `[Bridge]` sections, which is what Journey B's run-through needs anyway.
+
+    const DICTATED: &[(&str, Option<&str>)] = &[
+        ("It was a good session.", None),
+        ("Felt like a slog tonight, honestly.", None),
+        ("Need a metronome next time.", None),
+        ("Hands were loose for once and it just worked.", None),
+        ("Not much to say. Tired.", None),
+        ("Bar four is a mess.", None),
+        ("The A section is fine now.", None),
+        (
+            "The bridge still rushes when I go from memory.",
+            Some("Give the bridge of Alice in Wonderland 8 minutes today?"),
+        ),
+        (
+            "Alice in Wonderland is nearly ready to play for someone.",
+            Some("Give Alice in Wonderland 8 minutes today?"),
+        ),
+        (
+            "Good session. The bridge is the thing to hit next.",
+            Some("Give the bridge of Alice in Wonderland 8 minutes today?"),
+        ),
+    ];
+
+    #[test]
+    fn every_proposal_names_something_the_sentence_was_about() {
+        let items = vec![alice()];
+        for (said, expected) in DICTATED {
+            let proposed = propose(&[reflection(said)], &ctx(&items, &[], &[]), morning());
+            assert_eq!(
+                proposed.as_ref().map(|steer| steer.offer.as_str()),
+                *expected,
+                "dictated: {said:?}"
+            );
+            if let Some(proposed) = proposed {
+                assert!(
+                    said.contains(proposed.quote.trim_end_matches('.')),
+                    "the quote must be the user's own words: {said:?}"
+                );
+            }
+        }
+    }
+
+    /// The article, against the commonest chart label there is. Nothing else in
+    /// "It was a good session" is a target, and offering one would be the
+    /// confidently-wrong quote-back the module exists to avoid.
+    #[test]
+    fn a_single_letter_section_label_is_never_what_a_sentence_was_about() {
+        let items = vec![alice()];
+        assert_eq!(named_sections(&items[0])[0], "A", "the fixture has one");
+        assert!(propose(
+            &[reflection("It was a good session.")],
+            &ctx(&items, &[], &[]),
+            morning()
+        )
+        .is_none());
+    }
+
+    /// Dictation regularly returns a whole reflection with no full stop in it.
+    #[test]
+    fn an_unpunctuated_ramble_is_not_quoted_as_a_sentence() {
+        let items = vec![alice()];
+        let rambled = (0..40)
+            .map(|_| "the bridge still rushes when I go from memory")
+            .collect::<Vec<_>>()
+            .join(" and ");
+        assert!(propose(&[reflection(&rambled)], &ctx(&items, &[], &[]), morning()).is_none());
     }
 
     #[test]
@@ -451,15 +540,31 @@ mod tests {
     #[test]
     fn the_most_recent_reflection_is_the_one_proposed() {
         let items = vec![alice()];
+        // Both inside the window, so recency is what decides rather than the
+        // age bounds doing the work for it.
         let older = Reflection {
             id: "01J00000000000000000OLDER".into(),
-            at: last_night() - TimeDelta::hours(24),
+            at: last_night() - TimeDelta::hours(6),
             ..reflection("The bridge still rushes.")
         };
         let newer = reflection("The bridge still rushes.");
         let proposed =
             propose(&[older, newer], &ctx(&items, &[], &[]), morning()).expect("an offer");
         assert_eq!(proposed.reflection_id, "01J00000000000000000REFLE");
+    }
+
+    /// The card says "you said, last night". Falling through to the reflection
+    /// behind an unresolvable one would put a different night under it.
+    #[test]
+    fn an_unresolvable_reflection_does_not_hand_the_card_to_an_older_one() {
+        let items = vec![alice()];
+        let older = Reflection {
+            id: "01J00000000000000000OLDER".into(),
+            at: last_night() - TimeDelta::hours(6),
+            ..reflection("The bridge still rushes.")
+        };
+        let newer = reflection("Good session. Hands felt loose for once.");
+        assert!(propose(&[older, newer], &ctx(&items, &[], &[]), morning()).is_none());
     }
 
     #[test]

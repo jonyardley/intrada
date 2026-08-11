@@ -54,22 +54,18 @@ pub fn node_id(target: &BuiltTarget) -> String {
     }
 }
 
-/// The player's own words for a node this module minted — the inverse of
-/// [`node_id`], for a surface holding a closed record rather than a target.
-/// `None` for an authored node, whose title the content index carries.
+/// The player's own words for a judgement-track node — the inverse of
+/// [`node_id`] for the two kinds it mints, for a surface holding a closed
+/// record rather than a target. `None` for anything else, which is every node
+/// whose taps were evidence and so has a gate to end on instead.
 pub fn title_of(node: &str, ctx: &BuildContext) -> Option<String> {
     if let Some(id) = node.strip_prefix("journal:") {
         return ctx.journal(id).map(|journal| journal.name.clone());
     }
-    if let Some(id) = node.strip_prefix("drill:") {
-        return ctx.drill(id).map(|drill| drill.name.clone());
-    }
-    if let Some(id) = node.strip_prefix("piece:") {
-        // A section-addressed node (`piece:<id>#<label>`) is a run-through's,
-        // never a block's, so the id runs to the end here.
-        return ctx.item(id).map(|item| item.title.clone());
-    }
-    ctx.content.node(node).map(|node| node.title.clone())
+    // A section-addressed node (`piece:<id>#<label>`) is a run-through's, never
+    // a block's, so the id runs to the end here.
+    let id = node.strip_prefix("piece:")?;
+    ctx.item(id).map(|item| item.title.clone())
 }
 
 /// The composed session as today's plan. A block whose target has since been

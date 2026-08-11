@@ -206,14 +206,16 @@ fn rebuild_mastery(model: &mut Model) {
         .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
 }
 
-/// C3, at the one moment that has both a clock and a plan: what to propose this
-/// morning, and where an already-accepted steer goes.
+/// C3, at the moments that have both a clock and a fresh plan: what to propose
+/// this morning, and where an already-accepted steer goes.
 ///
 /// The proposal is snapshotted rather than derived per render, because the view
 /// is clock-free by construction and "was that last night?" is a question only a
 /// clock can answer. The accepted block is re-derived rather than banked, so a
 /// relaunch before the session rebuilds it: a plan is remade from the content
 /// and the clock, and a steer held only in memory would be remade into nothing.
+/// Placing it again on a plan that already carries it is `place_steer`'s to
+/// refuse, which is what makes calling this from two doors safe.
 fn refresh_steer(model: &mut Model, now: DateTime<Utc>) {
     model.proposed_steer = steer::propose(&model.reflections, &model.steer_context(), now);
     let Some(target) = steer::accepted(&model.reflections, &model.steer_context(), now) else {
@@ -240,12 +242,14 @@ fn offer_capture(model: &mut Model, writes: &crate::engine::CoachWrites) {
                 .iter()
                 .any(|entry| entry.block_id == record.id)
     }) {
-        let title = blocks::title_of(&record.node, &model.build_context())
-            .unwrap_or_else(|| record.drill.clone());
-        model.feel_prompt = Some(FeelPrompt {
-            block_id: record.id.clone(),
-            title,
-        });
+        // No title, no question: C1's whole frame is the target in the user's
+        // own words, and a headline over a blank is worse than not asking.
+        if let Some(title) = blocks::title_of(&record.node, &model.build_context()) {
+            model.feel_prompt = Some(FeelPrompt {
+                block_id: record.id.clone(),
+                title,
+            });
+        }
     }
     // Only as the session ends, and only once: `Clear` is emitted by the event
     // that closed it and by no later one.
@@ -388,12 +392,16 @@ impl Intrada {
                 }
                 let before = model.coach.view();
                 let writes = model.coach.apply(&coach_event);
-                // Planning is the only event that makes a plan a steer can join,
-                // and a composed session is not one: Journey A's session is
-                // already the user's, so a second steer inside it would be the
-                // app adding a block to a list they wrote themselves.
-                if let CoachEvent::PlanSession { now, .. } = coach_event {
-                    refresh_steer(model, now);
+                // Both planning doors, because `StartPlannedSession` from
+                // `Idle` plans and starts in one step for a shell that wants no
+                // preview — a steer placed only on the previewed door would be
+                // lost through that one. A composed session is deliberately not
+                // a door: Journey A's list is already the user's, so a steer
+                // inside it would be the app adding a block to what they wrote.
+                match coach_event {
+                    CoachEvent::PlanSession { now, .. }
+                    | CoachEvent::StartPlannedSession { now } => refresh_steer(model, now),
+                    _ => {}
                 }
                 let mut commands = coach_write_commands(model, writes);
                 // Render coalescing (engine spec §6) again: an event the machine
@@ -5478,13 +5486,7 @@ mod tests {
             journal_library(&mut model);
             model.reflections.push(accepted_reflection());
 
-            let _ = app.update(
-                Event::Coach(CoachEvent::PlanSession {
-                    now: at(),
-                    available_minutes: Some(40),
-                }),
-                &mut model,
-            );
+            plan_today(&app, &mut model);
             let plan = app.view(&model).coach.plan.expect("today's plan");
             let steer = plan
                 .blocks
@@ -5503,6 +5505,144 @@ mod tests {
             );
         }
 
+        fn plan_today(app: &Intrada, model: &mut Model) {
+            let _ = app.update(
+                Event::Coach(CoachEvent::PlanSession {
+                    now: at(),
+                    available_minutes: Some(40),
+                }),
+                model,
+            );
+        }
+
+        fn unanswered(model: &mut Model) {
+            model.reflections.push(Reflection {
+                steer: SteerState::Unoffered,
+                steer_at: None,
+                ..accepted_reflection()
+            });
+        }
+
+        fn steer_blocks(model: &Model) -> usize {
+            let blocks = match &model.coach.session.state {
+                crate::engine::SessionState::Planned { plan } => &plan.blocks,
+                crate::engine::SessionState::Running { plan, .. } => &plan.blocks,
+                other => panic!("expected a plan, got {other:?}"),
+            };
+            blocks
+                .iter()
+                .filter(|block| block.why.placed_by == crate::engine::Stage::Steer)
+                .count()
+        }
+
+        /// The defect this test exists for: the plan is remade only when the
+        /// Practice screen has none, so an accept that waited for the next
+        /// planning run would leave the card up over an unchanged plan for the
+        /// rest of the app run.
+        #[test]
+        fn accepting_puts_the_block_in_the_plan_already_on_screen_and_takes_the_card_down() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+            assert!(app.view(&model).built.steer.is_some(), "the card is up");
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+
+            let view = app.view(&model);
+            assert!(view.built.steer.is_none(), "the card is answered and down");
+            assert_eq!(
+                view.coach
+                    .plan
+                    .expect("today's plan")
+                    .blocks
+                    .iter()
+                    .filter(|block| block.added_by_you)
+                    .map(|block| block.drill_title.clone())
+                    .collect::<Vec<_>>(),
+                vec!["Rubato in the intro".to_string()],
+                "no second planning run is needed to see it"
+            );
+        }
+
+        #[test]
+        fn declining_takes_the_card_down_and_adds_nothing() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::DeclineProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+            let view = app.view(&model);
+            assert!(view.built.steer.is_none());
+            assert!(view
+                .coach
+                .plan
+                .expect("today's plan")
+                .blocks
+                .iter()
+                .all(|block| !block.added_by_you));
+        }
+
+        /// Accept places it in the planned session, and starting that session
+        /// carries it into the running one — where the start-from-`Idle` door
+        /// would place it a second time if nothing refused.
+        #[test]
+        fn starting_the_plan_that_already_carries_the_steer_does_not_place_it_twice() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+            plan_today(&app, &mut model);
+            assert_eq!(steer_blocks(&model), 1, "the plan carries it");
+
+            let _ = app.update(
+                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                &mut model,
+            );
+            assert_eq!(
+                steer_blocks(&model),
+                1,
+                "and starting it does not repeat it"
+            );
+        }
+
+        /// The no-preview door: a shell that starts without planning first still
+        /// gets the steer it accepted this morning.
+        #[test]
+        fn starting_without_a_preview_still_carries_the_accepted_steer() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+
+            let _ = app.update(
+                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                &mut model,
+            );
+            assert_eq!(
+                steer_blocks(&model),
+                1,
+                "the steer must not be lost through this door"
+            );
+        }
+
         #[test]
         fn re_planning_does_not_stack_a_second_copy_of_the_same_steer() {
             let app = Intrada;
@@ -5512,13 +5652,7 @@ mod tests {
             model.reflections.push(accepted_reflection());
 
             for _ in 0..3 {
-                let _ = app.update(
-                    Event::Coach(CoachEvent::PlanSession {
-                        now: at(),
-                        available_minutes: Some(40),
-                    }),
-                    &mut model,
-                );
+                plan_today(&app, &mut model);
             }
             let plan = app.view(&model).coach.plan.expect("today's plan");
             assert_eq!(

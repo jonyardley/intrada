@@ -177,6 +177,15 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    remakes the plan, while the answered column would stop it ever being
    proposed again — losing the steer silently, which is the #846 class.
 
+   **Accepting also places the block there and then**, in the same handler,
+   rather than waiting for the next planning run. The Practice screen asks for
+   a plan only when it has none, so a steer that waited would leave the card up
+   over an unchanged plan for the rest of the app run — and neither of the two
+   halves the C3 frame shows at once would be true. The re-derivation on each
+   plan is what survives a relaunch; the immediate placement is what makes the
+   accept mean something. Placing the same steer twice is refused by node, and
+   in a running session it goes after the block in flight, never before it.
+
 10. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
    It rides the spec *and* the record, because the mastery track is rebuilt
    from records at launch: a decision-17 rule the live path enforces and the
@@ -214,14 +223,22 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    is recorded audio to cap (#1267).
 3. ~~C3's v1 trigger (rule-based vs deferred to coach Phase 3)?~~ **Resolved in
    Phase D: rule-based, and deliberately timid.** The most recent unanswered
-   session-close reflection between six and forty-eight hours old is scanned
+   session-close reflection between six and twenty hours old is scanned
    sentence by sentence; the first sentence naming exactly one thing the
    library can resolve — a user drill, a journal target, a piece, or a chart
    section label — is quoted back verbatim with one eight-minute offer.
 
-   The three thresholds each buy something. Six hours stops the app quoting
-   someone back to themselves the same evening, which reads as strange rather
-   than attentive. Forty-eight hours is the outer edge of "last night".
+   The thresholds each buy something. Six hours stops the app quoting someone
+   back to themselves the same evening, which reads as strange rather than
+   attentive; twenty is the outer edge of a card that says "last night", and
+   the reason the scan never falls through to the reflection behind an
+   unresolvable one. Names below three characters never match, because charts
+   are routinely labelled `[A]` and "a" is the commonest word in English — a
+   floor is what stops "It was a good session" proposing the piece with an A
+   section. A quote longer than thirty words is declined rather than shown,
+   because dictation often returns a whole reflection with no full stop in it
+   and the card is designed around one short thought.
+
    **Exactly one** is the important one: an ambiguous name proposes nothing,
    because a wrong quote-back is worse than no card at all — the whole
    affordance rests on the user recognising their own words and the app
