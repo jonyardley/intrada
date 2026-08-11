@@ -31,6 +31,10 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # and testComposedSession carries the practice hero's indigo gradient. Cropping
 # was tried and bought ~14% (243KB -> 208KB), which is the note above restated:
 # the gradient is the bill, not the pixel count.
+# Added #1256 Phase C: Journey B's altitude faces (run-through, off-piste,
+# off-the-record) are full-screen over the same playerPaper radial as the drill
+# screens above — 214-282KB after `oxipng -o max`. The two B0 sheet references
+# are paper-backed and stay well under the default ceiling, so they are not here.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
@@ -44,7 +48,11 @@ is_large() {
       testDrillScreenMissAcknowledged | testDrillScreenGateOpen | \
       testDrillScreenDuringPlayUntimed | testDrillScreenBlockEntryUntimed | \
       testResolutionNodeMatch | testResolutionUserDrill | \
-      testResolutionUserDrillLargeText | testComposedSession) return 0 ;;
+      testResolutionUserDrillLargeText | testComposedSession | \
+      testRunThroughScreenMidRun | testRunThroughScreenComplete | \
+      testRunThroughScreenAccessibilitySize | \
+      testOffPisteScreen | testOffPisteScreenAccessibilitySize | \
+      testUnmonitoredScreen) return 0 ;;
     *) return 1 ;;
   esac
 }

@@ -903,6 +903,92 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
+  // ── Journey B's three altitudes (#1256 Phase C) ──
+
+  private func runThrough(_ state: RunThroughView) -> some View {
+    RunThroughScreen(
+      state: state, onVerdict: { _ in }, onDiscard: {}, onFinish: {}, onDismiss: {})
+  }
+
+  /// Mid-run: the chip, the section the next tap judges, and the dots behind it
+  /// carrying one held and one broken down.
+  func testRunThroughScreenMidRun() {
+    assertSnapshot(of: host(runThrough(.preview())), as: config)
+  }
+
+  /// Every section judged, and still not written: "Don't count this run" has to
+  /// survive the last verdict (B1).
+  func testRunThroughScreenComplete() {
+    let state = RunThroughView.preview(held: [true, false, true, true], elapsedSeconds: 448)
+    assertSnapshot(of: host(runThrough(state)), as: config)
+  }
+
+  /// The chip and the tune line give way; the section, the question and the
+  /// pair never do.
+  func testRunThroughScreenAccessibilitySize() {
+    assertSnapshot(of: host(runThrough(.preview())), as: axConfig)
+  }
+
+  /// Fixed instants, so the clock the screen draws from `startedAt` is the same
+  /// image every run.
+  private static let openPlayNow = Date(timeIntervalSince1970: 1_786_226_298)
+
+  func testOffPisteScreen() {
+    let screen = OpenPlayScreen(state: .preview(), frozenNow: Self.openPlayNow, onDone: {})
+    assertSnapshot(of: host(screen), as: config)
+  }
+
+  /// The emptiest screen in the app, on purpose: minutes in `inkSecondary`, no
+  /// piece named, no primary action.
+  func testUnmonitoredScreen() {
+    let screen = OpenPlayScreen(
+      state: .preview(altitude: .unmonitored), frozenNow: Self.openPlayNow, onDone: {})
+    assertSnapshot(of: host(screen), as: config)
+  }
+
+  func testOffPisteScreenAccessibilitySize() {
+    let screen = OpenPlayScreen(state: .preview(), frozenNow: Self.openPlayNow, onDone: {})
+    assertSnapshot(of: host(screen), as: axConfig)
+  }
+
+  private func playThroughSheet(_ offer: AltitudeOffer) -> some View {
+    PlayThroughSheet(offer: offer)
+  }
+
+  func testPlayThroughSheet() {
+    let offer = AltitudeOffer(
+      itemId: "p1", title: "Alice in Wonderland", runThroughAvailable: true,
+      sections: ["A", "B", "Bridge", "A'"])
+    assertSnapshot(of: host(playThroughSheet(offer)), as: config)
+  }
+
+  /// A piece with no labelled sections: the run-through stays on screen and
+  /// says why, because a missing option with no explanation reads as a bug.
+  func testPlayThroughSheetWithoutSections() {
+    let offer = AltitudeOffer(
+      itemId: "p1", title: "Alice in Wonderland", runThroughAvailable: false, sections: [])
+    assertSnapshot(of: host(playThroughSheet(offer)), as: config)
+  }
+
+  /// The three chips together — the only place the consent gradient reads as a
+  /// gradient.
+  func testAltitudeChips() {
+    let chips = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: 14) {
+        AltitudeChip(altitude: .runThrough)
+        AltitudeChip(altitude: .offPiste)
+        AltitudeChip(altitude: .unmonitored)
+      }
+      .padding(16)
+    }
+    assertSnapshot(
+      of: host(chips),
+      as: .image(
+        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 160),
+        traits: .init(displayScale: 2)))
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]

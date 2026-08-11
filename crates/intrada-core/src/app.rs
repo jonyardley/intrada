@@ -868,10 +868,25 @@ impl Intrada {
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
-            coach: model.coach.view(),
+            coach: coach_view(model),
             built: built_view(model),
         }
     }
+}
+
+/// The engine's own view, plus the one thing it cannot resolve: the engine
+/// holds a piece's id and never the library, so off-piste's title is joined
+/// here rather than in the shell (#1256 Phase C).
+fn coach_view(model: &Model) -> crate::engine::CoachView {
+    let mut view = model.coach.view();
+    if let Some(open) = view.open_play.as_mut() {
+        open.title = open
+            .item_id
+            .as_deref()
+            .and_then(|id| model.items.iter().find(|item| item.id == id))
+            .map(|item| item.title.clone());
+    }
+    view
 }
 
 /// The steer sheet and the composed session (#1256). Clock-free by
@@ -886,6 +901,13 @@ fn built_view(model: &Model) -> BuiltView {
         session: model
             .today_built_session()
             .map(|session| composed_session_view(session, &model.build_context())),
+        play_through: model.play_through_item.as_deref().and_then(|item_id| {
+            model
+                .items
+                .iter()
+                .find(|item| item.id == item_id)
+                .and_then(crate::domain::built_session::playthrough::altitude_offer)
+        }),
     }
 }
 
