@@ -917,9 +917,13 @@ final class StoreEffectLoopTests: XCTestCase {
       }, "nothing is kept from a reflection that was never given")
   }
 
-  /// Decision 16 over the wire: "minutes only" means the promptless exit stays
-  /// promptless, so neither of Journey C's screens has anything to draw.
-  func testRealBridgeAsksNothingAfterUnmonitoredPlay() throws {
+  /// The projection a promptless exit rests on: a close that ran no block and
+  /// judged nothing leaves both of Journey C's screens with nothing to draw, so
+  /// unmonitored play ends where decision 16 says it does. It does *not* pin
+  /// the altitude guard in `reflection_is_offered` — that guard is unreachable
+  /// today, as its own doc comment says, and a test claiming otherwise would
+  /// pass with it deleted.
+  func testRealBridgeDrawsNeitherQuestionAfterUnmonitoredPlay() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     _ = try bridge.update(.coach(.goUnmonitored(now: "2026-08-07T10:00:00Z")))
@@ -927,6 +931,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
     XCTAssertNil(try bridge.view().built.feel)
     XCTAssertFalse(try bridge.view().built.reflection, "the whole of what minutes only agreed to")
+    XCTAssertNil(try bridge.view().coach.openPlay, "and the altitude itself is over")
   }
 
   /// Real-bridge hydration (#846, #1256): the launch `LoadBuiltSessionData`

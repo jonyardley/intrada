@@ -22,20 +22,16 @@ struct DrillLoopHost: View {
   }
 
   private var drill: DrillView? { store.viewModel?.coach.drill }
-  /// Journey C's two questions, both owned by the core: it decides whether
-  /// either is asked, and clears them when they are answered.
   private var feel: FeelPrompt? { store.viewModel?.built.feel }
   private var reflection: Bool { store.viewModel?.built.reflection ?? false }
-  /// Nothing left on screen and nothing left to ask, so the cover may go. A
-  /// close that only watched the drill would take the last block's feel
-  /// question down with it, unasked (#846's class).
-  private var loopIsIdle: Bool { drill == nil && feel == nil && !reflection }
+  private var stage: LoopStage {
+    LoopStage.of(drill: drill, feel: feel, reflection: reflection)
+  }
 
   var body: some View {
     Group {
-      // The question the block just earned comes first: the next block opens on
-      // its silent entry card, which bills nothing while this is up.
-      if let feel {
+      switch stage {
+      case .feel(let feel):
         FeelScreen(
           prompt: feel,
           onFeel: { chosen in
@@ -44,7 +40,7 @@ struct DrillLoopHost: View {
               onSuccess: .impact)
           },
           onSkip: { store.send(.builtSession(.skipFeel), onSuccess: .selection) })
-      } else if let drill {
+      case .drill(let drill):
         DrillScreen(
           state: drill,
           onVerdict: { clean in
@@ -64,9 +60,9 @@ struct DrillLoopHost: View {
             store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
           },
           onDismiss: dismiss)
-      } else if reflection {
+      case .reflection:
         SessionReflectionHost()
-      } else {
+      case .idle:
         Color.clear
       }
     }
@@ -82,10 +78,9 @@ struct DrillLoopHost: View {
     .onChange(of: drill.map { PulseState(from: $0) }) { _, _ in
       syncClick()
     }
-    .onChange(of: loopIsIdle) { _, idle in
+    .onChange(of: stage.isIdle) { _, idle in
       // The core closed the block — ceiling, ladder or gate. It has already
-      // ended the session, so this only tears down, and only once Journey C's
-      // questions have had their answer.
+      // ended the session, so this only tears down.
       if idle { close() }
     }
     // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
@@ -116,7 +111,7 @@ struct DrillLoopHost: View {
     // No block came back — the core could not plan one, and has said why. Now
     // that press-start is a user path (#1182), holding a blank screen instead
     // of returning is the #846 silent no-op.
-    guard drill != nil else { return close() }
+    guard drill != nil else { return closeIfNothingLeftToAsk() }
     syncClick()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
@@ -127,9 +122,8 @@ struct DrillLoopHost: View {
 
   /// The shell's whole click rule, with no domain reasoning in it.
   private func syncClick() {
-    // No drill is no pulse. The cover now outlives the session while Journey C's
-    // questions are up, so teardown is no longer what stops the last block's
-    // click — this is.
+    // No drill is no pulse: the cover now outlives the session, so teardown is
+    // no longer what stops the last block's click.
     guard let drill else { return silencePulse() }
     guard drill.pulseRunning else { return silencePulse() }
     let pulse = Pulse(block: drill.blockIndex, seq: drill.pulseSeq)
@@ -174,15 +168,18 @@ struct DrillLoopHost: View {
   /// rather than the screen sitting still until the ceiling fires.
   private func unavailable() {
     store.send(.coach(.clickUnavailable(now: SessionClock.nowRFC3339())))
-    teardown()
-    onClose()
+    closeIfNothingLeftToAsk()
   }
 
-  /// Leaving still closes the block that was running, so it can still earn C1's
-  /// question and C2's — the cover goes when there is nothing left to ask.
   private func dismiss() {
     store.send(.coach(.leaveSession(now: SessionClock.nowRFC3339())))
-    if loopIsIdle { close() }
+    closeIfNothingLeftToAsk()
+  }
+
+  /// Every exit runs through here: all three close the block that was running,
+  /// and a cover torn down on the way out takes its questions with it unasked.
+  private func closeIfNothingLeftToAsk() {
+    if stage.isIdle { close() }
   }
 
   private func close() {

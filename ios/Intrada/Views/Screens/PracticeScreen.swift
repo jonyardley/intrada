@@ -148,10 +148,9 @@ struct PracticeScreen: View {
     .buttonStyle(.plain)
   }
 
-  /// C3 — last night's words above the untouched hero (#1256). Not offered over
-  /// a composed session: that list is already the user's own, so the core
-  /// refuses to place a steer in it, and a card whose accept lands nowhere is
-  /// the silent no-op (#846).
+  /// C3 — last night's words above the untouched hero (#1256). The shell does
+  /// not offer it over a composed session (#1316): that list is already the
+  /// user's own, and an accept the user could not see land is the #846 class.
   private func steerCard(_ steer: ProposedSteer) -> some View {
     ProposedSteerCard(
       steer: steer,

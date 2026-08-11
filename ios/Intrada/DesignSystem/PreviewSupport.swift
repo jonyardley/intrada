@@ -186,8 +186,7 @@
 
     // ── Qualitative capture (#1256, Journey C) ──────────────────────
 
-    /// C3 — the morning after: last night's words above the untouched hero,
-    /// over today's plan as the core made it.
+    /// C3 — last night's words above the untouched hero, over today's plan.
     static var previewProposedSteer: Store {
       Store(
         bridge: PreviewBridge(
@@ -197,8 +196,7 @@
             reflection: false, steer: .preview)))
     }
 
-    /// C3, accepted: the card is gone and the block it placed is second in the
-    /// shape, marked as the user's own.
+    /// C3, accepted: the card gone, the block it placed second in the shape.
     static var previewAcceptedSteer: Store {
       Store(
         bridge: PreviewBridge(

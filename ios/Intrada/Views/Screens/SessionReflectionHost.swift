@@ -1,9 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// C2's question, wired to the core. Both places a session can end — the drill
-/// loop and a gated run-through — reach it through here, so "keep it" and "not
-/// tonight" mean the same thing whichever door the session came in by.
+/// C2's question, wired to the core. Both doors a session can end by reach it
+/// through here, so the two answers mean the same thing either way.
 struct SessionReflectionHost: View {
   @Environment(Store.self) private var store
 
@@ -11,10 +10,8 @@ struct SessionReflectionHost: View {
     SessionReflectionScreen(onKeep: keep(_:), onDismiss: dismiss)
   }
 
-  /// `audioPath` and `durationS` stay nil until the capture effect lands
-  /// (#1309): the words are kept as text, and a path to a file nobody recorded
-  /// would be a row pointing at nothing. `sessionRef` waits on the coach
-  /// session's id reaching the view (#1314).
+  /// `audioPath` and `durationS` wait on the capture effect (#1309), and
+  /// `sessionRef` on the coach session's id reaching the view (#1314).
   private func keep(_ text: String) {
     store.send(
       .builtSession(

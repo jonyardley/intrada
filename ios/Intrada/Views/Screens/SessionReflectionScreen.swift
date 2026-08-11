@@ -1,19 +1,15 @@
 import SharedTypes
 import SwiftUI
 
-/// C2 — the reflection as a session closes. Asked once, answered either way,
-/// and never asked again: the core decides whether it is offered at all, so
-/// unmonitored play still ends without a question of any kind.
-///
-/// The words are the user's, so the field is set in serif — the voice reserved
-/// for thoughts. **Audio is not kept yet**: the mic in the design frame needs
-/// the capture effect #1309 tracks, so until then the sentence arrives as text
-/// (the keyboard's own dictation included) and the row carries no audio path.
+/// C2 — the reflection as a session closes, in the serif reserved for the
+/// user's own words. No mic yet: it needs the capture effect #1309 tracks, so
+/// the sentence arrives as text (keyboard dictation included).
 struct SessionReflectionScreen: View {
   var onKeep: (String) -> Void
   var onDismiss: () -> Void
 
   @Environment(\.horizontalSizeClass) private var sizeClass
+  @Environment(\.dynamicTypeSize) private var typeSize
   @State private var draft: String
   @FocusState private var writing: Bool
 
@@ -39,19 +35,27 @@ struct SessionReflectionScreen: View {
   var body: some View {
     ZStack {
       RadialGradient.playerPaper.ignoresSafeArea()
-      VStack(spacing: 0) {
-        Text("SESSION DONE")
-          .font(IntradaFont.ambientStrong(scale.eyebrow))
-          .tracking(1.5)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.top, IntradaSpacing.cardCompact)
-        Spacer(minLength: IntradaSpacing.card)
-        ask
-        Spacer(minLength: IntradaSpacing.card)
-        footer
+      // "Not tonight" is the only way off a cover with no interactive dismiss,
+      // so it may never be what large text or the keyboard pushes off-screen.
+      GeometryReader { proxy in
+        ScrollView {
+          VStack(spacing: 0) {
+            Text("SESSION DONE")
+              .font(IntradaFont.ambientStrong(scale.eyebrow))
+              .tracking(1.5)
+              .foregroundStyle(IntradaColor.inkSecondary)
+              .padding(.top, IntradaSpacing.cardCompact)
+            Spacer(minLength: IntradaSpacing.section)
+            ask
+            Spacer(minLength: IntradaSpacing.section)
+            footer
+          }
+          .padding(.horizontal, gutter)
+          .padding(.bottom, IntradaSpacing.section)
+          .frame(minHeight: proxy.size.height)
+        }
+        .scrollBounceBehavior(.basedOnSize)
       }
-      .padding(.horizontal, gutter)
-      .padding(.bottom, IntradaSpacing.section)
     }
     .environment(\.coachScale, scale)
     .dynamicTypeSize(.xSmall ... .accessibility5)
@@ -64,12 +68,15 @@ struct SessionReflectionScreen: View {
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
-      // One gentle shape, offered as a prompt — never as three fields.
-      Text("What improved, what's still rough, what's next.")
-        .font(IntradaFont.ambient(scale == .compact ? 14 : 18))
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
+      // One gentle shape, never three fields. First to give way at accessibility
+      // sizes, as the drill screen's identity detail is.
+      if !typeSize.isAccessibilitySize {
+        Text("What improved, what's still rough, what's next.")
+          .font(IntradaFont.ambient(scale == .compact ? 14 : 18))
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .multilineTextAlignment(.center)
+          .fixedSize(horizontal: false, vertical: true)
+      }
       field
     }
   }
@@ -90,7 +97,15 @@ struct SessionReflectionScreen: View {
           .strokeBorder(IntradaColor.hairline, lineWidth: 1)
       )
       .accessibilityLabel("What's worth keeping from this session")
-      .accessibilityHint("Dictate or type it. Nothing here changes what you practise next")
+      .accessibilityHint("Dictate or type it. Kept with the session, and never scored")
+      .toolbar {
+        // A vertical-axis field takes the return key for a newline, so this is
+        // the only way back to either answer with the keyboard up.
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          Button("Done") { writing = false }
+        }
+      }
   }
 
   private var footer: some View {

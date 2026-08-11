@@ -1,14 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// C1 — the feel moment, at a block boundary where feel is the point. One
-/// question, three words and a first-class Skip; the core decides whether it is
-/// asked at all, so this screen never appears twice for one block and never
-/// alongside a gate.
-///
-/// No block counter and no clock: the core's prompt carries the target and
-/// nothing else, and a position the shell worked out for itself would be the
-/// shell claiming a domain fact.
+/// C1 — the feel moment. No block counter and no clock: the prompt carries the
+/// target and nothing else, and a position the shell worked out for itself
+/// would be the shell claiming a domain fact (#1315).
 struct FeelScreen: View {
   let prompt: FeelPrompt
   var onFeel: (Feel) -> Void
@@ -22,15 +17,23 @@ struct FeelScreen: View {
   var body: some View {
     ZStack {
       RadialGradient.playerPaper.ignoresSafeArea()
-      VStack(spacing: 0) {
-        Spacer(minLength: IntradaSpacing.card)
-        question
-        Spacer(minLength: IntradaSpacing.card)
-        CoachAction(title: "Skip", emphasis: .quiet, action: onSkip)
-          .accessibilityHint("Leaves this block without a feel")
+      // Scrolls once the text outgrows the screen: Skip is the only way past
+      // this question, so it may never be the thing that falls off the bottom.
+      GeometryReader { proxy in
+        ScrollView {
+          VStack(spacing: 0) {
+            Spacer(minLength: IntradaSpacing.card)
+            question
+            Spacer(minLength: IntradaSpacing.card)
+            CoachAction(title: "Skip", emphasis: .quiet, action: onSkip)
+              .accessibilityHint("Leaves this block without a feel")
+          }
+          .padding(.horizontal, gutter)
+          .padding(.bottom, IntradaSpacing.section)
+          .frame(minHeight: proxy.size.height)
+        }
+        .scrollBounceBehavior(.basedOnSize)
       }
-      .padding(.horizontal, gutter)
-      .padding(.bottom, IntradaSpacing.section)
     }
     .environment(\.coachScale, scale)
     .dynamicTypeSize(.xSmall ... .accessibility5)
@@ -39,8 +42,6 @@ struct FeelScreen: View {
   private var question: some View {
     VStack(spacing: IntradaSpacing.section) {
       VStack(spacing: IntradaSpacing.controlGap) {
-        // The target in the user's own words, from the core's join — the whole
-        // frame is that name and the question under it.
         Text(prompt.title)
           .font(IntradaFont.ambientStrong(scale.eyebrow))
           .tracking(1.2)
@@ -55,9 +56,9 @@ struct FeelScreen: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       FeelChips(onFeel: onFeel)
-      // Decision 17 in plain words: qualitative capture never feeds mastery, so
-      // the screen says as much rather than leaving it to be assumed.
-      Text("Kept with the session. It changes nothing about what comes next.")
+      // Deliberately not "changes nothing": decision 17 lets a feel retire a
+      // target one day, and only the gate is ruled out here.
+      Text("Kept with the session, and never scored against a gate.")
         .font(IntradaFont.ambient(scale == .compact ? 13 : 17))
         .foregroundStyle(IntradaColor.inkSecondary)
         .multilineTextAlignment(.center)

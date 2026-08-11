@@ -1,13 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// C3 — last night's reflection, back as one proposal above the untouched hero.
-/// Decision 12: the app proposes, the user confirms, it never plans. Same shape
-/// as Journey A's shape-advice card (two inline choices, no button chrome),
-/// because both are offers the day survives being declined.
-///
-/// The quote is the user's own sentence, verbatim from the core, so it is set in
-/// serif — the voice reserved for the user's words.
+/// C3 — last night's reflection, back as one proposal (decision 12: propose,
+/// confirm, never plan), in Journey A's shape-advice shape. Serif is reserved
+/// for the user's own words.
 struct ProposedSteerCard: View {
   let steer: ProposedSteer
   var onAccept: () -> Void

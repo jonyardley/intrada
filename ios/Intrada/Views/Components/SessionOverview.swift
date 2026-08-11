@@ -82,9 +82,8 @@ struct SessionOverview: View {
     .accessibilityLabel(spoken(block, position: position))
   }
 
-  /// An accepted steer wears its provenance where the minutes go (C3): it was
-  /// the user's own proposal, so the shape says so rather than reading as
-  /// something the app decided (decision 12).
+  /// An accepted steer wears its provenance where the minutes go, so it never
+  /// reads as something the app decided (C3, decision 12).
   @ViewBuilder private func trailing(_ block: PlannedBlockView) -> some View {
     if block.addedByYou {
       Label("you added this · \(block.minutes) min", systemImage: "quote.opening")
@@ -136,8 +135,7 @@ struct SessionOverview: View {
         ])
     }
 
-    /// The same day with an accepted steer placed second (C3), which is where
-    /// the core puts one.
+    /// The same day with an accepted steer second, where the core puts one.
     static var previewWithSteer: PlanView {
       var plan = preview
       plan.blocks.insert(
