@@ -11,56 +11,43 @@ async fn main() {
     // Sentry first, so panics + tracing events from startup are captured.
     // No-op when SENTRY_DSN is unset (local dev without Sentry).
     let _sentry_guard = std::env::var("SENTRY_DSN").ok().map(|dsn| {
-        sentry::init((
-            dsn,
-            sentry::ClientOptions {
-                // Filter the empty string explicitly: `option_env!` returns
-                // `Some("")` (not `None`) when the env var is set to "" at
-                // build time — which would tag every event with an empty
-                // release rather than no release. Mirrors the same guard in
-                // `intrada-mobile/src-tauri/src/lib.rs`.
-                release: option_env!("GIT_SHA")
-                    .filter(|s| !s.is_empty())
-                    .map(Into::into),
-                environment: Some(
-                    if cfg!(debug_assertions) {
-                        "development"
-                    } else {
-                        "production"
+        // 0.49 made ClientOptions #[non_exhaustive]; build via a mutated default.
+        let mut options = sentry::ClientOptions::default();
+        // option_env! returns Some("") rather than None when unset at build time.
+        options.release = option_env!("GIT_SHA")
+            .filter(|s| !s.is_empty())
+            .map(Into::into);
+        options.environment = Some(
+            if cfg!(debug_assertions) {
+                "development"
+            } else {
+                "production"
+            }
+            .into(),
+        );
+        // 1.0 sample rate while traffic is single-digit-user; dial back later.
+        options.traces_sampling_strategy = sentry::TracesSamplingStrategy::FixedRate(1.0);
+        options.send_default_pii = false;
+        // Extra scrubber for auth headers, on top of send_default_pii: false.
+        options.before_send = Some(std::sync::Arc::new(|mut event| {
+            fn is_auth_key(k: &str) -> bool {
+                let k = k.to_ascii_lowercase();
+                k == "authorization" || k == "proxy-authorization" || k == "cookie"
+            }
+            if let Some(req) = event.request.as_mut() {
+                req.headers.retain(|k, _| !is_auth_key(k));
+            }
+            for crumb in event.breadcrumbs.iter_mut() {
+                crumb.data.retain(|k, _| !is_auth_key(k));
+                for nested in ["headers", "http.headers"] {
+                    if let Some(serde_json::Value::Object(map)) = crumb.data.get_mut(nested) {
+                        map.retain(|k, _| !is_auth_key(k));
                     }
-                    .into(),
-                ),
-                // Bumped from 0.1 → 1.0 while traffic is single-digit-user
-                // (just @jonyardley testing). Dial back to 0.1 (or 0.01) once
-                // real traffic arrives — every transaction counts against quota.
-                traces_sample_rate: 1.0,
-                send_default_pii: false,
-                // Defensive scrubber alongside send_default_pii: false. Strip
-                // auth-bearing headers from both request data and any
-                // breadcrumbs (tower-http's TraceLayer + sentry's tracing
-                // integration can record request headers as breadcrumb data).
-                before_send: Some(std::sync::Arc::new(|mut event| {
-                    fn is_auth_key(k: &str) -> bool {
-                        let k = k.to_ascii_lowercase();
-                        k == "authorization" || k == "proxy-authorization" || k == "cookie"
-                    }
-                    if let Some(req) = event.request.as_mut() {
-                        req.headers.retain(|k, _| !is_auth_key(k));
-                    }
-                    for crumb in event.breadcrumbs.iter_mut() {
-                        crumb.data.retain(|k, _| !is_auth_key(k));
-                        for nested in ["headers", "http.headers"] {
-                            if let Some(serde_json::Value::Object(map)) = crumb.data.get_mut(nested)
-                            {
-                                map.retain(|k, _| !is_auth_key(k));
-                            }
-                        }
-                    }
-                    Some(event)
-                })),
-                ..Default::default()
-            },
-        ))
+                }
+            }
+            Some(event)
+        }));
+        sentry::init((dsn, options))
     });
 
     let env_filter =
