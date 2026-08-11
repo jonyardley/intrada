@@ -1,6 +1,6 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase C landed (Journey B end to end); Phase D next ·
+**Status**: Phase D core landed (Journey C's rules); D-screens next ·
 **Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
@@ -113,6 +113,9 @@ system together; no hand-rolled clones.
   back of Phase B landing 4,300 insertions in one PR with both self-review
   blockers in core code written in the first third.
 - **D**: Journey C (feel moments, reflection at close, morning proposal).
+  **Ships as two PRs** like C: D-core (the feel budget, the close offer, the
+  rule-based steer and its migration) is reviewed first, D-screens follows
+  against a settled contract.
 
 Each phase is its own PR; every screen ships with snapshots, VoiceOver labels,
 Dynamic Type and iPad SplitView per the per-screen quality rule.
@@ -155,7 +158,35 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    no column for a piece cannot be made to name one. The rows are write-only,
    as wanders already are — nothing reads them back, because reading them into
    anything is the inference decision 16 forbids.
-8. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
+8. **The feel question follows `BlockOrigin`, and the reflection follows the
+   altitude** (Phase D). C1 is asked only where a block closed on the
+   judgement track, never alongside GateDots, and never after two misses in
+   that block — one question per block, and the budget shrinks on a bad day.
+   C2 is offered once as a session closes and never after unmonitored play,
+   whose promptless exit is the whole of what "minutes only" agreed to, nor
+   after off-piste, which has already asked twice on the way out.
+
+   Both prompts live on the `Model`, not on `EngineSession`. A prompt lost to
+   a crash costs nothing — the record it follows is already written — and a
+   field anywhere in the crash-recovery graph costs every device its blob.
+
+9. **An accepted steer is one column, not a banked block** (Phase D). The
+   reflection carries `steer` and `steer_at`; the block is re-derived from
+   them each time a plan is made, and rides for twenty-four hours from the
+   accept. A block held only in memory would be lost by the relaunch that
+   remakes the plan, while the answered column would stop it ever being
+   proposed again — losing the steer silently, which is the #846 class.
+
+   **Accepting also places the block there and then**, in the same handler,
+   rather than waiting for the next planning run. The Practice screen asks for
+   a plan only when it has none, so a steer that waited would leave the card up
+   over an unchanged plan for the rest of the app run — and neither of the two
+   halves the C3 frame shows at once would be true. The re-derivation on each
+   plan is what survives a relaunch; the immediate placement is what makes the
+   accept mean something. Placing the same steer twice is refused by node, and
+   in a running session it goes after the block in flight, never before it.
+
+10. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
    It rides the spec *and* the record, because the mastery track is rebuilt
    from records at launch: a decision-17 rule the live path enforces and the
    replay does not is not a rule (the #1214 class).
@@ -190,5 +221,29 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    never reads them, and a tombstoned row leaves its file for the shell to
    reap. A size cap and the reaping pass are deferred to Phase D, when there
    is recorded audio to cap (#1267).
-3. C3's v1 trigger (rule-based vs deferred to coach Phase 3): decide at
-   Phase D, informed by what reflections actually look like by then.
+3. ~~C3's v1 trigger (rule-based vs deferred to coach Phase 3)?~~ **Resolved in
+   Phase D: rule-based, and deliberately timid.** The most recent unanswered
+   session-close reflection between six and twenty hours old is scanned
+   sentence by sentence; the first sentence naming exactly one thing the
+   library can resolve — a user drill, a journal target, a piece, or a chart
+   section label — is quoted back verbatim with one eight-minute offer.
+
+   The thresholds each buy something. Six hours stops the app quoting someone
+   back to themselves the same evening, which reads as strange rather than
+   attentive; twenty is the outer edge of a card that says "last night", and
+   the reason the scan never falls through to the reflection behind an
+   unresolvable one. Names below three characters never match, because charts
+   are routinely labelled `[A]` and "a" is the commonest word in English — a
+   floor is what stops "It was a good session" proposing the piece with an A
+   section. A quote longer than thirty words is declined rather than shown,
+   because dictation often returns a whole reflection with no full stop in it
+   and the card is designed around one short thought.
+
+   **Exactly one** is the important one: an ambiguous name proposes nothing,
+   because a wrong quote-back is worse than no card at all — the whole
+   affordance rests on the user recognising their own words and the app
+   having understood them.
+
+   **The known cost**: a reflection whose target the library cannot name never
+   returns, however useful it was. That is the LLM's job in coach Phase 3, and
+   the rules here are the floor it replaces, not a design it has to keep.

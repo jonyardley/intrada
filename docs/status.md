@@ -67,8 +67,24 @@ countable criteria.
   change. Deferred with issues: off-piste's mic and its keep-as-drill exit,
   which need an audio effect that does not exist yet (#1304), and resuming a
   crash mid-altitude without pressing start on the hero (#1305).
-  Next: Phase D (Journey C — feel moments, reflection at close, the morning
-  proposal)
+  **Phase D's core landed Journey C's rules** (screens follow in their own PR).
+  The feel question is asked only where a block closed on the judgement track,
+  never alongside GateDots, and never after two misses in that block; the
+  close reflection is offered once per session and never after unmonitored
+  play or off-piste, which have already spent what they may ask. Both prompts
+  live on the `Model`, deliberately outside the crash-recovery blob. Open
+  question 3 is resolved: **C3 ships rule-based** — the most recent unanswered
+  reflection between six and forty-eight hours old, its first sentence naming
+  exactly one thing the library can resolve, quoted back verbatim with one
+  eight-minute offer. An ambiguous name proposes nothing, because a wrong
+  quote-back is worse than none. Accepting writes `steer`/`steer_at` on the
+  reflection (GRDB v15) and the block is re-derived into each plan from there,
+  so a relaunch rebuilds it rather than losing it; declining leaves no trace
+  beyond never asking again. A transcript that lands late reaches its
+  reflection through `AttachTranscript`, so keeping the audio never waits on
+  transcription.
+  Next: Phase D's screens (the feel moment, the reflection sheet, the morning
+  proposed-steer card)
 
 ## Recently landed
 

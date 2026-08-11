@@ -1,6 +1,7 @@
 // The `#[effect]` macro generates large variant size differences and we can't Box through it.
 #![allow(clippy::large_enum_variant)]
 
+use chrono::{DateTime, Utc};
 use crux_core::capability::Operation;
 use crux_core::macros::effect;
 use crux_core::render::RenderOperation;
@@ -10,8 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
+use crate::domain::built_session::capture::{self, FeelPrompt};
 use crate::domain::built_session::compose::{compose_view, composed_session_view, BuiltView};
-use crate::domain::built_session::{handle_built_session_event, BuiltSessionEvent};
+use crate::domain::built_session::{blocks, handle_built_session_event, steer, BuiltSessionEvent};
 use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
@@ -204,6 +206,51 @@ fn rebuild_mastery(model: &mut Model) {
         .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
 }
 
+/// C3, at the moments that have both a clock and a fresh plan. The proposal is
+/// snapshotted because the view is clock-free and "was that last night?" needs a
+/// clock; the accepted block is re-derived because a plan is remade rather than
+/// recovered, so one held in memory would be remade into nothing.
+fn refresh_steer(model: &mut Model, now: DateTime<Utc>) {
+    model.proposed_steer = steer::propose(&model.reflections, &model.steer_context(), now);
+    let Some(target) = steer::accepted(&model.reflections, &model.steer_context(), now) else {
+        return;
+    };
+    let Some(block) = blocks::steer_block(&target, &model.build_context()) else {
+        return;
+    };
+    model.coach.place_steer(block);
+}
+
+/// Journey C's two questions, set from what the engine just closed. Read here
+/// rather than in the engine because both are the domain's budget, and because
+/// a field on `EngineSession` would cost every device its crash-recovery blob
+/// to carry a prompt that costs nothing to lose (#1256 Phase D).
+fn offer_capture(model: &mut Model, writes: &crate::engine::CoachWrites) {
+    if let Some(record) = writes.blocks.iter().rev().find(|record| {
+        capture::feel_is_the_point(record)
+            // Asked once per block, ever: a re-offered write (#1181) hands the
+            // same record back, and the question is already answered.
+            && !model
+                .feel_entries
+                .iter()
+                .any(|entry| entry.block_id == record.id)
+    }) {
+        // No title, no question: C1's whole frame is the target in the user's
+        // own words, and a headline over a blank is worse than not asking.
+        if let Some(title) = blocks::title_of(&record.node, &model.build_context()) {
+            model.feel_prompt = Some(FeelPrompt {
+                block_id: record.id.clone(),
+                title,
+            });
+        }
+    }
+    // Only as the session ends, and only once: `Clear` is emitted by the event
+    // that closed it and by no later one.
+    if writes.snapshot == SnapshotAction::Clear && capture::reflection_is_offered(writes) {
+        model.reflection_prompt = true;
+    }
+}
+
 /// What one applied coach event leaves for the shell: the evidence batch and
 /// the crash-recovery blob. Shared, because a built session enters the same
 /// state machine by a different door (#1256) and its writes must not go
@@ -213,6 +260,7 @@ pub(crate) fn coach_write_commands(
     writes: crate::engine::CoachWrites,
 ) -> Vec<Command<Effect, Event>> {
     let mut commands = Vec::new();
+    offer_capture(model, &writes);
     // Banked as they close, not just handed to the store: a later reload — a
     // failed built-session write reissues one — rebuilds the mastery track from
     // the model, and a record the model dropped is evidence the rebuild would
@@ -337,6 +385,15 @@ impl Intrada {
                 }
                 let before = model.coach.view();
                 let writes = model.coach.apply(&coach_event);
+                // Both planning doors: `StartPlannedSession` from `Idle` plans
+                // and starts in one step, so a steer placed only on the
+                // previewed door would be lost through that one. A composed
+                // session is not a door — Journey A's list is already theirs.
+                match coach_event {
+                    CoachEvent::PlanSession { now, .. }
+                    | CoachEvent::StartPlannedSession { now } => refresh_steer(model, now),
+                    _ => {}
+                }
                 let mut commands = coach_write_commands(model, writes);
                 // Render coalescing (engine spec §6) again: an event the machine
                 // ignored changes nothing, but a write it asked for still goes.
@@ -908,6 +965,9 @@ fn built_view(model: &Model) -> BuiltView {
                 .find(|item| item.id == item_id)
                 .and_then(crate::domain::built_session::playthrough::altitude_offer)
         }),
+        feel: model.feel_prompt.clone(),
+        reflection: model.reflection_prompt,
+        steer: model.proposed_steer.clone(),
     }
 }
 
@@ -5281,6 +5341,351 @@ mod tests {
             ex.variants.iter().all(|v| !v.is_current),
             "a finished ladder has no current step"
         );
+    }
+
+    // ── Journey C, end to end through the real events (#1256 Phase D) ──
+
+    mod capture_journey {
+        use super::*;
+        use crate::domain::built_session::{
+            BuiltBlock, BuiltSession, BuiltTarget, JournalItem, Reflection, ReflectionKind,
+            SteerState,
+        };
+
+        fn at() -> DateTime<Utc> {
+            chrono::TimeZone::with_ymd_and_hms(&Utc, 2026, 8, 8, 9, 0, 0).unwrap()
+        }
+
+        fn run_a_journal_block() -> (Intrada, Model) {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            model.journal_items.push(JournalItem {
+                id: "j1".into(),
+                name: "Rubato in the intro".into(),
+                notes: None,
+                linked_item_id: None,
+                created_at: at(),
+                updated_at: at(),
+                deleted_at: None,
+            });
+            model.built_sessions.push(BuiltSession {
+                id: "bs1".into(),
+                source: None,
+                blocks: vec![BuiltBlock {
+                    id: "b1".into(),
+                    target: BuiltTarget::Journal {
+                        journal_id: "j1".into(),
+                    },
+                    minutes: Some(8),
+                }],
+                created_at: at(),
+                updated_at: at(),
+                deleted_at: None,
+            });
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::StartBuiltSession {
+                    session_id: "bs1".into(),
+                    now: at(),
+                }),
+                &mut model,
+            );
+            let _ = app.update(
+                Event::Coach(CoachEvent::LeaveSession {
+                    now: at() + chrono::Duration::minutes(8),
+                }),
+                &mut model,
+            );
+            (app, model)
+        }
+
+        #[test]
+        fn a_closed_journal_block_asks_how_it_felt_and_names_it_in_the_users_words() {
+            let (app, model) = run_a_journal_block();
+            let prompt = model.feel_prompt.clone().expect("C1 is owed a question");
+            assert_eq!(prompt.title, "Rubato in the intro");
+            assert_eq!(
+                app.view(&model).built.feel.map(|feel| feel.block_id),
+                Some(prompt.block_id),
+                "the shell reads it off the view, not off a record"
+            );
+        }
+
+        #[test]
+        fn a_session_that_ran_something_is_asked_to_reflect_on_it() {
+            let (app, model) = run_a_journal_block();
+            assert!(model.reflection_prompt);
+            assert!(app.view(&model).built.reflection);
+        }
+
+        #[test]
+        fn just_play_ends_without_a_question_of_any_kind() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            let _ = app.update(
+                Event::Coach(CoachEvent::GoUnmonitored { now: at() }),
+                &mut model,
+            );
+            let _ = app.update(
+                Event::Coach(CoachEvent::CloseSession {
+                    now: at() + chrono::Duration::minutes(20),
+                }),
+                &mut model,
+            );
+            assert!(
+                !model.reflection_prompt,
+                "minutes only means minutes (decision 16)"
+            );
+            assert!(model.feel_prompt.is_none());
+        }
+
+        fn accepted_reflection() -> Reflection {
+            Reflection {
+                id: "r1".into(),
+                kind: ReflectionKind::SessionClose,
+                session_ref: None,
+                transcript: Some("Rubato in the intro is still not settled.".into()),
+                audio_path: None,
+                duration_s: Some(24),
+                at: at() - chrono::Duration::hours(11),
+                steer: SteerState::Accepted,
+                steer_at: Some(at()),
+                updated_at: at(),
+                deleted_at: None,
+            }
+        }
+
+        fn journal_library(model: &mut Model) {
+            model.journal_items.push(JournalItem {
+                id: "j1".into(),
+                name: "Rubato in the intro".into(),
+                notes: None,
+                linked_item_id: None,
+                created_at: at(),
+                updated_at: at(),
+                deleted_at: None,
+            });
+        }
+
+        #[test]
+        fn an_accepted_steer_joins_todays_plan_marked_as_the_users_own() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+
+            plan_today(&app, &mut model);
+            let plan = app.view(&model).coach.plan.expect("today's plan");
+            let steer = plan
+                .blocks
+                .iter()
+                .find(|block| block.added_by_you)
+                .expect("the accepted steer is in the plan");
+            assert_eq!(steer.drill_title, "Rubato in the intro");
+            assert_eq!(steer.minutes, 8);
+            assert!(
+                plan.blocks
+                    .iter()
+                    .filter(|block| block.added_by_you)
+                    .count()
+                    == 1,
+                "one block, and the rest of the plan is still the planner's"
+            );
+        }
+
+        fn plan_today(app: &Intrada, model: &mut Model) {
+            let _ = app.update(
+                Event::Coach(CoachEvent::PlanSession {
+                    now: at(),
+                    available_minutes: Some(40),
+                }),
+                model,
+            );
+        }
+
+        fn unanswered(model: &mut Model) {
+            model.reflections.push(Reflection {
+                steer: SteerState::Unoffered,
+                steer_at: None,
+                ..accepted_reflection()
+            });
+        }
+
+        fn steer_blocks(model: &Model) -> usize {
+            let blocks = match &model.coach.session.state {
+                crate::engine::SessionState::Planned { plan } => &plan.blocks,
+                crate::engine::SessionState::Running { plan, .. } => &plan.blocks,
+                other => panic!("expected a plan, got {other:?}"),
+            };
+            blocks
+                .iter()
+                .filter(|block| block.why.placed_by == crate::engine::Stage::Steer)
+                .count()
+        }
+
+        /// The defect this test exists for: the Practice screen asks for a plan
+        /// only when it has none, so a deferred accept never lands at all.
+        #[test]
+        fn accepting_puts_the_block_in_the_plan_already_on_screen_and_takes_the_card_down() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+            assert!(app.view(&model).built.steer.is_some(), "the card is up");
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+
+            let view = app.view(&model);
+            assert!(view.built.steer.is_none(), "the card is answered and down");
+            assert_eq!(
+                view.coach
+                    .plan
+                    .expect("today's plan")
+                    .blocks
+                    .iter()
+                    .filter(|block| block.added_by_you)
+                    .map(|block| block.drill_title.clone())
+                    .collect::<Vec<_>>(),
+                vec!["Rubato in the intro".to_string()],
+                "no second planning run is needed to see it"
+            );
+        }
+
+        #[test]
+        fn declining_takes_the_card_down_and_adds_nothing() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::DeclineProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+            let view = app.view(&model);
+            assert!(view.built.steer.is_none());
+            assert!(view
+                .coach
+                .plan
+                .expect("today's plan")
+                .blocks
+                .iter()
+                .all(|block| !block.added_by_you));
+        }
+
+        /// The plan carries it into the running session, where the
+        /// start-from-`Idle` door would place it again if nothing refused.
+        #[test]
+        fn starting_the_plan_that_already_carries_the_steer_does_not_place_it_twice() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+            plan_today(&app, &mut model);
+            assert_eq!(steer_blocks(&model), 1, "the plan carries it");
+
+            let _ = app.update(
+                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                &mut model,
+            );
+            assert_eq!(
+                steer_blocks(&model),
+                1,
+                "and starting it does not repeat it"
+            );
+        }
+
+        /// The no-preview door must not lose it.
+        #[test]
+        fn starting_without_a_preview_still_carries_the_accepted_steer() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+
+            let _ = app.update(
+                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                &mut model,
+            );
+            assert_eq!(
+                steer_blocks(&model),
+                1,
+                "the steer must not be lost through this door"
+            );
+        }
+
+        #[test]
+        fn re_planning_does_not_stack_a_second_copy_of_the_same_steer() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+
+            for _ in 0..3 {
+                plan_today(&app, &mut model);
+            }
+            let plan = app.view(&model).coach.plan.expect("today's plan");
+            assert_eq!(
+                plan.blocks
+                    .iter()
+                    .filter(|block| block.added_by_you)
+                    .count(),
+                1
+            );
+        }
+
+        #[test]
+        fn an_unanswered_reflection_reaches_the_view_as_a_proposal() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(Reflection {
+                steer: SteerState::Unoffered,
+                steer_at: None,
+                ..accepted_reflection()
+            });
+
+            let _ = app.update(
+                Event::Coach(CoachEvent::PlanSession {
+                    now: at(),
+                    available_minutes: Some(40),
+                }),
+                &mut model,
+            );
+            let view = app.view(&model);
+            let proposed = view.built.steer.expect("a morning proposal");
+            assert_eq!(proposed.reflection_id, "r1");
+            assert_eq!(
+                proposed.quote, "Rubato in the intro is still not settled.",
+                "the user's own sentence, verbatim"
+            );
+            assert!(
+                view.coach
+                    .plan
+                    .expect("today's plan")
+                    .blocks
+                    .iter()
+                    .all(|block| !block.added_by_you),
+                "propose, confirm, never plan (decision 12)"
+            );
+        }
     }
 
     #[test]

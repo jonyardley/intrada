@@ -105,12 +105,50 @@ struct BuiltSessionStoreTests {
         Reflection(
           id: id, kind: kind, sessionRef: "01BUILT0000000000000000001",
           transcript: "The bridge still rushes", audioPath: "reflections/\(id).m4a",
-          durationS: 24, at: "2026-08-07T10:30:00Z",
+          durationS: 24, at: "2026-08-07T10:30:00Z", steer: .unoffered, steerAt: nil,
           updatedAt: "2026-08-07T10:30:00Z", deletedAt: nil))
     }
     let data = try store.loadBuiltSessionData()
     #expect(data.reflections.count == 2)
     #expect(data.reflections.map(\.kind) == [.voiceNote, .sessionClose])
+  }
+
+  @Test func reflectionRoundTripsForEverySteerState() throws {
+    let store = try LibraryStore.inMemory()
+    let states: [(String, SteerState)] = [
+      ("r1", .unoffered), ("r2", .accepted), ("r3", .declined),
+    ]
+    for (id, steer) in states {
+      try store.saveReflection(
+        Reflection(
+          id: id, kind: .sessionClose, sessionRef: nil,
+          transcript: "The bridge still rushes", audioPath: nil,
+          durationS: 24, at: "2026-08-07T22:00:00Z", steer: steer,
+          steerAt: steer == .unoffered ? nil : "2026-08-08T09:00:00Z",
+          updatedAt: "2026-08-08T09:00:00Z", deletedAt: nil))
+    }
+    let data = try store.loadBuiltSessionData()
+    #expect(data.reflections.map(\.steer) == [.unoffered, .accepted, .declined])
+    #expect(data.reflections[1].steerAt == "2026-08-08T09:00:00Z")
+  }
+
+  /// #1256 Phase D, v15. A reflection written before the morning card existed
+  /// was never offered a steer, and must not arrive as one on upgrade.
+  @Test func reflectionsFromBeforeTheSteerColumnUpgradeAsUnoffered() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v14_unmonitored_play",
+      seed: """
+        INSERT INTO reflection
+          (id, kind, session_ref, transcript, audio_path, duration_s, at, updated_at, deleted_at)
+        VALUES ('01REFLECTION00000000000001', 'session_close', NULL,
+          'The bridge still rushes', 'reflections/r1.m4a', 24,
+          '2026-07-01T22:00:00Z', '2026-07-01T22:00:00Z', NULL);
+        """)
+    let data = try store.loadBuiltSessionData()
+    #expect(data.reflections.count == 1, "the historic reflection survives the upgrade")
+    #expect(data.reflections[0].transcript == "The bridge still rushes")
+    #expect(data.reflections[0].steer == .unoffered)
+    #expect(data.reflections[0].steerAt == nil)
   }
 
   // ── #1269: an unreadable value quarantines its row ──────────────────

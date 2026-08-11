@@ -234,6 +234,12 @@ pub struct BuiltView {
     /// than snapshotted at open, so editing the chart behind the sheet cannot
     /// leave it offering a run-through the piece no longer supports.
     pub play_through: Option<super::playthrough::AltitudeOffer>,
+    /// `Some` while the block that just closed is owed C1's question.
+    pub feel: Option<super::capture::FeelPrompt>,
+    /// C2's question, up from the close until it is answered either way.
+    pub reflection: bool,
+    /// `Some` while last night's reflection has an offer worth making (C3).
+    pub steer: Option<super::steer::ProposedSteer>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

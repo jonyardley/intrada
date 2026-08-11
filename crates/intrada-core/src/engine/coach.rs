@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::content::ContentIndex;
 use super::gate::{Requirement, Verdict};
 use super::mastery::MasteryStore;
-use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext};
+use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext, PlannedBlock, Stage};
 use super::session::{
     section_evidence, Altitude, BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase,
     SessionState,
@@ -69,6 +69,39 @@ impl CoachState {
         self.session.state = SessionState::Idle;
         self.session
             .apply_with_plan(&CoachEvent::StartPlannedSession { now }, Some(plan))
+    }
+
+    /// Place C3's accepted steer in today's plan (#1256 Phase D): one block
+    /// added to the planner's plan rather than replacing it, because decision 12
+    /// is propose, confirm, never plan. The extra minutes run over the session
+    /// length rather than costing one of the planner's blocks.
+    ///
+    /// Second in a plan not yet started, so a steer is the first real thing the
+    /// session does rather than what it runs out of time for. In a running one
+    /// it goes after the block in flight, never at or below
+    /// `BlockState::spec_index`, which would silently re-aim it.
+    ///
+    /// The duplicate refusal is live, not theoretical: the accept places it on
+    /// screen, and starting that plan carries it into the running one.
+    pub fn place_steer(&mut self, block: PlannedBlock) -> bool {
+        let (plan, floor) = match &mut self.session.state {
+            SessionState::Planned { plan } => (plan, 1),
+            SessionState::Running {
+                plan,
+                block: running,
+            } => (plan, running.spec_index + 1),
+            _ => return false,
+        };
+        if plan
+            .blocks
+            .iter()
+            .any(|placed| placed.spec.node == block.spec.node)
+        {
+            return false;
+        }
+        let at = floor.min(plan.blocks.len());
+        plan.blocks.insert(at, block);
+        true
     }
 
     /// Rebuild the mastery track from the persisted evidence at launch (#1214):
@@ -234,6 +267,7 @@ impl CoachState {
                     kind: block.spec.kind.clone(),
                     minutes: block.spec.minutes,
                     why: block.why_line(),
+                    added_by_you: block.why.placed_by == Stage::Steer,
                 })
                 .collect(),
             deferred: plan.deferred.clone(),
@@ -459,6 +493,9 @@ pub struct PlannedBlockView {
     /// One sentence, written by the core. The shell renders it and never
     /// composes one.
     pub why: String,
+    /// C3's "you added this": provenance stays legible in the shape, so an
+    /// accepted steer never reads as something the app decided (decision 12).
+    pub added_by_you: bool,
 }
 
 /// What the drill screen shows. Deliberately presentational: `Escalating`
