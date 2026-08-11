@@ -4,14 +4,16 @@
 //! - [`compose`] is the steer sheet and decision 19's three-way resolution.
 //! - [`criterion`] reads a dictated sentence back as gate parameters.
 //! - [`blocks`] turns a composed session into a plan the drill loop runs.
-//!
-//! Journey B's altitudes (Phase C) and Journey C's capture (Phase D) still have
-//! only their entities here.
+//! - [`capture`] is Journey C's measurement budget: when feel is asked, and
+//!   when the close may ask for a reflection.
+//! - [`steer`] is last night's reflection, back as one morning proposal.
 
 pub mod blocks;
+pub mod capture;
 pub mod compose;
 pub mod criterion;
 pub mod playthrough;
+pub mod steer;
 #[cfg(test)]
 pub(crate) mod tests_support;
 
@@ -152,8 +154,25 @@ pub struct Reflection {
     pub audio_path: Option<String>,
     pub duration_s: Option<u32>,
     pub at: DateTime<Utc>,
+    /// C3: what became of the morning proposal this reflection earned. The
+    /// whole memory of the offer, so a declined one leaves no trace beyond the
+    /// fact that it will not be asked again, and an accepted one rebuilds its
+    /// block after a relaunch rather than losing it with the plan.
+    pub steer: SteerState,
+    /// When it was answered. Bounds how long an accepted steer stays today's.
+    pub steer_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SteerState {
+    #[default]
+    Unoffered,
+    Accepted,
+    Declined,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,9 +259,33 @@ pub enum BuiltSessionEvent {
         audio_path: Option<String>,
         duration_s: Option<u32>,
     },
+    /// Transcription is opportunistic and may land long after the audio was
+    /// kept (C2), so the transcript arrives as its own event rather than
+    /// holding the save open until the shell has one.
+    AttachTranscript {
+        reflection_id: String,
+        transcript: String,
+    },
     RecordFeel {
         block_id: String,
         feel: Feel,
+    },
+
+    // ── Qualitative capture (Journey C) ──────────────────────────────
+    /// C1's first-class exit. Nothing is written: a skipped feel is not a
+    /// fourth feel, it is the absence of one.
+    SkipFeel,
+    /// C2's "Not tonight", respected without a follow-up nudge.
+    DismissReflection,
+    /// C3's "Add it to today". Carries only the reflection: the target is
+    /// re-derived here, so a card left up while the library changed cannot
+    /// insert a block for something that is no longer there.
+    AcceptProposedSteer {
+        reflection_id: String,
+    },
+    /// C3's "Not today" — no block, no trace, and never proposed again.
+    DeclineProposedSteer {
+        reflection_id: String,
     },
 
     // ── The steer sheet (Journey A) ──────────────────────────────────
@@ -432,13 +475,43 @@ pub fn handle_built_session_event(
                 audio_path,
                 duration_s,
                 at: now,
+                steer: SteerState::Unoffered,
+                steer_at: None,
                 updated_at: now,
                 deleted_at: None,
             };
+            // The close asked once and has its answer, whichever way it went.
+            model.reflection_prompt = false;
             model.reflections.push(reflection.clone());
             save_and_render(persistence::save_reflection(reflection))
         }
+        BuiltSessionEvent::AttachTranscript {
+            reflection_id,
+            transcript,
+        } => {
+            let Some(reflection) = model
+                .reflections
+                .iter_mut()
+                .find(|reflection| reflection.id == reflection_id)
+            else {
+                return crux_core::render::render();
+            };
+            reflection.transcript = Some(transcript);
+            reflection.updated_at = now;
+            let reflection = reflection.clone();
+            save_and_render(persistence::save_reflection(reflection))
+        }
         BuiltSessionEvent::RecordFeel { block_id, feel } => {
+            // One per block, ever — the budget is the core's, so a shell that
+            // asked twice still only writes one (decision 17).
+            if model
+                .feel_entries
+                .iter()
+                .any(|entry| entry.block_id == block_id)
+            {
+                model.feel_prompt = None;
+                return crux_core::render::render();
+            }
             let entry = FeelEntry {
                 id: mint_id(),
                 block_id,
@@ -447,8 +520,25 @@ pub fn handle_built_session_event(
                 updated_at: now,
                 deleted_at: None,
             };
+            model.feel_prompt = None;
             model.feel_entries.push(entry.clone());
             save_and_render(persistence::save_feel_entry(entry))
+        }
+
+        // ── Qualitative capture ──────────────────────────────────────
+        BuiltSessionEvent::SkipFeel => {
+            model.feel_prompt = None;
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::DismissReflection => {
+            model.reflection_prompt = false;
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::AcceptProposedSteer { reflection_id } => {
+            answer_steer(model, &reflection_id, SteerState::Accepted, now)
+        }
+        BuiltSessionEvent::DeclineProposedSteer { reflection_id } => {
+            answer_steer(model, &reflection_id, SteerState::Declined, now)
         }
 
         // ── The steer sheet ──────────────────────────────────────────
@@ -742,6 +832,33 @@ fn save_and_render(save: Command<Effect, Event>) -> Command<Effect, Event> {
     Command::all([save, crux_core::render::render()])
 }
 
+/// Both answers to the morning card write the same column: the offer is spent
+/// either way, and that is what stops it coming back tomorrow.
+fn answer_steer(
+    model: &mut Model,
+    reflection_id: &str,
+    answer: SteerState,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    let Some(reflection) = model
+        .reflections
+        .iter_mut()
+        .find(|reflection| reflection.id == reflection_id)
+    else {
+        return crux_core::render::render();
+    };
+    // Answering twice is a double tap, not a change of mind: the second would
+    // move `steer_at` and quietly extend how long the block rides today's plan.
+    if reflection.steer != SteerState::Unoffered {
+        return crux_core::render::render();
+    }
+    reflection.steer = answer;
+    reflection.steer_at = Some(now);
+    reflection.updated_at = now;
+    let reflection = reflection.clone();
+    save_and_render(persistence::save_reflection(reflection))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -879,6 +996,31 @@ mod tests {
                 audio_path: Some("reflections/01J.m4a".into()),
                 duration_s: Some(24),
                 at: at(),
+                steer: SteerState::Unoffered,
+                steer_at: None,
+                updated_at: at(),
+                deleted_at: None,
+            });
+        }
+    }
+
+    #[test]
+    fn every_steer_state_round_trips_on_the_wire() {
+        for steer in [
+            SteerState::Unoffered,
+            SteerState::Accepted,
+            SteerState::Declined,
+        ] {
+            assert_round_trips(Reflection {
+                id: "01J0000000000000000000REFL".into(),
+                kind: ReflectionKind::SessionClose,
+                session_ref: None,
+                transcript: None,
+                audio_path: None,
+                duration_s: None,
+                at: at(),
+                steer,
+                steer_at: Some(at()),
                 updated_at: at(),
                 deleted_at: None,
             });
@@ -2339,6 +2481,8 @@ mod tests {
             audio_path: Some("reflections/r1.m4a".into()),
             duration_s: Some(24),
             at: at(),
+            steer: SteerState::Unoffered,
+            steer_at: None,
             updated_at: at(),
             deleted_at: None,
         }
@@ -2491,5 +2635,190 @@ mod tests {
             reflections: vec![sample_reflection()],
             feel_entries: vec![sample_feel_entry()],
         }));
+    }
+
+    // ── Qualitative capture (Phase D handlers) ────────────────────────
+
+    #[test]
+    fn a_feel_is_recorded_once_per_block_and_never_twice() {
+        let mut model = Model::test_default();
+        model.feel_prompt = Some(capture::FeelPrompt {
+            block_id: "b1".into(),
+            title: "Rubato in the intro".into(),
+        });
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::RecordFeel {
+                block_id: "b1".into(),
+                feel: Feel::ItSang,
+            },
+        );
+        assert_eq!(model.feel_entries.len(), 1);
+        assert!(model.feel_prompt.is_none(), "the question is answered");
+        assert_no_http(&effects);
+
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::RecordFeel {
+                block_id: "b1".into(),
+                feel: Feel::FoughtIt,
+            },
+        );
+        assert_eq!(model.feel_entries.len(), 1, "one per block, ever");
+        assert_eq!(model.feel_entries[0].feel, Feel::ItSang);
+        assert!(persistence_ops(&effects).is_empty());
+    }
+
+    #[test]
+    fn skipping_the_feel_writes_nothing_at_all() {
+        let mut model = Model::test_default();
+        model.feel_prompt = Some(capture::FeelPrompt {
+            block_id: "b1".into(),
+            title: "Rubato in the intro".into(),
+        });
+        let effects = update(&mut model, BuiltSessionEvent::SkipFeel);
+        assert!(model.feel_prompt.is_none());
+        assert!(model.feel_entries.is_empty(), "a skip is not a fourth feel");
+        assert!(persistence_ops(&effects).is_empty());
+    }
+
+    #[test]
+    fn not_tonight_closes_the_reflection_without_a_row() {
+        let mut model = Model::test_default();
+        model.reflection_prompt = true;
+        let effects = update(&mut model, BuiltSessionEvent::DismissReflection);
+        assert!(!model.reflection_prompt);
+        assert!(model.reflections.is_empty());
+        assert!(persistence_ops(&effects).is_empty());
+    }
+
+    #[test]
+    fn a_kept_reflection_persists_and_closes_the_question() {
+        let mut model = Model::test_default();
+        model.reflection_prompt = true;
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::RecordReflection {
+                kind: ReflectionKind::SessionClose,
+                session_ref: Some("built".into()),
+                transcript: None,
+                audio_path: Some("reflections/r1.m4a".into()),
+                duration_s: Some(24),
+            },
+        );
+        assert!(!model.reflection_prompt);
+        assert_eq!(model.reflections.len(), 1);
+        let kept = &model.reflections[0];
+        assert_eq!(kept.id.len(), 26, "client-minted ulid (invariant 3)");
+        assert_eq!(kept.steer, SteerState::Unoffered);
+        assert_eq!(
+            persistence_ops(&effects),
+            vec![PersistenceOperation::SaveReflection(kept.clone())]
+        );
+        assert_no_http(&effects);
+    }
+
+    #[test]
+    fn a_transcript_that_lands_late_reaches_the_reflection_it_belongs_to() {
+        let mut model = Model::test_default();
+        update(
+            &mut model,
+            BuiltSessionEvent::RecordReflection {
+                kind: ReflectionKind::SessionClose,
+                session_ref: None,
+                transcript: None,
+                audio_path: Some("reflections/r1.m4a".into()),
+                duration_s: Some(24),
+            },
+        );
+        let id = model.reflections[0].id.clone();
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::AttachTranscript {
+                reflection_id: id.clone(),
+                transcript: "The bridge still rushes.".into(),
+            },
+        );
+        assert_eq!(
+            model.reflections[0].transcript.as_deref(),
+            Some("The bridge still rushes.")
+        );
+        assert_eq!(
+            persistence_ops(&effects),
+            vec![PersistenceOperation::SaveReflection(
+                model.reflections[0].clone()
+            )]
+        );
+        assert_eq!(model.reflections[0].id, id, "the audio keeps its row");
+    }
+
+    fn model_with_unanswered_steer() -> (Model, String) {
+        let mut model = Model::test_default();
+        let reflection = sample_reflection();
+        let id = reflection.id.clone();
+        model.reflections.push(reflection);
+        (model, id)
+    }
+
+    #[test]
+    fn accepting_the_morning_steer_spends_the_offer_and_persists_it() {
+        let (mut model, id) = model_with_unanswered_steer();
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::AcceptProposedSteer {
+                reflection_id: id.clone(),
+            },
+        );
+        let answered = &model.reflections[0];
+        assert_eq!(answered.steer, SteerState::Accepted);
+        assert!(answered.steer_at.is_some());
+        assert_eq!(
+            persistence_ops(&effects),
+            vec![PersistenceOperation::SaveReflection(answered.clone())]
+        );
+        assert_no_http(&effects);
+        assert_eq!(answered.id, id);
+    }
+
+    #[test]
+    fn declining_leaves_the_reflection_but_spends_the_offer() {
+        let (mut model, id) = model_with_unanswered_steer();
+        update(
+            &mut model,
+            BuiltSessionEvent::DeclineProposedSteer {
+                reflection_id: id.clone(),
+            },
+        );
+        assert_eq!(model.reflections.len(), 1, "the reflection itself is kept");
+        assert_eq!(model.reflections[0].steer, SteerState::Declined);
+
+        // Changing the answer would move `steer_at` and quietly extend how long
+        // the block rides today's plan.
+        let declined_at = model.reflections[0].steer_at;
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::AcceptProposedSteer { reflection_id: id },
+        );
+        assert_eq!(model.reflections[0].steer, SteerState::Declined);
+        assert_eq!(model.reflections[0].steer_at, declined_at);
+        assert!(persistence_ops(&effects).is_empty());
+    }
+
+    #[test]
+    fn feel_prompt_round_trips_on_the_wire() {
+        assert_round_trips(capture::FeelPrompt {
+            block_id: "01J000000000000000000BREC".into(),
+            title: "Rubato in the intro".into(),
+        });
+    }
+
+    #[test]
+    fn the_proposed_steer_round_trips_on_the_wire() {
+        assert_round_trips(steer::ProposedSteer {
+            reflection_id: "01J000000000000000000REFL".into(),
+            quote: "The bridge still rushes when I go from memory.".into(),
+            offer: "Give Alice in Wonderland, bridge 8 minutes today?".into(),
+            minutes: 8,
+        });
     }
 }

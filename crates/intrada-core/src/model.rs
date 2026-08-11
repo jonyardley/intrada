@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
 use crate::domain::built_session::blocks::BuildContext;
+use crate::domain::built_session::capture::FeelPrompt;
 use crate::domain::built_session::compose::{
     BuiltView, ComposeDraft, Resolution, ResolutionContext,
 };
+use crate::domain::built_session::steer::{ProposedSteer, SteerContext};
 use crate::domain::built_session::{
     BuiltSession, BuiltTarget, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
 };
@@ -120,6 +122,18 @@ pub struct Model {
     /// itself is re-derived per render, so the sheet cannot go stale against a
     /// chart edited behind it.
     pub play_through_item: Option<String>,
+    /// C1's question, set by the block that just closed. Not on the engine
+    /// session and so not on the crash-recovery wire: the block record is
+    /// already written, so a prompt lost to a crash costs nothing, and a field
+    /// there would cost every device its blob.
+    pub feel_prompt: Option<FeelPrompt>,
+    /// C2's question, set once as a session closes. False again the moment it
+    /// is answered either way — "Not tonight" is respected without a nudge.
+    pub reflection_prompt: bool,
+    /// C3's morning card, snapshotted when the session was planned. Held rather
+    /// than derived per render because whether a reflection was "last night" is
+    /// a question only a clock can answer, and the view has none.
+    pub proposed_steer: Option<ProposedSteer>,
 }
 
 impl Model {
@@ -142,6 +156,15 @@ impl Model {
             user_drills: &self.user_drills,
             journal_items: &self.journal_items,
             content: ContentIndex::shipped(),
+        }
+    }
+
+    /// What a quoted-back reflection may name (C3).
+    pub fn steer_context(&self) -> SteerContext<'_> {
+        SteerContext {
+            items: &self.items,
+            user_drills: &self.user_drills,
+            journal_items: &self.journal_items,
         }
     }
 

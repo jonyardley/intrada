@@ -480,6 +480,15 @@ final class LibraryStore: ItemStore {
           )
           """)
     }
+    migrator.registerMigration("v15_reflection_steer") { db in
+      // #1256 Phase D: what became of the morning proposal a reflection earned
+      // (C3). 'unoffered' is the honest backfill — a reflection written before
+      // the card existed was never offered one — and it is also what stops a
+      // reflection from last month arriving as this morning's steer on upgrade.
+      try db.execute(
+        sql: "ALTER TABLE reflection ADD COLUMN steer TEXT NOT NULL DEFAULT 'unoffered'")
+      try db.execute(sql: "ALTER TABLE reflection ADD COLUMN steer_at TEXT")
+    }
     return migrator
   }()
 
@@ -1231,18 +1240,21 @@ final class LibraryStore: ItemStore {
       try db.execute(
         sql: """
           INSERT INTO reflection
-            (id, kind, session_ref, transcript, audio_path, duration_s, at, updated_at, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, kind, session_ref, transcript, audio_path, duration_s, at, steer, steer_at,
+             updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             kind = excluded.kind, session_ref = excluded.session_ref,
             transcript = excluded.transcript, audio_path = excluded.audio_path,
             duration_s = excluded.duration_s, at = excluded.at,
+            steer = excluded.steer, steer_at = excluded.steer_at,
             updated_at = excluded.updated_at, deleted_at = excluded.deleted_at
           """,
         arguments: [
           reflection.id, Self.reflectionKindString(reflection.kind), reflection.sessionRef,
           reflection.transcript, reflection.audioPath, reflection.durationS.map { Int($0) },
-          reflection.at, reflection.updatedAt, reflection.deletedAt,
+          reflection.at, Self.steerStateString(reflection.steer), reflection.steerAt,
+          reflection.updatedAt, reflection.deletedAt,
         ])
     }
   }
@@ -1369,7 +1381,8 @@ final class LibraryStore: ItemStore {
       id: row["id"], kind: try reflectionKind(from: row["kind"]), sessionRef: row["session_ref"],
       transcript: row["transcript"], audioPath: row["audio_path"],
       durationS: (row["duration_s"] as Int?).map { UInt32(clamping: $0) },
-      at: row["at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+      at: row["at"], steer: try steerState(from: row["steer"]), steerAt: row["steer_at"],
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
   private static func feelEntry(from row: Row) throws -> FeelEntry {
@@ -1495,6 +1508,23 @@ final class LibraryStore: ItemStore {
     case "voice_note": return .voiceNote
     case "session_close": return .sessionClose
     default: throw UnknownStoredEnum(kind: "ReflectionKind", raw: raw)
+    }
+  }
+
+  private static func steerStateString(_ steer: SteerState) -> String {
+    switch steer {
+    case .unoffered: "unoffered"
+    case .accepted: "accepted"
+    case .declined: "declined"
+    }
+  }
+
+  private static func steerState(from raw: String) throws -> SteerState {
+    switch raw {
+    case "unoffered": return .unoffered
+    case "accepted": return .accepted
+    case "declined": return .declined
+    default: throw UnknownStoredEnum(kind: "SteerState", raw: raw)
     }
   }
 

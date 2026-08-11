@@ -12,6 +12,7 @@ use crate::engine::{
 };
 
 use super::compose::normalised;
+use super::steer::{SteerTarget, STEER_MINUTES};
 use super::{BuiltBlock, BuiltSession, BuiltTarget, JournalItem, Serves, UserDrill};
 
 /// A6's one-line, declinable suggestion. Advice, never applied on its own:
@@ -53,6 +54,24 @@ pub fn node_id(target: &BuiltTarget) -> String {
     }
 }
 
+/// The player's own words for a node this module minted — the inverse of
+/// [`node_id`], for a surface holding a closed record rather than a target.
+/// `None` for an authored node, whose title the content index carries.
+pub fn title_of(node: &str, ctx: &BuildContext) -> Option<String> {
+    if let Some(id) = node.strip_prefix("journal:") {
+        return ctx.journal(id).map(|journal| journal.name.clone());
+    }
+    if let Some(id) = node.strip_prefix("drill:") {
+        return ctx.drill(id).map(|drill| drill.name.clone());
+    }
+    if let Some(id) = node.strip_prefix("piece:") {
+        // A section-addressed node (`piece:<id>#<label>`) is a run-through's,
+        // never a block's, so the id runs to the end here.
+        return ctx.item(id).map(|item| item.title.clone());
+    }
+    ctx.content.node(node).map(|node| node.title.clone())
+}
+
 /// The composed session as today's plan. A block whose target has since been
 /// deleted is reported in `deferred`, never dropped in silence (spec §5's rule,
 /// and the same reason A2 states its price out loud).
@@ -61,24 +80,7 @@ pub fn plan_from_built(session: &BuiltSession, ctx: &BuildContext) -> Plan {
     let mut deferred = Vec::new();
     for block in &session.blocks {
         match spec_for(block, ctx) {
-            Some(spec) => blocks.push(PlannedBlock {
-                why: Why {
-                    destination: spec.destination.clone(),
-                    node_state: NodeState {
-                        estimate_pct: 0,
-                        evidence: 0,
-                        overdue_pct: 0,
-                        maturity: Maturity::New,
-                    },
-                    placed_by: Stage::Steer,
-                },
-                spec,
-                // The ladder never swaps material the user chose themselves:
-                // an escalation into something they did not ask for would be
-                // the app taking the session back.
-                alternatives: Vec::new(),
-                new_keys: None,
-            }),
+            Some(spec) => blocks.push(steered_block(spec)),
             None => deferred.push(missing_line(block)),
         }
     }
@@ -87,6 +89,47 @@ pub fn plan_from_built(session: &BuiltSession, ctx: &BuildContext) -> Plan {
         rng_seed: 0,
         deferred,
     }
+}
+
+/// A block the user placed themselves, whether by composing it (A6) or by
+/// accepting this morning's proposal (C3). Both are the same claim — this one
+/// is theirs — so both carry the same stage and the same refusal to be swapped.
+fn steered_block(spec: BlockSpec) -> PlannedBlock {
+    PlannedBlock {
+        why: Why {
+            destination: spec.destination.clone(),
+            node_state: NodeState {
+                estimate_pct: 0,
+                evidence: 0,
+                overdue_pct: 0,
+                maturity: Maturity::New,
+            },
+            placed_by: Stage::Steer,
+        },
+        spec,
+        // The ladder never swaps material the user chose themselves: an
+        // escalation into something they did not ask for would be the app
+        // taking the session back.
+        alternatives: Vec::new(),
+        new_keys: None,
+    }
+}
+
+/// C3's accepted steer, as the one block it inserts into today's plan. Built
+/// through the same `spec_for` a composed block goes through, so accepting a
+/// proposal and composing the same target by hand run the identical block.
+pub fn steer_block(target: &SteerTarget, ctx: &BuildContext) -> Option<PlannedBlock> {
+    let block = BuiltBlock {
+        id: ulid::Ulid::generate().to_string(),
+        target: target.target.clone(),
+        minutes: Some(STEER_MINUTES),
+    };
+    let mut spec = spec_for(&block, ctx)?;
+    // The section is what makes the offer honest: "the bridge" was the sentence
+    // the user said, and a block that quietly meant the whole piece would be a
+    // different offer than the one they accepted.
+    spec.section = target.section.clone();
+    Some(steered_block(spec))
 }
 
 fn missing_line(block: &BuiltBlock) -> String {

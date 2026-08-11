@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::content::ContentIndex;
 use super::gate::{Requirement, Verdict};
 use super::mastery::MasteryStore;
-use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext};
+use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext, PlannedBlock, Stage};
 use super::session::{
     section_evidence, Altitude, BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase,
     SessionState,
@@ -69,6 +69,32 @@ impl CoachState {
         self.session.state = SessionState::Idle;
         self.session
             .apply_with_plan(&CoachEvent::StartPlannedSession { now }, Some(plan))
+    }
+
+    /// Place C3's accepted steer in today's plan (#1256 Phase D). One block,
+    /// added to the plan the planner made rather than replacing it: decision 12
+    /// is propose, confirm, never plan, and a proposal that reshaped the
+    /// session would be planning.
+    ///
+    /// Second, not last. The plan's first block is the warm-up the template
+    /// puts there, and a steer the user accepted this morning should be the
+    /// first real thing they do, not the thing they run out of time for.
+    ///
+    /// Idempotent by node, because the steer is re-derived on every plan rather
+    /// than banked: re-planning must not stack a second copy of it.
+    pub fn place_steer(&mut self, block: PlannedBlock) -> bool {
+        let SessionState::Planned { plan } = &mut self.session.state else {
+            return false;
+        };
+        if plan
+            .blocks
+            .iter()
+            .any(|placed| placed.spec.node == block.spec.node)
+        {
+            return false;
+        }
+        plan.blocks.insert(plan.blocks.len().min(1), block);
+        true
     }
 
     /// Rebuild the mastery track from the persisted evidence at launch (#1214):
@@ -234,6 +260,7 @@ impl CoachState {
                     kind: block.spec.kind.clone(),
                     minutes: block.spec.minutes,
                     why: block.why_line(),
+                    added_by_you: block.why.placed_by == Stage::Steer,
                 })
                 .collect(),
             deferred: plan.deferred.clone(),
@@ -459,6 +486,9 @@ pub struct PlannedBlockView {
     /// One sentence, written by the core. The shell renders it and never
     /// composes one.
     pub why: String,
+    /// C3's "you added this": provenance stays legible in the shape, so an
+    /// accepted steer never reads as something the app decided (decision 12).
+    pub added_by_you: bool,
 }
 
 /// What the drill screen shows. Deliberately presentational: `Escalating`

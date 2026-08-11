@@ -102,16 +102,17 @@ struct SessionOverview: View {
         blocks: [
           PlannedBlockView(
             drillTitle: "Rootless voicings", section: "A section", kind: .exercise, minutes: 8,
-            why: "Shells and rootless are what sit between you and improvising over Strasbourg."),
+            why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
+            addedByYou: false),
           PlannedBlockView(
             drillTitle: "Strasbourg / St. Denis", section: "A section", kind: .piece, minutes: 10,
-            why: "The tune you are building towards."),
+            why: "The tune you are building towards.", addedByYou: false),
           PlannedBlockView(
             drillTitle: "Scales · D flat major", section: nil, kind: .exercise, minutes: 6,
-            why: "D flat is the key the head sits in."),
+            why: "D flat is the key the head sits in.", addedByYou: false),
           PlannedBlockView(
             drillTitle: "Clair de Lune", section: "Opening", kind: .piece, minutes: 6,
-            why: "Kept warm while the jazz work leads."),
+            why: "Kept warm while the jazz work leads.", addedByYou: false),
         ],
         totalMinutes: 30,
         deferred: [
