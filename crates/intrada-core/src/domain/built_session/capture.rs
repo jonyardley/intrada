@@ -15,15 +15,11 @@ use crate::engine::{BlockOrigin, BlockRecord, CoachWrites, Exit, Verdict};
 /// the app rubbing it in.
 pub const FEEL_MISS_BUDGET: usize = 2;
 
-/// C1, asked at most once per block and only where feel is the point. Held on
-/// the model rather than the engine session: a prompt lost to a crash costs
-/// nothing, because the block record it follows is already written, and putting
-/// it on `EngineSession` would invalidate every crash-recovery blob for it.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct FeelPrompt {
     pub block_id: String,
-    /// The target in the user's own words, joined where the library lives.
+    /// Joined where the library lives: the engine holds ids, never titles.
     pub title: String,
 }
 

@@ -41,7 +41,6 @@ const ACCEPTED_ACTIVE_HOURS: i64 = 24;
 /// the proposal never reshapes the rest of the session.
 pub const STEER_MINUTES: u16 = 8;
 
-/// What the resolver may name a target from.
 pub struct SteerContext<'a> {
     pub items: &'a [Item],
     pub user_drills: &'a [UserDrill],
@@ -62,12 +61,11 @@ pub struct ProposedSteer {
     pub minutes: u16,
 }
 
-/// A target the quote-back resolved to, and how it should read in the plan.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SteerTarget {
     pub target: BuiltTarget,
     pub title: String,
-    /// Where in the piece, when the sentence named a chart section.
+    /// Set only where the sentence named a chart section rather than a piece.
     pub section: Option<String>,
 }
 
@@ -119,8 +117,8 @@ pub fn accepted(
     target_of(reflection, ctx)
 }
 
-/// The target a named reflection resolves to, whatever its steer state — what
-/// accepting has to be able to build a block from.
+/// Resolved whatever the steer state, because accepting has to build a block
+/// from a reflection the proposal has already been spent on.
 pub fn target_of(reflection: &Reflection, ctx: &SteerContext) -> Option<SteerTarget> {
     quoted_target(reflection, ctx).map(|(_, target)| target)
 }
@@ -139,8 +137,6 @@ fn within(at: DateTime<Utc>, now: DateTime<Utc>, min_hours: i64, max_hours: i64)
     age >= TimeDelta::hours(min_hours) && age <= TimeDelta::hours(max_hours)
 }
 
-/// The first sentence of the transcript that names something the library can
-/// resolve, and what it named.
 fn quoted_target(reflection: &Reflection, ctx: &SteerContext) -> Option<(String, SteerTarget)> {
     let transcript = reflection.transcript.as_deref()?;
     sentences(transcript)
@@ -248,8 +244,8 @@ fn mentions(said: &str, name: &str) -> bool {
         .any(|window| window == wanted_words.as_slice())
 }
 
-/// The one match, or none. Two candidates is an ambiguity the core refuses to
-/// resolve on the user's behalf.
+/// Two candidates is an ambiguity the core will not resolve on the user's
+/// behalf.
 fn only<T>(mut candidates: impl Iterator<Item = T>) -> Option<T> {
     let first = candidates.next()?;
     candidates.next().is_none().then_some(first)

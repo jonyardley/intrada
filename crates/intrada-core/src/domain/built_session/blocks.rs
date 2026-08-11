@@ -54,10 +54,8 @@ pub fn node_id(target: &BuiltTarget) -> String {
     }
 }
 
-/// The player's own words for a judgement-track node — the inverse of
-/// [`node_id`] for the two kinds it mints, for a surface holding a closed
-/// record rather than a target. `None` for anything else, which is every node
-/// whose taps were evidence and so has a gate to end on instead.
+/// The inverse of [`node_id`] for the two kinds the judgement track mints.
+/// `None` for every other node, which is every node with a gate to end on.
 pub fn title_of(node: &str, ctx: &BuildContext) -> Option<String> {
     if let Some(id) = node.strip_prefix("journal:") {
         return ctx.journal(id).map(|journal| journal.name.clone());

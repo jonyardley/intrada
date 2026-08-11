@@ -206,8 +206,7 @@ fn rebuild_mastery(model: &mut Model) {
         .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
 }
 
-/// C3, at the moments that have both a clock and a fresh plan: what to propose
-/// this morning, and where an already-accepted steer goes.
+/// C3, at the moments that have both a clock and a fresh plan.
 ///
 /// The proposal is snapshotted rather than derived per render, because the view
 /// is clock-free by construction and "was that last night?" is a question only a
@@ -5365,7 +5364,6 @@ mod tests {
             chrono::TimeZone::with_ymd_and_hms(&Utc, 2026, 8, 8, 9, 0, 0).unwrap()
         }
 
-        /// A one-block session on the judgement track, run to its close.
         fn run_a_journal_block() -> (Intrada, Model) {
             let app = Intrada;
             let mut model = Model::test_default();
