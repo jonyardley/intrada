@@ -71,23 +71,18 @@ impl CoachState {
             .apply_with_plan(&CoachEvent::StartPlannedSession { now }, Some(plan))
     }
 
-    /// Place C3's accepted steer in today's plan (#1256 Phase D). One block,
-    /// added to the plan the planner made rather than replacing it: decision 12
-    /// is propose, confirm, never plan, and a proposal that reshaped the
-    /// session would be planning. The extra minutes are the user's own, so the
-    /// plan runs longer rather than dropping one of the planner's blocks to pay
-    /// for it.
+    /// Place C3's accepted steer in today's plan (#1256 Phase D): one block
+    /// added to the planner's plan rather than replacing it, because decision 12
+    /// is propose, confirm, never plan. The extra minutes run over the session
+    /// length rather than costing one of the planner's blocks.
     ///
-    /// Second, not last, in a plan not yet started: its first block is the
-    /// warm-up the template puts there, and a steer accepted this morning
-    /// should be the first real thing the session does, not the thing it runs
-    /// out of time for. In a session already running it goes after the block in
-    /// flight, never before — `BlockState::spec_index` points into this vector,
-    /// so an insert at or below it would silently re-aim the running block.
-    /// Placing the same steer twice is a live risk, not a theoretical one: the
-    /// accept places it in the plan on screen, and starting that plan carries it
-    /// into the running one, where the start-from-`Idle` door would otherwise
-    /// place it again.
+    /// Second in a plan not yet started, so a steer is the first real thing the
+    /// session does rather than what it runs out of time for. In a running one
+    /// it goes after the block in flight, never at or below
+    /// `BlockState::spec_index`, which would silently re-aim it.
+    ///
+    /// The duplicate refusal is live, not theoretical: the accept places it on
+    /// screen, and starting that plan carries it into the running one.
     pub fn place_steer(&mut self, block: PlannedBlock) -> bool {
         let (plan, floor) = match &mut self.session.state {
             SessionState::Planned { plan } => (plan, 1),

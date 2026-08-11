@@ -1,12 +1,10 @@
 //! C3 — last night's reflection, back as a proposal (decision 12: propose,
 //! confirm, never plan).
 //!
-//! v1 is rule-based, which settles open question 3 in `specs/built-session.md`.
-//! The narrated version — an LLM reading the reflection and writing the offer —
-//! is Phase 3 of the coach roadmap; what ships now quotes the user's own
-//! sentence back and names a target it can actually resolve. Everything about
-//! it is deliberately conservative: **a wrong quote-back is worse than none**,
-//! so an ambiguous match proposes nothing rather than guessing.
+//! v1 is rule-based, settling open question 3 in `specs/built-session.md`; the
+//! narrated version is Phase 3 of the coach roadmap. Everything here is timid on
+//! purpose: **a wrong quote-back is worse than none**, so an ambiguous match
+//! proposes nothing rather than guessing.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
@@ -23,16 +21,11 @@ const MAX_AGE_HOURS: i64 = 20;
 /// The morning card is a return, not an echo: quoting someone back to
 /// themselves twenty minutes later is the app being strange at them.
 const MIN_AGE_HOURS: i64 = 6;
-/// A name shorter than this may not resolve a sentence on its own. Chart
-/// sections are routinely labelled `[A]`, which normalises to "a" — the
-/// commonest word in English — so without a floor "It was a good session"
-/// proposes the piece that has an A section, which is exactly the confidently
-/// wrong quote-back the whole module is built to avoid.
+/// Chart sections are routinely labelled `[A]`, which normalises to "a", so
+/// without a floor "It was a good session" proposes the piece that has one.
 const MIN_MATCHABLE_CHARS: usize = 3;
-/// Longer than this and the card is quoting a paragraph, not a sentence.
 /// Dictation often returns a whole reflection with no full stop in it, and the
-/// serif quote is designed around one short thought; past the cap the honest
-/// answer is the one the rest of this module gives — no card.
+/// card is designed around one short thought. Past the cap: no card.
 const MAX_QUOTE_WORDS: usize = 30;
 /// How long an accepted steer rides today's plan. Today, approximated in hours
 /// because the core is handed UTC and never the user's calendar.
@@ -71,9 +64,8 @@ pub struct SteerTarget {
 
 /// The reflection worth proposing this morning, if there is one.
 ///
-/// **The most recent one, or none** — never the one behind it. Falling through
-/// to an older reflection would put a different night's words under a card
-/// headed "you said, last night", and decision 12 allows one offer anyway.
+/// **The most recent one, or none.** Falling through to an older reflection
+/// would put a different night under a card headed "you said, last night".
 pub fn propose(
     reflections: &[Reflection],
     ctx: &SteerContext,
@@ -104,10 +96,9 @@ pub fn accepted(
         .iter()
         .filter(|reflection| reflection.deleted_at.is_none())
         .filter(|reflection| reflection.steer == SteerState::Accepted)
-        // Upper bound only. The accept is stamped on the core's clock and the
-        // plan is made against the shell's, so a reading a few milliseconds
-        // apart can put the answer marginally "ahead" of now — and dropping the
-        // block over that would lose a steer the user explicitly asked for.
+        // Upper bound only: the accept is stamped on the core's clock and the
+        // plan made against the shell's, so one may read marginally ahead of the
+        // other, and that must not lose a steer the user asked for.
         .filter(|reflection| {
             reflection
                 .steer_at
@@ -351,12 +342,9 @@ mod tests {
 
     // ── What a musician actually dictates ─────────────────────────────
     //
-    // Not sentences written to match the scanner (CLAUDE.md's parser rule, off
-    // the back of this feature's own criterion parser). The property every row
-    // asserts is the one the card rests on: **a proposal names something the
-    // sentence is really about, and there is no proposal otherwise.** The
-    // library underneath is the ordinary one — a charted piece with `[A]` and
-    // `[Bridge]` sections, which is what Journey B's run-through needs anyway.
+    // Not sentences written to match the scanner (CLAUDE.md's parser rule). Every
+    // row asserts the property the card rests on: a proposal names something the
+    // sentence was really about, and there is no proposal otherwise.
 
     const DICTATED: &[(&str, Option<&str>)] = &[
         ("It was a good session.", None),
@@ -399,9 +387,7 @@ mod tests {
         }
     }
 
-    /// The article, against the commonest chart label there is. Nothing else in
-    /// "It was a good session" is a target, and offering one would be the
-    /// confidently-wrong quote-back the module exists to avoid.
+    /// The article, against the commonest chart label there is.
     #[test]
     fn a_single_letter_section_label_is_never_what_a_sentence_was_about() {
         let items = vec![alice()];

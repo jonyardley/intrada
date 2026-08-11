@@ -1,10 +1,8 @@
 //! Journey C's two in-session moments: the feel question at a block boundary
 //! (C1) and the reflection at close (C2).
 //!
-//! Both are budget decisions, and the budget is the core's (decision 17). A
-//! surface that asked whenever it felt like it would be a second answer to the
-//! same question, and the one thing the measurement budget cannot survive is
-//! two things believing they own it.
+//! Both are budget decisions, and the budget is the core's (decision 17): the
+//! one thing a measurement budget cannot survive is two things owning it.
 
 use serde::{Deserialize, Serialize};
 
@@ -42,18 +40,12 @@ fn misses(record: &BlockRecord) -> usize {
         .count()
 }
 
-/// C2, offered once as a session closes.
+/// C2, offered once as a session closes. Unmonitored play promised minutes and
+/// nothing else (decision 16), and off-piste has already asked twice on the way
+/// out, so neither may be asked again.
 ///
-/// Two altitudes are silent here on purpose. Unmonitored play promised minutes
-/// and nothing else, so a question at its exit would be the app going back on
-/// the one thing it agreed to (decision 16). Off-piste has already asked twice
-/// on the way out — the "found something?" mic and the keep-as-drill prompt —
-/// and a third is past any budget.
-///
-/// Neither guard is load-bearing today: as the engine stands, an altitude close
-/// carries its own record and no block, so the positive rule below already
-/// declines both. They are here because "which altitude was this?" is the
-/// question the consent gradient turns on, and a rule that holds only while
+/// Neither guard is load-bearing today — an altitude close carries no block, so
+/// the positive rule already declines both — but a rule that holds only while
 /// nobody changes what a close bundles is not a rule (the #1214 class).
 pub fn reflection_is_offered(writes: &CoachWrites) -> bool {
     if !writes.unmonitored.is_empty() || !writes.wanders.is_empty() {
@@ -154,10 +146,8 @@ mod tests {
         assert!(!reflection_is_offered(&CoachWrites::default()));
     }
 
-    /// A close carrying blocks *and* an unmonitored record is not a shape the
-    /// engine writes today. It is exactly the shape the guard exists for: which
-    /// altitude was running outranks what else was in the batch, because the
-    /// altitude is what the user consented to.
+    /// Not a shape the engine writes today, and exactly the shape the guard
+    /// exists for: the altitude outranks whatever else was in the batch.
     #[test]
     fn unmonitored_play_keeps_its_promptless_exit_whatever_else_closed_with_it() {
         assert!(!reflection_is_offered(&CoachWrites {

@@ -206,15 +206,10 @@ fn rebuild_mastery(model: &mut Model) {
         .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
 }
 
-/// C3, at the moments that have both a clock and a fresh plan.
-///
-/// The proposal is snapshotted rather than derived per render, because the view
-/// is clock-free by construction and "was that last night?" is a question only a
-/// clock can answer. The accepted block is re-derived rather than banked, so a
-/// relaunch before the session rebuilds it: a plan is remade from the content
-/// and the clock, and a steer held only in memory would be remade into nothing.
-/// Placing it again on a plan that already carries it is `place_steer`'s to
-/// refuse, which is what makes calling this from two doors safe.
+/// C3, at the moments that have both a clock and a fresh plan. The proposal is
+/// snapshotted because the view is clock-free and "was that last night?" needs a
+/// clock; the accepted block is re-derived because a plan is remade rather than
+/// recovered, so one held in memory would be remade into nothing.
 fn refresh_steer(model: &mut Model, now: DateTime<Utc>) {
     model.proposed_steer = steer::propose(&model.reflections, &model.steer_context(), now);
     let Some(target) = steer::accepted(&model.reflections, &model.steer_context(), now) else {
@@ -226,11 +221,10 @@ fn refresh_steer(model: &mut Model, now: DateTime<Utc>) {
     model.coach.place_steer(block);
 }
 
-/// Journey C's two questions, set from what the engine just closed (#1256
-/// Phase D). Read here rather than in the engine because both are the domain's
-/// budget, not the state machine's, and neither may ride the crash-recovery
-/// wire — a prompt lost to a crash costs nothing, and a field on `EngineSession`
-/// costs every device its blob.
+/// Journey C's two questions, set from what the engine just closed. Read here
+/// rather than in the engine because both are the domain's budget, and because
+/// a field on `EngineSession` would cost every device its crash-recovery blob
+/// to carry a prompt that costs nothing to lose (#1256 Phase D).
 fn offer_capture(model: &mut Model, writes: &crate::engine::CoachWrites) {
     if let Some(record) = writes.blocks.iter().rev().find(|record| {
         capture::feel_is_the_point(record)
@@ -391,12 +385,10 @@ impl Intrada {
                 }
                 let before = model.coach.view();
                 let writes = model.coach.apply(&coach_event);
-                // Both planning doors, because `StartPlannedSession` from
-                // `Idle` plans and starts in one step for a shell that wants no
-                // preview — a steer placed only on the previewed door would be
-                // lost through that one. A composed session is deliberately not
-                // a door: Journey A's list is already the user's, so a steer
-                // inside it would be the app adding a block to what they wrote.
+                // Both planning doors: `StartPlannedSession` from `Idle` plans
+                // and starts in one step, so a steer placed only on the
+                // previewed door would be lost through that one. A composed
+                // session is not a door — Journey A's list is already theirs.
                 match coach_event {
                     CoachEvent::PlanSession { now, .. }
                     | CoachEvent::StartPlannedSession { now } => refresh_steer(model, now),
@@ -5533,10 +5525,8 @@ mod tests {
                 .count()
         }
 
-        /// The defect this test exists for: the plan is remade only when the
-        /// Practice screen has none, so an accept that waited for the next
-        /// planning run would leave the card up over an unchanged plan for the
-        /// rest of the app run.
+        /// The defect this test exists for: the Practice screen asks for a plan
+        /// only when it has none, so a deferred accept never lands at all.
         #[test]
         fn accepting_puts_the_block_in_the_plan_already_on_screen_and_takes_the_card_down() {
             let app = Intrada;
@@ -5596,9 +5586,8 @@ mod tests {
                 .all(|block| !block.added_by_you));
         }
 
-        /// Accept places it in the planned session, and starting that session
-        /// carries it into the running one — where the start-from-`Idle` door
-        /// would place it a second time if nothing refused.
+        /// The plan carries it into the running session, where the
+        /// start-from-`Idle` door would place it again if nothing refused.
         #[test]
         fn starting_the_plan_that_already_carries_the_steer_does_not_place_it_twice() {
             let app = Intrada;
@@ -5620,8 +5609,7 @@ mod tests {
             );
         }
 
-        /// The no-preview door: a shell that starts without planning first still
-        /// gets the steer it accepted this morning.
+        /// The no-preview door must not lose it.
         #[test]
         fn starting_without_a_preview_still_carries_the_accepted_steer() {
             let app = Intrada;

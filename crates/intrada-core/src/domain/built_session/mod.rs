@@ -832,14 +832,10 @@ fn save_and_render(save: Command<Effect, Event>) -> Command<Effect, Event> {
     Command::all([save, crux_core::render::render()])
 }
 
-/// Both answers to the morning card write the same column: the offer is spent
-/// either way, and that is what stops it coming back tomorrow.
-///
-/// Accepting also places the block *now*, in this handler. The plan is remade
-/// only when the Practice screen has none, so a steer that waited for the next
-/// planning run would land after the session it was meant for — the card would
-/// stay up over an unchanged plan, and neither half of the contract the frame
-/// shows would be true.
+/// Both answers write the same column: the offer is spent either way, which is
+/// what stops it coming back tomorrow. Accepting also places the block *now*,
+/// because the Practice screen asks for a plan only when it has none — a steer
+/// that waited would leave the card up over an unchanged plan.
 fn answer_steer(
     model: &mut Model,
     reflection_id: &str,
@@ -866,9 +862,8 @@ fn answer_steer(
     // The card is answered whichever way it went, so it comes down either way.
     model.proposed_steer = None;
     if answer == SteerState::Accepted {
-        // Re-derived here rather than taken from the card: a proposal left up
-        // while the library changed behind it must not insert a block for
-        // something that is no longer there.
+        // Re-derived, not taken from the card: a proposal left up while the
+        // library changed must not insert a block for something that is gone.
         if let Some(block) = steer::target_of(&reflection, &model.steer_context())
             .and_then(|target| blocks::steer_block(&target, &model.build_context()))
         {
