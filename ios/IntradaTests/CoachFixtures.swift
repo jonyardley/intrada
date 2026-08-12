@@ -1,5 +1,20 @@
 import SharedTypes
 
+@testable import Intrada
+
+/// Defaults `unmonitored` to `[]` for tests not exercising it — production
+/// `saveCoachRecords` stays strict on purpose (#1293).
+extension LibraryStore {
+  func saveCoach(
+    blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
+    unmonitored: [UnmonitoredRecord] = [], updatedAt: String
+  ) throws {
+    try saveCoachRecords(
+      blocks: blocks, wanders: wanders, playThroughs: playThroughs, unmonitored: unmonitored,
+      updatedAt: updatedAt)
+  }
+}
+
 /// The one place a test coach record is spelt out in full. The generated types
 /// have no memberwise default, so every field gets one here instead: a new Rust
 /// field costs one edit rather than one per call site (#1256's `origin` cost

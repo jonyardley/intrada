@@ -195,7 +195,7 @@ final class LibraryStore: ItemStore {
   /// wander row already written rather than duplicating it.
   func saveCoachRecords(
     blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
-    unmonitored: [UnmonitoredRecord] = [], updatedAt: String
+    unmonitored: [UnmonitoredRecord], updatedAt: String
   ) throws {
     try dbQueue.write { db in
       for block in blocks {
