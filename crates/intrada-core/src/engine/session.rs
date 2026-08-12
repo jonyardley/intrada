@@ -192,7 +192,7 @@ pub enum SnapshotAction {
 
 /// What a recovered session would have to get right. Beats and ticks move the
 /// clock and the beat cursor, which recovery restarts anyway, so they must not
-/// cost a write per second.
+/// cost a write per second, bar `ungated_minutes`, whose clock is all there is.
 #[derive(PartialEq)]
 struct RecoveryKey {
     state: std::mem::Discriminant<SessionState>,
@@ -202,6 +202,7 @@ struct RecoveryKey {
     keep_as_drill: Option<Option<bool>>,
     /// A verdict already given is the one thing a run-through cannot rebuild.
     section_verdicts: usize,
+    ungated_minutes: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -633,6 +634,8 @@ pub enum SessionState {
     OffPiste {
         item_id: Option<String>,
         started_at: DateTime<Utc>,
+        /// Last seen alive, so recovery rebases rather than resets (#1291).
+        now: DateTime<Utc>,
     },
     /// Nothing captured, nothing inferred (decision 16). Untagged even when B0
     /// was opened from a piece: off-piste has a record to hang a tag on because
@@ -640,6 +643,7 @@ pub enum SessionState {
     /// gradient, not an oversight.
     Unmonitored {
         started_at: DateTime<Utc>,
+        now: DateTime<Utc>,
     },
     /// A peer of `Running` too: gated, but by the piece's sections rather than
     /// by a drill's gate.
@@ -744,7 +748,21 @@ impl EngineSession {
             wanders: self.wanders.len(),
             keep_as_drill: self.wanders.last().map(|wander| wander.keep_as_drill),
             section_verdicts: self.run_through().map_or(0, |run| run.verdicts.len()),
+            ungated_minutes: self.ungated_minutes(),
         }
+    }
+
+    /// No other event fires here, so without this the blob written when the
+    /// altitude opened is the only one there is (#1291).
+    fn ungated_minutes(&self) -> Option<i64> {
+        let (started_at, now) = match &self.state {
+            SessionState::OffPiste {
+                started_at, now, ..
+            }
+            | SessionState::Unmonitored { started_at, now } => (started_at, now),
+            _ => return None,
+        };
+        Some((*now - *started_at).num_minutes().max(0))
     }
 
     /// The mastery store owns the cold decision, because it is the only thing
@@ -920,9 +938,18 @@ impl EngineSession {
                     block.phase = block.opening_phase();
                 }
             }
-            SessionState::OffPiste { started_at, .. }
-            | SessionState::Unmonitored { started_at } => {
-                *started_at = now;
+            SessionState::OffPiste {
+                started_at,
+                now: at,
+                ..
+            }
+            | SessionState::Unmonitored {
+                started_at,
+                now: at,
+            } => {
+                let spent = (*at - *started_at).num_milliseconds().max(0);
+                *started_at = now - TimeDelta::milliseconds(spent);
+                *at = now;
             }
             // The verdicts already given survive; the outage does not become
             // playing time, so the run comes back having taken what it had
@@ -1311,6 +1338,13 @@ impl EngineSession {
             run.now = now;
             return;
         }
+        // Nothing decided here either; the instant is kept for the rebase.
+        if let SessionState::OffPiste { now: at, .. } | SessionState::Unmonitored { now: at, .. } =
+            &mut self.state
+        {
+            *at = now;
+            return;
+        }
         let ceiling = self.spec().map(|spec| u32::from(spec.minutes) * 60);
         let hold = self.config.gate_open_hold_s;
         let glance = self.config.glance_hold_s;
@@ -1366,12 +1400,14 @@ impl EngineSession {
                 self.state = SessionState::OffPiste {
                     item_id,
                     started_at: now,
+                    now,
                 };
             }
             state if state.accepts_something_new() => {
                 self.state = SessionState::OffPiste {
                     item_id,
                     started_at: now,
+                    now,
                 };
             }
             _ => {}
@@ -1437,7 +1473,10 @@ impl EngineSession {
         // Never from mid-`Running`: switching part-way would make the
         // already-captured half of the session retrospectively unconsented.
         if self.state.accepts_something_new() {
-            self.state = SessionState::Unmonitored { started_at: now };
+            self.state = SessionState::Unmonitored {
+                started_at: now,
+                now,
+            };
         }
     }
 
@@ -1446,6 +1485,7 @@ impl EngineSession {
             SessionState::OffPiste {
                 item_id,
                 started_at,
+                ..
             } => {
                 self.wanders.push(WanderRecord {
                     id: ulid::Ulid::generate().to_string(),
@@ -1457,7 +1497,7 @@ impl EngineSession {
                 });
                 self.state = SessionState::Closing;
             }
-            SessionState::Unmonitored { started_at } => {
+            SessionState::Unmonitored { started_at, .. } => {
                 let record = UnmonitoredRecord {
                     id: ulid::Ulid::generate().to_string(),
                     started_at: *started_at,
@@ -1558,9 +1598,16 @@ mod tests {
     // wire with no field names. The shell must read the new shape under a new
     // key. Missed three times (#1223, #1244, #1256), each caught by a person.
 
-    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v6";
-    const SNAPSHOT_WIRE_LEN: usize = 1421;
-    const SNAPSHOT_WIRE_HASH: u64 = 0x08c6899544e9c504;
+    // Per *variant*: bincode writes only the live one, so pinning `Running`
+    // alone went green on #1291's change to its siblings.
+
+    const SHELL_SNAPSHOT_KEY: &str = "intrada.coach-session-in-progress.v7";
+    const SNAPSHOT_WIRE: [(&str, usize, u64); 4] = [
+        ("running", 1421, 0x08c6_8995_44e9_c504),
+        ("off-piste", 553, 0xee6d_2a8f_f84c_7810),
+        ("unmonitored", 518, 0xa290_598f_c37a_fc15),
+        ("run-through", 654, 0x72cd_201a_d13a_0547),
+    ];
 
     /// FNV-1a rather than `DefaultHasher`, whose output is explicitly unstable
     /// across Rust releases — this value is committed.
@@ -1648,24 +1695,81 @@ mod tests {
         session
     }
 
+    fn saturated_sessions() -> Vec<EngineSession> {
+        let running = saturated_session();
+
+        let mut off_piste = saturated_session();
+        off_piste.state = SessionState::OffPiste {
+            item_id: Some("01J000000000000000000PIECE".to_string()),
+            started_at: at(0),
+            now: at(600),
+        };
+
+        let mut unmonitored = saturated_session();
+        unmonitored.state = SessionState::Unmonitored {
+            started_at: at(0),
+            now: at(600),
+        };
+
+        let mut run_through = saturated_session();
+        run_through.state = SessionState::RunThrough(RunThroughState {
+            item_id: "01J000000000000000000PIECE".to_string(),
+            title: "Strasbourg / St. Denis".to_string(),
+            started_at: at(0),
+            now: at(600),
+            sections: vec!["A".to_string(), "B".to_string()],
+            verdicts: vec![SectionVerdict {
+                section: "A".to_string(),
+                held: true,
+                at: at(120),
+            }],
+        });
+
+        vec![running, off_piste, unmonitored, run_through]
+    }
+
+    /// Exhaustive: a new `SessionState` needs a row or a `None` here.
+    fn pin_name(state: &SessionState) -> Option<&'static str> {
+        match state {
+            SessionState::Running { .. } => Some("running"),
+            SessionState::OffPiste { .. } => Some("off-piste"),
+            SessionState::Unmonitored { .. } => Some("unmonitored"),
+            SessionState::RunThrough(_) => Some("run-through"),
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => None,
+        }
+    }
+
     /// Never re-pin this on its own: bumping the shell key is the other half,
     /// and skipping it is the bug this exists to catch. The failure says how.
     #[test]
     fn the_crash_recovery_wire_is_pinned_to_the_shell_key_that_reads_it() {
         use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
-        let mut bytes = Vec::new();
-        BincodeFfiFormat::serialize(&mut bytes, &saturated_session()).expect("serialize");
 
-        assert_eq!(
-            (bytes.len(), fingerprint(&bytes)),
-            (SNAPSHOT_WIRE_LEN, SNAPSHOT_WIRE_HASH),
+        // `zip` truncates, so a row with no fixture would pin nothing at all.
+        assert_eq!(saturated_sessions().len(), SNAPSHOT_WIRE.len());
+        let mut moved = Vec::new();
+        for (session, (name, len, hash)) in saturated_sessions().iter().zip(SNAPSHOT_WIRE) {
+            assert_eq!(pin_name(&session.state), Some(name), "fixture out of order");
+            assert!(session.state.worth_recovering(), "{name} writes no blob");
+            let mut bytes = Vec::new();
+            BincodeFfiFormat::serialize(&mut bytes, session).expect("serialize");
+            if (bytes.len(), fingerprint(&bytes)) != (len, hash) {
+                moved.push(format!(
+                    "        (\"{name}\", {}, {:#018x}),",
+                    bytes.len(),
+                    fingerprint(&bytes)
+                ));
+            }
+        }
+
+        assert!(
+            moved.is_empty(),
             "the crash-recovery wire changed, so a blob written by the last \
              build no longer means what it says.\n\
              Bump coachSessionInProgressKey past {SHELL_SNAPSHOT_KEY} in \
-             ios/Intrada/Core/Store.swift, retire the old key, then set \
-             SNAPSHOT_WIRE_LEN = {} and SNAPSHOT_WIRE_HASH = {:#018x} here.",
-            bytes.len(),
-            fingerprint(&bytes)
+             ios/Intrada/Core/Store.swift, retire the old key, then update \
+             SNAPSHOT_WIRE here:\n{}",
+            moved.join("\n")
         );
     }
 
@@ -3158,6 +3262,75 @@ mod tests {
             (wander.ended_at - wander.started_at).num_seconds(),
             100,
             "the app cannot know what happened while it was dead, so it banks none of it"
+        );
+    }
+
+    /// The ungated pair reset instead of rebasing, so forty minutes of play
+    /// came back as none (#1291).
+    #[test]
+    fn a_recovered_unmonitored_session_keeps_the_minutes_it_played_before_the_crash() {
+        let mut crashed = EngineSession::default();
+        crashed.apply(&CoachEvent::GoUnmonitored { now: at(0) });
+        crashed.apply(&CoachEvent::Tick { now: at(2400) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3000),
+        });
+        let writes = restored.apply(&CoachEvent::CloseSession { now: at(3000) });
+
+        let record = &writes.unmonitored[0];
+        assert_eq!(
+            (record.ended_at - record.started_at).num_minutes(),
+            40,
+            "the forty minutes before the crash were played"
+        );
+    }
+
+    #[test]
+    fn a_recovered_off_piste_session_keeps_its_minutes_and_still_drops_the_outage() {
+        let mut crashed = EngineSession::default();
+        crashed.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(0),
+        });
+        crashed.apply(&CoachEvent::Tick { now: at(600) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(9000),
+        });
+        restored.apply(&CoachEvent::CloseSession { now: at(9060) });
+
+        let wander = &restored.wanders[0];
+        assert_eq!(
+            (wander.ended_at - wander.started_at).num_seconds(),
+            660,
+            "ten minutes played before, one after, and none of the two-hour outage"
+        );
+    }
+
+    /// Without a heartbeat the blob still says the altitude started now.
+    #[test]
+    fn an_ungated_altitude_re_saves_its_blob_once_a_minute() {
+        let mut session = EngineSession::default();
+        assert_eq!(
+            session
+                .apply(&CoachEvent::GoUnmonitored { now: at(0) })
+                .snapshot,
+            SnapshotAction::Save
+        );
+        assert_eq!(
+            session.apply(&CoachEvent::Tick { now: at(30) }).snapshot,
+            SnapshotAction::Unchanged,
+            "a second passing is not worth a write"
+        );
+        assert_eq!(
+            session.apply(&CoachEvent::Tick { now: at(60) }).snapshot,
+            SnapshotAction::Save,
+            "a minute is: it bounds what a crash can cost"
         );
     }
 

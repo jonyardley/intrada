@@ -23,8 +23,9 @@ struct OpenPlayScreen: View {
       if let frozenNow {
         content(elapsed: elapsedSeconds(at: frozenNow))
       } else {
-        // The core has no tick at these altitudes on purpose — nothing here for
-        // it to decide — so the clock is the shell's to draw from `startedAt`.
+        // The core decides nothing on a tick here, so the second hand is the
+        // shell's, from `startedAt`. The tick still matters: it is what a crash
+        // is rebased against (#1291).
         TimelineView(.periodic(from: .now, by: 1)) { context in
           content(elapsed: elapsedSeconds(at: context.date))
         }

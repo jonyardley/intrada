@@ -237,13 +237,14 @@ impl CoachState {
             SessionState::OffPiste {
                 item_id,
                 started_at,
+                ..
             } => Some(OpenPlayView {
                 altitude: Altitude::OffPiste,
                 item_id: item_id.clone(),
                 title: None,
                 started_at: *started_at,
             }),
-            SessionState::Unmonitored { started_at } => Some(OpenPlayView {
+            SessionState::Unmonitored { started_at, .. } => Some(OpenPlayView {
                 altitude: Altitude::Unmonitored,
                 item_id: None,
                 title: None,
