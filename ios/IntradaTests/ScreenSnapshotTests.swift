@@ -989,6 +989,87 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
+  // ── Journey C's qualitative capture (#1256 Phase D) ──
+
+  private func feelScreen() -> some View {
+    FeelScreen(
+      prompt: FeelPrompt(blockId: "01BLOCK000000000000000003", title: "Freer rubato in the intro"),
+      onFeel: { _ in }, onSkip: {})
+  }
+
+  /// The target in the user's own words, the question, and three chips of which
+  /// only "It sang" is tinted — feel is not a verdict.
+  func testFeelScreen() {
+    assertSnapshot(of: host(feelScreen()), as: config)
+  }
+
+  /// The chips stack rather than shrink to three unreadable columns.
+  func testFeelScreenAccessibilitySize() {
+    assertSnapshot(of: host(feelScreen()), as: axConfig)
+  }
+
+  /// Nothing said yet: "Keep it" is unavailable, and "Not tonight" is a
+  /// first-class exit rather than the harder path.
+  func testSessionReflectionScreenEmpty() {
+    assertSnapshot(of: host(SessionReflectionScreen(onKeep: { _ in }, onDismiss: {})), as: config)
+  }
+
+  /// The user's own sentence, in the serif reserved for their words.
+  func testSessionReflectionScreenDictated() {
+    let screen = SessionReflectionScreen(
+      draft: "Stride's nearly there at 72. The bridge still rushes when I go from memory. "
+        + "That's the thing to hit next.",
+      onKeep: { _ in }, onDismiss: {})
+    assertSnapshot(of: host(screen), as: config)
+  }
+
+  func testSessionReflectionScreenAccessibilitySize() {
+    assertSnapshot(of: host(SessionReflectionScreen(onKeep: { _ in }, onDismiss: {})), as: axConfig)
+  }
+
+  /// C3 where it lands: above the untouched hero, on the real screen. Cropped
+  /// to the top of the scroll — the rest of Practice is snapshotted elsewhere,
+  /// and the hero's gradient is most of a full-screen reference's weight.
+  func testPracticeScreenProposedSteer() {
+    let screen = PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
+    assertSnapshot(
+      of: host(screen, store: .previewProposedSteer),
+      as: .image(
+        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 420),
+        traits: .init(displayScale: 2)))
+  }
+
+  /// The card alone, at its own size — the quote glyph, the serif quote and the
+  /// two text actions.
+  func testProposedSteerCard() {
+    let card = ZStack {
+      PaperBackground()
+      ProposedSteerCard(steer: .preview, onAccept: {}, onDecline: {})
+        .padding(16)
+    }
+    assertSnapshot(
+      of: host(card),
+      as: .image(
+        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 190),
+        traits: .init(displayScale: 2)))
+  }
+
+  /// Accepted: the block sits second in the shape, wearing its provenance where
+  /// the minutes go.
+  func testSessionOverviewAddedByYou() {
+    let plan = PlanView.previewWithSteer
+    let overview = ZStack {
+      PaperBackground()
+      SessionOverview(blocks: plan.blocks, deferred: [])
+        .padding(16)
+    }
+    assertSnapshot(
+      of: host(overview),
+      as: .image(
+        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 330),
+        traits: .init(displayScale: 2)))
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]

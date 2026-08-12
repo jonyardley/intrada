@@ -35,6 +35,10 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # off-the-record) are full-screen over the same playerPaper radial as the drill
 # screens above — 214-282KB after `oxipng -o max`. The two B0 sheet references
 # are paper-backed and stay well under the default ceiling, so they are not here.
+# Added #1256 Phase D: Journey C's two in-session faces (the feel moment, the
+# reflection at close) are the same playerPaper radial again — 226-298KB. The
+# proposed-steer references are paper-backed and cropped, and stay under the
+# default ceiling.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
@@ -52,7 +56,10 @@ is_large() {
       testRunThroughScreenMidRun | testRunThroughScreenComplete | \
       testRunThroughScreenAccessibilitySize | \
       testOffPisteScreen | testOffPisteScreenAccessibilitySize | \
-      testUnmonitoredScreen) return 0 ;;
+      testUnmonitoredScreen | \
+      testFeelScreen | testFeelScreenAccessibilitySize | \
+      testSessionReflectionScreenEmpty | testSessionReflectionScreenDictated | \
+      testSessionReflectionScreenAccessibilitySize) return 0 ;;
     *) return 1 ;;
   esac
 }

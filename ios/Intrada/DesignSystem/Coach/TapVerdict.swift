@@ -116,13 +116,7 @@ struct TapVerdict: View {
       }
       .font(IntradaFont.ambientStrong(size))
       .foregroundStyle(fg)
-      .frame(maxWidth: .infinity)
-      .frame(height: height)
-      .padding(.horizontal, IntradaSpacing.controlGap)
-      .background(bg, in: RoundedRectangle(cornerRadius: scale.targetRadius, style: .continuous))
-      .overlay(
-        RoundedRectangle(cornerRadius: scale.targetRadius, style: .continuous)
-          .strokeBorder(border, lineWidth: 1))
+      .coachKeySurface(height: height, fill: bg, border: border)
     }
     .buttonStyle(PressRebound(scale: 0.96))
   }

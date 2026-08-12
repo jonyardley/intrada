@@ -74,10 +74,7 @@ struct SessionOverview: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      Text("\(block.minutes) min")
-        .font(IntradaFont.metaMedium)
-        .monospacedDigit()
-        .foregroundStyle(IntradaColor.inkSecondary)
+      trailing(block)
         .layoutPriority(1)
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
@@ -85,11 +82,28 @@ struct SessionOverview: View {
     .accessibilityLabel(spoken(block, position: position))
   }
 
+  /// An accepted steer wears its provenance where the minutes go, so it never
+  /// reads as something the app decided (C3, decision 12).
+  @ViewBuilder private func trailing(_ block: PlannedBlockView) -> some View {
+    if block.addedByYou {
+      Label("you added this · \(block.minutes) min", systemImage: "quote.opening")
+        .font(IntradaFont.metaMedium)
+        .monospacedDigit()
+        .foregroundStyle(IntradaColor.accent)
+    } else {
+      Text("\(block.minutes) min")
+        .font(IntradaFont.metaMedium)
+        .monospacedDigit()
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+  }
+
   private func spoken(_ block: PlannedBlockView, position: Int) -> String {
     var parts = [
       "Block \(position + 1) of \(blocks.count)", block.kind.label, block.drillTitle,
     ]
     if let section = block.section { parts.append(section) }
+    if block.addedByYou { parts.append("you added this") }
     parts.append("\(block.minutes) minutes")
     return parts.joined(separator: ", ")
   }
@@ -119,6 +133,18 @@ struct SessionOverview: View {
           "Chopin Op. 10 No. 4 needs a longer run than today has.",
           "Left-hand octaves are queued behind the voicings work.",
         ])
+    }
+
+    /// The same day with an accepted steer second, where the core puts one.
+    static var previewWithSteer: PlanView {
+      var plan = preview
+      plan.blocks.insert(
+        PlannedBlockView(
+          drillTitle: "Alice in Wonderland — the bridge", section: nil, kind: .piece, minutes: 8,
+          why: "You said last night that the bridge still rushes from memory.",
+          addedByYou: true),
+        at: 1)
+      return plan
     }
   }
 

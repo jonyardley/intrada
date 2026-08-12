@@ -9,6 +9,7 @@ struct RootView: View {
   }
 
   @State private var selectedTab: AppTab = .library
+  @State private var openedAltitude = false
 
   private let apiBaseURL = "https://intrada-api.fly.dev"
 
@@ -48,6 +49,10 @@ struct RootView: View {
     .fullScreenCover(isPresented: altitudeBinding) {
       PlayThroughHost().environment(store)
     }
+    // `initial` because a crash recovered straight into an altitude is running
+    // before the first body pass, and would otherwise never be tracked.
+    .onChange(of: altitudeRunning, initial: true) { _, _ in trackAltitudeCover() }
+    .onChange(of: reflectionOwed) { _, _ in trackAltitudeCover() }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
@@ -81,12 +86,23 @@ struct RootView: View {
       set: { _ in })  // no interactive dismiss — the core owns the session phase
   }
 
+  private var altitudeRunning: Bool {
+    store.viewModel?.coach.runThrough != nil || store.viewModel?.coach.openPlay != nil
+  }
+
+  private var reflectionOwed: Bool { store.viewModel?.built.reflection ?? false }
+
+  /// Held open past the altitude while C2's question is owed, or the close takes
+  /// the question with it (#846's class) — but only for a reflection *it* opened
+  /// for: two covers at once from different ancestors is a presentation dropped.
   private var altitudeBinding: Binding<Bool> {
     Binding(
-      get: {
-        store.viewModel?.coach.runThrough != nil || store.viewModel?.coach.openPlay != nil
-      },
+      get: { altitudeRunning || (openedAltitude && reflectionOwed) },
       set: { _ in })  // no interactive dismiss — the core owns the altitude
+  }
+
+  private func trackAltitudeCover() {
+    openedAltitude = altitudeRunning || (openedAltitude && reflectionOwed)
   }
 
   private var seedSampleData: Bool { UITestFlags.seedSampleData }

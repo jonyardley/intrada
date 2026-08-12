@@ -9,6 +9,8 @@ struct PlayThroughHost: View {
 
   private var runThrough: RunThroughView? { store.viewModel?.coach.runThrough }
   private var openPlay: OpenPlayView? { store.viewModel?.coach.openPlay }
+  /// Which altitude earns C2 is decision 8's, settled in the core.
+  private var reflection: Bool { store.viewModel?.built.reflection ?? false }
 
   var body: some View {
     Group {
@@ -26,6 +28,8 @@ struct PlayThroughHost: View {
           onDismiss: close)
       } else if let openPlay {
         OpenPlayScreen(state: openPlay, onDone: close)
+      } else if reflection {
+        SessionReflectionHost()
       } else {
         Color.clear
       }

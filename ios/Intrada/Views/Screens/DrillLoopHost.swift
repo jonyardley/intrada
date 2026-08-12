@@ -22,10 +22,25 @@ struct DrillLoopHost: View {
   }
 
   private var drill: DrillView? { store.viewModel?.coach.drill }
+  private var feel: FeelPrompt? { store.viewModel?.built.feel }
+  private var reflection: Bool { store.viewModel?.built.reflection ?? false }
+  private var stage: LoopStage {
+    LoopStage.of(drill: drill, feel: feel, reflection: reflection)
+  }
 
   var body: some View {
     Group {
-      if let drill {
+      switch stage {
+      case .feel(let feel):
+        FeelScreen(
+          prompt: feel,
+          onFeel: { chosen in
+            store.send(
+              .builtSession(.recordFeel(blockId: feel.blockId, feel: chosen)),
+              onSuccess: .impact)
+          },
+          onSkip: { store.send(.builtSession(.skipFeel), onSuccess: .selection) })
+      case .drill(let drill):
         DrillScreen(
           state: drill,
           onVerdict: { clean in
@@ -45,7 +60,9 @@ struct DrillLoopHost: View {
             store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
           },
           onDismiss: dismiss)
-      } else {
+      case .reflection:
+        SessionReflectionHost()
+      case .idle:
         Color.clear
       }
     }
@@ -61,10 +78,10 @@ struct DrillLoopHost: View {
     .onChange(of: drill.map { PulseState(from: $0) }) { _, _ in
       syncClick()
     }
-    .onChange(of: drill == nil) { _, ended in
+    .onChange(of: stage.isIdle) { _, idle in
       // The core closed the block — ceiling, ladder or gate. It has already
       // ended the session, so this only tears down.
-      if ended { close() }
+      if idle { close() }
     }
     // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
     // while its host times run on: the pulse is dead the moment we background.
@@ -94,7 +111,7 @@ struct DrillLoopHost: View {
     // No block came back — the core could not plan one, and has said why. Now
     // that press-start is a user path (#1182), holding a blank screen instead
     // of returning is the #846 silent no-op.
-    guard drill != nil else { return close() }
+    guard drill != nil else { return closeIfNothingLeftToAsk() }
     syncClick()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
@@ -105,7 +122,9 @@ struct DrillLoopHost: View {
 
   /// The shell's whole click rule, with no domain reasoning in it.
   private func syncClick() {
-    guard let drill else { return }
+    // No drill is no pulse: the cover now outlives the session, so teardown is
+    // no longer what stops the last block's click.
+    guard let drill else { return silencePulse() }
     guard drill.pulseRunning else { return silencePulse() }
     let pulse = Pulse(block: drill.blockIndex, seq: drill.pulseSeq)
     guard startedPulse != pulse else { return }
@@ -149,13 +168,18 @@ struct DrillLoopHost: View {
   /// rather than the screen sitting still until the ceiling fires.
   private func unavailable() {
     store.send(.coach(.clickUnavailable(now: SessionClock.nowRFC3339())))
-    teardown()
-    onClose()
+    closeIfNothingLeftToAsk()
   }
 
   private func dismiss() {
     store.send(.coach(.leaveSession(now: SessionClock.nowRFC3339())))
-    close()
+    closeIfNothingLeftToAsk()
+  }
+
+  /// Every exit runs through here: all three close the block that was running,
+  /// and a cover torn down on the way out takes its questions with it unasked.
+  private func closeIfNothingLeftToAsk() {
+    if stage.isIdle { close() }
   }
 
   private func close() {

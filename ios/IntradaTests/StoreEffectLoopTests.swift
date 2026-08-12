@@ -838,6 +838,102 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(entry.feel, .itSang)
   }
 
+  // ── Journey C's questions across the real bridge (#1256 Phase D) ──
+
+  /// A live core running one journal block, which is the only kind of block
+  /// C1's question follows: composed the way the sheet composes it, so the
+  /// origin the prompt turns on is the core's own and not a fixture's.
+  private func bridgeRunningAJournalBlock() throws -> LiveBridge {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.builtSession(.openCompose))
+    _ = try bridge.update(
+      .builtSession(.addComposeEntry(text: "Freer rubato in the intro", pickedItemId: nil)))
+    let entryId = try XCTUnwrap(
+      try bridge.view().built.compose?.questions.first?.entryId, "the name owes a question")
+    _ = try bridge.update(
+      .builtSession(.resolveAsJournal(entryId: entryId, notes: nil, linkedItemId: nil)))
+    _ = try bridge.update(.builtSession(.buildSession(source: nil)))
+    let session = try XCTUnwrap(try bridge.view().built.session, "the composed session reads back")
+    _ = try bridge.update(
+      .builtSession(.startBuiltSession(sessionId: session.id, now: "2026-08-07T10:00:00Z")))
+    _ = try bridge.update(.coach(.startBlock(now: "2026-08-07T10:00:05Z")))
+    return bridge
+  }
+
+  /// The whole in-session journey over the live wire: a judgement block closes,
+  /// the core asks how it felt in the user's own words, and asks once more as
+  /// the session ends. Both prompts are new ViewModel shapes a stub bridge
+  /// would agree with whatever the shell invented (#846).
+  func testRealBridgeAsksHowAJudgementBlockFeltAndThenForTheReflection() throws {
+    let bridge = try bridgeRunningAJournalBlock()
+    XCTAssertNil(try bridge.view().built.feel, "nothing is asked while the block is running")
+
+    _ = try bridge.update(.coach(.leaveSession(now: "2026-08-07T10:06:00Z")))
+
+    let prompt = try XCTUnwrap(try bridge.view().built.feel, "a closed journal block earns C1")
+    XCTAssertEqual(prompt.title, "Freer rubato in the intro", "the target in the user's own words")
+    XCTAssertFalse(prompt.blockId.isEmpty)
+    XCTAssertTrue(try bridge.view().built.reflection, "and the close asks for the reflection")
+
+    let feelRequests = try bridge.update(
+      .builtSession(.recordFeel(blockId: prompt.blockId, feel: .itSang)))
+    let entry = try XCTUnwrap(
+      feelRequests.compactMap { request -> FeelEntry? in
+        if case .persistence(.saveFeelEntry(let entry)) = request.effect { return entry }
+        return nil
+      }.first, "the answer is written against the block it was asked about")
+    XCTAssertEqual(entry.blockId, prompt.blockId)
+    XCTAssertNil(try bridge.view().built.feel, "and the question comes down")
+
+    _ = try bridge.update(
+      .builtSession(
+        .recordReflection(
+          kind: .sessionClose, sessionRef: nil, transcript: "The bridge still rushes.",
+          audioPath: nil, durationS: nil)))
+    XCTAssertFalse(try bridge.view().built.reflection, "answered, so the loop can close")
+  }
+
+  /// Both first-class exits, which write nothing at all: a skipped feel is the
+  /// absence of one, and "not tonight" is respected without a follow-up.
+  func testRealBridgeSkippingBothQuestionsWritesNothing() throws {
+    let bridge = try bridgeRunningAJournalBlock()
+    _ = try bridge.update(.coach(.leaveSession(now: "2026-08-07T10:06:00Z")))
+
+    let skipped = try bridge.update(.builtSession(.skipFeel))
+    XCTAssertNil(try bridge.view().built.feel)
+    XCTAssertTrue(
+      skipped.allSatisfy { request in
+        if case .persistence = request.effect { return false }
+        return true
+      }, "a skipped feel is not a fourth feel")
+
+    let dismissed = try bridge.update(.builtSession(.dismissReflection))
+    XCTAssertFalse(try bridge.view().built.reflection)
+    XCTAssertTrue(
+      dismissed.allSatisfy { request in
+        if case .persistence = request.effect { return false }
+        return true
+      }, "nothing is kept from a reflection that was never given")
+  }
+
+  /// The projection a promptless exit rests on: a close that ran no block and
+  /// judged nothing leaves both of Journey C's screens with nothing to draw, so
+  /// unmonitored play ends where decision 16 says it does. It does *not* pin
+  /// the altitude guard in `reflection_is_offered` — that guard is unreachable
+  /// today, as its own doc comment says, and a test claiming otherwise would
+  /// pass with it deleted.
+  func testRealBridgeDrawsNeitherQuestionAfterUnmonitoredPlay() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.goUnmonitored(now: "2026-08-07T10:00:00Z")))
+    _ = try bridge.update(.coach(.closeSession(now: "2026-08-07T10:24:00Z")))
+
+    XCTAssertNil(try bridge.view().built.feel)
+    XCTAssertFalse(try bridge.view().built.reflection, "the whole of what minutes only agreed to")
+    XCTAssertNil(try bridge.view().coach.openPlay, "and the altitude itself is over")
+  }
+
   /// Real-bridge hydration (#846, #1256): the launch `LoadBuiltSessionData`
   /// request resolves with a fully-populated `BuiltSessionData` — the read
   /// leg of the wire, which must decode in Rust without error.
