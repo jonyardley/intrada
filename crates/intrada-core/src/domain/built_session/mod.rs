@@ -22,7 +22,7 @@ use crux_core::command::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
-use crate::engine::{Altitude, Circle, CoachEvent};
+use crate::engine::{Altitude, Circle, CoachEvent, SteerPlacement};
 use crate::model::Model;
 use crate::persistence;
 use crate::validation;
@@ -836,40 +836,62 @@ fn save_and_render(save: Command<Effect, Event>) -> Command<Effect, Event> {
 /// what stops it coming back tomorrow. Accepting also places the block *now*,
 /// because the Practice screen asks for a plan only when it has none — a steer
 /// that waited would leave the card up over an unchanged plan.
+///
+/// The placement is settled **before** the answer is written (#1317): a confirm
+/// that placed nothing must not spend the reflection and report success.
 fn answer_steer(
     model: &mut Model,
     reflection_id: &str,
     answer: SteerState,
     now: DateTime<Utc>,
 ) -> Command<Effect, Event> {
-    let Some(reflection) = model
+    let Some(index) = model
         .reflections
-        .iter_mut()
-        .find(|reflection| reflection.id == reflection_id && reflection.deleted_at.is_none())
+        .iter()
+        .position(|reflection| reflection.id == reflection_id && reflection.deleted_at.is_none())
     else {
-        model.surface_error("That note is no longer there.");
+        model.surface_action_error("That note is no longer there.");
         return crux_core::render::render();
     };
     // Answering twice is a double tap, not a change of mind: the second would
     // move `steer_at` and quietly extend how long the block rides today's plan.
-    if reflection.steer != SteerState::Unoffered {
+    if model.reflections[index].steer != SteerState::Unoffered {
         return crux_core::render::render();
     }
+
+    if answer == SteerState::Accepted {
+        // Re-derived, not the card's: the library may have changed under it.
+        let block = steer::target_of(&model.reflections[index], &model.steer_context())
+            .and_then(|target| blocks::steer_block(&target, &model.build_context()));
+        let Some(block) = block else {
+            // True of the ambiguous sentence as well as the deleted target.
+            model.surface_action_error("That doesn't match anything in your library.");
+            return crux_core::render::render();
+        };
+        match model.coach.place_steer(block) {
+            SteerPlacement::Placed | SteerPlacement::Deferred => {}
+            SteerPlacement::AlreadyPlanned => {
+                model.surface_action_error(
+                    "That's already in today's session, so nothing was added.",
+                );
+            }
+            // The offer outlives the answer: there will be a plan it can join.
+            SteerPlacement::SessionInFlight => {
+                model.surface_action_error(
+                    "Finish what you're playing and it can go in the next session.",
+                );
+                return crux_core::render::render();
+            }
+        }
+    }
+
+    let reflection = &mut model.reflections[index];
     reflection.steer = answer;
     reflection.steer_at = Some(now);
     reflection.updated_at = now;
     let reflection = reflection.clone();
     // The card is answered whichever way it went, so it comes down either way.
     model.proposed_steer = None;
-    if answer == SteerState::Accepted {
-        // Re-derived, not taken from the card: a proposal left up while the
-        // library changed must not insert a block for something that is gone.
-        if let Some(block) = steer::target_of(&reflection, &model.steer_context())
-            .and_then(|target| blocks::steer_block(&target, &model.build_context()))
-        {
-            model.coach.place_steer(block);
-        }
-    }
     save_and_render(persistence::save_reflection(reflection))
 }
 
@@ -2766,8 +2788,18 @@ mod tests {
         assert_eq!(model.reflections[0].id, id, "the audio keeps its row");
     }
 
+    /// Carries the library the sample transcript names: without it, #1317.
     fn model_with_unanswered_steer() -> (Model, String) {
         let mut model = Model::test_default();
+        model.journal_items.push(JournalItem {
+            id: "01J0000000000000000000JRNL".into(),
+            name: "The bridge".into(),
+            notes: None,
+            linked_item_id: None,
+            created_at: at(),
+            updated_at: at(),
+            deleted_at: None,
+        });
         let reflection = sample_reflection();
         let id = reflection.id.clone();
         model.reflections.push(reflection);
@@ -2792,6 +2824,29 @@ mod tests {
         );
         assert_no_http(&effects);
         assert_eq!(answered.id, id);
+    }
+
+    /// The `steer` column is what stops the card coming back, so persisting it
+    /// on a refusal would spend the offer on a block nobody added (#1317).
+    #[test]
+    fn accepting_with_nothing_to_place_persists_nothing_and_leaves_the_offer_open() {
+        let (mut model, id) = model_with_unanswered_steer();
+        model.journal_items.clear();
+
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::AcceptProposedSteer {
+                reflection_id: id.clone(),
+            },
+        );
+
+        assert_eq!(model.reflections[0].steer, SteerState::Unoffered);
+        assert!(model.reflections[0].steer_at.is_none());
+        assert!(persistence_ops(&effects).is_empty());
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("That doesn't match anything in your library.")
+        );
     }
 
     #[test]

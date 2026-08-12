@@ -37,6 +37,19 @@ impl Default for CoachState {
     }
 }
 
+/// What [`CoachState::place_steer`] did with an accepted steer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SteerPlacement {
+    Placed,
+    AlreadyPlanned,
+    /// No plan to place into yet. Not a refusal: an accepted steer is
+    /// re-derived into every later plan (`app::refresh_steer`).
+    Deferred,
+    /// A session is running at another altitude: no plan to join, and none
+    /// coming until it closes.
+    SessionInFlight,
+}
+
 impl CoachState {
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
         self.mark_cold(event);
@@ -83,25 +96,29 @@ impl CoachState {
     ///
     /// The duplicate refusal is live, not theoretical: the accept places it on
     /// screen, and starting that plan carries it into the running one.
-    pub fn place_steer(&mut self, block: PlannedBlock) -> bool {
+    ///
+    /// Told apart rather than reported as one failure, because the caller
+    /// spends the user's offer on the answer (#1317).
+    pub fn place_steer(&mut self, block: PlannedBlock) -> SteerPlacement {
         let (plan, floor) = match &mut self.session.state {
             SessionState::Planned { plan } => (plan, 1),
             SessionState::Running {
                 plan,
                 block: running,
             } => (plan, running.spec_index + 1),
-            _ => return false,
+            state if !state.accepts_something_new() => return SteerPlacement::SessionInFlight,
+            _ => return SteerPlacement::Deferred,
         };
-        if plan
-            .blocks
-            .iter()
-            .any(|placed| placed.spec.node == block.spec.node)
-        {
-            return false;
+        // Section too: `node_id` is target-only, so a whole-piece block and
+        // "the bridge of it" share a node without being the same offer.
+        if plan.blocks.iter().any(|placed| {
+            placed.spec.node == block.spec.node && placed.spec.section == block.spec.section
+        }) {
+            return SteerPlacement::AlreadyPlanned;
         }
         let at = floor.min(plan.blocks.len());
         plan.blocks.insert(at, block);
-        true
+        SteerPlacement::Placed
     }
 
     /// Rebuild the mastery track from the persisted evidence at launch (#1214):

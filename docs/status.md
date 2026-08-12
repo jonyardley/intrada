@@ -10,16 +10,43 @@ ask git: `git log -1 --format=%cs docs/status.md`.*
 
 ## Where we are
 
-The practice-coach pivot, **Phase 2a — prescribe and run** (in flight), with
-**Phase 0 — the paper-teacher fortnight** running alongside (#1143). Machine
-listening is deferred (decision 18); the loop runs on tap-verdicts against
-countable criteria.
+The practice-coach pivot, **Phase 2b — steer and guard** (in flight). 2a is
+built bar the soft-landing exit (#1323) and the loop runs end to end, so the
+doc caught up with where the work actually is: #1256's built session and
+#1244/#1260's l0 work are 2b deliverables that landed while the phase plan
+still read "after 2a". **Phase 0 — the paper-teacher fortnight** runs alongside
+(#1143). Machine listening is deferred (decision 18); the loop runs on
+tap-verdicts against countable criteria.
 
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
+- Evidence integrity, four fixes in sequence — #1291, #1221, #1286 (#1317
+  lands with this PR)
 
 ## Recently landed
+
+- #1317 — accepting a steer now follows what placement actually did. The
+  answer used to be stamped before the block was built, so a card left up over
+  a library that changed, or over a plan that already covered what the sentence
+  named, spent the reflection, took the card down and fired a success haptic
+  for a block nobody added (#846's class, on decision 12's one control).
+  `place_steer` now returns four outcomes rather than a bool: **placed** and
+  **deferred** (no plan yet, so `refresh_steer` rebuilds it into the next one)
+  spend the offer; **already planned** spends it too, because today's session
+  does hold what the sentence named, and says so; **a session in flight**
+  leaves the offer for the next session. A target that resolves to nothing
+  leaves the card up and says why. The duplicate check now compares section as
+  well as node, since `node_id` is target-only: "the bridge of it" and the
+  whole piece share a node and are not the same offer. Refusals go through a
+  new `Model::surface_action_error`, which bypasses the dismiss-mute and the
+  dedupe that exist for background HTTP failures, because a dismissed banner
+  used to make every later refusal silent. No shell change was needed: the card
+  renders from `proposed_steer`, and `send(_:onSuccess:)` already withholds the
+  haptic when `errorSeq` moves. Deferred with issues: 2a's unbuilt soft-landing
+  exit, found while correcting the phase drift (#1323); the same mute sweep
+  across the other tap-earned refusals (#1324); and a neutral notice channel,
+  so "already in today's session" stops arriving on a red banner (#1325)
 
 - #1256 — built session, play-through altitudes, qualitative capture (2b).
   Phase A landed the spec (`specs/built-session.md`), the pulled A/B/C mockups
@@ -231,9 +258,9 @@ countable criteria.
   the design system following the build. The block ceiling separates from the
   elapsed clock on weight, so `inkFaint` really is absent from the loop now.
 
-## Next (once 2a closes)
+## Next
 
-- Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
-  circling check, grind trade, the rest of acquisition before the clock
-  (#1245's gates and ramp, #1260's l0 screen; see the phase plan in
+- The rest of Phase 2b — steer and guard: back-chaining, gap read, circling
+  check, grind trade, circle tally, the judgement track, and the rest of
+  acquisition before the clock (#1245's gates and ramp; see the phase plan in
   `roadmap.md`)
