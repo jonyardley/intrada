@@ -91,7 +91,7 @@ struct CoachRecordStoreTests {
   @Test("a closed block writes every column it was given")
   func blockColumns() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(escalations: [.tempoDown, .shrinkScope], exit: .ceilingHit)],
       wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
@@ -117,7 +117,7 @@ struct CoachRecordStoreTests {
   @Test("a block that never passed stores its nullable counters as NULL")
   func blockNullableCounters() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
       wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
@@ -133,7 +133,7 @@ struct CoachRecordStoreTests {
       attempt(clean: false, cold: true, at: "2026-08-04T10:00:09Z"),
       attempt(clean: true, at: "2026-08-04T10:00:18Z", source: .midi, selfPredicted: .clean),
     ]
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(attempts: attempts)], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT attempts FROM block_record WHERE id = 'b1'"))
@@ -155,7 +155,7 @@ struct CoachRecordStoreTests {
   @Test("the escalation ladder stores as JSON in the order it fired")
   func escalationBlob() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(escalations: [.tempoDown, .changeMode, .swapDrill])],
       wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
@@ -169,7 +169,7 @@ struct CoachRecordStoreTests {
   @Test("a block with no attempts and no escalations stores empty arrays")
   func emptyBlobs() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(exit: .skipped)], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT * FROM block_record WHERE id = 'b1'"))
@@ -180,7 +180,7 @@ struct CoachRecordStoreTests {
   @Test("a wander writes its own row with the keep prompt unanswered")
   func wanderColumns() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [wander(attempts: [attempt(clean: true)])], playThroughs: [],
       updatedAt: Self.updatedAt)
 
@@ -199,7 +199,7 @@ struct CoachRecordStoreTests {
   @Test("a block and a wander in one batch both land")
   func batchWritesBoth() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block("b1"), block("b2")], wanders: [wander("w1")], playThroughs: [],
       updatedAt: Self.updatedAt)
 
@@ -210,9 +210,9 @@ struct CoachRecordStoreTests {
   @Test("answering the keep prompt updates the wander row rather than duplicating it")
   func wanderUpsert() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [wander()], playThroughs: [], updatedAt: Self.updatedAt)
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [wander(keepAsDrill: true)], playThroughs: [],
       updatedAt: "2026-08-04T10:10:00Z")
 
@@ -225,7 +225,7 @@ struct CoachRecordStoreTests {
   @Test("unmonitored play writes its minutes and survives the process")
   func unmonitoredWrite() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [], playThroughs: [], unmonitored: [unmonitored()],
       updatedAt: Self.updatedAt)
 
@@ -250,9 +250,9 @@ struct CoachRecordStoreTests {
   func blockUpsertIsIdempotent() throws {
     let (store, queue) = try makeStore()
     let record = block(attempts: [attempt(clean: true)])
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [record], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [record], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     #expect(try count(queue, "block_record") == 1, "a retried write must not double-count evidence")
@@ -272,7 +272,7 @@ struct CoachRecordStoreTests {
         attempt(clean: true, at: "2026-08-04T10:00:27Z", source: .tapVerdictUntimed),
       ],
       escalations: [.tempoDown, .changeMode], exit: .ceilingHit)
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [written], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     #expect(try store.loadCoachRecords() == [written])
@@ -281,7 +281,7 @@ struct CoachRecordStoreTests {
   @Test("nullable counters read back as nil, not zero")
   func readNullableCounters() throws {
     let (store, _) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
       wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
@@ -293,7 +293,7 @@ struct CoachRecordStoreTests {
   @Test("a tombstoned block stays out of the rebuild")
   func readSkipsTombstones() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block("b1"), block("b2")], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(
@@ -314,7 +314,7 @@ struct CoachRecordStoreTests {
   @Test("an unknown stored exit falls back without claiming a gate pass")
   func readUnknownExit() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET exit = 'from_the_future' WHERE id = 'b1'")
@@ -332,7 +332,7 @@ struct CoachRecordStoreTests {
     let (store, _) = try makeStore()
     let before = ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour)
     let after = ParameterLevel(tempoBpm: 96, clickLevel: .twoAndFour)
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [
         block(
           attempts: [
@@ -349,7 +349,7 @@ struct CoachRecordStoreTests {
   func readBackEveryClickLevel() throws {
     let (store, _) = try makeStore()
     let levels: [ClickLevel] = [.noClick, .everyBeat, .twoAndFour, .barDownbeat, .everyOtherBar]
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: levels.enumerated().map { index, level in
         block(
           "b\(index)",
@@ -369,7 +369,7 @@ struct CoachRecordStoreTests {
   @Test("a row written before the per-attempt level falls back to the block's")
   func readBackLegacyAttemptWithoutLevel() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       // A level no suite helper uses, so a hardcoded fallback would fail.
@@ -396,7 +396,7 @@ struct CoachRecordStoreTests {
   func readBackCorruptAttemptsThrows() throws {
     // Returning [] would replay as a block nobody played (invariant 5).
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(attempts: [attempt(clean: true)])], wanders: [], playThroughs: [],
       updatedAt: Self.updatedAt)
     try queue.write { db in
@@ -411,7 +411,7 @@ struct CoachRecordStoreTests {
     // Guessing `authored` would replay a judgement-track block's taps into the
     // mastery track at launch, which is the one thing decision 17 forbids.
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET origin = 'from_the_future' WHERE id = 'b1'")
@@ -470,7 +470,7 @@ struct CoachRecordStoreTests {
     // The new tables arrive empty and usable, not merely present.
     #expect(try count(queue, "block_record") == 0)
     #expect(try count(queue, "wander_record") == 0)
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [block(attempts: [attempt(clean: true, cold: true)])], wanders: [wander()],
       playThroughs: [], updatedAt: Self.updatedAt)
     #expect(try count(queue, "block_record") == 1, "a migrated database accepts evidence")
@@ -501,7 +501,7 @@ struct CoachRecordStoreTests {
       row["item_id"] as String? == nil,
       "a wander from before B0 existed was reached mid-session, so it has no piece")
 
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [wander("w-new", itemId: "p1")], playThroughs: [],
       updatedAt: Self.updatedAt)
     let tagged = try #require(try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w-new'"))
@@ -530,7 +530,7 @@ struct CoachRecordStoreTests {
     #expect(row["item_id"] as String? == "p1", "its tag survives the migration")
 
     #expect(try count(queue, "unmonitored_play") == 0, "the new table arrives empty")
-    try store.saveCoachRecords(
+    try store.saveCoach(
       blocks: [], wanders: [], playThroughs: [], unmonitored: [unmonitored()],
       updatedAt: Self.updatedAt)
     #expect(try count(queue, "unmonitored_play") == 1, "a migrated database banks the minutes")

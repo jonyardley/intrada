@@ -162,7 +162,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testCoachRecordsReadResolvesWhatWasWritten() throws {
     let libraryStore = try LibraryStore.inMemory()
-    try libraryStore.saveCoachRecords(
+    try libraryStore.saveCoach(
       blocks: [Self.coachBlock], wanders: [], playThroughs: [], updatedAt: "2026-08-04T10:00:30Z")
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
