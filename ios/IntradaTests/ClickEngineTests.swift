@@ -17,33 +17,27 @@ struct ClickEngineTests {
   }
 
   /// #1184: the last count-in click reports 0, so its dot fills.
-  @Test func theLastCountInClickReportsZeroBeatsLeft() throws {
-    let engine = try ClickEngine()
+  @Test func theLastCountInClickReportsZeroBeatsLeft() {
     var countIns: [Int] = []
     var beats: [Int] = []
-    engine.onCountIn = { countIns.append($0) }
-    engine.onBeat = { index, _ in beats.append(index) }
 
-    let schedule = engine.buildSchedule(
-      beats: 0..<6, pulse: pulse(countInBeats: 4, clickPattern: [true]))
+    let schedule = ClickEngine.buildSchedule(
+      beats: 0..<6, pulse: pulse(countInBeats: 4, clickPattern: [true]),
+      onCountIn: { countIns.append($0) }, onBeat: { index, _ in beats.append(index) })
     for entry in schedule { entry.fire() }
 
     #expect(countIns == [3, 2, 1, 0])
     #expect(beats == [0, 1])
   }
 
-  @Test func aScheduleWithNoCountInIsAllBody() throws {
-    let engine = try ClickEngine()
-    var countIns: [Int] = []
+  @Test func aScheduleWithNoCountInIsAllBody() {
     var beats: [Int] = []
-    engine.onCountIn = { countIns.append($0) }
-    engine.onBeat = { index, _ in beats.append(index) }
 
-    let schedule = engine.buildSchedule(
-      beats: 0..<3, pulse: pulse(countInBeats: 0, clickPattern: [true]))
+    let schedule = ClickEngine.buildSchedule(
+      beats: 0..<3, pulse: pulse(countInBeats: 0, clickPattern: [true]),
+      onBeat: { index, _ in beats.append(index) })
     for entry in schedule { entry.fire() }
 
-    #expect(countIns.isEmpty)
     #expect(beats == [0, 1, 2])
   }
 
@@ -51,29 +45,29 @@ struct ClickEngineTests {
   // Placement is audio and no automated check can hear it, so these assert the
   // exact voice of every beat rather than a summary.
 
-  @Test func l1SoundsEveryBeatWithAccentedBarDownbeats() throws {
-    let voices = try soundedAndReported(clickPattern: [true, true, true, true], bars: 4)
+  @Test func l1SoundsEveryBeatWithAccentedBarDownbeats() {
+    let voices = soundedAndReported(clickPattern: [true, true, true, true], bars: 4)
 
     #expect(voices == repeated([.accent, .click, .click, .click], 4))
   }
 
-  @Test func l2SoundsBeatsTwoAndFourAndNeverAccents() throws {
-    let voices = try soundedAndReported(clickPattern: [false, true, false, true], bars: 4)
+  @Test func l2SoundsBeatsTwoAndFourAndNeverAccents() {
+    let voices = soundedAndReported(clickPattern: [false, true, false, true], bars: 4)
 
     #expect(voices == repeated([.silent, .click, .silent, .click], 4))
     #expect(!voices.contains(.accent), "the accented beat is the one this level silences")
   }
 
-  @Test func l3SoundsTheBarDownbeatAlone() throws {
-    let voices = try soundedAndReported(clickPattern: [true, false, false, false], bars: 4)
+  @Test func l3SoundsTheBarDownbeatAlone() {
+    let voices = soundedAndReported(clickPattern: [true, false, false, false], bars: 4)
 
     #expect(voices == repeated([.accent, .silent, .silent, .silent], 4))
   }
 
   /// The mask's own length drives the cycle, not `beatsPerBar` — otherwise a
   /// phrase of an odd number of bars flips the alternation on every pass.
-  @Test func l4SoundsOneDownbeatEveryOtherBar() throws {
-    let voices = try soundedAndReported(
+  @Test func l4SoundsOneDownbeatEveryOtherBar() {
+    let voices = soundedAndReported(
       clickPattern: [true, false, false, false, false, false, false, false], bars: 4)
 
     #expect(
@@ -83,26 +77,25 @@ struct ClickEngineTests {
     #expect(voices.filter { $0 != .silent }.count == 2, "four bars carry exactly two clicks")
   }
 
-  @Test func aThreeBeatBarKeepsTheAccentOnItsOwnDownbeat() throws {
-    let onTheBeat = try soundedAndReported(
+  @Test func aThreeBeatBarKeepsTheAccentOnItsOwnDownbeat() {
+    let onTheBeat = soundedAndReported(
       clickPattern: [true, true, true], bars: 4, beatsPerBar: 3)
     #expect(onTheBeat == repeated([.accent, .click, .click], 4))
 
-    let twoAndFour = try soundedAndReported(
+    let twoAndFour = soundedAndReported(
       clickPattern: [false, true, false], bars: 4, beatsPerBar: 3)
     #expect(twoAndFour == repeated([.silent, .click, .silent], 4))
   }
 
   /// Spelled out here, and enforced for every level above by `soundedAndReported`.
-  @Test func silentBeatsStillReportThemselves() throws {
-    let engine = try ClickEngine()
+  @Test func silentBeatsStillReportThemselves() {
     var beats: [Int] = []
-    engine.onBeat = { index, _ in beats.append(index) }
 
-    let schedule = engine.buildSchedule(
+    let schedule = ClickEngine.buildSchedule(
       beats: 0..<16,
       pulse: pulse(
-        countInBeats: 0, clickPattern: [true, false, false, false, false, false, false, false]))
+        countInBeats: 0, clickPattern: [true, false, false, false, false, false, false, false]),
+      onBeat: { index, _ in beats.append(index) })
     for entry in schedule { entry.fire() }
 
     #expect(schedule.filter { $0.voice == .silent }.count == 14, "fourteen of the sixteen")
@@ -158,7 +151,9 @@ struct ClickEngineTests {
   }
 
   /// `HostClock.ticks` traps on the NaN a zero tempo produces, and a trap is a
-  /// crash rather than something `unavailable()` can route around.
+  /// crash rather than something `unavailable()` can route around. This is the
+  /// one test in the file that genuinely needs a real engine instance, since
+  /// it is `start()`'s guard being exercised, not `buildSchedule`.
   @Test func aNonPositiveTempoThrowsRatherThanCrashing() throws {
     let engine = try ClickEngine()
 
@@ -172,17 +167,16 @@ struct ClickEngineTests {
 
   /// Asserts every beat reported before returning the voices, so no level can
   /// pass its placement assertion while quietly swallowing beats.
-  private func soundedAndReported(clickPattern: [Bool], bars: Int, beatsPerBar: Int = 4) throws
+  private func soundedAndReported(clickPattern: [Bool], bars: Int, beatsPerBar: Int = 4)
     -> [ClickEngine.Voice]
   {
-    let engine = try ClickEngine()
     var beats: [Int] = []
-    engine.onBeat = { index, _ in beats.append(index) }
 
     let total = bars * beatsPerBar
-    let schedule = engine.buildSchedule(
+    let schedule = ClickEngine.buildSchedule(
       beats: 0..<total,
-      pulse: pulse(countInBeats: 0, clickPattern: clickPattern, beatsPerBar: beatsPerBar))
+      pulse: pulse(countInBeats: 0, clickPattern: clickPattern, beatsPerBar: beatsPerBar),
+      onBeat: { index, _ in beats.append(index) })
     for entry in schedule { entry.fire() }
 
     #expect(beats == Array(0..<total), "every beat reports, sounded or silent")
@@ -191,9 +185,8 @@ struct ClickEngineTests {
 
   /// The count-in is the one place placement never applies: it clicks every
   /// beat whatever the level, or there is nothing to come in against.
-  @Test func theCountInClicksEveryBeatWhateverTheLevel() throws {
-    let engine = try ClickEngine()
-    let schedule = engine.buildSchedule(
+  @Test func theCountInClicksEveryBeatWhateverTheLevel() {
+    let schedule = ClickEngine.buildSchedule(
       beats: 0..<6, pulse: pulse(countInBeats: 4, clickPattern: [true, false, false, false]))
 
     #expect(schedule.prefix(4).allSatisfy { $0.voice == .countIn })
@@ -202,9 +195,8 @@ struct ClickEngineTests {
 
   /// A window past the first keeps the placement aligned to the pulse's first
   /// body beat, so topping up the rolling schedule can't shift where clicks land.
-  @Test func alaterWindowKeepsThePlacementAligned() throws {
-    let engine = try ClickEngine()
-    let schedule = engine.buildSchedule(
+  @Test func alaterWindowKeepsThePlacementAligned() {
+    let schedule = ClickEngine.buildSchedule(
       beats: 64..<68, pulse: pulse(countInBeats: 4, clickPattern: [false, true, false, true]))
 
     // Body beat 60 onwards, and 60 % 4 == 0, so the cycle starts where it did.
@@ -213,13 +205,12 @@ struct ClickEngineTests {
 
   /// Beats do not restart at a rep boundary any more, so a later window keeps
   /// counting on — the core derives the rep from `beat_index % phrase_beats`.
-  @Test func beatIndicesCountOnAcrossWindows() throws {
-    let engine = try ClickEngine()
+  @Test func beatIndicesCountOnAcrossWindows() {
     var beats: [Int] = []
-    engine.onBeat = { index, _ in beats.append(index) }
 
-    let schedule = engine.buildSchedule(
-      beats: 64..<67, pulse: pulse(countInBeats: 4, clickPattern: [true]))
+    let schedule = ClickEngine.buildSchedule(
+      beats: 64..<67, pulse: pulse(countInBeats: 4, clickPattern: [true]),
+      onBeat: { index, _ in beats.append(index) })
     for entry in schedule { entry.fire() }
 
     #expect(beats == [60, 61, 62])

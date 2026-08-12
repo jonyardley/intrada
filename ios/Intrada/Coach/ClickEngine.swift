@@ -128,6 +128,19 @@ final class ClickEngine {
   /// Silent beats keep their `fire` — the core counts beats, not clicks — so a
   /// placement level can never shift bar or rep tracking.
   func buildSchedule(beats: Range<Int>, pulse: Pulse) -> [ScheduledBeat] {
+    Self.buildSchedule(
+      beats: beats, pulse: pulse,
+      onCountIn: { [weak self] remaining in self?.onCountIn?(remaining) },
+      onBeat: { [weak self] index, hostTime in self?.onBeat?(index, hostTime) })
+  }
+
+  /// Pure beat-by-beat layout: touches no audio state, so it can be exercised
+  /// without standing up a real `AVAudioEngine` (#1282).
+  static func buildSchedule(
+    beats: Range<Int>, pulse: Pulse,
+    onCountIn: @escaping (_ remaining: Int) -> Void = { _ in },
+    onBeat: @escaping (_ index: Int, _ hostTime: UInt64) -> Void = { _, _ in }
+  ) -> [ScheduledBeat] {
     beats.map { beatIndex in
       let offset = HostClock.ticks(fromSeconds: Double(beatIndex) * pulse.secondsPerBeat)
       let hostTime = pulse.scheduledStart &+ offset
@@ -136,17 +149,17 @@ final class ClickEngine {
         let remaining = pulse.countInBeats - beatIndex - 1
         return ScheduledBeat(
           voice: .countIn, hostTime: hostTime, audibleHostTime: audible,
-          fire: { [weak self] in self?.onCountIn?(remaining) })
+          fire: { onCountIn(remaining) })
       }
       let index = beatIndex - pulse.countInBeats
       return ScheduledBeat(
         voice: voice(bodyBeat: index, pulse: pulse), hostTime: hostTime,
         audibleHostTime: audible,
-        fire: { [weak self] in self?.onBeat?(index, audible) })
+        fire: { onBeat(index, audible) })
     }
   }
 
-  private func voice(bodyBeat index: Int, pulse: Pulse) -> Voice {
+  private static func voice(bodyBeat index: Int, pulse: Pulse) -> Voice {
     guard !pulse.clickPattern.isEmpty, pulse.clickPattern[index % pulse.clickPattern.count] else {
       return .silent
     }
