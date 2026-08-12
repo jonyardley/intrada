@@ -219,6 +219,13 @@ impl Model {
         self.last_error = Some(msg);
     }
 
+    /// Surface a refusal the user's own tap earned, ignoring the dismiss-mute
+    /// and the dedupe: both exist so a background failure cannot re-pop a
+    /// banner nobody asked for, and a declined control is neither (#1317).
+    pub fn surface_action_error(&mut self, msg: impl Into<String>) {
+        self.last_error = Some(msg.into());
+    }
+
     /// Mark a confirmed API success. Clears any active error and exits the
     /// dismiss-mute state — the system has demonstrably recovered, so
     /// future failures are worth showing again. Call from any handler that

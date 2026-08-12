@@ -5650,6 +5650,201 @@ mod tests {
             );
         }
 
+        fn steer_state(model: &Model, id: &str) -> SteerState {
+            model
+                .reflections
+                .iter()
+                .find(|reflection| reflection.id == id)
+                .expect("the reflection")
+                .steer
+        }
+
+        /// A library that changed under a card left up overnight leaves the
+        /// reflection answerable rather than confirming nothing (#1317).
+        #[test]
+        fn accepting_a_steer_whose_target_has_gone_leaves_the_offer_unspent_and_says_why() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+            assert!(app.view(&model).built.steer.is_some(), "the card is up");
+            model.journal_items.clear();
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+
+            let view = app.view(&model);
+            assert_eq!(
+                steer_state(&model, "r1"),
+                SteerState::Unoffered,
+                "nothing was placed, so nothing was spent"
+            );
+            assert!(
+                view.built.steer.is_some(),
+                "the card stays up: a confirm that confirmed nothing is not an answer"
+            );
+            assert!(
+                view.error.is_some(),
+                "and the shell has something to render instead of a success haptic"
+            );
+        }
+
+        /// The refusal that is not exotic: the plan already covers what the
+        /// sentence named, so the ask is honoured and the card must say so.
+        #[test]
+        fn accepting_something_todays_plan_already_holds_is_answered_and_said_out_loud() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            model.reflections.push(accepted_reflection());
+            model.reflections.push(Reflection {
+                id: "r2".into(),
+                at: at() - chrono::Duration::hours(7),
+                steer: SteerState::Unoffered,
+                steer_at: None,
+                ..accepted_reflection()
+            });
+            plan_today(&app, &mut model);
+            assert_eq!(steer_blocks(&model), 1, "r1's steer is already placed");
+            assert!(app.view(&model).built.steer.is_some(), "r2's card is up");
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r2".into(),
+                }),
+                &mut model,
+            );
+
+            let view = app.view(&model);
+            assert_eq!(
+                steer_state(&model, "r2"),
+                SteerState::Accepted,
+                "today's session holds it, so the offer is answered"
+            );
+            assert!(view.built.steer.is_none(), "the card is answered and down");
+            assert_eq!(steer_blocks(&model), 1, "and it is not placed twice");
+            assert_eq!(
+                view.error.as_deref(),
+                Some("That's already in today's session, so nothing was added."),
+                "the confirm says what it confirmed"
+            );
+        }
+
+        /// The wildcard that used to answer `Deferred` covered the three
+        /// altitudes too, where there is no plan to join and none coming until
+        /// the run closes: spending the offer there is #1317 again (#1322).
+        #[test]
+        fn accepting_during_an_altitude_leaves_the_offer_for_the_next_session() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+            let _ = app.update(
+                Event::Coach(CoachEvent::GoUnmonitored { now: at() }),
+                &mut model,
+            );
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+
+            assert_eq!(steer_state(&model, "r1"), SteerState::Unoffered);
+            assert_eq!(
+                app.view(&model).error.as_deref(),
+                Some("Finish what you're playing and it can go in the next session.")
+            );
+        }
+
+        /// A dismissed banner mutes background HTTP failures for the rest of
+        /// the session. A refusal the user's own tap earned is not one, and
+        /// muting it would be the silent no-op this issue exists to close.
+        #[test]
+        fn a_refused_accept_is_said_out_loud_even_with_the_banner_muted() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+            plan_today(&app, &mut model);
+            model.journal_items.clear();
+            let _ = app.update(Event::ClearError, &mut model);
+            assert!(model.error_muted, "the mute this test turns on");
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+
+            assert_eq!(
+                app.view(&model).error.as_deref(),
+                Some("That doesn't match anything in your library.")
+            );
+        }
+
+        /// `node_id` is target-only, so a whole-piece block and "the bridge of
+        /// it" share a node while being different offers (#1322).
+        #[test]
+        fn a_section_steer_is_not_swallowed_by_a_whole_piece_block_on_the_same_node() {
+            use crate::engine::{Plan, SessionState, SteerPlacement};
+
+            let mut plan = Plan::fixture();
+            plan.blocks.truncate(1);
+            let mut whole_piece = plan.blocks[0].clone();
+            whole_piece.spec.section = None;
+            plan.blocks[0] = whole_piece.clone();
+            let mut the_bridge = whole_piece.clone();
+            the_bridge.spec.section = Some("Bridge".into());
+
+            let mut coach = crate::engine::CoachState::default();
+            coach.session.state = SessionState::Planned { plan };
+
+            assert_eq!(coach.place_steer(the_bridge), SteerPlacement::Placed);
+            assert_eq!(
+                coach.place_steer(whole_piece),
+                SteerPlacement::AlreadyPlanned
+            );
+        }
+
+        /// `refresh_steer` rebuilds an accepted steer into every later plan.
+        #[test]
+        fn accepting_before_there_is_a_plan_still_spends_the_offer() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            model.local_first = true;
+            journal_library(&mut model);
+            unanswered(&mut model);
+
+            let _ = app.update(
+                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
+                    reflection_id: "r1".into(),
+                }),
+                &mut model,
+            );
+            assert_eq!(steer_state(&model, "r1"), SteerState::Accepted);
+            assert!(app.view(&model).error.is_none(), "nothing went wrong");
+
+            plan_today(&app, &mut model);
+            assert_eq!(
+                steer_blocks(&model),
+                1,
+                "the plan, when it is made, carries it"
+            );
+        }
+
         #[test]
         fn an_unanswered_reflection_reaches_the_view_as_a_proposal() {
             let app = Intrada;

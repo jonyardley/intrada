@@ -17,7 +17,7 @@ mod session;
 
 pub use coach::{
     CoachState, CoachView, DrillPhase, DrillView, OpenPlayView, PlanView, PlannedBlockView,
-    RunThroughView,
+    RunThroughView, SteerPlacement,
 };
 pub use content::ContentIndex;
 pub use gate::{
