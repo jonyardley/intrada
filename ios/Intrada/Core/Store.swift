@@ -39,13 +39,15 @@ final class Store {
   /// the minutes now leave as a record instead. A v5 blob carries four trailing
   /// bytes the new shape never reads; the key bump is what stops it decoding at
   /// all, since a shorter struct would otherwise read as a valid session.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v6"
+  /// v7 (#1291): the ungated altitudes gained a `now`, so a v6 blob of one is
+  /// an instant short and reads its tail as the wrong field.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v7"
   /// Retired keys, cleared on the next write so a dead blob doesn't sit in
   /// UserDefaults for the life of the install.
   static let retiredCoachSessionKeys = [
     "intrada.coach-session-in-progress.v1", "intrada.coach-session-in-progress.v2",
     "intrada.coach-session-in-progress.v3", "intrada.coach-session-in-progress.v4",
-    "intrada.coach-session-in-progress.v5",
+    "intrada.coach-session-in-progress.v5", "intrada.coach-session-in-progress.v6",
   ]
 
   private let bridge: CoreBridge

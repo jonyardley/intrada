@@ -21,10 +21,30 @@ tap-verdicts against countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
-- Evidence integrity, four fixes in sequence — #1291, #1221, #1286 (#1317
-  lands with this PR)
+- Evidence integrity, the rest of the sequence — #1221, #1286
 
 ## Recently landed
+
+- #1291 — a recovered off-piste or unmonitored session keeps the minutes it
+  played. `recover` reset `started_at = now` for the two ungated altitudes, so
+  forty minutes before a crash came back as none, while `Running` and
+  `RunThrough` next to them rebased and kept what was spent. Since #1285 made
+  unmonitored minutes persist, that wrote a row understating what was played.
+  Both states now carry a `now` beside `started_at`, updated on `Tick` and
+  used to rebase on recovery, so the outage is still dropped and the play
+  before it is not. The field alone would have been inert: `recovery_key` has
+  no clock, so the blob written when the altitude opened was the only one there
+  would ever be. The key now carries whole minutes of ungated play, which
+  re-saves the blob once a minute, bounding what a crash can cost at a minute
+  of foregrounded play. Crash-recovery key v6 → v7. The wire pin was extended
+  while it was
+  open: it covered only `Running`, and bincode writes one variant, so it went
+  green on a change to two of its siblings. It now pins every state a blob can
+  be written in, with an exhaustive `match` that will not compile when a new
+  one is added. Deferred with issues: recovery is still only reachable by
+  pressing start on the hero, so a crashed altitude's blob can be overwritten
+  before anything reads it (#1327), and a stale blob still dates old play as
+  today (#1328)
 
 - #1317 — accepting a steer now follows what placement actually did. The
   answer used to be stamped before the block was built, so a card left up over

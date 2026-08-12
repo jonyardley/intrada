@@ -45,8 +45,9 @@ struct PlayThroughHost: View {
   }
 
   /// `RunThroughState.now` otherwise advances only when a section is judged —
-  /// a clock that jumps a minute per tap. Free: `recovery_key` ignores the
-  /// instant, so a second passing writes no crash-recovery blob.
+  /// a clock that jumps a minute per tap. The ungated altitudes also re-save
+  /// their blob once a minute here, which is what bounds the play a crash can
+  /// cost: deleting this loop puts that back to everything (#1291).
   private func reportSeconds() async {
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))

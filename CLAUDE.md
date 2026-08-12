@@ -573,7 +573,11 @@ the diagnosis and the fix: [`docs/reference.md`](docs/reference.md).
   default on a non-self-describing wire. Missed three times (#1223, #1244,
   #1256); now gated by
   `the_crash_recovery_wire_is_pinned_to_the_shell_key_that_reads_it`, whose
-  failure prints the exact two-line fix.
+  failure prints the exact fix. **The pin is per `SessionState` variant**, since
+  bincode writes only the live one: pinning `Running` alone went green on a
+  change to `OffPiste` and `Unmonitored` (#1291). A new state must be given a
+  `SNAPSHOT_WIRE` row or declared not worth recovering; the test's `pin_name`
+  match will not compile until it is.
 - **`option_env!` needs `cargo:rerun-if-env-changed`.** Without it cargo caches
   the macro expansion and your "I changed the env var" rebuild silently uses
   stale values. Hit on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
