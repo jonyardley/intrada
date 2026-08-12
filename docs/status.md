@@ -18,6 +18,9 @@ countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
+
+## Recently landed
+
 - #1256 — built session, play-through altitudes, qualitative capture (2b).
   Phase A landed the spec (`specs/built-session.md`), the pulled A/B/C mockups
   (`specs/built-session/design/`), the voice spec graduated as T13, and the
@@ -98,9 +101,7 @@ countable criteria.
   is not offered on a day the user composed their own session (#1316); and the
   review found that accepting a steer can place nothing and still report
   success (#1317), which is core-side and wants fixing next.
-  #1256 closes with it
-
-## Recently landed
+  **Landed and closed** with Phase D's screens (#1318)
 
 - #1205 — `just worktree-new <name>` warm-start bootstrap: creates a worktree
   off fresh `origin/main` and seeds `target/`, `ios/build/{spm,dd}` and
