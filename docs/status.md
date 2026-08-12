@@ -21,9 +21,28 @@ tap-verdicts against countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
-- Evidence integrity, the rest of the sequence — #1286
 
 ## Recently landed
+
+- #1286 — the coach's outstanding evidence writes are a queue, not one slot.
+  `coach_write_in_flight` held a single `SaveCoachRecords` batch and was
+  overwritten on every call, so a second close before the first was acked took
+  the first's retry: a failure then offered the wrong batch back and lost the
+  right one, and an ack for either emptied the slot for both, surfacing
+  "Couldn't save what you just practised" for a batch that could have been
+  retried. #1256 Phase C made that ordinary rather than exotic, since a
+  play-through is a short repeatable action rather than one prescribed session
+  a day. The queue is FIFO and each entry carries whether it has had its one
+  retry, so the offer-once rule survives having more than one batch out. A
+  failed batch goes back at the *front*, because its retry has to settle before
+  the batch behind it or that one loses its own. Both halves of the issue are
+  taken: the queue, and a shell-side test pinning the assumption it rests on.
+  That assumption is not merely "synchronous and in order" but the stronger
+  "an effect issued during a resolve settles before the effect queued behind
+  it", which is `Store.process` recursing inside its own loop, so
+  `testARetryResolvesBeforeTheEffectQueuedBehindIt` asserts the retry lands
+  between the two batches rather than after both. Flatten that recursion to a
+  work queue and the test fails rather than the evidence going quiet.
 
 - #1221 — the cold test turns the day over where the user is. "First rep of the
   day on returning material" compared UTC calendar days, so in British summer

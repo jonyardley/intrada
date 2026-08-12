@@ -160,6 +160,28 @@ final class StoreEffectLoopTests: XCTestCase {
       "a lost block must surface as .failed, never a phantom .ack (#816)")
   }
 
+  // The core's front-of-queue retry is sound only while an effect issued during
+  // a resolve settles before the effect queued behind it: `Store.process`
+  // recursing inside its own loop (#1286). Flatten that to a work queue and the
+  // retry lands after 31, still synchronous and still in issue order. No
+  // `await` here either, so asynchrony fails it too.
+  func testARetryResolvesBeforeTheEffectQueuedBehindIt() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Self.saveCoachRecords(id: 30), Self.saveCoachRecords(id: 31)]
+    }
+    bridge.persistenceResolveHandler = { id, _ in
+      id == 30 ? [Self.saveCoachRecords(id: 300)] : []
+    }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.map(\.id), [30, 300, 31],
+      "30's retry settles before 31, or the core's front-of-queue retry is void")
+  }
+
   func testCoachRecordsReadResolvesWhatWasWritten() throws {
     let libraryStore = try LibraryStore.inMemory()
     try libraryStore.saveCoach(
@@ -1790,6 +1812,7 @@ private func emptyViewModel() throws -> ViewModel {
 private final class FakeBridge: CoreBridge {
   var updateHandler: (Event) -> [Request] = { _ in [] }
   var resolveHandler: (UInt32, HttpResult) -> [Request] = { _, _ in [] }
+  var persistenceResolveHandler: (UInt32, PersistenceOutput) -> [Request] = { _, _ in [] }
   var nextViewModel: (() throws -> ViewModel)?
   var onResolve: (() -> Void)?
   /// When set, the corresponding bridge call throws — drives the Store's
@@ -1818,7 +1841,7 @@ private final class FakeBridge: CoreBridge {
   func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] {
     persistenceResolved.append((id, persistenceOutput))
     onResolve?()
-    return []
+    return persistenceResolveHandler(id, persistenceOutput)
   }
 
   func resolveEmpty(_ id: UInt32) throws -> [Request] {
