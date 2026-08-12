@@ -391,7 +391,7 @@ impl Intrada {
                 // session is not a door — Journey A's list is already theirs.
                 match coach_event {
                     CoachEvent::PlanSession { now, .. }
-                    | CoachEvent::StartPlannedSession { now } => refresh_steer(model, now),
+                    | CoachEvent::StartPlannedSession { now, .. } => refresh_steer(model, now),
                     _ => {}
                 }
                 let mut commands = coach_write_commands(model, writes);
@@ -5500,6 +5500,7 @@ mod tests {
                 Event::Coach(CoachEvent::PlanSession {
                     now: at(),
                     available_minutes: Some(40),
+                    utc_offset_minutes: 0,
                 }),
                 model,
             );
@@ -5599,7 +5600,10 @@ mod tests {
             assert_eq!(steer_blocks(&model), 1, "the plan carries it");
 
             let _ = app.update(
-                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                Event::Coach(CoachEvent::StartPlannedSession {
+                    now: at(),
+                    utc_offset_minutes: 0,
+                }),
                 &mut model,
             );
             assert_eq!(
@@ -5619,7 +5623,10 @@ mod tests {
             model.reflections.push(accepted_reflection());
 
             let _ = app.update(
-                Event::Coach(CoachEvent::StartPlannedSession { now: at() }),
+                Event::Coach(CoachEvent::StartPlannedSession {
+                    now: at(),
+                    utc_offset_minutes: 0,
+                }),
                 &mut model,
             );
             assert_eq!(
@@ -5861,6 +5868,7 @@ mod tests {
                 Event::Coach(CoachEvent::PlanSession {
                     now: at(),
                     available_minutes: Some(40),
+                    utc_offset_minutes: 0,
                 }),
                 &mut model,
             );

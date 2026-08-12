@@ -207,7 +207,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     return try coachSession(
-      in: try bridge.update(.coach(.startPlannedSession(now: "2026-08-04T10:00:00Z"))))
+      in: try bridge.update(
+        .coach(.startPlannedSession(now: "2026-08-04T10:00:00Z", utcOffsetMinutes: 0))))
   }
 
   func testSaveCoachSessionEffectWritesBlobAndClearRemovesIt() throws {
@@ -247,7 +248,7 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().coach.drill, "a fresh core has no drill running")
 
     _ = try bridge.update(
-      .coach(.recoverSession(session: restored, now: "2026-08-04T11:00:00Z")))
+      .coach(.recoverSession(session: restored, now: "2026-08-04T11:00:00Z", utcOffsetMinutes: 0)))
 
     let drill = try XCTUnwrap(
       try bridge.view().coach.drill, "the recovered session must put the drill back on screen")
@@ -1102,7 +1103,11 @@ final class StoreEffectLoopTests: XCTestCase {
     let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
     store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
 
-    store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
+    store.send(
+      .coach(
+        .planSession(
+          now: SessionClock.nowRFC3339(), availableMinutes: nil,
+          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
     XCTAssertNotNil(store.viewModel?.coach.plan, "the hero needs a plan to press start on")
     XCTAssertNil(
       store.pendingCoachSession(),
@@ -1111,9 +1116,9 @@ final class StoreEffectLoopTests: XCTestCase {
     // Verbatim the branch in DrillLoopHost.run().
     let now = SessionClock.nowRFC3339()
     if let crashed = store.pendingCoachSession() {
-      store.send(.coach(.recoverSession(session: crashed, now: now)))
+      store.send(.coach(.recoverSession(session: crashed, now: now, utcOffsetMinutes: 0)))
     } else {
-      store.send(.coach(.startPlannedSession(now: now)))
+      store.send(.coach(.startPlannedSession(now: now, utcOffsetMinutes: 0)))
     }
 
     XCTAssertNotNil(
@@ -1139,7 +1144,10 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().coach.plan, "no plan until one is asked for")
 
     _ = try bridge.update(
-      .coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
+      .coach(
+        .planSession(
+          now: SessionClock.nowRFC3339(), availableMinutes: nil,
+          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
     let plan = try XCTUnwrap(
       try bridge.view().coach.plan, "planning must reach the shell (#846)")
     let first = try XCTUnwrap(plan.blocks.first, "a plan press-start can run has a first block")
@@ -1147,7 +1155,8 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(first.why.isEmpty, "every block cites why it is here (spec §5)")
     XCTAssertGreaterThan(plan.totalMinutes, 0, "the hero promises a length")
 
-    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     XCTAssertNotNil(try bridge.view().coach.drill, "running the plan opens its first block")
     XCTAssertNil(try bridge.view().coach.plan, "the plan gives way once the block opens")
   }
@@ -1167,7 +1176,8 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     XCTAssertNil(try bridge.view().coach.drill, "no drill until one is started")
 
-    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     let card = try XCTUnwrap(try bridge.view().coach.drill)
     XCTAssertEqual(card.phase, .blockEntry, "a session opens on block 1's card (#1223)")
     XCTAssertFalse(card.pulseRunning, "the card is silent — nothing sounds until Start")
@@ -1233,7 +1243,8 @@ final class StoreEffectLoopTests: XCTestCase {
   func testRealBridgeOnlyATappedPassBanks() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     let phrase = opening.phraseBeats
@@ -1264,7 +1275,8 @@ final class StoreEffectLoopTests: XCTestCase {
   func testRealBridgeDiscardRecordsNothing() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))
@@ -1291,7 +1303,8 @@ final class StoreEffectLoopTests: XCTestCase {
   func testRealBridgeSkipBlockAdvancesToTheNextCard() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     let card = try XCTUnwrap(try bridge.view().coach.drill)
     XCTAssertEqual(card.phase, .blockEntry)
 
@@ -1318,7 +1331,9 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.resolve(id, persistenceOutput: .coachRecords(Self.overdueEvidence))
     _ = try bridge.update(
-      .coach(.planSession(now: "2026-09-20T10:00:00Z", availableMinutes: 30)))
+      .coach(
+        .planSession(
+          now: "2026-09-20T10:00:00Z", availableMinutes: 30, utcOffsetMinutes: 0)))
 
     let plan = try XCTUnwrap(try bridge.view().coach.plan, "a planned session")
     XCTAssertNil(try bridge.view().error, "a clean read leaves nothing to surface")
@@ -1355,7 +1370,8 @@ final class StoreEffectLoopTests: XCTestCase {
   func testRealBridgeStuckDropsTheTempoInTheCore() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    let started = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    let started = try bridge.update(
+      .coach(.startPlannedSession(now: SessionClock.nowRFC3339(), utcOffsetMinutes: 0)))
     let config = try coachSession(in: started).config
     _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)

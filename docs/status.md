@@ -21,9 +21,30 @@ tap-verdicts against countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
-- Evidence integrity, the rest of the sequence — #1221, #1286
+- Evidence integrity, the rest of the sequence — #1286
 
 ## Recently landed
+
+- #1221 — the cold test turns the day over where the user is. "First rep of the
+  day on returning material" compared UTC calendar days, so in British summer
+  time the boundary sat at 01:00 local and a session starting at 00:30 was
+  recorded warm; at UTC+13 it lands at 1pm, splitting an afternoon from a
+  morning and joining two evenings either side of local midnight. Evening
+  practice is the normal case, which puts the boundary exactly where it bites.
+  Every event that can open a session now carries `utc_offset_minutes` from
+  the shell (`PlanSession`, `StartPlannedSession`, `RecoverSession`, fed by
+  `SessionClock.utcOffsetMinutes()`); `CoachState` holds the last one reported
+  and `is_cold` compares local dates. All three, not just `PlanSession`,
+  because the core documents the no-preview door as one a shell may use alone,
+  and a session opened through it would have decided cold on UTC. The offset
+  rides the events rather than a settings singleton so the core stays a
+  function of its inputs, and sits on `CoachState` rather than `EngineSession`
+  so it costs no crash-recovery blob. An offset outside UTC-12 to UTC+14
+  clamps: `FixedOffset` accepts anything under 24 hours, so a shell bug would
+  otherwise build a real date on the wrong day. Landed before 2b weights cold
+  attempts, per the issue: today the flag is recorded and unread, so nothing
+  was wrong for a user yet. Deferred with an issue: analytics still counts the
+  day in UTC, which is the same flaw where the user can see it (#1330).
 
 - #1291 — a recovered off-piste or unmonitored session keeps the minutes it
   played. `recover` reset `started_at = now` for the two ungated altitudes, so

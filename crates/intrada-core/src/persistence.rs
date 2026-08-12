@@ -723,7 +723,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             for second in [9, 18, 27] {
                 rep(&app, &mut model, true, second);
@@ -750,7 +753,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             play_to_the_boundary(&app, &mut model);
 
@@ -780,7 +786,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             play_to_the_boundary(&app, &mut model);
             let mut cmd = send(
@@ -808,7 +817,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             let mut cmd = send(&app, &mut model, CoachEvent::LeaveSession { now: at(20) });
 
@@ -825,7 +837,14 @@ mod tests {
         /// Runs the first block to its gate and past the hold, so a record has
         /// been offered to the store and the retry has something to hold.
         fn close_a_block(app: &Intrada, model: &mut Model) {
-            let _ = send(app, model, CoachEvent::StartPlannedSession { now: at(0) });
+            let _ = send(
+                app,
+                model,
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
+            );
             rep(app, model, true, 9);
             let _ = send(app, model, CoachEvent::Tick { now: at(30) });
         }
@@ -920,7 +939,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             play_to_the_boundary(&app, &mut model);
             let _ = send(
@@ -940,6 +962,7 @@ mod tests {
                 CoachEvent::RecoverSession {
                     session: crashed,
                     now: at(3600),
+                    utc_offset_minutes: 0,
                 },
             );
             let block = fresh.coach.session.block().expect("the block came back");
@@ -951,7 +974,14 @@ mod tests {
 
         /// Run a session far enough to close one block, and keep what it wrote.
         fn recorded_blocks(app: &Intrada, model: &mut Model) -> Vec<BlockRecord> {
-            let _ = send(app, model, CoachEvent::StartPlannedSession { now: at(0) });
+            let _ = send(
+                app,
+                model,
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
+            );
             rep(app, model, true, 9);
             let mut cmd = send(app, model, CoachEvent::Tick { now: at(30) });
             coach_records(&mut cmd).expect("a SaveCoachRecords op")
@@ -997,7 +1027,8 @@ mod tests {
                 fresh.coach.mastery.is_cold(
                     &blocks[0].node,
                     blocks[0].level,
-                    at(30) + chrono::TimeDelta::days(1)
+                    at(30) + chrono::TimeDelta::days(1),
+                    0
                 ),
                 "so tomorrow's first rep is the cold test again (#1214's dead path)"
             );
@@ -1038,7 +1069,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             for second in [9, 18, 27] {
                 rep(&app, &mut model, true, second);
@@ -1087,7 +1121,10 @@ mod tests {
             let _ = send(
                 &app,
                 &mut model,
-                CoachEvent::StartPlannedSession { now: at(0) },
+                CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                },
             );
             play_to_the_boundary(&app, &mut model);
             let _ = send(
@@ -1106,6 +1143,7 @@ mod tests {
             crate::domain::types::assert_round_trips(Event::Coach(CoachEvent::RecoverSession {
                 session,
                 now: at(3600),
+                utc_offset_minutes: -330,
             }));
         }
     }

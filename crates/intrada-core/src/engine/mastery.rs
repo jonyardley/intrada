@@ -8,7 +8,7 @@
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::content::{Band, ContentIndex};
@@ -251,11 +251,28 @@ impl MasteryStore {
 
     /// First rep of the day on returning material (spec §2), which is the
     /// highest-information tap-verdict there is.
-    pub fn is_cold(&self, node: &str, level: ParameterLevel, now: DateTime<Utc>) -> bool {
+    /// `utc_offset_minutes` is where the user is: midnight UTC is the wrong
+    /// hour to turn the day over for anyone practising in the evening (#1221).
+    pub fn is_cold(
+        &self,
+        node: &str,
+        level: ParameterLevel,
+        now: DateTime<Utc>,
+        utc_offset_minutes: i32,
+    ) -> bool {
+        let local = local_offset(utc_offset_minutes);
         self.get(node, level)
             .and_then(|mastery| mastery.last_attempt_at)
-            .is_some_and(|last| last.date_naive() < now.date_naive())
+            .is_some_and(|last| {
+                last.with_timezone(&local).date_naive() < now.with_timezone(&local).date_naive()
+            })
     }
+}
+
+/// Real offsets run from UTC-12 to UTC+14. `FixedOffset` would accept a great
+/// deal more, and a date built from that is wrong rather than refused.
+fn local_offset(minutes: i32) -> FixedOffset {
+    FixedOffset::east_opt(minutes.clamp(-12 * 60, 14 * 60) * 60).expect("clamped to a real offset")
 }
 
 fn band_strength(band: Band) -> f32 {
@@ -735,11 +752,104 @@ mod tests {
         let mut store = MasteryStore::default();
         store.record("rootless-a-b", level(60), Verdict::Clean, at(0));
 
-        assert!(store.is_cold("rootless-a-b", level(60), at(1)));
+        assert!(store.is_cold("rootless-a-b", level(60), at(1), 0));
         assert!(
-            !store.is_cold("rootless-a-b", level(60), at(0) + TimeDelta::hours(2)),
+            !store.is_cold("rootless-a-b", level(60), at(0) + TimeDelta::hours(2), 0),
             "a second block the same day is warm"
         );
+    }
+
+    /// In BST, 00:30 local is 23:30 the previous day in UTC, so a new day's
+    /// first rep was recorded warm (#1221).
+    #[test]
+    fn the_day_boundary_is_the_users_midnight_not_utcs() {
+        let mut store = MasteryStore::default();
+        let bst = 60;
+        // 22:00 on the 4th, where the user is.
+        let last_night = Utc.with_ymd_and_hms(2026, 8, 4, 21, 0, 0).unwrap();
+        store.record("rootless-a-b", level(60), Verdict::Clean, last_night);
+
+        assert!(
+            store.is_cold(
+                "rootless-a-b",
+                level(60),
+                Utc.with_ymd_and_hms(2026, 8, 4, 23, 30, 0).unwrap(),
+                bst
+            ),
+            "00:30 local is a new day where the user is"
+        );
+        assert!(
+            !store.is_cold(
+                "rootless-a-b",
+                level(60),
+                Utc.with_ymd_and_hms(2026, 8, 4, 22, 0, 0).unwrap(),
+                bst
+            ),
+            "23:00 local is still the same evening"
+        );
+        assert!(
+            !store.is_cold(
+                "rootless-a-b",
+                level(60),
+                Utc.with_ymd_and_hms(2026, 8, 5, 3, 0, 0).unwrap(),
+                -5 * 60
+            ),
+            "and in New York the pair straddle no boundary at all"
+        );
+    }
+
+    /// UTC+13 puts midnight UTC at 1pm local, so an afternoon session reads as
+    /// a new day from a morning one and two evening sessions read as one.
+    #[test]
+    fn a_far_eastern_offset_moves_the_boundary_the_whole_way() {
+        let mut store = MasteryStore::default();
+        let auckland = 13 * 60;
+        // 09:00 on the 5th local, which is 20:00 on the 4th in UTC.
+        let morning = Utc.with_ymd_and_hms(2026, 8, 4, 20, 0, 0).unwrap();
+        store.record("rootless-a-b", level(60), Verdict::Clean, morning);
+
+        assert!(
+            !store.is_cold(
+                "rootless-a-b",
+                level(60),
+                // 15:00 the same local day, which UTC calls the 5th.
+                Utc.with_ymd_and_hms(2026, 8, 5, 2, 0, 0).unwrap(),
+                auckland
+            ),
+            "the afternoon of the same local day is warm"
+        );
+        assert!(
+            store.is_cold(
+                "rootless-a-b",
+                level(60),
+                // 09:00 the next local day.
+                Utc.with_ymd_and_hms(2026, 8, 5, 20, 0, 0).unwrap(),
+                auckland
+            ),
+            "and the next local morning is cold"
+        );
+    }
+
+    /// `FixedOffset` accepts anything under 24 hours, so without the clamp a
+    /// nonsense offset builds a real date on the wrong day.
+    #[test]
+    fn an_impossible_offset_is_clamped_to_the_furthest_real_one() {
+        let mut store = MasteryStore::default();
+        store.record(
+            "rootless-a-b",
+            level(60),
+            Verdict::Clean,
+            Utc.with_ymd_and_hms(2026, 8, 4, 9, 0, 0).unwrap(),
+        );
+
+        // Clamped to +14:00 the day has turned over (23:00 then 00:00); at the
+        // +20:00 asked for it has not (05:00 then 06:00).
+        assert!(store.is_cold(
+            "rootless-a-b",
+            level(60),
+            Utc.with_ymd_and_hms(2026, 8, 4, 10, 0, 0).unwrap(),
+            20 * 60
+        ));
     }
 
     #[test]
@@ -747,7 +857,7 @@ mod tests {
         let store = MasteryStore::seeded_from(ContentIndex::shipped());
 
         assert!(
-            !store.is_cold("rootless-a-b", level(60), at(400)),
+            !store.is_cold("rootless-a-b", level(60), at(400), 0),
             "a cold test is a test of what came back, and this has not been away"
         );
     }

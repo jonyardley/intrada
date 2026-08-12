@@ -26,6 +26,9 @@ use crate::domain::item::ItemKind;
 pub struct CoachState {
     pub session: EngineSession,
     pub mastery: MasteryStore,
+    /// Last reported by the shell on `PlanSession` (#1221). Off
+    /// `EngineSession` so it costs no blob: the next plan re-supplies it.
+    pub utc_offset_minutes: i32,
 }
 
 impl Default for CoachState {
@@ -33,6 +36,7 @@ impl Default for CoachState {
         Self {
             session: EngineSession::default(),
             mastery: MasteryStore::seeded_from(ContentIndex::shipped()),
+            utc_offset_minutes: 0,
         }
     }
 }
@@ -52,6 +56,11 @@ pub enum SteerPlacement {
 
 impl CoachState {
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        // Every door that can open a session reports it, so skipping the
+        // preview cannot silently put the cold test back on UTC (#1221).
+        if let Some(offset) = reported_offset(event) {
+            self.utc_offset_minutes = offset;
+        }
         self.mark_cold(event);
         let planned = self.plan_for(event);
         let writes = self.session.apply_with_plan(event, planned);
@@ -80,8 +89,13 @@ impl CoachState {
         // Clearing to `Idle` is what makes the machine take the plan it is
         // handed rather than the prescribed one it made for itself.
         self.session.state = SessionState::Idle;
-        self.session
-            .apply_with_plan(&CoachEvent::StartPlannedSession { now }, Some(plan))
+        self.session.apply_with_plan(
+            &CoachEvent::StartPlannedSession {
+                now,
+                utc_offset_minutes: self.utc_offset_minutes,
+            },
+            Some(plan),
+        )
     }
 
     /// Place C3's accepted steer in today's plan (#1256 Phase D): one block
@@ -191,8 +205,9 @@ impl CoachState {
             CoachEvent::PlanSession {
                 now,
                 available_minutes,
+                ..
             } => (*now, *available_minutes),
-            CoachEvent::StartPlannedSession { now } => (*now, None),
+            CoachEvent::StartPlannedSession { now, .. } => (*now, None),
             _ => return None,
         };
         let content = ContentIndex::shipped();
@@ -218,7 +233,9 @@ impl CoachState {
         else {
             return;
         };
-        let cold = self.mastery.is_cold(&node, level, now);
+        let cold = self
+            .mastery
+            .is_cold(&node, level, now, self.utc_offset_minutes);
         self.session.mark_cold(cold);
     }
 
@@ -379,6 +396,21 @@ enum Replay {
 /// live path and the launch replay, so decision 17 cannot hold in one and not
 /// the other — and so it rests on `BlockOrigin` rather than on a judgement
 /// node's id happening to be unknown to the content.
+fn reported_offset(event: &CoachEvent) -> Option<i32> {
+    match event {
+        CoachEvent::PlanSession {
+            utc_offset_minutes, ..
+        }
+        | CoachEvent::StartPlannedSession {
+            utc_offset_minutes, ..
+        }
+        | CoachEvent::RecoverSession {
+            utc_offset_minutes, ..
+        } => Some(*utc_offset_minutes),
+        _ => None,
+    }
+}
+
 fn banked_passes(records: &[BlockRecord]) -> impl Iterator<Item = &BlockRecord> {
     records
         .iter()
@@ -925,6 +957,7 @@ mod tests {
         coach.apply(&CoachEvent::PlanSession {
             now: at(0),
             available_minutes: Some(20),
+            utc_offset_minutes: 0,
         });
         coach
     }
@@ -957,7 +990,10 @@ mod tests {
             .drill_title
             .clone();
 
-        coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(1),
+            utc_offset_minutes: 0,
+        });
 
         let drill = coach.view().drill.expect("a running drill");
         assert_eq!(
@@ -978,6 +1014,7 @@ mod tests {
         let writes = coach.apply(&CoachEvent::PlanSession {
             now: at(0),
             available_minutes: Some(20),
+            utc_offset_minutes: 0,
         });
 
         assert_eq!(
@@ -996,6 +1033,7 @@ mod tests {
         let planning = coach.apply(&CoachEvent::PlanSession {
             now: at(0),
             available_minutes: Some(20),
+            utc_offset_minutes: 0,
         });
 
         // The shell's rule (DrillLoopHost.run): a blob means recover, no blob
@@ -1005,9 +1043,13 @@ mod tests {
             coach.apply(&CoachEvent::RecoverSession {
                 session: blob,
                 now: at(1),
+                utc_offset_minutes: 0,
             });
         } else {
-            coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+            coach.apply(&CoachEvent::StartPlannedSession {
+                now: at(1),
+                utc_offset_minutes: 0,
+            });
         }
 
         assert!(
@@ -1020,7 +1062,10 @@ mod tests {
     #[test]
     fn a_block_in_flight_is_still_saved_for_crash_recovery() {
         let mut coach = CoachState::default();
-        let writes = coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+        let writes = coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(0),
+            utc_offset_minutes: 0,
+        });
 
         assert_eq!(
             writes.snapshot,
@@ -1032,12 +1077,16 @@ mod tests {
     #[test]
     fn arriving_back_on_practice_leaves_the_block_in_flight_alone() {
         let mut coach = CoachState::default();
-        coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(0),
+            utc_offset_minutes: 0,
+        });
         let running = coach.view().drill.expect("a running drill").drill_title;
 
         let writes = coach.apply(&CoachEvent::PlanSession {
             now: at(5),
             available_minutes: Some(20),
+            utc_offset_minutes: 0,
         });
 
         assert_eq!(
@@ -1055,7 +1104,10 @@ mod tests {
     #[test]
     fn pressing_start_with_nothing_planned_plans_first() {
         let mut coach = CoachState::default();
-        coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(0),
+            utc_offset_minutes: 0,
+        });
 
         assert!(
             coach.view().drill.is_some(),
@@ -1069,6 +1121,7 @@ mod tests {
         coach.apply(&CoachEvent::PlanSession {
             now: at(0),
             available_minutes: None,
+            utc_offset_minutes: 0,
         });
 
         let plan = coach.view().plan.expect("a plan");
@@ -1090,8 +1143,12 @@ mod tests {
 
     /// One pass of the phrase, answered, from wherever the block has got to.
     fn tap(coach: &mut CoachState, clean: bool, second: i64) {
+        tap_at(coach, clean, at(second));
+    }
+
+    fn tap_at(coach: &mut CoachState, clean: bool, now: DateTime<Utc>) {
         if coach.session.phase() == Some(&Phase::BlockEntry) {
-            coach.apply(&CoachEvent::StartBlock { now: at(0) });
+            coach.apply(&CoachEvent::StartBlock { now });
         }
         if matches!(coach.session.phase(), Some(Phase::CountIn { .. })) {
             coach.apply(&CoachEvent::Beat { beat_index: 0 });
@@ -1102,10 +1159,7 @@ mod tests {
         coach.apply(&CoachEvent::Beat {
             beat_index: boundary,
         });
-        coach.apply(&CoachEvent::Tap {
-            clean,
-            now: at(second),
-        });
+        coach.apply(&CoachEvent::Tap { clean, now });
     }
 
     #[test]
@@ -1206,6 +1260,69 @@ mod tests {
         tap(&mut coach, true, 9);
 
         assert!(!coach.session.block().unwrap().attempts[0].cold);
+    }
+
+    /// Without the wiring the same instant reads as one warm evening (#1221).
+    #[test]
+    fn the_cold_test_turns_the_day_over_where_the_shell_says_the_user_is() {
+        let last_night = Utc.with_ymd_and_hms(2026, 8, 4, 21, 0, 0).unwrap();
+        // 00:30 local in BST, which UTC still calls the 4th.
+        let after_midnight = Utc.with_ymd_and_hms(2026, 8, 4, 23, 30, 0).unwrap();
+
+        let mut in_london = CoachState::default();
+        in_london
+            .mastery
+            .record("rootless-a-b", fixture_level(), Verdict::Clean, last_night);
+        in_london.apply(&CoachEvent::PlanSession {
+            now: after_midnight,
+            available_minutes: Some(20),
+            utc_offset_minutes: 60,
+        });
+        in_london.session.start_fixture(after_midnight);
+        tap_at(&mut in_london, true, after_midnight);
+
+        assert!(
+            in_london.session.block().unwrap().attempts[0].cold,
+            "half past midnight is a new day, and the first rep of it is cold"
+        );
+
+        let mut in_utc = CoachState::default();
+        in_utc
+            .mastery
+            .record("rootless-a-b", fixture_level(), Verdict::Clean, last_night);
+        in_utc.apply(&CoachEvent::PlanSession {
+            now: after_midnight,
+            available_minutes: Some(20),
+            utc_offset_minutes: 0,
+        });
+        in_utc.session.start_fixture(after_midnight);
+        tap_at(&mut in_utc, true, after_midnight);
+
+        assert!(
+            !in_utc.session.block().unwrap().attempts[0].cold,
+            "the same instant reported from UTC is still the same evening"
+        );
+    }
+
+    /// The no-preview door is documented as one a shell may use alone, so it
+    /// has to report the offset too or it silently puts #1221 back.
+    #[test]
+    fn starting_without_a_preview_still_decides_cold_on_the_users_day() {
+        let last_night = Utc.with_ymd_and_hms(2026, 8, 4, 21, 0, 0).unwrap();
+        let after_midnight = Utc.with_ymd_and_hms(2026, 8, 4, 23, 30, 0).unwrap();
+
+        let mut coach = CoachState::default();
+        coach
+            .mastery
+            .record("rootless-a-b", fixture_level(), Verdict::Clean, last_night);
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: after_midnight,
+            utc_offset_minutes: 60,
+        });
+        coach.session.start_fixture(after_midnight);
+        tap_at(&mut coach, true, after_midnight);
+
+        assert!(coach.session.block().unwrap().attempts[0].cold);
     }
 
     fn next_rung() -> ParameterLevel {
@@ -1452,8 +1569,12 @@ mod tests {
             CoachEvent::PlanSession {
                 now: at(0),
                 available_minutes: Some(20),
+                utc_offset_minutes: -330,
             },
-            CoachEvent::StartPlannedSession { now: at(0) },
+            CoachEvent::StartPlannedSession {
+                now: at(0),
+                utc_offset_minutes: -330,
+            },
             CoachEvent::CountInBeat { remaining: 3 },
             CoachEvent::Beat { beat_index: 12 },
             CoachEvent::Tap {
@@ -1498,11 +1619,15 @@ mod tests {
     #[test]
     fn a_recovered_session_carries_the_whole_plan_across_the_wire() {
         let mut coach = press_start_preview();
-        coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(1),
+            utc_offset_minutes: 0,
+        });
 
         assert_round_trips(crate::app::Event::Coach(CoachEvent::RecoverSession {
             session: coach.session.clone(),
             now: at(2),
+            utc_offset_minutes: 0,
         }));
     }
 
@@ -1590,6 +1715,7 @@ mod tests {
         assert_round_trips(crate::app::Event::Coach(CoachEvent::RecoverSession {
             session: coach.session.clone(),
             now: at(30),
+            utc_offset_minutes: 0,
         }));
     }
 }
