@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,13 @@ use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::engine::{BlockRecord, CoachState, CoachView, ContentIndex};
 use crate::persistence::PersistenceOperation;
+
+#[derive(Debug, Clone)]
+pub struct CoachWriteInFlight {
+    pub batch: PersistenceOperation,
+    /// Back once and no further, or a store that is not having it loops.
+    pub retried: bool,
+}
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -93,11 +100,10 @@ pub struct Model {
     /// The practice coach's own state, quarantined in `engine/`
     /// (`specs/intrada-coach-engine.md` §1).
     pub coach: CoachState,
-    /// The coach evidence a store write is outstanding for, kept so a failure
-    /// can be offered again once before it becomes the user's problem (#1181).
-    /// One slot, because the shell resolves persistence synchronously
-    /// (`Store.process`), so only one coach write is ever in flight.
-    pub coach_write_in_flight: Option<PersistenceOperation>,
+    /// The coach evidence store writes are outstanding for, oldest first, so a
+    /// failure can be offered again once (#1181). A queue rather than one slot,
+    /// which a second close used to overwrite (#1286).
+    pub coach_writes_in_flight: VecDeque<CoachWriteInFlight>,
     /// The block records the store handed back at launch. Kept rather than
     /// consumed, because the mastery rebuild also needs the run-throughs and
     /// those arrive on a second, independently-ordered load: whichever lands

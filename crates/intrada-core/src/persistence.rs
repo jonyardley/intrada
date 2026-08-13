@@ -908,6 +908,72 @@ mod tests {
             assert!(model.last_error.is_some());
         }
 
+        fn close_a_second_block(app: &Intrada, model: &mut Model) {
+            let _ = send(app, model, CoachEvent::LeaveSession { now: at(60) });
+        }
+
+        /// One slot meant the second batch overwrote the first's retry.
+        #[test]
+        fn a_second_batch_does_not_take_the_first_batchs_retry() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+            close_a_second_block(&app, &mut model);
+
+            let first = model.coach_blocks[0].id.clone();
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+
+            let retried = coach_records(&mut cmd).expect("the first batch goes back to the store");
+            assert_eq!(
+                retried[0].id, first,
+                "the batch that failed, not whichever closed most recently"
+            );
+        }
+
+        #[test]
+        fn an_ack_for_the_first_batch_leaves_the_seconds_retry_intact() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+            close_a_second_block(&app, &mut model);
+
+            let _ = app.update(Event::CoachStoreWritten(PersistenceOutput::Ack), &mut model);
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+
+            let retried = coach_records(&mut cmd).expect("the second batch is offered again");
+            assert_eq!(
+                retried[0].id, model.coach_blocks[1].id,
+                "the batch that failed, not the one already acked"
+            );
+            assert!(model.last_error.is_none());
+        }
+
+        /// Push the retry at the back instead and this loses the other's.
+        #[test]
+        fn a_retry_that_lands_leaves_the_batch_behind_it_its_own_retry() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+            close_a_second_block(&app, &mut model);
+
+            let _ = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+            let _ = app.update(Event::CoachStoreWritten(PersistenceOutput::Ack), &mut model);
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+
+            let retried = coach_records(&mut cmd).expect("the second batch is offered again");
+            assert_eq!(retried[0].id, model.coach_blocks[1].id);
+            assert!(model.last_error.is_none());
+        }
+
         #[test]
         fn a_failed_evidence_write_surfaces_rather_than_vanishing() {
             let (app, mut model) = local_first();

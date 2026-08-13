@@ -28,9 +28,9 @@ use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::engine::{CoachEvent, EngineSession, SnapshotAction};
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, session_to_view, ItemPracticeSummary,
-    LibraryItemView, LinkedExerciseView, Model, PieceRefView, ScaffoldPreviewView,
-    ScaffoldSpecView, SessionStatusView, ViewModel,
+    build_active_session_view, build_summary_view, session_to_view, CoachWriteInFlight,
+    ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model, PieceRefView,
+    ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -287,7 +287,10 @@ pub(crate) fn coach_write_commands(
             unmonitored: writes.unmonitored,
             updated_at: recorded_at,
         };
-        model.coach_write_in_flight = Some(batch.clone());
+        model.coach_writes_in_flight.push_back(CoachWriteInFlight {
+            batch: batch.clone(),
+            retried: false,
+        });
         commands.push(persistence::save_coach_records(batch));
     }
     match writes.snapshot {
@@ -559,16 +562,25 @@ impl Intrada {
                 | PersistenceOutput::Sessions(_)
                 | PersistenceOutput::CoachRecords(_)
                 | PersistenceOutput::BuiltSessionData(_) => {
-                    model.coach_write_in_flight = None;
+                    model.coach_writes_in_flight.pop_front();
                     Command::done()
                 }
                 // Nothing reads these rows back, so a failure has nothing to
                 // reload to and the block would simply be gone. Offer the batch
                 // again first (the store upserts by id, so a repeat is safe) and
                 // surface only if that fails too.
-                PersistenceOutput::Failed => match model.coach_write_in_flight.take() {
-                    Some(batch) => persistence::save_coach_records(batch),
-                    None => {
+                // Front, not back: the retry settles before the batch behind
+                // it, or that one loses its own. Pinned on the shell by
+                // `testARetryResolvesBeforeTheEffectQueuedBehindIt`.
+                PersistenceOutput::Failed => match model.coach_writes_in_flight.pop_front() {
+                    Some(write) if !write.retried => {
+                        model.coach_writes_in_flight.push_front(CoachWriteInFlight {
+                            retried: true,
+                            ..write.clone()
+                        });
+                        persistence::save_coach_records(write.batch)
+                    }
+                    _ => {
                         model.surface_error("Couldn't save what you just practised.");
                         crux_core::render::render()
                     }
