@@ -15,7 +15,7 @@ use super::mastery::MasteryStore;
 use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext, PlannedBlock, Stage};
 use super::session::{
     section_evidence, Altitude, BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase,
-    SessionState,
+    SessionState, SnapshotAction,
 };
 use crate::domain::built_session::PlayThroughRecord;
 use crate::domain::item::ItemKind;
@@ -29,6 +29,11 @@ pub struct CoachState {
     /// Last reported by the shell on `PlanSession` (#1221). Off
     /// `EngineSession` so it costs no blob: the next plan re-supplies it.
     pub utc_offset_minutes: i32,
+    /// A crash-recovery blob the shell found at launch, waiting on the user's
+    /// answer (#1193, #1305). Off `EngineSession` for the same reason as the
+    /// offset: it is the shell's blob, not the running session's, and holding
+    /// it here keeps it off the wire that writes the blob.
+    pending_recovery: Option<EngineSession>,
 }
 
 impl Default for CoachState {
@@ -37,6 +42,7 @@ impl Default for CoachState {
             session: EngineSession::default(),
             mastery: MasteryStore::seeded_from(ContentIndex::shipped()),
             utc_offset_minutes: 0,
+            pending_recovery: None,
         }
     }
 }
@@ -56,6 +62,27 @@ pub enum SteerPlacement {
 
 impl CoachState {
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        match event {
+            CoachEvent::OfferRecovery { session } => return self.offer_recovery(session),
+            CoachEvent::DeclineRecovery => return self.decline_recovery(),
+            CoachEvent::AcceptRecovery {
+                now,
+                utc_offset_minutes,
+            } => {
+                let Some(session) = self.pending_recovery.take() else {
+                    return CoachWrites::default();
+                };
+                return self.apply(&CoachEvent::RecoverSession {
+                    session,
+                    now: *now,
+                    utc_offset_minutes: *utc_offset_minutes,
+                });
+            }
+            // Recovered by another door (the drill loop's own entry): the offer
+            // is answered, so it must not stay on the Practice tab behind it.
+            CoachEvent::RecoverSession { .. } => self.pending_recovery = None,
+            _ => {}
+        }
         // Every door that can open a session reports it, so skipping the
         // preview cannot silently put the cold test back on UTC (#1221).
         if let Some(offset) = reported_offset(event) {
@@ -74,6 +101,32 @@ impl CoachState {
             }
         }
         writes
+    }
+
+    /// Hold the blob and word a prompt for it. A session already in flight has
+    /// evidence riding on it that a blob must never replace, and a blob holding
+    /// a state no crash could strand recovers nothing — both are cleared rather
+    /// than left in UserDefaults for the life of the install.
+    fn offer_recovery(&mut self, session: &EngineSession) -> CoachWrites {
+        if !self.session.state.accepts_something_new() || !session.state.worth_recovering() {
+            return CoachWrites {
+                snapshot: SnapshotAction::ClearOffer,
+                ..CoachWrites::default()
+            };
+        }
+        self.pending_recovery = Some(session.clone());
+        CoachWrites::default()
+    }
+
+    /// Declining is the whole point of the prompt (#1193), so it has to reach
+    /// the blob: dropping it here alone would offer the same session again on
+    /// the next launch.
+    fn decline_recovery(&mut self) -> CoachWrites {
+        self.pending_recovery = None;
+        CoachWrites {
+            snapshot: SnapshotAction::ClearOffer,
+            ..CoachWrites::default()
+        }
     }
 
     /// Run a plan the planner did not make: the built session (#1256). The
@@ -246,7 +299,61 @@ impl CoachState {
             altitude: self.session.state.altitude(),
             run_through: self.run_through_view(),
             open_play: self.open_play_view(),
+            recovery: self.recovery_view(),
         }
+    }
+
+    /// The launch prompt for a blob that survived a crash (#1193, #1305). The
+    /// wording is the core's, per altitude: the shell renders two strings and
+    /// works out nothing about what it was the user was doing.
+    fn recovery_view(&self) -> Option<RecoveryView> {
+        let session = self.pending_recovery.as_ref()?;
+        let (headline, detail, started_at) = match &session.state {
+            SessionState::Running { plan, block } => (
+                "Pick up where you left off?",
+                format!(
+                    "{} · block {} of {}",
+                    plan.blocks
+                        .get(block.spec_index)
+                        .map(|planned| planned.spec.drill_title.as_str())
+                        .unwrap_or("Your session"),
+                    block.spec_index + 1,
+                    plan.blocks.len()
+                ),
+                block.started_at,
+            ),
+            SessionState::RunThrough(run) => (
+                "Carry on the run?",
+                format!(
+                    "{} · {} of {} sections judged",
+                    run.title,
+                    run.verdicts.len(),
+                    run.sections.len()
+                ),
+                run.started_at,
+            ),
+            SessionState::OffPiste { started_at, .. } => (
+                "Back to exploring?",
+                "Time logged, nothing scored.".to_string(),
+                *started_at,
+            ),
+            SessionState::Unmonitored { started_at, .. } => (
+                "Back to playing?",
+                "Minutes only, nothing recorded.".to_string(),
+                *started_at,
+            ),
+            // `offer_recovery` refuses these, so reaching one would mean the
+            // guard moved rather than that the prompt needs a fifth wording.
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => {
+                return None
+            }
+        };
+        Some(RecoveryView {
+            altitude: session.state.altitude(),
+            headline: headline.to_string(),
+            detail,
+            started_at,
+        })
     }
 
     fn open_play_view(&self) -> Option<OpenPlayView> {
@@ -485,6 +592,23 @@ pub struct CoachView {
     pub run_through: Option<RunThroughView>,
     /// `Some` while one of the two lower altitudes is running (B2, B3).
     pub open_play: Option<OpenPlayView>,
+    /// `Some` while a crash-recovery blob is waiting on Resume or Discard.
+    pub recovery: Option<RecoveryView>,
+}
+
+/// The launch prompt for a session a crash cut off (#1193, #1305). Nothing is
+/// running while this is up: it is an offer, and the alternative to accepting
+/// it is discarding it, which is the affordance the legacy session already had.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct RecoveryView {
+    /// `None` for a prescribed session, as everywhere else.
+    pub altitude: Option<Altitude>,
+    pub headline: String,
+    pub detail: String,
+    /// When the interrupted session started, on its own clock — the rebase to
+    /// "now" happens on accept, so this is still the instant the user left.
+    pub started_at: DateTime<Utc>,
 }
 
 /// What off-piste and unmonitored draw: a clock and, off-piste only, the piece.
@@ -1099,6 +1223,259 @@ mod tests {
             writes.blocks.is_empty(),
             "and nothing was recorded, because nothing ended"
         );
+    }
+
+    // ── The launch recovery prompt (#1193, #1305) ──
+
+    /// A blob of each shape a crash can leave, as the shell would hand it back.
+    fn crashed(state: &str) -> EngineSession {
+        let mut coach = CoachState::default();
+        match state {
+            "running" => {
+                coach.apply(&CoachEvent::StartPlannedSession {
+                    now: at(0),
+                    utc_offset_minutes: 0,
+                });
+                tap(&mut coach, true, 9);
+            }
+            "run-through" => {
+                coach.apply(&CoachEvent::StartRunThrough {
+                    item_id: "01J000000000000000000PIECE".into(),
+                    title: "Alice in Wonderland".into(),
+                    sections: vec!["A".into(), "Bridge".into(), "Out".into()],
+                    now: at(0),
+                });
+                coach.apply(&CoachEvent::JudgeSection {
+                    held: true,
+                    now: at(40),
+                });
+            }
+            "off-piste" => {
+                coach.apply(&CoachEvent::GoOffPiste {
+                    item_id: Some("01J000000000000000000PIECE".into()),
+                    now: at(0),
+                });
+            }
+            "unmonitored" => {
+                coach.apply(&CoachEvent::GoUnmonitored { now: at(0) });
+            }
+            other => panic!("no fixture for {other}"),
+        }
+        coach.session
+    }
+
+    fn offered(state: &str) -> CoachState {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::OfferRecovery {
+            session: crashed(state),
+        });
+        coach
+    }
+
+    #[test]
+    fn a_blob_found_at_launch_is_offered_rather_than_resumed() {
+        let coach = offered("running");
+
+        assert!(
+            coach.view().recovery.is_some(),
+            "the prompt is the whole fix: a user who crashed out of a drill they \
+             no longer want must be able to decline it (#1193)"
+        );
+        assert_eq!(
+            coach.view().drill,
+            None,
+            "and nothing runs until they answer — an offer, not a resumption"
+        );
+    }
+
+    #[test]
+    fn resuming_the_offer_hands_back_the_session_it_held() {
+        let mut coach = offered("running");
+        let writes = coach.apply(&CoachEvent::AcceptRecovery {
+            now: at(600),
+            utc_offset_minutes: 0,
+        });
+
+        let drill = coach.view().drill.expect("the recovered block");
+        assert_eq!(
+            drill.gate_filled, 1,
+            "the evidence already banked survives the prompt (#1181)"
+        );
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "and the prompt goes with the answer"
+        );
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Save,
+            "a resumed session is a session in flight again, so it earns a blob"
+        );
+    }
+
+    #[test]
+    fn discarding_the_offer_clears_the_blob_that_would_offer_it_again() {
+        let mut coach = offered("running");
+        let writes = coach.apply(&CoachEvent::DeclineRecovery);
+
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "declined, so the prompt is gone"
+        );
+        assert_eq!(coach.view().drill, None, "and nothing was started by it");
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::ClearOffer,
+            "Discard has to reach the blob itself, or the same session is offered \
+             again on the next launch (#1193)"
+        );
+    }
+
+    #[test]
+    fn the_prompt_is_worded_for_the_altitude_the_blob_holds() {
+        let wordings: Vec<(String, String)> =
+            ["running", "run-through", "off-piste", "unmonitored"]
+                .iter()
+                .map(|state| {
+                    let view = offered(state).view().recovery.expect("a prompt");
+                    (view.headline, view.detail)
+                })
+                .collect();
+
+        let headlines: Vec<_> = wordings.iter().map(|(headline, _)| headline).collect();
+        let mut distinct = headlines.clone();
+        distinct.sort();
+        distinct.dedup();
+        assert_eq!(
+            distinct.len(),
+            wordings.len(),
+            "one headline per altitude: coming back to a gated drill is not the \
+             same offer as coming back to off-the-record play, and a prompt that \
+             says the same thing either way is asking the user to guess which \
+             they consented to (decision 16): {headlines:?}"
+        );
+        assert!(
+            wordings.iter().all(|(_, detail)| !detail.is_empty()),
+            "every altitude says what it was, or the prompt asks the user to \
+             guess what they are resuming"
+        );
+
+        let (_, running) = &wordings[0];
+        assert!(
+            running.contains("block 1 of"),
+            "a prescribed session says where in the plan it stopped: {running}"
+        );
+        let (_, run) = &wordings[1];
+        assert!(
+            run.contains("Alice in Wonderland") && run.contains("1 of 3 sections"),
+            "and a run-through says the piece and the verdicts already given: {run}"
+        );
+    }
+
+    #[test]
+    fn the_offer_carries_the_instant_the_session_actually_started() {
+        let view = offered("off-piste").view().recovery.expect("a prompt");
+
+        assert_eq!(
+            view.started_at,
+            at(0),
+            "the rebase to 'now' happens on accept, so the prompt still shows \
+             when the user left rather than when they came back"
+        );
+    }
+
+    #[test]
+    fn a_blob_that_recovers_nothing_is_cleared_rather_than_offered() {
+        let mut planned = CoachState::default();
+        planned.apply(&CoachEvent::PlanSession {
+            now: at(0),
+            available_minutes: Some(20),
+            utc_offset_minutes: 0,
+        });
+
+        let mut coach = CoachState::default();
+        let writes = coach.apply(&CoachEvent::OfferRecovery {
+            session: planned.session,
+        });
+
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "a plan is remade from the content and the clock, so offering one \
+             would dead-end on a prompt that recovers no drill (#1219)"
+        );
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::ClearOffer,
+            "and the dud blob goes, rather than sitting in UserDefaults for the \
+             life of the install"
+        );
+    }
+
+    #[test]
+    fn an_offer_never_replaces_a_session_already_in_flight() {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::StartPlannedSession {
+            now: at(0),
+            utc_offset_minutes: 0,
+        });
+
+        coach.apply(&CoachEvent::OfferRecovery {
+            session: crashed("run-through"),
+        });
+
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "the blocks in flight have evidence riding on them — the same rule \
+             every other door into a session obeys"
+        );
+        assert!(coach.view().drill.is_some(), "and the block plays on");
+    }
+
+    #[test]
+    fn recovering_by_the_drill_loops_own_door_takes_the_offer_with_it() {
+        let mut coach = offered("running");
+        coach.apply(&CoachEvent::RecoverSession {
+            session: crashed("running"),
+            now: at(600),
+            utc_offset_minutes: 0,
+        });
+
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "answered by the other door, so leaving the prompt up would offer a \
+             session that is already running"
+        );
+    }
+
+    #[test]
+    fn resuming_nothing_is_not_a_way_to_start_a_session() {
+        let mut coach = CoachState::default();
+        let writes = coach.apply(&CoachEvent::AcceptRecovery {
+            now: at(0),
+            utc_offset_minutes: 0,
+        });
+
+        assert_eq!(coach.view().drill, None);
+        assert_eq!(writes.snapshot, SnapshotAction::Unchanged);
+    }
+
+    #[test]
+    fn the_recovery_prompt_survives_the_ffi_wire() {
+        for state in ["running", "run-through", "off-piste", "unmonitored"] {
+            assert_round_trips(offered(state).view());
+        }
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::OfferRecovery {
+            session: crashed("running"),
+        }));
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::AcceptRecovery {
+            now: at(0),
+            utc_offset_minutes: 60,
+        }));
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::DeclineRecovery));
     }
 
     #[test]

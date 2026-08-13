@@ -138,6 +138,20 @@ pub enum CoachEvent {
         now: DateTime<Utc>,
         utc_offset_minutes: i32,
     },
+    /// The blob found at launch, handed over to be *offered* rather than
+    /// resumed (#1193, #1305). The core keeps it and words the prompt; nothing
+    /// runs until the user answers, so a crash the user has moved on from is
+    /// no longer resumed behind their back.
+    OfferRecovery {
+        session: EngineSession,
+    },
+    /// "Resume" — run the session the core is holding.
+    AcceptRecovery {
+        now: DateTime<Utc>,
+        utc_offset_minutes: i32,
+    },
+    /// "Discard" — drop it, and clear the blob that would offer it again.
+    DeclineRecovery,
 }
 
 /// What one applied event leaves for the store. The session machine decides
@@ -194,6 +208,11 @@ pub enum SnapshotAction {
     Save,
     /// The session is over, so the blob would recover nothing.
     Clear,
+    /// Drop the blob without ending anything: the offer made at launch was
+    /// declined, or held a state no crash could strand (#1193). Told apart from
+    /// `Clear` because that one also retires today's composed session, and a
+    /// blob the user never resumed is no evidence it was practised.
+    ClearOffer,
 }
 
 /// What a recovered session would have to get right. Beats and ticks move the
@@ -665,7 +684,7 @@ impl SessionState {
     /// at. Saving a `Planned` session dead-ended press-start, because the shell
     /// reads a blob as "recover" and recovering a plan hands back no drill
     /// (#1219).
-    fn worth_recovering(&self) -> bool {
+    pub(crate) fn worth_recovering(&self) -> bool {
         matches!(
             self,
             SessionState::Running { .. }
@@ -884,6 +903,11 @@ impl EngineSession {
             }
             CoachEvent::CloseSession { now } => return self.close_session(*now),
             CoachEvent::RecoverSession { session, now, .. } => self.recover(session.clone(), *now),
+            // `CoachState` owns the offered blob, because the session machine
+            // holds one session and the offer is a second one.
+            CoachEvent::OfferRecovery { .. }
+            | CoachEvent::AcceptRecovery { .. }
+            | CoachEvent::DeclineRecovery => {}
         }
         Applied::default()
     }
@@ -909,10 +933,13 @@ impl EngineSession {
             | CoachEvent::JudgeSection { now, .. }
             | CoachEvent::DiscardRunThrough { now }
             | CoachEvent::CloseSession { now }
-            | CoachEvent::RecoverSession { now, .. } => Some(*now),
+            | CoachEvent::RecoverSession { now, .. }
+            | CoachEvent::AcceptRecovery { now, .. } => Some(*now),
             CoachEvent::CountInBeat { .. }
             | CoachEvent::Beat { .. }
-            | CoachEvent::KeepWanderAsDrill { .. } => None,
+            | CoachEvent::KeepWanderAsDrill { .. }
+            | CoachEvent::OfferRecovery { .. }
+            | CoachEvent::DeclineRecovery => None,
         }
     }
 

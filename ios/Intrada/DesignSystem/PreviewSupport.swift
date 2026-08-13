@@ -28,13 +28,14 @@
     private let analytics: AnalyticsView?
     private let plan: PlanView?
     private let built: BuiltView?
+    private let recovery: RecoveryView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [],
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, plan: PlanView? = nil,
-      built: BuiltView? = nil
+      built: BuiltView? = nil, recovery: RecoveryView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -44,6 +45,7 @@
       self.analytics = analytics
       self.plan = plan
       self.built = built
+      self.recovery = recovery
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -69,6 +71,7 @@
       if let analytics { viewModel.analytics = analytics }
       if let plan { viewModel.coach.plan = plan }
       if let built { viewModel.built = built }
+      viewModel.coach.recovery = recovery
       return viewModel
     }
   }
@@ -230,6 +233,22 @@
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
         sessionIntention: nil)
       return store
+    }
+
+    /// Practice home with a coach blob pending (#1193, #1305) — the prompt the
+    /// drill loop used to skip by resuming on its own.
+    static var previewCoachRecovery: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted], recovery: .previewDrill))
+    }
+
+    /// The same prompt for a blob left at an altitude, where the chip says what
+    /// was being recorded rather than a word.
+    static var previewCoachRecoveryAltitude: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted], recovery: .previewOffPiste))
     }
 
     /// Player Focus — a piece mid-session with a session intention and a time

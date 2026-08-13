@@ -1959,6 +1959,31 @@ mod tests {
         );
     }
 
+    /// The launch prompt's Discard and a session ending both clear the blob, so
+    /// sharing one `SnapshotAction` would retire a composition the user has not
+    /// practised — they declined a crash from before it was made (#1193).
+    #[test]
+    fn declining_a_crashed_session_leaves_todays_composition_alone() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        let mut crashed = crate::engine::CoachState::default();
+        crashed.apply(&CoachEvent::GoUnmonitored { now: at() });
+
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::OfferRecovery {
+                session: crashed.session,
+            }),
+        );
+        app_update(&mut model, Event::Coach(CoachEvent::DeclineRecovery));
+
+        assert_eq!(model.built_session_today, Some(id));
+        assert!(
+            view(&model).built.session.is_some(),
+            "the composed hero is still today's steer — nothing was practised"
+        );
+    }
+
     #[test]
     fn cancelling_the_sheet_leaves_the_prescribed_day_untouched() {
         let mut model = Model::test_default();

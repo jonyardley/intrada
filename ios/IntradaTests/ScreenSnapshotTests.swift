@@ -221,6 +221,41 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
+  /// The coach blob's prompt (#1193, #1305). Two references, not one: the
+  /// altitude variant swaps the eyebrow for the chip, which is the consent
+  /// signal, so it can regress on its own.
+  func testCoachRecoveryPromptCard() throws {
+    let recovery = try XCTUnwrap(Store.previewCoachRecovery.viewModel?.coach.recovery)
+    let card = RecoveryPromptCard(
+      recovery: recovery, referenceDate: PracticeSessionView.previewReferenceDate,
+      onResume: {}, onDiscard: {}
+    )
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    .frame(width: 390)
+    assertSnapshot(
+      of: host(card),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 240),
+        traits: .init(displayScale: 2)))
+  }
+
+  func testCoachRecoveryPromptCardAltitude() throws {
+    let recovery = try XCTUnwrap(Store.previewCoachRecoveryAltitude.viewModel?.coach.recovery)
+    let card = RecoveryPromptCard(
+      recovery: recovery, referenceDate: PracticeSessionView.previewReferenceDate,
+      onResume: {}, onDiscard: {}
+    )
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    .frame(width: 390)
+    assertSnapshot(
+      of: host(card),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 240),
+        traits: .init(displayScale: 2)))
+  }
+
   func testPracticeScreenQuietDay() {
     // Open on Monday — a day with no practice — to lock the per-day empty state.
     let monday = PracticeWeek.days(

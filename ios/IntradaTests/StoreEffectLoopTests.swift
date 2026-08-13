@@ -278,6 +278,68 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(drill.drillTitle.isEmpty, "the recovered block keeps its identity")
   }
 
+  /// The launch prompt, end to end over the real bridge (#1193, #1305): the
+  /// blob is written by one build's effect, read from UserDefaults, offered
+  /// back as a `CoachEvent` payload, and comes out the other side as a
+  /// `RecoveryView` the Practice tab can draw. A stub bridge would pass on a
+  /// wire break here and the prompt would simply never appear (#846 class).
+  func testRealBridgeOffersAStoredCoachBlobAtLaunchWithoutResumingIt() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    defaults.set(
+      Data(try runningCoachSession().bincodeSerialize()),
+      forKey: Store.coachSessionInProgressKey)
+
+    let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
+    store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    store.offerPendingCoachSession()
+
+    let recovery = try XCTUnwrap(
+      store.viewModel?.coach.recovery, "the blob has to reach the Practice tab as a prompt")
+    XCTAssertFalse(recovery.headline.isEmpty)
+    XCTAssertFalse(recovery.detail.isEmpty)
+    XCTAssertNil(
+      store.viewModel?.coach.drill,
+      "and nothing runs until the user answers — auto-resuming is the bug (#1193)")
+  }
+
+  /// Discard is the affordance #1193 is about, and it only works if it reaches
+  /// UserDefaults: a decline that left the blob would offer the same session
+  /// again on every launch until the user gave in.
+  func testRealBridgeDiscardingTheLaunchPromptRemovesTheBlob() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    defaults.set(
+      Data(try runningCoachSession().bincodeSerialize()),
+      forKey: Store.coachSessionInProgressKey)
+
+    let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
+    store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    store.offerPendingCoachSession()
+    store.send(.coach(.declineRecovery))
+
+    XCTAssertNil(store.viewModel?.coach.recovery, "the prompt goes with the answer")
+    XCTAssertNil(store.pendingCoachSession(), "and so does the blob behind it")
+  }
+
+  /// Resume is the other answer, and it has to hand back the session that was
+  /// offered rather than start a new one over the top of it.
+  func testRealBridgeResumingTheLaunchPromptPutsTheDrillBack() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    defaults.set(
+      Data(try runningCoachSession().bincodeSerialize()),
+      forKey: Store.coachSessionInProgressKey)
+
+    let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
+    store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    store.offerPendingCoachSession()
+    store.send(
+      .coach(.acceptRecovery(now: "2026-08-04T11:00:00Z", utcOffsetMinutes: 0)))
+
+    let drill = try XCTUnwrap(
+      store.viewModel?.coach.drill, "Resume must put the recovered block back on screen")
+    XCTAssertFalse(drill.drillTitle.isEmpty)
+    XCTAssertNil(store.viewModel?.coach.recovery, "and the prompt is answered")
+  }
+
   // ── Journey B's altitudes across the real bridge (#1256 Phase C) ──
 
   /// A live core holding one charted piece, as B0 is actually reached: the
@@ -1107,10 +1169,10 @@ final class StoreEffectLoopTests: XCTestCase {
   }
 
   /// Press-start with a blob already on disk (#1182). `DrillLoopHost.run()`
-  /// prefers recovery over starting whenever `pendingCoachSession()` returns
-  /// something, so anything planning leaves behind is read as a session to
-  /// resume. This drives that exact branch through a real Store and a real
-  /// bridge: plan, then take the same decision the host takes, and require a
+  /// prefers the offer the core is holding over starting fresh, so anything
+  /// planning leaves behind is read as a session to resume. This drives that
+  /// exact branch through a real Store and a real bridge: run the launch
+  /// sequence, plan, then take the same decision the host takes, and require a
   /// drill at the end of it. Pressing start and landing back on Practice is the
   /// #846 class, and the two earlier press-start tests could not see it because
   /// neither had a blob in play.
@@ -1124,6 +1186,9 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
     let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
     store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    // RootView's launch step: whatever is on disk is offered before anything
+    // else reads it, so the branch below sees what the device would see.
+    store.offerPendingCoachSession()
 
     store.send(
       .coach(
@@ -1137,8 +1202,8 @@ final class StoreEffectLoopTests: XCTestCase {
 
     // Verbatim the branch in DrillLoopHost.run().
     let now = SessionClock.nowRFC3339()
-    if let crashed = store.pendingCoachSession() {
-      store.send(.coach(.recoverSession(session: crashed, now: now, utcOffsetMinutes: 0)))
+    if store.viewModel?.coach.recovery != nil {
+      store.send(.coach(.acceptRecovery(now: now, utcOffsetMinutes: 0)))
     } else {
       store.send(.coach(.startPlannedSession(now: now, utcOffsetMinutes: 0)))
     }

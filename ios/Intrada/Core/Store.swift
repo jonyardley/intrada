@@ -136,6 +136,14 @@ final class Store {
     return guarded { try EngineSession.bincodeDeserialize(input: [UInt8](data)) }
   }
 
+  /// Hand the blob to the core at launch so it can *offer* it (#1193, #1305).
+  /// The core decides whether it is worth offering, words the prompt and clears
+  /// a dud; the shell only reads the key.
+  func offerPendingCoachSession() {
+    guard let session = pendingCoachSession() else { return }
+    send(.coach(.offerRecovery(session: session)))
+  }
+
   /// Crash-recovery blob found at launch; non-nil drives the Practice tab's
   /// Resume / Discard prompt (#962).
   var recoverableSession: ActiveSession?

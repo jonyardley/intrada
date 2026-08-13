@@ -76,6 +76,7 @@ struct RootView: View {
         store.send(.startApp(apiBaseUrl: apiBaseURL, localFirst: true))
         store.restorePersistedSort()
         store.loadRecoverableSession()
+        store.offerPendingCoachSession()
       }
     }
   }
