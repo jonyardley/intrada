@@ -491,117 +491,6 @@
         <div style="font-size:12.5px;color:#6E6557;line-height:1.6;">RepCounter — net progress toward a target. <strong style="font-weight:600;color:#2B2A26;">Clean +1, Missed −1</strong>, clamped 0…target; buttons disable at each end. Clean is success teal; a miss is a calm taupe, never a shaming red. This is the in-the-moment "good friction" the player exists for.</div>
       </div>
 
-      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Coach primitives · the drill loop</div>
-      <p style="font-size:13.5px;line-height:1.62;color:#6E6557;max-width:660px;margin:11px 0 0;">Ten parts the practice-coach drill loop is assembled from — six added 3 Aug 2026 with the Session A drill screens (<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">Drill Loop.dc.html</span>), four on 6 Aug with the continuous-pulse rework: <strong style="color:#2B2A26;font-weight:600;">TapVerdict</strong>, <strong style="color:#2B2A26;font-weight:600;">BlockEntryCard</strong>, <strong style="color:#2B2A26;font-weight:600;">PlanBlockRow</strong> and <strong style="color:#2B2A26;font-weight:600;">CoachAction</strong> (#1223, #1225). All but PlanBlockRow — read before you start, phone in hand — are read at arm's length in a dim practice room, so none of them uses <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">inkFaint</span>, and none of them animates while the user is playing.</p>
-      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:34px 30px;">
-
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:6px;font-variant-numeric:tabular-nums;">2 of 3</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
-            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
-            <span style="font-size:15px;font-weight:500;color:#2B2A26;margin-left:6px;">gate open</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
-            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:6px;font-variant-numeric:tabular-nums;">0 of 3</span>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">GateDots</strong> — read-only gate progress after a rep. Filled dots are <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">masteryFill</span> indigo, not teal: this is progress, and teal is reserved for the verdict itself. Never shown during play — the dots are derived from verdicts, so mid-drill they would be a score. Distinct from <strong style="font-weight:600;">RepCounter</strong>, which is the manual ± counter in the legacy player.</div>
-        </div>
-
-        <div>
-          <div style="display:flex;align-items:center;gap:16px;">
-            <div style="width:70px;height:70px;border-radius:50%;background:#E7F1EB;border:1px solid #C9E2D3;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="check" width="36" height="36" style="color:#1F8A5B;"></i></div>
-            <div style="width:70px;height:70px;border-radius:50%;background:#EFEADC;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="x" width="36" height="36" style="color:#8A8170;"></i></div>
-            <div style="width:70px;height:70px;border-radius:50%;background:#FCFAF3;border:1px solid #E0D9C8;display:flex;align-items:center;justify-content:center;flex:none;font-size:34px;font-weight:600;color:#2B2A26;line-height:1;">?</div>
-          </div>
-          <div style="display:flex;gap:16px;margin-top:9px;font-size:11px;color:#6E6557;"><span style="width:70px;text-align:center;">pass</span><span style="width:70px;text-align:center;">miss</span><span style="width:70px;text-align:center;">unsure</span></div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:12px;"><strong style="color:#2B2A26;font-weight:600;">RepVerdict</strong> — the one-glance result, glyph plus at most one fact. A miss is taupe, never red. The <em>unsure</em> state carries no tint at all: it is a question, not a verdict, so it renders on <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span> at full ink contrast and is the only one that asks for a tap.</div>
-        </div>
-
-        <div style="grid-column:span 2;">
-          <div style="display:flex;gap:10px;max-width:430px;">
-            <button style="flex:1.5;height:66px;border:1px solid #C9E2D3;background:#E7F1EB;color:#1F8A5B;border-radius:16px;font-family:Inter;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;" style-active="transform:scale(0.96)"><i data-lucide="check" width="19" height="19"></i>Yes — clean</button>
-            <button style="flex:1;height:66px;border:1px solid #DCD4C1;background:#EFEADC;color:#8A8170;border-radius:16px;font-family:Inter;font-weight:600;font-size:14px;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;padding:0 8px;" style-active="transform:scale(0.96)"><i data-lucide="x" width="16" height="16"></i>Missed it</button>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">TapVerdict</strong> — the evidence unit (decision 18): the player hears their own attempt and taps it against the stated countable criterion. Clean is half again wider, but a miss is equally hittable and lands in calm taupe, never red. Both are at least 66pt and size off <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">CoachScale</span>; at accessibility sizes they stack and the miss reads "No — missed it". Every filled <strong style="font-weight:600;">GateDot</strong> comes from one of these taps, so it never appears without a bounded attempt behind it.</div>
-        </div>
-
-        <div style="grid-column:span 2;">
-          <div style="display:flex;align-items:center;gap:9px;white-space:nowrap;font-size:14px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">
-            <span>12:04 elapsed</span><span style="color:#C9C0AC;">·</span><span>block 2 of 5</span><span style="color:#C9C0AC;">·</span><span>ceiling 6 min</span>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">OrientationStrip</strong> — where you are, never how you did (decision 15). Made quiet by being <em>small and static</em>, not by being low-contrast: <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">inkSecondary</span> at 14pt medium, tabular figures. No bar, ring or countdown — a filling track reads as a deadline.</div>
-        </div>
-
-        <div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="width:16px;height:16px;border-radius:50%;background:#2B2A26;"></span>
-            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
-            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:8px;font-variant-numeric:tabular-nums;">bar 3 of 8</span>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">BeatPosition</strong> — passive position against the click, so it stays monochrome apart from one pip: the current beat is <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">accent</span>, the rest are hollow <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">slotOutline</span> rings. Ruled 6 Aug 2026 (#1175) in favour of the build and the drill-loop mock, which agreed against an earlier ink-only line here: the pip has to be findable at arm’s length, and one static accent is not feedback the way a colour that <em>changes on outcome</em> is. The pip swaps on the beat with <em>no</em> transition and no <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">pop</span> — motion during play is banned, because anything that moves invites a look.</div>
-        </div>
-
-        <div>
-          <div style="height:96px;border-radius:22px;background:#FCFAF3;border:1.5px solid #E0D9C8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#2B2A26;">I'm stuck</div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">StuckTarget</strong> — the one large target on the drill screen, ≥96pt tall and full-bleed to the safe area so it is hittable without looking. Surface, not gradient: it must be findable, not attractive. <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">radius.hero</span>. Drawn by <strong style="font-weight:600;">CoachAction</strong> at its <em>key</em> weight — the name carries the meaning, the shape is shared.</div>
-        </div>
-
-        <div>
-          <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:16px 18px;">
-            <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;line-height:1.35;color:#2B2A26;">Shells and rootless are what sit between you and improvising over Strasbourg.</div>
-            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#6E6557;margin-top:10px;"><i data-lucide="trending-up" width="14" height="14" style="color:#1F8A5B;"></i>100 → 120 bpm this fortnight</div>
-            <div style="font-size:13px;color:#2B2A26;margin-top:7px;">Next time: keep the left hand off the beat.</div>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">CoachNote</strong> — the only place the app speaks in sentences, at a block boundary, at most once a session. Exactly three parts: why (citing the declared campaign before graph state), the trend, one thing to listen for. Serif for the thought, Inter for the evidence. If there is nothing worth saying, the boundary ships without it.</div>
-        </div>
-
-        <div>
-          <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:22px;padding:20px 20px;box-shadow:0 16px 36px -20px rgba(43,42,38,0.32);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-              <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;background:#E7E3F4;color:#4C3FA6;font-weight:600;font-size:11px;"><i data-lucide="music" width="12" height="12"></i>Piece</span>
-              <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;"><i data-lucide="clock" width="13" height="13" style="color:#9A927F;"></i>8 min</span>
-            </div>
-            <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:23px;line-height:1.14;color:#2B2A26;margin-top:13px;">Strasbourg / St. Denis</div>
-            <div style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#4C3FA6;margin-top:8px;"><i data-lucide="corner-down-right" width="13" height="13"></i>A section · <span style="font-weight:600;">bars 1–16</span></div>
-            <div style="height:1px;background:#E5DECD;margin:16px 0 14px;"></div>
-            <div style="font-family:'Source Serif 4',serif;font-weight:500;font-size:16px;line-height:1.45;color:#2B2A26;">This is the section that stalls the run-through, so today it gets a block of its own.</div>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">BlockEntryCard</strong> <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1223</span> — the intention beat before every block: kind chip, minutes, drill title, section, and one serif sentence from the plan. <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">radius.hero</span> on <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span>. It is <strong style="font-weight:600;">not CoachNote</strong>: CoachNote is three parts, at most once a session, at a boundary — this is one sentence, every block, written by the plan. Same serif treatment, different rule, so the two must not merge. Nothing on it is configurable.</div>
-        </div>
-
-        <div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Shell voicings — hands apart</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">5 min</span></div>
-            <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Strasbourg — A section</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">8 min</span></div>
-            <button style="display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;font-family:Inter;font-size:13px;font-weight:500;color:#6E6557;padding:8px;cursor:pointer;"><i data-lucide="chevron-down" width="15" height="15"></i>2 more blocks · 21 min</button>
-          </div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">PlanBlockRow</strong> <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1225</span> — one line of the agreed plan on the press-start screen: kind tint, title, minutes. Deliberately <strong style="font-weight:600;">not tappable and with no chevron</strong> — the library/session row it resembles opens a detail screen, and promising one here would invite exactly the pre-play decision the plan exists to remove. Three rows is the glance budget; the rest collapses behind a quiet disclosure that names what it is hiding.</div>
-        </div>
-
-        <div style="grid-column:span 2;">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end;">
-            <div style="height:66px;border-radius:16px;background:#4C3FA6;box-shadow:0 2px 0 #392F7C;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#F2EFE8;">Start</div>
-            <div style="height:66px;border-radius:16px;background:#FCFAF3;border:1px solid #DCD4C1;box-shadow:0 2px 0 #E0D9C8;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#2B2A26;">I'm stuck</div>
-            <div style="height:46px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#6E6557;">Don't count that</div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:9px;font-size:11px;color:#6E6557;"><span style="text-align:center;">primary</span><span style="text-align:center;">key</span><span style="text-align:center;">quiet</span></div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">CoachAction</strong> — the loop's labelled key, at three weights. <em>primary</em> is the one thing to do next (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">accent</span> fill, the block-entry card's Start); <em>key</em> is a resident control on paper (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span>, what StuckTarget draws); <em>quiet</em> is demoted beneath a rule (Skip, "Don't count that"). All three carry the 2pt seated edge that reads as a key rather than a floating card, and all three size off <strong style="font-weight:600;">CoachScale</strong>, never a per-call height. Exactly one <em>primary</em> per surface — two keys competing to be "the" action means the screen is ambiguous.</div>
-        </div>
-
-      </div>
-
       <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Week picker</div>
       <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1.1fr 1fr;gap:34px;align-items:center;">
         <div style="display:flex;gap:5px;">
@@ -839,7 +728,7 @@
     <section id="screens" style="scroll-margin-top:24px;margin-top:104px;">
       <div style="font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#9A927F;">System</div>
       <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:36px;letter-spacing:-0.01em;margin:8px 0 0;color:#2B2A26;">Screens</h2>
-      <p style="font-size:15px;line-height:1.6;color:#6E6557;max-width:640px;margin:14px 0 0;">Every shipped screen, assembled from the kit above. Four tabs — Library, Practice, Routines, Progress — plus the item detail, the add/edit form, and the three session surfaces: builder, the live player, and the post-session summary. The four marked <strong style="font-weight:600;color:#2B2A26;">TO BUILD</strong> are the agreed 6 Aug 2026 coach entry surfaces — the press-start session overview (#1225) and the block-entry card (#1223) — folded in from <span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;">Drill Loop.dc.html</span> so the kit is their one home.</p>
+      <p style="font-size:15px;line-height:1.6;color:#6E6557;max-width:640px;margin:14px 0 0;">Every shipped screen, assembled from the kit above. Four tabs — Library, Practice, Routines, Progress — plus the item detail, the add/edit form, and the three session surfaces: builder, the live player, and the post-session summary.</p>
 
       <div style="display:flex;flex-wrap:wrap;gap:48px;margin-top:44px;justify-content:center;">
 
@@ -972,105 +861,6 @@
       </div>
     </div>
 
-        <!-- PRESS-START OVERVIEW (#1225) -->
-        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="display:flex;align-items:center;gap:9px;">
-            <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Press-start · today's shape</div>
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1225</span>
-          </div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 96px;">
-                <div style="padding:4px 0 0;animation:fadeUp .5s ease both;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:28px;color:#2B2A26;line-height:1;">Practice</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">Thursday · ready when you are</div></div>
-
-                <div style="margin-top:14px;border-radius:22px;padding:20px 20px 16px;background:linear-gradient(165deg,#5648B2 0%,#43388F 60%,#392F7C 100%);box-shadow:0 20px 40px -16px rgba(76,63,166,0.7);animation:fadeUp .55s .08s ease both;">
-                  <div style="font-size:11px;font-weight:600;letter-spacing:1.4px;color:rgba(242,239,232,0.65);">TODAY'S PLAN · 40 MIN</div>
-                  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:23px;color:#F4F1E8;margin-top:5px;line-height:1.1;">A balanced session</div>
-                  <div style="font-size:12.5px;color:rgba(242,239,232,0.7);margin-top:3px;">5 blocks · spaced for what's due</div>
-                  <div style="display:flex;justify-content:center;margin:16px 0 2px;">
-                    <button style="width:80px;height:80px;border-radius:50%;border:none;background:#F7F4EC;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -8px rgba(0,0,0,0.45);cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="play" width="34" height="34" style="color:#4C3FA6;fill:#4C3FA6;margin-left:4px;"></i></button>
-                  </div>
-                  <div style="text-align:center;font-size:12.5px;font-weight:500;color:rgba(242,239,232,0.85);margin-top:8px;">Tap to begin — one decision</div>
-                </div>
-
-                <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;animation:fadeUp .5s .16s ease both;"><span style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Today's shape</span><span style="font-size:11px;color:#6E6557;">in order</span></div>
-                <div style="margin-top:9px;display:flex;flex-direction:column;gap:6px;animation:fadeUp .5s .2s ease both;">
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Shell voicings — hands apart</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">5 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Rootless voicings</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">6 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Strasbourg — A section</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">8 min</span></div>
-                  <button style="display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;font-family:Inter;font-size:13px;font-weight:500;color:#6E6557;padding:8px;cursor:pointer;"><i data-lucide="chevron-down" width="15" height="15"></i>2 more blocks · 21 min</button>
-                </div>
-
-                <div style="margin-top:6px;border-top:1px solid #E5DECD;padding-top:12px;animation:fadeUp .5s .26s ease both;">
-                  <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">What today couldn't take</div>
-                  <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px;">
-                    <div style="display:flex;gap:8px;font-size:12.5px;line-height:1.5;color:#6E6557;"><span style="color:#C9C0AC;">—</span><span>Autumn Leaves — bridge, still owed from Tuesday</span></div>
-                    <div style="display:flex;gap:8px;font-size:12.5px;line-height:1.5;color:#6E6557;"><span style="color:#C9C0AC;">—</span><span>Two-hand voicings, bars 17–24</span></div>
-                  </div>
-                </div>
-              </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Practice</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="display:flex;align-items:center;gap:9px;">
-            <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Press-start · shape expanded</div>
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1225</span>
-          </div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 96px;">
-                <div style="padding:4px 0 0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:28px;color:#2B2A26;line-height:1;">Practice</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">Thursday · ready when you are</div></div>
-
-                <div style="margin-top:14px;border-radius:22px;padding:16px 20px 14px;background:linear-gradient(165deg,#5648B2 0%,#43388F 60%,#392F7C 100%);box-shadow:0 20px 40px -16px rgba(76,63,166,0.7);display:flex;align-items:center;gap:16px;">
-                  <div style="flex:1;min-width:0;">
-                    <div style="font-size:11px;font-weight:600;letter-spacing:1.4px;color:rgba(242,239,232,0.65);">TODAY'S PLAN · 40 MIN</div>
-                    <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:21px;color:#F4F1E8;margin-top:4px;line-height:1.12;">A balanced session</div>
-                    <div style="font-size:12.5px;color:rgba(242,239,232,0.8);margin-top:4px;font-weight:500;">Tap to begin</div>
-                  </div>
-                  <button style="width:68px;height:68px;flex:none;border-radius:50%;border:none;background:#F7F4EC;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -8px rgba(0,0,0,0.45);cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="play" width="30" height="30" style="color:#4C3FA6;fill:#4C3FA6;margin-left:3px;"></i></button>
-                </div>
-
-                <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Today's shape</span><span style="font-size:11px;color:#6E6557;">5 blocks · in order</span></div>
-                <div style="margin-top:9px;display:flex;flex-direction:column;gap:6px;">
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Shell voicings — hands apart</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">5 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Rootless voicings</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">6 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Strasbourg — A section</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">8 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Strasbourg — full run</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">12 min</span></div>
-                  <div style="display:flex;align-items:center;gap:10px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px 11px 15px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;font-family:'Source Serif 4',serif;font-weight:600;font-size:14.5px;color:#2B2A26;">Blues in F — comping</div><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">9 min</span></div>
-                </div>
-
-                <div style="margin-top:14px;border-top:1px solid #E5DECD;padding-top:12px;">
-                  <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">What today couldn't take</div>
-                  <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px;">
-                    <div style="display:flex;gap:8px;font-size:12.5px;line-height:1.5;color:#6E6557;"><span style="color:#C9C0AC;">—</span><span>Autumn Leaves — bridge, still owed from Tuesday</span></div>
-                    <div style="display:flex;gap:8px;font-size:12.5px;line-height:1.5;color:#6E6557;"><span style="color:#C9C0AC;">—</span><span>Two-hand voicings, bars 17–24</span></div>
-                  </div>
-                </div>
-              </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Practice</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
-            </div>
-          </div>
-        </div>
-
         <!-- FOCUS PLAYER (canonical → Focus Player.dc.html) -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
           <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Focus player</div>
@@ -1081,73 +871,6 @@
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
           <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Session summary · celebration</div>
           <dc-import name="Session Summary" hint-size="392px,860px"></dc-import>
-        </div>
-
-        <!-- BLOCK ENTRY (#1223) -->
-        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="display:flex;align-items:center;gap:9px;">
-            <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Block entry · before block 1</div>
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1223</span>
-          </div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 80% at 50% 22%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;padding:6px 22px 24px;min-height:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;"><i data-lucide="chevron-down" width="24" height="24" style="color:#6E6557;"></i><span style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#6E6557;">BLOCK 1 OF 5</span><span style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">0:00</span></div>
-                <div style="display:flex;gap:5px;margin-top:14px;"><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span></div>
-                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;">
-                  <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:22px;padding:24px 22px;box-shadow:0 16px 36px -20px rgba(43,42,38,0.32);animation:fadeUp .45s ease both;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;background:#F0E5CC;color:#8A6A2E;font-weight:600;font-size:11px;"><i data-lucide="dumbbell" width="12" height="12"></i>Exercise</span>
-                      <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;"><i data-lucide="clock" width="13" height="13" style="color:#9A927F;"></i>5 min</span>
-                    </div>
-                    <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:27px;line-height:1.14;color:#2B2A26;margin-top:14px;">Shell voicings — hands apart</div>
-                    <div style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#8A6A2E;margin-top:8px;"><i data-lucide="corner-down-right" width="13" height="13"></i>Warm-up · <span style="font-weight:600;">Strasbourg / St. Denis</span></div>
-                    <div style="height:1px;background:#E5DECD;margin:18px 0 16px;"></div>
-                    <div style="font-family:'Source Serif 4',serif;font-weight:500;font-size:17px;line-height:1.45;color:#2B2A26;">Shells are the frame the rest of today hangs on — five minutes here makes every later block cheaper.</div>
-                  </div>
-                </div>
-                <div style="text-align:center;font-size:12.5px;color:#6E6557;margin-bottom:12px;">One bar of count-in, then the click stays on.</div>
-                <button style="width:100%;height:62px;border-radius:16px;border:none;background:linear-gradient(165deg,#5648B2,#43388F 55%,#392F7C);color:#F7F4EC;font-family:Inter;font-size:17px;font-weight:600;box-shadow:0 12px 26px -14px rgba(76,63,166,0.85);cursor:pointer;" style-active="transform:scale(0.97)">Start</button>
-                <button style="width:100%;height:54px;background:none;border:none;font-family:Inter;font-size:14.5px;font-weight:500;color:#6E6557;cursor:pointer;">Skip this block</button>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="display:flex;align-items:center;gap:9px;">
-            <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Block entry · between blocks</div>
-            <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1223</span>
-          </div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 80% at 50% 22%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;padding:6px 22px 24px;min-height:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;"><i data-lucide="chevron-down" width="24" height="24" style="color:#6E6557;"></i><span style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#6E6557;">BLOCK 3 OF 5</span><span style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">11:38</span></div>
-                <div style="display:flex;gap:5px;margin-top:14px;"><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></span><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span></div>
-                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;">
-                  <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:22px;padding:24px 22px;box-shadow:0 16px 36px -20px rgba(43,42,38,0.32);animation:fadeUp .45s ease both;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                      <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;background:#E7E3F4;color:#4C3FA6;font-weight:600;font-size:11px;"><i data-lucide="music" width="12" height="12"></i>Piece</span>
-                      <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;"><i data-lucide="clock" width="13" height="13" style="color:#9A927F;"></i>8 min</span>
-                    </div>
-                    <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:27px;line-height:1.14;color:#2B2A26;margin-top:14px;">Strasbourg / St. Denis</div>
-                    <div style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#4C3FA6;margin-top:8px;"><i data-lucide="corner-down-right" width="13" height="13"></i>A section · <span style="font-weight:600;">bars 1–16</span></div>
-                    <div style="height:1px;background:#E5DECD;margin:18px 0 16px;"></div>
-                    <div style="font-family:'Source Serif 4',serif;font-weight:500;font-size:17px;line-height:1.45;color:#2B2A26;">This is the section that stalls the run-through, so today it gets a block of its own.</div>
-                  </div>
-                </div>
-                <div style="text-align:center;font-size:12.5px;color:#6E6557;margin-bottom:12px;">One bar of count-in, then the click stays on.</div>
-                <button style="width:100%;height:62px;border-radius:16px;border:none;background:linear-gradient(165deg,#5648B2,#43388F 55%,#392F7C);color:#F7F4EC;font-family:Inter;font-size:17px;font-weight:600;box-shadow:0 12px 26px -14px rgba(76,63,166,0.85);cursor:pointer;" style-active="transform:scale(0.97)">Start</button>
-                <button style="width:100%;height:54px;background:none;border:none;font-family:Inter;font-size:14.5px;font-weight:500;color:#6E6557;cursor:pointer;">Skip this block</button>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
-            </div>
-          </div>
         </div>
 
         <!-- ROUTINES (placeholder) -->
@@ -1228,33 +951,6 @@
 
       </div>
 
-      <div style="margin-top:56px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Coach entry surfaces · how they compose</div>
-      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:30px;">
-        <div>
-          <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;">Block entry · #1223</div>
-          <div style="font-size:13px;line-height:1.7;color:#6E6557;margin-top:8px;"><strong style="color:#2B2A26;font-weight:600;">Composes:</strong> the drill-loop <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">ScreenScaffold</span> (no tab bar) · <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">OrientationStrip</span> (its header row and segmented strip) · <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">BlockEntryCard</span> · a 62pt primary over a 54pt quiet secondary.</div>
-          <ul style="margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.7;color:#6E6557;">
-            <li>It reads as a breath, not a screen: same shell, gradient and strip position as during play, only the centre changes. The card fades up over the loop it already belongs to — no push transition.</li>
-            <li>Four facts and one sentence. No tempo field, no rep target, no "edit block"; Start and Skip are the only ways forward, and Skip carries no border or fill because it is not a decision the eye should be drawn to.</li>
-            <li><strong style="color:#2B2A26;font-weight:600;">Nothing is carried over from the block you just left</strong> — entry looks forward only, so the beat cannot turn into a report card. Where a boundary <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">CoachNote</span> fires it resolves before this card, never stacked with it.</li>
-            <li>The two frames are one layout with two data states: only the progress fill, the clock and the kind tint differ.</li>
-            <li>The strip counts blocks <em>completed</em>: empty before block 1, two filled entering block 3. The built <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">OrientationStrip</span> fills <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">blockIndex&nbsp;+&nbsp;1</span>, so it needs a not-started state; otherwise the strip jumps a segment on Start.</li>
-          </ul>
-        </div>
-        <div>
-          <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;">Press-start overview · #1225</div>
-          <div style="font-size:13px;line-height:1.7;color:#6E6557;margin-top:8px;"><strong style="color:#2B2A26;font-weight:600;">Composes:</strong> the existing press-start hero, still the only primary · <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">PlanBlockRow</span> ×3 in the kind tints · a quiet disclosure row · the deferred lines under a hairline.</div>
-          <ul style="margin:10px 0 0;padding-left:18px;font-size:13px;line-height:1.7;color:#6E6557;">
-            <li>The deferred lines are shown <em>as the plan wrote them</em> and never dropped. Being told what today could not take is what makes the plan trustworthy enough to just press start. They get a hairline and a smaller size, never an amber tint, which would read as a warning.</li>
-            <li>Expanding <strong style="color:#2B2A26;font-weight:600;">shrinks the hero rather than pushing it off-screen</strong> (80pt play button reflows to 68pt), so Start stays under a thumb at every disclosure state.</li>
-            <li>The three piece blocks all share the indigo tint: the tint classifies, it does not distinguish items, so there is no per-block colour to hunt.</li>
-            <li><strong style="color:#2B2A26;font-weight:600;">Undrawn, for the build:</strong> beyond about seven blocks the list scrolls and the hero stays pinned; and where the week strip and today's sessions sit relative to "Today's shape" is not settled here.</li>
-          </ul>
-        </div>
-        <div style="grid-column:span 2;border-top:1px solid #E0D9C8;padding-top:20px;font-size:13px;line-height:1.7;color:#6E6557;">
-          <strong style="color:#2B2A26;font-weight:600;">Open question for review:</strong> does Skip need a confirm? Current call is no — skipping is cheap, the planner can put the block back, and a confirm sheet is exactly the stall the entry card exists to remove. <span style="color:#2B2A26;">No new tokens:</span> both surfaces are existing colour (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span>, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">masteryFill</span>, the gold exercise pair, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">inkSecondary</span>) and existing radii (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">hero</span> 22, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">panel</span> 16, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">card</span> 12, <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">badge</span> 8). The Start button is <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">LinearGradient.practiceHero</span> and the strip fills are the kind bars. <span style="color:#2B2A26;">Still to set for the build:</span> a serif <em>medium</em> instance for the intent line (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">IntradaFont</span> names only a semibold serif); <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">CoachScale</span> values for both new primitives, since these frames are phone only (27pt entry title, 62pt primary, 54pt quiet secondary) and the iPad-on-a-stand comp is not drawn.
-        </div>
-      </div>
     </section>
 
     <section id="native" style="scroll-margin-top:24px;margin-top:104px;">
