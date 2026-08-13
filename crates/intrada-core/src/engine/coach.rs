@@ -399,14 +399,24 @@ impl CoachState {
                 ),
             });
         }
-        let (headline, note) = if landing.plan_finished {
-            ("That's the session.", None)
-        } else {
-            (
+        // Completion wording is earned by a gate, not by reaching the end of the
+        // plan: "failed a gate five times" is one of the design's three failure
+        // stories, and skipping or grinding your way through every block is not
+        // the session those words belong to.
+        let (headline, note) = match (landing.plan_finished, landing.gates_passed) {
+            (true, 1..) => ("That's the session.", None),
+            // Ran its full length, so "short" would be untrue of it — but the
+            // consolation is exactly what this case is owed.
+            (true, 0) => (
                 "That's banked.",
-                Some("Short is still practice, and it's on the record.".to_string()),
-            )
+                Some("No gate opened today. The reps still count."),
+            ),
+            _ => (
+                "That's banked.",
+                Some("Short is still practice, and it's on the record."),
+            ),
         };
+        let note = note.map(str::to_string);
         Some(LandingView {
             headline: headline.to_string(),
             detail: Some(landing_detail(landing)),
@@ -1212,17 +1222,75 @@ mod tests {
             landing.detail.as_deref(),
             Some("2 blocks, 12 minutes. 1 gate passed.")
         );
-        let note = landing.note.expect(
+        assert!(
+            landing.note.is_some(),
             "quitting at minute eight is one of the design's three failure \
-             stories, so a short session gets one true sentence about it",
+             stories, so a short session gets one true sentence about it"
         );
-        let said = format!("{} {note}", landing.headline).to_lowercase();
-        for word in ["left", "remaining", "unfinished", "missed", "incomplete"] {
-            assert!(
-                !said.contains(word),
-                "the landing frames progress, never loss: {said:?} says {word:?}"
-            );
+    }
+
+    /// Every wording the landing can reach, not just the one a case names: this
+    /// is the rule the whole feature rests on, so it is checked across the lot.
+    #[test]
+    fn no_landing_reaches_for_the_words_of_loss() {
+        for (played, minutes, gates, finished) in [
+            (2, 12, 1, false),
+            (3, 24, 3, true),
+            (4, 30, 0, true),
+            (0, 0, 0, false),
+        ] {
+            let landing = landed(played, minutes, gates, finished)
+                .landing
+                .expect("a landing");
+            let said = format!(
+                "{} {} {}",
+                landing.headline,
+                landing.detail.unwrap_or_default(),
+                landing.note.unwrap_or_default()
+            )
+            .to_lowercase();
+            for word in [
+                "left",
+                "remaining",
+                "unfinished",
+                "missed",
+                "incomplete",
+                "failed",
+            ] {
+                assert!(
+                    !said.contains(word),
+                    "the landing frames progress, never loss: {said:?} says {word:?}"
+                );
+            }
         }
+    }
+
+    /// Jon's call on #1336: completion wording is earned by a gate, not by
+    /// reaching the end of the plan. Skipping or grinding through every block
+    /// gets the consolation, because "failed a gate five times" is one of the
+    /// design's failure stories rather than a session to congratulate.
+    #[test]
+    fn a_full_session_that_passed_nothing_is_not_congratulated() {
+        let short = landed(2, 12, 1, false).landing.expect("a landing");
+        let ground_out = landed(4, 30, 0, true).landing.expect("a landing");
+        let finished = landed(3, 24, 3, true).landing.expect("a landing");
+
+        assert_eq!(
+            ground_out.headline, short.headline,
+            "the plan ran out, but nothing passed, so it reads as banked rather \
+             than as a session completed"
+        );
+        assert_ne!(ground_out.headline, finished.headline);
+        let note = ground_out.note.expect("and it is owed the consolation");
+        assert!(
+            !note.to_lowercase().contains("short"),
+            "it ran its full length, so calling it short is untrue of it: {note:?}"
+        );
+        assert_eq!(
+            ground_out.detail.as_deref(),
+            Some("4 blocks, 30 minutes."),
+            "no gate clause where no gate opened"
+        );
     }
 
     #[test]
@@ -1232,7 +1300,7 @@ mod tests {
 
         assert_eq!(
             finished.note, None,
-            "there is nothing to soften: the plan was run out"
+            "there is nothing to soften: the plan was run out and gates passed"
         );
         assert_ne!(
             finished.headline, short.headline,

@@ -25,6 +25,35 @@ tap-verdicts against countable criteria.
 
 ## Recently landed
 
+- #1323 — the soft-landing exit, the last item on 2a's build list. `LeaveSession`
+  already banked the block in flight, so the evidence was never the gap; what was
+  missing is that the cover simply vanished and the app said nothing about a
+  session that stopped at minute eight. That is one of the design's three named
+  failure stories and exactly the loss-framed exit it says not to ship
+  (`specs/intrada-practice-coach-design.md` §"Streak mechanics, defanged").
+  `SessionState::Closing` now carries the `SoftLanding` the engine spec reserved
+  a `Summary` for (blocks played, minutes, gates passed, and whether the plan ran
+  out), counted as the session closes. It rides no blob and needed no key
+  bump, because `Closing` is the one state a crash never strands. `CoachState`
+  words it: "That's banked. 2 blocks, 12 minutes. 1 gate passed." over "Short is
+  still practice, and it's on the record."; a session that played nothing gets
+  "Another time." and no scoreboard, because "0 blocks" is a score for something
+  that did not happen. **Completion wording is earned by a gate, not by reaching
+  the end of the plan**: "That's the session." needs the plan run out *and* a
+  gate passed, so skipping or grinding your way through every block still lands
+  on "That's banked." with "No gate opened today. The reps still count." —
+  "failed a gate five times" is one of the design's three failure stories, not a
+  session to congratulate, and "short" would be untrue of one that ran its full
+  length. A test asserts no wording the landing can reach says *left*,
+  *remaining*, *unfinished*, *missed*, *incomplete* or *failed*. The
+  shell adds one `LoopStage` case, last in the order, so the feel and reflection
+  questions come before the acknowledgement rather than after it. Two fixes fell
+  out: `EngineSession::closed_blocks` was accumulating for the life of the
+  process, so it is cleared when a session starts (the landing counts *this*
+  session, and the crash blob now holds one session's evidence rather than every
+  session since launch), and a block skipped from its entry card no longer counts
+  as played, since a card bills nothing
+
 - #1193, #1305 — a crash-recovery blob is now **offered**, not resumed behind
   the user's back. Two halves of one gap: the blob had no decline path (#1193),
   and the only thing that read it was `DrillLoopHost.run()`, so it was recovered
@@ -45,30 +74,6 @@ tap-verdicts against countable criteria.
   state no crash could strand (a `Planned` session, #1219) is cleared rather
   than offered, and an offer arriving while something is already running is
   refused like every other door into a session
-- #1323 — the soft-landing exit, the last item on 2a's build list. `LeaveSession`
-  already banked the block in flight, so the evidence was never the gap; what was
-  missing is that the cover simply vanished and the app said nothing about a
-  session that stopped at minute eight. That is one of the design's three named
-  failure stories and exactly the loss-framed exit it says not to ship
-  (`specs/intrada-practice-coach-design.md` §"Streak mechanics, defanged").
-  `SessionState::Closing` now carries the `SoftLanding` the engine spec reserved
-  a `Summary` for (blocks played, minutes, gates passed, and whether the plan ran
-  out), counted as the session closes. It rides no blob and needed no key
-  bump, because `Closing` is the one state a crash never strands. `CoachState`
-  words it: "That's banked. 2 blocks, 12 minutes. 1 gate passed." over "Short is
-  still practice, and it's on the record."; a finished plan gets "That's the
-  session." and no consolation, since there is nothing to soften; a session that
-  played nothing gets "Another time." and no scoreboard, because "0 blocks" is a
-  score for something that did not happen. A test asserts the wording never
-  reaches for *left*, *remaining*, *unfinished*, *missed* or *incomplete*. The
-  shell adds one `LoopStage` case, last in the order, so the feel and reflection
-  questions come before the acknowledgement rather than after it. Two fixes fell
-  out: `EngineSession::closed_blocks` was accumulating for the life of the
-  process, so it is cleared when a session starts (the landing counts *this*
-  session, and the crash blob now holds one session's evidence rather than every
-  session since launch), and a block skipped from its entry card no longer counts
-  as played, since a card bills nothing
-
 - #1286 — the coach's outstanding evidence writes are a queue, not one slot.
   `coach_write_in_flight` held a single `SaveCoachRecords` batch and was
   overwritten on every call, so a second close before the first was acked took
