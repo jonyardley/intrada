@@ -66,13 +66,19 @@ jobs:
               - '.github/workflows/ci.yml'
       # Drift installs clippy/rustfmt for the env's version, then cargo resolves
       # to the file's: "clippy is not installed", or a silent second download.
+      # Checks every workflow's RUST_VERSION, not just this file's — so a
+      # third lane (or release-testflight.yml's own copy) is covered by
+      # construction rather than by remembering to hand-edit it too (#1341).
       - name: Toolchain pins agree
         run: |
           pinned=$(grep -oE 'channel = "[^"]+"' rust-toolchain.toml | cut -d'"' -f2)
-          if [ "$pinned" != "$RUST_VERSION" ]; then
-            echo "rust-toolchain.toml pins $pinned but RUST_VERSION is $RUST_VERSION"
-            exit 1
-          fi
+          for wf in .github/workflows/*.yml; do
+            version=$(grep -oE '^[[:space:]]*RUST_VERSION: "[^"]+"' "$wf" | grep -oE '"[^"]+"' | tr -d '"')
+            if [ -n "$version" ] && [ "$version" != "$pinned" ]; then
+              echo "$wf pins RUST_VERSION $version but rust-toolchain.toml pins $pinned"
+              exit 1
+            fi
+          done
 
   test:
     name: Test

@@ -9,7 +9,8 @@ members = [
 ]
 resolver = "2"
 # MSRV floor, set by crux_core 0.20's own rust-version. The dev/CI toolchain is
-# newer (rust-toolchain.toml). intrada-api keeps its own lower floor: no crux.
+# newer (rust-toolchain.toml). intrada-api depends on intrada-core, so it
+# inherits this floor too — it has no lower one of its own.
 package.rust-version = "1.90"
 
 [workspace.dependencies]
