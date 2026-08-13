@@ -348,13 +348,21 @@ final class StoreEffectLoopTests: XCTestCase {
       .coach(.startPlannedSession(now: "2026-08-04T10:00:00Z", utcOffsetMinutes: 0)))
     XCTAssertNotNil(try bridge.view().coach.drill, "a block to leave")
     XCTAssertNil(try bridge.view().coach.landing, "and nothing landed yet")
+    // Off the entry card, which bills nothing.
+    _ = try bridge.update(.coach(.startBlock(now: "2026-08-04T10:00:00Z")))
 
     _ = try bridge.update(.coach(.leaveSession(now: "2026-08-04T10:08:00Z")))
 
     let landing = try XCTUnwrap(
       try bridge.view().coach.landing,
       "leaving must land the session, or the cover vanishes and says nothing (#1323)")
-    XCTAssertFalse(landing.headline.isEmpty)
+    // Exact strings, not merely non-empty: the previews and both snapshot
+    // references hand-copy this copy, so nothing else would catch a reword.
+    XCTAssertEqual(landing.headline, LandingView.previewShort.headline)
+    XCTAssertEqual(landing.note, LandingView.previewShort.note)
+    XCTAssertEqual(
+      landing.detail, "1 block, 8 minutes.",
+      "one block played, no gate reached, so no gate clause")
     XCTAssertNil(try bridge.view().coach.drill, "the session is over")
 
     _ = try bridge.update(.coach(.closeLanding))

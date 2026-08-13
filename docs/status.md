@@ -52,8 +52,8 @@ tap-verdicts against countable criteria.
   failure stories and exactly the loss-framed exit it says not to ship
   (`specs/intrada-practice-coach-design.md` §"Streak mechanics, defanged").
   `SessionState::Closing` now carries the `SoftLanding` the engine spec reserved
-  a `Summary` for — blocks played, minutes, gates passed, and whether the plan
-  ran out — counted as the session closes. It rides no blob and needed no key
+  a `Summary` for (blocks played, minutes, gates passed, and whether the plan ran
+  out), counted as the session closes. It rides no blob and needed no key
   bump, because `Closing` is the one state a crash never strands. `CoachState`
   words it: "That's banked. 2 blocks, 12 minutes. 1 gate passed." over "Short is
   still practice, and it's on the record."; a finished plan gets "That's the

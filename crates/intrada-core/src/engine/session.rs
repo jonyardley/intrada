@@ -686,7 +686,7 @@ pub enum SessionState {
 /// What a prescribed session did, counted as it closed (#1323). Facts only; the
 /// sentences are `CoachState`'s. Lives inside `Closing`, the one `SessionState`
 /// a crash never strands, so it rides no blob and needs no key bump.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SoftLanding {
     /// Blocks with time on them. A block skipped from its entry card was not
@@ -1641,8 +1641,10 @@ impl EngineSession {
 
         let next = block.spec_index + 1;
         let now = block.now;
-        // `advance` is false only on the way out of a session the user left, so
-        // it is what tells a finished plan from an early exit (#1323).
+        // `advance` false = the session is taken out from under the block rather
+        // than handing on: leaving, a dead click, or dropping to an altitude.
+        // Without it, leaving during the *last* block reads as a plan run out and
+        // the landing congratulates a user who quit (#1323).
         let plan_finished = advance && next >= plan.blocks.len();
         match plan.blocks.get(next).filter(|_| advance) {
             Some(planned) => *block = BlockState::open(&planned.spec, next, now),
@@ -3191,6 +3193,34 @@ mod tests {
             landing.plan_finished,
             "every block the plan had was reached, so the landing must not offer \
              the consolation a short session gets"
+        );
+    }
+
+    /// On the last block `spec_index + 1` already equals the plan length, so a
+    /// landing that read position alone would congratulate someone who quit.
+    #[test]
+    fn leaving_during_the_last_block_is_not_a_finished_plan() {
+        let mut session = listening();
+        assert_eq!(session.block().expect("a block").spec_index, 0);
+        assert_eq!(
+            match &session.state {
+                SessionState::Running { plan, .. } => plan.blocks.len(),
+                _ => 0,
+            },
+            1,
+            "the fixture plan is one block, so leaving it is leaving the last one"
+        );
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::Tick { now: at(120) });
+
+        session.apply(&CoachEvent::LeaveSession { now: at(120) });
+
+        let landing = landing_of(&session);
+        assert_eq!(landing.blocks_played, 1);
+        assert!(
+            !landing.plan_finished,
+            "the user left, so the plan did not run out — reading it as finished \
+             is the landing telling them well done for stopping"
         );
     }
 

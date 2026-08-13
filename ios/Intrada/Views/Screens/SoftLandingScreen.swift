@@ -7,39 +7,21 @@ struct SoftLandingScreen: View {
   let state: LandingView
   var onDone: () -> Void
 
-  @Environment(\.horizontalSizeClass) private var sizeClass
-
-  private var scale: CoachScale { sizeClass == .regular ? .regular : .compact }
-  private var gutter: CGFloat { scale == .compact ? IntradaSpacing.card : IntradaSpacing.stage }
-
   var body: some View {
-    ZStack {
-      RadialGradient.playerPaper.ignoresSafeArea()
-      // Scrolls once the text outgrows the screen: Done is the only way past
-      // this, so it may never be the thing that falls off the bottom (FeelScreen).
-      GeometryReader { proxy in
-        ScrollView {
-          VStack(spacing: 0) {
-            Spacer(minLength: IntradaSpacing.card)
-            landing
-            Spacer(minLength: IntradaSpacing.card)
-            CoachAction(title: "Done", emphasis: .primary, action: onDone)
-          }
-          .padding(.horizontal, gutter)
-          .padding(.bottom, IntradaSpacing.section)
-          .frame(minHeight: proxy.size.height)
-        }
-        .scrollBounceBehavior(.basedOnSize)
+    CoachCoverScaffold { scale in
+      VStack(spacing: 0) {
+        Spacer(minLength: IntradaSpacing.card)
+        landing(scale)
+        Spacer(minLength: IntradaSpacing.card)
+        CoachAction(title: "Done", emphasis: .primary, action: onDone)
       }
     }
-    .environment(\.coachScale, scale)
-    .dynamicTypeSize(.xSmall ... .accessibility5)
   }
 
-  private var landing: some View {
+  private func landing(_ scale: CoachScale) -> some View {
     VStack(spacing: IntradaSpacing.section) {
       Text(state.headline)
-        .font(IntradaFont.verdict(scale.question * 0.78))
+        .font(IntradaFont.verdict(scale.ask))
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
@@ -49,21 +31,15 @@ struct SoftLandingScreen: View {
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
-          .accessibilityLabel(spoken(detail))
       }
       if let note = state.note {
         Text(note)
-          .font(IntradaFont.ambient(scale == .compact ? 14 : 18))
+          .font(IntradaFont.ambient(scale.support))
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
       }
     }
-  }
-
-  /// Spoken, the detail's clauses run together without its full stops.
-  private func spoken(_ line: String) -> String {
-    line.replacingOccurrences(of: ".", with: ",")
   }
 }
 

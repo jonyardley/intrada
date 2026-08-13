@@ -576,7 +576,7 @@ fn reported_offset(event: &CoachEvent) -> Option<i32> {
     }
 }
 
-/// "2 blocks, 12 minutes. 1 gate passed." — stated, nothing inferred from it.
+/// "2 blocks, 12 minutes. 1 gate passed.": stated, nothing inferred from it.
 fn landing_detail(landing: &SoftLanding) -> String {
     let mut detail = format!(
         "{}, {}",
@@ -1178,8 +1178,8 @@ mod tests {
 
     // ── The soft landing (#1323) ──
 
-    /// Built by hand because the wording is what is under test here, not the
-    /// counting — the state machine's tests own that half.
+    /// Built by hand because the wording is what is under test here; the state
+    /// machine's tests own the counting.
     fn landed(
         blocks_played: u16,
         minutes: u16,
@@ -1188,7 +1188,7 @@ mod tests {
     ) -> CoachView {
         let mut coach = CoachState::default();
         coach.session.state = SessionState::Closing {
-            landing: Some(crate::engine::SoftLanding {
+            landing: Some(SoftLanding {
                 blocks_played,
                 minutes,
                 gates_passed,
@@ -1212,20 +1212,11 @@ mod tests {
             landing.detail.as_deref(),
             Some("2 blocks, 12 minutes. 1 gate passed.")
         );
-        let note = landing
-            .note
-            .expect("a short session gets one true sentence");
-        assert!(
-            !note.is_empty() && !landing.headline.is_empty(),
+        let note = landing.note.expect(
             "quitting at minute eight is one of the design's three failure \
-             stories, and a hard exit is the loss framing it says not to ship"
+             stories, so a short session gets one true sentence about it",
         );
-        let said = format!(
-            "{} {} {note}",
-            landing.headline,
-            landing.detail.unwrap_or_default()
-        )
-        .to_lowercase();
+        let said = format!("{} {note}", landing.headline).to_lowercase();
         for word in ["left", "remaining", "unfinished", "missed", "incomplete"] {
             assert!(
                 !said.contains(word),
