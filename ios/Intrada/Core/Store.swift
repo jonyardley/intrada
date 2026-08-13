@@ -137,8 +137,7 @@ final class Store {
   }
 
   /// Hand the blob to the core at launch so it can *offer* it (#1193, #1305).
-  /// The core decides whether it is worth offering, words the prompt and clears
-  /// a dud; the shell only reads the key.
+  /// Worth offering, the wording, and clearing a dud are all its call.
   func offerPendingCoachSession() {
     guard let session = pendingCoachSession() else { return }
     send(.coach(.offerRecovery(session: session)))

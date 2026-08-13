@@ -221,9 +221,8 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
-  /// The coach blob's prompt (#1193, #1305). Two references, not one: the
-  /// altitude variant swaps the eyebrow for the chip, which is the consent
-  /// signal, so it can regress on its own.
+  /// Two references, not one: the altitude variant swaps the eyebrow for the
+  /// chip, which is the consent signal, so it can regress on its own.
   func testCoachRecoveryPromptCard() throws {
     let recovery = try XCTUnwrap(Store.previewCoachRecovery.viewModel?.coach.recovery)
     let card = RecoveryPromptCard(

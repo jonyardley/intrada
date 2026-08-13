@@ -69,6 +69,8 @@ impl CoachState {
                 now,
                 utc_offset_minutes,
             } => {
+                // No `accepts_something_new` guard: `settle_offer` is where
+                // that invariant lives, so nothing is holdable once one runs.
                 let Some(session) = self.pending_recovery.take() else {
                     return CoachWrites::default();
                 };
@@ -78,9 +80,6 @@ impl CoachState {
                     utc_offset_minutes: *utc_offset_minutes,
                 });
             }
-            // Recovered by another door (the drill loop's own entry): the offer
-            // is answered, so it must not stay on the Practice tab behind it.
-            CoachEvent::RecoverSession { .. } => self.pending_recovery = None,
             _ => {}
         }
         // Every door that can open a session reports it, so skipping the
@@ -100,15 +99,34 @@ impl CoachState {
                 self.mastery.level_up(&record.node, record.level, next);
             }
         }
+        self.settle_offer(&writes);
         writes
     }
 
-    /// Hold the blob and word a prompt for it. A session already in flight has
-    /// evidence riding on it that a blob must never replace, and a blob holding
-    /// a state no crash could strand recovers nothing — both are cleared rather
-    /// than left in UserDefaults for the life of the install.
+    /// An offer is live only while nothing is running *and* its blob is still on
+    /// disk. One enforcement point rather than one per door, because the doors
+    /// are not all `CoachEvent`s: `adopt_plan` is the built session's (#1256),
+    /// and it is the one that made this bite — with the offer still up, the
+    /// drill loop ran the crashed session over the composition Start was
+    /// pressed on.
+    fn settle_offer(&mut self, writes: &CoachWrites) {
+        let running = !self.session.state.accepts_something_new();
+        // A `Save` rewrote the blob and a clear removed it; either way the bytes
+        // the offer was made from have gone, so it can no longer be taken.
+        let blob_moved = writes.snapshot != SnapshotAction::Unchanged;
+        if running || blob_moved {
+            self.pending_recovery = None;
+        }
+    }
+
+    /// Two refusals, and they must not share an action: a blob holding a state
+    /// no crash could strand recovers nothing and goes, but a session in flight
+    /// owns the bytes on disk, so clearing them would strip its own protection.
     fn offer_recovery(&mut self, session: &EngineSession) -> CoachWrites {
-        if !self.session.state.accepts_something_new() || !session.state.worth_recovering() {
+        if !self.session.state.accepts_something_new() {
+            return CoachWrites::default();
+        }
+        if !session.state.worth_recovering() {
             return CoachWrites {
                 snapshot: SnapshotAction::ClearOffer,
                 ..CoachWrites::default()
@@ -142,13 +160,15 @@ impl CoachState {
         // Clearing to `Idle` is what makes the machine take the plan it is
         // handed rather than the prescribed one it made for itself.
         self.session.state = SessionState::Idle;
-        self.session.apply_with_plan(
+        let writes = self.session.apply_with_plan(
             &CoachEvent::StartPlannedSession {
                 now,
                 utc_offset_minutes: self.utc_offset_minutes,
             },
             Some(plan),
-        )
+        );
+        self.settle_offer(&writes);
+        writes
     }
 
     /// Place C3's accepted steer in today's plan (#1256 Phase D): one block
@@ -1227,7 +1247,6 @@ mod tests {
 
     // ── The launch recovery prompt (#1193, #1305) ──
 
-    /// A blob of each shape a crash can leave, as the shell would hand it back.
     fn crashed(state: &str) -> EngineSession {
         let mut coach = CoachState::default();
         match state {
@@ -1375,7 +1394,20 @@ mod tests {
 
     #[test]
     fn the_offer_carries_the_instant_the_session_actually_started() {
-        let view = offered("off-piste").view().recovery.expect("a prompt");
+        let mut wandering = CoachState::default();
+        wandering.apply(&CoachEvent::GoOffPiste {
+            item_id: None,
+            now: at(0),
+        });
+        // Twenty minutes in, so the two instants differ: projecting the wrong
+        // one is invisible on a blob where they are the same.
+        wandering.apply(&CoachEvent::Tick { now: at(1200) });
+
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::OfferRecovery {
+            session: wandering.session,
+        });
+        let view = coach.view().recovery.expect("a prompt");
 
         assert_eq!(
             view.started_at,
@@ -1421,7 +1453,7 @@ mod tests {
             utc_offset_minutes: 0,
         });
 
-        coach.apply(&CoachEvent::OfferRecovery {
+        let writes = coach.apply(&CoachEvent::OfferRecovery {
             session: crashed("run-through"),
         });
 
@@ -1432,6 +1464,63 @@ mod tests {
              every other door into a session obeys"
         );
         assert!(coach.view().drill.is_some(), "and the block plays on");
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Unchanged,
+            "and the blob is left alone: it belongs to the session in flight \
+             now, so clearing it here would strip that session's own crash \
+             protection"
+        );
+    }
+
+    /// `adopt_plan` does not go through `apply`, so no test written against
+    /// `apply` could see this one — and it was a live wrong-action bug.
+    #[test]
+    fn starting_a_composed_session_answers_the_offer_it_did_not_take() {
+        let mut coach = offered("running");
+        coach.adopt_plan(Plan::fixture(), at(600));
+
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "the composition is what the user pressed Start on — an offer still \
+             live behind it is a session waiting to replace theirs"
+        );
+        assert!(
+            coach.view().drill.is_some(),
+            "and the composition is running"
+        );
+    }
+
+    /// Launch, ignore the prompt, go and play something else, come back: the
+    /// session run in between took the blob's place on disk.
+    #[test]
+    fn an_offer_does_not_outlive_a_session_run_after_it() {
+        let mut coach = offered("running");
+        coach.apply(&CoachEvent::GoUnmonitored { now: at(100) });
+        let writes = coach.apply(&CoachEvent::CloseSession { now: at(200) });
+
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Clear,
+            "closing the unmonitored run removes the blob from UserDefaults"
+        );
+        assert_eq!(
+            coach.view().recovery,
+            None,
+            "so the prompt cannot still be offering what was written in it"
+        );
+    }
+
+    /// The narrower half of the same rule: a clear answers the offer even where
+    /// the state never left the ones that accept something new.
+    #[test]
+    fn an_offer_does_not_outlive_the_blob_it_was_made_from() {
+        let mut coach = offered("running");
+        let writes = coach.apply(&CoachEvent::LeaveSession { now: at(100) });
+
+        assert_eq!(writes.snapshot, SnapshotAction::Clear, "the blob is gone");
+        assert_eq!(coach.view().recovery, None, "so the offer is too");
     }
 
     #[test]
@@ -1451,16 +1540,42 @@ mod tests {
         );
     }
 
+    /// A double press, or the drill loop's entry arriving behind the prompt's.
     #[test]
-    fn resuming_nothing_is_not_a_way_to_start_a_session() {
+    fn resuming_a_second_time_does_not_rewind_the_session() {
+        // The fixture plan, whose gate wants three passes: today's opens on one,
+        // so the blob would come back on a gate the first tick closes.
+        let mut mid_block = playing();
+        mid_block.apply(&CoachEvent::Tick { now: at(30) });
         let mut coach = CoachState::default();
-        let writes = coach.apply(&CoachEvent::AcceptRecovery {
-            now: at(0),
+        coach.apply(&CoachEvent::OfferRecovery {
+            session: mid_block.session,
+        });
+
+        coach.apply(&CoachEvent::AcceptRecovery {
+            now: at(600),
+            utc_offset_minutes: 0,
+        });
+        coach.apply(&CoachEvent::Tick { now: at(660) });
+        let elapsed = coach
+            .view()
+            .drill
+            .expect("the recovered block")
+            .elapsed_seconds;
+        assert!(elapsed >= 60, "a minute of it has been played: {elapsed}");
+
+        coach.apply(&CoachEvent::AcceptRecovery {
+            now: at(720),
             utc_offset_minutes: 0,
         });
 
-        assert_eq!(coach.view().drill, None);
-        assert_eq!(writes.snapshot, SnapshotAction::Unchanged);
+        assert_eq!(
+            coach.view().drill.expect("still running").elapsed_seconds,
+            elapsed,
+            "the offer was taken, so there is nothing left to take: a second \
+             Resume that re-ran it would rebase the block to the blob and throw \
+             away the minute played since"
+        );
     }
 
     #[test]

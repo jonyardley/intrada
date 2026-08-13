@@ -145,12 +145,11 @@ pub enum CoachEvent {
     OfferRecovery {
         session: EngineSession,
     },
-    /// "Resume" — run the session the core is holding.
     AcceptRecovery {
         now: DateTime<Utc>,
         utc_offset_minutes: i32,
     },
-    /// "Discard" — drop it, and clear the blob that would offer it again.
+    /// Discard: drop it, and clear the blob that would offer it again.
     DeclineRecovery,
 }
 

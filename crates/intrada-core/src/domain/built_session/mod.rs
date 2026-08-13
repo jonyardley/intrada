@@ -1959,9 +1959,8 @@ mod tests {
         );
     }
 
-    /// The launch prompt's Discard and a session ending both clear the blob, so
-    /// sharing one `SnapshotAction` would retire a composition the user has not
-    /// practised — they declined a crash from before it was made (#1193).
+    /// Discard and a session ending both clear the blob, so one `SnapshotAction`
+    /// for both would retire a composition nobody practised (#1193).
     #[test]
     fn declining_a_crashed_session_leaves_todays_composition_alone() {
         let mut model = Model::test_default();

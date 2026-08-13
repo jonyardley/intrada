@@ -235,16 +235,14 @@
       return store
     }
 
-    /// Practice home with a coach blob pending (#1193, #1305) — the prompt the
-    /// drill loop used to skip by resuming on its own.
+    /// Practice home with a coach blob pending (#1193, #1305).
     static var previewCoachRecovery: Store {
       Store(
         bridge: PreviewBridge(
           sessions: [.previewCompleted], recovery: .previewDrill))
     }
 
-    /// The same prompt for a blob left at an altitude, where the chip says what
-    /// was being recorded rather than a word.
+    /// The same prompt for a blob left at an altitude.
     static var previewCoachRecoveryAltitude: Store {
       Store(
         bridge: PreviewBridge(

@@ -278,11 +278,10 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(drill.drillTitle.isEmpty, "the recovered block keeps its identity")
   }
 
-  /// The launch prompt, end to end over the real bridge (#1193, #1305): the
-  /// blob is written by one build's effect, read from UserDefaults, offered
-  /// back as a `CoachEvent` payload, and comes out the other side as a
-  /// `RecoveryView` the Practice tab can draw. A stub bridge would pass on a
-  /// wire break here and the prompt would simply never appear (#846 class).
+  /// The launch prompt over the real bridge (#1193, #1305): written as bincode,
+  /// read from UserDefaults, offered back as a `CoachEvent` payload, out again
+  /// as a `RecoveryView`. A stub bridge passes on a wire break here and the
+  /// prompt simply never appears (#846 class).
   func testRealBridgeOffersAStoredCoachBlobAtLaunchWithoutResumingIt() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
     defaults.set(
@@ -320,8 +319,6 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.pendingCoachSession(), "and so does the blob behind it")
   }
 
-  /// Resume is the other answer, and it has to hand back the session that was
-  /// offered rather than start a new one over the top of it.
   func testRealBridgeResumingTheLaunchPromptPutsTheDrillBack() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
     defaults.set(

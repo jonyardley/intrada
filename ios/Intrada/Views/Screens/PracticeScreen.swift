@@ -181,9 +181,9 @@ struct PracticeScreen: View {
       })
   }
 
-  /// Resume the session a crash cut off (#1193, #1305). A recovered altitude
-  /// puts its own cover up from `RootView`, so only a prescribed block opens
-  /// the drill loop from here — and only once the core has handed one back.
+  /// A recovered altitude puts its own cover up from `RootView`, so only a
+  /// prescribed block opens the drill loop here, and only once the core has
+  /// handed one back (#1193, #1305).
   private func resumeCoachSession() {
     store.send(
       .coach(

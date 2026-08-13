@@ -110,8 +110,8 @@ struct RecoveryPromptCard: View {
 
 #if DEBUG
   extension RecoveryView {
-    /// Wording as the core writes it — copied from `CoachState::recovery_view`
-    /// so previews and snapshots read what the device would show.
+    /// Verbatim from `CoachState::recovery_view`, so a preview reads what the
+    /// device would show.
     static var previewDrill: RecoveryView {
       RecoveryView(
         altitude: nil, headline: "Pick up where you left off?",
