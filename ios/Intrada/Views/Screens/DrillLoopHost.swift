@@ -104,9 +104,16 @@ struct DrillLoopHost: View {
     // than starting fresh, or the evidence already banked is discarded (#1181).
     let now = SessionClock.nowRFC3339()
     if let crashed = store.pendingCoachSession() {
-      store.send(.coach(.recoverSession(session: crashed, now: now)))
+      store.send(
+        .coach(
+          .recoverSession(
+            session: crashed, now: now,
+            utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
     } else {
-      store.send(.coach(.startPlannedSession(now: now)))
+      store.send(
+        .coach(
+          .startPlannedSession(
+            now: now, utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
     }
     // No block came back — the core could not plan one, and has said why. Now
     // that press-start is a user path (#1182), holding a blank screen instead

@@ -13,6 +13,13 @@ enum SessionClock {
     fractionalFormatter().string(from: date)
   }
 
+  /// Minutes east of UTC, for the core's cold test (#1221): the fact about
+  /// where the user is, never the verdict. `zone` is injectable because CI
+  /// runs in UTC, where a seconds-for-minutes slip would assert 0 == 0.
+  static func utcOffsetMinutes(_ date: Date = Date(), in zone: TimeZone = .current) -> Int32 {
+    Int32(zone.secondsFromGMT(for: date) / 60)
+  }
+
   /// `MM:SS` (or `H:MM:SS` past an hour) for the live count-up timer. Negative
   /// inputs clamp to zero.
   static func clockDisplay(_ seconds: Int) -> String {

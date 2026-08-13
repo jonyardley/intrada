@@ -110,7 +110,11 @@ struct PracticeScreen: View {
   /// declaration surfaces that would ask are Phase 2b.
   private func planToday() {
     guard store.viewModel?.coach.plan == nil else { return }
-    store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
+    store.send(
+      .coach(
+        .planSession(
+          now: SessionClock.nowRFC3339(), availableMinutes: nil,
+          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
   }
 
   // MARK: - (0) One-tap hero

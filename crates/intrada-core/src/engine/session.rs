@@ -29,11 +29,16 @@ pub enum CoachEvent {
     PlanSession {
         now: DateTime<Utc>,
         available_minutes: Option<u16>,
+        /// Minutes east of UTC. Without it the cold test turns the day over
+        /// at midnight UTC, in the middle of an evening's practice (#1221).
+        utc_offset_minutes: i32,
     },
     /// Run the plan already made. From `Idle` this plans today's session first,
-    /// so a shell that wants no preview can send this alone.
+    /// so a shell that wants no preview can send this alone. Which is why it
+    /// carries the offset too: skipping `PlanSession` must not skip #1221.
     StartPlannedSession {
         now: DateTime<Utc>,
+        utc_offset_minutes: i32,
     },
     /// One count-in click, reported as it sounds; `remaining` is beats left
     /// *after* this one, counting down to 0 on the last click (#1184).
@@ -131,6 +136,7 @@ pub enum CoachEvent {
     RecoverSession {
         session: EngineSession,
         now: DateTime<Utc>,
+        utc_offset_minutes: i32,
     },
 }
 
@@ -838,7 +844,7 @@ impl EngineSession {
                     }
                 }
             }
-            CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
+            CoachEvent::StartPlannedSession { now, .. } => match std::mem::take(&mut self.state) {
                 SessionState::Planned { plan } => self.start(plan, *now),
                 SessionState::Idle | SessionState::Closing => {
                     if let Some(plan) = planned {
@@ -877,7 +883,7 @@ impl EngineSession {
                 }
             }
             CoachEvent::CloseSession { now } => return self.close_session(*now),
-            CoachEvent::RecoverSession { session, now } => self.recover(session.clone(), *now),
+            CoachEvent::RecoverSession { session, now, .. } => self.recover(session.clone(), *now),
         }
         Applied::default()
     }
@@ -887,7 +893,7 @@ impl EngineSession {
     pub fn now_of(event: &CoachEvent) -> Option<DateTime<Utc>> {
         match event {
             CoachEvent::PlanSession { now, .. }
-            | CoachEvent::StartPlannedSession { now }
+            | CoachEvent::StartPlannedSession { now, .. }
             | CoachEvent::Tap { now, .. }
             | CoachEvent::StartBlock { now }
             | CoachEvent::SkipBlock { now }
@@ -1938,6 +1944,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
 
         assert_eq!(
@@ -2167,6 +2174,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(9000),
+            utc_offset_minutes: 0,
         });
 
         let block = restored.block().expect("the block came back");
@@ -2457,7 +2465,10 @@ mod tests {
         let mut session = EngineSession::default();
         let content = ContentIndex::shipped();
         session.apply_with_plan(
-            &CoachEvent::StartPlannedSession { now: at(0) },
+            &CoachEvent::StartPlannedSession {
+                now: at(0),
+                utc_offset_minutes: 0,
+            },
             Some(crate::engine::plan::plan(
                 &crate::engine::coach::CoachState::default(),
                 crate::engine::plan::PlanContext {
@@ -2692,6 +2703,7 @@ mod tests {
             &CoachEvent::PlanSession {
                 now: at(5),
                 available_minutes: Some(20),
+                utc_offset_minutes: 0,
             },
             Some(Plan::fixture()),
         );
@@ -3156,6 +3168,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
 
         let block = restored.block().expect("the block came back");
@@ -3182,6 +3195,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
 
         let block = restored.block().expect("the block came back");
@@ -3205,6 +3219,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
         restored.apply(&CoachEvent::CountInBeat { remaining: 0 });
         restored.apply(&CoachEvent::Beat { beat_index: 0 });
@@ -3230,6 +3245,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
         assert_eq!(restored.phase(), Some(&Phase::GateOpen));
 
@@ -3254,6 +3270,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(4000),
+            utc_offset_minutes: 0,
         });
         restored.apply(&CoachEvent::CloseSession { now: at(4100) });
 
@@ -3277,6 +3294,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3000),
+            utc_offset_minutes: 0,
         });
         let writes = restored.apply(&CoachEvent::CloseSession { now: at(3000) });
 
@@ -3301,6 +3319,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(9000),
+            utc_offset_minutes: 0,
         });
         restored.apply(&CoachEvent::CloseSession { now: at(9060) });
 
@@ -3346,6 +3365,7 @@ mod tests {
         let writes = live.apply(&CoachEvent::RecoverSession {
             session: EngineSession::default(),
             now: at(3600),
+            utc_offset_minutes: 0,
         });
         assert!(writes.blocks.is_empty(), "an empty blob closed nothing");
     }
@@ -3360,6 +3380,7 @@ mod tests {
         let writes = restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
         assert_eq!(
             writes.blocks.len(),
@@ -3677,6 +3698,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
 
         assert_eq!(
@@ -3941,6 +3963,7 @@ mod tests {
         restored.apply(&CoachEvent::RecoverSession {
             session: crashed,
             now: at(3600),
+            utc_offset_minutes: 0,
         });
 
         assert_eq!(

@@ -48,4 +48,26 @@ final class SessionClockTests: XCTestCase {
   func testNowRoundTrips() {
     assertSameSecond(SessionClock.parseRFC3339(SessionClock.nowRFC3339(expected)), "now round-trip")
   }
+
+  // Fixed zones, not `TimeZone.current`: CI runs in UTC, where an offset in
+  // seconds and one in minutes are both zero (#1221).
+  func testUTCOffsetIsReportedInMinutes() {
+    let kolkata = TimeZone(identifier: "Asia/Kolkata")!
+    XCTAssertEqual(
+      SessionClock.utcOffsetMinutes(expected, in: kolkata), 330,
+      "half-hour offsets are why this is minutes rather than hours")
+  }
+
+  // The offset is asked for an instant, not for now: DST makes them differ.
+  func testUTCOffsetFollowsTheInstantItIsAskedAbout() {
+    let newYork = TimeZone(identifier: "America/New_York")!
+    var winter = DateComponents()
+    (winter.year, winter.month, winter.day) = (2026, 1, 5)
+    (winter.hour, winter.minute) = (12, 0)
+    winter.timeZone = utc
+    let january = Calendar(identifier: .gregorian).date(from: winter)!
+
+    XCTAssertEqual(SessionClock.utcOffsetMinutes(expected, in: newYork), -240, "June is EDT")
+    XCTAssertEqual(SessionClock.utcOffsetMinutes(january, in: newYork), -300, "January is EST")
+  }
 }
