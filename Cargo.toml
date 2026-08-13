@@ -8,8 +8,8 @@ members = [
   "crates/intrada-api",
 ]
 resolver = "2"
-# Set by crux_core 0.20, which declares rust-version 1.90 (rust-toolchain.toml
-# already pins it). intrada-api keeps its own lower floor: it has no crux.
+# MSRV floor, set by crux_core 0.20's own rust-version. The dev/CI toolchain is
+# newer (rust-toolchain.toml). intrada-api keeps its own lower floor: no crux.
 package.rust-version = "1.90"
 
 [workspace.dependencies]

@@ -23,7 +23,7 @@ permissions:
   security-events: write
 
 env:
-  RUST_VERSION: "1.90.0"
+  RUST_VERSION: "1.97.1"
   SENTRY_ORG: jon-yardley
 
 jobs:
@@ -46,21 +46,33 @@ jobs:
             rust:
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - 'crates/**'
               - '.github/workflows/ci.yml'
             api:
               - 'Dockerfile'
+              - 'rust-toolchain.toml'
               - 'crates/intrada-api/**'
               - '.github/workflows/ci.yml'
             native:
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'rust-toolchain.toml'
               - 'crates/intrada-core/**'
               - 'crates/intrada-ffi/**'
               - 'ios/**'
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
               - '.github/workflows/ci.yml'
+      # Drift installs clippy/rustfmt for the env's version, then cargo resolves
+      # to the file's: "clippy is not installed", or a silent second download.
+      - name: Toolchain pins agree
+        run: |
+          pinned=$(grep -oE 'channel = "[^"]+"' rust-toolchain.toml | cut -d'"' -f2)
+          if [ "$pinned" != "$RUST_VERSION" ]; then
+            echo "rust-toolchain.toml pins $pinned but RUST_VERSION is $RUST_VERSION"
+            exit 1
+          fi
 
   test:
     name: Test
@@ -127,6 +139,31 @@ jobs:
           files: codecov.json
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      # Read the floor from Cargo.toml rather than pinning it again here: the
+      # toolchain we build with is seven minors above it, so nothing else fails.
+      - id: floor
+        run: |
+          version=$(grep -oE 'package.rust-version = "[^"]+"' Cargo.toml | cut -d'"' -f2)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.floor.outputs.version }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "msrv"
+          cache-on-failure: true
+      # `+toolchain` beats rust-toolchain.toml, which would otherwise pull the
+      # current pin straight back in.
+      - run: cargo +${{ steps.floor.outputs.version }} check --workspace --all-targets
 
   clippy:
     name: Clippy

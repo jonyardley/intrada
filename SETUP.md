@@ -305,7 +305,8 @@ Local parity (after the one-time setup): `just testflight`.
 
 Install Rust first (mise's `cargo:` backend builds with it):
 
-- Rust stable (1.75+) via [rustup](https://rustup.rs)
+- Rust via [rustup](https://rustup.rs); `rust-toolchain.toml` pins the version
+  and rustup installs it on first build
 
 Then the rest of the dev toolchain (just, xcodegen, oxipng, typos, Ruby for
 fastlane, pinned cargo tools like cargo-swift 0.9.0) is declared in

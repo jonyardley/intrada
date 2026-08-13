@@ -1,6 +1,7 @@
 //! Analytics computations. All functions are pure and take `today: NaiveDate`
 //! (rather than reading the clock) so they're deterministic under test.
 
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 use chrono::{Datelike, NaiveDate};
@@ -274,7 +275,7 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
         )
         .collect();
 
-    rankings.sort_by(|a, b| b.total_minutes.cmp(&a.total_minutes));
+    rankings.sort_by_key(|r| Reverse(r.total_minutes));
     rankings.truncate(10);
     rankings
 }
@@ -460,7 +461,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
         }
     }
 
-    changes.sort_by(|a, b| b.delta.unsigned_abs().cmp(&a.delta.unsigned_abs()));
+    changes.sort_by_key(|c| Reverse(c.delta.unsigned_abs()));
 
     changes.truncate(5);
     changes
