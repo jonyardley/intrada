@@ -32,7 +32,7 @@ Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all busi
 
 ## Prerequisites
 
-- Rust stable (2021 edition, 1.75+)
+- Rust stable (2021 edition); the pinned toolchain is in `rust-toolchain.toml`
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
 - Xcode 26+, iOS 17.0+ target, [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), and the iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
 

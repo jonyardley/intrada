@@ -10,6 +10,11 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
+# rust-toolchain.toml overrides the base image's rustc for every cargo command
+# below it, including the final build — copy it in first so cook and build
+# resolve the same toolchain and the cooked deps aren't fingerprint-mismatched
+# and discarded.
+COPY rust-toolchain.toml .
 # Build dependencies — this is the caching Docker layer.
 # --bin intrada-api scopes to only intrada-api's dependency graph, excluding
 # crates/intrada-mobile's Tauri/GTK chain (gdk-sys etc.) which doesn't build

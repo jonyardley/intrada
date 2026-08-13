@@ -1,6 +1,7 @@
 //! Analytics computations. All functions are pure and take `today: NaiveDate`
 //! (rather than reading the clock) so they're deterministic under test.
 
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
 use chrono::{Datelike, NaiveDate};
@@ -274,7 +275,7 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
         )
         .collect();
 
-    rankings.sort_by(|a, b| b.total_minutes.cmp(&a.total_minutes));
+    rankings.sort_by_key(|r| (Reverse(r.total_minutes), r.item_id.clone()));
     rankings.truncate(10);
     rankings
 }
@@ -460,7 +461,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
         }
     }
 
-    changes.sort_by(|a, b| b.delta.unsigned_abs().cmp(&a.delta.unsigned_abs()));
+    changes.sort_by_key(|c| (Reverse(c.delta.unsigned_abs()), c.item_id.clone()));
 
     changes.truncate(5);
     changes
@@ -925,6 +926,28 @@ mod tests {
         assert_eq!(ranking[2].item_id, "e2"); // 25 min
         assert_eq!(ranking[3].item_id, "p3"); // 20 min
         assert_eq!(ranking[4].item_id, "e1"); // 15 min
+    }
+
+    #[test]
+    fn test_top_items_ties_break_by_item_id() {
+        // 3 items tied on total_minutes → order is deterministic (item_id asc),
+        // not whatever order the underlying HashMap happened to iterate in.
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+
+        let sessions = vec![make_session(
+            "s1",
+            today,
+            5400,
+            vec![
+                make_entry("zeta", "Zeta", ItemKind::Piece, 1800, None),
+                make_entry("alpha", "Alpha", ItemKind::Piece, 1800, None),
+                make_entry("mid", "Mid", ItemKind::Piece, 1800, None),
+            ],
+        )];
+
+        let ranking = compute_top_items(&sessions);
+        let ids: Vec<&str> = ranking.iter().map(|r| r.item_id.as_str()).collect();
+        assert_eq!(ids, vec!["alpha", "mid", "zeta"]);
     }
 
     #[test]
@@ -1440,6 +1463,34 @@ mod tests {
         assert_eq!(changes.len(), 5);
         // Should be sorted by largest absolute delta
         assert!(changes[0].delta.unsigned_abs() >= changes[1].delta.unsigned_abs());
+    }
+
+    #[test]
+    fn test_score_changes_ties_break_by_item_id() {
+        // 3 items tied on |delta| → order is deterministic (item_id asc), not
+        // whatever order the underlying HashMap happened to iterate in.
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+        let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap();
+
+        let last_entries = vec![
+            make_entry("zeta", "Zeta", ItemKind::Piece, 600, Some(3)),
+            make_entry("alpha", "Alpha", ItemKind::Piece, 600, Some(3)),
+            make_entry("mid", "Mid", ItemKind::Piece, 600, Some(3)),
+        ];
+        let this_entries = vec![
+            make_entry("zeta", "Zeta", ItemKind::Piece, 600, Some(5)),
+            make_entry("alpha", "Alpha", ItemKind::Piece, 600, Some(5)),
+            make_entry("mid", "Mid", ItemKind::Piece, 600, Some(5)),
+        ];
+
+        let sessions = vec![
+            make_session("s1", last_wed, 1800, last_entries),
+            make_session("s2", today, 1800, this_entries),
+        ];
+
+        let changes = compute_score_changes(&sessions, today);
+        let ids: Vec<&str> = changes.iter().map(|c| c.item_id.as_str()).collect();
+        assert_eq!(ids, vec!["alpha", "mid", "zeta"]);
     }
 
     #[test]

@@ -177,10 +177,7 @@ fn keys(words: &[String]) -> Vec<String> {
         ) {
             cursor += 1;
         }
-        loop {
-            let Some((key, next)) = key_at(words, cursor) else {
-                break;
-            };
+        while let Some((key, next)) = key_at(words, cursor) {
             if !found.contains(&key) {
                 found.push(key);
             }
