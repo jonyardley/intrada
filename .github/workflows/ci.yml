@@ -23,6 +23,7 @@ permissions:
   security-events: write
 
 env:
+  RUST_VERSION: "1.97.1"
   SENTRY_ORG: jon-yardley
 
 jobs:
@@ -63,6 +64,21 @@ jobs:
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
               - '.github/workflows/ci.yml'
+      # Drift installs clippy/rustfmt for the env's version, then cargo resolves
+      # to the file's: "clippy is not installed", or a silent second download.
+      # Checks every workflow's RUST_VERSION, not just this file's — so a
+      # third lane (or release-testflight.yml's own copy) is covered by
+      # construction rather than by remembering to hand-edit it too (#1341).
+      - name: Toolchain pins agree
+        run: |
+          pinned=$(grep -oE 'channel = "[^"]+"' rust-toolchain.toml | cut -d'"' -f2)
+          for wf in .github/workflows/*.yml; do
+            version=$(grep -oE '^[[:space:]]*RUST_VERSION: "[^"]+"' "$wf" | grep -oE '"[^"]+"' | tr -d '"')
+            if [ -n "$version" ] && [ "$version" != "$pinned" ]; then
+              echo "$wf pins RUST_VERSION $version but rust-toolchain.toml pins $pinned"
+              exit 1
+            fi
+          done
 
   test:
     name: Test
@@ -73,6 +89,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
@@ -106,6 +124,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
@@ -162,6 +181,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -228,6 +248,7 @@ jobs:
           just ios-fmt-check
       - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -576,6 +597,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
       - run: cargo fmt --all -- --check
 

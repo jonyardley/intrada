@@ -17,6 +17,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  RUST_VERSION: "1.97.1"
+
 jobs:
   testflight:
     name: Build + upload to TestFlight
@@ -30,6 +33,7 @@ jobs:
           xcode-version: "26.5"
       - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
       - uses: Swatinem/rust-cache@v2
         with:
