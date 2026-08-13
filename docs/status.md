@@ -10,9 +10,10 @@ ask git: `git log -1 --format=%cs docs/status.md`.*
 
 ## Where we are
 
-The practice-coach pivot, **Phase 2b — steer and guard** (in flight). 2a is
-built bar the soft-landing exit (#1323) and the loop runs end to end, so the
-doc caught up with where the work actually is: #1256's built session and
+The practice-coach pivot, **Phase 2b — steer and guard** (in flight). **2a is
+complete**: the soft-landing exit (#1323) closed the last item on its list, and
+the loop runs end to end, which is what **v0.6.0** tags. The doc caught up with
+where the work actually is: #1256's built session and
 #1244/#1260's l0 work are 2b deliverables that landed while the phase plan
 still read "after 2a". **Phase 0 — the paper-teacher fortnight** runs alongside
 (#1143). Machine listening is deferred (decision 18); the loop runs on
@@ -44,6 +45,29 @@ tap-verdicts against countable criteria.
   state no crash could strand (a `Planned` session, #1219) is cleared rather
   than offered, and an offer arriving while something is already running is
   refused like every other door into a session
+- #1323 — the soft-landing exit, the last item on 2a's build list. `LeaveSession`
+  already banked the block in flight, so the evidence was never the gap; what was
+  missing is that the cover simply vanished and the app said nothing about a
+  session that stopped at minute eight. That is one of the design's three named
+  failure stories and exactly the loss-framed exit it says not to ship
+  (`specs/intrada-practice-coach-design.md` §"Streak mechanics, defanged").
+  `SessionState::Closing` now carries the `SoftLanding` the engine spec reserved
+  a `Summary` for — blocks played, minutes, gates passed, and whether the plan
+  ran out — counted as the session closes. It rides no blob and needed no key
+  bump, because `Closing` is the one state a crash never strands. `CoachState`
+  words it: "That's banked. 2 blocks, 12 minutes. 1 gate passed." over "Short is
+  still practice, and it's on the record."; a finished plan gets "That's the
+  session." and no consolation, since there is nothing to soften; a session that
+  played nothing gets "Another time." and no scoreboard, because "0 blocks" is a
+  score for something that did not happen. A test asserts the wording never
+  reaches for *left*, *remaining*, *unfinished*, *missed* or *incomplete*. The
+  shell adds one `LoopStage` case, last in the order, so the feel and reflection
+  questions come before the acknowledgement rather than after it. Two fixes fell
+  out: `EngineSession::closed_blocks` was accumulating for the life of the
+  process, so it is cleared when a session starts (the landing counts *this*
+  session, and the crash blob now holds one session's evidence rather than every
+  session since launch), and a block skipped from its entry card no longer counts
+  as played, since a card bills nothing
 
 - #1286 — the coach's outstanding evidence writes are a queue, not one slot.
   `coach_write_in_flight` held a single `SaveCoachRecords` batch and was

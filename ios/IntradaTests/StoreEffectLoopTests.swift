@@ -337,6 +337,31 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.viewModel?.coach.recovery, "and the prompt is answered")
   }
 
+  /// The soft landing over the real bridge (#1323). `LandingView` is three
+  /// optional strings, exactly the shape a positional bincode wire has no
+  /// "absent" for: a break leaves the loop closing on a blank frame, the #846
+  /// class rather than a crash.
+  func testRealBridgeLeavingASessionHandsBackALandingThatMustBeAcknowledged() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .coach(.startPlannedSession(now: "2026-08-04T10:00:00Z", utcOffsetMinutes: 0)))
+    XCTAssertNotNil(try bridge.view().coach.drill, "a block to leave")
+    XCTAssertNil(try bridge.view().coach.landing, "and nothing landed yet")
+
+    _ = try bridge.update(.coach(.leaveSession(now: "2026-08-04T10:08:00Z")))
+
+    let landing = try XCTUnwrap(
+      try bridge.view().coach.landing,
+      "leaving must land the session, or the cover vanishes and says nothing (#1323)")
+    XCTAssertFalse(landing.headline.isEmpty)
+    XCTAssertNil(try bridge.view().coach.drill, "the session is over")
+
+    _ = try bridge.update(.coach(.closeLanding))
+    XCTAssertNil(
+      try bridge.view().coach.landing, "acknowledged, so the loop has nothing left to show")
+  }
+
   // ── Journey B's altitudes across the real bridge (#1256 Phase C) ──
 
   /// A live core holding one charted piece, as B0 is actually reached: the

@@ -1042,6 +1042,20 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(feelScreen()), as: axConfig)
   }
 
+  // ── The soft landing (#1323) ──
+
+  /// The fullest of the three landings. The other two are strictly fewer lines
+  /// in the same centred stack, so they cannot reflow on their own, and their
+  /// wording is pinned in the core rather than by 230KB more of gradient.
+  func testSoftLandingScreenEndedEarly() {
+    assertSnapshot(of: host(SoftLandingScreen(state: .previewShort, onDone: {})), as: config)
+  }
+
+  /// Done is the only way past this, so it may never reflow off the bottom.
+  func testSoftLandingScreenAccessibilitySize() {
+    assertSnapshot(of: host(SoftLandingScreen(state: .previewShort, onDone: {})), as: axConfig)
+  }
+
   /// Nothing said yet: "Keep it" is unavailable, and "Not tonight" is a
   /// first-class exit rather than the harder path.
   func testSessionReflectionScreenEmpty() {

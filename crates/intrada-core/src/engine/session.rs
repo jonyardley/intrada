@@ -84,8 +84,8 @@ pub enum CoachEvent {
     Tick {
         now: DateTime<Utc>,
     },
-    /// The user left the drill screen. Ends the session, not just the block —
-    /// the soft-landing exit is what replaces it (2a, #1182).
+    /// The user left the drill screen. Ends the session, not just the block,
+    /// and lands it: what was played is banked and said back (#1323).
     LeaveSession {
         now: DateTime<Utc>,
     },
@@ -130,6 +130,9 @@ pub enum CoachEvent {
     CloseSession {
         now: DateTime<Utc>,
     },
+    /// "Done" on the soft landing (#1323): the acknowledgement that lets the
+    /// loop go, of a session already over and already written down.
+    CloseLanding,
     /// The crash-recovery blob, handed back by the shell at launch (#1181).
     /// The engine re-anchors its clock: the outage is never practice time, and
     /// the minutes already spent are not refunded either.
@@ -672,8 +675,48 @@ pub enum SessionState {
     /// A peer of `Running` too: gated, but by the piece's sections rather than
     /// by a drill's gate.
     RunThrough(RunThroughState),
-    /// Spec §4 carries a `Summary` here; it arrives with the closing screen.
-    Closing,
+    /// The summary spec §4 reserves here, as much of it as 2a needs (#1323).
+    /// `None` where there is nothing to land: the altitudes, which have their
+    /// own endings, and a session acknowledged already.
+    Closing {
+        landing: Option<SoftLanding>,
+    },
+}
+
+/// What a prescribed session did, counted as it closed (#1323). Facts only; the
+/// sentences are `CoachState`'s. Lives inside `Closing`, the one `SessionState`
+/// a crash never strands, so it rides no blob and needs no key bump.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SoftLanding {
+    /// Blocks with time on them. A block skipped from its entry card was not
+    /// played, and counting it would make the landing say something untrue.
+    pub blocks_played: u16,
+    pub minutes: u16,
+    pub gates_passed: u16,
+    /// Every block the plan had was reached. False is the case the design calls
+    /// the soft landing: quitting at minute eight.
+    pub plan_finished: bool,
+}
+
+impl SoftLanding {
+    fn of(records: &[BlockRecord], plan_finished: bool) -> Self {
+        let played: Vec<_> = records
+            .iter()
+            .filter(|record| record.active_ms > 0)
+            .collect();
+        Self {
+            blocks_played: played.len().min(u16::MAX as usize) as u16,
+            minutes: (played.iter().map(|record| record.active_ms).sum::<u64>() / 60_000)
+                .min(u64::from(u16::MAX)) as u16,
+            gates_passed: played
+                .iter()
+                .filter(|record| record.exit == Exit::GatePassed)
+                .count()
+                .min(u16::MAX as usize) as u16,
+            plan_finished,
+        }
+    }
 }
 
 impl SessionState {
@@ -702,7 +745,7 @@ impl SessionState {
     pub(crate) fn accepts_something_new(&self) -> bool {
         matches!(
             self,
-            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing { .. }
         )
     }
 
@@ -808,7 +851,7 @@ impl EngineSession {
     /// planner reads the mastery track, and the session is inside it.
     pub fn apply_with_plan(&mut self, event: &CoachEvent, plan: Option<Plan>) -> CoachWrites {
         let before = self.recovery_key();
-        let was_closing = matches!(self.state, SessionState::Closing);
+        let was_closing = matches!(self.state, SessionState::Closing { .. });
         let blocks_written = self.closed_blocks.len();
         let wanders_written = self.wanders.len();
 
@@ -834,7 +877,7 @@ impl EngineSession {
             play_throughs: applied.play_throughs,
             unmonitored: applied.unmonitored,
             evidence: applied.evidence,
-            snapshot: if matches!(self.state, SessionState::Closing) {
+            snapshot: if matches!(self.state, SessionState::Closing { .. }) {
                 if was_closing {
                     SnapshotAction::Unchanged
                 } else {
@@ -864,7 +907,7 @@ impl EngineSession {
             }
             CoachEvent::StartPlannedSession { now, .. } => match std::mem::take(&mut self.state) {
                 SessionState::Planned { plan } => self.start(plan, *now),
-                SessionState::Idle | SessionState::Closing => {
+                SessionState::Idle | SessionState::Closing { .. } => {
                     if let Some(plan) = planned {
                         self.start(plan, *now);
                     }
@@ -901,6 +944,12 @@ impl EngineSession {
                 }
             }
             CoachEvent::CloseSession { now } => return self.close_session(*now),
+            // Nothing else changes: the records left with the close.
+            CoachEvent::CloseLanding => {
+                if let SessionState::Closing { landing } = &mut self.state {
+                    *landing = None;
+                }
+            }
             CoachEvent::RecoverSession { session, now, .. } => self.recover(session.clone(), *now),
             // `CoachState` owns the offered blob, because the session machine
             // holds one session and the offer is a second one.
@@ -938,7 +987,8 @@ impl EngineSession {
             | CoachEvent::Beat { .. }
             | CoachEvent::KeepWanderAsDrill { .. }
             | CoachEvent::OfferRecovery { .. }
-            | CoachEvent::DeclineRecovery => None,
+            | CoachEvent::DeclineRecovery
+            | CoachEvent::CloseLanding => None,
         }
     }
 
@@ -991,7 +1041,7 @@ impl EngineSession {
                 run.started_at = now - TimeDelta::milliseconds(spent);
                 run.now = now;
             }
-            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => {}
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing { .. } => {}
         }
         *self = session;
     }
@@ -1001,6 +1051,10 @@ impl EngineSession {
             self.state = SessionState::Planned { plan };
             return;
         };
+        // This session's records, not the process's (#1323), so the blob holds
+        // one session's evidence rather than every session since launch. Wanders
+        // stay: `KeepWanderAsDrill` answers against `wanders.last()`.
+        self.closed_blocks.clear();
         let block = BlockState::open(&planned.spec, 0, now);
         self.state = SessionState::Running { plan, block };
     }
@@ -1264,7 +1318,10 @@ impl EngineSession {
             CoachEvent::PlanSession { .. } => self.state.accepts_something_new(),
             // A plan already made wins; from anywhere else the event is ignored.
             CoachEvent::StartPlannedSession { .. } => {
-                matches!(self.state, SessionState::Idle | SessionState::Closing)
+                matches!(
+                    self.state,
+                    SessionState::Idle | SessionState::Closing { .. }
+                )
             }
             _ => false,
         }
@@ -1416,7 +1473,7 @@ impl EngineSession {
             // Nothing was running, so there is no record to write, but the
             // session still has to close: an open one leaves a blob that would
             // recover a session the user has already left.
-            None => self.state = SessionState::Closing,
+            None => self.state = SessionState::Closing { landing: None },
         }
         Applied::default()
     }
@@ -1493,7 +1550,7 @@ impl EngineSession {
             return Applied::default();
         };
         let record = run.record(counted, now);
-        self.state = SessionState::Closing;
+        self.state = SessionState::Closing { landing: None };
         Applied {
             evidence: section_evidence(&record),
             play_throughs: vec![record],
@@ -1527,7 +1584,7 @@ impl EngineSession {
                     keep_as_drill: None,
                     item_id: item_id.clone(),
                 });
-                self.state = SessionState::Closing;
+                self.state = SessionState::Closing { landing: None };
             }
             SessionState::Unmonitored { started_at, .. } => {
                 let record = UnmonitoredRecord {
@@ -1535,7 +1592,7 @@ impl EngineSession {
                     started_at: *started_at,
                     ended_at: now,
                 };
-                self.state = SessionState::Closing;
+                self.state = SessionState::Closing { landing: None };
                 return Applied {
                     unmonitored: vec![record],
                     ..Applied::default()
@@ -1543,7 +1600,7 @@ impl EngineSession {
             }
             SessionState::RunThrough(_) => return self.close_run_through(true, now),
             SessionState::Running { .. } => return self.leave_session(now),
-            _ => self.state = SessionState::Closing,
+            _ => self.state = SessionState::Closing { landing: None },
         }
         Applied::default()
     }
@@ -1584,9 +1641,16 @@ impl EngineSession {
 
         let next = block.spec_index + 1;
         let now = block.now;
+        // `advance` is false only on the way out of a session the user left, so
+        // it is what tells a finished plan from an early exit (#1323).
+        let plan_finished = advance && next >= plan.blocks.len();
         match plan.blocks.get(next).filter(|_| advance) {
             Some(planned) => *block = BlockState::open(&planned.spec, next, now),
-            None => self.state = SessionState::Closing,
+            None => {
+                self.state = SessionState::Closing {
+                    landing: Some(SoftLanding::of(&self.closed_blocks, plan_finished)),
+                }
+            }
         }
     }
 
@@ -1767,7 +1831,9 @@ mod tests {
             SessionState::OffPiste { .. } => Some("off-piste"),
             SessionState::Unmonitored { .. } => Some("unmonitored"),
             SessionState::RunThrough(_) => Some("run-through"),
-            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => None,
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing { .. } => {
+                None
+            }
         }
     }
 
@@ -2048,7 +2114,7 @@ mod tests {
 
         session.apply(&CoachEvent::SkipBlock { now: at(5) });
 
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         assert_eq!(session.closed_blocks[0].exit, Exit::Skipped);
     }
 
@@ -2222,7 +2288,7 @@ mod tests {
 
         let writes = session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
 
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         assert_eq!(
             writes.blocks.len(),
             1,
@@ -2833,9 +2899,8 @@ mod tests {
 
         get_stuck(&mut session, 4);
 
-        assert_eq!(
-            session.state,
-            SessionState::Closing,
+        assert!(
+            matches!(session.state, SessionState::Closing { .. }),
             "one block, no alternatives, so the session closes rather than pretending"
         );
         let closed = session.closed_blocks.last().expect("the block");
@@ -2864,7 +2929,7 @@ mod tests {
             2,
             "the swapped-in block escalates too, and has nothing left to draw"
         );
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
     }
 
     #[test]
@@ -3018,7 +3083,7 @@ mod tests {
             session.apply(&CoachEvent::Beat { beat_index: 0 });
         }
 
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         assert_eq!(session.closed_blocks.len(), 1);
         assert_eq!(session.closed_blocks[0].exit, Exit::Escalated);
         assert_eq!(
@@ -3070,7 +3135,154 @@ mod tests {
 
         assert_eq!(session.closed_blocks[0].exit, Exit::SessionEnded);
         assert_eq!(session.closed_blocks[0].attempts_to_pass, None);
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
+    }
+
+    // ── The soft landing (#1323) ──
+
+    fn landing_of(session: &EngineSession) -> SoftLanding {
+        match &session.state {
+            SessionState::Closing { landing } => landing.expect("a landing"),
+            other => panic!("the session has not closed: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn leaving_early_lands_on_what_was_actually_played() {
+        let mut session = two_block_session();
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::Tick { now: at(180) });
+        session.apply(&CoachEvent::LeaveSession { now: at(180) });
+
+        let landing = landing_of(&session);
+        assert_eq!(landing.blocks_played, 1);
+        assert_eq!(landing.minutes, 3);
+        assert!(
+            !landing.plan_finished,
+            "one of two blocks played, so this is the exit the design calls a \
+             soft landing rather than the end of a session"
+        );
+    }
+
+    #[test]
+    fn running_the_plan_out_lands_as_a_finished_session() {
+        let mut session = two_block_session();
+        for block in 0..2 {
+            // The second block opens on its own entry card (#1223).
+            if session.phase() == Some(&Phase::BlockEntry) {
+                session.apply(&CoachEvent::StartBlock {
+                    now: at(block * 60),
+                });
+                session.apply(&CoachEvent::Beat { beat_index: 0 });
+            }
+            for second in [9, 18, 27] {
+                rep(&mut session, true, second + block * 60);
+            }
+            // Past the gate-open hold, which is what closes the block.
+            session.apply(&CoachEvent::Tick {
+                now: at(40 + block * 60),
+            });
+        }
+
+        let landing = landing_of(&session);
+        assert_eq!(landing.blocks_played, 2);
+        assert_eq!(landing.gates_passed, 2);
+        assert!(
+            landing.plan_finished,
+            "every block the plan had was reached, so the landing must not offer \
+             the consolation a short session gets"
+        );
+    }
+
+    #[test]
+    fn a_block_skipped_from_its_card_was_never_played() {
+        let mut session = two_block_session_carded();
+        session.apply(&CoachEvent::SkipBlock { now: at(5) });
+        session.apply(&CoachEvent::SkipBlock { now: at(10) });
+
+        let landing = landing_of(&session);
+        assert_eq!(
+            landing.blocks_played, 0,
+            "a card bills nothing, so counting a skip would make the landing say \
+             something untrue about the session"
+        );
+        assert_eq!(landing.minutes, 0);
+    }
+
+    /// `closed_blocks` used to accumulate for the life of the process, so a
+    /// second session would have landed on the first one's blocks too.
+    #[test]
+    fn a_second_session_lands_on_its_own_blocks_only() {
+        let mut session = two_block_session();
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::Tick { now: at(120) });
+        session.apply(&CoachEvent::LeaveSession { now: at(120) });
+        assert_eq!(landing_of(&session).blocks_played, 1);
+
+        session.start_fixture(at(600));
+        session.apply(&CoachEvent::StartBlock { now: at(600) });
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+        session.apply(&CoachEvent::Tick { now: at(660) });
+        session.apply(&CoachEvent::LeaveSession { now: at(660) });
+
+        assert_eq!(landing_of(&session).blocks_played, 1);
+        assert_eq!(landing_of(&session).minutes, 1);
+    }
+
+    #[test]
+    fn acknowledging_the_landing_leaves_the_session_closed_and_written() {
+        let mut session = two_block_session();
+        rep(&mut session, true, 9);
+        let closing = session.apply(&CoachEvent::LeaveSession { now: at(20) });
+        assert_eq!(closing.blocks.len(), 1, "the record left with the close");
+
+        let writes = session.apply(&CoachEvent::CloseLanding);
+
+        assert_eq!(
+            session.state,
+            SessionState::Closing { landing: None },
+            "acknowledged, so the loop may go"
+        );
+        assert!(
+            writes.blocks.is_empty(),
+            "and nothing is written twice: the records left with the event that \
+             closed the session"
+        );
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Unchanged,
+            "the blob was already cleared by the close, so this must not clear \
+             it again and re-fire the reflection prompt behind it"
+        );
+    }
+
+    /// They have their own endings and records; a drill session's landing would
+    /// speak for a session that had no plan and no gates.
+    #[test]
+    fn an_altitude_has_no_drill_sessions_landing() {
+        for state in [
+            SessionState::OffPiste {
+                item_id: None,
+                started_at: at(0),
+                now: at(60),
+            },
+            SessionState::Unmonitored {
+                started_at: at(0),
+                now: at(60),
+            },
+        ] {
+            let mut session = EngineSession {
+                state,
+                ..EngineSession::default()
+            };
+            session.apply(&CoachEvent::CloseSession { now: at(120) });
+            assert_eq!(session.state, SessionState::Closing { landing: None });
+        }
+
+        let mut run = run_through(0);
+        judge(&mut run, true, 30);
+        run.apply(&CoachEvent::LeaveSession { now: at(45) });
+        assert_eq!(run.state, SessionState::Closing { landing: None });
     }
 
     // ── What gets written down (spec §4: recorded from the first build) ──
@@ -3426,7 +3638,7 @@ mod tests {
         };
 
         let writes = session.apply(&CoachEvent::LeaveSession { now: at(20) });
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         assert_eq!(
             writes.snapshot,
             SnapshotAction::Clear,
@@ -3480,7 +3692,7 @@ mod tests {
         assert!(matches!(session.state, SessionState::OffPiste { .. }));
 
         session.apply(&CoachEvent::CloseSession { now: at(400) });
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         let wander = &session.wanders[0];
         assert_eq!(wander.keep_as_drill, None, "None = not yet asked");
         assert!(wander.attempts.is_empty(), "no verdicts without a gate");
@@ -3521,7 +3733,7 @@ mod tests {
         assert!(matches!(session.state, SessionState::Unmonitored { .. }));
 
         let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
         assert_eq!(writes.unmonitored.len(), 1);
         assert!(session.closed_blocks.is_empty());
         assert!(session.wanders.is_empty(), "decision 16: nothing inferred");
@@ -3799,7 +4011,7 @@ mod tests {
         let mut session = run_through(0);
         judge(&mut session, true, 30);
         session.apply(&CoachEvent::CloseSession { now: at(60) });
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
 
         session.apply(&CoachEvent::StartRunThrough {
             item_id: "p2".into(),
@@ -3904,7 +4116,7 @@ mod tests {
             "the tap is what bounds the attempt at l0 (#1244)"
         );
         assert_eq!(writes.snapshot, SnapshotAction::Clear);
-        assert_eq!(session.state, SessionState::Closing);
+        assert!(matches!(session.state, SessionState::Closing { .. }));
     }
 
     #[test]
@@ -3955,7 +4167,7 @@ mod tests {
         assert_eq!(writes.evidence.len(), 1);
         assert_eq!(
             session.state,
-            SessionState::Closing,
+            SessionState::Closing { landing: None },
             "an open run would leave a blob recovering a session the user has left"
         );
     }
