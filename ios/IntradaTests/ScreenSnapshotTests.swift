@@ -128,121 +128,12 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
-  // ── The built session (#1256, Journey A) ────────────────────────────
-
-  /// A2 — first use: what the sheet costs is on the primary action, and the
-  /// unresolved row wears no false kind while it still owes a question.
-  func testComposeSheetFirstUse() {
-    assertSnapshot(of: host(ComposeSheet(), store: .previewComposing), as: config)
-  }
-
-  /// A2r — the repeat visit, where every row is already known and the price is
-  /// zero. The whole point of resolution being paid once per item, ever.
-  func testComposeSheetAllKnown() {
-    assertSnapshot(of: host(ComposeSheet(), store: .previewComposingAllKnown), as: config)
-  }
-
-  /// A3 — the proposed match carries its own evidence, so the confirmation is
-  /// informed rather than blind.
-  func testResolutionNodeMatch() {
-    assertSnapshot(
-      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewResolvingNodeMatch),
-      as: config)
-  }
-
-  /// A4 — the criterion sentence with its three read-back chips. The form the
-  /// whole of decision 19b hangs on.
-  func testResolutionUserDrill() {
-    assertSnapshot(
-      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewComposing),
-      as: config)
-  }
-
-  /// The read-back chips and the serves tags are the reflow risk on A4 — three
-  /// chips across at accessibility sizes is where a form breaks. Cropped above
-  /// the fold: the reflow *is* above the fold, and a full-height radial wash at
-  /// this text size does not fit the hygiene ceiling.
-  func testResolutionUserDrillLargeText() {
-    assertSnapshot(
-      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewComposing),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 600),
-        traits: UITraitCollection { traits in
-          traits.displayScale = 2
-          traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-        }))
-  }
-
-  /// A6 — the composed session, shape offered and declinable. Component-level:
-  /// the hero gradient is already covered by `testPressStartHeroPlanned`.
-  func testComposedSession() {
-    let composed = ComposedSessionScreen(session: .preview, onStart: {})
-      .padding(IntradaSpacing.card)
-      .background(IntradaColor.paperTop)
-      .frame(width: 390)
-    assertSnapshot(
-      of: host(composed, store: .previewComposedSession),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 680),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// Component-level: the hero's gradient is already covered by
-  /// `testPressStartHeroPlanned` and would triple this PNG.
-  func testSessionOverview() {
-    let overview = SessionOverview(
-      blocks: PlanView.preview.blocks, deferred: PlanView.preview.deferred
-    )
-    .padding(IntradaSpacing.card)
-    .background(IntradaColor.paperTop)
-    .frame(width: 390)
-    assertSnapshot(
-      of: host(overview),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 560),
-        traits: .init(displayScale: 2)))
-  }
-
   func testRecoveryPromptCard() throws {
     // Component-level (not full-screen): the card is the load-bearing state and
     // the flat crop keeps the reference PNG well under the size ceiling (#840).
     let session = try XCTUnwrap(Store.previewPracticeRecovery.recoverableSession)
     let card = RecoveryPromptCard(
       session: session, referenceDate: PracticeSessionView.previewReferenceDate,
-      onResume: {}, onDiscard: {}
-    )
-    .padding(IntradaSpacing.card)
-    .background(IntradaColor.paperTop)
-    .frame(width: 390)
-    assertSnapshot(
-      of: host(card),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 240),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// Two references, not one: the altitude variant swaps the eyebrow for the
-  /// chip, which is the consent signal, so it can regress on its own.
-  func testCoachRecoveryPromptCard() throws {
-    let recovery = try XCTUnwrap(Store.previewCoachRecovery.viewModel?.coach.recovery)
-    let card = RecoveryPromptCard(
-      recovery: recovery, referenceDate: PracticeSessionView.previewReferenceDate,
-      onResume: {}, onDiscard: {}
-    )
-    .padding(IntradaSpacing.card)
-    .background(IntradaColor.paperTop)
-    .frame(width: 390)
-    assertSnapshot(
-      of: host(card),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 240),
-        traits: .init(displayScale: 2)))
-  }
-
-  func testCoachRecoveryPromptCardAltitude() throws {
-    let recovery = try XCTUnwrap(Store.previewCoachRecoveryAltitude.viewModel?.coach.recovery)
-    let card = RecoveryPromptCard(
-      recovery: recovery, referenceDate: PracticeSessionView.previewReferenceDate,
       onResume: {}, onDiscard: {}
     )
     .padding(IntradaSpacing.card)
@@ -264,6 +155,21 @@ final class ScreenSnapshotTests: XCTestCase {
         PracticeScreen(
           referenceDate: PracticeSessionView.previewReferenceDate, selectedDay: monday),
         store: .previewPractice), as: config)
+  }
+
+  func testSessionBuilderEmpty() {
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }), as: config)
+  }
+
+  func testSessionBuilderPopulated() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
+  }
+
+  func testSessionBuilderGrouped() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
+      as: config)
   }
 
   func testFocusPlayerWithTarget() {
@@ -612,9 +518,8 @@ final class ScreenSnapshotTests: XCTestCase {
     let badges = ZStack {
       PaperBackground()
       HStack(spacing: 12) {
-        TypeBadge(kind: ItemKind.piece)
-        TypeBadge(kind: ItemKind.exercise)
-        TypeBadge(kind: ComposeKind.journal)
+        TypeBadge(kind: .piece)
+        TypeBadge(kind: .exercise)
       }
     }
     assertSnapshot(of: host(badges), as: config)
@@ -700,6 +605,39 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(fields), as: config)
   }
 
+  func testAddToSessionSheet() {
+    assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
+  }
+
+  func testSessionBuilderGroupedEditing() {
+    // editMode is @State — seed via the startInEditMode init to capture the
+    // nested-row reorder/remove/settings controls without UI interaction.
+    assertSnapshot(
+      of: host(
+        NavigationStack { SessionBuilderScreen(startInEditMode: true) },
+        store: .previewBuildingGrouped), as: config)
+  }
+
+  func testAddRelatedExerciseSheet() {
+    assertSnapshot(
+      of: host(
+        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGrouped),
+      as: config)
+  }
+
+  func testEntrySettingsSheetEmpty() {
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewGroupedScales), store: .previewBuildingGrouped),
+      as: config)
+  }
+
+  func testEntrySettingsSheetPopulated() {
+    assertSnapshot(
+      of: host(
+        EntrySettingsSheet(entry: .previewGroupedScalesConfigured), store: .previewBuildingGrouped
+      ), as: config)
+  }
+
   func testTagFilterSheet() {
     let sheet = TagFilterSheet(
       available: ["classical", "jazz", "recital", "technique", "warm-up"],
@@ -759,363 +697,6 @@ final class ScreenSnapshotTests: XCTestCase {
       linkedIds: ["exercise-1", "exercise-3"],
       onApply: { _ in })
     assertSnapshot(of: host(sheet), as: config)
-  }
-
-  // ── Press start: the way in to the drill loop ──
-
-  /// Cropped to the hero rather than framed on the device: the paper below it
-  /// adds nothing to the assertion and the gradient makes a full-screen
-  /// reference too large for the hygiene ceiling.
-  func testPressStartHeroPlanned() {
-    let hero = ZStack {
-      PaperBackground()
-      PressStartHero(
-        headline: "Rootless voicings",
-        section: "A section",
-        why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
-        footnote: "5 blocks · about 30 minutes",
-        onStart: {}
-      )
-      .padding(IntradaSpacing.card)
-    }
-    assertSnapshot(
-      of: host(hero),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 440),
-        traits: .init(displayScale: 2)))
-  }
-
-  // ── The coach drill loop (A2 / A3) ──
-
-  private func drill(_ state: DrillView) -> some View {
-    DrillScreen(
-      state: state, onVerdict: { _ in }, onStuck: {}, onDiscard: {}, onStart: {}, onSkip: {},
-      onDismiss: {})
-  }
-
-  func testDrillScreenDuringPlay() {
-    assertSnapshot(of: host(drill(.preview())), as: config)
-  }
-
-  /// Roughly what the screen looks like from two metres: the chip and tune line
-  /// give way, the drill, tempo, position and target never do.
-  func testDrillScreenDuringPlayAccessibilitySize() {
-    assertSnapshot(of: host(drill(.preview())), as: axConfig)
-  }
-
-  /// l0: no tempo, no click, no beat position, tap-verdict reachable in place.
-  func testDrillScreenDuringPlayUntimed() {
-    let state = DrillView.preview(tempoBpm: nil, clickLevel: "no click")
-    assertSnapshot(of: host(drill(state)), as: config)
-  }
-
-  func testDrillScreenTapVerdict() {
-    assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
-  }
-
-  /// The one branch the compact A3 snapshot can't reach: the escapes stack.
-  func testDrillScreenTapVerdictAccessibilitySize() {
-    assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: axConfig)
-  }
-
-  /// Identical composition to a pass — a miss is the user's own report.
-  func testDrillScreenMissAcknowledged() {
-    let state = DrillView.preview(phase: .acknowledged(clean: false), elapsedSeconds: 798)
-    assertSnapshot(of: host(drill(state)), as: config)
-  }
-
-  /// The during-play page during the count-in: dots in the stuck target's
-  /// place (#1184).
-  func testDrillScreenCountIn() {
-    let state = DrillView.preview(phase: .countIn(remaining: 2), elapsedSeconds: 803)
-    assertSnapshot(of: host(drill(state)), as: config)
-  }
-
-  func testDrillScreenGateOpen() {
-    let state = DrillView.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
-    assertSnapshot(of: host(drill(state)), as: config)
-  }
-
-  /// A block that has not run, so no clock — how every block opens.
-  func testDrillScreenBlockEntry() {
-    assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
-  }
-
-  /// The entry card names the click even where there isn't one.
-  func testDrillScreenBlockEntryUntimed() {
-    let state = DrillView.preview(
-      phase: .blockEntry, elapsedSeconds: 0, tempoBpm: nil, clickLevel: "no click")
-    assertSnapshot(of: host(drill(state)), as: config)
-  }
-
-  /// The parked-card clock, which a full-screen reference would cost 250KB
-  /// to show.
-  func testOrientationStripClockStates() {
-    let strips = ZStack {
-      RadialGradient.playerPaper
-      VStack(spacing: IntradaSpacing.section) {
-        OrientationStrip(
-          elapsedSeconds: 724, ceilingSeconds: 360,
-          blockKinds: [.piece, .exercise, .exercise], blockIndex: 1, onDismiss: {})
-        OrientationStrip(
-          elapsedSeconds: 184, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
-          onDismiss: {})
-        OrientationStrip(
-          elapsedSeconds: nil, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
-          onDismiss: {})
-        Spacer()
-      }
-      .padding(IntradaSpacing.card)
-    }
-    assertSnapshot(
-      of: host(strips),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 300),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// The sizes no screen snapshot reaches: iPad regular width, and an
-  /// accessibility size where the labels grow but the keys must not.
-  func testCoachActionWeights() {
-    let keys = ZStack {
-      RadialGradient.playerPaper
-      VStack(spacing: IntradaSpacing.row) {
-        CoachAction(title: "Start", emphasis: .primary, action: {})
-        CoachAction(title: "I'm stuck", action: {})
-        CoachAction(title: "Don't count that", emphasis: .quiet, action: {})
-        CoachAction(title: "Start", emphasis: .primary, action: {})
-          .environment(\.coachScale, .regular)
-        CoachAction(title: "Start", emphasis: .primary, action: {})
-          .dynamicTypeSize(.accessibility3)
-      }
-      .padding(IntradaSpacing.card)
-    }
-    assertSnapshot(
-      of: host(keys),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 500),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// The two verdict-pair layouts no screen snapshot reaches: iPad regular
-  /// width, and the accessibility-size stack.
-  func testTapVerdictLayouts() {
-    let pairs = ZStack {
-      RadialGradient.playerPaper
-      VStack(spacing: 20) {
-        TapVerdict(onClean: {}, onMissed: {})
-        TapVerdict(onClean: {}, onMissed: {})
-          .environment(\.coachScale, .regular)
-        TapVerdict(onClean: {}, onMissed: {})
-          .dynamicTypeSize(.accessibility3)
-      }
-      .padding(16)
-    }
-    assertSnapshot(
-      of: host(pairs),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 760, height: 520),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// Sized to the component, so three gate states cost one small reference.
-  func testGateDotsStates() {
-    let dots = ZStack {
-      RadialGradient.playerPaper
-      VStack(alignment: .leading, spacing: 14) {
-        GateDots(filled: 0, target: 3)
-        GateDots(filled: 2, target: 3)
-        GateDots(filled: 3, target: 3, caption: "gate open")
-        GateDots(filled: 3, target: 3, caption: "3 clean at 120")
-      }
-      .padding(16)
-    }
-    assertSnapshot(
-      of: host(dots),
-      as: .image(
-        perceptualPrecision: 0.98, size: CGSize(width: 260, height: 140),
-        traits: .init(displayScale: 2)))
-  }
-
-  // ── Journey B's three altitudes (#1256 Phase C) ──
-
-  private func runThrough(_ state: RunThroughView) -> some View {
-    RunThroughScreen(
-      state: state, onVerdict: { _ in }, onDiscard: {}, onFinish: {}, onDismiss: {})
-  }
-
-  /// Mid-run: the chip, the section the next tap judges, and the dots behind it
-  /// carrying one held and one broken down.
-  func testRunThroughScreenMidRun() {
-    assertSnapshot(of: host(runThrough(.preview())), as: config)
-  }
-
-  /// Every section judged, and still not written: "Don't count this run" has to
-  /// survive the last verdict (B1).
-  func testRunThroughScreenComplete() {
-    let state = RunThroughView.preview(held: [true, false, true, true], elapsedSeconds: 448)
-    assertSnapshot(of: host(runThrough(state)), as: config)
-  }
-
-  /// The chip and the tune line give way; the section, the question and the
-  /// pair never do.
-  func testRunThroughScreenAccessibilitySize() {
-    assertSnapshot(of: host(runThrough(.preview())), as: axConfig)
-  }
-
-  /// Fixed instants, so the clock the screen draws from `startedAt` is the same
-  /// image every run.
-  private static let openPlayNow = Date(timeIntervalSince1970: 1_786_226_298)
-
-  func testOffPisteScreen() {
-    let screen = OpenPlayScreen(state: .preview(), frozenNow: Self.openPlayNow, onDone: {})
-    assertSnapshot(of: host(screen), as: config)
-  }
-
-  /// The emptiest screen in the app, on purpose: minutes in `inkSecondary`, no
-  /// piece named, no primary action.
-  func testUnmonitoredScreen() {
-    let screen = OpenPlayScreen(
-      state: .preview(altitude: .unmonitored), frozenNow: Self.openPlayNow, onDone: {})
-    assertSnapshot(of: host(screen), as: config)
-  }
-
-  func testOffPisteScreenAccessibilitySize() {
-    let screen = OpenPlayScreen(state: .preview(), frozenNow: Self.openPlayNow, onDone: {})
-    assertSnapshot(of: host(screen), as: axConfig)
-  }
-
-  private func playThroughSheet(_ offer: AltitudeOffer) -> some View {
-    PlayThroughSheet(offer: offer)
-  }
-
-  func testPlayThroughSheet() {
-    let offer = AltitudeOffer(
-      itemId: "p1", title: "Alice in Wonderland", runThroughAvailable: true,
-      sections: ["A", "B", "Bridge", "A'"])
-    assertSnapshot(of: host(playThroughSheet(offer)), as: config)
-  }
-
-  /// A piece with no labelled sections: the run-through stays on screen and
-  /// says why, because a missing option with no explanation reads as a bug.
-  func testPlayThroughSheetWithoutSections() {
-    let offer = AltitudeOffer(
-      itemId: "p1", title: "Alice in Wonderland", runThroughAvailable: false, sections: [])
-    assertSnapshot(of: host(playThroughSheet(offer)), as: config)
-  }
-
-  /// The three chips together — the only place the consent gradient reads as a
-  /// gradient.
-  func testAltitudeChips() {
-    let chips = ZStack {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: 14) {
-        AltitudeChip(altitude: .runThrough)
-        AltitudeChip(altitude: .offPiste)
-        AltitudeChip(altitude: .unmonitored)
-      }
-      .padding(16)
-    }
-    assertSnapshot(
-      of: host(chips),
-      as: .image(
-        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 160),
-        traits: .init(displayScale: 2)))
-  }
-
-  // ── Journey C's qualitative capture (#1256 Phase D) ──
-
-  private func feelScreen() -> some View {
-    FeelScreen(
-      prompt: FeelPrompt(blockId: "01BLOCK000000000000000003", title: "Freer rubato in the intro"),
-      onFeel: { _ in }, onSkip: {})
-  }
-
-  /// The target in the user's own words, the question, and three chips of which
-  /// only "It sang" is tinted — feel is not a verdict.
-  func testFeelScreen() {
-    assertSnapshot(of: host(feelScreen()), as: config)
-  }
-
-  /// The chips stack rather than shrink to three unreadable columns.
-  func testFeelScreenAccessibilitySize() {
-    assertSnapshot(of: host(feelScreen()), as: axConfig)
-  }
-
-  // ── The soft landing (#1323) ──
-
-  /// The fullest of the three landings. The other two are strictly fewer lines
-  /// in the same centred stack, so they cannot reflow on their own, and their
-  /// wording is pinned in the core rather than by 230KB more of gradient.
-  func testSoftLandingScreenEndedEarly() {
-    assertSnapshot(of: host(SoftLandingScreen(state: .previewShort, onDone: {})), as: config)
-  }
-
-  /// Done is the only way past this, so it may never reflow off the bottom.
-  func testSoftLandingScreenAccessibilitySize() {
-    assertSnapshot(of: host(SoftLandingScreen(state: .previewShort, onDone: {})), as: axConfig)
-  }
-
-  /// Nothing said yet: "Keep it" is unavailable, and "Not tonight" is a
-  /// first-class exit rather than the harder path.
-  func testSessionReflectionScreenEmpty() {
-    assertSnapshot(of: host(SessionReflectionScreen(onKeep: { _ in }, onDismiss: {})), as: config)
-  }
-
-  /// The user's own sentence, in the serif reserved for their words.
-  func testSessionReflectionScreenDictated() {
-    let screen = SessionReflectionScreen(
-      draft: "Stride's nearly there at 72. The bridge still rushes when I go from memory. "
-        + "That's the thing to hit next.",
-      onKeep: { _ in }, onDismiss: {})
-    assertSnapshot(of: host(screen), as: config)
-  }
-
-  func testSessionReflectionScreenAccessibilitySize() {
-    assertSnapshot(of: host(SessionReflectionScreen(onKeep: { _ in }, onDismiss: {})), as: axConfig)
-  }
-
-  /// C3 where it lands: above the untouched hero, on the real screen. Cropped
-  /// to the top of the scroll — the rest of Practice is snapshotted elsewhere,
-  /// and the hero's gradient is most of a full-screen reference's weight.
-  func testPracticeScreenProposedSteer() {
-    let screen = PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
-    assertSnapshot(
-      of: host(screen, store: .previewProposedSteer),
-      as: .image(
-        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 420),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// The card alone, at its own size — the quote glyph, the serif quote and the
-  /// two text actions.
-  func testProposedSteerCard() {
-    let card = ZStack {
-      PaperBackground()
-      ProposedSteerCard(steer: .preview, onAccept: {}, onDecline: {})
-        .padding(16)
-    }
-    assertSnapshot(
-      of: host(card),
-      as: .image(
-        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 190),
-        traits: .init(displayScale: 2)))
-  }
-
-  /// Accepted: the block sits second in the shape, wearing its provenance where
-  /// the minutes go.
-  func testSessionOverviewAddedByYou() {
-    let plan = PlanView.previewWithSteer
-    let overview = ZStack {
-      PaperBackground()
-      SessionOverview(blocks: plan.blocks, deferred: [])
-        .padding(16)
-    }
-    assertSnapshot(
-      of: host(overview),
-      as: .image(
-        on: .iPhone13, perceptualPrecision: 0.98, size: CGSize(width: 390, height: 330),
-        traits: .init(displayScale: 2)))
   }
 
   func testLibraryItemCards() {

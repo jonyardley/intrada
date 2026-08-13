@@ -1,7 +1,6 @@
 pub mod analytics;
 pub mod app;
 pub mod domain;
-pub mod engine;
 pub mod error;
 pub mod http;
 pub mod model;
@@ -23,7 +22,6 @@ pub use domain::types::{
     CreateItem, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection, SortField, Tempo,
     UpdateItem,
 };
-pub use engine::{CoachEvent, CoachState, CoachView, DrillPhase, DrillView};
 pub use error::LibraryError;
 pub use persistence::{PersistenceOperation, PersistenceOutput};
 
@@ -32,9 +30,9 @@ pub use persistence::{PersistenceOperation, PersistenceOutput};
 pub use crux_http::protocol::{HttpHeader, HttpResponse, HttpResult};
 pub use crux_http::{HttpError, HttpRequest};
 pub use model::{
-    ActiveSessionView, ItemPracticeSummary, LibraryItemView, Model, PracticeSessionView,
-    ScoreHistoryEntry, SessionStatusView, SetEntryView, SetView, SetlistEntryView, SummaryView,
-    TempoHistoryEntry, ViewModel,
+    ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
+    PracticeSessionView, ScoreHistoryEntry, SessionStatusView, SetEntryView, SetSourceStatus,
+    SetView, SetlistEntryView, SummaryView, TempoHistoryEntry, ViewModel,
 };
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_SET_NAME, MAX_TAG, MAX_TEMPO_MARKING,

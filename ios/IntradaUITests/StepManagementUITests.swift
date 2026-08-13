@@ -8,9 +8,10 @@ import XCTest
 /// Drag reorder is deliberately not covered here: `.draggable`/
 /// `.dropDestination` ride the system Drag & Drop API, which XCUITest can't
 /// reliably script a drop through in the Simulator (unlike a List's
-/// `onMove` long-press-drag, which XCUITest can automate). Reorder-by-relabeling
-/// itself is fully covered by the core's `set_variants_reorder_preserves_ids_by_label`
-/// test (id/history preserved, position updated); only the gesture is untested here.
+/// `onMove` long-press-drag, which `SessionBuilderUITests` automates
+/// successfully). Reorder-by-relabeling itself is fully covered by the
+/// core's `set_variants_reorder_preserves_ids_by_label` test (id/history
+/// preserved, position updated); only the gesture is untested here.
 @MainActor
 final class StepManagementUITests: XCTestCase {
   override func setUp() {

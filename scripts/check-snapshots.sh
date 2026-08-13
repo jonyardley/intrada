@@ -15,56 +15,17 @@ ROOT="ios/IntradaTests"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # Full-screen references that stay large as lossless PNG even after
-# `oxipng -o max -Z`: smooth gradients (Practice one-tap hero, Focus and coach
-# drill radial player) and dense-control screens (Session summary's per-item
-# score-pill rows over the gold gradient toast). They get a higher bound. Keep
-# this list TIGHT — add only a reference proven irreducible, with the reason.
-# Cropping does not help these: flat paper costs almost nothing and the gradient
-# is the whole bill, so testPressStartHeroPlanned is no smaller than the full
-# screen despite being a third of the pixels.
-# Added #1223: testDrillScreenBlockEntry (254KB) and
-# testDrillScreenTapVerdictAccessibilitySize (281KB) — two more full-screen drill
-# faces over the same playerPaper radial as the siblings above.
-# Added #1260: testDrillScreenDuringPlayUntimed and testDrillScreenBlockEntryUntimed
-# — the l0 (no-click) faces of the same two drill screens, same radial.
-# Added #1256: the three resolution faces are the same playerPaper radial again,
-# and testComposedSession carries the practice hero's indigo gradient. Cropping
-# was tried and bought ~14% (243KB -> 208KB), which is the note above restated:
-# the gradient is the bill, not the pixel count.
-# Added #1256 Phase C: Journey B's altitude faces (run-through, off-piste,
-# off-the-record) are full-screen over the same playerPaper radial as the drill
-# screens above — 214-282KB after `oxipng -o max`. The two B0 sheet references
-# are paper-backed and stay well under the default ceiling, so they are not here.
-# Added #1256 Phase D: Journey C's two in-session faces (the feel moment, the
-# reflection at close) are the same playerPaper radial again — 226-298KB. The
-# proposed-steer references are paper-backed and cropped, and stay under the
-# default ceiling.
-# Added #1323: the soft landing's two faces, the same playerPaper radial again —
-# 235KB and 290KB. Two and not four: the finished-plan and nothing-played
-# landings are strictly fewer lines in the same centred stack, so they cannot
-# reflow on their own, and their wording is pinned in the core instead.
+# `oxipng -o max -Z`: smooth gradients (Practice one-tap hero, Focus player
+# radial) and dense-control screens (Session summary's per-item score-pill rows
+# over the gold gradient toast). They get a higher bound. Keep this list TIGHT —
+# add only a reference proven irreducible, with the reason. Cropping does not
+# help these: flat paper costs almost nothing and the gradient is the whole bill.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
-      testPressStartHeroPlanned | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
-      testSessionSummaryCompleted | testSessionSummaryWithReflection | \
-      testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \
-      testDrillScreenBlockEntry | testDrillScreenTapVerdictAccessibilitySize | \
-      testDrillScreenCountIn | testDrillScreenTapVerdict | \
-      testDrillScreenMissAcknowledged | testDrillScreenGateOpen | \
-      testDrillScreenDuringPlayUntimed | testDrillScreenBlockEntryUntimed | \
-      testResolutionNodeMatch | testResolutionUserDrill | \
-      testResolutionUserDrillLargeText | testComposedSession | \
-      testRunThroughScreenMidRun | testRunThroughScreenComplete | \
-      testRunThroughScreenAccessibilitySize | \
-      testOffPisteScreen | testOffPisteScreenAccessibilitySize | \
-      testUnmonitoredScreen | \
-      testFeelScreen | testFeelScreenAccessibilitySize | \
-      testSessionReflectionScreenEmpty | testSessionReflectionScreenDictated | \
-      testSessionReflectionScreenAccessibilitySize | \
-      testSoftLandingScreenEndedEarly | testSoftLandingScreenAccessibilitySize) return 0 ;;
+      testSessionSummaryCompleted | testSessionSummaryWithReflection) return 0 ;;
     *) return 1 ;;
   esac
 }

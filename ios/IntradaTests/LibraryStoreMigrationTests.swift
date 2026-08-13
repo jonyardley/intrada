@@ -338,12 +338,17 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
     try LibraryStore.migrator.migrate(queue)
 
-    let store = try LibraryStore(queue)
-    let records = try store.loadCoachRecords()
-    XCTAssertEqual(records.count, 1, "the historic record survives the upgrade")
-    XCTAssertEqual(
-      records[0].origin, .authored,
-      "a record from before built sessions is the planner's, and still counts")
-    XCTAssertEqual(records[0].node, "rootless-a-b", "the rest of the row is untouched")
+    try queue.read { db in
+      XCTAssertEqual(
+        try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM block_record"), 1,
+        "the historic record survives the upgrade")
+      XCTAssertEqual(
+        try String.fetchOne(db, sql: "SELECT origin FROM block_record WHERE id = 'b1'"),
+        "authored",
+        "a record from before built sessions is the planner's backfill")
+      XCTAssertEqual(
+        try String.fetchOne(db, sql: "SELECT node FROM block_record WHERE id = 'b1'"),
+        "rootless-a-b", "the rest of the row is untouched")
+    }
   }
 }

@@ -22,30 +22,25 @@
     private let items: [LibraryItemView]
     private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
+    private let buildingSetlist: BuildingSetlistView?
     private let activeSession: ActiveSessionView?
     private let summary: SummaryView?
 
     private let analytics: AnalyticsView?
-    private let plan: PlanView?
-    private let built: BuiltView?
-    private let recovery: RecoveryView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
-      sessions: [PracticeSessionView] = [],
+      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
-      analytics: AnalyticsView? = nil, plan: PlanView? = nil,
-      built: BuiltView? = nil, recovery: RecoveryView? = nil
+      analytics: AnalyticsView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
       self.sessions = sessions
+      self.buildingSetlist = buildingSetlist
       self.activeSession = activeSession
       self.summary = summary
       self.analytics = analytics
-      self.plan = plan
-      self.built = built
-      self.recovery = recovery
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -66,12 +61,10 @@
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       viewModel.sessions = sessions
+      viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
-      if let plan { viewModel.coach.plan = plan }
-      if let built { viewModel.built = built }
-      viewModel.coach.recovery = recovery
       return viewModel
     }
   }
@@ -138,74 +131,6 @@
         ]))
     }
 
-    /// Practice home with today's plan already made — the press-start hero over
-    /// the block list and the deferred lines (#1225).
-    static var previewPracticePlanned: Store {
-      Store(
-        bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly], plan: .preview))
-    }
-
-    // ── The steer sheet (#1256, Journey A) ──────────────────────────
-
-    /// First use: a piece already known, a name nothing recognises. One
-    /// question owed, and the primary action says so.
-    static var previewComposing: Store {
-      Store(
-        bridge: PreviewBridge(
-          items: [.previewPiece],
-          built: BuiltView(
-            compose: .previewFirstUse, session: nil, playThrough: nil, feel: nil,
-            reflection: false, steer: nil)))
-    }
-
-    /// Repeat use (A2r): every row lands already known, so the price is zero.
-    static var previewComposingAllKnown: Store {
-      Store(
-        bridge: PreviewBridge(
-          built: BuiltView(
-            compose: .previewAllKnown, session: nil, playThrough: nil, feel: nil,
-            reflection: false, steer: nil)))
-    }
-
-    /// A3 — the proposed authored-node match, evidence on the card.
-    static var previewResolvingNodeMatch: Store {
-      Store(
-        bridge: PreviewBridge(
-          built: BuiltView(
-            compose: .previewNodeMatch, session: nil, playThrough: nil, feel: nil,
-            reflection: false, steer: nil)))
-    }
-
-    /// A6 — the composed session, shape offered.
-    static var previewComposedSession: Store {
-      Store(
-        bridge: PreviewBridge(
-          sessions: [.previewCompleted],
-          built: BuiltView(
-            compose: nil, session: .preview, playThrough: nil, feel: nil,
-            reflection: false, steer: nil)))
-    }
-
-    // ── Qualitative capture (#1256, Journey C) ──────────────────────
-
-    /// C3 — last night's words above the untouched hero, over today's plan.
-    static var previewProposedSteer: Store {
-      Store(
-        bridge: PreviewBridge(
-          sessions: [.previewCompleted], plan: .preview,
-          built: BuiltView(
-            compose: nil, session: nil, playThrough: nil, feel: nil,
-            reflection: false, steer: .preview)))
-    }
-
-    /// C3, accepted: the card gone, the block it placed second in the shape.
-    static var previewAcceptedSteer: Store {
-      Store(
-        bridge: PreviewBridge(
-          sessions: [.previewCompleted], plan: .previewWithSteer))
-    }
-
     /// Practice home with a crash-recovery blob pending (#962) — drives the
     /// Resume / Discard prompt above the hero.
     static var previewPracticeRecovery: Store {
@@ -235,18 +160,53 @@
       return store
     }
 
-    /// Practice home with a coach blob pending (#1193, #1305).
-    static var previewCoachRecovery: Store {
+    /// Session builder mid-assembly: a non-empty setlist for the populated-state
+    /// preview + snapshot. Injected directly (deterministic, offline) rather than
+    /// driven through the core, whose ulids/timestamps aren't snapshot-stable.
+    static var previewBuilding: Store {
       Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted], recovery: .previewDrill))
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [.previewPiece, .previewExercise],
+            itemCount: 2,
+            blocks: [
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewPiece]),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewExercise]),
+            ],
+            blockCount: 2,
+            totalDurationDisplay: nil, totalDurationSummary: nil,
+            sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource)))
     }
 
-    /// The same prompt for a blob left at an altitude.
-    static var previewCoachRecoveryAltitude: Store {
-      Store(
+    /// Session builder with a block (a piece + 2 related) above a standalone
+    /// item — the grouped-state preview + snapshot.
+    static var previewBuildingGrouped: Store {
+      let block: [SetlistEntryView] = [
+        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
+      ]
+      return Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted], recovery: .previewOffPiste))
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: block + [.previewStandaloneExercise],
+            itemCount: 4,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
+                durationDisplay: "12 min", entries: block),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewStandaloneExercise]),
+            ],
+            blockCount: 2,
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min",
+            sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
     }
 
     /// Player Focus — a piece mid-session with a session intention and a time
@@ -603,6 +563,55 @@
     }
   }
 
+  extension SetlistEntryView {
+    static var previewPiece: SetlistEntryView {
+      building(id: "setlist-1", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
+    }
+
+    static var previewExercise: SetlistEntryView {
+      building(
+        id: "setlist-2", item: "exercise-1", title: "Hanon No. 1", type: .exercise, position: 1)
+    }
+
+    static var previewGroupedScales: SetlistEntryView {
+      building(id: "g-a", item: "ex-a", title: "Scales", type: .exercise, position: 0, group: "g1")
+    }
+    static var previewGroupedArpeggios: SetlistEntryView {
+      building(
+        id: "g-b", item: "ex-b", title: "Broken arpeggios", type: .exercise, position: 1,
+        group: "g1")
+    }
+    static var previewGroupedPiece: SetlistEntryView {
+      building(
+        id: "g-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 2, group: "g1")
+    }
+    static var previewStandaloneExercise: SetlistEntryView {
+      building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
+    }
+
+    /// All three per-entry settings set — the "populated" `EntrySettingsSheet` snapshot.
+    static var previewGroupedScalesConfigured: SetlistEntryView {
+      var e = previewGroupedScales
+      e.intention = "Even RH over the LH arpeggios"
+      e.repTarget = 7
+      e.plannedDurationSecs = 360
+      e.plannedDurationDisplay = "6 min"
+      return e
+    }
+
+    private static func building(
+      id: String, item: String, title: String, type: ItemKind, position: UInt64,
+      group: String? = nil
+    ) -> SetlistEntryView {
+      SetlistEntryView(
+        id: id, itemId: item, itemTitle: title, itemType: type, position: position,
+        durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
+        repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
+        variantId: nil)
+    }
+  }
+
   extension PracticeSessionView {
     /// Sunday 31 May 2026 (noon UTC) — same Mon–Sun week as the fixtures below
     /// (Thu 28th, Sat 30th). "Today" has no practice, so the screen auto-selects
@@ -769,59 +778,6 @@
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil,
         variantId: nil)
-    }
-  }
-
-  /// The steer sheet's three states (#1256, A2 / A2r / A3), fixed so the
-  /// snapshots assert layout rather than whatever the content currently says.
-  extension ComposeView {
-    static var previewFirstUse: ComposeView {
-      ComposeView(
-        entries: [
-          ComposeEntryView(
-            id: "e1", name: "Alice in Wonderland", kind: .piece,
-            note: "Joins your tunes — learn, memorise, run cold"),
-          ComposeEntryView(
-            id: "e2", name: "Stride pattern — bars 1–8", kind: .unresolved, note: nil),
-        ],
-        questions: [
-          ComposeQuestionView(
-            entryId: "e2", name: "Stride pattern — bars 1–8",
-            ask: .userDrill(
-              criterion: "Both hands together, bars 1–8, no stalls, at crotchet = 72.",
-              tempoBpm: 72, keys: ["F"], passesToOpen: 3,
-              servesOptions: [
-                ServesOptionView(label: "Alice in Wonderland", serves: .node("p1")),
-                ServesOptionView(label: "What your hands know", serves: .circle(.hands)),
-              ]))
-        ],
-        buildLabel: "Continue — one quick question", canBuild: false)
-    }
-
-    static var previewAllKnown: ComposeView {
-      ComposeView(
-        entries: [
-          ComposeEntryView(id: "e1", name: "Hanon №4, hands together", kind: .exercise, note: nil),
-          ComposeEntryView(id: "e2", name: "Stride pattern — bars 1–8", kind: .exercise, note: nil),
-          ComposeEntryView(id: "e3", name: "Freer rubato in the intro", kind: .journal, note: nil),
-        ],
-        questions: [],
-        buildLabel: "Build session — no questions today", canBuild: true)
-    }
-
-    static var previewNodeMatch: ComposeView {
-      ComposeView(
-        entries: [
-          ComposeEntryView(id: "e1", name: "Hanon №4, hands together", kind: .unresolved, note: nil)
-        ],
-        questions: [
-          ComposeQuestionView(
-            entryId: "e1", name: "Hanon №4, hands together",
-            ask: .nodeMatch(
-              title: "Hanon №4 — hands together, crotchet = 96",
-              evidenceLine: "Solid at 88", gateFilled: 2, gateTarget: 3))
-        ],
-        buildLabel: "Continue — one quick question", canBuild: false)
     }
   }
 #endif

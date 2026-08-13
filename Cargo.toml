@@ -27,7 +27,6 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 # Reads the authored content (content/gates.toml) at startup. `parse` only:
 # the engine never writes TOML back.
-toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
 
 [profile.dev.package."*"]
 debug = false
