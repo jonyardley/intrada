@@ -30,6 +30,10 @@ enum CoachScale {
   var question: CGFloat { self == .compact ? 36 : 64 }
   var tempo: CGFloat { self == .compact ? 52 : 76 }
   var eyebrow: CGFloat { self == .compact ? 11 : 14 }
+  /// A full-cover question: read, rather than answered under the hands.
+  var ask: CGFloat { question * 0.78 }
+  /// The quiet line under it: what the ask costs, or what it doesn't.
+  var support: CGFloat { self == .compact ? 14 : 18 }
   var clock: CGFloat { self == .compact ? 13 : 17 }
   var verdictDisc: CGFloat { self == .compact ? 118 : 168 }
 }

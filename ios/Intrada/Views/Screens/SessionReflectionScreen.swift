@@ -8,7 +8,6 @@ struct SessionReflectionScreen: View {
   var onKeep: (String) -> Void
   var onDismiss: () -> Void
 
-  @Environment(\.horizontalSizeClass) private var sizeClass
   @Environment(\.dynamicTypeSize) private var typeSize
   @State private var draft: String
   @FocusState private var writing: Bool
@@ -28,43 +27,28 @@ struct SessionReflectionScreen: View {
     }
   #endif
 
-  private var scale: CoachScale { sizeClass == .regular ? .regular : .compact }
-  private var gutter: CGFloat { scale == .compact ? IntradaSpacing.card : IntradaSpacing.stage }
   private var kept: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 
   var body: some View {
-    ZStack {
-      RadialGradient.playerPaper.ignoresSafeArea()
-      // "Not tonight" is the only way off a cover with no interactive dismiss,
-      // so it may never be what large text or the keyboard pushes off-screen.
-      GeometryReader { proxy in
-        ScrollView {
-          VStack(spacing: 0) {
-            Text("SESSION DONE")
-              .font(IntradaFont.ambientStrong(scale.eyebrow))
-              .tracking(1.5)
-              .foregroundStyle(IntradaColor.inkSecondary)
-              .padding(.top, IntradaSpacing.cardCompact)
-            Spacer(minLength: IntradaSpacing.section)
-            ask
-            Spacer(minLength: IntradaSpacing.section)
-            footer
-          }
-          .padding(.horizontal, gutter)
-          .padding(.bottom, IntradaSpacing.section)
-          .frame(minHeight: proxy.size.height)
-        }
-        .scrollBounceBehavior(.basedOnSize)
+    CoachCoverScaffold { scale in
+      VStack(spacing: 0) {
+        Text("SESSION DONE")
+          .font(IntradaFont.ambientStrong(scale.eyebrow))
+          .tracking(1.5)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .padding(.top, IntradaSpacing.cardCompact)
+        Spacer(minLength: IntradaSpacing.section)
+        ask(scale)
+        Spacer(minLength: IntradaSpacing.section)
+        footer
       }
     }
-    .environment(\.coachScale, scale)
-    .dynamicTypeSize(.xSmall ... .accessibility5)
   }
 
-  private var ask: some View {
+  private func ask(_ scale: CoachScale) -> some View {
     VStack(spacing: IntradaSpacing.card) {
       Text("Anything worth keeping?")
-        .font(IntradaFont.verdict(scale.question * 0.78))
+        .font(IntradaFont.verdict(scale.ask))
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
@@ -72,16 +56,16 @@ struct SessionReflectionScreen: View {
       // sizes, as the drill screen's identity detail is.
       if !typeSize.isAccessibilitySize {
         Text("What improved, what's still rough, what's next.")
-          .font(IntradaFont.ambient(scale == .compact ? 14 : 18))
+          .font(IntradaFont.ambient(scale.support))
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
       }
-      field
+      field(scale)
     }
   }
 
-  private var field: some View {
+  private func field(_ scale: CoachScale) -> some View {
     TextField("Say it however it comes…", text: $draft, axis: .vertical)
       .lineLimit(3...8)
       .font(IntradaFont.cardTitle(scale == .compact ? 17 : 22))

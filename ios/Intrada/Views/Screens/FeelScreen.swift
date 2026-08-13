@@ -9,37 +9,19 @@ struct FeelScreen: View {
   var onFeel: (Feel) -> Void
   var onSkip: () -> Void
 
-  @Environment(\.horizontalSizeClass) private var sizeClass
-
-  private var scale: CoachScale { sizeClass == .regular ? .regular : .compact }
-  private var gutter: CGFloat { scale == .compact ? IntradaSpacing.card : IntradaSpacing.stage }
-
   var body: some View {
-    ZStack {
-      RadialGradient.playerPaper.ignoresSafeArea()
-      // Scrolls once the text outgrows the screen: Skip is the only way past
-      // this question, so it may never be the thing that falls off the bottom.
-      GeometryReader { proxy in
-        ScrollView {
-          VStack(spacing: 0) {
-            Spacer(minLength: IntradaSpacing.card)
-            question
-            Spacer(minLength: IntradaSpacing.card)
-            CoachAction(title: "Skip", emphasis: .quiet, action: onSkip)
-              .accessibilityHint("Leaves this block without a feel")
-          }
-          .padding(.horizontal, gutter)
-          .padding(.bottom, IntradaSpacing.section)
-          .frame(minHeight: proxy.size.height)
-        }
-        .scrollBounceBehavior(.basedOnSize)
+    CoachCoverScaffold { scale in
+      VStack(spacing: 0) {
+        Spacer(minLength: IntradaSpacing.card)
+        question(scale)
+        Spacer(minLength: IntradaSpacing.card)
+        CoachAction(title: "Skip", emphasis: .quiet, action: onSkip)
+          .accessibilityHint("Leaves this block without a feel")
       }
     }
-    .environment(\.coachScale, scale)
-    .dynamicTypeSize(.xSmall ... .accessibility5)
   }
 
-  private var question: some View {
+  private func question(_ scale: CoachScale) -> some View {
     VStack(spacing: IntradaSpacing.section) {
       VStack(spacing: IntradaSpacing.controlGap) {
         Text(prompt.title)
@@ -50,7 +32,7 @@ struct FeelScreen: View {
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)
         Text("How did it feel?")
-          .font(IntradaFont.verdict(scale.question * 0.78))
+          .font(IntradaFont.verdict(scale.ask))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
           .fixedSize(horizontal: false, vertical: true)

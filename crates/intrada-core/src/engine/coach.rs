@@ -15,7 +15,7 @@ use super::mastery::MasteryStore;
 use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext, PlannedBlock, Stage};
 use super::session::{
     section_evidence, Altitude, BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase,
-    SessionState, SnapshotAction,
+    SessionState, SnapshotAction, SoftLanding,
 };
 use crate::domain::built_session::PlayThroughRecord;
 use crate::domain::item::ItemKind;
@@ -320,6 +320,7 @@ impl CoachState {
             run_through: self.run_through_view(),
             open_play: self.open_play_view(),
             recovery: self.recovery_view(),
+            landing: self.landing_view(),
         }
     }
 
@@ -364,7 +365,7 @@ impl CoachState {
             ),
             // `offer_recovery` refuses these, so reaching one would mean the
             // guard moved rather than that the prompt needs a fifth wording.
-            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => {
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing { .. } => {
                 return None
             }
         };
@@ -373,6 +374,53 @@ impl CoachState {
             headline: headline.to_string(),
             detail,
             started_at,
+        })
+    }
+
+    /// The soft landing (#1323). Every sentence is the core's, because a shell
+    /// composing its own would be a shell deciding how the user should feel
+    /// about their own practice (design doc §"Streak mechanics, defanged").
+    fn landing_view(&self) -> Option<LandingView> {
+        let SessionState::Closing {
+            landing: Some(landing),
+        } = &self.session.state
+        else {
+            return None;
+        };
+        // Read the same whether or not the plan was walked through: "0 blocks"
+        // is a scoreboard for a session that did not happen.
+        if landing.blocks_played == 0 {
+            return Some(LandingView {
+                headline: "Another time.".to_string(),
+                detail: None,
+                note: Some(
+                    "Nothing played, so nothing's on the record. Today's plan is still there."
+                        .to_string(),
+                ),
+            });
+        }
+        // Completion wording is earned by a gate, not by reaching the end of the
+        // plan: "failed a gate five times" is one of the design's three failure
+        // stories, and skipping or grinding your way through every block is not
+        // the session those words belong to.
+        let (headline, note) = match (landing.plan_finished, landing.gates_passed) {
+            (true, 1..) => ("That's the session.", None),
+            // Ran its full length, so "short" would be untrue of it — but the
+            // consolation is exactly what this case is owed.
+            (true, 0) => (
+                "That's banked.",
+                Some("No gate opened today. The reps still count."),
+            ),
+            _ => (
+                "That's banked.",
+                Some("Short is still practice, and it's on the record."),
+            ),
+        };
+        let note = note.map(str::to_string);
+        Some(LandingView {
+            headline: headline.to_string(),
+            detail: Some(landing_detail(landing)),
+            note,
         })
     }
 
@@ -538,6 +586,36 @@ fn reported_offset(event: &CoachEvent) -> Option<i32> {
     }
 }
 
+/// "2 blocks, 12 minutes. 1 gate passed.": stated, nothing inferred from it.
+fn landing_detail(landing: &SoftLanding) -> String {
+    let mut detail = format!(
+        "{}, {}",
+        plural(landing.blocks_played, "block"),
+        // A block can close inside a minute, and "0 minutes" reads as none.
+        if landing.minutes == 0 {
+            "under a minute".to_string()
+        } else {
+            plural(landing.minutes, "minute")
+        }
+    );
+    if landing.gates_passed > 0 {
+        detail.push_str(&format!(
+            ". {} passed",
+            plural(landing.gates_passed, "gate")
+        ));
+    }
+    detail.push('.');
+    detail
+}
+
+fn plural(count: u16, noun: &str) -> String {
+    if count == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{count} {noun}s")
+    }
+}
+
 fn banked_passes(records: &[BlockRecord]) -> impl Iterator<Item = &BlockRecord> {
     records
         .iter()
@@ -614,6 +692,8 @@ pub struct CoachView {
     pub open_play: Option<OpenPlayView>,
     /// `Some` while a crash-recovery blob is waiting on Resume or Discard.
     pub recovery: Option<RecoveryView>,
+    /// `Some` while a prescribed session's soft landing is owed (#1323).
+    pub landing: Option<LandingView>,
 }
 
 /// The launch prompt for a session a crash cut off (#1193, #1305). Nothing is
@@ -629,6 +709,18 @@ pub struct RecoveryView {
     /// When the interrupted session started, on its own clock — the rebase to
     /// "now" happens on accept, so this is still the instant the user left.
     pub started_at: DateTime<Utc>,
+}
+
+/// The last frame of a prescribed session (#1323). Sentences and no numbers, so
+/// the shell cannot round, pluralise or reframe what the session was worth.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LandingView {
+    pub headline: String,
+    /// `None` where nothing was played.
+    pub detail: Option<String>,
+    /// `None` where the plan was finished, and consolation would be for nothing.
+    pub note: Option<String>,
 }
 
 /// What off-piste and unmonitored draw: a clock and, off-piste only, the piece.
@@ -1092,6 +1184,177 @@ mod tests {
 
         coach.apply(&CoachEvent::Tick { now: at(97) });
         assert_eq!(coach.view().drill.unwrap().elapsed_seconds, 97);
+    }
+
+    // ── The soft landing (#1323) ──
+
+    /// Built by hand because the wording is what is under test here; the state
+    /// machine's tests own the counting.
+    fn landed(
+        blocks_played: u16,
+        minutes: u16,
+        gates_passed: u16,
+        plan_finished: bool,
+    ) -> CoachView {
+        let mut coach = CoachState::default();
+        coach.session.state = SessionState::Closing {
+            landing: Some(SoftLanding {
+                blocks_played,
+                minutes,
+                gates_passed,
+                plan_finished,
+            }),
+        };
+        coach.view()
+    }
+
+    #[test]
+    fn there_is_no_landing_until_a_session_has_ended() {
+        assert_eq!(CoachState::default().view().landing, None);
+        assert_eq!(playing().view().landing, None);
+    }
+
+    #[test]
+    fn a_short_session_is_told_what_it_banked_and_never_what_it_missed() {
+        let landing = landed(2, 12, 1, false).landing.expect("a landing");
+
+        assert_eq!(
+            landing.detail.as_deref(),
+            Some("2 blocks, 12 minutes. 1 gate passed.")
+        );
+        assert!(
+            landing.note.is_some(),
+            "quitting at minute eight is one of the design's three failure \
+             stories, so a short session gets one true sentence about it"
+        );
+    }
+
+    /// Every wording the landing can reach, not just the one a case names: this
+    /// is the rule the whole feature rests on, so it is checked across the lot.
+    #[test]
+    fn no_landing_reaches_for_the_words_of_loss() {
+        for (played, minutes, gates, finished) in [
+            (2, 12, 1, false),
+            (3, 24, 3, true),
+            (4, 30, 0, true),
+            (0, 0, 0, false),
+        ] {
+            let landing = landed(played, minutes, gates, finished)
+                .landing
+                .expect("a landing");
+            let said = format!(
+                "{} {} {}",
+                landing.headline,
+                landing.detail.unwrap_or_default(),
+                landing.note.unwrap_or_default()
+            )
+            .to_lowercase();
+            for word in [
+                "left",
+                "remaining",
+                "unfinished",
+                "missed",
+                "incomplete",
+                "failed",
+            ] {
+                assert!(
+                    !said.contains(word),
+                    "the landing frames progress, never loss: {said:?} says {word:?}"
+                );
+            }
+        }
+    }
+
+    /// Jon's call on #1336: completion wording is earned by a gate, not by
+    /// reaching the end of the plan. Skipping or grinding through every block
+    /// gets the consolation, because "failed a gate five times" is one of the
+    /// design's failure stories rather than a session to congratulate.
+    #[test]
+    fn a_full_session_that_passed_nothing_is_not_congratulated() {
+        let short = landed(2, 12, 1, false).landing.expect("a landing");
+        let ground_out = landed(4, 30, 0, true).landing.expect("a landing");
+        let finished = landed(3, 24, 3, true).landing.expect("a landing");
+
+        assert_eq!(
+            ground_out.headline, short.headline,
+            "the plan ran out, but nothing passed, so it reads as banked rather \
+             than as a session completed"
+        );
+        assert_ne!(ground_out.headline, finished.headline);
+        let note = ground_out.note.expect("and it is owed the consolation");
+        assert!(
+            !note.to_lowercase().contains("short"),
+            "it ran its full length, so calling it short is untrue of it: {note:?}"
+        );
+        assert_eq!(
+            ground_out.detail.as_deref(),
+            Some("4 blocks, 30 minutes."),
+            "no gate clause where no gate opened"
+        );
+    }
+
+    #[test]
+    fn a_finished_session_is_not_offered_consolation() {
+        let short = landed(2, 12, 1, false).landing.expect("a landing");
+        let finished = landed(3, 24, 3, true).landing.expect("a landing");
+
+        assert_eq!(
+            finished.note, None,
+            "there is nothing to soften: the plan was run out and gates passed"
+        );
+        assert_ne!(
+            finished.headline, short.headline,
+            "and finishing does not read the same as stopping early, or the \
+             landing says nothing at all"
+        );
+        assert_eq!(
+            finished.detail.as_deref(),
+            Some("3 blocks, 24 minutes. 3 gates passed.")
+        );
+    }
+
+    #[test]
+    fn a_session_that_played_nothing_is_given_no_scoreboard() {
+        let landing = landed(0, 0, 0, false).landing.expect("a landing");
+
+        assert_eq!(
+            landing.detail, None,
+            "\"0 blocks, under a minute\" is a scoreboard for a session that did \
+             not happen"
+        );
+        assert!(landing.note.is_some(), "and it still says something true");
+    }
+
+    #[test]
+    fn the_landing_counts_in_the_words_a_musician_would_use() {
+        assert_eq!(
+            landed(1, 1, 1, true).landing.unwrap().detail.as_deref(),
+            Some("1 block, 1 minute. 1 gate passed."),
+            "singulars, not \"1 blocks\""
+        );
+        assert_eq!(
+            landed(1, 0, 0, false).landing.unwrap().detail.as_deref(),
+            Some("1 block, under a minute."),
+            "a block closed inside a minute took some time, and \"0 minutes\" \
+             says it took none"
+        );
+        assert_eq!(
+            landed(2, 5, 0, false).landing.unwrap().detail.as_deref(),
+            Some("2 blocks, 5 minutes."),
+            "no gate clause where no gate opened, rather than \"0 gates passed\""
+        );
+    }
+
+    #[test]
+    fn the_landing_survives_the_ffi_wire() {
+        for view in [
+            landed(2, 12, 1, false),
+            landed(3, 24, 3, true),
+            landed(0, 0, 0, false),
+        ] {
+            assert_round_trips(view);
+        }
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::CloseLanding));
     }
 
     // ── Press-start: the plan before it runs (#1182, #1189) ──

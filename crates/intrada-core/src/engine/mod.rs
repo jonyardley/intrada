@@ -16,8 +16,8 @@ mod plan;
 mod session;
 
 pub use coach::{
-    CoachState, CoachView, DrillPhase, DrillView, OpenPlayView, PlanView, PlannedBlockView,
-    RecoveryView, RunThroughView, SteerPlacement,
+    CoachState, CoachView, DrillPhase, DrillView, LandingView, OpenPlayView, PlanView,
+    PlannedBlockView, RecoveryView, RunThroughView, SteerPlacement,
 };
 pub use content::ContentIndex;
 pub use gate::{
@@ -30,6 +30,6 @@ pub use plan::{
 };
 pub use session::{
     Altitude, AttemptSummary, BlockRecord, BlockState, CoachEvent, CoachWrites, EngineConfig,
-    EngineSession, Exit, Phase, RunThroughState, Rung, SessionState, SnapshotAction,
+    EngineSession, Exit, Phase, RunThroughState, Rung, SessionState, SnapshotAction, SoftLanding,
     UnmonitoredRecord, WanderRecord,
 };

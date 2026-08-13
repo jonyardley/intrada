@@ -39,6 +39,10 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # reflection at close) are the same playerPaper radial again — 226-298KB. The
 # proposed-steer references are paper-backed and cropped, and stay under the
 # default ceiling.
+# Added #1323: the soft landing's two faces, the same playerPaper radial again —
+# 235KB and 290KB. Two and not four: the finished-plan and nothing-played
+# landings are strictly fewer lines in the same centred stack, so they cannot
+# reflow on their own, and their wording is pinned in the core instead.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
@@ -59,7 +63,8 @@ is_large() {
       testUnmonitoredScreen | \
       testFeelScreen | testFeelScreenAccessibilitySize | \
       testSessionReflectionScreenEmpty | testSessionReflectionScreenDictated | \
-      testSessionReflectionScreenAccessibilitySize) return 0 ;;
+      testSessionReflectionScreenAccessibilitySize | \
+      testSoftLandingScreenEndedEarly | testSoftLandingScreenAccessibilitySize) return 0 ;;
     *) return 1 ;;
   esac
 }

@@ -24,8 +24,9 @@ struct DrillLoopHost: View {
   private var drill: DrillView? { store.viewModel?.coach.drill }
   private var feel: FeelPrompt? { store.viewModel?.built.feel }
   private var reflection: Bool { store.viewModel?.built.reflection ?? false }
+  private var landing: LandingView? { store.viewModel?.coach.landing }
   private var stage: LoopStage {
-    LoopStage.of(drill: drill, feel: feel, reflection: reflection)
+    LoopStage.of(drill: drill, feel: feel, reflection: reflection, landing: landing)
   }
 
   var body: some View {
@@ -62,6 +63,10 @@ struct DrillLoopHost: View {
           onDismiss: dismiss)
       case .reflection:
         SessionReflectionHost()
+      case .landing(let landing):
+        SoftLandingScreen(
+          state: landing,
+          onDone: { store.send(.coach(.closeLanding), onSuccess: .selection) })
       case .idle:
         Color.clear
       }
@@ -79,8 +84,8 @@ struct DrillLoopHost: View {
       syncClick()
     }
     .onChange(of: stage.isIdle) { _, idle in
-      // The core closed the block — ceiling, ladder or gate. It has already
-      // ended the session, so this only tears down.
+      // The core closed the block — ceiling, ladder or gate — and the session
+      // has since been landed and acknowledged, so this only tears down.
       if idle { close() }
     }
     // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
@@ -185,7 +190,8 @@ struct DrillLoopHost: View {
   }
 
   /// Every exit runs through here: all three close the block that was running,
-  /// and a cover torn down on the way out takes its questions with it unasked.
+  /// and a cover torn down on the way out takes its questions and its landing
+  /// with it (#1323).
   private func closeIfNothingLeftToAsk() {
     if stage.isIdle { close() }
   }
