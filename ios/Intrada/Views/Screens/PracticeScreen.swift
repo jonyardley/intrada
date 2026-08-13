@@ -53,6 +53,17 @@ struct PracticeScreen: View {
     ScreenScaffold(title: "Practice", subtitle: subtitle) {
       ScrollView {
         VStack(spacing: IntradaSpacing.section) {
+          if let recovery = store.viewModel?.coach.recovery {
+            RecoveryPromptCard(
+              recovery: recovery,
+              referenceDate: referenceDate,
+              onResume: resumeCoachSession,
+              onDiscard: {
+                store.send(.coach(.declineRecovery), onSuccess: .selection)
+              }
+            )
+            .fadeUp(0)
+          }
           if let recoverable = store.recoverableSession {
             RecoveryPromptCard(
               session: recoverable,
@@ -168,6 +179,18 @@ struct PracticeScreen: View {
           .builtSession(.declineProposedSteer(reflectionId: steer.reflectionId)),
           onSuccess: .selection)
       })
+  }
+
+  /// A recovered altitude puts its own cover up from `RootView`, so only a
+  /// prescribed block opens the drill loop here, and only once the core has
+  /// handed one back (#1193, #1305).
+  private func resumeCoachSession() {
+    store.send(
+      .coach(
+        .acceptRecovery(
+          now: SessionClock.nowRFC3339(),
+          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
+    if store.viewModel?.coach.drill != nil { drillLoopRunning = true }
   }
 
   /// Entering the drill loop is the core's call: it hands back a block, or it

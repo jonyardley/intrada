@@ -834,6 +834,37 @@ mod tests {
                 .any(|effect| matches!(effect, AppEffect::ClearCoachSessionInProgress)));
         }
 
+        #[test]
+        fn declining_the_launch_prompt_clears_the_blob() {
+            let (app, mut model) = local_first();
+            let mut crashed = crate::engine::CoachState::default();
+            crashed.apply(&CoachEvent::StartPlannedSession {
+                now: at(0),
+                utc_offset_minutes: 0,
+            });
+
+            let mut cmd = send(
+                &app,
+                &mut model,
+                CoachEvent::OfferRecovery {
+                    session: crashed.session,
+                },
+            );
+            assert!(
+                app_effects(&mut cmd).is_empty(),
+                "an offer touches nothing until it is answered"
+            );
+
+            let mut cmd = send(&app, &mut model, CoachEvent::DeclineRecovery);
+            assert!(
+                app_effects(&mut cmd)
+                    .iter()
+                    .any(|effect| matches!(effect, AppEffect::ClearCoachSessionInProgress)),
+                "Discard has to reach UserDefaults, or the declined session is \
+                 offered again on the next launch (#1193)"
+            );
+        }
+
         /// Runs the first block to its gate and past the hold, so a record has
         /// been offered to the store and the retry has something to hold.
         fn close_a_block(app: &Intrada, model: &mut Model) {

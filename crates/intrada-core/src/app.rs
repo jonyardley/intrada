@@ -308,6 +308,11 @@ pub(crate) fn coach_write_commands(
             model.built_session_today = None;
             commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
         }
+        // Deliberately not the arm above: a blob the user declined at launch is
+        // no evidence that today's composed session was practised (#1193).
+        SnapshotAction::ClearOffer => {
+            commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
+        }
         SnapshotAction::Unchanged => {}
     }
     commands

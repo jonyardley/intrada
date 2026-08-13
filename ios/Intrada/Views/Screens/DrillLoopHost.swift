@@ -100,15 +100,16 @@ struct DrillLoopHost: View {
   }
 
   private func run() async {
-    // A blob means the last session was cut off mid-block: hand it back rather
-    // than starting fresh, or the evidence already banked is discarded (#1181).
+    // An offer the core is still holding means the last session was cut off
+    // mid-block: take it rather than starting fresh, or the evidence already
+    // banked is discarded (#1181). Pressing start is the second door onto it —
+    // the launch prompt on Practice is the first (#1305).
     let now = SessionClock.nowRFC3339()
-    if let crashed = store.pendingCoachSession() {
+    if store.viewModel?.coach.recovery != nil {
       store.send(
         .coach(
-          .recoverSession(
-            session: crashed, now: now,
-            utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
+          .acceptRecovery(
+            now: now, utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
     } else {
       store.send(
         .coach(

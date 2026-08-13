@@ -24,6 +24,27 @@ tap-verdicts against countable criteria.
 
 ## Recently landed
 
+- #1193, #1305 — a crash-recovery blob is now **offered**, not resumed behind
+  the user's back. Two halves of one gap: the blob had no decline path (#1193),
+  and the only thing that read it was `DrillLoopHost.run()`, so it was recovered
+  only if the user happened to press start on a session they were not trying to
+  start (#1305). `RootView` now hands whatever is on disk to the core at launch
+  (`OfferRecovery`), and the Practice tab draws a Resume / Discard prompt from
+  `CoachView::recovery` — the same affordance the legacy `ActiveSession` has
+  had since #962, through the same card, which now takes either blob. The
+  wording is the core's and differs per altitude, because coming back to a
+  gated drill is not the same offer as coming back to off-the-record play:
+  the prompt names the drill and where in the plan it stopped, the piece and
+  the section verdicts already given, or the altitude's contract. Discard
+  resolves `ClearCoachSessionInProgress` through a new
+  `SnapshotAction::ClearOffer`, told apart from `Clear` because that one also
+  retires today's composed session and a blob the user declined is no evidence
+  it was practised. Pressing start is still the second door onto the same offer, so
+  #1181's rule that recovery beats a fresh start is unchanged. A blob holding a
+  state no crash could strand (a `Planned` session, #1219) is cleared rather
+  than offered, and an offer arriving while something is already running is
+  refused like every other door into a session
+
 - #1286 — the coach's outstanding evidence writes are a queue, not one slot.
   `coach_write_in_flight` held a single `SaveCoachRecords` batch and was
   overwritten on every call, so a second close before the first was acked took
