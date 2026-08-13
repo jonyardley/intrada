@@ -23,7 +23,6 @@ permissions:
   security-events: write
 
 env:
-  RUST_VERSION: "1.97.1"
   SENTRY_ORG: jon-yardley
 
 jobs:
@@ -64,15 +63,6 @@ jobs:
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
               - '.github/workflows/ci.yml'
-      # Drift installs clippy/rustfmt for the env's version, then cargo resolves
-      # to the file's: "clippy is not installed", or a silent second download.
-      - name: Toolchain pins agree
-        run: |
-          pinned=$(grep -oE 'channel = "[^"]+"' rust-toolchain.toml | cut -d'"' -f2)
-          if [ "$pinned" != "$RUST_VERSION" ]; then
-            echo "rust-toolchain.toml pins $pinned but RUST_VERSION is $RUST_VERSION"
-            exit 1
-          fi
 
   test:
     name: Test
@@ -83,8 +73,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
@@ -118,7 +106,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
@@ -175,7 +162,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -242,7 +228,6 @@ jobs:
           just ios-fmt-check
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -591,7 +576,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
       - run: cargo fmt --all -- --check
 
