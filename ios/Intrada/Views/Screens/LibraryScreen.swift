@@ -64,7 +64,7 @@ struct LibraryScreen: View {
         message: emptyMessage)
     } else {
       ScrollView {
-        LazyVStack(spacing: IntradaSpacing.cardCompact) {
+        VStack(spacing: IntradaSpacing.cardCompact) {
           ForEach(Array(displayedItems.enumerated()), id: \.element.id) { index, item in
             libraryRow(item)
               .fadeUp(min(index, 5))
