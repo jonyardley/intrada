@@ -90,11 +90,11 @@ struct AddToSessionSheet: View {
 
   private var emptyMessage: String {
     if starFilter && !items.isEmpty {
-      return "No priorities yet. Swipe a row to star it."
+      return "No priorities yet. Swipe a row to add it to priorities."
     }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
     }
-    return "Your library is empty — add pieces and exercises first."
+    return "The library is empty · add pieces and exercises first."
   }
 }

@@ -94,7 +94,7 @@ struct LibraryItemCard: View {
 
   private var accessibilityLabel: String {
     var parts = [item.itemType.label, item.title]
-    if item.priority { parts.append("starred") }
+    if item.priority { parts.append("a priority") }
     if hasLinkedExercises {
       let n = item.linkedExercises.count
       parts.append("\(n) connected exercise\(n == 1 ? "" : "s")")

@@ -70,7 +70,7 @@ struct ScoreRing: View {
       withAnimation(.easeOut(duration: IntradaMotion.countUpDuration)) { shown = true }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(isUnrated ? "Not yet rated" : "Score \(clampedScore) of 10")
+    .accessibilityLabel(isUnrated ? "Not yet rated" : "Mark \(clampedScore) of 10")
   }
 }
 

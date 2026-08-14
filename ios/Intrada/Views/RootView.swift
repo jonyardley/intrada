@@ -54,7 +54,7 @@ struct RootView: View {
     .safeAreaInset(edge: .top, spacing: 0) {
       VStack(spacing: 0) {
         if store.degraded {
-          GlobalBanner(message: "Storage unavailable — changes this session won't be saved.")
+          GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
         }
         if let error = store.viewModel?.error {
           GlobalBanner(message: error) { store.send(.clearError) }

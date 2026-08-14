@@ -214,8 +214,8 @@ struct PracticeScreen: View {
         .foregroundStyle(IntradaColor.inkSecondary)
       Text(
         isFutureSelection
-          ? "Nothing logged yet — the week's still young."
-          : "A rest day. No pressure — your schedule has adapted."
+          ? "Nothing logged yet · the week's still young."
+          : "A rest day. No pressure · the schedule has adapted."
       )
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.inkSecondary)

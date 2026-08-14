@@ -175,7 +175,7 @@ struct SessionBuilderScreen: View {
     if blocks.isEmpty {
       VStack(spacing: IntradaSpacing.card) {
         Spacer()
-        Text("Add pieces and exercises to build your session.")
+        Text("Add pieces and exercises to build the session.")
           .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)

@@ -48,7 +48,7 @@ struct GlobalBanner: View {
   #Preview {
     VStack(spacing: 0) {
       GlobalBanner(message: "Couldn't delete that item.", onDismiss: {})
-      GlobalBanner(message: "Storage unavailable — changes this session won't be saved.")
+      GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
       Spacer()
     }
     .background(IntradaColor.paperTop)

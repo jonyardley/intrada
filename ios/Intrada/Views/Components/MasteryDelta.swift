@@ -144,7 +144,7 @@ struct MasteryDeltaToast: View {
           title: "Clair de Lune", subtitle: "D♭ major · 3 weeks ago → now",
           was: 3, now: 4, kind: .piece)
         MasteryDelta(
-          title: "Hanon No. 1", subtitle: "first time scored",
+          title: "Hanon No. 1", subtitle: "first time marked",
           was: nil, now: 3, kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
