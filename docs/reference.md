@@ -4,7 +4,7 @@
 > *what* to do and stays short because it loads into every session; this one says
 > *how* and *why*, and is read on demand.
 >
-> Last reviewed: 2026-08-07.
+> Last reviewed: 2026-08-14.
 
 ## Commands
 
@@ -275,11 +275,13 @@ optimistic entry, since the server-assigned ulid differs from the client one.
 fire-and-forget: `SessionSaved` just clears the error state and the model keeps
 the optimistic write.
 
-**Save-counter + refetch** (`Set`) — optimistic push, bump
-`set_saves_committed`, then a full refetch via `SetSaveSucceeded`. The counter
-drives the save-form's optimistic-to-confirmed UI flip. This is tracked as tech
-debt to migrate to temp-id once the counter is decoupled from the UI state; do
-not copy it for a new entity.
+**Save-counter + refetch** (`Set`) — designed as optimistic push, bump
+`set_saves_committed`, then a full refetch via `SetSaveSucceeded`, with the
+counter driving a save-form's optimistic-to-confirmed UI flip. **Shell-dead
+since the coach-pivot builder deletion (#1344):** no Swift screen sends a
+`SetEvent`, and `domain/set.rs` fires HTTP unconditionally with no
+`local_first` branch. Tracked in #1348 — don't wire a new caller to it, and
+don't copy this variant for a new entity, until that's resolved.
 
 Updates use `*Updated { entity }` (the server echoes the row). Deletes use
 `DeleteConfirmed`, since the model is already mutated optimistically.
