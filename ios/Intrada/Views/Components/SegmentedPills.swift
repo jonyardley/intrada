@@ -14,6 +14,7 @@ struct SegmentedPills<Option: Hashable>: View {
   let options: [Option]
   @Binding var selection: Option
   let label: (Option) -> String
+  var hint: ((Option) -> String)?
   var font: Font = IntradaFont.tab
   var unselectedColor: Color = IntradaColor.inkFaint
   var layout: Layout = .inlineScrolling(edgeInset: 0)
@@ -63,6 +64,7 @@ struct SegmentedPills<Option: Hashable>: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel(label(option))
+    .accessibilityHint(hint?(option) ?? "")
     .accessibilityAddTraits(isSelected ? [.isSelected] : [])
   }
 

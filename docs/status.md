@@ -21,18 +21,11 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1361 — a one-line caption under the create form's Piece/Exercise pills, so
-  the type choice says what it means in a musician's words. It rides on
-  `KindSegment`, so the edit form gets it too.
-- Nothing. Audit Phase 1 (fix and trim) is complete, and the tone-of-voice
-  doc (#1359 step 1) has landed; the copy sweep (#1359 step 2) is the next
-  slice.
-- #1376 — [`tone-of-voice.md`](tone-of-voice.md) (#1359 step 1), open, stacked
-  under by the step 2 sweep PR.
-- #1359 step 2 — the copy sweep against every user-facing string in `ios/`,
-  applying V1 to V4. Practice's hero/subline is explicitly left for #1360
-  (already tracked there, not a new deferral).
-- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
+- Phase 2 (say it right) is down to its last two, both open: the Practice
+  hero and subline (#1360) and the create form's Piece/Exercise caption
+  (#1361). The caption rides on `KindSegment`, so the edit form gets it too,
+  and its wording is now a worked example in
+  [`tone-of-voice.md`](tone-of-voice.md).
 
 ## Recently landed
 
