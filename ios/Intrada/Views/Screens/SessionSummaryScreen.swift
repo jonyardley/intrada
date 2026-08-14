@@ -2,16 +2,13 @@ import SharedTypes
 import SwiftUI
 
 /// Post-session review (the player's Summary) — the celebration beat. Renders the
-/// core's `SummaryView`: confetti + headline, an optional mastery toast, the recap
+/// core's `SummaryView`: headline, an optional mastery toast, the recap
 /// of what was played (per-item 1–10 scores), a whole-session note, an overall
 /// session score (1–10), then Save (persists + returns to Idle) or Discard.
 /// Reached after the last item.
 struct SessionSummaryScreen: View {
   @Environment(Store.self) private var store
   @State private var note = ""
-  @State private var improved = ""
-  @State private var stillRough = ""
-  @State private var nextTarget = ""
   @State private var confirmingDiscard = false
 
   private var summary: SummaryView? { store.viewModel?.summary }
@@ -36,10 +33,9 @@ struct SessionSummaryScreen: View {
             if let intention = summary.sessionIntention, !intention.isEmpty {
               intentionEcho(intention).fadeUp(3)
             }
-            reflectionSection.fadeUp(4)
-            noteSection.fadeUp(5)
-            sessionScoreRow(summary).fadeUp(6)
-            controls.fadeUp(7)
+            noteSection.fadeUp(4)
+            sessionScoreRow(summary).fadeUp(5)
+            controls.fadeUp(6)
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.top, 40)
@@ -49,9 +45,6 @@ struct SessionSummaryScreen: View {
     }
     .onAppear {
       note = summary?.notes ?? ""
-      improved = summary?.reflectionImproved ?? ""
-      stillRough = summary?.reflectionStillRough ?? ""
-      nextTarget = summary?.reflectionNextTarget ?? ""
     }
     .alert("Discard this session?", isPresented: $confirmingDiscard) {
       Button("Discard", role: .destructive) { store.send(.session(.discardSession)) }
@@ -86,70 +79,17 @@ struct SessionSummaryScreen: View {
     .accessibilityElement(children: .combine)
   }
 
-  // ── Structured reflection (design-principles T7) ──
-
-  private var reflectionSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Reflect · optional")
-      VStack(spacing: 0) {
-        ReflectionPromptRow(
-          icon: "arrow.up.right", tint: IntradaColor.repCleanFg, tintBg: IntradaColor.repCleanBg,
-          label: "Improved", placeholder: "What moved forward?", text: $improved
-        )
-        .onChange(of: improved) { _, value in
-          pushReflection(.improved, value, current: summary?.reflectionImproved)
-        }
-        Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-        ReflectionPromptRow(
-          icon: "wrench.fill", tint: IntradaColor.exerciseBadgeFg,
-          tintBg: IntradaColor.exerciseBadgeBg,
-          label: "Still rough", placeholder: "What's still fighting you?", text: $stillRough
-        )
-        .onChange(of: stillRough) { _, value in
-          pushReflection(.stillRough, value, current: summary?.reflectionStillRough)
-        }
-        Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-        ReflectionPromptRow(
-          icon: "target", tint: IntradaColor.pieceBadgeFg, tintBg: IntradaColor.pieceBadgeBg,
-          label: "Next target", placeholder: "Where does the next session start?",
-          text: $nextTarget
-        )
-        .onChange(of: nextTarget) { _, value in
-          pushReflection(.nextTarget, value, current: summary?.reflectionNextTarget)
-        }
-      }
-    }
-  }
-
-  // Mirrors noteSection's onChange guard exactly: push real edits only (not
-  // the .onAppear seed re-firing onChange), and only while still in Summary
-  // (avoids a "not in summary" core error if a field settles during
-  // teardown). The core normalises blank/whitespace text to nil on its own
-  // (session.rs UpdateSessionReflection), so no local trim beyond the
-  // empty-string check needed for the comparison itself.
-  private func pushReflection(_ field: ReflectionField, _ value: String, current: String?) {
-    guard summary != nil else { return }
-    let trimmed = value.isEmpty ? nil : value
-    guard trimmed != current else { return }
-    store.send(.session(.updateSessionReflection(field: field, text: trimmed)))
-  }
-
   // ── Headline ──
 
   private func headline(_ summary: SummaryView) -> some View {
-    ZStack(alignment: .topLeading) {
-      Confetti()
-        .frame(maxWidth: .infinity, alignment: .center)
-        .allowsHitTesting(false)
-      VStack(alignment: .leading, spacing: 4) {
-        Eyebrow("Session complete", tint: IntradaColor.exerciseBadgeFg)
-        Text(summary.completionStatus == .endedEarly ? "Ended early." : "Nice work.")
-          .font(IntradaFont.pageTitle(34))
-          .foregroundStyle(IntradaColor.ink)
-        Text(headlineSubtitle(summary))
-          .font(IntradaFont.subtitle)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
+    VStack(alignment: .leading, spacing: 4) {
+      Eyebrow("Session complete", tint: IntradaColor.exerciseBadgeFg)
+      Text(summary.completionStatus == .endedEarly ? "Ended early." : "Nice work.")
+        .font(IntradaFont.pageTitle(34))
+        .foregroundStyle(IntradaColor.ink)
+      Text(headlineSubtitle(summary))
+        .font(IntradaFont.subtitle)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
   }
@@ -306,69 +246,6 @@ struct SessionSummaryScreen: View {
         .foregroundStyle(IntradaColor.inkSecondary)
     }
   }
-
-  // ── Confetti ──
-
-  /// A one-shot burst behind the headline. Renders nothing under Reduce Motion or
-  /// in UI tests, so the celebration is deterministic and motion-safe.
-  private struct Confetti: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.intradaMotionDisabled) private var motionDisabled
-    @State private var fallen = false
-
-    private struct Piece: Identifiable {
-      let id = UUID()
-      let x: CGFloat
-      let size: CGFloat
-      let color: Color
-      let isCircle: Bool
-      let delay: Double
-    }
-
-    private static let pieces: [Piece] = {
-      let colors = [
-        IntradaColor.exerciseAccent, IntradaColor.accent, IntradaColor.brandGradientStart,
-      ]
-      let xs: [CGFloat] = [-110, -64, -22, 24, 70, 112]
-      return xs.enumerated().map { index, x in
-        Piece(
-          x: x,
-          size: index.isMultiple(of: 2) ? 7 : 8,
-          color: colors[index % colors.count],
-          isCircle: index.isMultiple(of: 3),
-          delay: Double(index) * 0.05)
-      }
-    }()
-
-    var body: some View {
-      if reduceMotion || motionDisabled || UITestFlags.animationsDisabled {
-        EmptyView()
-      } else {
-        ZStack {
-          ForEach(Self.pieces) { piece in
-            shape(piece)
-              .foregroundStyle(piece.color)
-              .frame(width: piece.size, height: piece.size)
-              .offset(x: piece.x, y: fallen ? 96 : -24)
-              .opacity(fallen ? 0 : 1)
-          }
-        }
-        .frame(height: 96)
-        .onAppear {
-          withAnimation(.easeOut(duration: 1.3)) { fallen = true }
-        }
-      }
-    }
-
-    @ViewBuilder
-    private func shape(_ piece: Piece) -> some View {
-      if piece.isCircle {
-        Circle()
-      } else {
-        RoundedRectangle(cornerRadius: 1.5)
-      }
-    }
-  }
 }
 
 #if DEBUG
@@ -376,7 +253,7 @@ struct SessionSummaryScreen: View {
     SessionSummaryScreen().environment(Store.previewSummary)
   }
 
-  #Preview("With reflection") {
+  #Preview("With intention") {
     SessionSummaryScreen().environment(Store.previewSummaryWithReflection)
   }
 

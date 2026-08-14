@@ -64,8 +64,6 @@ struct PracticeScreen: View {
             .fadeUp(1)
           selectedDaySection
             .fadeUp(2)
-          footerLink
-            .fadeUp(3)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -231,20 +229,6 @@ struct PracticeScreen: View {
           IntradaColor.slotOutline,
           style: StrokeStyle(lineWidth: 1, dash: [5]))
     )
-  }
-
-  // MARK: - (3) Footer link
-
-  private var footerLink: some View {
-    Button {
-      store.send(.session(.startBuilding))
-    } label: {
-      Label("Build a custom session", systemImage: "slider.horizontal.3")
-        .font(IntradaFont.bodyMedium.weight(.medium))
-        .foregroundStyle(IntradaColor.inkSecondary)
-    }
-    .buttonStyle(.plain)
-    .frame(maxWidth: .infinity)
   }
 
   private var dayLabel: String {
