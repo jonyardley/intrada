@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootView: View {
   @Environment(Store.self) private var store
+  @Environment(\.scenePhase) private var scenePhase
 
   private enum AppTab {
     case library, practice, routines, progress
@@ -61,6 +62,7 @@ struct RootView: View {
       }
     }
     .task {
+      store.reportUtcOffset()
       // Default (incl. plain DEBUG runs): local-first — the Library hydrates
       // from the on-device store so saved items survive restarts. Seeding is
       // opt-in via --seed-sample-data (ios-run-sim.sh / CI screenshots / E2E);
@@ -72,6 +74,11 @@ struct RootView: View {
         store.restorePersistedSort()
         store.loadRecoverableSession()
       }
+    }
+    // Re-report on foreground: the offset moves under a resident app on DST
+    // turnover or travel, and analytics' day boundary must move with it.
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { store.reportUtcOffset() }
     }
   }
 

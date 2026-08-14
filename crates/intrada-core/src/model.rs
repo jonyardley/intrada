@@ -23,6 +23,11 @@ pub struct Model {
     /// first: reads hydrate from the on-device store and writes persist locally
     /// with no HTTP. The web shell leaves this false and stays online.
     pub local_first: bool,
+    /// The device's UTC offset in minutes (BST = 60, New York = −240/−300),
+    /// reported by the shell via `SetUtcOffset` at launch and on foreground.
+    /// Turns UTC instants into user-local days for analytics (#1330); 0 until
+    /// the shell reports, which degrades to the old UTC day boundary.
+    pub utc_offset_minutes: i32,
     pub items: Vec<Item>,
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
@@ -126,6 +131,8 @@ impl Model {
         let api_base_url = std::mem::take(&mut self.api_base_url);
         *self = Self {
             api_base_url,
+            // Device state, not user state: the next user is in the same place.
+            utc_offset_minutes: self.utc_offset_minutes,
             ..Self::default()
         };
     }
@@ -836,6 +843,7 @@ mod tests {
     fn reset_for_sign_out_preserves_api_base_url() {
         let mut model = Model {
             api_base_url: "https://api.example.com".to_string(),
+            utc_offset_minutes: 60,
             ..Default::default()
         };
         model.items.push(Item {
@@ -858,6 +866,10 @@ mod tests {
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
         assert_eq!(model.api_base_url, "https://api.example.com");
+        assert_eq!(
+            model.utc_offset_minutes, 60,
+            "device state survives sign-out"
+        );
         assert!(model.items.is_empty());
         assert!(model.last_set_save_request_id.is_none());
     }

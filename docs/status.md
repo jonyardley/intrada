@@ -21,13 +21,24 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
-  (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
-  carry the chosen option. Step 2 (the copy sweep) is unblocked once it merges.
-- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
+- Nothing. Audit Phase 1 (fix and trim) is complete, and the tone-of-voice
+  doc (#1359 step 1) has landed; the copy sweep (#1359 step 2) is the next
+  slice.
 
 ## Recently landed
 
+- #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
+  (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
+  carry the chosen option. Step 2 (the copy sweep) is unblocked.
+- Audit Phase 1 closes with #1357 + the UTC day-boundary class (#1330, #1346):
+  the Practice screen's dot-vs-Today-list pair was proven consistent (both
+  local-time, one classification function). The real bugs were the week
+  header counting all-time practice days as "This week", now scoped to the
+  visible week, and core analytics turning the day over at midnight UTC, fixed
+  by lifting the device's UTC offset into `Model` (`SetUtcOffset`, reported at
+  launch and on foreground) and deriving every analytics day via `LocalClock`.
+  #1356 (pill animation) validated clean on the stable simulator: the jank is
+  an iOS 27 beta artefact, noted on the issue.
 - v0.7.0 tagged and uploaded to TestFlight (version bump #1351).
 - #1352 — the Phase R rethink plan.
 - Stage 1 of Phase R: audit, triage and synthesis
@@ -44,10 +55,8 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
-- Phase 2, say it right: Jon red-pens the tone-of-voice doc, then one sweep PR
-  over every user-facing string (#1359 step 2), then #1360 and #1361 with
-  wordings the doc settles.
+- Phase 2, say it right: one sweep PR over every user-facing string (#1359
+  step 2), then #1360 and #1361 with wordings the doc settles.
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode

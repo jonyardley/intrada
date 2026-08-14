@@ -132,10 +132,12 @@ struct PracticeScreen: View {
   // MARK: - (1) This week
 
   private var thisWeek: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+    let count = PracticeWeek.practisedCount(
+      inWeek: selectedWeek, practiceDays: practiceDays, calendar: calendar)
+    return VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(
         title: "This week",
-        trailing: "\(practiceDays.count) days practised")
+        trailing: "\(count) day\(count == 1 ? "" : "s") practised")
       weekStrips
     }
   }
