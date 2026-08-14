@@ -285,3 +285,26 @@ don't copy this variant for a new entity, until that's resolved.
 
 Updates use `*Updated { entity }` (the server echoes the row). Deletes use
 `DeleteConfirmed`, since the model is already mutated optimistically.
+
+## Glossary
+
+Process words that recur in docs, issues and PR bodies. Feature names don't
+belong here: they follow the plain-language rule (CLAUDE.md → Conventions),
+which names the musician-visible outcome and allows a codename in brackets
+once.
+
+- **slice** — the smallest independently shippable piece of a feature; each
+  one is shipped and used before the next is built.
+- **stream** — one line of work in one worktree and session; *vertical* means
+  core + iOS together.
+- **tier** — ceremony level per CLAUDE.md Workflow: 1 just do it, 2 plan
+  mode, 3 spec first.
+- **worktree** — a separate git checkout so parallel streams don't collide.
+- **bridge** — the generated FFI boundary (Event / Effect / ViewModel)
+  between the Rust core and the Swift shell.
+- **local-first** — works offline against the on-device store; no HTTP on
+  the path.
+- **projection / derived** — computed from existing session history; no new
+  stored data.
+- **shell-dead** — core code no Swift screen calls any more; a deletion
+  candidate (the #1348 pattern).

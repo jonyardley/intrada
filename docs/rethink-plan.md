@@ -62,9 +62,9 @@ lands as Stage 3 finishes.
 
 | Step | What | Model / effort | Where | Parallel with |
 |------|------|----------------|-------|---------------|
-| 4.1 | One research note per candidate: goals-rebuilt-small (roadmap Q5), the Space layer (spaced repetition / mastery decay), lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome (roadmap Q1). Practice-pedagogy evidence plus Jon's own use. Docs only. | Fable 5 high, web research on | One session per candidate, or parallel subagents | Stage 3, and each other |
-| 4.2 | One-page comparison of the candidates; Jon picks the direction. | Fable 5 high | Lead session | — |
-| 4.3 | Tier-3 spec for the chosen direction, then Claude Design, then phased slices. **Each slice is shipped and used before the next is specced.** | Fable 5 high (spec + design); implementation models per Stage 3 rules | Spec in lead session; slices as vertical streams | — |
+| 4.1 | **Done (2026-08-14, #1384).** One research note per candidate, in `docs/research/`: goals kept small (roadmap Q5), the getting-cold signal / spaced returns, the weekly-lesson loop (#1087), exercises from chord charts (found already shipped in #1110; #1106 closed, #1107 re-scoped), metronome (roadmap Q1). Practice-pedagogy evidence plus Jon's own use. | Fable 5 high, web research on | One session per candidate, or parallel subagents | Stage 3, and each other |
+| 4.2 | **Done and decided (2026-08-14, #1385).** [`research/comparison.md`](research/comparison.md): Jon adopted a quick-wins-first order with the weekly-lesson loop as the direction underneath. | Fable 5 high | Lead session | — |
+| 4.3 | Work the adopted order in `research/comparison.md`: use the shipped chord-chart flow, the metronome click, tempo capture, then per-piece tracking (#1081, where the Tier-3 spec discipline starts), the Up next card (#1082), the getting-cold signal. **Each slice is shipped and used before the next is specced.** | Fable 5 high (spec + design); implementation models per Stage 3 rules | Spec in lead session; slices as vertical streams | — |
 
 ## Exit criteria for the phase
 

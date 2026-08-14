@@ -32,6 +32,25 @@ audit backlog and its five-phase build order.
 - #1359 step 2 — the copy sweep over every user-facing string in `ios/`
   (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
   by design.
+- Stage 4.2 of Phase R **decided** (Jon, 2026-08-14):
+  [`research/comparison.md`](research/comparison.md) compares the five
+  research notes and carries the adopted order, quick wins first: fix the
+  stale chord-chart issues (done: #1106 closed as shipped, #1107 re-scoped to
+  twelve-key generation), use the chord-chart flow for real, the metronome
+  click pulled forward, then per-piece tracking (#1081) and the Up next card
+  (#1082), then the getting-cold signal, with the twice-deleted admin-shaped
+  features (quick lesson entry, goals) last and gated on use.
+- Plain-language rule for docs and issues (Jon, 2026-08-14): name features by
+  the musician-visible outcome, issue numbers as the only stable handles.
+  Rule in CLAUDE.md → Conventions, glossary in
+  [`reference.md`](reference.md); older docs renamed as touched.
+- Stage 4.1 of Phase R: five research notes under
+  [`docs/research/`](research/) — goals-rebuilt-small, the Space layer,
+  lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome
+  (#1366). Pedagogy evidence plus repo archaeology, one note per candidate;
+  Stage 4.2 (the comparison, Jon picks) is next. Headline finding:
+  chart-to-scaffold Phase B already shipped (#1110, 2026-07-17) and #1106 is
+  stale; only the twelve-key ladder wiring (#1107) remains.
 - #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
   (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
   carry the chosen option. Step 2 (the copy sweep) is unblocked.
@@ -64,5 +83,14 @@ audit backlog and its five-phase build order.
   phase once #1360 is in; the wordings come from the tone-of-voice doc.
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
+- Phase 2, say it right: one sweep PR over every user-facing string (#1359
+  step 2), then #1360 and #1361 with wordings the doc settles.
+- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
+- Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
+  captions), with wordings the tone-of-voice doc already settled.
+- The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
+  use the chord-chart flow on a real tune, then the metronome click, then
+  tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
+  starts).
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
