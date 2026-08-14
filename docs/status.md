@@ -33,6 +33,12 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- Stage 4.2 of Phase R: [`research/comparison.md`](research/comparison.md),
+  the one-page comparison of the five candidates. Recommended lean:
+  lesson-to-mastery, B-first, with the Space layer and goals sequenced behind
+  the Up next consumer; metronome stays on its audit Phase 4 track;
+  chart-to-scaffold bookkeeping (#1106 close, #1107 re-scope) is
+  decision-independent. Awaiting Jon's pick; Stage 4.3 (Tier-3 spec) follows.
 - Stage 4.1 of Phase R: five research notes under
   [`docs/research/`](research/) — goals-rebuilt-small, the Space layer,
   lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome
@@ -73,7 +79,7 @@ audit backlog and its five-phase build order.
 - Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
 - Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
   captions), with wordings the tone-of-voice doc already settled.
-- Stage 4.2: one-page comparison of the five research notes; Jon picks the
-  direction.
+- Stage 4.3: Jon answers [`research/comparison.md`](research/comparison.md)'s
+  decisions, then the Tier-3 spec for the chosen direction.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
