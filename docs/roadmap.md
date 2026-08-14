@@ -23,11 +23,12 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 >
 > What the product does today is the restored builder flow: build a session
 > from the library, group and reorder, play it through the Focus Player,
-> reflect on the summary. **What direction it grows in next is an open
-> question**: the rethink follows the revert. Issues parked under
-> [`superseded-by-pivot`](https://github.com/jonyardley/intrada/labels/superseded-by-pivot)
-> (#1087, #1101, #1107) are eligible again but stay parked until that
-> conversation happens.
+> reflect on the summary. The near-term direction is the audit backlog in
+> [`audit-2026-08.md`](audit-2026-08.md) (refine the builder, step by step);
+> **the next major direction stays open** and is Stage 4 of
+> [`rethink-plan.md`](rethink-plan.md). The post-revert triage (2026-08-14)
+> closed the defunct coach-era issues and unparked the builder-era ones; the
+> `superseded-by-pivot` label is empty and retired.
 
 ---
 
@@ -67,9 +68,11 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ### Current focus (2026-08)
 
-The coach pivot is reversed (see the banner at the top); the restored
-session-builder product is current. The immediate work is the revert's
-follow-ups and the product rethink. See [`status.md`](status.md) and the
+The coach pivot is reversed (see the banner at the top); v0.7.0, the
+restored session-builder product, is on TestFlight. The immediate work is
+the five-phase audit backlog in [`audit-2026-08.md`](audit-2026-08.md),
+run under [`rethink-plan.md`](rethink-plan.md). See
+[`status.md`](status.md) and the
 [project board](https://github.com/users/jonyardley/projects/2)
 for what's actually in flight.
 
@@ -174,9 +177,11 @@ multiple items share the same horizon.
 These are unresolved product questions. Each one likely produces issues
 (or a Tier-3 spec) once answered.
 
-1. **Metronome (re-opened 2026-08).** A native click shipped with the coach
-   and was removed with it (#1344, recoverable from history). If the builder
-   product wants a metronome, that code is the starting point.
+1. **Metronome (answered 2026-08-14).** The builder product does want one:
+   tracked as #1366 (audit Phase 4), with tempo as a tracked unit of
+   measure. The coach-era click (removed in #1344, recoverable from
+   history) and the preserved `ios/Reference/` audio-session Swift are the
+   starting points.
 
 2. **Offline-first architecture (resolved 2026-07).** The native app is
    offline-first by design — on-device SQLite is the source of truth, with
