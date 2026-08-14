@@ -211,7 +211,7 @@ private struct FlagBadge: View {
             key: "G", fallback: false, alreadyLinked: true),
           ScaffoldSpecView(
             kind: .shells, title: "Shells",
-            rationale: "3rd + 7th of every chord — the voice-leading skeleton",
+            rationale: "3rd + 7th of every chord · the voice-leading skeleton",
             key: "G", fallback: false, alreadyLinked: false),
           ScaffoldSpecView(
             kind: .guideToneLines, title: "Guide-tone lines",
@@ -223,7 +223,7 @@ private struct FlagBadge: View {
             key: "G", fallback: true, alreadyLinked: false),
           ScaffoldSpecView(
             kind: .constrainedImprov, title: "Constrained improv",
-            rationale: "Chord tones only, then rhythm — one ladder",
+            rationale: "Chord tones only, then rhythm · one ladder",
             key: "G", fallback: false, alreadyLinked: false),
         ],
         fallbackTotal: 1)
