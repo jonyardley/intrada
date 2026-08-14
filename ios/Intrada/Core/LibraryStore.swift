@@ -313,7 +313,8 @@ final class LibraryStore: ItemStore {
           """)
     }
     migrator.registerMigration("v11_built_session") { db in
-      // Self-directed practice (#1256, specs/built-session.md). `blocks` and
+      // Self-directed practice (#1256, coach era, removed #1344 — table kept
+      // as a dead migration per the append-only rule). `blocks` and
       // `sections` are JSON blobs for the same reason `session.entries` is:
       // ordered child docs edited as one document, not independently synced rows.
       try db.execute(

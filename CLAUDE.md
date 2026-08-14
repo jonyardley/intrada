@@ -159,8 +159,10 @@ data in shell-local state. UI-only state stays in SwiftUI.
     client-generated ulid; `*Created { temp_id, entity }` replaces it.
   - **Client-owned ulid** (`Session`) — client ulid is canonical, POST is
     fire-and-forget, the model keeps the optimistic write.
-  - **Save-counter + refetch** (`Set`) — optimistic push, bump
-    `set_saves_committed`, full refetch. Tech debt; don't copy it.
+  - **`Set`** — shell-dead since the coach-pivot builder deletion (#1344): no
+    Swift caller sends a `SetEvent`, and `domain/set.rs` fires HTTP
+    unconditionally with no `local_first` branch. Don't wire a new caller to
+    it without fixing that first (#1348).
 
   Updates use `*Updated { entity }`; deletes use `DeleteConfirmed` (the model is
   already mutated optimistically). Detail: [`docs/reference.md`](docs/reference.md).
@@ -786,6 +788,8 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
 
 ## Known Tech Debt
 
-- `Set` creates still bump `set_saves_committed` + refetch instead of the temp-id
-  mutate-response pattern. The counter drives the save-form's
-  optimistic→confirmed flip; reworking it needs to keep that affordance.
+- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1:
+  no Swift screen sends a `SetEvent`, and its HTTP creates fire unconditionally
+  with no `local_first` branch or persistence op. Tracked in #1348 — decide
+  whether it's deleted (nothing unread stays in the tree) or converted to
+  local-first before `RoutinesScreen` gets wired to it.
