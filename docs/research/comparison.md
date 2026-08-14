@@ -81,6 +81,9 @@ Do now (days, not weeks):
 2. **Use the chord-chart flow** on the week's lesson tune — enter the chart,
    commit the exercises, practise them through the builder; file friction as
    issues. No code; this answers whether the generated material is any good.
+   Entry-friction notes feed the chart-entry rethink (#1387): a friendlier
+   manual input is its near half, designed once real use has shown where the
+   current text format grates.
 3. **The click** — bring the deleted metronome engine back into the Focus
    Player (recoverable from `8af4891^`). iOS-only, no schema, Tier 2; pulled
    forward from audit Phase 4 because the hard part already exists. 1–2 days.
@@ -107,7 +110,11 @@ Big bets, last, each a fresh decision gated on lived use:
 9. **Remembering when to resurface pieces** — the cold shelf in the builder,
    then stored per-item scheduling state (the real Tier 3 of the
    `space-layer` note).
-10. **Quick lesson entry (#1080) and goals** — the twice-deleted
+10. **A chart from a photo (#1387)** — photograph a lead sheet and the app
+    reads the changes into a chart for review, entirely on-device.
+    Feasibility spike first (OCR + the existing parser vs an on-device
+    model); changes only, never melodies.
+11. **Quick lesson entry (#1080) and goals** — the twice-deleted
     admin-shaped features; revisited only if use says the star list and a
     fast add path are not enough.
 
