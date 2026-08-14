@@ -21,7 +21,10 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Nothing. Next slice is audit Phase 1 (fix and trim) — #1357, #1356 remain.
+- #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) drafted, awaiting Jon's
+  red pen. Step 2 (the copy sweep) and the #1360/#1361 wordings are blocked on
+  that review, by design.
+- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
 
 ## Recently landed
 
@@ -41,8 +44,10 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356. Then Phase 2
-  starts with the tone-of-voice doc (#1359).
+- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
+- Phase 2, say it right: Jon red-pens the tone-of-voice doc, then one sweep PR
+  over every user-facing string (#1359 step 2), then #1360 and #1361 with
+  wordings the doc settles.
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode

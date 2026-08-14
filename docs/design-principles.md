@@ -10,6 +10,10 @@
 > and the design rules in `CLAUDE.md`. This doc is the *why* and the
 > *interaction* layer those don't cover.
 >
+> What a screen *says* is decided by [`tone-of-voice.md`](tone-of-voice.md), the
+> writing layer of this doc. It inherits these principles; check it before
+> writing any user-facing string.
+>
 > Design is now produced in **Claude Design** — see
 > [`design-workflow.md`](design-workflow.md). The native iOS design system lives
 > at [`design/intrada-design-system.dc.html`](../design/intrada-design-system.dc.html),

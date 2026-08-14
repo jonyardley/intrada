@@ -361,6 +361,12 @@ progressive disclosure, reversible-by-default. It carries a dated decisions log
 (T-numbered); when a new decision is made, append to that log rather than deciding
 silently.
 
+**Every user-facing string is written against
+[`docs/tone-of-voice.md`](docs/tone-of-voice.md)** — titles, buttons, labels,
+empty states, errors, accessibility labels. Plain British English in a
+musician's words; no cheerleading, no AI-isms, no em dashes. Its sweep
+checklist is the review pass for any PR that adds or changes copy.
+
 ### Hierarchy: Tokens → Modifiers → Components → Screens
 
 1. **Tokens first**: every colour, font, spacing and radius value traces to a
@@ -729,7 +735,8 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 
 ### Conventions
 
-- British English in all UI copy, comments, commit messages and PR bodies.
+- British English in all UI copy, comments, commit messages and PR bodies. UI
+  copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
 - No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
   One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
   list item** in a structured doc (`docs/status.md`, `docs/roadmap.md`,
