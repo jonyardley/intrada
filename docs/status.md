@@ -21,9 +21,9 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) drafted, awaiting Jon's
-  red pen. Step 2 (the copy sweep) and the #1360/#1361 wordings are blocked on
-  that review, by design.
+- #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
+  (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
+  carry the chosen option. Step 2 (the copy sweep) is unblocked once it merges.
 - Audit Phase 1 (fix and trim) — #1357, #1356 remain.
 
 ## Recently landed

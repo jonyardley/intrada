@@ -14,8 +14,8 @@
 
 - Writing a new string? Read *The stance*, then check your string against
   *The rules*. Most strings are settled by rules 1 to 4 alone.
-- A rule fights a real screen? That is a decision, not a licence. Add it to
-  *Open questions* rather than quietly writing around it.
+- A rule fights a real screen? That is a decision, not a licence. Settle it and
+  append to *Decisions* rather than quietly writing around it.
 - Reviewing copy? *The sweep checklist* at the bottom is the review pass.
 
 ---
@@ -74,7 +74,7 @@ disagree, the screen wins and the core keeps its own name.
 | `variant` | Step |
 | `entry`, `block` | the piece, the exercise, the group |
 | `item type` | Piece / Exercise |
-| `score`, `rating` | how it went |
+| `score`, `rating` (the 0 to 10) | Mark ([V4](#v4--the-screen-says-mark-the-core-keeps-score)) |
 | BPM, quarter note | `♩ = 132`, crotchet |
 | measure | bar |
 | `session in progress` | Pick up where you left off? |
@@ -88,7 +88,8 @@ The user knows they are in an app and knows the library is theirs. Every word
 spent saying so is a word not spent on their music.
 
 - No possessives on chrome: `Library`, not `Your Library`. `Exercises`, not
-  `Your exercises`.
+  `Your exercises`. Reflective surfaces are the exception, where the possessive
+  points at the user's own words: see [V2](#v2--second-person-is-for-the-users-own-words-only).
 - No verbs of navigation: never `View`, `Browse`, `Manage`, `Explore`.
 - No screen introducing itself: never `This is where you...`.
 - Buttons name the action and its object: `Add piece or exercise`,
@@ -107,7 +108,9 @@ Banned outright, in any string:
 
 The app does not know whether the session went well, so it must not say. A bad
 practice is still a practice, and `Nice work.` after a session the user knows
-was rotten reads as an insult by a machine that was not listening.
+was rotten reads as an insult by a machine that was not listening. Settled in
+[V1](#v1--the-app-never-says-how-the-session-went), which takes both that line
+and `Ended early.` off the summary.
 
 ### 5. Punctuation
 
@@ -176,8 +179,8 @@ If a string will not fit the budget, the screen is doing two things.
 
 ## Worked examples
 
-The three the audit named. Options are for Jon's red pen; nothing here is
-decided.
+The three the audit named. Options were put to Jon; the lean in each
+was the one taken (2026-08-14), and the wording lands in the sweep.
 
 ### Library header
 
@@ -187,8 +190,8 @@ The title is already right by rule 3. The flagged "Your Library" energy is the
 *header as a whole* reading like a filing cabinet: a room name and an inventory
 count, neither of which is about music. The subtitle is the lever, not the title.
 
-- **a.** Keep both. It is honest, it is short, and the rows below carry the
-  interest. *(Lean: this, unless the header is genuinely dead space.)*
+- **a. TAKEN.** Keep both. It is honest, it is short, and the rows below carry
+  the interest.
 - **b.** Keep `Library`, make the subtitle earn its line with something a
   musician would want at a glance: `Last added · Clair de Lune`, or the
   priorities count when any are starred.
@@ -214,9 +217,9 @@ This is where [#1360](https://github.com/jonyardley/intrada/issues/1360) lands
 (hero repurposed to last session plus one-tap start, subline becomes a relative
 last-practised line). The wording to choose there:
 
-- **a.** Hero title carries the real content, caption goes entirely:
-  `Clair de Lune`, eyebrow `Last practised`, subline `Tuesday`. *(Lean: this.
-  It is the user's data, in their words, and the button needs no caption.)*
+- **a. TAKEN.** Hero title carries the real content, caption goes entirely:
+  `Clair de Lune`, eyebrow `Last practised`, subline `Tuesday`. It is the
+  user's data, in their words, and the button needs no caption.
 - **b.** Eyebrow `Today`, title `Last practised Tuesday`, no caption.
 - **c.** Keep an app-voice title but make it a fact: `Nothing since Tuesday`.
 
@@ -235,7 +238,7 @@ words, it is sentence case, it does not narrate. The audit noted this title as
 (checked across all branches), so treat it as the register to avoid rather than
 a string to replace. Rule 6 exists because of it.
 
-- **a.** Leave it. *(Lean: this.)*
+- **a. TAKEN.** Leave it.
 - **b.** `New session`, if `Build` reads like configuration rather than
   choosing what to play.
 
@@ -248,7 +251,8 @@ every PR that adds a string afterwards. Run it per string, not per screen.
 
 - [ ] British spelling; `practise` verb / `practice` noun correct
 - [ ] Uses the musician's word, not the core's (rule 2 table)
-- [ ] No `Your`, no `View`/`Browse`/`Manage`, no app self-narration
+- [ ] No `Your` on chrome or in session (V2 allows it on reflective surfaces);
+      no `View`/`Browse`/`Manage`; no app self-narration
 - [ ] No banned word from rule 4; no exclamation mark; no `we`/`I`
 - [ ] No em dash or double dash; separator is ` · `; ranges use `to`
 - [ ] Sentence case; full stop only if it is a sentence
@@ -258,24 +262,64 @@ every PR that adds a string afterwards. Run it per string, not per screen.
 
 ---
 
-## Open questions
+## Decisions
 
-For Jon's red pen. Each one changes strings across several screens, so they are
-worth settling before the sweep rather than during it.
+Each one changes strings across several screens, so they were settled before
+the sweep rather than during it. Append here rather than deciding silently, the
+same way [`design-principles.md`](design-principles.md) keeps its T-log.
 
-1. **`Nice work.` on session complete.** Rule 4 says the app must not judge a
-   session it did not hear. But the screen currently pairs it with
-   `Ended early.`, so removing it leaves an asymmetry. Options: drop both and
-   lead with the facts; keep both as neutral state labels; replace with the
-   session's own intention quoted back.
-2. **Second person at all.** The app currently uses `you` in a few places
-   (`What you played`, `Your intention`, `Pick up where you left off?`). Rule 3
-   bans `your` on chrome but these are reflective surfaces where it may be
-   right. Proposal: `you` is allowed in reflective copy only, banned on chrome
-   and in session.
-3. **`priorities` vs `starred`.** The library uses both concepts in one screen
-   (`Add to priorities`, `Swipe a row to star it`). One word should win.
-4. **`Score` as a word.** It means "how it went" here and "the printed music"
-   to every musician alive. Rule 2 says prefer the musician's word, which
-   argues for renaming the rating. Not free: it touches the ring, the selector
-   and the analytics labels.
+### V1 — The app never says how the session went
+
+**Decided 2026-08-14 (Jon, #1359).** `Nice work.` goes, and so does its partner
+`Ended early.`; the summary leads with the facts it actually has (duration,
+items done, the scores the user entered).
+
+The app has no microphone and no MIDI. Machine listening was deferred
+(decision 18, 2026-08-04) and the capture spike was deleted outright in #1176,
+leaving [`segmentation-findings.md`](segmentation-findings.md) as the record. So
+the app's entire knowledge of a session is what the user typed into it, and
+`Nice work.` currently fires on completion no matter what those numbers say.
+Congratulating someone who scored every item 2 is the notebook claiming to have
+listened.
+
+Dropping only `Nice work.` would leave `Ended early.` reading as a rebuke by
+contrast, which is why both go together. The intention quote already sits above
+this line and does the framing better than either.
+
+### V2 — Second person is for the user's own words only
+
+**Decided 2026-08-14 (Jon, #1359).** Refines rule 3's first bullet, which as
+drafted banned every `your`.
+
+- **Reflective surfaces**: `you` and `your` allowed. `Your intention`,
+  `What you played`, `Pick up where you left off?` all point at something the
+  user actually did or wrote, and the possessive is doing real work.
+- **Chrome and in session**: banned. `Your exercises` is the app labelling a
+  room the user already knows is theirs.
+
+The test is whether the possessive points at content the user authored. If it
+points at a screen, cut it.
+
+### V3 — `priorities`, never `starred`
+
+**Decided 2026-08-14 (Jon, #1359).** The Library uses both for one concept today
+(`Add to priorities` on the swipe, `Swipe a row to star it` in the empty state).
+`priorities` wins because it names what the user meant; the star is the glyph
+that shows it, not the word for it. The empty state changes in the sweep.
+
+### V4 — The screen says `Mark`, the core keeps `score`
+
+**Decided 2026-08-14 (Jon, #1359).** Rule 2 applied to the 0-to-10 rating.
+`Score` means the printed music to every musician alive, and the app uses it for
+how well something went.
+
+`Mark` is the British word for a number saying how well you did, it is what an
+exam board gives a performance, and it collides with nothing on screen. Per
+rule 2 the core keeps `score` in its types, events and columns, so **this is a
+copy change with no FFI, no migration and no bridge surface**. Swift view names
+(`ScoreRing`, `ScoreSelector`) are shell-local and may be renamed for
+consistency or left alone; neither is load-bearing.
+
+Considered and rejected: `Grade`, which collides with ABRSM grades (the level,
+not the mark); `Rating`, which is accurate but is the data model's word, not a
+musician's.
