@@ -32,4 +32,11 @@ extension ItemKind {
     case .exercise: "Exercise"
     }
   }
+
+  var caption: String {
+    switch self {
+    case .piece: "Repertoire to learn and keep up"
+    case .exercise: "Scales, studies and technique work"
+    }
+  }
 }
