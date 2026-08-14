@@ -760,6 +760,16 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 - One git worktree per stream, branched from fresh `origin/main`. Follow the
   simulator safety rule under Commands. Close the second session when its task
   ships; do not keep it warm.
+- **Clear a "conflicting" PR by merging main in, never by rebasing.**
+  `git fetch origin main && git merge origin/main && git push`. `docs/status.md`
+  is union-merged (`.gitattributes`), which local git honours but GitHub's
+  conflict checker does not — so the flag is usually false and the merge
+  resolves clean with no manual conflict work. Union keeps both sides' lines,
+  so eyeball status.md for duplicated prose before pushing.
+- **Dependent PRs stack natively, depth 2 max.** Open the child PR with base =
+  the parent's branch; GitHub retargets it to main when the parent merges.
+  After the parent squash-merges, rebase the child:
+  `git rebase --onto origin/main <parent-old-head>`. No stacking tooling.
 
 ### One agent per slice; fan out only on independent work
 
