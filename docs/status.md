@@ -33,8 +33,9 @@ Nothing in flight. The product rethink (see Next) has not started.
 
 ## Next
 
-- The product rethink: what direction the restored builder product grows in.
-  Parked builder-era issues (#1087, #1101, #1107) are eligible again but stay
-  parked until that conversation happens.
+- The product rethink is now planned: see [`rethink-plan.md`](rethink-plan.md)
+  (agreed 2026-08-14). First up is Stage 1, the post-revert audit. Parked
+  builder-era issues (#1087, #1101, #1107) are eligible again but stay parked
+  until Stage 4 chooses a direction.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob.
