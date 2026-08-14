@@ -6,9 +6,9 @@
 > make deliberately, not a rule to mechanically enforce. Document those
 > decisions in the **Open tensions & decisions** log at the bottom.
 >
-> Visual/token detail lives in code (`crates/intrada-web/style/input.css`,
-> `views/design_catalogue.rs`) and the design rules in `CLAUDE.md`. This doc is
-> the *why* and the *interaction* layer those don't cover.
+> Visual/token detail lives in code (`ios/Intrada/DesignSystem/Theme.swift`)
+> and the design rules in `CLAUDE.md`. This doc is the *why* and the
+> *interaction* layer those don't cover.
 >
 > Design is now produced in **Claude Design** — see
 > [`design-workflow.md`](design-workflow.md). The native iOS design system lives
@@ -217,7 +217,8 @@ every row.
 
 ### T10 — The count-in draws on the during-play page, not the verdict glance
 **Status:** DECIDED 2026-08-04 (jonyardley/intrada#1184, from playing #1183 at
-the piano).
+the piano). RETIRED 2026-08-13. The surface this decided was removed with the
+coach (#1344). Kept as log history.
 The A3 glance after a tap is deliberate (one fact, nothing to read), but the
 count-in is preparation for the *next* rep, so parking it on the page that
 judged the previous one read as jarring. Ruling: the glance is the verdict and
@@ -234,7 +235,8 @@ already moving.
 
 **Status:** DECIDED 2026-08-06 (jonyardley/intrada#1223, #1224, #1225, from the
 Phase 0 fortnight at the piano; design folded into
-`design/intrada-design-system.dc.html` in #1232).
+`design/intrada-design-system.dc.html` in #1232). RETIRED 2026-08-13. The
+surface this decided was removed with the coach (#1344). Kept as log history.
 
 **Supersedes the mid-block half of T10.** T10 ruled that the first count-in
 click turns the page from the verdict glance back to the during-play facts.
@@ -297,7 +299,9 @@ alone (rejected, it tells you nothing about what you agreed to).
 
 **Status:** DECIDED 2026-08-07 (decision 20 in the design doc, from planning
 real tune-learning: shells and roots learnt out of tempo in chunks;
-engine + planner work tracked in jonyardley/intrada#1244, #1245).
+engine + planner work tracked in jonyardley/intrada#1244, #1245). RETIRED
+2026-08-13. The surface this decided was removed with the coach (#1344). Kept
+as log history.
 
 New material opens at the least demanding rung the content authors (l0: no
 click, chunked, from memory) and the loop ramps upward: chunks, joins, full
@@ -335,7 +339,9 @@ the evidence from that week would be lost to the mastery track).
 
 **Status:** DECIDED 2026-08-07 (graduated from
 `design/briefs/2026-08-copy-language.md` v2, decided with Jon while reviewing
-the Built Session A/B/C mockups; lands with jonyardley/intrada#1256).
+the Built Session A/B/C mockups; lands with jonyardley/intrada#1256). RETIRED
+2026-08-13. The surface this decided was removed with the coach (#1344). Kept
+as log history.
 
 The first copy pass fixed vocabulary but kept the stance: the app narrated its
 own data model in nicer words. The fix is not better sentences; it is fewer,

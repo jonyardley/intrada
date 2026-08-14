@@ -1,10 +1,9 @@
 # Chart-to-scaffold — design decisions
 
-> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
-> the practice-*notebook* product. The live design is
-> [`specs/intrada-practice-coach-design.md`](../../../specs/intrada-practice-coach-design.md)
-> with the scenarios in [`docs/coach-user-journeys.md`](../../../docs/coach-user-journeys.md).
-> Kept for archaeology; **do not implement from this document.** Partial: `chart.rs` theory is a keep-column asset; the notebook workflow around it is not.
+> **⚠️ Historical record.** Parked by the 2026-07 coach pivot, which was
+> reversed on 2026-08-13 (#1344); the surface it describes returned with the
+> restored session builder. Describes shipped behaviour; verify against the
+> code before extending.
 
 Mocks: `chart-entry.dc.html`, `scaffold-preview.dc.html`. Built on the Paper &
 Score system (tokens from `Theme.swift`). Also pushed to Claude Design →

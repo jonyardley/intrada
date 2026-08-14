@@ -494,10 +494,58 @@ mod tests {
     }
 
     #[test]
-    fn set_entry_variant_session_event_round_trips_on_ffi_bincode_wire() {
-        // The `Option`-heavy shape is exactly the #846 risk, both the `Some`
-        // and `None` (clear) sides.
+    fn block_grouping_session_events_round_trip_on_ffi_bincode_wire() {
         use crate::domain::session::SessionEvent;
+        assert_round_trips(SessionEvent::ReorderBlock {
+            group_id: "g1".to_string(),
+            new_position: 2,
+        });
+        assert_round_trips(SessionEvent::KeepOnlyPiece {
+            group_id: "g1".to_string(),
+        });
+        assert_round_trips(SessionEvent::UngroupBlock {
+            group_id: "g1".to_string(),
+        });
+        assert_round_trips(SessionEvent::UngroupAllBlocks);
+        assert_round_trips(SessionEvent::RemoveBlock {
+            group_id: "g1".to_string(),
+        });
+        assert_round_trips(SessionEvent::AddExerciseToBlock {
+            group_id: "g1".to_string(),
+            item_id: "ex-D".to_string(),
+        });
+    }
+
+    #[test]
+    fn per_entry_config_session_events_round_trip_on_ffi_bincode_wire() {
+        // Newly wired from Swift (session builder per-entry settings) — the
+        // `Option`-heavy shapes are exactly the #846 risk, both the `Some` and
+        // `None` (clear) sides.
+        use crate::domain::session::SessionEvent;
+        assert_round_trips(SessionEvent::SetEntryIntention {
+            entry_id: "e1".to_string(),
+            intention: Some("evenness".to_string()),
+        });
+        assert_round_trips(SessionEvent::SetEntryIntention {
+            entry_id: "e1".to_string(),
+            intention: None,
+        });
+        assert_round_trips(SessionEvent::SetRepTarget {
+            entry_id: "e1".to_string(),
+            target: Some(7),
+        });
+        assert_round_trips(SessionEvent::SetRepTarget {
+            entry_id: "e1".to_string(),
+            target: None,
+        });
+        assert_round_trips(SessionEvent::SetEntryDuration {
+            entry_id: "e1".to_string(),
+            duration_secs: Some(600),
+        });
+        assert_round_trips(SessionEvent::SetEntryDuration {
+            entry_id: "e1".to_string(),
+            duration_secs: None,
+        });
         assert_round_trips(SessionEvent::SetEntryVariant {
             entry_id: "e1".to_string(),
             variant_id: Some("v-1".to_string()),

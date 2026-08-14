@@ -64,8 +64,10 @@ struct LibraryDetailScreen: View {
           }
 
           if item.itemType == .piece {
-            playItThroughButton
             chordChartSection
+          }
+
+          if item.itemType == .piece {
             linkedExercisesSection
           }
 
@@ -75,6 +77,11 @@ struct LibraryDetailScreen: View {
 
           if hasRecentSessions {
             recentSessionsSection
+          }
+
+          if item.itemType == .exercise {
+            practiseButton
+              .padding(.top, IntradaSpacing.controlGap)
           }
 
           deleteButton
@@ -128,14 +135,6 @@ struct LibraryDetailScreen: View {
       AddStepsSheet(itemId: item.id)
         .environment(store)
     }
-    // Matched on the id: under `LibrarySplitView` a stale detail pane is
-    // still in the hierarchy, and an unmatched sheet opens on both at once.
-    .sheet(isPresented: playThroughBinding) {
-      if let offer = playThroughOffer {
-        PlayThroughSheet(offer: offer)
-          .environment(store)
-      }
-    }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
     .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
@@ -144,39 +143,6 @@ struct LibraryDetailScreen: View {
     } message: {
       Text("This can't be undone.")
     }
-  }
-
-  // ── Play it through (B0) ──
-
-  /// The one door to Journey B's altitudes (decision 11: from the piece, never
-  /// from a mode menu). On every piece, charted or not — the two lower
-  /// altitudes need nothing authored.
-  private var playItThroughButton: some View {
-    BrandBarButton(prominent: true, action: openPlayThrough) {
-      Image(systemName: "play.circle")
-      Text("Play it through")
-    }
-    .accessibilityHint("Choose how a play-through of this piece should count")
-  }
-
-  private func openPlayThrough() {
-    store.send(.builtSession(.openPlayThrough(itemId: item.id)), onSuccess: .selection)
-  }
-
-  private var playThroughOffer: AltitudeOffer? {
-    guard let offer = store.viewModel?.built.playThrough, offer.itemId == item.id else {
-      return nil
-    }
-    return offer
-  }
-
-  private var playThroughBinding: Binding<Bool> {
-    Binding(
-      get: { playThroughOffer != nil },
-      // A sheet has interactive dismissal, so the setter is really called and
-      // has to reach the core: swallowing it leaves the getter reading `true`
-      // through the dismissal and SwiftUI slides the sheet back up.
-      set: { if !$0 { store.send(.builtSession(.closePlayThrough)) } })
   }
 
   // ── Chord chart ──
@@ -609,7 +575,7 @@ struct LibraryDetailScreen: View {
   // ── By piece (exercise contexts) ──
 
   // Per-piece score breakdown derived from session blocks (#1087 B2): where this
-  // drill has done its work and how it scores there. Gated on non-empty upstream.
+  // exercise has done its work and how it scores there. Gated on non-empty upstream.
   private var byPieceSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(title: "By piece")
@@ -635,6 +601,26 @@ struct LibraryDetailScreen: View {
       .buttonStyle(.plain)
     } else {
       ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: false)
+    }
+  }
+
+  // One-tap into the session builder seeded with this exercise (core
+  // StartBuildingWith); RootView switches to the Practice tab when
+  // `buildingSetlist` goes non-nil.
+  private var practiseButton: some View {
+    BrandBarButton(action: practiseThis) {
+      Image(systemName: "timer")
+      Text("Practise this")
+    }
+    .accessibilityLabel("Practise this exercise")
+    .accessibilityHint("Starts a session plan with this exercise")
+  }
+
+  private func practiseThis() {
+    let before = store.viewModel?.errorSeq
+    store.send(.session(.startBuildingWith(itemId: item.id)))
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
 

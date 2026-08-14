@@ -1,19 +1,9 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
-use crate::domain::built_session::blocks::BuildContext;
-use crate::domain::built_session::capture::FeelPrompt;
-use crate::domain::built_session::compose::{
-    BuiltView, ComposeDraft, Resolution, ResolutionContext,
-};
-use crate::domain::built_session::steer::{ProposedSteer, SteerContext};
-use crate::domain::built_session::{
-    BuiltSession, BuiltTarget, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
-};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
@@ -24,15 +14,6 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
-use crate::engine::{BlockRecord, CoachState, CoachView, ContentIndex};
-use crate::persistence::PersistenceOperation;
-
-#[derive(Debug, Clone)]
-pub struct CoachWriteInFlight {
-    pub batch: PersistenceOperation,
-    /// Back once and no further, or a store that is not having it loops.
-    pub retried: bool,
-}
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -97,117 +78,9 @@ pub struct Model {
     /// Bumped by every update that concludes with `last_error` present, so
     /// shells can tell a repeated identical failure from a success (#1056).
     pub error_seq: u64,
-    /// The practice coach's own state, quarantined in `engine/`
-    /// (`specs/intrada-coach-engine.md` §1).
-    pub coach: CoachState,
-    /// The coach evidence store writes are outstanding for, oldest first, so a
-    /// failure can be offered again once (#1181). A queue rather than one slot,
-    /// which a second close used to overwrite (#1286).
-    pub coach_writes_in_flight: VecDeque<CoachWriteInFlight>,
-    /// The block records the store handed back at launch. Kept rather than
-    /// consumed, because the mastery rebuild also needs the run-throughs and
-    /// those arrive on a second, independently-ordered load: whichever lands
-    /// last has to be able to rebuild from both.
-    pub coach_blocks: Vec<BlockRecord>,
-    // Built-session entities (#1256, `specs/built-session.md`). Tombstoned
-    // rows stay out of these: the shell loads live rows only.
-    pub user_drills: Vec<UserDrill>,
-    pub journal_items: Vec<JournalItem>,
-    pub built_sessions: Vec<BuiltSession>,
-    pub play_throughs: Vec<PlayThroughRecord>,
-    pub reflections: Vec<Reflection>,
-    pub feel_entries: Vec<FeelEntry>,
-    /// The steer sheet's working state (A2). Deliberately not persisted: an
-    /// abandoned composition is abandoned, and what it created on the way is
-    /// already a row of its own.
-    pub compose: Option<ComposeDraft>,
-    /// Which composed session is today's steer, so a rebuilt view and a
-    /// restarted loop agree on which one they mean.
-    pub built_session_today: Option<String>,
-    /// The piece B0 is open for (#1256 Phase C). Only the id is held: the offer
-    /// itself is re-derived per render, so the sheet cannot go stale against a
-    /// chart edited behind it.
-    pub play_through_item: Option<String>,
-    /// C1's question, set by the block that just closed. Not on the engine
-    /// session and so not on the crash-recovery wire: the block record is
-    /// already written, so a prompt lost to a crash costs nothing, and a field
-    /// there would cost every device its blob.
-    pub feel_prompt: Option<FeelPrompt>,
-    /// C2's question, set once as a session closes. False again the moment it
-    /// is answered either way — "Not tonight" is respected without a nudge.
-    pub reflection_prompt: bool,
-    /// C3's morning card, snapshotted when the session was planned. Held rather
-    /// than derived per render because whether a reflection was "last night" is
-    /// a question only a clock can answer, and the view has none.
-    pub proposed_steer: Option<ProposedSteer>,
 }
 
 impl Model {
-    /// What the resolver may look a name up against (decision 19).
-    pub fn resolution_context(&self, now: DateTime<Utc>) -> ResolutionContext<'_> {
-        ResolutionContext {
-            items: &self.items,
-            user_drills: &self.user_drills,
-            journal_items: &self.journal_items,
-            content: ContentIndex::shipped(),
-            mastery: &self.coach.mastery,
-            now,
-        }
-    }
-
-    /// What a composed session may be turned into blocks against.
-    pub fn build_context(&self) -> BuildContext<'_> {
-        BuildContext {
-            items: &self.items,
-            user_drills: &self.user_drills,
-            journal_items: &self.journal_items,
-            content: ContentIndex::shipped(),
-        }
-    }
-
-    /// What a quoted-back reflection may name (C3).
-    pub fn steer_context(&self) -> SteerContext<'_> {
-        SteerContext {
-            items: &self.items,
-            user_drills: &self.user_drills,
-            journal_items: &self.journal_items,
-        }
-    }
-
-    /// The name the user typed for an entry — what a newly created drill or
-    /// journal target is called, so the next visit recognises it (A2r).
-    pub fn compose_entry_name(&self, entry_id: &str) -> Option<String> {
-        self.compose
-            .as_ref()?
-            .entries
-            .iter()
-            .find(|entry| entry.id == entry_id)
-            .map(|entry| entry.name.clone())
-    }
-
-    pub fn settle_compose_entry(&mut self, entry_id: &str, target: BuiltTarget) {
-        if let Some(entry) = self
-            .compose
-            .as_mut()
-            .and_then(|draft| draft.entry_mut(entry_id))
-        {
-            entry.resolution = Resolution::Settled(target);
-        }
-    }
-
-    /// The composed session the steer is currently about.
-    pub fn today_built_session(&self) -> Option<&BuiltSession> {
-        let id = self.built_session_today.as_deref()?;
-        self.built_sessions.iter().find(|session| session.id == id)
-    }
-
-    pub fn built_session_today_mut(&mut self) -> Option<&mut BuiltSession> {
-        let id = self.built_session_today.clone()?;
-        self.built_sessions
-            .iter_mut()
-            .find(|session| session.id == id)
-    }
-
     /// Surface an error from a background HTTP failure. Respects the
     /// dismiss-mute state set by [`Model::dismiss_error`]: if the user has
     /// already dismissed the banner and the system has not yet recovered,
@@ -223,13 +96,6 @@ impl Model {
             return;
         }
         self.last_error = Some(msg);
-    }
-
-    /// Surface a refusal the user's own tap earned, ignoring the dismiss-mute
-    /// and the dedupe: both exist so a background failure cannot re-pop a
-    /// banner nobody asked for, and a declined control is neither (#1317).
-    pub fn surface_action_error(&mut self, msg: impl Into<String>) {
-        self.last_error = Some(msg.into());
     }
 
     /// Mark a confirmed API success. Clears any active error and exits the
@@ -290,6 +156,7 @@ impl Model {
 pub enum SessionStatusView {
     #[default]
     Idle,
+    Building,
     Active,
     Summary,
 }
@@ -315,6 +182,7 @@ pub struct ViewModel {
     pub available_composers: Vec<String>,
     pub sessions: Vec<PracticeSessionView>,
     pub active_session: Option<ActiveSessionView>,
+    pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,
     pub session_status: SessionStatusView,
     pub error: Option<String>,
@@ -335,10 +203,6 @@ pub struct ViewModel {
     pub oauth_in_flight: bool,
     pub oauth_redirect_url: Option<String>,
     pub last_set_save_request_id: Option<String>,
-    pub coach: CoachView,
-    /// The steer sheet and the composed session (#1256). Both halves `None` is
-    /// the ordinary prescribed day.
-    pub built: BuiltView,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -567,8 +431,7 @@ pub struct SetlistEntryView {
     pub planned_duration_secs: Option<u32>,
     pub planned_duration_display: Option<String>,
     pub achieved_tempo: Option<u16>,
-    /// The block this entry belongs to (a piece with its related exercises);
-    /// `None` = standalone.
+    /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
     /// The ladder step this entry practised, when attributed (#1083).
     #[serde(default)]
@@ -597,7 +460,7 @@ pub struct ActiveSessionView {
     pub current_rep_history: Option<Vec<RepAction>>,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
-    /// The current entry's "Aim" note.
+    /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
     pub current_item_intention: Option<String>,
     /// The anchor piece's title, when the current entry is a related exercise
     /// grouped into that piece's block; `None` for a standalone entry or when
@@ -608,6 +471,53 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
+}
+
+/// Whether the builder's entries originate from, and relate to, a saved Set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SetSourceStatus {
+    #[default]
+    NoSource,
+    UnmodifiedFromSource {
+        set_id: String,
+        set_name: String,
+    },
+    ModifiedFromSource {
+        set_id: String,
+        set_name: String,
+    },
+}
+
+/// A unit in the builder queue: a block (a piece with its related exercises) or
+/// a single standalone item. `group_id == None` means standalone.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SetlistBlockView {
+    pub group_id: Option<String>,
+    /// The block's anchor-piece title; `None` for a standalone item.
+    pub piece_title: Option<String>,
+    pub related_count: usize,
+    pub duration_display: String,
+    pub entries: Vec<SetlistEntryView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct BuildingSetlistView {
+    pub entries: Vec<SetlistEntryView>,
+    pub item_count: usize,
+    /// The same entries grouped into ordered units (blocks + standalone items).
+    pub blocks: Vec<SetlistBlockView>,
+    pub block_count: usize,
+    /// Sum of the entries' planned durations; `None` when nothing is planned
+    /// so shells can fall back to counts-only copy.
+    pub total_duration_display: Option<String>,
+    pub total_duration_summary: Option<String>,
+    pub session_intention: Option<String>,
+    pub target_duration_mins: Option<u32>,
+    pub source_status: SetSourceStatus,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -650,6 +560,51 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         group_id: entry.group_id.clone(),
         variant_id: entry.variant_id.clone(),
     }
+}
+
+/// Project flat entry views into ordered units: a contiguous run sharing a
+/// `group_id` becomes one block (related exercises first, piece last); every
+/// ungrouped entry is its own standalone unit.
+pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
+    let mut blocks: Vec<SetlistBlockView> = Vec::new();
+    for entry in entries {
+        let extends = match (&entry.group_id, blocks.last()) {
+            (Some(g), Some(last)) => last.group_id.as_deref() == Some(g.as_str()),
+            _ => false,
+        };
+        let is_piece = entry.item_type == ItemKind::Piece;
+        if extends {
+            let block = blocks.last_mut().expect("extends implies a last block");
+            if is_piece {
+                block.piece_title = Some(entry.item_title.clone());
+            } else {
+                block.related_count += 1;
+            }
+            block.entries.push(entry.clone());
+        } else {
+            let grouped = entry.group_id.is_some();
+            blocks.push(SetlistBlockView {
+                group_id: entry.group_id.clone(),
+                piece_title: (grouped && is_piece).then(|| entry.item_title.clone()),
+                related_count: usize::from(grouped && !is_piece),
+                duration_display: String::new(),
+                entries: vec![entry.clone()],
+            });
+        }
+    }
+    for block in &mut blocks {
+        let total: u32 = block
+            .entries
+            .iter()
+            .filter_map(|e| e.planned_duration_secs)
+            .sum();
+        block.duration_display = if total > 0 {
+            crate::domain::session::format_planned_duration(u64::from(total))
+        } else {
+            "—".to_string()
+        };
+    }
+    blocks
 }
 
 pub fn build_active_session_view(
@@ -1287,42 +1242,16 @@ mod tests {
             ..Default::default()
         };
 
-        use crate::domain::session::{ActiveSession, SetlistEntry};
-
-        let entry = SetlistEntry {
-            id: "e1".to_string(),
-            item_id: "piece-1".to_string(),
-            item_title: "Test Piece".to_string(),
-            item_type: ItemKind::Piece,
-            position: 0,
-            duration_secs: 0,
-            status: crate::domain::session::EntryStatus::NotAttempted,
-            notes: None,
-            score: None,
-            intention: None,
-            rep_target: None,
-            rep_count: None,
-            rep_target_reached: None,
-            rep_history: None,
-            planned_duration_secs: None,
-            achieved_tempo: None,
-            group_id: None,
-            variant_id: None,
-        };
-        let active = ActiveSession {
-            id: "s1".to_string(),
-            entries: vec![entry],
-            current_index: 0,
-            current_item_started_at: now,
-            session_started_at: now,
-            session_intention: None,
-        };
+        update_model(&mut model, Event::Session(SessionEvent::StartBuilding));
         update_model(
             &mut model,
-            Event::Session(SessionEvent::RecoverSession {
-                session: active,
-                now,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
             }),
+        );
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
         );
         let t1 = now + chrono::Duration::seconds(60);
         update_model(

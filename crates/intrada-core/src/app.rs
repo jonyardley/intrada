@@ -1,7 +1,6 @@
 // The `#[effect]` macro generates large variant size differences and we can't Box through it.
 #![allow(clippy::large_enum_variant)]
 
-use chrono::{DateTime, Utc};
 use crux_core::capability::Operation;
 use crux_core::macros::effect;
 use crux_core::render::RenderOperation;
@@ -11,9 +10,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
-use crate::domain::built_session::capture::{self, FeelPrompt};
-use crate::domain::built_session::compose::{compose_view, composed_session_view, BuiltView};
-use crate::domain::built_session::{blocks, handle_built_session_event, steer, BuiltSessionEvent};
 use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
@@ -25,12 +21,12 @@ use crate::domain::session::{
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
-use crate::engine::{CoachEvent, EngineSession, SnapshotAction};
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, session_to_view, CoachWriteInFlight,
-    ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model, PieceRefView,
-    ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, ViewModel,
+    build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
+    PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, SetSourceStatus,
+    ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -71,8 +67,6 @@ pub enum Event {
     McpToken(McpTokenEvent),
     McpAudit(McpAuditEvent),
     OAuth(OAuthEvent),
-    Coach(CoachEvent),
-    BuiltSession(BuiltSessionEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -97,7 +91,7 @@ pub enum Event {
     SetUpdated {
         set: Set,
     },
-    /// Server confirmed `SaveSummaryAsSet`. `request_id` echoes
+    /// Server confirmed `Save{Building,Summary}AsSet`. `request_id` echoes
     /// the shell's dispatch tag so per-form promotion stays isolated (#663).
     SetSaveSucceeded {
         request_id: String,
@@ -122,18 +116,6 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
-    /// The persisted block records back at launch, replayed into the mastery
-    /// track; without this, overdue and the cold test reset every restart (#1214).
-    CoachRecordsLoaded(PersistenceOutput),
-    /// Coach evidence write result. A failed write means the row was never
-    /// stored, so a reload cannot recover it: the batch is offered again once
-    /// instead, and only a second failure surfaces (#1181).
-    CoachStoreWritten(PersistenceOutput),
-    /// Built-session hydration back at launch (#1256).
-    BuiltStoreLoaded(PersistenceOutput),
-    /// Built-session write result: a failure surfaces and rehydrates, so the
-    /// model never keeps an optimistic row the store refused (invariant 5).
-    BuiltStoreWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -162,10 +144,6 @@ pub enum AppEffect {
     /// Persist the chosen library sort order (small singleton — UserDefaults
     /// on iOS / localStorage on web). Fire-and-forget; output is `()`.
     SaveLibrarySort(LibrarySort),
-    /// Persist the in-progress coach session for crash recovery (#1181). A
-    /// small singleton beside `SaveSessionInProgress`, not relational data.
-    SaveCoachSessionInProgress(EngineSession),
-    ClearCoachSessionInProgress,
 }
 
 impl Operation for AppEffect {
@@ -195,129 +173,6 @@ impl App for Intrada {
     }
 }
 
-/// Replay every kind of evidence the store holds, from whichever load has
-/// landed. `rebuild_mastery` replaces rather than adds, so running it twice
-/// costs a rebuild and can never double-count (#1214) — but only while the
-/// model holds *everything* the live track was fed, which is why
-/// [`coach_write_commands`] banks each record as it closes.
-fn rebuild_mastery(model: &mut Model) {
-    model
-        .coach
-        .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
-}
-
-/// C3, at the moments that have both a clock and a fresh plan. The proposal is
-/// snapshotted because the view is clock-free and "was that last night?" needs a
-/// clock; the accepted block is re-derived because a plan is remade rather than
-/// recovered, so one held in memory would be remade into nothing.
-fn refresh_steer(model: &mut Model, now: DateTime<Utc>) {
-    model.proposed_steer = steer::propose(&model.reflections, &model.steer_context(), now);
-    let Some(target) = steer::accepted(&model.reflections, &model.steer_context(), now) else {
-        return;
-    };
-    let Some(block) = blocks::steer_block(&target, &model.build_context()) else {
-        return;
-    };
-    model.coach.place_steer(block);
-}
-
-/// Journey C's two questions, set from what the engine just closed. Read here
-/// rather than in the engine because both are the domain's budget, and because
-/// a field on `EngineSession` would cost every device its crash-recovery blob
-/// to carry a prompt that costs nothing to lose (#1256 Phase D).
-fn offer_capture(model: &mut Model, writes: &crate::engine::CoachWrites) {
-    if let Some(record) = writes.blocks.iter().rev().find(|record| {
-        capture::feel_is_the_point(record)
-            // Asked once per block, ever: a re-offered write (#1181) hands the
-            // same record back, and the question is already answered.
-            && !model
-                .feel_entries
-                .iter()
-                .any(|entry| entry.block_id == record.id)
-    }) {
-        // No title, no question: C1's whole frame is the target in the user's
-        // own words, and a headline over a blank is worse than not asking.
-        if let Some(title) = blocks::title_of(&record.node, &model.build_context()) {
-            model.feel_prompt = Some(FeelPrompt {
-                block_id: record.id.clone(),
-                title,
-            });
-        }
-    }
-    // Only as the session ends, and only once: `Clear` is emitted by the event
-    // that closed it and by no later one.
-    if writes.snapshot == SnapshotAction::Clear && capture::reflection_is_offered(writes) {
-        model.reflection_prompt = true;
-    }
-}
-
-/// What one applied coach event leaves for the shell: the evidence batch and
-/// the crash-recovery blob. Shared, because a built session enters the same
-/// state machine by a different door (#1256) and its writes must not go
-/// missing on the way.
-pub(crate) fn coach_write_commands(
-    model: &mut Model,
-    writes: crate::engine::CoachWrites,
-) -> Vec<Command<Effect, Event>> {
-    let mut commands = Vec::new();
-    offer_capture(model, &writes);
-    // Banked as they close, not just handed to the store: a later reload — a
-    // failed built-session write reissues one — rebuilds the mastery track from
-    // the model, and a record the model dropped is evidence the rebuild would
-    // silently undo.
-    model.coach_blocks.extend(writes.blocks.clone());
-    model.play_throughs.extend(writes.play_throughs.clone());
-    // Append-only rows, so `updated_at` is the instant the record closed on the
-    // engine's own clock — the shell never formats a timestamp of its own (the
-    // `saveSession` convention).
-    let recorded_at = writes
-        .blocks
-        .last()
-        .map(|record| record.ended_at)
-        .or_else(|| writes.wanders.last().map(|record| record.ended_at))
-        .or_else(|| writes.play_throughs.last().map(|record| record.ended_at))
-        // Never omit an arm: unmonitored's whole output is this record, and
-        // leaving it out of the chain is how its minutes went unwritten (#1285).
-        .or_else(|| writes.unmonitored.last().map(|record| record.ended_at));
-    if let Some(recorded_at) = recorded_at {
-        let batch = PersistenceOperation::SaveCoachRecords {
-            blocks: writes.blocks,
-            wanders: writes.wanders,
-            play_throughs: writes.play_throughs,
-            unmonitored: writes.unmonitored,
-            updated_at: recorded_at,
-        };
-        model.coach_writes_in_flight.push_back(CoachWriteInFlight {
-            batch: batch.clone(),
-            retried: false,
-        });
-        commands.push(persistence::save_coach_records(batch));
-    }
-    match writes.snapshot {
-        SnapshotAction::Save => commands.push(
-            Command::notify_shell(AppEffect::SaveCoachSessionInProgress(
-                model.coach.session.clone(),
-            ))
-            .into(),
-        ),
-        SnapshotAction::Clear => {
-            // The session is over, so a composed one has been practised: today's
-            // steer stops being today's, the prescribed hero comes back, and
-            // Start cannot re-run a finished composition into the same drill's
-            // mastery a second time (#1256).
-            model.built_session_today = None;
-            commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
-        }
-        // Deliberately not the arm above: a blob the user declined at launch is
-        // no evidence that today's composed session was practised (#1193).
-        SnapshotAction::ClearOffer => {
-            commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
-        }
-        SnapshotAction::Unchanged => {}
-    }
-    commands
-}
-
 impl Intrada {
     fn handle_event(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
@@ -329,12 +184,7 @@ impl Intrada {
                 model.api_base_url = api_base_url;
                 model.local_first = local_first;
                 if local_first {
-                    Command::all([
-                        persistence::load_items(),
-                        persistence::load_sessions(),
-                        persistence::load_coach_records(),
-                        persistence::load_built_session_data(),
-                    ])
+                    Command::all([persistence::load_items(), persistence::load_sessions()])
                 } else {
                     Command::all([
                         http::fetch_items(&model.api_base_url),
@@ -383,33 +233,6 @@ impl Intrada {
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
             Event::OAuth(oauth_event) => handle_oauth_event(oauth_event, model),
-            Event::BuiltSession(event) => handle_built_session_event(event, model),
-            Event::Coach(coach_event) => {
-                // Render coalescing (engine spec §6): the click reports several
-                // beats a second, and every render rebuilds the whole
-                // ViewModel. An event the machine ignored changes nothing.
-                if matches!(coach_event, CoachEvent::ClickUnavailable { .. }) {
-                    model.surface_error("The click couldn't start, so the drill was stopped.");
-                }
-                let before = model.coach.view();
-                let writes = model.coach.apply(&coach_event);
-                // Both planning doors: `StartPlannedSession` from `Idle` plans
-                // and starts in one step, so a steer placed only on the
-                // previewed door would be lost through that one. A composed
-                // session is not a door — Journey A's list is already theirs.
-                match coach_event {
-                    CoachEvent::PlanSession { now, .. }
-                    | CoachEvent::StartPlannedSession { now, .. } => refresh_steer(model, now),
-                    _ => {}
-                }
-                let mut commands = coach_write_commands(model, writes);
-                // Render coalescing (engine spec §6) again: an event the machine
-                // ignored changes nothing, but a write it asked for still goes.
-                if model.coach.view() != before || model.last_error.is_some() {
-                    commands.push(crux_core::render::render());
-                }
-                Command::all(commands)
-            }
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -494,10 +317,7 @@ impl Intrada {
                     model.items = items;
                     crux_core::render::render()
                 }
-                PersistenceOutput::Ack
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
+                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -506,10 +326,7 @@ impl Intrada {
             },
             Event::StoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
+                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -522,10 +339,7 @@ impl Intrada {
                     model.practice_summaries = build_practice_summaries(&model.sessions);
                     crux_core::render::render()
                 }
-                PersistenceOutput::Items(_)
-                | PersistenceOutput::Ack
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
+                PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     crux_core::render::render()
@@ -533,99 +347,11 @@ impl Intrada {
             },
             Event::SessionStoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
+                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed save → reload sessions to roll back the optimistic push (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     persistence::load_sessions()
-                }
-            },
-            Event::CoachRecordsLoaded(output) => match output {
-                // No render: nothing in `ViewModel` derives from the mastery
-                // track; it reaches a screen only through the plan, computed later.
-                PersistenceOutput::CoachRecords(blocks) => {
-                    model.coach_blocks = blocks;
-                    rebuild_mastery(model);
-                    Command::done()
-                }
-                PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::Ack
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
-                // Failed read: surface only, no reload (would loop a broken store).
-                PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't read back what you've practised.");
-                    crux_core::render::render()
-                }
-            },
-            Event::CoachStoreWritten(output) => match output {
-                PersistenceOutput::Ack
-                | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => {
-                    model.coach_writes_in_flight.pop_front();
-                    Command::done()
-                }
-                // Nothing reads these rows back, so a failure has nothing to
-                // reload to and the block would simply be gone. Offer the batch
-                // again first (the store upserts by id, so a repeat is safe) and
-                // surface only if that fails too.
-                // Front, not back: the retry settles before the batch behind
-                // it, or that one loses its own. Pinned on the shell by
-                // `testARetryResolvesBeforeTheEffectQueuedBehindIt`.
-                PersistenceOutput::Failed => match model.coach_writes_in_flight.pop_front() {
-                    Some(write) if !write.retried => {
-                        model.coach_writes_in_flight.push_front(CoachWriteInFlight {
-                            retried: true,
-                            ..write.clone()
-                        });
-                        persistence::save_coach_records(write.batch)
-                    }
-                    _ => {
-                        model.surface_error("Couldn't save what you just practised.");
-                        crux_core::render::render()
-                    }
-                },
-            },
-            Event::BuiltStoreLoaded(output) => match output {
-                PersistenceOutput::BuiltSessionData(data) => {
-                    model.user_drills = data.user_drills;
-                    model.journal_items = data.journal_items;
-                    model.built_sessions = data.built_sessions;
-                    model.play_throughs = data.play_throughs;
-                    model.reflections = data.reflections;
-                    model.feel_entries = data.feel_entries;
-                    // A run-through's section verdicts are mastery evidence, and
-                    // they arrive here rather than with the block records. The
-                    // two loads race, so both rebuild.
-                    rebuild_mastery(model);
-                    crux_core::render::render()
-                }
-                PersistenceOutput::Ack
-                | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_) => Command::done(),
-                // Failed read: surface only — no reload (would loop a broken store).
-                PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
-                    crux_core::render::render()
-                }
-            },
-            Event::BuiltStoreWritten(output) => match output {
-                PersistenceOutput::Ack
-                | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::CoachRecords(_)
-                | PersistenceOutput::BuiltSessionData(_) => Command::done(),
-                // Failed write → surface + reload to roll back the optimistic
-                // push (#825 shape, invariant 5).
-                PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
-                    persistence::load_built_session_data()
                 }
             },
         }
@@ -864,18 +590,96 @@ impl Intrada {
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
         sessions.sort_by(|a, b| b.finished_at.cmp(&a.finished_at));
 
-        let (active_session, summary) = match &model.session_status {
-            SessionStatus::Idle => (None, None),
-            SessionStatus::Active(active) => {
-                (Some(build_active_session_view(active, &item_index)), None)
+        let (active_session, building_setlist, summary) = match &model.session_status {
+            SessionStatus::Idle => (None, None, None),
+            SessionStatus::Building(building) => {
+                let entries: Vec<_> = building.entries.iter().map(entry_to_view).collect();
+                let item_count = entries.len();
+                let blocks = build_blocks(&entries);
+                let block_count = blocks.len();
+                let source_status = match &building.source_set_id {
+                    None => SetSourceStatus::NoSource,
+                    Some(sid) => {
+                        let set_name = model
+                            .sets
+                            .iter()
+                            .find(|s| &s.id == sid)
+                            .map(|s| s.name.clone());
+                        match set_name {
+                            None => SetSourceStatus::NoSource,
+                            Some(name) => {
+                                let current_ids: Vec<&str> = building
+                                    .entries
+                                    .iter()
+                                    .map(|e| e.item_id.as_str())
+                                    .collect();
+                                let snapshot_ids: Vec<&str> = building
+                                    .source_set_entry_snapshot
+                                    .iter()
+                                    .map(|s| s.as_str())
+                                    .collect();
+                                if current_ids == snapshot_ids {
+                                    SetSourceStatus::UnmodifiedFromSource {
+                                        set_id: sid.clone(),
+                                        set_name: name,
+                                    }
+                                } else {
+                                    SetSourceStatus::ModifiedFromSource {
+                                        set_id: sid.clone(),
+                                        set_name: name,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+                let planned_total_secs: u64 = building
+                    .entries
+                    .iter()
+                    .filter_map(|e| e.planned_duration_secs)
+                    .map(u64::from)
+                    .sum();
+                let (total_duration_display, total_duration_summary) = if planned_total_secs > 0 {
+                    (
+                        Some(crate::domain::session::format_duration_display(
+                            planned_total_secs,
+                        )),
+                        Some(crate::domain::session::format_planned_duration(
+                            planned_total_secs,
+                        )),
+                    )
+                } else {
+                    (None, None)
+                };
+                (
+                    None,
+                    Some(BuildingSetlistView {
+                        entries,
+                        item_count,
+                        blocks,
+                        block_count,
+                        total_duration_display,
+                        total_duration_summary,
+                        session_intention: building.session_intention.clone(),
+                        target_duration_mins: building.target_duration_mins,
+                        source_status,
+                    }),
+                    None,
+                )
             }
+            SessionStatus::Active(active) => (
+                Some(build_active_session_view(active, &item_index)),
+                None,
+                None,
+            ),
             SessionStatus::Summary(summary_session) => {
-                (None, Some(build_summary_view(summary_session)))
+                (None, None, Some(build_summary_view(summary_session)))
             }
         };
 
         let session_status = match &model.session_status {
             SessionStatus::Idle => SessionStatusView::Idle,
+            SessionStatus::Building(_) => SessionStatusView::Building,
             SessionStatus::Active(_) => SessionStatusView::Active,
             SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
@@ -923,6 +727,7 @@ impl Intrada {
             available_composers,
             sessions,
             active_session,
+            building_setlist,
             summary,
             session_status,
             error: model.last_error.clone(),
@@ -942,49 +747,7 @@ impl Intrada {
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
-            coach: coach_view(model),
-            built: built_view(model),
         }
-    }
-}
-
-/// The engine's own view, plus the one thing it cannot resolve: the engine
-/// holds a piece's id and never the library, so off-piste's title is joined
-/// here rather than in the shell (#1256 Phase C).
-fn coach_view(model: &Model) -> crate::engine::CoachView {
-    let mut view = model.coach.view();
-    if let Some(open) = view.open_play.as_mut() {
-        open.title = open
-            .item_id
-            .as_deref()
-            .and_then(|id| model.items.iter().find(|item| item.id == id))
-            .map(|item| item.title.clone());
-    }
-    view
-}
-
-/// The steer sheet and the composed session (#1256). Clock-free by
-/// construction: the only reading a question needs was snapshotted when the
-/// match was proposed.
-fn built_view(model: &Model) -> BuiltView {
-    BuiltView {
-        compose: model
-            .compose
-            .as_ref()
-            .map(|draft| compose_view(draft, &model.items)),
-        session: model
-            .today_built_session()
-            .map(|session| composed_session_view(session, &model.build_context())),
-        play_through: model.play_through_item.as_deref().and_then(|item_id| {
-            model
-                .items
-                .iter()
-                .find(|item| item.id == item_id)
-                .and_then(crate::domain::built_session::playthrough::altitude_offer)
-        }),
-        feel: model.feel_prompt.clone(),
-        reflection: model.reflection_prompt,
-        steer: model.proposed_steer.clone(),
     }
 }
 
@@ -3674,6 +3437,33 @@ mod tests {
         assert!(model.last_error.is_none());
     }
 
+    // --- View: session status mapping ---
+
+    #[test]
+    fn test_view_session_status_building() {
+        use crate::domain::session::BuildingSession;
+
+        let app = Intrada;
+        let model = Model {
+            session_status: SessionStatus::Building(BuildingSession {
+                session_intention: Some("Focus on dynamics".to_string()),
+                ..Default::default()
+            }),
+            ..Model::test_default()
+        };
+
+        let vm = app.view(&model);
+        assert_eq!(vm.session_status, SessionStatusView::Building);
+        assert!(vm.building_setlist.is_some());
+        assert!(vm.active_session.is_none());
+        assert!(vm.summary.is_none());
+        let setlist = vm.building_setlist.unwrap();
+        assert_eq!(
+            setlist.session_intention,
+            Some("Focus on dynamics".to_string())
+        );
+    }
+
     // --- View: sets ---
 
     #[test]
@@ -4110,12 +3900,136 @@ mod tests {
     }
 
     #[test]
+    fn view_set_source_status_no_source() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status =
+            SessionStatus::Building(crate::domain::session::BuildingSession::default());
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.source_status, SetSourceStatus::NoSource);
+    }
+
+    #[test]
+    fn view_set_source_status_unmodified() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.sets = vec![crate::domain::set::Set {
+            id: "set-1".to_string(),
+            name: "Morning".to_string(),
+            entries: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }];
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "item-a".to_string(),
+            item_title: "Scale".to_string(),
+            item_type: ItemKind::Exercise,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: None,
+            variant_id: None,
+        };
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![entry],
+            source_set_id: Some("set-1".to_string()),
+            source_set_entry_snapshot: vec!["item-a".to_string()],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert!(matches!(
+            building.source_status,
+            SetSourceStatus::UnmodifiedFromSource { .. }
+        ));
+    }
+
+    #[test]
+    fn view_set_source_status_modified() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.sets = vec![crate::domain::set::Set {
+            id: "set-1".to_string(),
+            name: "Morning".to_string(),
+            entries: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }];
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "item-b".to_string(),
+            item_title: "Etude".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: None,
+            variant_id: None,
+        };
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![entry],
+            source_set_id: Some("set-1".to_string()),
+            source_set_entry_snapshot: vec!["item-a".to_string()],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert!(matches!(
+            building.source_status,
+            SetSourceStatus::ModifiedFromSource { .. }
+        ));
+    }
+
+    fn building_entry(id: &str, planned_duration_secs: Option<u32>) -> SetlistEntry {
+        SetlistEntry {
+            id: id.to_string(),
+            item_id: format!("item-{id}"),
+            item_title: "Etude".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs,
+            achieved_tempo: None,
+            group_id: None,
+            variant_id: None,
+        }
+    }
+
+    #[test]
     fn error_seq_bumps_on_each_failed_update_even_with_identical_message() {
         let app = Intrada;
         let mut model = Model::test_default();
         let fail = || {
-            Event::Session(SessionEvent::NextItem {
-                now: chrono::Utc::now(),
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "x".to_string(),
             })
         };
         let _ = app.update(fail(), &mut model);
@@ -4134,8 +4048,56 @@ mod tests {
         let app = Intrada;
         let mut model = Model::test_default();
         let before = app.view(&model).error_seq;
-        let _ = app.update(Event::ClearError, &mut model);
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
         assert_eq!(app.view(&model).error_seq, before);
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_sums_planned() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![
+                building_entry("e1", Some(900)),
+                building_entry("e2", Some(630)),
+                building_entry("e3", None),
+            ],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_display.as_deref(), Some("25m 30s"));
+        assert_eq!(building.total_duration_summary.as_deref(), Some("25m 30s"));
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_whole_minutes_matches_block_dialect() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![
+                building_entry("e1", Some(900)),
+                building_entry("e2", Some(300)),
+            ],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_summary.as_deref(), Some("20 min"));
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_none_when_unplanned() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![building_entry("e1", None), building_entry("e2", None)],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_display, None);
+        assert_eq!(building.total_duration_summary, None);
     }
 
     #[test]
@@ -5358,554 +5320,6 @@ mod tests {
             ex.variants.iter().all(|v| !v.is_current),
             "a finished ladder has no current step"
         );
-    }
-
-    // ── Journey C, end to end through the real events (#1256 Phase D) ──
-
-    mod capture_journey {
-        use super::*;
-        use crate::domain::built_session::{
-            BuiltBlock, BuiltSession, BuiltTarget, JournalItem, Reflection, ReflectionKind,
-            SteerState,
-        };
-
-        fn at() -> DateTime<Utc> {
-            chrono::TimeZone::with_ymd_and_hms(&Utc, 2026, 8, 8, 9, 0, 0).unwrap()
-        }
-
-        fn run_a_journal_block() -> (Intrada, Model) {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            model.journal_items.push(JournalItem {
-                id: "j1".into(),
-                name: "Rubato in the intro".into(),
-                notes: None,
-                linked_item_id: None,
-                created_at: at(),
-                updated_at: at(),
-                deleted_at: None,
-            });
-            model.built_sessions.push(BuiltSession {
-                id: "bs1".into(),
-                source: None,
-                blocks: vec![BuiltBlock {
-                    id: "b1".into(),
-                    target: BuiltTarget::Journal {
-                        journal_id: "j1".into(),
-                    },
-                    minutes: Some(8),
-                }],
-                created_at: at(),
-                updated_at: at(),
-                deleted_at: None,
-            });
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::StartBuiltSession {
-                    session_id: "bs1".into(),
-                    now: at(),
-                }),
-                &mut model,
-            );
-            let _ = app.update(
-                Event::Coach(CoachEvent::LeaveSession {
-                    now: at() + chrono::Duration::minutes(8),
-                }),
-                &mut model,
-            );
-            (app, model)
-        }
-
-        #[test]
-        fn a_closed_journal_block_asks_how_it_felt_and_names_it_in_the_users_words() {
-            let (app, model) = run_a_journal_block();
-            let prompt = model.feel_prompt.clone().expect("C1 is owed a question");
-            assert_eq!(prompt.title, "Rubato in the intro");
-            assert_eq!(
-                app.view(&model).built.feel.map(|feel| feel.block_id),
-                Some(prompt.block_id),
-                "the shell reads it off the view, not off a record"
-            );
-        }
-
-        #[test]
-        fn a_session_that_ran_something_is_asked_to_reflect_on_it() {
-            let (app, model) = run_a_journal_block();
-            assert!(model.reflection_prompt);
-            assert!(app.view(&model).built.reflection);
-        }
-
-        #[test]
-        fn just_play_ends_without_a_question_of_any_kind() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            let _ = app.update(
-                Event::Coach(CoachEvent::GoUnmonitored { now: at() }),
-                &mut model,
-            );
-            let _ = app.update(
-                Event::Coach(CoachEvent::CloseSession {
-                    now: at() + chrono::Duration::minutes(20),
-                }),
-                &mut model,
-            );
-            assert!(
-                !model.reflection_prompt,
-                "minutes only means minutes (decision 16)"
-            );
-            assert!(model.feel_prompt.is_none());
-        }
-
-        fn accepted_reflection() -> Reflection {
-            Reflection {
-                id: "r1".into(),
-                kind: ReflectionKind::SessionClose,
-                session_ref: None,
-                transcript: Some("Rubato in the intro is still not settled.".into()),
-                audio_path: None,
-                duration_s: Some(24),
-                at: at() - chrono::Duration::hours(11),
-                steer: SteerState::Accepted,
-                steer_at: Some(at()),
-                updated_at: at(),
-                deleted_at: None,
-            }
-        }
-
-        fn journal_library(model: &mut Model) {
-            model.journal_items.push(JournalItem {
-                id: "j1".into(),
-                name: "Rubato in the intro".into(),
-                notes: None,
-                linked_item_id: None,
-                created_at: at(),
-                updated_at: at(),
-                deleted_at: None,
-            });
-        }
-
-        #[test]
-        fn an_accepted_steer_joins_todays_plan_marked_as_the_users_own() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(accepted_reflection());
-
-            plan_today(&app, &mut model);
-            let plan = app.view(&model).coach.plan.expect("today's plan");
-            let steer = plan
-                .blocks
-                .iter()
-                .find(|block| block.added_by_you)
-                .expect("the accepted steer is in the plan");
-            assert_eq!(steer.drill_title, "Rubato in the intro");
-            assert_eq!(steer.minutes, 8);
-            assert!(
-                plan.blocks
-                    .iter()
-                    .filter(|block| block.added_by_you)
-                    .count()
-                    == 1,
-                "one block, and the rest of the plan is still the planner's"
-            );
-        }
-
-        fn plan_today(app: &Intrada, model: &mut Model) {
-            let _ = app.update(
-                Event::Coach(CoachEvent::PlanSession {
-                    now: at(),
-                    available_minutes: Some(40),
-                    utc_offset_minutes: 0,
-                }),
-                model,
-            );
-        }
-
-        fn unanswered(model: &mut Model) {
-            model.reflections.push(Reflection {
-                steer: SteerState::Unoffered,
-                steer_at: None,
-                ..accepted_reflection()
-            });
-        }
-
-        fn steer_blocks(model: &Model) -> usize {
-            let blocks = match &model.coach.session.state {
-                crate::engine::SessionState::Planned { plan } => &plan.blocks,
-                crate::engine::SessionState::Running { plan, .. } => &plan.blocks,
-                other => panic!("expected a plan, got {other:?}"),
-            };
-            blocks
-                .iter()
-                .filter(|block| block.why.placed_by == crate::engine::Stage::Steer)
-                .count()
-        }
-
-        /// The defect this test exists for: the Practice screen asks for a plan
-        /// only when it has none, so a deferred accept never lands at all.
-        #[test]
-        fn accepting_puts_the_block_in_the_plan_already_on_screen_and_takes_the_card_down() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-            plan_today(&app, &mut model);
-            assert!(app.view(&model).built.steer.is_some(), "the card is up");
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-
-            let view = app.view(&model);
-            assert!(view.built.steer.is_none(), "the card is answered and down");
-            assert_eq!(
-                view.coach
-                    .plan
-                    .expect("today's plan")
-                    .blocks
-                    .iter()
-                    .filter(|block| block.added_by_you)
-                    .map(|block| block.drill_title.clone())
-                    .collect::<Vec<_>>(),
-                vec!["Rubato in the intro".to_string()],
-                "no second planning run is needed to see it"
-            );
-        }
-
-        #[test]
-        fn declining_takes_the_card_down_and_adds_nothing() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-            plan_today(&app, &mut model);
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::DeclineProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-            let view = app.view(&model);
-            assert!(view.built.steer.is_none());
-            assert!(view
-                .coach
-                .plan
-                .expect("today's plan")
-                .blocks
-                .iter()
-                .all(|block| !block.added_by_you));
-        }
-
-        /// The plan carries it into the running session, where the
-        /// start-from-`Idle` door would place it again if nothing refused.
-        #[test]
-        fn starting_the_plan_that_already_carries_the_steer_does_not_place_it_twice() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(accepted_reflection());
-            plan_today(&app, &mut model);
-            assert_eq!(steer_blocks(&model), 1, "the plan carries it");
-
-            let _ = app.update(
-                Event::Coach(CoachEvent::StartPlannedSession {
-                    now: at(),
-                    utc_offset_minutes: 0,
-                }),
-                &mut model,
-            );
-            assert_eq!(
-                steer_blocks(&model),
-                1,
-                "and starting it does not repeat it"
-            );
-        }
-
-        /// The no-preview door must not lose it.
-        #[test]
-        fn starting_without_a_preview_still_carries_the_accepted_steer() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(accepted_reflection());
-
-            let _ = app.update(
-                Event::Coach(CoachEvent::StartPlannedSession {
-                    now: at(),
-                    utc_offset_minutes: 0,
-                }),
-                &mut model,
-            );
-            assert_eq!(
-                steer_blocks(&model),
-                1,
-                "the steer must not be lost through this door"
-            );
-        }
-
-        #[test]
-        fn re_planning_does_not_stack_a_second_copy_of_the_same_steer() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(accepted_reflection());
-
-            for _ in 0..3 {
-                plan_today(&app, &mut model);
-            }
-            let plan = app.view(&model).coach.plan.expect("today's plan");
-            assert_eq!(
-                plan.blocks
-                    .iter()
-                    .filter(|block| block.added_by_you)
-                    .count(),
-                1
-            );
-        }
-
-        fn steer_state(model: &Model, id: &str) -> SteerState {
-            model
-                .reflections
-                .iter()
-                .find(|reflection| reflection.id == id)
-                .expect("the reflection")
-                .steer
-        }
-
-        /// A library that changed under a card left up overnight leaves the
-        /// reflection answerable rather than confirming nothing (#1317).
-        #[test]
-        fn accepting_a_steer_whose_target_has_gone_leaves_the_offer_unspent_and_says_why() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-            plan_today(&app, &mut model);
-            assert!(app.view(&model).built.steer.is_some(), "the card is up");
-            model.journal_items.clear();
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-
-            let view = app.view(&model);
-            assert_eq!(
-                steer_state(&model, "r1"),
-                SteerState::Unoffered,
-                "nothing was placed, so nothing was spent"
-            );
-            assert!(
-                view.built.steer.is_some(),
-                "the card stays up: a confirm that confirmed nothing is not an answer"
-            );
-            assert!(
-                view.error.is_some(),
-                "and the shell has something to render instead of a success haptic"
-            );
-        }
-
-        /// The refusal that is not exotic: the plan already covers what the
-        /// sentence named, so the ask is honoured and the card must say so.
-        #[test]
-        fn accepting_something_todays_plan_already_holds_is_answered_and_said_out_loud() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(accepted_reflection());
-            model.reflections.push(Reflection {
-                id: "r2".into(),
-                at: at() - chrono::Duration::hours(7),
-                steer: SteerState::Unoffered,
-                steer_at: None,
-                ..accepted_reflection()
-            });
-            plan_today(&app, &mut model);
-            assert_eq!(steer_blocks(&model), 1, "r1's steer is already placed");
-            assert!(app.view(&model).built.steer.is_some(), "r2's card is up");
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r2".into(),
-                }),
-                &mut model,
-            );
-
-            let view = app.view(&model);
-            assert_eq!(
-                steer_state(&model, "r2"),
-                SteerState::Accepted,
-                "today's session holds it, so the offer is answered"
-            );
-            assert!(view.built.steer.is_none(), "the card is answered and down");
-            assert_eq!(steer_blocks(&model), 1, "and it is not placed twice");
-            assert_eq!(
-                view.error.as_deref(),
-                Some("That's already in today's session, so nothing was added."),
-                "the confirm says what it confirmed"
-            );
-        }
-
-        /// The wildcard that used to answer `Deferred` covered the three
-        /// altitudes too, where there is no plan to join and none coming until
-        /// the run closes: spending the offer there is #1317 again (#1322).
-        #[test]
-        fn accepting_during_an_altitude_leaves_the_offer_for_the_next_session() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-            plan_today(&app, &mut model);
-            let _ = app.update(
-                Event::Coach(CoachEvent::GoUnmonitored { now: at() }),
-                &mut model,
-            );
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-
-            assert_eq!(steer_state(&model, "r1"), SteerState::Unoffered);
-            assert_eq!(
-                app.view(&model).error.as_deref(),
-                Some("Finish what you're playing and it can go in the next session.")
-            );
-        }
-
-        /// A dismissed banner mutes background HTTP failures for the rest of
-        /// the session. A refusal the user's own tap earned is not one, and
-        /// muting it would be the silent no-op this issue exists to close.
-        #[test]
-        fn a_refused_accept_is_said_out_loud_even_with_the_banner_muted() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-            plan_today(&app, &mut model);
-            model.journal_items.clear();
-            let _ = app.update(Event::ClearError, &mut model);
-            assert!(model.error_muted, "the mute this test turns on");
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-
-            assert_eq!(
-                app.view(&model).error.as_deref(),
-                Some("That doesn't match anything in your library.")
-            );
-        }
-
-        /// `node_id` is target-only, so a whole-piece block and "the bridge of
-        /// it" share a node while being different offers (#1322).
-        #[test]
-        fn a_section_steer_is_not_swallowed_by_a_whole_piece_block_on_the_same_node() {
-            use crate::engine::{Plan, SessionState, SteerPlacement};
-
-            let mut plan = Plan::fixture();
-            plan.blocks.truncate(1);
-            let mut whole_piece = plan.blocks[0].clone();
-            whole_piece.spec.section = None;
-            plan.blocks[0] = whole_piece.clone();
-            let mut the_bridge = whole_piece.clone();
-            the_bridge.spec.section = Some("Bridge".into());
-
-            let mut coach = crate::engine::CoachState::default();
-            coach.session.state = SessionState::Planned { plan };
-
-            assert_eq!(coach.place_steer(the_bridge), SteerPlacement::Placed);
-            assert_eq!(
-                coach.place_steer(whole_piece),
-                SteerPlacement::AlreadyPlanned
-            );
-        }
-
-        /// `refresh_steer` rebuilds an accepted steer into every later plan.
-        #[test]
-        fn accepting_before_there_is_a_plan_still_spends_the_offer() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            unanswered(&mut model);
-
-            let _ = app.update(
-                Event::BuiltSession(BuiltSessionEvent::AcceptProposedSteer {
-                    reflection_id: "r1".into(),
-                }),
-                &mut model,
-            );
-            assert_eq!(steer_state(&model, "r1"), SteerState::Accepted);
-            assert!(app.view(&model).error.is_none(), "nothing went wrong");
-
-            plan_today(&app, &mut model);
-            assert_eq!(
-                steer_blocks(&model),
-                1,
-                "the plan, when it is made, carries it"
-            );
-        }
-
-        #[test]
-        fn an_unanswered_reflection_reaches_the_view_as_a_proposal() {
-            let app = Intrada;
-            let mut model = Model::test_default();
-            model.local_first = true;
-            journal_library(&mut model);
-            model.reflections.push(Reflection {
-                steer: SteerState::Unoffered,
-                steer_at: None,
-                ..accepted_reflection()
-            });
-
-            let _ = app.update(
-                Event::Coach(CoachEvent::PlanSession {
-                    now: at(),
-                    available_minutes: Some(40),
-                    utc_offset_minutes: 0,
-                }),
-                &mut model,
-            );
-            let view = app.view(&model);
-            let proposed = view.built.steer.expect("a morning proposal");
-            assert_eq!(proposed.reflection_id, "r1");
-            assert_eq!(
-                proposed.quote, "Rubato in the intro is still not settled.",
-                "the user's own sentence, verbatim"
-            );
-            assert!(
-                view.coach
-                    .plan
-                    .expect("today's plan")
-                    .blocks
-                    .iter()
-                    .all(|block| !block.added_by_you),
-                "propose, confirm, never plan (decision 12)"
-            );
-        }
     }
 
     #[test]

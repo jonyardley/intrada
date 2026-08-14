@@ -2,7 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// Discrete session-position indicator — N filled segments of M, one per
-/// setlist entry (or coach block). Stepped (not a continuous fill) so it reads
+/// setlist entry. Stepped (not a continuous fill) so it reads
 /// as "which item", distinct from the timer's continuous target bar. Completed
 /// segments are tinted by that entry's item type (piece vs. exercise) rather
 /// than a single brand gradient, so the strip doubles as a glance-able session

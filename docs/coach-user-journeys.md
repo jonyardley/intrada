@@ -1,5 +1,8 @@
 # Practice coach — user journeys
 
+> **⚠️ Historical.** Companion to the retired coach design. The coach was
+> removed 2026-08-13 (#1344); do not design or implement from these journeys.
+
 Eleven scenarios the app must handle well, derived from
 [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md)
 (v7). Written to inform design work and to be argued with: if a journey needs a

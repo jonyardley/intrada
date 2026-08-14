@@ -2,9 +2,9 @@
 
 > **⚠️ No longer the yardstick.** This document was the canonical journey for the
 > practice-*notebook* product and explicitly claimed authority over feature
-> prioritisation. The 2026-07 practice-coach pivot replaced it. The live design
-> is [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
-> the live scenarios are [`docs/coach-user-journeys.md`](coach-user-journeys.md).
+> prioritisation. The 2026-07 practice-coach pivot replaced it, and the coach
+> was itself removed in 2026-08 (#1344). The live direction is
+> [`docs/roadmap.md`](roadmap.md).
 > **Do not prioritise work from the ten steps or the status column below.** The
 > two `user-journey*.drawio` diagrams in this folder belong to this document and
 > are equally historical.

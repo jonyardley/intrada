@@ -11,10 +11,6 @@ struct PracticeScreen: View {
   private let referenceDate: Date
   @State private var selectedDay: Date?
   @State private var weekIndexOverride: Int?
-  // Presentation only: the core owns the session itself, and closes the loop by
-  // clearing `coach.drill`, which `DrillLoopHost` reports back through onClose.
-  @State private var drillLoopRunning = false
-  @State private var composing = false
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -53,17 +49,6 @@ struct PracticeScreen: View {
     ScreenScaffold(title: "Practice", subtitle: subtitle) {
       ScrollView {
         VStack(spacing: IntradaSpacing.section) {
-          if let recovery = store.viewModel?.coach.recovery {
-            RecoveryPromptCard(
-              recovery: recovery,
-              referenceDate: referenceDate,
-              onResume: resumeCoachSession,
-              onDiscard: {
-                store.send(.coach(.declineRecovery), onSuccess: .selection)
-              }
-            )
-            .fadeUp(0)
-          }
           if let recoverable = store.recoverableSession {
             RecoveryPromptCard(
               session: recoverable,
@@ -73,24 +58,14 @@ struct PracticeScreen: View {
             )
             .fadeUp(0)
           }
-          if let built = store.viewModel?.built.session {
-            // The composed session replaces the prescribed hero for as long as
-            // it is today's steer — same scaffold, its own source line (A6).
-            ComposedSessionScreen(session: built, onStart: { start(built: built.id) })
-              .fadeUp(0)
-          } else {
-            if let steer = store.viewModel?.built.steer { steerCard(steer).fadeUp(0) }
-            hero
-              .fadeUp(0)
-            steerLine
-              .fadeUp(1)
-            sessionOverview
-              .fadeUp(2)
-          }
+          hero
+            .fadeUp(0)
           thisWeek
-            .fadeUp(3)
+            .fadeUp(1)
           selectedDaySection
-            .fadeUp(4)
+            .fadeUp(2)
+          footerLink
+            .fadeUp(3)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -103,117 +78,57 @@ struct PracticeScreen: View {
     .onChange(of: weeks.count) { _, newCount in
       if let pinned = weekIndexOverride, pinned >= newCount { weekIndexOverride = nil }
     }
-    .fullScreenCover(isPresented: $drillLoopRunning) {
-      DrillLoopHost(onClose: {
-        drillLoopRunning = false
-        planToday()
-      })
+    // State-driven: `startBuilding` makes `buildingSetlist` non-nil → push; a
+    // pop sends `cancelBuilding` → core returns to Idle. No local nav flag.
+    .navigationDestination(isPresented: buildingBinding) {
+      SessionBuilderScreen()
     }
-    .sheet(isPresented: $composing) {
-      ComposeSheet()
-    }
-    .task { planToday() }
   }
 
-  /// The core clears `plan` when the first block opens, so this asks for one
-  /// only when there isn't one — on arrival, and again after a session ends.
-  /// `availableMinutes: nil` takes the authored `[defaults]` length; the
-  /// declaration surfaces that would ask are Phase 2b.
-  private func planToday() {
-    guard store.viewModel?.coach.plan == nil else { return }
-    store.send(
-      .coach(
-        .planSession(
-          now: SessionClock.nowRFC3339(), availableMinutes: nil,
-          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
+  private var buildingBinding: Binding<Bool> {
+    Binding(
+      get: { store.viewModel?.buildingSetlist != nil },
+      set: { presented in
+        if !presented { store.send(.session(.cancelBuilding)) }
+      })
   }
 
   // MARK: - (0) One-tap hero
 
-  private var plan: PlanView? { store.viewModel?.coach.plan }
-  private var firstBlock: PlannedBlockView? { plan?.blocks.first }
-
-  // No haptic on the tap: the loop is only really started once the core hands
-  // back a block, and DrillLoopHost closes straight away if it can't.
   private var hero: some View {
-    PressStartHero(
-      headline: firstBlock?.drillTitle ?? "A focused session",
-      section: firstBlock?.section,
-      why: firstBlock?.why,
-      footnote: planShape ?? "Tap to begin — one decision",
-      onStart: { drillLoopRunning = true })
-  }
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
 
-  /// A1 — where composition lives (#1256). Directly under the hero, quiet
-  /// weight, accent-coloured: reachable in one tap, never a footer secret and
-  /// never a mode chooser (decision 11). Phrased as the user's own thought,
-  /// because the built session is a steer on today, not an alternative app.
-  private var steerLine: some View {
-    Button {
-      store.send(.builtSession(.openCompose), onSuccess: .selection)
-      composing = true
-    } label: {
-      Label("I know what I want to practise today", systemImage: "text.badge.plus")
+      Text("A focused session")
+        .font(IntradaFont.pageTitle(25))
+        .foregroundStyle(IntradaColor.paperTop)
+        .multilineTextAlignment(.center)
+
+      Button {
+        store.send(.session(.startBuilding))
+      } label: {
+        Image(systemName: "play.fill")
+          .font(.system(size: 38))
+          .foregroundStyle(IntradaColor.accent)
+          .frame(width: 96, height: 96)
+          .background(IntradaColor.playerBgTop)
+          .clipShape(Circle())
+          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+      }
+      .buttonStyle(PressRebound())
+      .accessibilityLabel("Start practising")
+      .padding(.vertical, IntradaSpacing.controlGap)
+
+      Text("Tap to begin — one decision")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .contentShape(Rectangle())
+        .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
+        .multilineTextAlignment(.center)
     }
-    .buttonStyle(.plain)
-  }
-
-  /// C3 — last night's words above the untouched hero (#1256). The shell does
-  /// not offer it over a composed session (#1316): that list is already the
-  /// user's own, and an accept the user could not see land is the #846 class.
-  private func steerCard(_ steer: ProposedSteer) -> some View {
-    ProposedSteerCard(
-      steer: steer,
-      onAccept: {
-        store.send(
-          .builtSession(.acceptProposedSteer(reflectionId: steer.reflectionId)),
-          onSuccess: .impact)
-      },
-      onDecline: {
-        store.send(
-          .builtSession(.declineProposedSteer(reflectionId: steer.reflectionId)),
-          onSuccess: .selection)
-      })
-  }
-
-  /// A recovered altitude puts its own cover up from `RootView`, so only a
-  /// prescribed block opens the drill loop here, and only once the core has
-  /// handed one back (#1193, #1305).
-  private func resumeCoachSession() {
-    store.send(
-      .coach(
-        .acceptRecovery(
-          now: SessionClock.nowRFC3339(),
-          utcOffsetMinutes: SessionClock.utcOffsetMinutes())))
-    if store.viewModel?.coach.drill != nil { drillLoopRunning = true }
-  }
-
-  /// Entering the drill loop is the core's call: it hands back a block, or it
-  /// surfaces why it could not, and only then does the loop open.
-  private func start(built id: String) {
-    store.send(
-      .builtSession(.startBuiltSession(sessionId: id, now: SessionClock.nowRFC3339())))
-    if store.viewModel?.coach.drill != nil { drillLoopRunning = true }
-  }
-
-  private var planShape: String? {
-    guard let plan, !plan.blocks.isEmpty else { return nil }
-    let count = plan.blocks.count
-    return "\(count) block\(count == 1 ? "" : "s") · about \(plan.totalMinutes) minutes"
-  }
-
-  // The whole session, not just the block the hero headlines, plus what the plan
-  // could not take. The prose — deferred, titles, why — is the core's wording
-  // verbatim; the shell only formats minutes and the spoken position.
-  @ViewBuilder private var sessionOverview: some View {
-    if let plan, SessionOverview.hasContent(blocks: plan.blocks, deferred: plan.deferred) {
-      SessionOverview(blocks: plan.blocks, deferred: plan.deferred)
-    }
+    .frame(maxWidth: .infinity)
+    .padding(IntradaSpacing.section)
+    .background(LinearGradient.practiceHero)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
+    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
   }
 
   // MARK: - (1) This week
@@ -318,6 +233,20 @@ struct PracticeScreen: View {
     )
   }
 
+  // MARK: - (3) Footer link
+
+  private var footerLink: some View {
+    Button {
+      store.send(.session(.startBuilding))
+    } label: {
+      Label("Build a custom session", systemImage: "slider.horizontal.3")
+        .font(IntradaFont.bodyMedium.weight(.medium))
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+    .buttonStyle(.plain)
+    .frame(maxWidth: .infinity)
+  }
+
   private var dayLabel: String {
     if calendar.isDateInToday(effectiveSelection) { return "Today" }
     if calendar.isDateInYesterday(effectiveSelection) { return "Yesterday" }
@@ -349,21 +278,6 @@ struct PracticeScreen: View {
   #Preview("Populated") {
     PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
       .environment(Store.previewPractice)
-  }
-
-  #Preview("Planned") {
-    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
-      .environment(Store.previewPracticePlanned)
-  }
-
-  #Preview("Proposed steer") {
-    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
-      .environment(Store.previewProposedSteer)
-  }
-
-  #Preview("Accepted steer") {
-    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
-      .environment(Store.previewAcceptedSteer)
   }
 
   #Preview("Empty") {

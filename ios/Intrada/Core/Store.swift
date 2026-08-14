@@ -17,39 +17,6 @@ final class Store {
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
   static let sessionInProgressKey = "intrada.session-in-progress"
-  /// Versioned because the blob is positional bincode: a future `EngineSession`
-  /// field change could misdecode an old blob into a structurally valid but
-  /// wrong session, which `guarded` cannot catch. Bump the suffix with any such
-  /// change and the upgrade ignores the stale blob instead of misreading it.
-  /// v2 (#1223): `Phase::BlockEntry` renumbered every variant and `discarded`
-  /// added a byte mid-struct, so a v1 blob no longer decodes.
-  /// v3 (#1244): `ClickLevel::NoClick` and `EvidenceSource::TapVerdictUntimed`
-  /// went in at the bottom of their enums, renumbering the variants below them.
-  /// A v2 blob still *decodes*, into a clocked block read back as an l0 one,
-  /// with its evidence on a rung nothing practised.
-  /// v4 (#1256): `BlockSpec` gained `origin` + `serves` and `BlockRecord` gained
-  /// `origin`, all inside `EngineSession`. `#[serde(default)]` buys nothing on a
-  /// non-self-describing wire — serde never reaches the default — so a v3 blob
-  /// would read the next struct's bytes as this one's tail.
-  /// v5 (#1256 Phase C): `SessionState` gained a `RunThrough` variant and
-  /// `WanderRecord` gained `item_id`, both inside `EngineSession`. The new
-  /// variant alone would be safe — old blobs never carry it — but the field is
-  /// positional, so a v4 blob would read a wander's tail as the next record.
-  /// v6 (#1285): `EngineSession` lost its trailing `unmonitored_seconds`, which
-  /// the minutes now leave as a record instead. A v5 blob carries four trailing
-  /// bytes the new shape never reads; the key bump is what stops it decoding at
-  /// all, since a shorter struct would otherwise read as a valid session.
-  /// v7 (#1291): the ungated altitudes gained a `now`, so a v6 blob of one is
-  /// an instant short and reads its tail as the wrong field.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v7"
-  /// Retired keys, cleared on the next write so a dead blob doesn't sit in
-  /// UserDefaults for the life of the install.
-  static let retiredCoachSessionKeys = [
-    "intrada.coach-session-in-progress.v1", "intrada.coach-session-in-progress.v2",
-    "intrada.coach-session-in-progress.v3", "intrada.coach-session-in-progress.v4",
-    "intrada.coach-session-in-progress.v5", "intrada.coach-session-in-progress.v6",
-  ]
-
   private let bridge: CoreBridge
   private let session: URLSession
   private let store: (any ItemStore)?
@@ -113,34 +80,7 @@ final class Store {
     case .clearSessionInProgress:
       sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
       recoverableSession = nil
-    case .saveCoachSessionInProgress(let session):
-      if let bytes = guarded({ try session.bincodeSerialize() }) {
-        sortDefaults.set(Data(bytes), forKey: Self.coachSessionInProgressKey)
-        dropRetiredCoachSessions()
-      }
-    case .clearCoachSessionInProgress:
-      sortDefaults.removeObject(forKey: Self.coachSessionInProgressKey)
-      dropRetiredCoachSessions()
     }
-  }
-
-  private func dropRetiredCoachSessions() {
-    for key in Self.retiredCoachSessionKeys { sortDefaults.removeObject(forKey: key) }
-  }
-
-  /// The drill loop's crash-recovery blob, if a session was cut off mid-block.
-  /// `DrillLoopHost` hands it back to the core rather than starting fresh, so
-  /// the evidence already banked survives (#1181).
-  func pendingCoachSession() -> EngineSession? {
-    guard let data = sortDefaults.data(forKey: Self.coachSessionInProgressKey) else { return nil }
-    return guarded { try EngineSession.bincodeDeserialize(input: [UInt8](data)) }
-  }
-
-  /// Hand the blob to the core at launch so it can *offer* it (#1193, #1305).
-  /// Worth offering, the wording, and clearing a dud are all its call.
-  func offerPendingCoachSession() {
-    guard let session = pendingCoachSession() else { return }
-    send(.coach(.offerRecovery(session: session)))
   }
 
   /// Crash-recovery blob found at launch; non-nil drives the Practice tab's
@@ -203,30 +143,6 @@ final class Store {
       case .saveSession(let session):
         try store.saveSession(session)
         return .ack
-      case .saveCoachRecords(
-        let blocks, let wanders, let playThroughs, let unmonitored, let updatedAt):
-        try store.saveCoachRecords(
-          blocks: blocks, wanders: wanders, playThroughs: playThroughs, unmonitored: unmonitored,
-          updatedAt: updatedAt)
-        return .ack
-      case .loadCoachRecords: return .coachRecords(try store.loadCoachRecords())
-      case .saveUserDrill(let drill):
-        try store.saveUserDrill(drill)
-        return .ack
-      case .saveJournalItem(let journal):
-        try store.saveJournalItem(journal)
-        return .ack
-      case .saveBuiltSession(let session):
-        try store.saveBuiltSession(session)
-        return .ack
-      case .saveReflection(let reflection):
-        try store.saveReflection(reflection)
-        return .ack
-      case .saveFeelEntry(let entry):
-        try store.saveFeelEntry(entry)
-        return .ack
-      case .loadBuiltSessionData:
-        return .builtSessionData(try store.loadBuiltSessionData())
       }
     } catch {
       report(error, "persistence")

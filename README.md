@@ -1,10 +1,10 @@
 # Intrada
 
-A **practice coach** for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. The app decides what you practise, gates every block on evidence (tap-verdicts against countable criteria — tempo, key, scope), and tells you when you're done. Around the coaching loop: a music library, timed sessions, and progress tracking, organised as three pillars — **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working).
+A **practice notebook** for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Build a session from your music library, group and reorder what you'll practise, play it through with a timer and rep counting, and score how it went. Organised as three pillars — **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working).
 
-See [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md) for the coach vision and pedagogy, [`docs/roadmap.md`](docs/roadmap.md) for the phase plan, [`docs/status.md`](docs/status.md) for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation.
+See [`docs/roadmap.md`](docs/roadmap.md) for direction, [`docs/status.md`](docs/status.md) for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its design record lives in [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md), bannered.)
 
-The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQLite is the source of truth and the app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed (see [`docs/rebuild-review.md`](docs/rebuild-review.md)) in the pivot to the native-iOS-only practice coach.
+The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQLite is the source of truth and the app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/rebuild-review.md`](docs/rebuild-review.md)), and the app has been native-iOS-only since.
 
 ## Architecture
 
@@ -92,11 +92,10 @@ just seed         # Seed development data (API must be running)
 
 ```
 crates/
-  intrada-core/       # Pure Crux core (no I/O, no side effects) — incl. the coach engine
+  intrada-core/       # Pure Crux core (no I/O, no side effects)
   intrada-ffi/        # UniFFI bridge — generates the Swift bindings
   intrada-api/         # REST API (Axum + Turso)
 ios/                  # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
-content/              # Practice-coach authored content (read by the engine)
 design/               # Claude Design system (intrada-design-system.dc.html)
 docs/                 # Roadmap, status, and documentation
 scripts/              # Development utilities (seed data, simulator helpers)
@@ -115,13 +114,12 @@ specs/                # Design specs for major features
 | Document | Purpose |
 |----------|---------|
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
-| [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md) | The practice-coach vision, pedagogy model, and phased build plan |
 | [`docs/status.md`](docs/status.md) | What's in flight right now — updated in every scope-changing PR |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
-| [`docs/rebuild-review.md`](docs/rebuild-review.md) | Rebuild-vs-pivot review against the practice-coach design |
+| [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |
 | [`SETUP.md`](SETUP.md) | Deployment & configuration (Fly.io, Turso, TestFlight) |
 
 ## CI/CD

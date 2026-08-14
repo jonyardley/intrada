@@ -12,6 +12,8 @@
 > worth keeping: what the spike *established* outlives the code that
 > established it.
 > Written 4 Aug 2026. This note is the spec input for the scoring gate.
+> The coach itself was removed on 2026-08-13 (#1344); these findings remain
+> the record of the spike and the spec input should a scoring path return.
 
 ## Verdict
 

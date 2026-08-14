@@ -7,86 +7,27 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 
 ---
 
-> ## ⚠️ THE 2026-07 PIVOT: THE PRACTICE COACH
+> ## ⚠️ THE 2026-07 COACH PIVOT WAS REVERSED (2026-08-13)
 >
-> As of July 2026 the product direction is the **practice coach** — the app
-> decides what you practise, gates every block on evidence, and tells you
-> when you're done. **Revised 4 Aug 2026: machine listening is deferred**
-> (design doc v6, decision 18) — v1 evidence is the tap-verdict against
-> countable criteria the app controls (tempo, key, scope, cold-test
-> intervals); the MIDI scoring path returns later as an evidence upgrade,
-> play-to-input first. The vision, pedagogy model, and phased build plan live
-> in
-> [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
-> the codebase assessment and pivot strategy (pivot in place, new engine
-> module, notebook-era machinery deleted at Phase 2a) in
-> [`docs/rebuild-review.md`](rebuild-review.md).
+> Between July and August 2026 the product direction was the **practice
+> coach**: the app decided what you practised, gated every block on evidence,
+> and told you when you were done. It was built through Phase 2b and then
+> **removed on 2026-08-13** (#1344): the direction went too far too fast, and
+> the call was to restore the session-builder product. The coach code is
+> recoverable from commit 071b85b; the design record stays in
+> [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md)
+> and [`specs/intrada-coach-engine.md`](../specs/intrada-coach-engine.md)
+> (both bannered), the assessment that drove the pivot in
+> [`docs/rebuild-review.md`](rebuild-review.md), and the machine-listening
+> spike findings in [`segmentation-findings.md`](segmentation-findings.md).
 >
-> **The notebook-era backlog below is superseded.** Issues carrying the
+> What the product does today is the restored builder flow: build a session
+> from the library, group and reorder, play it through the Focus Player,
+> reflect on the summary. **What direction it grows in next is an open
+> question**: the rethink follows the revert. Issues parked under
 > [`superseded-by-pivot`](https://github.com/jonyardley/intrada/labels/superseded-by-pivot)
-> label (the lesson-to-mastery epic #1087, session-builder work #1101, the
-> twelve-key ladder #1107) are parked — don't pick them up without revisiting
-> the pivot plan. Keep-column assets (chord theory in `chart.rs`, the GRDB
-> persistence pattern, the design system, the FFI toolchain) carry forward.
->
-> Current phase: **Phase 2b** (in flight: the built session and its three
-> altitudes are built; see [`status.md`](status.md)). **2a is complete**: the
-> state machine, drill screen, content parser, planner and persistence all
-> landed, the loop runs end to end, and the soft-landing exit closed the list
-> (#1323). The
-> **Phase 0** paper-teacher fortnight runs alongside (#1143).
-> Phase 1 closed early under decision 18: the capture
-> harness and segmentation spike are **removed from the tree** and recoverable
-> from history (#1176); the click ships, since click-always governs the loop.
-> Their findings stay in [`segmentation-findings.md`](segmentation-findings.md).
->
-> **The document map**, so there is one answer per question:
->
-> | Question | Document |
-> |---|---|
-> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v7) |
-> | What does it feel like to use? | [`docs/coach-user-journeys.md`](coach-user-journeys.md) |
-> | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
-> | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
-> | What order does the work happen in? | The phase plan below |
-> | Can I see it all at a glance? | [`docs/coach-orientation.html`](coach-orientation.html) — visual snapshot, open in a browser |
-> | What do I hand to Claude Design? | [`design/briefs/2026-08-coach-drill-loop.md`](../design/briefs/2026-08-coach-drill-loop.md) |
->
-> Pre-pivot specs now carry a superseded banner, and
-> [`docs/journeys.md`](journeys.md) — the notebook-era "ideal journey" that
-> claimed authority over prioritisation — is explicitly retired.
-
----
-
-## The phase plan (the live sequence)
-
-Coach work follows these phases in order. The layer/pillar framing further down
-still describes the surviving library surfaces, but **it is not the sequence for
-coach work** — this is.
-
-| Phase | What lands | State |
-|---|---|---|
-| **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
-| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the segmentation module handled all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Both the iOS capture harness and that module are **deleted** (#1176) rather than left inert, recoverable from history when the path returns; the click ships. Lick-transposition scoring and the machine-verdict drill screen defer with it (trigger: play-to-input). USB comparison stays open-ended (#1156) |
-| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **Complete.** The exit criterion is met: a real session runs end to end with its gates. The **soft-landing exit is built** (#1323), the last item on the list: leaving a session lands it on what was played rather than dropping the cover, and the wording is the core's, per the design's rule that quitting at minute eight must not be framed as loss. Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended). The drill screen (A2 during play + A3 tap-verdict) and the seven coach primitives are **built** (#1178). The **session state machine and the tap-verdict bridge surface are built** (#1176, spec §4/§6): `engine/session.rs` owns counting, gating, the stuck ladder and the ceiling; `DrillScreen` renders the core's `CoachView` and the Swift harness is deleted. The **`gates.toml` parser, the planner and persistence are built** (#1180, #1181): the engine plans today's session from the authored content (nodes with prerequisites and ladders, drills, gate criteria, escalation thresholds, the declared intent) rather than a seeded block, and block records plus the in-progress session reach the store. **Press-start, the live mastery track and the five-stage planner are built** (#1219): pressing start reaches the drill loop, and blocks are chosen from the mastery track rather than a fixture. **The loop's choreography was then corrected from Phase 0 play** (#1223, #1224): the click runs unbroken for a whole block instead of counting in per rep, every block opens on an entry card (the T1 intention beat, with Skip finally reaching `Exit::Skipped`), a false start can be discarded without counting, and the authored sparse click levels are honoured by the audio rather than only by the pill. Choreography rationale: `docs/design-principles.md` T11. The mastery store surviving a restart (#1214) and deleting the session-builder machinery (#1190) are both **done** |
-| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), three-way target resolution + user-created items + the built session (decision 19), acquisition before the clock (decision 20: l0 blocks, know-it/own-it gates, chunk rungs, the upward tempo ramp; #1244, #1245), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | **In flight.** The **built session (decision 19) is built** across four phases (#1256): Journey A's compose-and-run with three-way target resolution, Journey B's three altitudes (run-through, off-piste, unmonitored), and Journey C's qualitative capture (the feel question, the close reflection, the morning steer card). Decision 20's engine half and the l0 drill screen are built (#1244, #1260); its gates and tempo ramp are #1245. Still to come: back-chaining, gap read, circling check, grind trade, circle tally, the judgement track |
-| **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
-| **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
-
-**Phase 2 was split (3 Aug 2026).** It had accumulated twelve deliverables under
-a "3–4 weeks" estimate — planner, three declaration surfaces, back-chaining, gap
-read, circling check, grind trade, off-piano queue, unmonitored mode, circle
-tally, soft-landing exit, *and* deleting the session builder. That is not one
-phase. 2a is the loop working end to end; 2b is everything that makes it kind.
-
-**Prerequisite met (updated 4 Aug 2026):** the mastery update function is
-specified in [`specs/intrada-coach-engine.md`](../specs/intrada-coach-engine.md)
-§2 (#1155). Its inputs are settled by decision 17 **as amended**: tap-verdicts
-against countable criteria feed the Beta update, source-tagged so machine
-scoring arrives later as a higher-weight evidence class. Self-report *judgement*
-(feel, opaque targets) stays in the separate judgement track — may retire a
-target, may never satisfy a prerequisite. The divergence log (and with it the
-judgement-track weighting question) defers until machine listening returns.
+> (#1087, #1101, #1107) are eligible again but stay parked until that
+> conversation happens.
 
 ---
 
@@ -126,12 +67,9 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ### Current focus (2026-08)
 
-The practice-coach pivot (see the banner at the top). The lesson-to-mastery
-loop that was the previous focus (epic #1087; workstreams B and C largely
-landed, A reverted) is parked under `superseded-by-pivot`. Phase 1 closed
-early under decision 18. Active work: Phase 2b, steer and guard, on top of 2a's
-loop, with the Phase 0 fortnight (#1143) alongside. See
-[`status.md`](status.md) and the
+The coach pivot is reversed (see the banner at the top); the restored
+session-builder product is current. The immediate work is the revert's
+follow-ups and the product rethink. See [`status.md`](status.md) and the
 [project board](https://github.com/users/jonyardley/projects/2)
 for what's actually in flight.
 
@@ -192,8 +130,8 @@ since the 2026-05-31 decision completed: app-first, **local-first** (on-device
 SQLite is the source of truth; Axum + Turso is a future sync target, not the live
 read path). The Tauri 2 + Leptos WKWebView host and the Leptos web app were
 deleted in #1133; two pieces of Swift worth reusing were mined into
-`ios/Reference/` first — the background-audio session handling (**a Phase 1
-input** for the click track) and a Live Activity implementation.
+`ios/Reference/` first — the background-audio session handling and a Live
+Activity implementation.
 
 See [`specs/native-ios.md`](../specs/native-ios.md) for the shell spec. Work
 tracks under [`ios`](https://github.com/jonyardley/intrada/labels/ios).
@@ -236,9 +174,9 @@ multiple items share the same horizon.
 These are unresolved product questions. Each one likely produces issues
 (or a Tier-3 spec) once answered.
 
-1. **Metronome (resolved 2026-08).** The click shipped natively as part of
-   Phase 1 (decision 18: click-always governs the drill loop), retiring the
-   WASM-timing concern along with the web shell.
+1. **Metronome (re-opened 2026-08).** A native click shipped with the coach
+   and was removed with it (#1344, recoverable from history). If the builder
+   product wants a metronome, that code is the starting point.
 
 2. **Offline-first architecture (resolved 2026-07).** The native app is
    offline-first by design — on-device SQLite is the source of truth, with

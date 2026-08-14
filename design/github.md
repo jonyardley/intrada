@@ -1,6 +1,6 @@
 repo: jonyardley/intrada
 branch: main
-path: design/, specs/intrada-practice-coach-design.md
+path: design/
 
 ## Last sync
 date: 2026-08-04T07:00:03Z
@@ -14,5 +14,4 @@ date: 2026-08-04T07:00:03Z
 ## Screen map
 | Project screen | Repo source |
 |---|---|
-| Drill Loop.dc.html — A2/A3 | design/briefs/2026-08-coach-drill-loop.md, specs/intrada-practice-coach-design.md (v7, decisions 18–19) |
 | Intrada Design System.dc.html | design/intrada-design-system.dc.html, ios/Intrada/DesignSystem/Theme.swift |

@@ -24,12 +24,13 @@
 
 ## Project Overview
 
-intrada is a **practice coach** for musicians: the app decides what you
-practise, gates every block on evidence (tap-verdicts against countable
-criteria), and tells you when you're done. Around the coaching loop sit a music
-library, timed sessions, and analytics, organised as three pillars — **Plan**
-(library, what to practise), **Practice** (the drill loop), **Track**
-(analytics, insights).
+intrada is a **practice notebook** for musicians: build a session from the
+music library, group and reorder what you'll practise, play it through with a
+timer and rep counting, and score how it went. Organised as three pillars —
+**Plan** (library, what to practise), **Practice** (the built session),
+**Track** (analytics, insights). (The 2026-07 practice-coach direction was
+built through Phase 2b and reversed on 2026-08-13, #1344 — see
+`docs/roadmap.md`'s banner.)
 
 Direction and phases: `docs/roadmap.md`. What's in flight now: `docs/status.md`.
 
@@ -42,7 +43,6 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Swift kept from the removed Tauri shell (not built)
-content/                 # Practice-coach authored content — gates.toml (#1194)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Roadmap, status, and the operational reference
 specs/                   # Spec docs for major features (Tier 3 only)
@@ -159,8 +159,10 @@ data in shell-local state. UI-only state stays in SwiftUI.
     client-generated ulid; `*Created { temp_id, entity }` replaces it.
   - **Client-owned ulid** (`Session`) — client ulid is canonical, POST is
     fire-and-forget, the model keeps the optimistic write.
-  - **Save-counter + refetch** (`Set`) — optimistic push, bump
-    `set_saves_committed`, full refetch. Tech debt; don't copy it.
+  - **`Set`** — shell-dead since the coach-pivot builder deletion (#1344): no
+    Swift caller sends a `SetEvent`, and `domain/set.rs` fires HTTP
+    unconditionally with no `local_first` branch. Don't wire a new caller to
+    it without fixing that first (#1348).
 
   Updates use `*Updated { entity }`; deletes use `DeleteConfirmed` (the model is
   already mutated optimistically). Detail: [`docs/reference.md`](docs/reference.md).
@@ -255,7 +257,7 @@ the only UI quality gate, so keep the suite but keep it lean:
   enforces a per-file size ceiling and fails on un-optimized references.
 - **Over the ceiling? Read `scripts/check-snapshots.sh` before reacting.** It
   carries an allowlist for references that stay large as lossless PNG — the
-  smooth gradients (practice hero, player radial) and dense-control screens.
+  smooth gradients (practice hero, focus-player radial) and dense-control screens.
   **Cropping does not help those**: flat paper costs almost nothing and the
   gradient is the whole bill. Add to the allowlist with the reason, and keep the
   list tight.
@@ -287,7 +289,7 @@ one of these and the app silently stops being offline.
 6. **Existing dual-mode handlers stay intact; new code is local-first only.**
    Legacy domain handlers still branch on `local_first` — when touching one, keep
    both branches passing, since core tests still exercise the online path. New
-   engine/domain code targets local-first only: **the build-and-test-both-modes
+   domain code targets local-first only: **the build-and-test-both-modes
    requirement is retired for new work** (see
    [`docs/rebuild-review.md`](docs/rebuild-review.md) §3).
 7. **No account gate on core functionality.** Only sync (the paid tier) may
@@ -356,7 +358,7 @@ any UI/UX design decision** — new surface, layout, flow, or interaction. It is
 the source of truth for how the app should feel: the "spend friction
 deliberately" model, one-primary-action-per-screen, content-over-chrome,
 progressive disclosure, reversible-by-default. It carries a dated decisions log
-(T1–T6); when a new decision is made, append to that log rather than deciding
+(T-numbered); when a new decision is made, append to that log rather than deciding
 silently.
 
 ### Hierarchy: Tokens → Modifiers → Components → Screens
@@ -369,13 +371,7 @@ silently.
 3. **Known primitives to reach for**: `TagChip`, `TypeBadge`, `ScoreRing`,
    `BottomSheet`, `SegmentedPills`, `CardSurface`/`CardShadow`, `GlobalBanner`,
    `FormErrorBanner`, `PlaceholderContent`, `ScreenScaffold`, `SectionHeader`,
-   `HairlineDivider`, `SegmentedProgress`. **Coach primitives**
-   (`ios/Intrada/DesignSystem/Coach/`, canonical in the design system under
-   *Components · Coach primitives*): `GateDots`, `RepVerdict`, `TapVerdict`,
-   `OrientationStrip`, `BeatPosition`, `StuckTarget`, `CoachNote` — they size off
-   `CoachScale` from the environment, not per-call sizes, so the whole drill loop
-   grows together. Deferred coach surfaces are assembled from these; reach for
-   them before drawing a new one.
+   `HairlineDivider`, `SegmentedProgress`.
 4. **Every top-level screen** is built from `ScreenScaffold`
    (`ios/Intrada/DesignSystem/ScreenScaffold.swift`) so navigation chrome, safe
    areas, and background stay consistent.
@@ -405,8 +401,7 @@ visual drift in this codebase. Before writing UI code:
   shared component (as `SegmentedPills` and `LibraryItemCard` already do). Don't
   ship a parallel one-off.
 - **Typography**: use `IntradaFont` tokens (`.pageTitle`, `.cardTitle`,
-  `.sectionTitle`, `.fieldLabel`, and for the coach loop `.drillTitle` /
-  `.verdict` / `.ambient`), never a raw `.font(.system(...))`.
+  `.sectionTitle`, `.fieldLabel`), never a raw `.font(.system(...))`.
 - **Spacing**: use `IntradaSpacing` tokens (`controlGap`, `cardCompact`, `row`,
   `card`), never a literal `.padding(16)`.
 
@@ -528,17 +523,18 @@ assertions about something else while keeping the name.
 invented.** Hand-picked inputs are picked to match the implementation you just
 wrote, so they agree with it by construction. Write the table as a list of
 inputs a *user* would actually produce, and assert the property the next stage
-needs — `every_parse_is_a_drill_validation_will_accept` is the shape.
+needs — `every_parse_is_a_<thing>_validation_will_accept` is the shape (the
+original instance shipped with the retired coach; the rule outlives it).
 
-Why (2026-08-07, #1256): the criterion parser shipped with fourteen green unit
-tests and still read "three clean passes **in a row**" as the key of A, which at
-two keys silently doubled the gate. Every one of those tests used a sentence
-written to match the scanner.
+Why (2026-08-07, #1256): the coach-era criterion parser shipped with fourteen
+green unit tests and still read "three clean passes **in a row**" as the key of
+A, which at two keys silently doubled the gate. Every one of those tests used a
+sentence written to match the scanner.
 
-**Test fixtures for a type with many fields live in one place.** Rust:
-`BlockSpec::fixture()` / `BlockRecord::fixture()`, composed with struct update
-(`BlockRecord { exit: Exit::Skipped, ..fixture() }`). Swift: `CoachFixture`,
-whose default arguments do the same job for the generated types. Adding a field
+**Test fixtures for a type with many fields live in one place.** Rust: a
+`fixture()` constructor composed with struct update
+(`Record { exit: Exit::Skipped, ..fixture() }`). Swift: a fixture enum whose
+default arguments do the same job for the generated types. Adding a field
 should cost one edit, not one per call site found a build at a time.
 
 When skipping tests, say so explicitly in the PR description with the reason.
@@ -564,20 +560,16 @@ the diagnosis and the fix: [`docs/reference.md`](docs/reference.md).
   crash (#846).
 - **Stub-bridge tests can't catch a wire break.** Cover bridge-crossing types
   with a *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`).
-- **Adding a field inside `EngineSession` invalidates every crash-recovery blob
-  on every device.** The blob is positional bincode in UserDefaults, written by
-  one build and read by the next, so a new field anywhere in its transitive
-  graph (`Plan` → `PlannedBlock` → `BlockSpec`, `BlockState`, `BlockRecord`,
-  `WanderRecord`, `EngineConfig`) makes an old blob decode into a valid-looking
-  wrong session. `#[serde(default)]` does nothing here — serde never reaches the
-  default on a non-self-describing wire. Missed three times (#1223, #1244,
-  #1256); now gated by
-  `the_crash_recovery_wire_is_pinned_to_the_shell_key_that_reads_it`, whose
-  failure prints the exact fix. **The pin is per `SessionState` variant**, since
-  bincode writes only the live one: pinning `Running` alone went green on a
-  change to `OffPiste` and `Unmonitored` (#1291). A new state must be given a
-  `SNAPSHOT_WIRE` row or declared not worth recovering; the test's `pin_name`
-  match will not compile until it is.
+- **Adding a field inside the crash-recovery snapshot invalidates every blob on
+  every device.** `AppEffect::SaveSessionInProgress(ActiveSession)` is
+  positional bincode in UserDefaults, written by one build and read by the
+  next, so a new field anywhere in `ActiveSession`'s transitive graph makes an
+  old blob decode into a valid-looking wrong session. `#[serde(default)]` does
+  nothing here — serde never reaches the default on a non-self-describing wire.
+  The coach era missed this three times (#1223, #1244, #1256) and answered it
+  with a per-variant wire-pin test; porting that technique to the
+  `ActiveSession` blob is a tracked follow-up of #1344. Until it lands, any
+  change to the blob's graph must bump the UserDefaults key.
 - **`option_env!` needs `cargo:rerun-if-env-changed`.** Without it cargo caches
   the macro expansion and your "I changed the env var" rebuild silently uses
   stale values. Hit on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
@@ -744,7 +736,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 - **Exactly one core+iOS vertical stream at a time.** 31% of core commits also
   touch `ios/`; two concurrent vertical features will collide.
 - A **second stream** may run only in the decoupled set: `crates/intrada-api`,
-  `docs/`, `specs/`, `design/`, `content/`, or CI/tooling (`justfile`,
+  `docs/`, `specs/`, `design/`, or CI/tooling (`justfile`,
   `.github/workflows/`). An API task that needs a new domain field is a core
   change: it joins the vertical stream.
 - **Serialisation points.** If your task and another live branch both touch one
@@ -796,6 +788,8 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
 
 ## Known Tech Debt
 
-- `Set` creates still bump `set_saves_committed` + refetch instead of the temp-id
-  mutate-response pattern. The counter drives the save-form's
-  optimistic→confirmed flip; reworking it needs to keep that affordance.
+- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1:
+  no Swift screen sends a `SetEvent`, and its HTTP creates fire unconditionally
+  with no `local_first` branch or persistence op. Tracked in #1348 — decide
+  whether it's deleted (nothing unread stays in the tree) or converted to
+  local-first before `RoutinesScreen` gets wired to it.

@@ -35,8 +35,8 @@ extension View {
     modifier(PopModifier(trigger: value))
   }
 
-  /// The same `pop`, fired once on insertion — the coach loop swaps whole phase
-  /// arms, so its verdict glyph is a *new* view and `onChange` never fires.
+  /// The same `pop`, fired once on insertion — for views that are *new* when
+  /// they appear (a swapped subtree), where `onChange` never fires.
   func popOnAppear(_ active: Bool = true, delay: Double = 0) -> some View {
     modifier(PopOnAppearModifier(active: active, delay: delay))
   }
