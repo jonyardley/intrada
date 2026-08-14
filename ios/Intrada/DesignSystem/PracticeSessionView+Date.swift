@@ -29,6 +29,14 @@ enum PracticeWeek {
     Swift.Set(sessions.compactMap { $0.startedDate.map(calendar.startOfDay(for:)) })
   }
 
+  /// How many of `week`'s days carry practice. The header count next to the
+  /// strip, scoped to the visible week rather than the all-time set (#1357).
+  static func practisedCount(inWeek week: [Date], practiceDays: Swift.Set<Date>, calendar: Calendar)
+    -> Int
+  {
+    week.filter { practiceDays.contains(calendar.startOfDay(for: $0)) }.count
+  }
+
   /// Sorted newest-first.
   static func sessions(on day: Date, from sessions: [PracticeSessionView], calendar: Calendar)
     -> [PracticeSessionView]

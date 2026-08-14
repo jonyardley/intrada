@@ -408,6 +408,19 @@ final class StoreEffectLoopTests: XCTestCase {
       "current step is the first not-yet-solid step")
   }
 
+  /// Real-bridge wire pin for `SetUtcOffset` (#1330): the Swift serializer and
+  /// the Rust deserializer must agree on the new Event variant. Semantics are
+  /// pinned by core tests; a wire break here surfaces as a throw or an error
+  /// in the next view read.
+  func testRealBridgeSetUtcOffsetCrossesTheWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    _ = try bridge.update(.setUtcOffset(minutes: -300))
+
+    XCTAssertNil(try bridge.view().error, "offset report should be a silent success")
+  }
+
   /// Real-bridge rung tag (#846, #1083): `SetEntryVariant` carries an optional
   /// String across the bincode wire (the absent-vs-present hazard). Drive it
   /// through the live bridge and assert it decodes without error.

@@ -47,6 +47,12 @@ pub enum Event {
         /// iOS passes true (Library local-first); web passes false (online).
         local_first: bool,
     },
+    /// Shell reports the device's UTC offset (minutes east of UTC) at launch
+    /// and on foreground, so analytics turn days over at the user's midnight,
+    /// not UTC's (#1330).
+    SetUtcOffset {
+        minutes: i32,
+    },
     /// Demo dataset, opt-in only (e.g. iOS `--seed-sample-data`) — never in production.
     LoadSampleData,
     /// Fetch all data from the API (items, sessions, sets).
@@ -192,6 +198,10 @@ impl Intrada {
                         http::fetch_sets(&model.api_base_url),
                     ])
                 }
+            }
+            Event::SetUtcOffset { minutes } => {
+                model.utc_offset_minutes = minutes;
+                crux_core::render::render()
             }
             Event::LoadSampleData => {
                 model.items = sample_items();
@@ -685,12 +695,16 @@ impl Intrada {
         };
 
         // Uses Utc::now(), making view() impure — pragmatic tradeoff since the
-        // date changes once/day; computation fns take `today` for testability.
+        // date changes once/day; computation fns take a `LocalClock` for
+        // testability.
         let analytics = if model.sessions.is_empty() {
             None
         } else {
-            let today = chrono::Utc::now().date_naive();
-            Some(compute_analytics(&model.sessions, &model.items, today))
+            let clock = crate::analytics::LocalClock::from_now(
+                chrono::Utc::now(),
+                model.utc_offset_minutes,
+            );
+            Some(compute_analytics(&model.sessions, &model.items, clock))
         };
 
         let sets = model
@@ -2998,6 +3012,22 @@ mod tests {
         );
 
         assert_eq!(model.api_base_url, "https://api.example.com");
+    }
+
+    #[test]
+    fn set_utc_offset_updates_model() {
+        let app = Intrada;
+        let mut model = Model::default();
+        assert_eq!(model.utc_offset_minutes, 0);
+
+        let _cmd = app.update(Event::SetUtcOffset { minutes: 60 }, &mut model);
+
+        assert_eq!(model.utc_offset_minutes, 60);
+    }
+
+    #[test]
+    fn set_utc_offset_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::SetUtcOffset { minutes: -300 });
     }
 
     // --- Data loaded callbacks ---

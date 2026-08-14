@@ -100,6 +100,19 @@ final class PracticeWeekTests: XCTestCase {
     XCTAssertEqual(calendar.component(.day, from: selected), 30)
   }
 
+  func testPractisedCountIsScopedToTheGivenWeek() {
+    // Sessions land Sat 30 + Thu 28 May; the week of 10 June has none. The
+    // header count must follow the visible week, not the all-time set (#1357).
+    let practice = PracticeWeek.practiceDays(
+      from: [.previewCompleted, .previewEndedEarly], calendar: calendar)
+    let mayWeek = PracticeWeek.days(containing: date(2026, 5, 28), calendar: calendar)
+    let juneWeek = PracticeWeek.days(containing: date(2026, 6, 10), calendar: calendar)
+    XCTAssertEqual(
+      PracticeWeek.practisedCount(inWeek: mayWeek, practiceDays: practice, calendar: calendar), 2)
+    XCTAssertEqual(
+      PracticeWeek.practisedCount(inWeek: juneWeek, practiceDays: practice, calendar: calendar), 0)
+  }
+
   func testSelectPastWeekWithNoPracticeFallsBackToLastDay() {
     let week = PracticeWeek.days(containing: date(2026, 5, 28), calendar: calendar)
     let selected = PracticeWeek.selectedDay(

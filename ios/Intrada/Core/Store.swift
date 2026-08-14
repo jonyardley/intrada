@@ -112,6 +112,12 @@ final class Store {
     recoverableSession = nil
   }
 
+  /// Tell the core which way the device's clock is offset from UTC so
+  /// analytics turn the day over at the user's midnight (#1330).
+  func reportUtcOffset(_ timeZone: TimeZone = .current) {
+    send(.setUtcOffset(minutes: Int32(timeZone.secondsFromGMT() / 60)))
+  }
+
   func restorePersistedSort() {
     guard let data = sortDefaults.data(forKey: Self.sortDefaultsKey),
       let sort = guarded({ try LibrarySort.bincodeDeserialize(input: [UInt8](data)) })

@@ -1,10 +1,10 @@
-//! Analytics computations. All functions are pure and take `today: NaiveDate`
+//! Analytics computations. All functions are pure and take a `LocalClock`
 //! (rather than reading the clock) so they're deterministic under test.
 
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
-use chrono::{Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::item::{Item, ItemKind};
@@ -112,28 +112,58 @@ pub struct ScorePoint {
     pub score: u8,
 }
 
+// ── Local Clock ──────────────────────────────────────────────────────
+
+/// The user's calendar context: which day is "today" and the UTC offset that
+/// turns a stored UTC instant into the day the user experienced it. Without
+/// the offset, days turn over at midnight UTC, so a 00:30 BST session counted
+/// toward the previous day's streak (#1330).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LocalClock {
+    pub today: NaiveDate,
+    pub utc_offset_minutes: i32,
+}
+
+impl LocalClock {
+    pub fn from_now(now: DateTime<Utc>, utc_offset_minutes: i32) -> Self {
+        let clock = LocalClock {
+            today: now.date_naive(),
+            utc_offset_minutes,
+        };
+        LocalClock {
+            today: clock.day_of(now),
+            ..clock
+        }
+    }
+
+    /// The user-local calendar day of a UTC instant.
+    pub fn day_of(&self, instant: DateTime<Utc>) -> NaiveDate {
+        (instant + chrono::Duration::minutes(self.utc_offset_minutes as i64)).date_naive()
+    }
+}
+
 // ── Computation Functions ────────────────────────────────────────────
 
 pub fn compute_analytics(
     sessions: &[PracticeSession],
     items: &[Item],
-    today: NaiveDate,
+    clock: LocalClock,
 ) -> AnalyticsView {
     AnalyticsView {
-        weekly_summary: compute_weekly_summary(sessions, today),
-        streak: compute_streak(sessions, today),
-        daily_totals: compute_daily_totals(sessions, today),
+        weekly_summary: compute_weekly_summary(sessions, clock),
+        streak: compute_streak(sessions, clock),
+        daily_totals: compute_daily_totals(sessions, clock),
         top_items: compute_top_items(sessions),
-        score_trends: compute_score_trends(sessions),
-        neglected_items: compute_neglected_items(sessions, items, today),
-        score_changes: compute_score_changes(sessions, today),
+        score_trends: compute_score_trends(sessions, clock),
+        neglected_items: compute_neglected_items(sessions, items, clock),
+        score_changes: compute_score_changes(sessions, clock),
     }
 }
 
 /// Uses ISO week numbering (Monday = start of week).
-pub fn compute_weekly_summary(sessions: &[PracticeSession], today: NaiveDate) -> WeeklySummary {
-    let today_iso_week = today.iso_week();
-    let prev_week_date = today - chrono::Duration::days(7);
+pub fn compute_weekly_summary(sessions: &[PracticeSession], clock: LocalClock) -> WeeklySummary {
+    let today_iso_week = clock.today.iso_week();
+    let prev_week_date = clock.today - chrono::Duration::days(7);
     let prev_iso_week = prev_week_date.iso_week();
 
     let mut total_secs: u64 = 0;
@@ -145,7 +175,7 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], today: NaiveDate) ->
     let mut prev_item_ids: HashSet<String> = HashSet::new();
 
     for session in sessions {
-        let session_date = session.started_at.date_naive();
+        let session_date = clock.day_of(session.started_at);
         let session_week = session_date.iso_week();
 
         if session_week == today_iso_week {
@@ -195,17 +225,19 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], today: NaiveDate) ->
 
 /// Counts backwards from `today` (or yesterday if today has no session) as long
 /// as each day has at least one session.
-pub fn compute_streak(sessions: &[PracticeSession], today: NaiveDate) -> PracticeStreak {
+pub fn compute_streak(sessions: &[PracticeSession], clock: LocalClock) -> PracticeStreak {
     if sessions.is_empty() {
         return PracticeStreak { current_days: 0 };
     }
 
-    let session_dates: HashSet<NaiveDate> =
-        sessions.iter().map(|s| s.started_at.date_naive()).collect();
+    let session_dates: HashSet<NaiveDate> = sessions
+        .iter()
+        .map(|s| clock.day_of(s.started_at))
+        .collect();
 
-    let mut current = today;
+    let mut current = clock.today;
     if !session_dates.contains(&current) {
-        current = today - chrono::Duration::days(1);
+        current = clock.today - chrono::Duration::days(1);
     }
 
     let mut streak: u32 = 0;
@@ -222,18 +254,18 @@ pub fn compute_streak(sessions: &[PracticeSession], today: NaiveDate) -> Practic
 /// Returns exactly 28 entries, oldest first (today − 27 days through today).
 pub fn compute_daily_totals(
     sessions: &[PracticeSession],
-    today: NaiveDate,
+    clock: LocalClock,
 ) -> Vec<DailyPracticeTotal> {
     let mut secs_by_date: HashMap<NaiveDate, u64> = HashMap::new();
     for session in sessions {
-        let date = session.started_at.date_naive();
+        let date = clock.day_of(session.started_at);
         *secs_by_date.entry(date).or_default() += session.total_duration_secs;
     }
 
     (0..28)
         .rev()
         .map(|days_ago| {
-            let date = today - chrono::Duration::days(days_ago);
+            let date = clock.today - chrono::Duration::days(days_ago);
             let minutes = (secs_by_date.get(&date).copied().unwrap_or(0) / 60) as u32;
             DailyPracticeTotal {
                 date: date.format("%Y-%m-%d").to_string(),
@@ -281,11 +313,14 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
 }
 
 /// The 5 most recently scored items, each with a chronological score series.
-pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend> {
+pub fn compute_score_trends(
+    sessions: &[PracticeSession],
+    clock: LocalClock,
+) -> Vec<ItemScoreTrend> {
     let mut scored: HashMap<String, (String, Vec<(NaiveDate, u8)>)> = HashMap::new();
 
     for session in sessions {
-        let session_date = session.started_at.date_naive();
+        let session_date = clock.day_of(session.started_at);
         for entry in &session.entries {
             if let Some(score) = entry.score {
                 let record = scored
@@ -339,19 +374,19 @@ pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend>
 pub fn compute_neglected_items(
     sessions: &[PracticeSession],
     items: &[Item],
-    today: NaiveDate,
+    clock: LocalClock,
 ) -> Vec<NeglectedItem> {
     if items.is_empty() {
         return Vec::new();
     }
 
-    let lookback_start = today - chrono::Duration::days(13); // 14 days inclusive
+    let lookback_start = clock.today - chrono::Duration::days(13); // 14 days inclusive
 
     let mut recently_practised: HashSet<String> = HashSet::new();
     let mut latest_dates: HashMap<String, NaiveDate> = HashMap::new();
 
     for session in sessions {
-        let session_date = session.started_at.date_naive();
+        let session_date = clock.day_of(session.started_at);
         for entry in &session.entries {
             latest_dates
                 .entry(entry.item_id.clone())
@@ -362,7 +397,7 @@ pub fn compute_neglected_items(
                 })
                 .or_insert(session_date);
 
-            if session_date >= lookback_start && session_date <= today {
+            if session_date >= lookback_start && session_date <= clock.today {
                 recently_practised.insert(entry.item_id.clone());
             }
         }
@@ -377,7 +412,7 @@ pub fn compute_neglected_items(
 
         let days_since_practice = latest_dates
             .get(&item.id)
-            .map(|d| (today - *d).num_days().max(0) as u32);
+            .map(|d| (clock.today - *d).num_days().max(0) as u32);
 
         neglected.push(NeglectedItem {
             item_id: item.id.clone(),
@@ -401,14 +436,14 @@ pub fn compute_neglected_items(
 
 /// This week's latest score vs the latest before it, per item. Up to 5, largest
 /// absolute delta first.
-pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> Vec<ScoreChange> {
-    let today_iso_week = today.iso_week();
+pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<ScoreChange> {
+    let today_iso_week = clock.today.iso_week();
 
     let mut this_week: HashMap<String, (u8, NaiveDate, String)> = HashMap::new();
     let mut prev: HashMap<String, (u8, NaiveDate)> = HashMap::new();
 
     for session in sessions {
-        let session_date = session.started_at.date_naive();
+        let session_date = clock.day_of(session.started_at);
         for entry in &session.entries {
             if let Some(score) = entry.score {
                 if session_date.iso_week() == today_iso_week {
@@ -475,6 +510,13 @@ mod tests {
     use crate::domain::session::{CompletionStatus, EntryStatus, PracticeSession, SetlistEntry};
     use chrono::{NaiveDate, TimeZone, Utc};
 
+    fn clock(today: NaiveDate) -> LocalClock {
+        LocalClock {
+            today,
+            utc_offset_minutes: 0,
+        }
+    }
+
     fn make_session(
         id: &str,
         date: NaiveDate,
@@ -482,6 +524,15 @@ mod tests {
         entries: Vec<SetlistEntry>,
     ) -> PracticeSession {
         let started = Utc.from_utc_datetime(&date.and_hms_opt(10, 0, 0).expect("valid time"));
+        make_session_at(id, started, total_secs, entries)
+    }
+
+    fn make_session_at(
+        id: &str,
+        started: chrono::DateTime<Utc>,
+        total_secs: u64,
+        entries: Vec<SetlistEntry>,
+    ) -> PracticeSession {
         let finished = started + chrono::Duration::seconds(total_secs as i64);
         PracticeSession {
             id: id.to_string(),
@@ -542,7 +593,7 @@ mod tests {
             make_session("s3", today, 600, vec![]), // 10 min
         ];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.total_minutes, 85); // 30 + 45 + 10
         assert_eq!(summary.session_count, 3);
     }
@@ -557,7 +608,7 @@ mod tests {
             make_session("s2", today, 1200, vec![]),     // 20 min (this week)
         ];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.total_minutes, 20);
         assert_eq!(summary.session_count, 1);
     }
@@ -565,7 +616,7 @@ mod tests {
     #[test]
     fn test_weekly_summary_empty() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let summary = compute_weekly_summary(&[], today);
+        let summary = compute_weekly_summary(&[], clock(today));
         assert_eq!(summary.total_minutes, 0);
         assert_eq!(summary.session_count, 0);
     }
@@ -614,7 +665,7 @@ mod tests {
             ),
         ];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.total_minutes, 50);
         assert_eq!(summary.session_count, 2);
         assert_eq!(summary.items_covered, 2);
@@ -638,7 +689,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
         )];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.total_minutes, 30);
         assert_eq!(summary.session_count, 1);
         assert_eq!(summary.items_covered, 1);
@@ -661,7 +712,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 3600, None)],
         )];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.total_minutes, 0);
         assert_eq!(summary.session_count, 0);
         assert_eq!(summary.items_covered, 0);
@@ -698,7 +749,7 @@ mod tests {
             ),
         ];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.items_covered, 2); // p1 + p2, not 4
     }
 
@@ -737,7 +788,7 @@ mod tests {
             ),
         ];
 
-        let summary = compute_weekly_summary(&sessions, today);
+        let summary = compute_weekly_summary(&sessions, clock(today));
         assert_eq!(summary.time_direction, Direction::Up); // 60 > 30
         assert_eq!(summary.sessions_direction, Direction::Same); // 2 == 2
         assert_eq!(summary.items_direction, Direction::Down); // 1 < 2
@@ -776,7 +827,7 @@ mod tests {
         );
 
         // From Monday's perspective
-        let summary = compute_weekly_summary(&[sun_session, mon_session], monday);
+        let summary = compute_weekly_summary(&[sun_session, mon_session], clock(monday));
         assert_eq!(summary.session_count, 1); // Only Monday's session in current week
         assert_eq!(summary.prev_session_count, 1); // Sunday's session in previous week
         assert_eq!(summary.items_covered, 1); // p2 only
@@ -798,7 +849,7 @@ mod tests {
             make_session("s3", today, 1800, vec![]),
         ];
 
-        let streak = compute_streak(&sessions, today);
+        let streak = compute_streak(&sessions, clock(today));
         assert_eq!(streak.current_days, 3);
     }
 
@@ -816,7 +867,7 @@ mod tests {
             make_session("s3", today, 1800, vec![]),
         ];
 
-        let streak = compute_streak(&sessions, today);
+        let streak = compute_streak(&sessions, clock(today));
         assert_eq!(streak.current_days, 2); // Only yesterday + today
     }
 
@@ -832,14 +883,14 @@ mod tests {
             make_session("s2", yesterday, 1800, vec![]),
         ];
 
-        let streak = compute_streak(&sessions, today);
+        let streak = compute_streak(&sessions, clock(today));
         assert_eq!(streak.current_days, 2);
     }
 
     #[test]
     fn test_streak_empty() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let streak = compute_streak(&[], today);
+        let streak = compute_streak(&[], clock(today));
         assert_eq!(streak.current_days, 0);
     }
 
@@ -858,7 +909,7 @@ mod tests {
             make_session("s5", today - chrono::Duration::days(27), 900, vec![]), // 15 min (oldest in range)
         ];
 
-        let totals = compute_daily_totals(&sessions, today);
+        let totals = compute_daily_totals(&sessions, clock(today));
         assert_eq!(totals.len(), 28);
 
         assert_eq!(totals[0].date, "2026-01-22"); // 27 days ago
@@ -885,7 +936,7 @@ mod tests {
             make_session("s3", today, 600, vec![]),  // 10 min
         ];
 
-        let totals = compute_daily_totals(&sessions, today);
+        let totals = compute_daily_totals(&sessions, clock(today));
         assert_eq!(totals[27].minutes, 60); // 30 + 20 + 10
     }
 
@@ -893,7 +944,7 @@ mod tests {
     fn test_daily_totals_empty() {
         // empty sessions → 28 entries all 0
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let totals = compute_daily_totals(&[], today);
+        let totals = compute_daily_totals(&[], clock(today));
         assert_eq!(totals.len(), 28);
         assert!(totals.iter().all(|t| t.minutes == 0));
     }
@@ -1048,7 +1099,7 @@ mod tests {
             ),
         ];
 
-        let trends = compute_score_trends(&sessions);
+        let trends = compute_score_trends(&sessions, clock(today));
         assert_eq!(trends.len(), 1);
         assert_eq!(trends[0].item_id, "p1");
         assert_eq!(trends[0].latest_score, 4);
@@ -1089,7 +1140,7 @@ mod tests {
             })
             .collect();
 
-        let trends = compute_score_trends(&sessions);
+        let trends = compute_score_trends(&sessions, clock(today));
         assert_eq!(trends.len(), 5);
         // Most recent first: item0 (today), item1 (yesterday), ...
         assert_eq!(trends[0].item_id, "item0");
@@ -1111,7 +1162,7 @@ mod tests {
             ],
         )];
 
-        let trends = compute_score_trends(&sessions);
+        let trends = compute_score_trends(&sessions, clock(today));
         assert_eq!(trends.len(), 1);
         assert_eq!(trends[0].item_id, "p1");
     }
@@ -1127,7 +1178,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
         )];
 
-        let trends = compute_score_trends(&sessions);
+        let trends = compute_score_trends(&sessions, clock(today));
         assert!(trends.is_empty());
     }
 
@@ -1183,7 +1234,7 @@ mod tests {
             ),
         ];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 5); // capped at 5 out of 6
         for n in &neglected {
             assert!(!["p1", "p2", "p3", "p4"].contains(&n.item_id.as_str()));
@@ -1206,7 +1257,7 @@ mod tests {
             vec![make_entry("p1", "Old Item", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 2);
         assert_eq!(neglected[0].item_id, "p2"); // never practised first
         assert!(neglected[0].days_since_practice.is_none());
@@ -1244,7 +1295,7 @@ mod tests {
             ),
         ];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 3);
         assert_eq!(neglected[0].item_id, "p2"); // 30 days
         assert_eq!(neglected[1].item_id, "p1"); // 20 days
@@ -1267,14 +1318,14 @@ mod tests {
             ],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert!(neglected.is_empty());
     }
 
     #[test]
     fn test_neglected_items_empty_library() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let neglected = compute_neglected_items(&[], &[], today);
+        let neglected = compute_neglected_items(&[], &[], clock(today));
         assert!(neglected.is_empty());
     }
 
@@ -1292,7 +1343,7 @@ mod tests {
             vec![make_entry("p2", "Deleted", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 1);
         assert_eq!(neglected[0].item_id, "p1"); // only existing item
         assert!(neglected[0].days_since_practice.is_none()); // never practised
@@ -1311,7 +1362,7 @@ mod tests {
             vec![make_entry("p1", "Recent", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert!(neglected.is_empty());
     }
 
@@ -1328,7 +1379,7 @@ mod tests {
             vec![make_entry("p1", "Old", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, today);
+        let neglected = compute_neglected_items(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 1);
         assert_eq!(neglected[0].item_id, "p1");
         assert_eq!(neglected[0].days_since_practice, Some(14));
@@ -1357,7 +1408,7 @@ mod tests {
             ),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 1);
         assert_eq!(changes[0].item_id, "p1");
         assert_eq!(changes[0].previous_score, Some(2));
@@ -1387,7 +1438,7 @@ mod tests {
             ),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 1);
         assert_eq!(changes[0].delta, -1);
     }
@@ -1404,7 +1455,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
         )];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 1);
         assert_eq!(changes[0].previous_score, None);
         assert_eq!(changes[0].current_score, 3);
@@ -1425,7 +1476,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
         )];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert!(changes.is_empty());
     }
 
@@ -1459,7 +1510,7 @@ mod tests {
             make_session("s2", today, 4200, this_entries),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 5);
         // Should be sorted by largest absolute delta
         assert!(changes[0].delta.unsigned_abs() >= changes[1].delta.unsigned_abs());
@@ -1488,7 +1539,7 @@ mod tests {
             make_session("s2", today, 1800, this_entries),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         let ids: Vec<&str> = changes.iter().map(|c| c.item_id.as_str()).collect();
         assert_eq!(ids, vec!["alpha", "mid", "zeta"]);
     }
@@ -1521,7 +1572,7 @@ mod tests {
             ),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 1);
         assert_eq!(changes[0].current_score, 5); // latest this week
         assert_eq!(changes[0].previous_score, Some(2));
@@ -1549,7 +1600,7 @@ mod tests {
             ),
         ];
 
-        let changes = compute_score_changes(&sessions, today);
+        let changes = compute_score_changes(&sessions, clock(today));
         assert!(changes.is_empty());
     }
 
@@ -1565,7 +1616,7 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4))],
         )];
 
-        let analytics = compute_analytics(&sessions, &[], today);
+        let analytics = compute_analytics(&sessions, &[], clock(today));
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.daily_totals.len(), 28);
@@ -1595,11 +1646,164 @@ mod tests {
             reflection_next_target: None,
         }];
 
-        let analytics = compute_analytics(&sessions, &[], today);
+        let analytics = compute_analytics(&sessions, &[], clock(today));
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.weekly_summary.total_minutes, 10);
         assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.top_items.len(), 1);
         assert_eq!(analytics.score_trends.len(), 1);
+    }
+
+    // ── Local day boundary (#1330) ───────────────────────────────────
+    // A session at 00:30 BST is 23:30 UTC the previous day; the user's day,
+    // not the UTC day, must drive every date attribution.
+
+    fn bst_clock(today: NaiveDate) -> LocalClock {
+        LocalClock {
+            today,
+            utc_offset_minutes: 60,
+        }
+    }
+
+    fn utc_instant(y: i32, m: u32, d: u32, h: u32, min: u32) -> chrono::DateTime<Utc> {
+        Utc.with_ymd_and_hms(y, m, d, h, min, 0).unwrap()
+    }
+
+    #[test]
+    fn day_of_rolls_forward_across_local_midnight() {
+        let c = bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap());
+        assert_eq!(
+            c.day_of(utc_instant(2026, 8, 13, 23, 30)),
+            NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()
+        );
+    }
+
+    #[test]
+    fn day_of_negative_offset_rolls_back_a_day() {
+        let c = LocalClock {
+            today: NaiveDate::from_ymd_opt(2026, 8, 13).unwrap(),
+            utc_offset_minutes: -300,
+        };
+        assert_eq!(
+            c.day_of(utc_instant(2026, 8, 14, 1, 30)),
+            NaiveDate::from_ymd_opt(2026, 8, 13).unwrap()
+        );
+    }
+
+    #[test]
+    fn from_now_derives_local_today() {
+        let c = LocalClock::from_now(utc_instant(2026, 8, 13, 23, 30), 60);
+        assert_eq!(c.today, NaiveDate::from_ymd_opt(2026, 8, 14).unwrap());
+        assert_eq!(c.utc_offset_minutes, 60);
+    }
+
+    #[test]
+    fn daily_totals_attribute_midnight_window_session_to_local_day() {
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 13, 23, 30),
+            1200,
+            vec![],
+        )];
+        let totals = compute_daily_totals(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
+        );
+
+        let minutes_on = |date: &str| {
+            totals
+                .iter()
+                .find(|t| t.date == date)
+                .map(|t| t.minutes)
+                .expect("day in 28-day window")
+        };
+        assert_eq!(minutes_on("2026-08-14"), 20);
+        assert_eq!(minutes_on("2026-08-13"), 0);
+    }
+
+    #[test]
+    fn streak_bridges_via_midnight_window_session() {
+        let sessions = vec![
+            make_session_at("s1", utc_instant(2026, 8, 12, 23, 30), 600, vec![]),
+            make_session_at("s2", utc_instant(2026, 8, 14, 10, 0), 600, vec![]),
+        ];
+        let streak = compute_streak(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
+        );
+        // Locally the sessions fall on Aug 13 and Aug 14: a 2-day streak.
+        // UTC attribution would put the first on Aug 12 and break it at 1.
+        assert_eq!(streak.current_days, 2);
+    }
+
+    #[test]
+    fn weekly_summary_counts_sunday_midnight_window_in_new_week() {
+        // Sunday 23:30 UTC = Monday 00:30 BST: the session belongs to the
+        // new ISO week, not the one that just ended.
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 9, 23, 30),
+            1800,
+            vec![],
+        )];
+        let summary = compute_weekly_summary(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 10).unwrap()),
+        );
+        assert_eq!(summary.session_count, 1);
+        assert_eq!(summary.prev_session_count, 0);
+    }
+
+    #[test]
+    fn score_changes_use_local_week() {
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 9, 23, 30),
+            600,
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(5))],
+        )];
+        let changes = compute_score_changes(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 10).unwrap()),
+        );
+        assert_eq!(changes.len(), 1);
+        assert!(changes[0].is_new);
+    }
+
+    #[test]
+    fn neglected_lookback_uses_local_days() {
+        // Practised exactly at the 14-day lookback edge, but only when the
+        // session's UTC instant is shifted into the local day.
+        let items = vec![make_item("p1", "Sonata")];
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 7, 31, 23, 30),
+            600,
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
+        )];
+        let neglected = compute_neglected_items(
+            &sessions,
+            &items,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
+        );
+        assert!(
+            neglected.is_empty(),
+            "practised on local Aug 1, inside the window"
+        );
+    }
+
+    #[test]
+    fn score_trend_dates_use_local_day() {
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 13, 23, 30),
+            600,
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(6))],
+        )];
+        let trends = compute_score_trends(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
+        );
+        assert_eq!(trends[0].scores[0].date, "2026-08-14");
     }
 }
