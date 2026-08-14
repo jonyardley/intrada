@@ -69,33 +69,59 @@ The five notes were commissioned as equals. They did not come back as equals:
   wiring (#1107) becomes a natural follow-on once real use says the generated
   material is good.
 
-## Recommendation
+## Recommended order — quick wins first, big bets last
 
-**Lesson-to-mastery, B-first, as the Stage 4.3 direction.** It is the smallest
-honest start, the shape that survives in this codebase, the fastest to real
-use, and the prerequisite for both other genuine directions rather than a bet
-against them. Sequence: B1/B2 (per-piece tracking), then R (Up next, held to
-suggest-never-gate), with Space slice 1 as R's first new reason signal and
-goals revisited only if lived use of star + goals-shaped ambitions says the
-flat list is insufficient. Metronome continues on its audit Phase 4 track;
-chart-to-scaffold gets validated through the same lessons and its books trued
-up now.
+*(Reshaped 2026-08-14 on Jon's direction: one sequence across the candidates,
+smallest first, each later step gated on use of the one before. The direction
+underneath is lesson-to-mastery B-first; the early steps pull the cheap,
+already-paid-for wins forward.)*
+
+Do now (days, not weeks):
+
+1. **Chart-to-scaffold bookkeeping** — close #1106 as shipped (#1110),
+   re-scope #1107 to the twelve-key ladder residue (#1083 dependency met).
+   Minutes.
+2. **Use the shipped scaffold flow** on the week's lesson tune — chart entry,
+   commit, practise through the builder; file friction as issues. No code;
+   this is the validation slice its note asks for.
+3. **Metronome slice 1: the click** — resurrect `ClickEngine` (recoverable
+   from `8af4891^`) into the Focus Player. iOS-only, zero schema, Tier 2;
+   pulled forward from audit Phase 4 because the engine already exists. 1–2
+   days.
+4. **Tempo capture prefill** — reflection stepper pre-fills from the click and
+   shows without a declared target. Small core touch. About a day.
+5. **B1 + B2: per-piece tracking** — the (exercise × piece) derivation (core,
+   read-only, bridge tests) then the "By piece" UI. 3–5 days total; the first
+   step needing the Tier-3 spec discipline.
+
+Then, each building on the last:
+
+6. **R: Up next card** — one dismissible suggested session, reasons in plain
+   words, held to suggest-never-gate. Needs B's grain. 2–3 days.
+7. **Tempo trend surface** — render the computed `tempo_history`; blocked on
+   roadmap Q3 (score vs score-at-tempo) being answered first.
+8. **Space slice 1** — the graded "getting cold" signal, landing as Up next
+   reason strings rather than a surface of its own. 1–2 days once R exists.
+
+Big bets, last, each a fresh decision gated on lived use:
+
+9. **Space slices 2–3** — the cold shelf in the builder, then persisted
+   scheduling state (the real Tier 3 of the Space layer).
+10. **A revisited and goals** — the twice-deleted capture-shaped features;
+    revisited only if use says the flat star list and a fast add path are
+    insufficient.
 
 ## Decisions
 
-**1. The Stage 4.3 direction** — which candidate gets the Tier-3 spec and the
-first slice.
+**1. Adopt the order above** — it takes lesson-to-mastery as the Stage 4.3
+direction, pulls the metronome click forward from audit Phase 4, and defers
+the capture-shaped builds to the end.
 
-&nbsp;&nbsp;a. Lesson-to-mastery, B→R, spacing and goals sequenced behind it
-(recommended)
-&nbsp;&nbsp;b. Space layer, slice 1 first
-&nbsp;&nbsp;c. Goals rebuilt small
-&nbsp;&nbsp;d. Chart-to-scaffold: ladder wiring (#1107) as the next vertical
-&nbsp;&nbsp;e. Metronome, pulled forward from audit Phase 4
+&nbsp;&nbsp;a. Adopt as sequenced (recommended)
+&nbsp;&nbsp;b. Adopt but keep the metronome on its audit Phase 4 slot
+&nbsp;&nbsp;c. Different direction underneath (Space / goals / ladder first)
 
-**2. Chart-to-scaffold bookkeeping** — decision-independent; default is to do
-it now: close #1106 as shipped (#1110), re-scope #1107 to the twelve-key
-ladder residue, noting the dependency (#1083) is met.
+**2. Chart-to-scaffold bookkeeping** — step 1 above, decision-independent.
 
 &nbsp;&nbsp;a. Do it now (recommended)
 &nbsp;&nbsp;b. Hold until the direction pick

@@ -34,11 +34,11 @@ audit backlog and its five-phase build order.
 ## Recently landed
 
 - Stage 4.2 of Phase R: [`research/comparison.md`](research/comparison.md),
-  the one-page comparison of the five candidates. Recommended lean:
-  lesson-to-mastery, B-first, with the Space layer and goals sequenced behind
-  the Up next consumer; metronome stays on its audit Phase 4 track;
-  chart-to-scaffold bookkeeping (#1106 close, #1107 re-scope) is
-  decision-independent. Awaiting Jon's pick; Stage 4.3 (Tier-3 spec) follows.
+  the one-page comparison of the five candidates, reshaped on Jon's direction
+  into one ordered sequence, quick wins first: scaffold bookkeeping and
+  real use, the metronome click pulled forward, then lesson-to-mastery B→R,
+  then the Space layer, with capture-shaped builds (A, goals) last and gated
+  on use. Awaiting Jon's confirm; Stage 4.3 (Tier-3 spec) follows.
 - Stage 4.1 of Phase R: five research notes under
   [`docs/research/`](research/) — goals-rebuilt-small, the Space layer,
   lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome
