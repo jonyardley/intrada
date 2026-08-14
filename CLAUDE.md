@@ -798,3 +798,9 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
   with no `local_first` branch or persistence op. Tracked in #1348 — decide
   whether it's deleted (nothing unread stays in the tree) or converted to
   local-first before `RoutinesScreen` gets wired to it.
+- Session reflection (`reflection_improved`/`reflection_still_rough`/
+  `reflection_next_target`, `ReflectionField`, `SessionEvent::UpdateSessionReflection`)
+  is shell-dead the same way: #1368 removed the Improved/Still rough/Next
+  target UI from `SessionSummaryScreen`, but the core fields, event and GRDB
+  `session` table columns are a domain-sensitivity-override change (FFI
+  bridge + DB schema), so they stayed. Tracked in #1374.

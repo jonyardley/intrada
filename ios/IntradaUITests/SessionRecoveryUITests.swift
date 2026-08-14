@@ -18,10 +18,8 @@ final class SessionRecoveryUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Practice"].tap()
-    // The builder opens from the Practice footer link, which can sit below the fold.
-    let build = app.buttons["Build a custom session"]
-    XCTAssertTrue(build.waitForExistence(timeout: 10), "Build a custom session link")
-    for _ in 0..<3 where !build.isHittable { app.swipeUp() }
+    let build = app.buttons["Start practising"]
+    XCTAssertTrue(build.waitForExistence(timeout: 10), "Start practising hero button")
     build.tap()
 
     let addRow = app.buttons["Add piece or exercise"]

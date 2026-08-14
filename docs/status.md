@@ -21,8 +21,7 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Audit Phase 1, fix and trim: #1368 (Session Complete removals) and #1358
-  (custom-session entry point removal) — second PR of the same stream.
+- Nothing. Next slice is audit Phase 1 (fix and trim) — #1357, #1356 remain.
 
 ## Recently landed
 
@@ -32,11 +31,18 @@ audit backlog and its five-phase build order.
   ([`audit-2026-08.md`](audit-2026-08.md)); findings filed as #1354–#1371.
 - Audit Phase 1: #1354 (Library scroll-triggered fade removed) and #1365
   (live-view tempo font bumped within the `IntradaFont` scale).
+- Audit Phase 1: #1368 (Session Complete celebration animation and the
+  Improved/Rough/Next-target reflect trio removed — the core `SummaryView`
+  reflection fields and `UpdateSessionReflection` event stay, now shell-dead
+  like `Set`/#1348, tracked as its own follow-up) and #1358 (Practice's
+  "Build a custom session" footer entry point removed — the hero's one-tap
+  start already reaches the same builder via the same `StartBuilding` event,
+  so this was a duplicate entry point, not a distinct capability).
 
 ## Next
 
-- Audit Phase 1, fix and trim: #1357 (Today bug) still open, then #1356.
-  Then Phase 2 starts with the tone-of-voice doc (#1359).
+- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356. Then Phase 2
+  starts with the tone-of-voice doc (#1359).
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode

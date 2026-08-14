@@ -17,12 +17,11 @@ final class SessionBuilderUITests: XCTestCase {
     return app
   }
 
-  // The builder opens from the Practice footer link, which can sit below the fold.
+  // The builder opens from the Practice hero's one-tap start button.
   @discardableResult
   private func openBuilder(_ app: XCUIApplication) -> XCUIElement {
-    let build = app.buttons["Build a custom session"]
-    XCTAssertTrue(build.waitForExistence(timeout: 10), "Build a custom session link")
-    for _ in 0..<3 where !build.isHittable { app.swipeUp() }
+    let build = app.buttons["Start practising"]
+    XCTAssertTrue(build.waitForExistence(timeout: 10), "Start practising hero button")
     build.tap()
     return build
   }
