@@ -86,6 +86,9 @@ audit backlog and its five-phase build order.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
   use the chord-chart flow on a real tune, then the metronome click, then
   tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
-  starts).
+  starts). Real use has started (Like Someone in Love, 2026-08-14) and filed
+  its first findings: #1390 (add the chord chart and related exercises while
+  creating the item, not in a second trip) and a parser friction note on
+  #1387. #1390 rides with the chord-chart step's findings, design-first.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
