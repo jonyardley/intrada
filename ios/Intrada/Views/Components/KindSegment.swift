@@ -1,9 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// Full-width Piece/Exercise selector — the accent-pill language of
-/// `SegmentedPills`, shared by the add and edit forms. The caption lives here
-/// rather than on the create screen because the edit form flips type too.
 struct KindSegment: View {
   @Binding var selection: ItemKind
 

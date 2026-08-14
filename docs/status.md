@@ -21,14 +21,16 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Phase 2 (say it right) is down to its last two, both open: the Practice
-  hero and subline (#1360) and the create form's Piece/Exercise caption
-  (#1361). The caption rides on `KindSegment`, so the edit form gets it too,
-  and its wording is now a worked example in
-  [`tone-of-voice.md`](tone-of-voice.md).
+- Phase 2 (say it right) is down to the Practice hero and subline (#1360).
+  The create-form caption (#1361) landed as #1388; its review fixes follow
+  in a second PR, since the first merged while they were in hand.
 
 ## Recently landed
 
+- #1361 (#1388) — the create form names what a piece and an exercise are, in a
+  line under the pills. It rides on `KindSegment`, so the edit form carries it
+  too, and the wording is a worked example in
+  [`tone-of-voice.md`](tone-of-voice.md).
 - Stage 4.2 of Phase R **decided** (Jon, 2026-08-14):
   [`research/comparison.md`](research/comparison.md) compares the five
   research notes and carries the adopted order, quick wins first: fix the

@@ -1,9 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// The type-language pairing — colour + glyph + label + caption per `ItemKind`,
-/// defined once here so every type-coded surface (card bars, badges, chips)
-/// stays in sync. Piece = indigo + note; Exercise = gold + dumbbell.
+/// The type-language pairing — colour + glyph + label per `ItemKind` — defined
+/// once here so every type-coded surface (card bars, badges, chips) stays in
+/// sync. Piece = indigo + note; Exercise = gold + dumbbell.
 extension ItemKind {
   var accent: Color {
     switch self {
