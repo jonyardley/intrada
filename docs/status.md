@@ -83,13 +83,6 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- Phase 2, say it right: one sweep PR over every user-facing string (#1359
-  step 2), then #1360 and #1361 with wordings the doc settles.
-- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
-- Stage 4.2: one-page comparison of the five research notes; Jon picks the
-  direction.
-- Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
-  captions), with wordings the tone-of-voice doc already settled.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
   use the chord-chart flow on a real tune, then the metronome click, then
   tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
