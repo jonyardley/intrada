@@ -64,8 +64,6 @@ struct LibraryScreen: View {
         message: emptyMessage)
     } else {
       ScrollView {
-        // Not lazy: `fadeUp`'s `.onAppear` must fire once at page load, not
-        // again each time a row scrolls into view — see #1354.
         VStack(spacing: IntradaSpacing.cardCompact) {
           ForEach(Array(displayedItems.enumerated()), id: \.element.id) { index, item in
             libraryRow(item)
