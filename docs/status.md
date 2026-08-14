@@ -33,6 +33,18 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- Stage 4.2 of Phase R **decided** (Jon, 2026-08-14):
+  [`research/comparison.md`](research/comparison.md) compares the five
+  research notes and carries the adopted order, quick wins first: fix the
+  stale chord-chart issues (done: #1106 closed as shipped, #1107 re-scoped to
+  twelve-key generation), use the chord-chart flow for real, the metronome
+  click pulled forward, then per-piece tracking (#1081) and the Up next card
+  (#1082), then the getting-cold signal, with the twice-deleted admin-shaped
+  features (quick lesson entry, goals) last and gated on use.
+- Plain-language rule for docs and issues (Jon, 2026-08-14): name features by
+  the musician-visible outcome, issue numbers as the only stable handles.
+  Rule in CLAUDE.md → Conventions, glossary in
+  [`reference.md`](reference.md); older docs renamed as touched.
 - Stage 4.1 of Phase R: five research notes under
   [`docs/research/`](research/) — goals-rebuilt-small, the Space layer,
   lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome
@@ -73,7 +85,9 @@ audit backlog and its five-phase build order.
 - Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
 - Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
   captions), with wordings the tone-of-voice doc already settled.
-- Stage 4.2: one-page comparison of the five research notes; Jon picks the
-  direction.
+- The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
+  use the chord-chart flow on a real tune, then the metronome click, then
+  tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
+  starts).
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).

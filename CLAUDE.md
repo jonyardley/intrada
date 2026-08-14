@@ -742,6 +742,16 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   list item** in a structured doc (`docs/status.md`, `docs/roadmap.md`,
   `design/CLAUDE.md` and this file's own lists) is house style, so match the
   siblings there. Sentences never take one, in a list item or anywhere else.
+- **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
+  features by the musician-visible outcome ("exercises from a chord chart",
+  "the Up next card"), with the codename in brackets once if git archaeology
+  needs it. Issue numbers are the only stable handles — never bare workstream
+  letters ("B1", "Phase B") across docs; three unrelated "Phase B"s existed
+  at once when this rule was made. Issue titles state the outcome. Sweep
+  test: would you say the sentence to a musician? Process terms (slice,
+  stream, tier…) live in the glossary in
+  [`docs/reference.md`](docs/reference.md); older docs are renamed as
+  touched, not swept.
 
 ### Stream rules
 
