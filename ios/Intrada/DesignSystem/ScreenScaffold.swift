@@ -92,7 +92,7 @@ struct ScreenScaffold<Content: View>: View {
     ) {
       PlaceholderContent(
         systemImage: "books.vertical",
-        message: "Your pieces and exercises will live here.")
+        message: "Pieces and exercises will live here.")
     }
   }
 #endif

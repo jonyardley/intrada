@@ -27,8 +27,8 @@ enum LibrarySortField: CaseIterable, Identifiable {
 
   var label: String {
     switch self {
-    case .dateAdded: "Date Added"
-    case .lastPracticed: "Last Practiced"
+    case .dateAdded: "Date added"
+    case .lastPracticed: "Last practised"
     case .title: "Title"
     }
   }

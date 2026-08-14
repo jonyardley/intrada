@@ -74,8 +74,8 @@ struct ReflectionSheet: View {
       .frame(maxWidth: .infinity)
       .padding(.top, IntradaSpacing.card)
 
-      eyebrow("Score").padding(.top, IntradaSpacing.section)
-      ScoreSelector(score: score, accessibilityLabel: "Score for \(itemTitle)") { next in
+      eyebrow("Mark").padding(.top, IntradaSpacing.section)
+      ScoreSelector(score: score, accessibilityLabel: "Mark for \(itemTitle)") { next in
         score = next.map(Int.init) ?? 0
       }
       .padding(.top, IntradaSpacing.controlGap)

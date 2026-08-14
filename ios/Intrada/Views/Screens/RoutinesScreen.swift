@@ -5,7 +5,7 @@ struct RoutinesScreen: View {
     ScreenScaffold(title: "Routines") {
       PlaceholderContent(
         systemImage: "music.note.list",
-        message: "Build reusable routines from your library.")
+        message: "Build reusable routines from the library.")
     }
   }
 }

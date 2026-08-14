@@ -70,7 +70,7 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       VStack(spacing: 0) {
         GlobalBanner(message: "Couldn't delete that item.", onDismiss: {})
-        GlobalBanner(message: "Storage unavailable — changes this session won't be saved.")
+        GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
         Spacer()
       }
     }
@@ -287,7 +287,7 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       VStack(spacing: 16) {
         AddRowButton(title: "Add a related exercise") {}
-        AddRowButton(title: "Add your first exercise", style: .outlined) {}
+        AddRowButton(title: "Add a first exercise", style: .outlined) {}
         AddRowButton(title: "Add a related exercise", style: .plain) {}
       }
       .padding(16)
@@ -345,7 +345,7 @@ final class ScreenSnapshotTests: XCTestCase {
         MasteryDelta(
           title: "Clair de Lune", subtitle: "D♭ major · now", was: 3, now: 4, kind: .piece)
         MasteryDelta(
-          title: "Hanon No. 1", subtitle: "first time scored", was: nil, now: 3, kind: .exercise)
+          title: "Hanon No. 1", subtitle: "first time marked", was: nil, now: 3, kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
       }

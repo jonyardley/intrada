@@ -39,7 +39,7 @@ struct AnalyticsScreen: View {
     } else {
       PlaceholderContent(
         systemImage: "chart.line.uptrend.xyaxis",
-        message: "Your progress will appear here once you start practising.")
+        message: "Progress will appear here once you start practising.")
     }
   }
 
@@ -92,7 +92,7 @@ struct AnalyticsScreen: View {
         ForEach(Array(analytics.scoreChanges.enumerated()), id: \.offset) { idx, change in
           MasteryDelta(
             title: change.itemTitle,
-            subtitle: change.isNew ? "first time scored" : nil,
+            subtitle: change.isNew ? "first time marked" : nil,
             was: change.previousScore.map(Int.init),
             now: Int(change.currentScore)
           )

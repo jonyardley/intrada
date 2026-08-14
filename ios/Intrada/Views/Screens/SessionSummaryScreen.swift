@@ -84,7 +84,7 @@ struct SessionSummaryScreen: View {
   private func headline(_ summary: SummaryView) -> some View {
     VStack(alignment: .leading, spacing: 4) {
       Eyebrow("Session complete", tint: IntradaColor.exerciseBadgeFg)
-      Text(summary.completionStatus == .endedEarly ? "Ended early." : "Nice work.")
+      Text(summary.totalDurationDisplay)
         .font(IntradaFont.pageTitle(34))
         .foregroundStyle(IntradaColor.ink)
       Text(headlineSubtitle(summary))
@@ -96,7 +96,8 @@ struct SessionSummaryScreen: View {
 
   private func headlineSubtitle(_ summary: SummaryView) -> String {
     let done = summary.entries.filter { $0.status == .completed }.count
-    return "\(summary.totalDurationDisplay) · \(done) of \(summary.entries.count)"
+    let base = "\(done) of \(summary.entries.count)"
+    return summary.completionStatus == .endedEarly ? "\(base) · ended early" : base
   }
 
   private func topMover(_ summary: SummaryView) -> ScoreChange? {
@@ -170,7 +171,7 @@ struct SessionSummaryScreen: View {
   }
 
   private func metaLine(_ entry: SetlistEntryView, unfinished: Bool) -> String {
-    if unfinished { return "Saved for next time — no pressure" }
+    if unfinished { return "Saved for next time · no pressure" }
     var parts = [entry.itemType.label]
     if let tempo = entry.achievedTempo { parts.append("\(tempo) bpm") }
     return parts.joined(separator: " · ")
@@ -179,7 +180,7 @@ struct SessionSummaryScreen: View {
   private func scoreRow(_ entry: SetlistEntryView) -> some View {
     ScoreSelector(
       score: entry.score.map(Int.init) ?? 0,
-      accessibilityLabel: "Score for \(entry.itemTitle)"
+      accessibilityLabel: "Mark for \(entry.itemTitle)"
     ) { next in
       store.send(.session(.updateEntryScore(entryId: entry.id, score: next)))
     }
@@ -193,7 +194,7 @@ struct SessionSummaryScreen: View {
         .foregroundStyle(IntradaColor.inkSecondary)
       ScoreSelector(
         score: summary.sessionScore.map(Int.init) ?? 0,
-        accessibilityLabel: "Overall session score"
+        accessibilityLabel: "Overall session mark"
       ) { next in
         store.send(.session(.updateSessionScore(score: next)))
       }

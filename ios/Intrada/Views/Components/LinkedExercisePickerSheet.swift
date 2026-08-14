@@ -162,7 +162,7 @@ struct LinkedExercisePickerSheet: View {
     let items = selectedItems
     Group {
       if items.isEmpty {
-        Text("No related exercises yet — tap to add.")
+        Text("No related exercises yet · tap to add.")
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkFaint)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,14 +234,14 @@ struct LinkedExercisePickerSheet: View {
         HairlineDivider().padding(.leading, IntradaSpacing.card)
         let rows = filtered
         if rows.isEmpty {
-          Text("No exercises match your filters.")
+          Text("No exercises match the filters.")
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.vertical, IntradaSpacing.row)
         } else {
-          Text("Your exercises")
+          Text("Exercises")
             .font(IntradaFont.eyebrow)
             .textCase(.uppercase)
             .kerning(1.2)

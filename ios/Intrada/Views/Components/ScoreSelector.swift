@@ -17,7 +17,7 @@ struct ScoreSelector: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
-    .accessibilityValue(score == 0 ? "not scored" : "\(score) of 10")
+    .accessibilityValue(score == 0 ? "not marked" : "\(score) of 10")
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment where score < 10:

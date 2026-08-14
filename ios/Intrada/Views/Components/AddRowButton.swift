@@ -49,7 +49,7 @@ struct AddRowButton: View {
   #Preview("Add row") {
     VStack(spacing: 16) {
       AddRowButton(title: "Add a related exercise") {}
-      AddRowButton(title: "Add your first exercise", style: .outlined) {}
+      AddRowButton(title: "Add a first exercise", style: .outlined) {}
       AddRowButton(title: "Add a related exercise", style: .plain) {}
     }
     .padding()

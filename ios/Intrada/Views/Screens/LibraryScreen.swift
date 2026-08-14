@@ -142,13 +142,13 @@ struct LibraryScreen: View {
 
   private var emptyMessage: String {
     if starFilter && !items.isEmpty {
-      return "No priorities yet. Swipe a row to star it."
+      return "No priorities yet. Swipe a row to add it to priorities."
     }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
     }
     switch LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) {
-    case .all: return "Your pieces and exercises will live here."
+    case .all: return "Pieces and exercises will live here."
     case .pieces: return "No pieces yet."
     case .exercises: return "No exercises yet."
     }

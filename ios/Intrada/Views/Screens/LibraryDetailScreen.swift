@@ -254,7 +254,7 @@ struct LibraryDetailScreen: View {
         if !editingLinks {
           // The rings below are each exercise's score *on this piece*, not its
           // overall — say so, mirroring the exercise hero's "Overall" (#1087 B2).
-          Text("Scores shown are for this piece")
+          Text("Marks shown are for this piece")
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -808,7 +808,7 @@ private struct LinkedExerciseRow: View {
     var parts = ["Exercise", exercise.title]
     if let meta = metaLine { parts.append(meta) }
     if let score = exercise.pieceContextScore {
-      parts.append("Score \(score) of 10 on this piece")
+      parts.append("Mark \(score) of 10 on this piece")
     } else {
       parts.append("Not yet rated on this piece")
     }
@@ -957,9 +957,9 @@ private struct ByPieceRow: View {
 
   private var accessibilityLabel: String {
     var parts = [context.contextTitle]
-    if context.pieceRemoved { parts.append("removed from your library") }
+    if context.pieceRemoved { parts.append("removed from the library") }
     if let score = context.latestScore {
-      parts.append("score \(score) of 10")
+      parts.append("mark \(score) of 10")
     } else {
       parts.append("not yet rated")
     }
