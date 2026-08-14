@@ -23,23 +23,10 @@
   Option-B pattern): mounted via `<dc-import name="Focus Player">` in both the design
   system and the related-items journey. Edit it here, once. New shared screens follow
   the same pattern (see `design-process.md` §9).
-- `Drill Loop.dc.html` — **practice-coach Session A journey** (3 Aug 2026): A2 during
-  play + A3 after a repetition (full, mobile + iPad), A1 Home + A4 block boundary
-  (rough passes for Phase 2a). Its six primitives are canonical in the design system
-  under *Components · Coach primitives*; the feature file holds only the journey.
-  A2/A3 and the primitives are **built** in SwiftUI
-  (`ios/Intrada/DesignSystem/Coach/`, `ios/Intrada/Views/Screens/DrillScreen.swift`).
-  Nine primitives are now canonical in the design system: `TapVerdict` folded in
-  6 Aug, with `BlockEntryCard` and `PlanBlockRow` from the continuous-pulse
-  rework. Seven have Swift; `BlockEntryCard` and `PlanBlockRow` are marked
-  TO BUILD in the catalogue, so the design system is their whole spec until
-  #1223/#1225 land.
-- **Coach entry surfaces (6 Aug 2026, #1223/#1225)** — the block-entry card and
-  the press-start session overview live in the **design system** (Screens, marked
-  TO BUILD, with a "how they compose" panel), not in a feature file. The Claude
-  Design project's `Drill Loop.dc.html` still carries the working `#pulse`
-  section they came from: strip it to a reference on the next design pass, per
-  the fold-in ratchet.
+- `Linked Exercises.dc.html` · `Session Summary.dc.html` ·
+  `Reflection Narrative.dc.html` — the journey feature files for the restored
+  session-builder surfaces; live references again since the coach removal
+  (#1344), alongside `Focus Player.dc.html` above.
 - `Intrada Concepts.dc.html` — exploratory/validated screen concepts (Progress, Focus
   Player with rep counter, one-tap+calendar Practice, Library mastery, session-summary
   celebration, after-dark variant, live motion lab).

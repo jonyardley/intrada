@@ -1,5 +1,10 @@
 # The coach engine
 
+> **⚠️ Retired 2026-08-13.** The engine specified here was built through Phase
+> 2b and removed from the tree; the session-builder product was restored
+> (#1344; coach code recoverable from commit 071b85b). Kept as the design
+> record. Do not implement from this document.
+
 Technical design spec, Tier 3, 3 August 2026. Resolves
 [#1148](https://github.com/jonyardley/intrada/issues/1148) and
 [#1147](https://github.com/jonyardley/intrada/issues/1147).

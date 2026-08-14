@@ -1,5 +1,11 @@
 # Rebuild vs pivot: the codebase against the practice-coach vision
 
+> **⚠️ Historical (2026-08-13):** the pivot this review recommended was built
+> through Phase 2b and then reversed. The coach machinery was removed and the
+> session builder restored (#1344). Kept as the record of the 2026-07
+> assessment; the keep/delete columns and the build plan no longer describe
+> intent. The shell deletions stand.
+
 Assessment date: 19 July 2026. Reviewed against `intrada-practice-coach-design.md`
 (v2, 18 July 2026). Read-only analysis; nothing changed.
 

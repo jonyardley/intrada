@@ -1,5 +1,10 @@
 # Intrada: The Practice Coach
 
+> **⚠️ Retired 2026-08-13.** The coach designed here was built through Phase 2b
+> and removed from the tree; the session-builder product was restored (#1344;
+> coach code recoverable from commit 071b85b). Kept as the design record. Do
+> not implement from this document.
+
 Design document, v8. Captured 18 July 2026; revised same day after critical
 review. v2 (2 Aug 2026): the measurement-validity decisions, the feedback
 choreography, the fluency frame. v3 (3 Aug 2026): intent promoted to a
