@@ -21,7 +21,8 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Nothing. Next slice is audit Phase 1 (fix and trim).
+- Audit Phase 1, fix and trim: #1368 (Session Complete removals) and #1358
+  (custom-session entry point removal) — second PR of the same stream.
 
 ## Recently landed
 
@@ -29,11 +30,13 @@ audit backlog and its five-phase build order.
 - #1352 — the Phase R rethink plan.
 - Stage 1 of Phase R: audit, triage and synthesis
   ([`audit-2026-08.md`](audit-2026-08.md)); findings filed as #1354–#1371.
+- Audit Phase 1: #1354 (Library scroll-triggered fade removed) and #1365
+  (live-view tempo font bumped within the `IntradaFont` scale).
 
 ## Next
 
-- Audit Phase 1, fix and trim: #1357 (Today bug), then #1354, #1365, #1368,
-  #1358, #1356. Then Phase 2 starts with the tone-of-voice doc (#1359).
+- Audit Phase 1, fix and trim: #1357 (Today bug) still open, then #1356.
+  Then Phase 2 starts with the tone-of-voice doc (#1359).
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode
