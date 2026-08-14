@@ -43,7 +43,6 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Swift kept from the removed Tauri shell (not built)
-content/                 # Authored practice content (paper-teacher fortnight, #1143)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Roadmap, status, and the operational reference
 specs/                   # Spec docs for major features (Tier 3 only)
@@ -735,7 +734,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 - **Exactly one core+iOS vertical stream at a time.** 31% of core commits also
   touch `ios/`; two concurrent vertical features will collide.
 - A **second stream** may run only in the decoupled set: `crates/intrada-api`,
-  `docs/`, `specs/`, `design/`, `content/`, or CI/tooling (`justfile`,
+  `docs/`, `specs/`, `design/`, or CI/tooling (`justfile`,
   `.github/workflows/`). An API task that needs a new domain field is a core
   change: it joins the vertical stream.
 - **Serialisation points.** If your task and another live branch both touch one

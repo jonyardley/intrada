@@ -96,7 +96,6 @@ crates/
   intrada-ffi/        # UniFFI bridge — generates the Swift bindings
   intrada-api/         # REST API (Axum + Turso)
 ios/                  # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
-content/              # Authored practice content (paper-teacher fortnight, #1143)
 design/               # Claude Design system (intrada-design-system.dc.html)
 docs/                 # Roadmap, status, and documentation
 scripts/              # Development utilities (seed data, simulator helpers)
