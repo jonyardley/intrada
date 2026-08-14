@@ -25,11 +25,11 @@ rethink follows this revert, it did not precede it.
 
 ## In flight
 
-- The revert PR (#1344) — through review and merge.
+Nothing in flight. The product rethink (see Next) has not started.
 
 ## Recently landed
 
-- #1344 — the session-builder revert (this PR).
+- #1344 — the session-builder revert, merged 2026-08-13 (commit 9b8da6d).
 
 ## Next
 
