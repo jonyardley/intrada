@@ -24,7 +24,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > What the product does today is the restored builder flow: build a session
 > from the library, group and reorder, play it through the Focus Player,
 > reflect on the summary. **What direction it grows in next is an open
-> question** — the rethink follows the revert. Issues parked under
+> question**: the rethink follows the revert. Issues parked under
 > [`superseded-by-pivot`](https://github.com/jonyardley/intrada/labels/superseded-by-pivot)
 > (#1087, #1101, #1107) are eligible again but stay parked until that
 > conversation happens.

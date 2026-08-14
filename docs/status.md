@@ -20,7 +20,7 @@ summary. All coach machinery (engine, drill loop, mastery track, built
 sessions, click) is removed; it stays recoverable from commit 071b85b, and
 the design record keeps its bannered specs.
 
-What replaces the coach as product direction is an open question — the
+What replaces the coach as product direction is an open question. The
 rethink follows this revert, it did not precede it.
 
 ## In flight

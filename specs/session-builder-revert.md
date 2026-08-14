@@ -14,9 +14,9 @@ that was deleted at Phase 2a close-out (2ae89f4).
 
 ## Target state
 
-The pre-deletion session builder restored — build a setlist from the library,
+The pre-deletion session builder restored (build a setlist from the library,
 group and reorder blocks, edit reps/duration/intention per entry, play through
-the Focus Player, reflect on the summary screen — with **every piece of coach
+the Focus Player, reflect on the summary screen) with **every piece of coach
 machinery removed**, running on today's infra (Rust 1.97.1, crux_core 0.20,
 current CI, current deps).
 
@@ -24,7 +24,7 @@ Two facts shape the method:
 
 1. **The restore point is `9e92ab2`** (= `2ae89f4^`), named by the deletion
    commit's own message as the recovery point. But the coach engine *already
-   exists there* — builder and coach coexisted between 2a and the deletion. So
+   exists there*: builder and coach coexisted between 2a and the deletion. So
    the target state never existed as one commit: this is restore **plus**
    excision.
 2. **Restore wholesale, then delete** beats hand-reconciling forward: every
@@ -62,7 +62,7 @@ Two facts shape the method:
   where it lives; porting it to the restored `ActiveSession` blob is tracked as
   a follow-up issue rather than done in this PR.
 - **Parked builder-era issues** (`superseded-by-pivot`: #1087, #1101, #1107)
-  become eligible again but are NOT un-parked here — the product rethink after
+  become eligible again but are NOT un-parked here; the product rethink after
   this PR decides direction first.
 
 ## Recovery
