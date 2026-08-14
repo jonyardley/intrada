@@ -48,7 +48,7 @@ struct FocusPlayerScreen: View {
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       if let tempo = active.currentItemTempoDisplay {
         Label(tempo, systemImage: "metronome")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, IntradaSpacing.controlGap)
       }
