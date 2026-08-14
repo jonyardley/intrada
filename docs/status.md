@@ -26,6 +26,18 @@ audit backlog and its five-phase build order.
   last-practised line is a core projection (`compute_last_practised`), so the
   hero and the header read one string and the day turns over on the user's
   clock.
+- #1361 — a one-line caption under the create form's Piece/Exercise pills, so
+  the type choice says what it means in a musician's words. It rides on
+  `KindSegment`, so the edit form gets it too.
+- Nothing. Audit Phase 1 (fix and trim) is complete, and the tone-of-voice
+  doc (#1359 step 1) has landed; the copy sweep (#1359 step 2) is the next
+  slice.
+- #1376 — [`tone-of-voice.md`](tone-of-voice.md) (#1359 step 1), open, stacked
+  under by the step 2 sweep PR.
+- #1359 step 2 — the copy sweep against every user-facing string in `ios/`,
+  applying V1 to V4. Practice's hero/subline is explicitly left for #1360
+  (already tracked there, not a new deferral).
+- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
 
 ## Recently landed
 
