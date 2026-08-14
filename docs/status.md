@@ -33,6 +33,13 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- Stage 4.1 of Phase R: five research notes under
+  [`docs/research/`](research/) — goals-rebuilt-small, the Space layer,
+  lesson-to-mastery (#1087), chart-to-scaffold Phase B (#1106), metronome
+  (#1366). Pedagogy evidence plus repo archaeology, one note per candidate;
+  Stage 4.2 (the comparison, Jon picks) is next. Headline finding:
+  chart-to-scaffold Phase B already shipped (#1110, 2026-07-17) and #1106 is
+  stale; only the twelve-key ladder wiring (#1107) remains.
 - #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
   (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
   carry the chosen option. Step 2 (the copy sweep) is unblocked.
@@ -66,7 +73,7 @@ audit backlog and its five-phase build order.
 - Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
 - Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
   captions), with wordings the tone-of-voice doc already settled.
-- Stage 4 direction research (per the rethink plan) may run as the decoupled
-  second stream once Phase 1 is under way.
+- Stage 4.2: one-page comparison of the five research notes; Jon picks the
+  direction.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
