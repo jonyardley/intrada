@@ -27,12 +27,13 @@
     private let summary: SummaryView?
 
     private let analytics: AnalyticsView?
+    private let lastPractised: LastPractisedView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
-      analytics: AnalyticsView? = nil
+      analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -41,6 +42,7 @@
       self.activeSession = activeSession
       self.summary = summary
       self.analytics = analytics
+      self.lastPractised = lastPractised
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -65,6 +67,7 @@
       viewModel.activeSession = activeSession
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
+      viewModel.lastPractised = lastPractised
       return viewModel
     }
   }
@@ -126,18 +129,18 @@
     /// populated-state snapshot — covers both completed + ended-early cards.
     static var previewPractice: Store {
       Store(
-        bridge: PreviewBridge(sessions: [
-          .previewCompleted, .previewEndedEarly,
-        ]))
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly],
+          lastPractised: .previewYesterday))
     }
 
     /// Practice home with a crash-recovery blob pending (#962) — drives the
     /// Resume / Discard prompt above the hero.
     static var previewPracticeRecovery: Store {
       let store = Store(
-        bridge: PreviewBridge(sessions: [
-          .previewCompleted, .previewEndedEarly,
-        ]))
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly],
+          lastPractised: .previewYesterday))
       store.recoverableSession = ActiveSession(
         id: "recover-1",
         entries: [
@@ -609,6 +612,16 @@
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
         variantId: nil)
+    }
+  }
+
+  extension LastPractisedView {
+    /// What the core projects for `previewCompleted` (Sat 30 May, headline
+    /// Clair de Lune) read on `previewReferenceDate`, the Sunday after.
+    static var previewYesterday: LastPractisedView {
+      LastPractisedView(
+        itemTitle: "Clair de Lune", relativeDay: "Yesterday",
+        label: "Last practised yesterday")
     }
   }
 

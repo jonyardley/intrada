@@ -21,18 +21,17 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Nothing. Audit Phase 1 (fix and trim) is complete, and the tone-of-voice
-  doc (#1359 step 1) has landed; the copy sweep (#1359 step 2) is the next
-  slice.
-- #1376 — [`tone-of-voice.md`](tone-of-voice.md) (#1359 step 1), open, stacked
-  under by the step 2 sweep PR.
-- #1359 step 2 — the copy sweep against every user-facing string in `ios/`,
-  applying V1 to V4. Practice's hero/subline is explicitly left for #1360
-  (already tracked there, not a new deferral).
-- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
+- #1360 — the Practice hero repurposed to the last session plus its one-tap
+  start, and the header subline moved off the lifetime session count. The
+  last-practised line is a core projection (`compute_last_practised`), so the
+  hero and the header read one string and the day turns over on the user's
+  clock.
 
 ## Recently landed
 
+- #1359 step 2 — the copy sweep over every user-facing string in `ios/`
+  (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
+  by design.
 - #1359 step 1 — [`tone-of-voice.md`](tone-of-voice.md) written and red-penned
   (#1376). Jon's four rulings are in the doc as V1 to V4; the worked examples
   carry the chosen option. Step 2 (the copy sweep) is unblocked.
@@ -61,11 +60,8 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- Phase 2, say it right: one sweep PR over every user-facing string (#1359
-  step 2), then #1360 and #1361 with wordings the doc settles.
-- Audit Phase 1, fix and trim: #1357 (Today bug), then #1356.
-- Phase 2, say it right: #1360 (Practice hero/subline) and #1361 (create-form
-  captions), with wordings the tone-of-voice doc already settled.
+- Phase 2, say it right: #1361 (create-form Piece/Exercise caption) closes the
+  phase once #1360 is in; the wordings come from the tone-of-voice doc.
 - Stage 4 direction research (per the rethink plan) may run as the decoupled
   second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode
