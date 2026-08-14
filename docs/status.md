@@ -10,32 +10,31 @@ ask git: `git log -1 --format=%cs docs/status.md`.*
 
 ## Where we are
 
-**The coach pivot is reversed (2026-08-13, #1344).** The practice-coach
-direction built through Phase 2b went too far too fast; the decision was to
-restore the session-builder product and remove the coach. The builder as it
-stood at 9e92ab2 is back on today's toolchain (Rust 1.97.1, crux 0.20,
-current CI): build a setlist from the library, group and reorder blocks, edit
-reps and duration per entry, play through the Focus Player, reflect on the
-summary. All coach machinery (engine, drill loop, mastery track, built
-sessions, click) is removed; it stays recoverable from commit 071b85b, and
-the design record keeps its bannered specs.
-
-What replaces the coach as product direction is an open question. The
-rethink follows this revert, it did not precede it.
+**v0.7.0, the restored session builder, is on TestFlight (2026-08-14).**
+The coach revert (#1344) landed clean: gates green, remnant sweep clean,
+docs reconciled (#1350). Phase R ([`rethink-plan.md`](rethink-plan.md))
+Stage 1 is complete: Jon's on-device audit of v0.7.0 covered every screen,
+the triage closed 30 defunct coach-era issues and emptied the
+`superseded-by-pivot` label, and the synthesis is
+[`audit-2026-08.md`](audit-2026-08.md) — the definitive reference for the
+audit backlog and its five-phase build order.
 
 ## In flight
 
-Nothing in flight. The product rethink (see Next) has not started.
+- Nothing. Next slice is audit Phase 1 (fix and trim).
 
 ## Recently landed
 
-- #1344 — the session-builder revert, merged 2026-08-13 (commit 9b8da6d).
+- v0.7.0 tagged and uploaded to TestFlight (version bump #1351).
+- #1352 — the Phase R rethink plan.
+- Stage 1 of Phase R: audit, triage and synthesis
+  ([`audit-2026-08.md`](audit-2026-08.md)); findings filed as #1354–#1371.
 
 ## Next
 
-- The product rethink is now planned: see [`rethink-plan.md`](rethink-plan.md)
-  (agreed 2026-08-14). First up is Stage 1, the post-revert audit. Parked
-  builder-era issues (#1087, #1101, #1107) are eligible again but stay parked
-  until Stage 4 chooses a direction.
+- Audit Phase 1, fix and trim: #1357 (Today bug), then #1354, #1365, #1368,
+  #1358, #1356. Then Phase 2 starts with the tone-of-voice doc (#1359).
+- Stage 4 direction research (per the rethink plan) may run as the decoupled
+  second stream once Phase 1 is under way.
 - Follow-up: port the wire-pin test technique (per-variant bincode
-  fingerprint) to the `ActiveSession` crash-recovery blob.
+  fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
