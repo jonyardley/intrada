@@ -626,6 +626,11 @@ migrations go up at least one tier regardless of file count or apparent size.
 ### Decision rule
 If unsure between tiers, go one tier lighter. Drift up if scope expands.
 
+Tiers set the ceremony; [`docs/model-guide.md`](docs/model-guide.md) sets the
+resourcing (which model and reasoning effort per activity, and what every plan
+must say about model, effort, and parallel streams). The domain-sensitivity
+override above applies to model choice too.
+
 | Task | Tier | Why |
 |------|------|-----|
 | Fix typo in a label | 1 | Trivial copy change |

@@ -12,6 +12,8 @@
 
 If unsure, I go one tier lighter and drift up. **Auth / the FFI bridge contract / DB schema / migrations always bump up one tier**, regardless of size.
 
+Tiers set the ceremony; [`model-guide.md`](model-guide.md) sets the resourcing: which model and reasoning effort each kind of work (coding, reviewing, planning, design) should run on, and what a plan must say about model, effort, and parallel streams.
+
 ## How to brief me for best results
 
 - **State the goal, not the keystrokes.** "Users should be able to X" beats "edit file Y" — I'll find Y and check it's the right place.
