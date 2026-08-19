@@ -227,6 +227,36 @@ Header subtitle, independently: `Last practised Tuesday` beats `12 sessions`,
 and beats both when there is nothing yet with `No sessions yet` (already
 shipped, already right).
 
+### Create form, the Piece/Exercise caption
+
+Added with [#1361](https://github.com/jonyardley/intrada/issues/1361), which
+the audit routed through this doc. Unlike the three above, no option was put to
+Jon first: the doc had no worked example for a caption, so the wording was
+written against the rules and is recorded here for the red pen.
+
+The form asks for a type and leaves the distinction implicit, which is fine
+once you know the app and opaque on your first item. Shipped:
+
+| Selection | Caption |
+|---|---|
+| Piece | `Repertoire to learn and keep up` |
+| Exercise | `Drills and studies to build technique` |
+
+Both are noun-phrase-plus-purpose, so the two read as a comparison rather than
+a definition and a list. No full stop (rule 5, they are labels), no possessive
+(rule 3), a musician's words rather than the data model's (rule 2).
+
+**The precedent this sets:** an explanatory caption is allowed on a *form*,
+where the user is being asked to decide something and the app's vocabulary is
+the thing in the way. It is not allowed in session, and it is not a licence to
+caption a screen that could instead be clearer. If a caption is doing work a
+better label would do, fix the label.
+
+Open, for whenever the scaffold sheet is next touched: it mints exercises like
+`Learn the melody` and `Constrained improv`
+([#1389](https://github.com/jonyardley/intrada/issues/1389)), which no caption
+about technique covers. That is the domain model's edge, not the copy's.
+
 ### Builder title
 
 Currently: title `Build session`, subtitle the running summary

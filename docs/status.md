@@ -21,6 +21,9 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- Phase 2 (say it right) is down to the Practice hero and subline (#1360).
+  The create-form caption (#1361) landed as #1388; its review fixes follow
+  in a second PR, since the first merged while they were in hand.
 - #1360 — the Practice hero repurposed to the last session plus its one-tap
   start, and the header subline moved off the lifetime session count. The
   last-practised line is a core projection (`compute_last_practised`), so the
@@ -30,6 +33,9 @@ audit backlog and its five-phase build order.
 ## Recently landed
 
 - #1361 (#1388) — the create form names what a piece and an exercise are, in a
+  line under the pills. It rides on `KindSegment`, so the edit form carries it
+  too, and the wording is a worked example in
+  [`tone-of-voice.md`](tone-of-voice.md).
   line under the pills. Review fixes follow in #1392.
 - #1359 step 2 — the copy sweep over every user-facing string in `ios/`
   (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
