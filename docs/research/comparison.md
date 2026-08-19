@@ -83,7 +83,12 @@ Do now (days, not weeks):
    issues. No code; this answers whether the generated material is any good.
    Entry-friction notes feed the chart-entry rethink (#1387): a friendlier
    manual input is its near half, designed once real use has shown where the
-   current text format grates.
+   current text format grates. **First real use (2026-08-14, Like Someone in
+   Love) filed two:** the parser rejects the Real Book parenthesised-turnaround
+   convention (noted on #1387), and the chord chart plus related exercises are
+   only discoverable *after* creating the item — adding a piece should capture
+   both in one pass (#1390, design-first; rides with this step's findings
+   rather than re-ordering the list).
 3. **The click** — bring the deleted metronome engine back into the Focus
    Player (recoverable from `8af4891^`). iOS-only, no schema, Tier 2; pulled
    forward from audit Phase 4 because the hard part already exists. 1–2 days.
