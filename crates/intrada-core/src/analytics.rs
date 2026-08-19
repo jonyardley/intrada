@@ -112,6 +112,18 @@ pub struct ScorePoint {
     pub score: u8,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LastPractisedView {
+    /// What the session was mostly about: the item it spent longest on.
+    pub item_title: String,
+    /// The day on its own: `Today`, `Yesterday`, a weekday inside the past
+    /// week, otherwise `7 Aug` (with the year once it is a different one).
+    pub relative_day: String,
+    /// The same day as a full line: `Last practised Tuesday`.
+    pub label: String,
+}
+
 // ── Local Clock ──────────────────────────────────────────────────────
 
 /// The user's calendar context: which day is "today" and the UTC offset that
@@ -500,6 +512,58 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
 
     changes.truncate(5);
     changes
+}
+
+// ── Last practised ───────────────────────────────────────────────────
+
+/// What the Practice screen leads with: the last thing played and when. Both
+/// the hero and the header subtitle read this one projection, and the day is
+/// resolved on the user's clock rather than UTC (#1330).
+pub fn compute_last_practised(
+    sessions: &[PracticeSession],
+    clock: LocalClock,
+) -> Option<LastPractisedView> {
+    let session = sessions
+        .iter()
+        .filter(|s| !s.entries.is_empty())
+        .max_by_key(|s| s.started_at)?;
+
+    // The longest entry, not the first: a session that opens with five minutes
+    // of scales and spends twenty on the piece was about the piece.
+    let headline = session
+        .entries
+        .iter()
+        .max_by_key(|e| (e.duration_secs, Reverse(e.position)))?;
+
+    let (relative_day, in_sentence) = relative_day(clock.day_of(session.started_at), clock.today);
+    Some(LastPractisedView {
+        item_title: headline.item_title.clone(),
+        relative_day,
+        label: format!("Last practised {in_sentence}"),
+    })
+}
+
+/// `(standalone, mid-sentence)`: `Today` heads a line of its own but reads
+/// `Last practised today` inside one; weekdays and dates are capitalised in both.
+fn relative_day(day: NaiveDate, today: NaiveDate) -> (String, String) {
+    match (today - day).num_days() {
+        0 => ("Today".to_string(), "today".to_string()),
+        1 => ("Yesterday".to_string(), "yesterday".to_string()),
+        // Seven days back repeats today's weekday, so the name stops being a date.
+        2..=6 => {
+            let weekday = day.format("%A").to_string();
+            (weekday.clone(), weekday)
+        }
+        _ => {
+            let pattern = if day.year() == today.year() {
+                "%-d %b"
+            } else {
+                "%-d %b %Y"
+            };
+            let date = day.format(pattern).to_string();
+            (date.clone(), date)
+        }
+    }
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -1805,5 +1869,159 @@ mod tests {
             bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
         );
         assert_eq!(trends[0].scores[0].date, "2026-08-14");
+    }
+
+    // ── Last practised ───────────────────────────────────────────────
+
+    fn day(y: i32, m: u32, d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(y, m, d).unwrap()
+    }
+
+    #[test]
+    fn last_practised_is_none_without_sessions() {
+        assert_eq!(compute_last_practised(&[], clock(day(2026, 8, 14))), None);
+    }
+
+    #[test]
+    fn last_practised_reads_the_most_recent_session() {
+        // Newest first, so list order can't stand in for comparing the dates.
+        let sessions = vec![
+            make_session(
+                "newer",
+                day(2026, 8, 11),
+                600,
+                vec![make_entry(
+                    "p2",
+                    "Clair de Lune",
+                    ItemKind::Piece,
+                    600,
+                    None,
+                )],
+            ),
+            make_session(
+                "older",
+                day(2026, 8, 10),
+                600,
+                vec![make_entry(
+                    "p1",
+                    "Nocturne Op. 9",
+                    ItemKind::Piece,
+                    600,
+                    None,
+                )],
+            ),
+        ];
+        let last = compute_last_practised(&sessions, clock(day(2026, 8, 14))).unwrap();
+        assert_eq!(last.item_title, "Clair de Lune");
+    }
+
+    #[test]
+    fn last_practised_headlines_the_longest_entry_not_the_first() {
+        let sessions = vec![make_session(
+            "s1",
+            day(2026, 8, 11),
+            1_500,
+            vec![
+                make_entry("e1", "Major scales", ItemKind::Exercise, 300, None),
+                make_entry("p1", "Clair de Lune", ItemKind::Piece, 1_200, None),
+            ],
+        )];
+        let last = compute_last_practised(&sessions, clock(day(2026, 8, 14))).unwrap();
+        assert_eq!(last.item_title, "Clair de Lune");
+    }
+
+    #[test]
+    fn last_practised_breaks_a_duration_tie_on_position() {
+        // make_entry positions everything at 0, so pin them for this one.
+        let mut first = make_entry("e1", "Major scales", ItemKind::Exercise, 300, None);
+        first.position = 0;
+        let mut second = make_entry("p1", "Clair de Lune", ItemKind::Piece, 300, None);
+        second.position = 1;
+        let sessions = vec![make_session(
+            "s1",
+            day(2026, 8, 11),
+            600,
+            vec![first, second],
+        )];
+        let last = compute_last_practised(&sessions, clock(day(2026, 8, 14))).unwrap();
+        assert_eq!(last.item_title, "Major scales");
+    }
+
+    #[test]
+    fn last_practised_skips_a_session_with_no_entries() {
+        let sessions = vec![
+            make_session(
+                "played",
+                day(2026, 8, 10),
+                600,
+                vec![make_entry(
+                    "p1",
+                    "Clair de Lune",
+                    ItemKind::Piece,
+                    600,
+                    None,
+                )],
+            ),
+            make_session("empty", day(2026, 8, 12), 0, vec![]),
+        ];
+        let last = compute_last_practised(&sessions, clock(day(2026, 8, 14))).unwrap();
+        assert_eq!(last.item_title, "Clair de Lune");
+    }
+
+    #[test]
+    fn last_practised_day_reads_relative_within_the_week() {
+        let today = day(2026, 8, 14); // a Friday
+        let cases = [
+            (day(2026, 8, 14), "Today", "Last practised today"),
+            (day(2026, 8, 13), "Yesterday", "Last practised yesterday"),
+            (day(2026, 8, 11), "Tuesday", "Last practised Tuesday"),
+            (day(2026, 8, 8), "Saturday", "Last practised Saturday"),
+            // 7 days back repeats today's weekday, so it falls to a date.
+            (day(2026, 8, 7), "7 Aug", "Last practised 7 Aug"),
+            (
+                day(2025, 12, 31),
+                "31 Dec 2025",
+                "Last practised 31 Dec 2025",
+            ),
+            // Clock skew, or the stored offset moving: a date reads oddly but
+            // is honest, where "Today" for tomorrow would be a lie.
+            (day(2026, 8, 15), "15 Aug", "Last practised 15 Aug"),
+        ];
+        for (session_day, relative, label) in cases {
+            let sessions = vec![make_session(
+                "s1",
+                session_day,
+                600,
+                vec![make_entry(
+                    "p1",
+                    "Clair de Lune",
+                    ItemKind::Piece,
+                    600,
+                    None,
+                )],
+            )];
+            let last = compute_last_practised(&sessions, clock(today)).unwrap();
+            assert_eq!(last.relative_day, relative, "for {session_day}");
+            assert_eq!(last.label, label, "for {session_day}");
+        }
+    }
+
+    #[test]
+    fn last_practised_day_turns_over_on_the_users_clock() {
+        // 23:30 UTC on the 13th is 00:30 local on the 14th (#1330).
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 13, 23, 30),
+            600,
+            vec![make_entry(
+                "p1",
+                "Clair de Lune",
+                ItemKind::Piece,
+                600,
+                None,
+            )],
+        )];
+        let last = compute_last_practised(&sessions, bst_clock(day(2026, 8, 14))).unwrap();
+        assert_eq!(last.relative_day, "Today");
     }
 }

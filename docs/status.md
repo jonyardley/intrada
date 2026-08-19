@@ -21,21 +21,19 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1361 — a one-line caption under the create form's Piece/Exercise pills, so
-  the type choice says what it means in a musician's words. It rides on
-  `KindSegment`, so the edit form gets it too.
-- Nothing. Audit Phase 1 (fix and trim) is complete, and the tone-of-voice
-  doc (#1359 step 1) has landed; the copy sweep (#1359 step 2) is the next
-  slice.
-- #1376 — [`tone-of-voice.md`](tone-of-voice.md) (#1359 step 1), open, stacked
-  under by the step 2 sweep PR.
-- #1359 step 2 — the copy sweep against every user-facing string in `ios/`,
-  applying V1 to V4. Practice's hero/subline is explicitly left for #1360
-  (already tracked there, not a new deferral).
-- Audit Phase 1 (fix and trim) — #1357, #1356 remain.
+- #1360 — the Practice hero repurposed to the last session plus its one-tap
+  start, and the header subline moved off the lifetime session count. The
+  last-practised line is a core projection (`compute_last_practised`), so the
+  hero and the header read one string and the day turns over on the user's
+  clock.
 
 ## Recently landed
 
+- #1361 (#1388) — the create form names what a piece and an exercise are, in a
+  line under the pills. Review fixes follow in #1392.
+- #1359 step 2 — the copy sweep over every user-facing string in `ios/`
+  (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
+  by design.
 - Stage 4.2 of Phase R **decided** (Jon, 2026-08-14):
   [`research/comparison.md`](research/comparison.md) compares the five
   research notes and carries the adopted order, quick wins first: fix the
@@ -83,6 +81,7 @@ audit backlog and its five-phase build order.
 
 ## Next
 
+- #1360 closes Phase 2, say it right.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
   use the chord-chart flow on a real tune, then the metronome click, then
   tempo capture, then per-piece tracking (#1081, where the Tier-3 spec

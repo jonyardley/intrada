@@ -91,16 +91,29 @@ struct PracticeScreen: View {
       })
   }
 
-  // MARK: - (0) One-tap hero
+  // MARK: - (0) Last session, one tap to the next
+
+  private var lastPractised: LastPractisedView? { store.viewModel?.lastPractised }
 
   private var hero: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
+      // One element carrying all three strings: the day sits below the button
+      // visually, so read separately it would reach VoiceOver detached from
+      // the piece it describes.
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(0.7))
 
-      Text("A focused session")
-        .font(IntradaFont.pageTitle(25))
-        .foregroundStyle(IntradaColor.paperTop)
-        .multilineTextAlignment(.center)
+        if let lastPractised {
+          Text(lastPractised.itemTitle)
+            .font(IntradaFont.pageTitle(25))
+            .foregroundStyle(IntradaColor.paperTop)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .minimumScaleFactor(0.75)
+        }
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(heroLabel)
 
       Button {
         store.send(.session(.startBuilding))
@@ -117,16 +130,28 @@ struct PracticeScreen: View {
       .accessibilityLabel("Start practising")
       .padding(.vertical, IntradaSpacing.controlGap)
 
-      Text("Tap to begin — one decision")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
-        .multilineTextAlignment(.center)
+      if let lastPractised {
+        Text(lastPractised.relativeDay)
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
+          .multilineTextAlignment(.center)
+          .accessibilityHidden(true)  // already spoken as part of heroLabel
+      }
     }
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
     .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
+  }
+
+  private var heroEyebrow: String {
+    lastPractised == nil ? "First session" : "Last practised"
+  }
+
+  private var heroLabel: String {
+    guard let lastPractised else { return heroEyebrow }
+    return "\(heroEyebrow), \(lastPractised.itemTitle), \(lastPractised.relativeDay)"
   }
 
   // MARK: - (1) This week
@@ -255,8 +280,7 @@ struct PracticeScreen: View {
   }
 
   private var subtitle: String {
-    let count = sessions.count
-    return count == 0 ? "No sessions yet" : "\(count) session\(count == 1 ? "" : "s")"
+    lastPractised?.label ?? "No sessions yet"
   }
 }
 
