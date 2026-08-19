@@ -697,14 +697,17 @@ impl Intrada {
         // Uses Utc::now(), making view() impure — pragmatic tradeoff since the
         // date changes once/day; computation fns take a `LocalClock` for
         // testability.
-        let analytics = if model.sessions.is_empty() {
-            None
+        let (analytics, last_practised) = if model.sessions.is_empty() {
+            (None, None)
         } else {
             let clock = crate::analytics::LocalClock::from_now(
                 chrono::Utc::now(),
                 model.utc_offset_minutes,
             );
-            Some(compute_analytics(&model.sessions, &model.items, clock))
+            (
+                Some(compute_analytics(&model.sessions, &model.items, clock)),
+                crate::analytics::compute_last_practised(&model.sessions, clock),
+            )
         };
 
         let sets = model
@@ -747,6 +750,7 @@ impl Intrada {
             error: model.last_error.clone(),
             error_seq: model.error_seq,
             analytics,
+            last_practised,
             sets,
             account_preferences: model.account_preferences.clone(),
             delete_in_flight: model.delete_in_flight,
@@ -3632,6 +3636,21 @@ mod tests {
             chord_chart: None,
             variants: vec![],
         }
+    }
+
+    #[test]
+    fn view_exposes_last_practised_when_a_session_has_been_played() {
+        // Wiring only: the relative-day wording is pinned in analytics::tests,
+        // which can hold the clock still.
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.sessions = vec![make_session("s1", "item-1", None, None)];
+
+        let last = app
+            .view(&model)
+            .last_practised
+            .expect("a session was played");
+        assert_eq!(last.item_title, "Sonata");
     }
 
     #[test]

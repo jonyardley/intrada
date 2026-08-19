@@ -24,6 +24,11 @@ audit backlog and its five-phase build order.
 - Phase 2 (say it right) is down to the Practice hero and subline (#1360).
   The create-form caption (#1361) landed as #1388; its review fixes follow
   in a second PR, since the first merged while they were in hand.
+- #1360 — the Practice hero repurposed to the last session plus its one-tap
+  start, and the header subline moved off the lifetime session count. The
+  last-practised line is a core projection (`compute_last_practised`), so the
+  hero and the header read one string and the day turns over on the user's
+  clock.
 
 ## Recently landed
 
@@ -31,6 +36,10 @@ audit backlog and its five-phase build order.
   line under the pills. It rides on `KindSegment`, so the edit form carries it
   too, and the wording is a worked example in
   [`tone-of-voice.md`](tone-of-voice.md).
+  line under the pills. Review fixes follow in #1392.
+- #1359 step 2 — the copy sweep over every user-facing string in `ios/`
+  (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
+  by design.
 - Stage 4.2 of Phase R **decided** (Jon, 2026-08-14):
   [`research/comparison.md`](research/comparison.md) compares the five
   research notes and carries the adopted order, quick wins first: fix the
@@ -78,6 +87,7 @@ audit backlog and its five-phase build order.
 
 ## Next
 
+- #1360 closes Phase 2, say it right.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
   use the chord-chart flow on a real tune, then the metronome click, then
   tempo capture, then per-piece tracking (#1081, where the Tier-3 spec

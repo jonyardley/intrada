@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::analytics::AnalyticsView;
+use crate::analytics::{AnalyticsView, LastPractisedView};
 use crate::domain::account::AccountPreferences;
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
@@ -196,6 +196,7 @@ pub struct ViewModel {
     /// See `Model::error_seq` — compare around a send instead of the message.
     pub error_seq: u64,
     pub analytics: Option<AnalyticsView>,
+    pub last_practised: Option<LastPractisedView>,
     pub sets: Vec<SetView>,
     pub account_preferences: Option<AccountPreferences>,
     pub delete_in_flight: bool,
