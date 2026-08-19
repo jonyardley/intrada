@@ -4,12 +4,6 @@ import AVFoundation
 /// once from `scheduledStart`, because a timer-driven click audibly drifts and
 /// musicians hear single-digit milliseconds; the pulse is unbounded, so this
 /// tops up a rolling window rather than scheduling a fixed run.
-///
-/// Recovered from `8af4891^` (`ios/Intrada/Coach/ClickEngine.swift`, deleted
-/// with the coach in #1344) and trimmed to the plain click the Focus Player
-/// reads: the count-in, the placement patterns and the per-beat callbacks the
-/// coach loop consumed are recoverable from that commit if they are ever
-/// wanted again.
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
@@ -29,14 +23,14 @@ final class ClickEngine {
   private let topUpBelow = 24
   static let maxLagBeats: Double = 2
 
-  /// The pulse died without the shell asking it to (interruption, route
-  /// change). Reports the fact and nothing else; what it costs the screen is
-  /// the caller's call.
+  /// The pulse stopped without the shell asking it to (interruption, route
+  /// change). Not a failure: the click is still available, it just isn't
+  /// sounding.
   var onPulseDied: (() -> Void)?
 
   private var pendingBeats: [ScheduledBeat] = []
   private var pollTask: Task<Void, Never>?
-  private let pollIntervalNanoseconds: UInt64 = 10_000_000  // 10ms
+  private let pollIntervalNanoseconds: UInt64 = 100_000_000  // 100ms
 
   private var pulse: Pulse?
   private var nextBeat = 0
@@ -80,14 +74,24 @@ final class ClickEngine {
     playerNode.stop()
 
     let session = AVAudioSession.sharedInstance()
-    // .mixWithOthers so a backing track or tuner already playing keeps playing
-    // (ios/Reference/BackgroundAudioPlugin.swift). It also narrows what counts
-    // as an interruption to system events — calls, Siri, alarms.
-    try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-    try session.setActive(true)
-
-    if !engine.isRunning {
-      try engine.start()
+    do {
+      // .mixWithOthers so a backing track or tuner already playing keeps playing
+      // (ios/Reference/BackgroundAudioPlugin.swift). It also narrows what counts
+      // as an interruption to system events — calls, Siri, alarms.
+      try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+      try session.setActive(true)
+      // A configuration change (headphones in or out) tears the graph's
+      // connections down, and a reconnect is Apple's prescribed answer: without
+      // it the engine starts clean and plays nothing.
+      engine.connect(playerNode, to: engine.mainMixerNode, format: clickBuffer.format)
+      if !engine.isRunning {
+        try engine.start()
+      }
+    } catch {
+      // The previous pulse's poll task outlives a failed restart otherwise,
+      // topping up a window nobody plays for the rest of the session.
+      stop()
+      throw error
     }
     playerNode.play()
 

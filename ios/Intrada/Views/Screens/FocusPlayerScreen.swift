@@ -58,15 +58,7 @@ struct FocusPlayerScreen: View {
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
-      ClickControl(
-        bpm: click.bpm, isRunning: click.isRunning, unavailable: click.unavailable,
-        atSeededTempo: click.isAtSeededTempo,
-        targetDisplay: active.currentItemTempoDisplay,
-        targetSpoken: active.currentItemTempoSpoken,
-        onToggle: { click.toggle() },
-        onStep: { click.step(by: $0) }
-      )
-      .padding(.top, IntradaSpacing.controlGap)
+      clickRow(active).padding(.top, IntradaSpacing.controlGap)
       if active.currentRepTarget != nil {
         repCounter(active).fadeUp(3).padding(.top, 28)
       }
@@ -173,6 +165,20 @@ struct FocusPlayerScreen: View {
     TimerRing(elapsed: elapsed, planned: planned.map(Int.init))
   }
 
+  // A marking with no BPM ("Andante", no number) is not a tempo the click can
+  // play, so the row falls through to naming the click rather than advertising
+  // a target the next tap would not sound.
+  private func clickRow(_ active: ActiveSessionView) -> some View {
+    let declared = active.currentItemTempoBpm != nil
+    return ClickControl(
+      bpm: click.bpm, isRunning: click.isRunning, unavailable: click.unavailable,
+      atSeededTempo: click.isAtSeededTempo,
+      targetDisplay: declared ? active.currentItemTempoDisplay : nil,
+      targetSpoken: declared ? active.currentItemTempoSpoken : nil,
+      onToggle: { click.toggle() },
+      onStep: { click.step(by: $0) })
+  }
+
   // ── Reps (only when the current item has a target) ──
 
   private func repCounter(_ active: ActiveSessionView) -> some View {
@@ -245,6 +251,9 @@ struct FocusPlayerScreen: View {
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
+    // The item is over; a click ticking through the rating is keeping time for
+    // nothing.
+    click.stop()
     let entry = active.entries[pos]
     let item = store.viewModel?.items.first(where: { $0.id == entry.itemId })
     reflecting = ReflectionTarget(

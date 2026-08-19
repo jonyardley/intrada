@@ -11,8 +11,9 @@ final class ClickController {
 
   private(set) var isRunning = false
   private(set) var bpm = defaultBpm
-  /// Set when the engine refused to start or the pulse died under us, so the
-  /// screen never shows a running click that makes no sound.
+  /// Set only when the engine refused to start. An interruption or a route
+  /// change stops the pulse without breaking anything, so it clears `isRunning`
+  /// and leaves this alone — a red row for plugged-in headphones is a lie.
   private(set) var unavailable = false
 
   private var engine: ClickEngine?
@@ -78,10 +79,7 @@ final class ClickController {
 
   private func makeEngine() throws -> ClickEngine {
     let engine = try ClickEngine()
-    engine.onPulseDied = { [weak self] in
-      self?.isRunning = false
-      self?.unavailable = true
-    }
+    engine.onPulseDied = { [weak self] in self?.isRunning = false }
     self.engine = engine
     return engine
   }

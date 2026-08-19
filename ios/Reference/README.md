@@ -13,7 +13,7 @@ target; these files exist to be ported, not compiled.
   Player's `ClickEngine` took the session category and the
   `notifyOthersOnDeactivation` teardown. The silent loop, `UIBackgroundModes:
   audio` and the now-playing seeding are still here and still unported, so the
-  click stops when the app leaves the foreground.
+  click stops when the app leaves the foreground (#1399).
 - `LiveActivityPlugin.swift`, `IntradaActivityWidget.swift`,
   `IntradaWidgetBundle.swift`, `IntradaActivityAttributes.swift`: a working
   ActivityKit Lock Screen / Dynamic Island practice timer. Spec:

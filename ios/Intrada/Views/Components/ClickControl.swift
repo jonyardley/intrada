@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// The Focus Player's metronome row. At rest it is the passive tempo readout
-/// the player has always carried, made tappable; the tempo steppers only exist
-/// once the click is sounding, so mid-session configuration stays one layer
-/// down (`docs/design-principles.md` T14, T2).
+/// The Focus Player's metronome row. The steppers exist only while the click
+/// sounds, so configuration stays one layer down (design-principles T14, T2).
 struct ClickControl: View {
   let bpm: Int
   let isRunning: Bool
@@ -44,6 +42,10 @@ struct ClickControl: View {
       Label(readout, systemImage: "metronome")
         .font(IntradaFont.bodyMedium)
         .monospacedDigit()
+        // "♩ = 208" is one notation token; at the largest text sizes it wraps
+        // between the glyph and the number, which reads as two facts.
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
         .foregroundStyle(tint)
         .padding(.horizontal, IntradaSpacing.cardCompact)
         .frame(minHeight: 44)

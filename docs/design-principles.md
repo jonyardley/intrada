@@ -424,7 +424,10 @@ Three smaller rulings come with it:
 - **The row always exists, even with no declared tempo**, where it reads
   "Click" and starts at a neutral 96. Scales and exercises want a click most
   and declare a target least; hiding the affordance exactly there would be the
-  wrong way round.
+  wrong way round. An item carrying a marking but no number ("Andante", no
+  figure) counts as no declared tempo here: the marking is not something the
+  click can sound, and showing it on a row whose tap plays 96 would be the
+  same small lie.
 
 Options considered: a metronome entry in the options menu (rejected: three
 gestures deep for the thing you want most while playing, and no place to show
