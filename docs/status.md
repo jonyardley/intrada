@@ -21,22 +21,22 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Phase 2 (say it right) is down to the Practice hero and subline (#1360).
-  The create-form caption (#1361) landed as #1388; its review fixes follow
-  in a second PR, since the first merged while they were in hand.
-- #1360 — the Practice hero repurposed to the last session plus its one-tap
-  start, and the header subline moved off the lifetime session count. The
-  last-practised line is a core projection (`compute_last_practised`), so the
-  hero and the header read one string and the day turns over on the user's
-  clock.
+- #1398 — the metronome click, back in the Focus Player. Step 3 of the adopted
+  order ([`research/comparison.md`](research/comparison.md)). The engine is
+  recovered from `8af4891^` and trimmed to a plain click; the player's tempo
+  readout becomes the control (design-principles T14). iOS-only: no schema, no
+  bridge, no core change.
 
 ## Recently landed
 
+- Phase 2 (say it right) is **closed**. #1360 (#1383) repurposed the Practice
+  hero to the last session plus its one-tap start and moved the header subline
+  off the lifetime session count, both reading one core projection
+  (`compute_last_practised`) so the day turns over on the user's clock.
 - #1361 (#1388) — the create form names what a piece and an exercise are, in a
   line under the pills. It rides on `KindSegment`, so the edit form carries it
   too, and the wording is a worked example in
-  [`tone-of-voice.md`](tone-of-voice.md).
-  line under the pills. Review fixes follow in #1392.
+  [`tone-of-voice.md`](tone-of-voice.md). Review fixes landed as #1392.
 - #1359 step 2 — the copy sweep over every user-facing string in `ios/`
   (#1380), applying V1 to V4. Practice's hero and subline were left to #1360
   by design.
@@ -87,7 +87,8 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- #1360 closes Phase 2, say it right.
+- Tempo capture (step 4): the end-of-item stepper pre-fills from the click and
+  shows even when the item declares no target. Small core touch.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
   use the chord-chart flow on a real tune, then the metronome click, then
   tempo capture, then per-piece tracking (#1081, where the Tier-3 spec

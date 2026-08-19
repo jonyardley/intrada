@@ -7,6 +7,7 @@ import SwiftUI
 /// chrome — "the app disappears during practice".
 struct FocusPlayerScreen: View {
   @Environment(Store.self) private var store
+  @Environment(\.scenePhase) private var scenePhase
 
   // Snapshots inject a fixed instant so the timer is deterministic; production
   // passes nil and the timer ticks off the wall clock (mirrors PracticeScreen).
@@ -15,6 +16,7 @@ struct FocusPlayerScreen: View {
   init(referenceDate: Date? = nil) { self.referenceDate = referenceDate }
 
   @State private var reflecting: ReflectionTarget?
+  @State private var click = ClickController()
 
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
@@ -38,6 +40,16 @@ struct FocusPlayerScreen: View {
       )
       .presentationDetents([.medium, .large])
     }
+    .task { click.reseed(target: active?.currentItemTempoBpm) }
+    .onChange(of: active?.currentPosition) { _, _ in
+      click.reseed(target: active?.currentItemTempoBpm)
+    }
+    // No `UIBackgroundModes: audio`, so the pulse cannot survive backgrounding
+    // — stop it rather than leave the row claiming a click nobody can hear.
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .background { click.stop() }
+    }
+    .onDisappear { click.dispose() }
   }
 
   private func content(_ active: ActiveSessionView) -> some View {
@@ -46,12 +58,15 @@ struct FocusPlayerScreen: View {
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
-      if let tempo = active.currentItemTempoDisplay {
-        Label(tempo, systemImage: "metronome")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          .padding(.top, IntradaSpacing.controlGap)
-      }
+      ClickControl(
+        bpm: click.bpm, isRunning: click.isRunning, unavailable: click.unavailable,
+        atSeededTempo: click.isAtSeededTempo,
+        targetDisplay: active.currentItemTempoDisplay,
+        targetSpoken: active.currentItemTempoSpoken,
+        onToggle: { click.toggle() },
+        onStep: { click.step(by: $0) }
+      )
+      .padding(.top, IntradaSpacing.controlGap)
       if active.currentRepTarget != nil {
         repCounter(active).fadeUp(3).padding(.top, 28)
       }

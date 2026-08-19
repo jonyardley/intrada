@@ -1,0 +1,97 @@
+import SwiftUI
+
+/// The Focus Player's metronome row. At rest it is the passive tempo readout
+/// the player has always carried, made tappable; the tempo steppers only exist
+/// once the click is sounding, so mid-session configuration stays one layer
+/// down (`docs/design-principles.md` T14, T2).
+struct ClickControl: View {
+  let bpm: Int
+  let isRunning: Bool
+  let unavailable: Bool
+  /// False once `bpm` has been stepped off what the item seeded. The row then
+  /// reads as the click rather than as the item, sounding or not, so stopping
+  /// never leaves it advertising a tempo the next tap would not play.
+  let atSeededTempo: Bool
+  /// The item's own declared tempo, "Andante · ♩ = 66". Nil when it declares
+  /// none, which is when the row names the click instead.
+  let targetDisplay: String?
+  let targetSpoken: String?
+  let onToggle: () -> Void
+  let onStep: (Int) -> Void
+
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.controlGap) {
+      if isRunning {
+        TempoStepButton(systemImage: "minus", label: "Slower") { onStep(-TempoStepper.step) }
+          .transition(.opacity)
+      }
+      toggle
+      if isRunning {
+        TempoStepButton(systemImage: "plus", label: "Faster") { onStep(TempoStepper.step) }
+          .transition(.opacity)
+      }
+    }
+    .animation(reduceMotion ? nil : IntradaMotion.snappy, value: isRunning)
+  }
+
+  private var toggle: some View {
+    Button {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      onToggle()
+    } label: {
+      Label(readout, systemImage: "metronome")
+        .font(IntradaFont.bodyMedium)
+        .monospacedDigit()
+        .foregroundStyle(tint)
+        .padding(.horizontal, IntradaSpacing.cardCompact)
+        .frame(minHeight: 44)
+        .background(isRunning ? IntradaColor.clickActiveBg : .clear, in: Capsule())
+    }
+    .buttonStyle(PressRebound())
+    .accessibilityLabel(isRunning ? "Stop the click" : "Start the click")
+    .accessibilityValue(spokenValue)
+  }
+
+  var readout: String {
+    if unavailable { return "Click unavailable" }
+    if isRunning || !atSeededTempo { return "♩ = \(bpm)" }
+    return targetDisplay ?? "Click"
+  }
+
+  private var tint: Color {
+    if unavailable { return IntradaColor.danger }
+    return isRunning ? IntradaColor.accent : IntradaColor.inkSecondary
+  }
+
+  // VoiceOver never hears the ♩ glyph, so the bpm is spelled out.
+  var spokenValue: String {
+    if unavailable { return "unavailable" }
+    if isRunning || !atSeededTempo { return "\(bpm) beats per minute" }
+    return targetSpoken ?? "no tempo set"
+  }
+}
+
+#if DEBUG
+  #Preview("Click control") {
+    VStack(spacing: 32) {
+      ClickControl(
+        bpm: 66, isRunning: false, unavailable: false, atSeededTempo: true,
+        targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
+        onToggle: {}, onStep: { _ in })
+      ClickControl(
+        bpm: 72, isRunning: true, unavailable: false, atSeededTempo: false,
+        targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
+        onToggle: {}, onStep: { _ in })
+      ClickControl(
+        bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+        targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+      ClickControl(
+        bpm: 96, isRunning: false, unavailable: true, atSeededTempo: true,
+        targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+    }
+    .padding()
+    .background(RadialGradient.playerPaper)
+  }
+#endif

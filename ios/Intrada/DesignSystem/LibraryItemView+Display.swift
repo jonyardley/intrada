@@ -86,4 +86,8 @@ extension ActiveSessionView {
   var currentItemTempoDisplay: String? {
     TempoFormatting.display(marking: currentItemTempoMarking, bpm: currentItemTempoBpm)
   }
+
+  var currentItemTempoSpoken: String? {
+    TempoFormatting.spoken(marking: currentItemTempoMarking, bpm: currentItemTempoBpm)
+  }
 }

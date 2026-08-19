@@ -9,7 +9,11 @@ target; these files exist to be ported, not compiled.
   or click track needs. `AVAudioSession(.playback, .mixWithOthers)`,
   silent-loop keep-alive so iOS does not suspend timers, interruption
   re-arm, `MPNowPlayingInfoCenter` seeding. Spec:
-  `specs/background-audio-plugin.md`.
+  `specs/background-audio-plugin.md`. **Partly ported** (#1398): the Focus
+  Player's `ClickEngine` took the session category and the
+  `notifyOthersOnDeactivation` teardown. The silent loop, `UIBackgroundModes:
+  audio` and the now-playing seeding are still here and still unported, so the
+  click stops when the app leaves the foreground.
 - `LiveActivityPlugin.swift`, `IntradaActivityWidget.swift`,
   `IntradaWidgetBundle.swift`, `IntradaActivityAttributes.swift`: a working
   ActivityKit Lock Screen / Dynamic Island practice timer. Spec:
