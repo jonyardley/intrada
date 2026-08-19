@@ -1,34 +1,28 @@
 import Observation
 
-/// The Focus Player's click: the tempo on screen plus the engine's lifecycle.
-/// Shell-only by design — a metronome setting is UI interaction state, not
-/// domain data, so nothing here crosses the bridge and nothing is persisted.
+/// The Focus Player's click. Shell-only by design: a metronome setting is UI
+/// state, so nothing here crosses the bridge and nothing is persisted.
 @MainActor @Observable
 final class ClickController {
-  /// Neutral practice tempo for an item that declares none. Matches
-  /// `ReflectionSheet`'s fallback so the two tempo surfaces agree.
+  /// Neutral tempo for an item declaring none; matches `ReflectionSheet` (#1402).
   static let defaultBpm = 96
 
   private(set) var isRunning = false
   private(set) var bpm = defaultBpm
-  /// Set only when the engine refused to start. An interruption or a route
-  /// change stops the pulse without breaking anything, so it clears `isRunning`
-  /// and leaves this alone — a red row for plugged-in headphones is a lie.
+  /// Set only when the engine refused to start: an interruption or route change
+  /// stops the pulse without breaking it, and a red row for headphones is a lie.
   private(set) var unavailable = false
 
   private var engine: ClickEngine?
   private var seeded = defaultBpm
 
-  /// False once the musician has stepped the click off what this item seeded,
-  /// which is when the row stops speaking for the item's declared tempo.
   var isAtSeededTempo: Bool { bpm == seeded }
 
   static func seedBpm(from target: UInt16?) -> Int {
     TempoStepper.clamp(target.map(Int.init) ?? defaultBpm)
   }
 
-  /// Silences whatever was running: the tempo the click was keeping belonged to
-  /// the item that just finished.
+  /// Silences the click: its tempo belonged to the item that just finished.
   func reseed(target: UInt16?) {
     stop()
     unavailable = false
@@ -69,8 +63,7 @@ final class ClickController {
     isRunning = false
   }
 
-  /// Tears the audio graph down when the player goes away — the observers the
-  /// engine holds outlive the screen otherwise.
+  /// The engine's observers outlive the screen unless it is torn down.
   func dispose() {
     engine?.dispose()
     engine = nil

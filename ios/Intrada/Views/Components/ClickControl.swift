@@ -6,12 +6,10 @@ struct ClickControl: View {
   let bpm: Int
   let isRunning: Bool
   let unavailable: Bool
-  /// False once `bpm` has been stepped off what the item seeded. The row then
-  /// reads as the click rather than as the item, sounding or not, so stopping
-  /// never leaves it advertising a tempo the next tap would not play.
+  /// False once `bpm` is stepped off what the item seeded: the row then reads as
+  /// the click, so stopping never advertises a tempo the next tap would not play.
   let atSeededTempo: Bool
-  /// The item's own declared tempo, "Andante · ♩ = 66". Nil when it declares
-  /// none, which is when the row names the click instead.
+  /// The item's declared tempo. Nil when the row names the click instead.
   let targetDisplay: String?
   let targetSpoken: String?
   let onToggle: () -> Void

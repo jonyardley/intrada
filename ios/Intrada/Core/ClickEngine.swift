@@ -1,31 +1,27 @@
 import AVFoundation
 
-/// AVAudioEngine metronome. Every beat is placed on a host-time grid struck
-/// once from `scheduledStart`, because a timer-driven click audibly drifts and
-/// musicians hear single-digit milliseconds; the pulse is unbounded, so this
-/// tops up a rolling window rather than scheduling a fixed run.
+/// AVAudioEngine metronome. Beats sit on a host-time grid struck once from
+/// `scheduledStart`, because a timer-driven click audibly drifts and musicians
+/// hear milliseconds. The pulse is unbounded, so the window rolls.
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
   private let playerNode = AVAudioPlayerNode()
   private let clickBuffer: AVAudioPCMBuffer
 
-  /// Headroom for the first `scheduleBuffer` to land before its host time.
-  /// Short because a tempo change restarts the pulse, and a half-second gap on
-  /// every stepper tap reads as a stall.
+  /// Headroom for the first `scheduleBuffer` to land. Short because a tempo
+  /// change restarts the pulse, and a long gap per stepper tap reads as a stall.
   private let leadInSeconds: Double = 0.2
   // Queue oscillates 24-88 beats, 12s to 44s at 120bpm: too long for a
   // coalesced wakeup to run it dry, short enough that `stop()` isn't fighting it.
-  //
-  // Polled rather than one `Task.sleep` per beat, since iOS coalesces long
-  // timer wakeups while `AVAudioTime(hostTime:)` audio is immune to that.
+  // Polled rather than a sleep per beat, since iOS coalesces long timer wakeups
+  // while `AVAudioTime(hostTime:)` audio is immune to that.
   private let windowBeats = 64
   private let topUpBelow = 24
   static let maxLagBeats: Double = 2
 
-  /// The pulse stopped without the shell asking it to (interruption, route
-  /// change). Not a failure: the click is still available, it just isn't
-  /// sounding.
+  /// The pulse stopped without the shell asking (interruption, route change).
+  /// Not a failure: the click is still available, it just isn't sounding.
   var onPulseDied: (() -> Void)?
 
   private var pendingBeats: [ScheduledBeat] = []
@@ -75,14 +71,12 @@ final class ClickEngine {
 
     let session = AVAudioSession.sharedInstance()
     do {
-      // .mixWithOthers so a backing track or tuner already playing keeps playing
-      // (ios/Reference/BackgroundAudioPlugin.swift). It also narrows what counts
-      // as an interruption to system events — calls, Siri, alarms.
+      // .mixWithOthers so a backing track or tuner keeps playing, and only
+      // system events (calls, Siri, alarms) count as an interruption.
       try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
       try session.setActive(true)
       // A configuration change (headphones in or out) tears the graph's
-      // connections down, and a reconnect is Apple's prescribed answer: without
-      // it the engine starts clean and plays nothing.
+      // connections down; without this the engine starts clean and plays nothing.
       engine.connect(playerNode, to: engine.mainMixerNode, format: clickBuffer.format)
       if !engine.isRunning {
         try engine.start()
@@ -116,10 +110,8 @@ final class ClickEngine {
     if engine.isRunning {
       engine.stop()
     }
-    // notifyOthersOnDeactivation lets a backing-track app resume its own audio
-    // if it was ducked — common when practising along with a recording. Guarded
-    // because the shared session is app-wide: a stop with nothing sounding must
-    // not reach in and deactivate it.
+    // Lets a ducked backing-track app resume. Guarded because the session is
+    // app-wide: a stop with nothing sounding must not deactivate it.
     guard wasSounding else { return }
     try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
   }
@@ -172,9 +164,8 @@ final class ClickEngine {
       head: head.audibleHostTime, now: now, secondsPerBeat: pulse.secondsPerBeat)
   }
 
-  /// A backlog this deep is a suspended app, not a late wakeup. Draining it
-  /// would fire the whole window at once, so the schedule is abandoned rather
-  /// than fast-forwarded.
+  /// A backlog this deep is a suspended app, not a late wakeup: draining it
+  /// would fire the whole window at once, so the schedule is abandoned.
   static func hasLostTheClock(head: UInt64, now: UInt64, secondsPerBeat: Double) -> Bool {
     HostClock.secondsBetween(now, head) > maxLagBeats * secondsPerBeat
   }
@@ -191,8 +182,7 @@ final class ClickEngine {
         let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
         MainActor.assumeIsolated { self?.handleInterruption(type: type) }
       })
-    // A route change (the headphones case) tears the graph down, leaving
-    // `isRunning` false with nothing to restart it.
+    // A route change leaves `isRunning` false with nothing to restart it.
     observers.append(
       centre.addObserver(
         forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main

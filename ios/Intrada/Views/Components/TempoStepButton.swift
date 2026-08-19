@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// The bordered ± button both tempo surfaces share. `TempoStepper` ignores its
-/// children in favour of one adjustable value, so the label is inert there;
-/// `ClickControl` sits its steppers beside a toggle, where each speaks for itself.
+/// children for one adjustable value, so the label is inert there, not unused.
 struct TempoStepButton: View {
   let systemImage: String
   let label: String

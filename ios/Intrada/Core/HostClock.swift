@@ -13,9 +13,8 @@ enum HostClock {
     mach_absolute_time()
   }
 
-  /// `seconds` must be a non-negative duration — Double->UInt64 traps on
-  /// negative input. Use `secondsBetween` (or `&+`/`&-` with this on a
-  /// positive magnitude) to express a signed offset between two host times.
+  /// Non-negative durations only — Double->UInt64 traps on negative input.
+  /// Use `secondsBetween` (or `&+`/`&-`) for a signed offset.
   static func ticks(fromSeconds seconds: Double) -> UInt64 {
     precondition(
       seconds >= 0, "ticks(fromSeconds:) requires a non-negative duration, got \(seconds)")
