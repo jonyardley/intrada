@@ -21,19 +21,24 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1404 — tempo capture: the end-of-item stepper pre-fills from the click's
-  last tempo and shows even when the item declares no target. Step 4 of the
-  adopted order ([`research/comparison.md`](research/comparison.md)),
+- #1404 (#1406) — tempo capture: the end-of-item stepper pre-fills from the
+  click's last tempo and shows even when the item declares no target. Step 4
+  of the adopted order ([`research/comparison.md`](research/comparison.md)),
   following on from the click (#1398). iOS-only; no core change was needed —
   `UpdateEntryTempo` already accepted an undeclared-target entry.
 
 ## Recently landed
 
-- #1398 — the metronome click, back in the Focus Player (#1401). Step 3 of
+- #1398 (#1401) — the metronome click is back in the Focus Player, step 3 of
   the adopted order ([`research/comparison.md`](research/comparison.md)). The
-  engine is recovered from `8af4891^` and trimmed to a plain click; the
-  player's tempo readout becomes the control (design-principles T14).
-  iOS-only: no schema, no bridge, no core change.
+  player's tempo line now doubles as the control: one tap sounds a click at the
+  item's target, and the slower/faster steppers appear only while it sounds
+  (design-principles T14). The engine is recovered from `8af4891^` and trimmed
+  to a plain click, keeping the host-time grid, the stranded-clock guard and
+  the interruption handling. iOS-only: no schema, no bridge, no core change.
+  Deferred: background audio (#1399), the design reference (#1400), the tempo
+  constants' home (#1402), accessibility-label tests (#1403). **The click has
+  not been heard on a device yet** — no automated check can hear it.
 
 - Phase 2 (say it right) is **closed**. #1360 (#1383) repurposed the Practice
   hero to the last session plus its one-tap start and moved the header subline
@@ -93,14 +98,13 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- Tempo capture (step 4): the end-of-item stepper pre-fills from the click and
-  shows even when the item declares no target. Small core touch.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
-  use the chord-chart flow on a real tune, then the metronome click, then
-  tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
-  starts). Real use has started (Like Someone in Love, 2026-08-14) and filed
-  its first findings: #1390 (add the chord chart and related exercises while
-  creating the item, not in a second trip) and a parser friction note on
-  #1387. #1390 rides with the chord-chart step's findings, design-first.
+  use the chord-chart flow on a real tune (the metronome click is done, tempo
+  capture is in flight as #1404), then per-piece tracking (#1081, where the
+  Tier-3 spec starts). Real use has started (Like Someone in Love,
+  2026-08-14) and filed its first findings: #1390 (add the chord chart and
+  related exercises while creating the item, not in a second trip) and a
+  parser friction note on #1387. #1390 rides with the chord-chart step's
+  findings, design-first.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
