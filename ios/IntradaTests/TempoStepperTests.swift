@@ -39,21 +39,6 @@ final class TempoStepperTests: XCTestCase {
 }
 
 @MainActor
-final class ReflectionSheetTempoResolutionTests: XCTestCase {
-  func testNoTempoTargetResolvesToNilRegardlessOfStepperValue() {
-    XCTAssertNil(ReflectionSheet.resolvedAchievedTempo(tempoTarget: nil, current: 96))
-    XCTAssertNil(ReflectionSheet.resolvedAchievedTempo(tempoTarget: nil, current: 0))
-  }
-
-  func testTempoTargetPresentResolvesToTheCurrentStepperValue() {
-    XCTAssertEqual(
-      ReflectionSheet.resolvedAchievedTempo(tempoTarget: 96, current: 96), 96,
-      "untouched stepper reads as \"played at target\"")
-    XCTAssertEqual(ReflectionSheet.resolvedAchievedTempo(tempoTarget: 96, current: 102), 102)
-  }
-}
-
-@MainActor
 final class ReflectionSheetStepSelectionTests: XCTestCase {
   private func step(_ id: String, _ position: UInt64) -> VariantView {
     VariantView(

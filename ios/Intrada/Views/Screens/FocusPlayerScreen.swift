@@ -30,7 +30,7 @@ struct FocusPlayerScreen: View {
     .sheet(item: $reflecting) { target in
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
-        tempoTarget: target.tempoTargetBpm,
+        tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
         variants: target.variants, currentVariantId: target.currentVariantId,
         onSave: { score, note, achievedTempo, variantId in
           handleReflection(
@@ -234,9 +234,8 @@ struct FocusPlayerScreen: View {
     let id: String  // the current entry's ulid
     let title: String
     let elapsedDisplay: String
-    /// The item's own declared tempo (the practice target), distinct from
-    /// `achievedTempo` logged after the fact. `nil` hides the tempo stepper.
     let tempoTargetBpm: UInt16?
+    let startingTempoBpm: Int
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.
     let variants: [VariantView]
@@ -251,6 +250,7 @@ struct FocusPlayerScreen: View {
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
+    let startingTempoBpm = click.bpm  // read before stop() below
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
@@ -259,7 +259,7 @@ struct FocusPlayerScreen: View {
     reflecting = ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
-      tempoTargetBpm: active.currentItemTempoBpm,
+      tempoTargetBpm: active.currentItemTempoBpm, startingTempoBpm: startingTempoBpm,
       // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
       // over the item's derived "current step" — otherwise a pre-assigned
       // step would be silently overwritten on save.

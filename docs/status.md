@@ -21,7 +21,11 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-Nothing. Next up is tempo capture, step 4 of the adopted order.
+- #1404 (#1406) — tempo capture: the end-of-item stepper pre-fills from the
+  click's last tempo and shows even when the item declares no target. Step 4
+  of the adopted order ([`research/comparison.md`](research/comparison.md)),
+  following on from the click (#1398). iOS-only; no core change was needed —
+  `UpdateEntryTempo` already accepted an undeclared-target entry.
 
 ## Recently landed
 
@@ -94,14 +98,13 @@ Nothing. Next up is tempo capture, step 4 of the adopted order.
 
 ## Next
 
-- Tempo capture (step 4): the end-of-item stepper pre-fills from the click and
-  shows even when the item declares no target. Small core touch.
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
-  use the chord-chart flow on a real tune (the metronome click is done), then
-  tempo capture, then per-piece tracking (#1081, where the Tier-3 spec
-  starts). Real use has started (Like Someone in Love, 2026-08-14) and filed
-  its first findings: #1390 (add the chord chart and related exercises while
-  creating the item, not in a second trip) and a parser friction note on
-  #1387. #1390 rides with the chord-chart step's findings, design-first.
+  use the chord-chart flow on a real tune (the metronome click is done, tempo
+  capture is in flight as #1404), then per-piece tracking (#1081, where the
+  Tier-3 spec starts). Real use has started (Like Someone in Love,
+  2026-08-14) and filed its first findings: #1390 (add the chord chart and
+  related exercises while creating the item, not in a second trip) and a
+  parser friction note on #1387. #1390 rides with the chord-chart step's
+  findings, design-first.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
