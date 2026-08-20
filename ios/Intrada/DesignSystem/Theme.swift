@@ -42,6 +42,9 @@ enum IntradaColor {
   static let dialTrack = Color(hex: 0xEBE4D4)
   /// The Focus-player timer ring track — warmer than the mastery `dialTrack`.
   static let timerTrack = Color(hex: 0xE5DDCB)
+  /// The Focus-player click while it is sounding — accent-tinted paper, opaque
+  /// so the tempo steppers reveal beside it without ghosting.
+  static let clickActiveBg = Color(hex: 0xE7E3F4)
   static let consistencyTrack = Color(hex: 0xDED5C1)
   /// A "missed" rep is taupe, never red — calm, not shaming.
   static let repMissedFg = Color(hex: 0x8A8170)

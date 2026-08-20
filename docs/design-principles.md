@@ -387,3 +387,52 @@ deleted three-bullet consent list on A5 is the type specimen; the interface
 carries it, or an ⓘ does); letting spec vocabulary through where it is
 "technically accurate" (rejected: core says `variant`, the screen says
 **Steps**, and the precedent holds everywhere).
+
+### T14 — The click starts on a tap and only then offers a tempo
+
+**Status:** DECIDED 2026-08-19 (jonyardley/intrada#1398, the metronome click
+back in the Focus Player; research note
+[`research/metronome.md`](research/metronome.md) §5 slice 1).
+
+**An instance of T2, not an exception to it.** The player's tempo line was a
+passive readout of the item's declared target ("Andante · ♩ = 66"). It now
+doubles as the click: tapping it sounds a click at that tempo, and only while
+it is sounding does the row grow a slower/faster pair either side. At rest the
+screen is unchanged, so focus mode holds; the configuration exists one layer
+down, revealed by the deliberate gesture of starting.
+
+The tap starts the click rather than revealing a panel to start it from,
+because a click at the item's own target is what a musician wants nine times
+in ten, and the reveal-then-start version spends a step on the common case to
+save one on the rare one. Stopping is the same tap, so nothing here is
+irreversible (T6).
+
+Three smaller rulings come with it:
+
+- **The marking belongs to the target, not to the click.** At rest the row
+  reads "Andante · ♩ = 66", the composer's mark. Once sounding it reads
+  "♩ = 72", because attributing a tempo the musician chose to the marking on
+  the page would be the app putting words in the score's mouth. The row keeps
+  reading as the click after it stops, too, for as long as the tempo sits off
+  the item's own: putting "♩ = 66" back on a row whose next tap sounds 76
+  would be a small lie the musician only finds out by ear. Moving to the next
+  item reseeds it.
+- **A click needs no time signature to be useful.** Every beat sounds the
+  same. An accented downbeat would mean asking for a time signature the app
+  does not hold and T2 does not want asked mid-session; that, subdivision and
+  accent patterns wait for the surface #1366 scopes.
+- **The row always exists, even with no declared tempo**, where it reads
+  "Click" and starts at a neutral 96. Scales and exercises want a click most
+  and declare a target least; hiding the affordance exactly there would be the
+  wrong way round. An item carrying a marking but no number ("Andante", no
+  figure) counts as no declared tempo here: the marking is not something the
+  click can sound, and showing it on a row whose tap plays 96 would be the
+  same small lie.
+
+Options considered: a metronome entry in the options menu (rejected: three
+gestures deep for the thing you want most while playing, and no place to show
+that it is running); a bottom sheet carrying the click (rejected: it covers
+the timer, and the running state needs an on-screen home anyway once the sheet
+is dismissed); a beat-synchronised pulse animation on the row (rejected: the
+player surface sits still while practice runs, per the timer ring, and a
+flashing light is a second metronome competing with the first).

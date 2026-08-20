@@ -179,6 +179,46 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewActive), as: config)
   }
 
+  func testClickControlStates() {
+    // Flat player paper, not the radial wash: the gradient is not what's under
+    // test here and it is most of a reference's bytes (snapshot hygiene).
+    let states = ZStack {
+      IntradaColor.playerBgMid
+      VStack(spacing: 32) {
+        ClickControl(
+          bpm: 66, isRunning: false, unavailable: false, atSeededTempo: true,
+          targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
+          onToggle: {}, onStep: { _ in })
+        ClickControl(
+          bpm: 72, isRunning: true, unavailable: false, atSeededTempo: false,
+          targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
+          onToggle: {}, onStep: { _ in })
+        ClickControl(
+          bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+        ClickControl(
+          bpm: 96, isRunning: false, unavailable: true, atSeededTempo: true,
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(states), as: config)
+  }
+
+  /// The sounding row is the tight one, so it is the state that has to reflow.
+  func testClickControlLargeText() {
+    let sounding = ZStack {
+      IntradaColor.playerBgMid
+      ClickControl(
+        bpm: 208, isRunning: true, unavailable: false, atSeededTempo: false,
+        targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
+        onToggle: {}, onStep: { _ in }
+      )
+      .padding(.horizontal, IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(sounding), as: axConfig)
+  }
+
   func testFocusPlayerWithReps() {
     assertSnapshot(
       of: host(

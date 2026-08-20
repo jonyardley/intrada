@@ -21,7 +21,7 @@ struct TempoStepper: View {
 
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
-      stepButton(systemImage: "minus") {
+      TempoStepButton(systemImage: "minus", label: "Slower") {
         value = Self.stepped(from: value, by: -Self.step)
       }
       Text("♩ = \(value)")
@@ -29,7 +29,7 @@ struct TempoStepper: View {
         .monospacedDigit()
         .foregroundStyle(IntradaColor.ink)
         .frame(maxWidth: .infinity)
-      stepButton(systemImage: "plus") {
+      TempoStepButton(systemImage: "plus", label: "Faster") {
         value = Self.stepped(from: value, by: Self.step)
       }
     }
@@ -43,28 +43,6 @@ struct TempoStepper: View {
       default: break
       }
     }
-  }
-
-  // Parent's `.accessibilityElement(children: .ignore)` already hides these
-  // (matches `ScoreSelector`'s pattern) — no per-button label needed.
-  private func stepButton(systemImage: String, action: @escaping () -> Void)
-    -> some View
-  {
-    Button {
-      UISelectionFeedbackGenerator().selectionChanged()
-      action()
-    } label: {
-      Image(systemName: systemImage)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .frame(width: 44, height: 44)
-        .background(IntradaColor.cardFill)
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-        .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.card)
-            .strokeBorder(IntradaColor.hairline, lineWidth: 1.5))
-    }
-    .buttonStyle(.plain)
   }
 }
 
