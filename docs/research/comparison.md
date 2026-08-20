@@ -98,14 +98,21 @@ Do now (days, not weeks):
 4. **Tempo capture** — the end-of-item tempo stepper pre-fills from the click
    and shows even when the item has no declared target. Small core touch.
    About a day.
-5. **Per-piece tracking (#1081)** — the core derivation (read-only, real
-   bridge tests) then the "By piece" screens. 3–5 days; the first step that
-   needs the Tier-3 spec discipline.
+5. **Per-piece tracking (#1081)** — **already built; nothing to construct.**
+   Verified 2026-08-20: the core derivation landed in #1095 and the "By piece"
+   screens in #1097, both in July, and the issue was never closed, which is
+   step 1's stale-issue pattern a second time. It survived the coach revert intact and
+   works with no network. The Tier-3 spec this step anticipated was not
+   written, because there was no unbuilt work to specify. What it needs is
+   step 2's treatment instead: **use it on the week's lesson tune and file the
+   friction.** The By-piece rows only fill once a piece has related exercises
+   linked and a session groups them, so linking them is part of that use.
 
 Then, each building on the last:
 
 6. **The Up next card (#1082)** — one dismissible suggested session with its
-   reasons in plain words; held to suggest-never-gate. Needs step 5. 2–3 days.
+   reasons in plain words; held to suggest-never-gate. Needed step 5, which is
+   already satisfied, so this is the next unstarted item. 2–3 days.
 7. **The tempo trend** — draw the already-computed tempo history per item;
    blocked on roadmap Q3 (does a mastery score mean anything without its
    tempo?) being answered first.
