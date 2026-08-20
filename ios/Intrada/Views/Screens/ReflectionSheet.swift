@@ -1,15 +1,14 @@
 import SharedTypes
 import SwiftUI
 
-/// Hand-off reflection: after an item, score it (1–10), log the tempo reached
-/// (when the item declares a target), pick which step it was (when the item
-/// has a step ladder), and jot an optional note. Pure UI — the caller
-/// applies the writes and advances.
+/// Hand-off reflection: after an item, score it (1–10), log the tempo
+/// reached, pick which step it was, and jot an optional note. Pure UI — the
+/// caller applies the writes and advances.
 struct ReflectionSheet: View {
   let itemTitle: String
   let elapsedDisplay: String
-  /// The item's own declared tempo marking (the practice target), if any.
-  /// `nil` hides the tempo stepper entirely — nothing to log against.
+  /// The item's own declared tempo marking, shown alongside the stepper as
+  /// context — the stepper itself is always present, target or not (#1404).
   let tempoTarget: UInt16?
   /// The item's step ladder, if any. Empty hides the step picker entirely.
   let variants: [VariantView]
@@ -25,6 +24,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
+    startingTempoBpm: Int = ClickController.defaultBpm,
     variants: [VariantView] = [], currentVariantId: String? = nil,
     onSave:
       @escaping (
@@ -39,26 +39,17 @@ struct ReflectionSheet: View {
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
-    // Prefilled at target (clamped to the stepper's range) — untouched reads
-    // as "played at target".
-    _achievedTempo = State(initialValue: TempoStepper.clamp(Int(tempoTarget ?? 96)))
+    // Prefilled from the click's last tempo — an unstepped stepper reads as
+    // "played at target".
+    _achievedTempo = State(initialValue: TempoStepper.clamp(startingTempoBpm))
     _selectedVariantId = State(
       initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
   }
 
   /// Always pre-selected — falls back to the first step by position when
-  /// nothing's been tagged yet, so the picker never opens unset. Pulled out
-  /// for the same reason as `resolvedAchievedTempo`: directly testable.
+  /// nothing's been tagged yet, so the picker never opens unset.
   static func initialVariantId(currentVariantId: String?, variants: [VariantView]) -> String? {
     currentVariantId ?? variants.first?.id
-  }
-
-  /// Pure resolution of the onSave payload's tempo argument — pulled out of
-  /// the button closure so the "no target → never send a write" branch is
-  /// directly testable without rendering the view.
-  static func resolvedAchievedTempo(tempoTarget: UInt16?, current: Int) -> UInt16? {
-    guard tempoTarget != nil else { return nil }
-    return UInt16(current)
   }
 
   var body: some View {
@@ -86,11 +77,10 @@ struct ReflectionSheet: View {
           .padding(.top, IntradaSpacing.controlGap)
       }
 
-      if let tempoTarget {
-        eyebrow("Tempo reached · target ♩ = \(tempoTarget)").padding(.top, IntradaSpacing.card)
-        TempoStepper(value: $achievedTempo)
-          .padding(.top, IntradaSpacing.controlGap)
-      }
+      eyebrow(tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached")
+        .padding(.top, IntradaSpacing.card)
+      TempoStepper(value: $achievedTempo)
+        .padding(.top, IntradaSpacing.controlGap)
 
       eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
       TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
@@ -105,7 +95,7 @@ struct ReflectionSheet: View {
         onSave(
           score == 0 ? nil : UInt8(score),
           note.trimmingCharacters(in: .whitespacesAndNewlines),
-          Self.resolvedAchievedTempo(tempoTarget: tempoTarget, current: achievedTempo),
+          UInt16(achievedTempo),
           selectedVariantId)
       } label: {
         Text("Save & continue")
