@@ -234,9 +234,7 @@ struct FocusPlayerScreen: View {
     let id: String  // the current entry's ulid
     let title: String
     let elapsedDisplay: String
-    /// The item's own declared tempo (the practice target), shown as context.
     let tempoTargetBpm: UInt16?
-    /// The click's tempo at hand-off — the stepper's starting point (#1404).
     let startingTempoBpm: Int
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.

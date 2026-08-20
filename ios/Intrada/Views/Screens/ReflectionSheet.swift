@@ -1,14 +1,10 @@
 import SharedTypes
 import SwiftUI
 
-/// Hand-off reflection: after an item, score it (1–10), log the tempo
-/// reached, pick which step it was, and jot an optional note. Pure UI — the
-/// caller applies the writes and advances.
 struct ReflectionSheet: View {
   let itemTitle: String
   let elapsedDisplay: String
-  /// The item's own declared tempo marking, shown alongside the stepper as
-  /// context — the stepper itself is always present, target or not (#1404).
+  /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
   /// The item's step ladder, if any. Empty hides the step picker entirely.
   let variants: [VariantView]
@@ -39,8 +35,6 @@ struct ReflectionSheet: View {
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
-    // Prefilled from the click's last tempo — an unstepped stepper reads as
-    // "played at target".
     _achievedTempo = State(initialValue: TempoStepper.clamp(startingTempoBpm))
     _selectedVariantId = State(
       initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
