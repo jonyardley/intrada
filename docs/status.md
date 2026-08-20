@@ -21,13 +21,19 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1398 — the metronome click, back in the Focus Player. Step 3 of the adopted
-  order ([`research/comparison.md`](research/comparison.md)). The engine is
-  recovered from `8af4891^` and trimmed to a plain click; the player's tempo
-  readout becomes the control (design-principles T14). iOS-only: no schema, no
-  bridge, no core change.
+- #1404 — tempo capture: the end-of-item stepper pre-fills from the click's
+  last tempo and shows even when the item declares no target. Step 4 of the
+  adopted order ([`research/comparison.md`](research/comparison.md)),
+  following on from the click (#1398). iOS-only; no core change was needed —
+  `UpdateEntryTempo` already accepted an undeclared-target entry.
 
 ## Recently landed
+
+- #1398 — the metronome click, back in the Focus Player (#1401). Step 3 of
+  the adopted order ([`research/comparison.md`](research/comparison.md)). The
+  engine is recovered from `8af4891^` and trimmed to a plain click; the
+  player's tempo readout becomes the control (design-principles T14).
+  iOS-only: no schema, no bridge, no core change.
 
 - Phase 2 (say it right) is **closed**. #1360 (#1383) repurposed the Practice
   hero to the last session plus its one-tap start and moved the header subline
