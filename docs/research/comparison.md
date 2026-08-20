@@ -92,6 +92,9 @@ Do now (days, not weeks):
 3. **The click** — bring the deleted metronome engine back into the Focus
    Player (recoverable from `8af4891^`). iOS-only, no schema, Tier 2; pulled
    forward from audit Phase 4 because the hard part already exists. 1–2 days.
+   **Done 2026-08-19** (#1398, #1401): the player's tempo line doubles as the
+   control, the steppers appear only while it sounds, and the ruling is
+   design-principles T14. Still to hear on a device.
 4. **Tempo capture** — the end-of-item tempo stepper pre-fills from the click
    and shows even when the item has no declared target. Small core touch.
    About a day.
