@@ -21,13 +21,34 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- Nothing. Step 5 of the adopted order
+  ([`research/comparison.md`](research/comparison.md)) turned out to be built
+  already (below), so step 6, the Up next card (#1082), is the next unstarted
+  item.
+
+## Recently landed
+
+- #1081 — per-piece tracking **was already shipped**, back in July, and the
+  issue was simply never closed. Verified 2026-08-20 against the whole of its
+  stated scope: the core derivation (`build_exercise_contexts`, #1095), the
+  "By piece" rows and the per-this-piece rings on piece detail (#1097), the
+  FFI round-trip guard
+  (`setlist_entry_group_id_round_trips_on_ffi_bincode_wire`), the
+  `testExerciseDetailByPiece` snapshot, and the design mock committed under
+  `specs/track-exercises-per-piece/`. It came through the coach revert intact:
+  `AddToSetlist` still forms blocks, and `group_id` still round-trips the
+  local-first JSON codec, so the feature works with no network. No Tier 3 spec
+  and no core PR were written, because there was nothing left to build. This
+  is the same stale-issue pattern as #1106 in step 1 of the adopted order:
+  built during the coach era, frozen behind the pivot, never closed. **It has
+  not been used in anger**, which is the honest next step for it: the same
+  treatment step 2 gave the chord-chart flow.
+
 - #1404 (#1406) — tempo capture: the end-of-item stepper pre-fills from the
   click's last tempo and shows even when the item declares no target. Step 4
   of the adopted order ([`research/comparison.md`](research/comparison.md)),
   following on from the click (#1398). iOS-only; no core change was needed —
   `UpdateEntryTempo` already accepted an undeclared-target entry.
-
-## Recently landed
 
 - #1398 (#1401) — the metronome click is back in the Focus Player, step 3 of
   the adopted order ([`research/comparison.md`](research/comparison.md)). The
