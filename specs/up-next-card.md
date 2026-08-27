@@ -212,6 +212,12 @@ struct update) so a new view field costs one edit.
   exclude the anchor piece, `up_next` still names it. A stated invariant has to
   be an enforced one, and this one is a single line of refactoring from
   inverting silently.
+- **The data the derivation reads can be wrong**, so the edges are pinned: an
+  unreadable `last_practiced_at` counts as never practised rather than
+  panicking, a date *ahead* of the clock reads as today rather than wrapping to
+  the stalest item alive (reachable via the shell's reported UTC offset, not
+  only a broken clock), and a summary with no sessions falls back to the
+  default estimate rather than dividing by zero.
 
 ## Open questions (deferred, tracked on #1082)
 

@@ -680,6 +680,65 @@ mod tests {
         assert!(suggest(&library).estimated_minutes >= 5);
     }
 
+    // ── Edge cases in the data the derivation reads ──────────────────
+
+    #[test]
+    fn the_composer_rides_along_as_the_piece_subtitle() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        library[0].subtitle = "Debussy".to_string();
+
+        assert_eq!(suggest(&library).piece_subtitle.as_deref(), Some("Debussy"));
+    }
+
+    #[test]
+    fn a_piece_with_no_composer_has_no_subtitle() {
+        let library = piece_with_exercises("p1", "Prelude", 1);
+        assert_eq!(suggest(&library).piece_subtitle, None);
+    }
+
+    #[test]
+    fn an_unreadable_practice_date_counts_as_never_practised() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        library[0].practice = Some(ItemPracticeSummary {
+            last_practiced_at: Some("not a date".to_string()),
+            ..ItemPracticeSummary::fixture()
+        });
+
+        // Degrades to the never-practised wording rather than panicking on a
+        // row the store or a future writer got wrong.
+        let session = suggest(&library);
+        assert_eq!(session.reason, "Not practised yet");
+    }
+
+    #[test]
+    fn a_practice_date_in_the_future_reads_as_today() {
+        // Reachable without a broken clock: the shell reports its UTC offset at
+        // launch, so a session logged from a device further east can carry a
+        // date ahead of `clock.today`. Signed days must clamp, not wrap: as an
+        // unsigned cast a negative gap would make this the stalest item alive.
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        library[0].practice = Some(practised(-2, 10, 1));
+
+        assert_eq!(suggest(&library).reason, "Practised today");
+    }
+
+    #[test]
+    fn a_summary_with_no_sessions_falls_back_to_the_default_estimate() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        // A summary can exist with nothing to average yet; dividing by its
+        // session count would panic.
+        library[0].practice = Some(ItemPracticeSummary {
+            total_minutes: 30,
+            session_count: 0,
+            ..ItemPracticeSummary::fixture()
+        });
+
+        assert_eq!(
+            suggest(&library).estimated_minutes,
+            2 * UNPRACTISED_ESTIMATE_MINS
+        );
+    }
+
     // ── FFI wire ─────────────────────────────────────────────────────
 
     #[test]
