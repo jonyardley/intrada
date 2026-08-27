@@ -5,6 +5,7 @@ pub mod error;
 pub mod http;
 pub mod model;
 pub mod persistence;
+pub mod suggestion;
 pub mod validation;
 
 pub use app::{AppEffect, Effect, Event, Intrada};

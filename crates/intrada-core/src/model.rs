@@ -14,6 +14,7 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
+use crate::suggestion::SuggestedSession;
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -211,6 +212,10 @@ pub struct ViewModel {
     pub oauth_in_flight: bool,
     pub oauth_redirect_url: Option<String>,
     pub last_set_save_request_id: Option<String>,
+    /// The one suggested session on the Practice tab (#1082). `None` whenever
+    /// nothing qualifies: it suggests, it never gates.
+    #[serde(default)]
+    pub up_next: Option<SuggestedSession>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -540,6 +545,84 @@ pub struct SummaryView {
     pub reflection_improved: Option<String>,
     pub reflection_still_rough: Option<String>,
     pub reflection_next_target: Option<String>,
+}
+
+// ── Test fixtures ─────────────────────────────────────────────────────
+// One place per many-field view type, composed with struct update, so a new
+// field costs one edit rather than one per call site (CLAUDE.md, Testing).
+
+#[cfg(test)]
+impl LibraryItemView {
+    pub(crate) fn fixture(id: &str, title: &str, item_type: ItemKind) -> Self {
+        Self {
+            id: id.to_string(),
+            item_type,
+            title: title.to_string(),
+            subtitle: String::new(),
+            key: None,
+            modality: None,
+            tempo: None,
+            tempo_marking: None,
+            tempo_bpm: None,
+            notes: None,
+            tags: Vec::new(),
+            created_at: String::new(),
+            updated_at: String::new(),
+            practice: None,
+            latest_achieved_tempo: None,
+            priority: false,
+            linked_exercises: Vec::new(),
+            linked_from_pieces: Vec::new(),
+            exercise_contexts: Vec::new(),
+            scaffold_preview: None,
+            chord_chart: None,
+            variants: Vec::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl LinkedExerciseView {
+    pub(crate) fn fixture(id: &str, title: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            title: title.to_string(),
+            key: None,
+            tempo: None,
+            practice: None,
+            piece_context_score: None,
+        }
+    }
+}
+
+#[cfg(test)]
+impl VariantView {
+    pub(crate) fn fixture(id: &str, label: &str, position: usize) -> Self {
+        Self {
+            id: id.to_string(),
+            label: label.to_string(),
+            position,
+            latest_score: None,
+            score_history: Vec::new(),
+            is_solid: false,
+            is_current: false,
+        }
+    }
+}
+
+#[cfg(test)]
+impl ItemPracticeSummary {
+    pub(crate) fn fixture() -> Self {
+        Self {
+            session_count: 0,
+            total_minutes: 0,
+            latest_score: None,
+            score_history: Vec::new(),
+            latest_tempo: None,
+            tempo_history: Vec::new(),
+            last_practiced_at: None,
+        }
+    }
 }
 
 // ── View helpers ──────────────────────────────────────────────────────

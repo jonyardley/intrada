@@ -21,10 +21,15 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- Nothing. Step 5 of the adopted order
-  ([`research/comparison.md`](research/comparison.md)) turned out to be built
-  already (below), so step 6, the Up next card (#1082), is the next unstarted
-  item.
+- #1082 — the Up next card, step 6 of the adopted order
+  ([`research/comparison.md`](research/comparison.md)). Tier 3, spec at
+  [`specs/up-next-card.md`](../specs/up-next-card.md). **Core PR up**: the
+  suggestion derivation (`intrada-core/src/suggestion.rs`),
+  `ViewModel.up_next`, and `SessionEvent::StartBuildingFromSuggestion`, which
+  re-derives and seeds the builder. The SwiftUI card follows as its own PR
+  once the core is reviewed, per the two-PR rule for a phase spanning core and
+  screens. Held to suggest-never-gate: `up_next` is `None` whenever no piece
+  has a related exercise linked, and nothing else on the Practice tab changes.
 
 ## Recently landed
 
