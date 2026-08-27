@@ -9,6 +9,21 @@
 
 [#1082]: https://github.com/jonyardley/intrada/issues/1082
 
+## Design
+
+Mockup: [`up-next-card/design/up-next-card.dc.html`](up-next-card/design/up-next-card.dc.html),
+also in the Claude Design project as **Up Next Card**. Three frames: the card
+added under the existing hero (A), the suggestion *as* the hero (B), and the
+nothing-to-suggest state that both share. No new tokens and no new components:
+card surface, eyebrow, type badges, hero gradient and the brand button are all
+catalogue parts.
+
+**Open decision: A or B.** B is the recommendation, because A puts two start
+buttons a thumb apart and repeats the piece title the header subtitle already
+carries. B changes a canonical pillar screen, so it folds into the design
+system's Practice screen in the same pass. Awaiting Jon; the core PR does not
+depend on the answer, since both options read the same projection.
+
 ## Problem
 
 The Practice tab asks "what do you want to practise?" and offers a blank
