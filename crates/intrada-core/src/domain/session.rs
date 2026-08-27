@@ -1995,8 +1995,9 @@ mod tests {
             &mut m,
         );
         assert!(
-            !cmd.effects().any(|e| matches!(e, Effect::Http(_))),
-            "the suggestion is derived from data already in the model (invariant 1)"
+            cmd.effects().all(|e| matches!(e, Effect::Render(_))),
+            "the suggestion is derived from data already in the model: no HTTP, \
+             no storage read (invariant 1)"
         );
     }
 

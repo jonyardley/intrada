@@ -91,7 +91,7 @@ exactly as it does today.
    | # | Key | Direction |
    |---|-----|-----------|
    | 1 | the mark the row will show: the current step's where a step was chosen, otherwise the mark in **this piece's** context (`piece_context_score`) | lowest first, never marked first |
-   | 2 | days since the exercise was last practised | most stale first, never practised first |
+   | 2 | days since the exercise was last practised | most stale first, never practised first (the same convention as the anchor) |
    | 3 | link order, then id | ascending, determinism only |
 
    Deliberately not the exercise's flat mark: per-piece is the grain #1081
@@ -117,15 +117,24 @@ exactly as it does today.
    |---|---|
    | Card headline | `A priority · not practised for 6 days` |
    | Card headline, unstarred | `Not practised for 6 days` / `Practised yesterday` / `Practised today` / `Not practised yet` |
-   | Exercise or step row | `Marked 4 of 10 last time` / `Not marked with this piece` |
-   | Piece row | the staleness clause, as the headline's second column |
+   | Exercise row | `Marked 4 of 10 last time` / `Not marked with this piece` |
+   | Step row | `Marked 4 of 10 last time` / `Step not marked yet` |
+   | Piece row | `Marked 6 of 10 last time` / `Not marked yet` |
+
+   The piece row says its mark rather than repeating the headline's staleness:
+   the headline says *when*, each row says *how it went*. Nothing on the card
+   prints the same sentence twice.
 
 7. **The estimate is drawn from real minutes.** Per item, the average time
    actually spent on it (`total_minutes / session_count`); items never
-   practised fall back to `DEFAULT_PLANNED_DURATION_SECS` (5 min), which until
-   now was a const with no reader. Summed, rounded to the nearest 5, floor 5,
-   so the CTA reads `Start · 15 min`. It is an estimate of what this usually
-   takes, not a target, and nothing enforces it.
+   practised fall back to `UNPRACTISED_ESTIMATE_MINS` (5 min). Summed, rounded
+   to the nearest 5, floor 5, so the CTA reads `Start · 15 min`. It is an
+   estimate of what this usually takes, not a target, and nothing enforces it.
+
+   The fallback is the suggestion's own const, not
+   `validation::DEFAULT_PLANNED_DURATION_SECS`, which this PR deletes: it had
+   no reader, and borrowing it would have meant a later change to "the
+   builder's default planned duration" silently moving this estimate instead.
 
 8. **One event, no derived content on the wire.**
    `SessionEvent::StartBuildingFromSuggestion { now }` re-derives the
@@ -182,8 +191,11 @@ struct update) so a new view field costs one edit.
 - **FFI**: `assert_round_trips` on the new event and on `SuggestedSession`
   through `BincodeFfiFormat`, before either is wired to a screen.
 - **Local-first**: the derivation is read-only over data already in the model,
-  so the existing zero-`Http` assertions cover it; the event produces `Render`
-  and nothing else.
+  so the event's effects are asserted to be `Render` and nothing else.
+- **The pre-filter invariant has its own test**: with the library filtered to
+  exclude the anchor piece, `up_next` still names it. A stated invariant has to
+  be an enforced one, and this one is a single line of refactoring from
+  inverting silently.
 
 ## Open questions (deferred, tracked on #1082)
 

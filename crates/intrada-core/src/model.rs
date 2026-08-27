@@ -214,7 +214,6 @@ pub struct ViewModel {
     pub last_set_save_request_id: Option<String>,
     /// The one suggested session on the Practice tab (#1082). `None` whenever
     /// nothing qualifies: it suggests, it never gates.
-    #[serde(default)]
     pub up_next: Option<SuggestedSession>,
 }
 

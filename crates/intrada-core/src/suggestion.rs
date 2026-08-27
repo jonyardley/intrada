@@ -15,6 +15,10 @@ use crate::model::{ItemPracticeSummary, LibraryItemView, VariantView};
 /// itself that makes the two-to-three rows the surface was designed for.
 const MAX_SUGGESTED_EXERCISES: usize = 2;
 
+/// What to assume an item takes when it has never been practised, so the
+/// estimate has something honest to add for a brand-new piece.
+const UNPRACTISED_ESTIMATE_MINS: u32 = 5;
+
 /// One block worth resuming: the anchor piece, why, and what to play.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -61,7 +65,10 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         .min_by(|a, b| {
             b.priority
                 .cmp(&a.priority)
-                .then_with(|| staleness(b, clock).cmp(&staleness(a, clock)))
+                .then_with(|| {
+                    staleness_key(b.practice.as_ref(), clock)
+                        .cmp(&staleness_key(a.practice.as_ref(), clock))
+                })
                 .then_with(|| latest_mark(a).cmp(&latest_mark(b)))
                 .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
                 .then_with(|| a.id.cmp(&b.id))
@@ -85,8 +92,8 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         .collect();
     ranked.sort_by(|a, b| {
         a.mark().cmp(&b.mark()).then_with(|| {
-            staleness_of(a.practice, clock)
-                .cmp(&staleness_of(b.practice, clock))
+            staleness_key(a.practice, clock)
+                .cmp(&staleness_key(b.practice, clock))
                 .reverse()
         })
     });
@@ -105,7 +112,7 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         })
         .collect();
 
-    let piece_staleness = staleness_days(anchor, clock);
+    let piece_staleness = staleness_days(anchor.practice.as_ref(), clock);
     items_out.push(SuggestedItem {
         item_id: anchor.id.clone(),
         item_title: anchor.title.clone(),
@@ -113,7 +120,7 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         variant_id: None,
         variant_label: None,
         latest_score: latest_mark(anchor),
-        reason: capitalise(&staleness_clause(piece_staleness)),
+        reason: piece_mark_clause(latest_mark(anchor)),
     });
 
     let estimated_minutes = round_to_five(
@@ -133,7 +140,10 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
     Some(SuggestedSession {
         piece_id: anchor.id.clone(),
         piece_title: anchor.title.clone(),
-        piece_subtitle: Some(anchor.subtitle.clone()).filter(|s| !s.is_empty()),
+        piece_subtitle: {
+            let composer = anchor.subtitle.trim();
+            (!composer.is_empty()).then(|| composer.to_string())
+        },
         reason,
         items: items_out,
         estimated_minutes,
@@ -162,21 +172,17 @@ impl Suggestable<'_> {
     }
 }
 
-/// Days since the piece was last practised; `None` when it never was.
-fn staleness_days(item: &LibraryItemView, clock: LocalClock) -> Option<u32> {
-    staleness_of(item.practice.as_ref(), clock)
-}
-
-fn staleness_of(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> Option<u32> {
+fn staleness_days(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> Option<u32> {
     let at = practice?.last_practiced_at.as_deref()?;
     let parsed = chrono::DateTime::parse_from_rfc3339(at).ok()?;
     let day = clock.day_of(parsed.with_timezone(&chrono::Utc));
     Some((clock.today - day).num_days().max(0) as u32)
 }
 
-/// Ranking key for staleness: never practised sorts as the stalest of all.
-fn staleness(item: &LibraryItemView, clock: LocalClock) -> u32 {
-    staleness_days(item, clock).unwrap_or(u32::MAX)
+/// Ranking key for staleness: never practised is the stalest of all. One
+/// convention for pieces and exercises alike, so the two rankings can't drift.
+fn staleness_key(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> u32 {
+    staleness_days(practice, clock).unwrap_or(u32::MAX)
 }
 
 fn latest_mark(item: &LibraryItemView) -> Option<u8> {
@@ -196,10 +202,24 @@ fn staleness_clause(days: Option<u32>) -> String {
 
 fn mark_clause(mark: Option<u8>, has_step: bool) -> String {
     match (mark, has_step) {
-        (Some(m), _) => format!("Marked {m} of 10 last time"),
+        (Some(m), _) => marked_clause(m),
         (None, true) => "Step not marked yet".to_string(),
         (None, false) => "Not marked with this piece".to_string(),
     }
+}
+
+/// The anchor's own row. Distinct from the exercise wording because "with this
+/// piece" makes no sense on the piece itself, and distinct from the card
+/// headline so the two don't print the same sentence twice.
+fn piece_mark_clause(mark: Option<u8>) -> String {
+    match mark {
+        Some(m) => marked_clause(m),
+        None => "Not marked yet".to_string(),
+    }
+}
+
+fn marked_clause(mark: u8) -> String {
+    format!("Marked {mark} of 10 last time")
 }
 
 fn capitalise(clause: &str) -> String {
@@ -215,7 +235,7 @@ fn capitalise(clause: &str) -> String {
 fn average_minutes(practice: Option<&ItemPracticeSummary>) -> u32 {
     match practice {
         Some(p) if p.session_count > 0 => (p.total_minutes / p.session_count as u32).max(1),
-        _ => crate::validation::DEFAULT_PLANNED_DURATION_SECS / 60,
+        _ => UNPRACTISED_ESTIMATE_MINS,
     }
 }
 
@@ -299,7 +319,6 @@ mod tests {
     #[test]
     fn an_exercise_is_never_the_anchor() {
         let mut library = piece_with_exercises("p1", "Prelude", 1);
-        // A standalone exercise, no piece involved, is not a session.
         library.push(exercise("solo", "Scales"));
         assert_eq!(suggest(&library).piece_id, "p1");
     }
@@ -422,6 +441,18 @@ mod tests {
         assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
     }
 
+    #[test]
+    fn an_exercise_never_practised_is_the_stalest_of_all() {
+        let mut library = piece_with_exercises("p1", "Prelude", 2);
+        for ex in &mut library[0].linked_exercises {
+            ex.piece_context_score = Some(5);
+        }
+        library[0].linked_exercises[0].practice = Some(practised(30, 10, 1));
+        library[0].linked_exercises[1].practice = None;
+
+        assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
+    }
+
     // ── Steps ────────────────────────────────────────────────────────
 
     #[test]
@@ -510,6 +541,20 @@ mod tests {
         assert_eq!(suggest(&library).reason, "Not practised for 6 days");
     }
 
+    #[test]
+    fn the_piece_row_does_not_echo_the_card_headline() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        library[0].practice = Some(practised(6, 10, 1));
+
+        let session = suggest(&library);
+        let piece_row = session.items.last().expect("the piece row");
+        assert_ne!(
+            piece_row.reason, session.reason,
+            "the headline says when, the row says how it went"
+        );
+        assert_eq!(piece_row.reason, "Not marked yet");
+    }
+
     /// The reasons a real library actually produces, not sentences written to
     /// match the formatter (CLAUDE.md, Testing). Asserts the property the
     /// screen needs of every one of them.
@@ -581,8 +626,23 @@ mod tests {
                     !reason.to_lowercase().contains("you"),
                     "second person is for the user's own words: {reason}"
                 );
+
+                let lower = reason.to_lowercase();
                 assert!(
-                    reason.split_whitespace().count() <= 8,
+                    !lower.contains("practiced") && !lower.contains("practicing"),
+                    "American spelling (rule 1): {reason}"
+                );
+                assert!(
+                    reason
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_uppercase() || c.is_numeric()),
+                    "sentence case starts the line (rule 5): {reason}"
+                );
+                // Rule 9's one-line budget for a caption, not today's longest
+                // output: it has room to grow before it needs re-deciding.
+                assert!(
+                    reason.split_whitespace().count() <= 10,
                     "over the copy budget: {reason}"
                 );
             }
@@ -606,7 +666,7 @@ mod tests {
     #[test]
     fn the_estimate_falls_back_to_the_default_for_the_unpractised() {
         let library = piece_with_exercises("p1", "Prelude", 2);
-        let expected = 3 * (crate::validation::DEFAULT_PLANNED_DURATION_SECS / 60);
+        let expected = 3 * UNPRACTISED_ESTIMATE_MINS;
 
         assert_eq!(suggest(&library).estimated_minutes, expected);
     }

@@ -370,11 +370,10 @@ impl Intrada {
     fn build_view(&self, model: &Model) -> ViewModel {
         use std::collections::HashMap;
 
-        // Build an id→item index for O(1) linked-exercise lookup.
         let item_index: HashMap<&str, &crate::domain::item::Item> =
             model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
-        let mut items = build_library_item_views(model);
+        let mut items = build_library_item_views(model, &item_index);
 
         // Computed before the filter so the vocabulary stays stable as the
         // filter narrows. Case-insensitive dedupe, first-seen casing.
@@ -602,11 +601,11 @@ impl Intrada {
 /// Every library item projected for the view, unfiltered and unsorted. Shared
 /// by `build_view` and the Up next derivation, so the card reads the same marks
 /// the Library screens show rather than deriving its own (#1082).
-pub(crate) fn build_library_item_views(model: &Model) -> Vec<LibraryItemView> {
+fn build_library_item_views(
+    model: &Model,
+    item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
+) -> Vec<LibraryItemView> {
     use std::collections::HashMap;
-
-    let item_index: HashMap<&str, &crate::domain::item::Item> =
-        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
     // Build a reverse index: exercise_id → [PieceRefView] in one pass.
     // Mirror the forward filter: only push a PieceRefView when the target
@@ -634,7 +633,7 @@ pub(crate) fn build_library_item_views(model: &Model) -> Vec<LibraryItemView> {
 
     // Derived per-exercise practice contexts (piece + "on its own"), keyed
     // by exercise id. Built once over sessions, attached to exercises below.
-    let contexts_by_exercise = build_exercise_contexts(&model.sessions, &item_index);
+    let contexts_by_exercise = build_exercise_contexts(&model.sessions, item_index);
 
     // Per-step score history, keyed by (item id, variant id); one pass
     // over sessions, attached to laddered exercises below (#1083).
@@ -794,8 +793,10 @@ pub(crate) fn derive_up_next(
     model: &Model,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Option<crate::suggestion::SuggestedSession> {
+    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
     let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
-    crate::suggestion::compute_up_next(&build_library_item_views(model), clock)
+    crate::suggestion::compute_up_next(&build_library_item_views(model, &item_index), clock)
 }
 
 /// Build practice summaries (keyed by item_id) in a single pass over sessions.
@@ -3665,6 +3666,72 @@ mod tests {
             chord_chart: None,
             variants: vec![],
         }
+    }
+
+    #[test]
+    fn view_exposes_the_up_next_suggestion() {
+        // Wiring only: the ranking and the wording are pinned in
+        // suggestion::tests, which can hold the clock still.
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+
+        let up_next = app.view(&model).up_next.expect("a suggestion");
+        assert_eq!(up_next.piece_id, "p1");
+        assert_eq!(
+            up_next
+                .items
+                .iter()
+                .map(|i| i.item_id.as_str())
+                .collect::<Vec<_>>(),
+            ["ex1", "p1"]
+        );
+    }
+
+    #[test]
+    fn a_library_filter_cannot_hide_the_up_next_suggestion() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        // Filtering the library to exercises hides the anchor piece from the
+        // list; the suggestion is derived pre-filter and must survive it.
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert!(
+            !vm.items.iter().any(|i| i.id == "p1"),
+            "the filter really does hide the piece from the list"
+        );
+        assert_eq!(
+            vm.up_next.expect("a suggestion").piece_id,
+            "p1",
+            "the suggestion is derived before the filter"
+        );
+    }
+
+    #[test]
+    fn view_has_no_up_next_when_no_piece_has_a_related_exercise() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Sonata", ItemKind::Piece, now),
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+        ];
+
+        assert!(
+            app.view(&model).up_next.is_none(),
+            "it suggests, it never invents"
+        );
     }
 
     #[test]
