@@ -436,3 +436,39 @@ the timer, and the running state needs an on-screen home anyway once the sheet
 is dismissed); a beat-synchronised pulse animation on the row (rejected: the
 player surface sits still while practice runs, per the timer ring, and a
 flashing light is a second metronome competing with the first).
+
+### T15 — The Practice hero carries the suggestion, not a play glyph
+
+**Status:** DECIDED 2026-08-27 (Jon; jonyardley/intrada#1082, the Up next card;
+mock at
+[`specs/up-next-card/design/up-next-card.dc.html`](../specs/up-next-card/design/up-next-card.dc.html)).
+
+The Practice hero was the last thing played, a 96pt play button, and the day.
+Where a suggestion exists it becomes the hero instead: the piece, why it is
+being suggested, its two or three items with their reasons, and one
+`Start · N min`. "Build my own instead" sits under it as the secondary, and
+takes the user to exactly the screen that shipped.
+
+**One primary action is the whole of it.** The alternative, and the literal
+reading of the issue, was a card *underneath* the existing hero. That puts two
+buttons a thumb apart which both begin a session, and asks the user to choose
+between them with no basis for choosing. It also repeats itself: the header
+subtitle already reads "Last practised Tuesday", and the suggested piece is
+usually the last piece played, so the title landed twice on one screen.
+
+Two rulings come with it:
+
+- **Nothing is lost by the hero changing job.** Last practised keeps its line
+  in the header subtitle, which is where the tone-of-voice worked example put
+  it. The hero stops being an affordance explaining itself and becomes the
+  user's own pieces and marks, which is content over chrome (§C).
+- **Suggest, never gate.** With no suggestion the hero is exactly what shipped,
+  and dismissing gives the same screen. The card cannot become a wall in front
+  of the manual builder, and it never blocks a user who wants something else.
+
+Options considered: the card below the hero (rejected above); the card above
+the hero (rejected for the same two-buttons reason, and it pushes the week
+strip below the fold); a suggestion *line* inside the existing hero with no
+item rows (rejected: the reasons are the honest part, and a piece title with
+no reasons is the app having an opinion it will not show its working for,
+which is the road the coach died on).
