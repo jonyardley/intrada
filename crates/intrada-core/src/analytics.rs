@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::session::PracticeSession;
+use crate::model::ItemPracticeSummary;
+use crate::staleness;
 
 // ── Analytics View Model Types ───────────────────────────────────────
 
@@ -159,6 +161,7 @@ impl LocalClock {
 pub fn compute_analytics(
     sessions: &[PracticeSession],
     items: &[Item],
+    summaries: &HashMap<String, ItemPracticeSummary>,
     clock: LocalClock,
 ) -> AnalyticsView {
     AnalyticsView {
@@ -167,7 +170,7 @@ pub fn compute_analytics(
         daily_totals: compute_daily_totals(sessions, clock),
         top_items: compute_top_items(sessions),
         score_trends: compute_score_trends(sessions, clock),
-        neglected_items: compute_neglected_items(sessions, items, clock),
+        neglected_items: compute_neglected_items(summaries, items, clock),
         score_changes: compute_score_changes(sessions, clock),
     }
 }
@@ -381,69 +384,41 @@ pub fn compute_score_trends(
     trends
 }
 
-/// Items not practised in the last 14 days. Up to 5, ordered never-practised
-/// first, then by longest gap.
+/// Items the library has left behind: never practised, or past the return
+/// interval their own history earns them (#1416). Up to 5, furthest through
+/// that interval first. Graded rather than a flat 14-day cut, and over the same
+/// `staleness` estimate the Up next reasons read, so the core has one opinion
+/// about how cold something is rather than two.
 pub fn compute_neglected_items(
-    sessions: &[PracticeSession],
+    summaries: &HashMap<String, ItemPracticeSummary>,
     items: &[Item],
     clock: LocalClock,
 ) -> Vec<NeglectedItem> {
-    if items.is_empty() {
-        return Vec::new();
-    }
+    let mut neglected: Vec<(u32, NeglectedItem)> = items
+        .iter()
+        .filter_map(|item| {
+            let practice = summaries.get(&item.id);
+            let staleness =
+                staleness::assess(practice, practice.and_then(|p| p.latest_score), clock);
+            (!staleness.is_fresh()).then(|| {
+                (
+                    staleness.overdue_key(),
+                    NeglectedItem {
+                        item_id: item.id.clone(),
+                        item_title: item.title.clone(),
+                        days_since_practice: staleness.days(),
+                    },
+                )
+            })
+        })
+        .collect();
 
-    let lookback_start = clock.today - chrono::Duration::days(13); // 14 days inclusive
-
-    let mut recently_practised: HashSet<String> = HashSet::new();
-    let mut latest_dates: HashMap<String, NaiveDate> = HashMap::new();
-
-    for session in sessions {
-        let session_date = clock.day_of(session.started_at);
-        for entry in &session.entries {
-            latest_dates
-                .entry(entry.item_id.clone())
-                .and_modify(|d| {
-                    if session_date > *d {
-                        *d = session_date;
-                    }
-                })
-                .or_insert(session_date);
-
-            if session_date >= lookback_start && session_date <= clock.today {
-                recently_practised.insert(entry.item_id.clone());
-            }
-        }
-    }
-
-    let mut neglected: Vec<NeglectedItem> = Vec::new();
-
-    for item in items {
-        if recently_practised.contains(&item.id) {
-            continue;
-        }
-
-        let days_since_practice = latest_dates
-            .get(&item.id)
-            .map(|d| (clock.today - *d).num_days().max(0) as u32);
-
-        neglected.push(NeglectedItem {
-            item_id: item.id.clone(),
-            item_title: item.title.clone(),
-            days_since_practice,
-        });
-    }
-
-    neglected.sort_by(
-        |a, b| match (&a.days_since_practice, &b.days_since_practice) {
-            (None, None) => std::cmp::Ordering::Equal,
-            (None, Some(_)) => std::cmp::Ordering::Less,
-            (Some(_), None) => std::cmp::Ordering::Greater,
-            (Some(a_days), Some(b_days)) => b_days.cmp(a_days),
-        },
-    );
-
-    neglected.truncate(5);
+    // Ties are the rule, not the exception: every never-practised item shares
+    // the sentinel key, so the id decides rather than the library's own order.
     neglected
+        .sort_by(|(a_key, a), (b_key, b)| b_key.cmp(a_key).then_with(|| a.item_id.cmp(&b.item_id)));
+    neglected.truncate(5);
+    neglected.into_iter().map(|(_, item)| item).collect()
 }
 
 /// This week's latest score vs the latest before it, per item. Up to 5, largest
@@ -1268,6 +1243,18 @@ mod tests {
         }
     }
 
+    fn neglected(
+        sessions: &[PracticeSession],
+        items: &[Item],
+        clock: LocalClock,
+    ) -> Vec<NeglectedItem> {
+        compute_neglected_items(
+            &crate::app::build_practice_summaries(sessions),
+            items,
+            clock,
+        )
+    }
+
     #[test]
     fn test_neglected_items_basic() {
         // 10 items, 4 practised this week → 6 neglected, capped at 5
@@ -1298,7 +1285,7 @@ mod tests {
             ),
         ];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 5); // capped at 5 out of 6
         for n in &neglected {
             assert!(!["p1", "p2", "p3", "p4"].contains(&n.item_id.as_str()));
@@ -1321,7 +1308,7 @@ mod tests {
             vec![make_entry("p1", "Old Item", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 2);
         assert_eq!(neglected[0].item_id, "p2"); // never practised first
         assert!(neglected[0].days_since_practice.is_none());
@@ -1359,7 +1346,7 @@ mod tests {
             ),
         ];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 3);
         assert_eq!(neglected[0].item_id, "p2"); // 30 days
         assert_eq!(neglected[1].item_id, "p1"); // 20 days
@@ -1382,14 +1369,14 @@ mod tests {
             ],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert!(neglected.is_empty());
     }
 
     #[test]
     fn test_neglected_items_empty_library() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let neglected = compute_neglected_items(&[], &[], clock(today));
+        let neglected = neglected(&[], &[], clock(today));
         assert!(neglected.is_empty());
     }
 
@@ -1407,46 +1394,67 @@ mod tests {
             vec![make_entry("p2", "Deleted", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 1);
         assert_eq!(neglected[0].item_id, "p1"); // only existing item
         assert!(neglected[0].days_since_practice.is_none()); // never practised
     }
 
+    /// The flat 14-day cut is gone (#1416): one gap, two verdicts.
     #[test]
-    fn test_neglected_items_13_days_not_neglected() {
-        // Item practised 13 days ago → within 14-day window → not neglected
+    fn neglected_grades_the_gap_against_the_items_own_history() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let items = vec![make_item("p1", "Recent")];
+        let gap = today - chrono::Duration::days(13);
+        let items = vec![make_item("p1", "Half-learned"), make_item("p2", "Solid")];
 
-        let sessions = vec![make_session(
+        let mut sessions = vec![make_session(
             "s1",
-            today - chrono::Duration::days(13),
+            gap,
             600,
-            vec![make_entry("p1", "Recent", ItemKind::Piece, 600, None)],
+            vec![make_entry("p1", "Half-learned", ItemKind::Piece, 600, None)],
         )];
+        for i in 0..12 {
+            sessions.push(make_session(
+                &format!("s{}", i + 2),
+                gap - chrono::Duration::days(i as i64),
+                600,
+                vec![make_entry("p2", "Solid", ItemKind::Piece, 600, Some(9))],
+            ));
+        }
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
-        assert!(neglected.is_empty());
+        let neglected = neglected(&sessions, &items, clock(today));
+        assert_eq!(neglected.len(), 1);
+        assert_eq!(neglected[0].item_id, "p1");
+        assert_eq!(neglected[0].days_since_practice, Some(13));
     }
 
     #[test]
-    fn test_neglected_items_14_days_is_neglected() {
-        // Item practised exactly 14 days ago → outside 14-day window → neglected
+    fn neglected_breaks_a_tie_on_the_id_not_the_library_order() {
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+        let items = vec![make_item("zeta", "Zortziko"), make_item("alpha", "Aria")];
+
+        let rows = neglected(&[], &items, clock(today));
+        let ids: Vec<&str> = rows.iter().map(|n| n.item_id.as_str()).collect();
+
+        assert_eq!(ids, vec!["alpha", "zeta"]);
+    }
+
+    #[test]
+    fn neglected_reports_the_gap_it_measured() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let items = vec![make_item("p1", "Old")];
 
         let sessions = vec![make_session(
             "s1",
-            today - chrono::Duration::days(14),
+            today - chrono::Duration::days(40),
             600,
             vec![make_entry("p1", "Old", ItemKind::Piece, 600, None)],
         )];
 
-        let neglected = compute_neglected_items(&sessions, &items, clock(today));
+        let neglected = neglected(&sessions, &items, clock(today));
         assert_eq!(neglected.len(), 1);
         assert_eq!(neglected[0].item_id, "p1");
-        assert_eq!(neglected[0].days_since_practice, Some(14));
+        assert_eq!(neglected[0].days_since_practice, Some(40));
     }
 
     // ── Score Changes Tests ───────────────────────────────────────────
@@ -1680,7 +1688,12 @@ mod tests {
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4))],
         )];
 
-        let analytics = compute_analytics(&sessions, &[], clock(today));
+        let analytics = compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            clock(today),
+        );
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.daily_totals.len(), 28);
@@ -1710,7 +1723,12 @@ mod tests {
             reflection_next_target: None,
         }];
 
-        let analytics = compute_analytics(&sessions, &[], clock(today));
+        let analytics = compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            clock(today),
+        );
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.weekly_summary.total_minutes, 10);
         assert_eq!(analytics.streak.current_days, 1);
@@ -1835,9 +1853,8 @@ mod tests {
     }
 
     #[test]
-    fn neglected_lookback_uses_local_days() {
-        // Practised exactly at the 14-day lookback edge, but only when the
-        // session's UTC instant is shifted into the local day.
+    fn neglected_gap_is_counted_in_local_days() {
+        // The UTC instant falls on Jul 31, but locally it is Aug 1.
         let items = vec![make_item("p1", "Sonata")];
         let sessions = vec![make_session_at(
             "s1",
@@ -1845,15 +1862,12 @@ mod tests {
             600,
             vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
         )];
-        let neglected = compute_neglected_items(
+        let neglected = neglected(
             &sessions,
             &items,
             bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
         );
-        assert!(
-            neglected.is_empty(),
-            "practised on local Aug 1, inside the window"
-        );
+        assert_eq!(neglected[0].days_since_practice, Some(13));
     }
 
     #[test]

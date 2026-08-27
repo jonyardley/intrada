@@ -136,8 +136,8 @@ exactly as it does today.
 
    | Where | String |
    |---|---|
-   | Card headline | `A priority · not practised for 6 days` |
-   | Card headline, unstarred | `Not practised for 6 days` / `Practised yesterday` / `Practised today` / `Not practised yet` |
+   | Card headline | `A priority · going cold after 3 weeks` |
+   | Card headline, unstarred | `Cold for 3 months` / `Practised 6 days ago` / `Practised yesterday` / `Practised today` / `Not practised yet` |
    | Exercise row | `Marked 4 of 10 last time` / `Not marked with this piece` |
    | Step row | `Marked 4 of 10 last time` / `Step not marked yet` |
    | Piece row | `Marked 6 of 10 last time` / `Not marked yet` |
@@ -145,6 +145,13 @@ exactly as it does today.
    The piece row says its mark rather than repeating the headline's staleness:
    the headline says *when*, each row says *how it went*. Nothing on the card
    prints the same sentence twice.
+
+   **Updated 2026-08-27 (#1416).** The headline was a flat day count
+   (`not practised for 6 days`); it is now the getting-cold signal's graded
+   clause, and the ranking moved with it so the headline still says the same
+   thing the ranking used. The rows are unchanged and stay at one clause; see
+   [`getting-cold-signal.md`](getting-cold-signal.md) decision 7 for why
+   per-exercise coldness waits for the cold shelf (#1418).
 
 7. **The estimate is drawn from real minutes.** Per item, the average time
    actually spent on it (`total_minutes / session_count`); items never
@@ -244,10 +251,12 @@ On the screens side:
 
 - **One card or a short list.** One is the decision here (one primary action per
   screen). A second-choice row is a later call, once the card has been used.
-- **The getting-cold signal** (step 8 of the adopted order) lands as new reason
-  lines on this card, replacing the flat day count with a graded estimate. The
-  reason strings are the seam it arrives through, which is why they are
-  core-owned from the start.
+- ~~**The getting-cold signal** (step 8 of the adopted order) lands as new
+  reason lines on this card, replacing the flat day count with a graded
+  estimate.~~ **Landed 2026-08-27 (#1416),
+  [`getting-cold-signal.md`](getting-cold-signal.md).** It arrived exactly
+  through the reason strings, with no ViewModel field and no Swift logic,
+  which is what core-owning them from the start bought.
 - **Standalone exercises and un-linked pieces** are invisible to this card by
   decision 3. If that turns out to be most of a real library, the fix is
   linking, not widening the derivation.

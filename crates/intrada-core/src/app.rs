@@ -533,7 +533,12 @@ impl Intrada {
             (None, None)
         } else {
             (
-                Some(compute_analytics(&model.sessions, &model.items, clock)),
+                Some(compute_analytics(
+                    &model.sessions,
+                    &model.items,
+                    &model.practice_summaries,
+                    clock,
+                )),
                 crate::analytics::compute_last_practised(&model.sessions, clock),
             )
         };

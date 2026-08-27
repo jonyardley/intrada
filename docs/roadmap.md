@@ -60,7 +60,8 @@ native SwiftUI iOS app (on the Crux core — see
 Leptos web app and the Tauri iOS host were **deleted** in #1133, not paused.
 
 The active gaps are deeper Layer-1 capture (multi-key, sections, archive),
-the Space layer (mastery decay, spaced repetition), and parts of Show
+the rest of the Space layer (per-item scheduling state and resurfacing; its
+first slice, the getting-cold signal, landed in #1416), and parts of Show
 (timeline charts, calendar). Layer 5 (Guide / AI) is intentionally on the
 horizon.
 

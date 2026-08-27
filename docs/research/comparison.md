@@ -118,7 +118,16 @@ Then, each building on the last:
    tempo?) being answered first.
 8. **The getting-cold signal** — a graded staleness estimate replacing the
    binary 14-day flag, landing as Up next reason lines rather than a surface
-   of its own. 1–2 days once step 6 exists.
+   of its own. 1–2 days once step 6 exists. **Done 2026-08-27** (#1416,
+   [`specs/getting-cold-signal.md`](../../specs/getting-cold-signal.md)):
+   how long an item has sat is now measured against the interval its own
+   history earns it, so a fragile piece and a consolidated one no longer go
+   cold on the same clock. The card's headline reason and its ranking both
+   moved to the graded number, and `compute_neglected_items` reads the same
+   estimate instead of its own 14-day cut. Core only: it arrived through the
+   reason strings, with no ViewModel field and no Swift logic. Whether the
+   thresholds are right is an empirical question, so use it for a few weeks
+   before tuning them (#1419).
 
 Big bets, last, each a fresh decision gated on lived use:
 

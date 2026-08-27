@@ -645,7 +645,7 @@
       SuggestedSession(
         pieceId: "piece-1", pieceTitle: "Like Someone in Love",
         pieceSubtitle: "Jimmy Van Heusen",
-        reason: "A priority · not practised for 6 days", priority: true,
+        reason: "A priority · cold for 5 weeks", priority: true,
         items: [
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
