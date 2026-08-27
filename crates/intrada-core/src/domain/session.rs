@@ -230,6 +230,13 @@ pub enum SessionEvent {
     StartBuildingWith {
         item_id: String,
     },
+    /// The Up next card's CTA: from Idle, start building seeded with the
+    /// suggested block (#1082). Carries only `now`, because the core
+    /// re-derives the suggestion rather than trusting the shell's copy of it,
+    /// and the derivation is clock-dependent.
+    StartBuildingFromSuggestion {
+        now: DateTime<Utc>,
+    },
     AddNewItemToSetlist {
         title: String,
         item_type: ItemKind,
@@ -807,6 +814,37 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
             model.session_status = SessionStatus::Building(BuildingSession::default());
             handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
+        }
+
+        SessionEvent::StartBuildingFromSuggestion { now } => {
+            if !matches!(model.session_status, SessionStatus::Idle) {
+                model.last_error = Some("A practice is already in progress".to_string());
+                return crux_core::render::render();
+            }
+            // Nothing to suggest is not an error: the CTA cannot be on screen
+            // in that case, and a race must not strand an empty builder.
+            let Some(suggestion) = crate::app::derive_up_next(model, now) else {
+                return crux_core::render::render();
+            };
+
+            let mut building = BuildingSession::default();
+            let group_id = ulid::Ulid::generate().to_string();
+            for suggested in &suggestion.items {
+                let position = building.entries.len();
+                let mut entry = create_entry(
+                    &suggested.item_id,
+                    &suggested.item_title,
+                    suggested.item_type.clone(),
+                    position,
+                );
+                entry.group_id = Some(group_id.clone());
+                entry.variant_id.clone_from(&suggested.variant_id);
+                building.entries.push(entry);
+            }
+
+            model.session_status = SessionStatus::Building(building);
+            model.last_error = None;
+            crux_core::render::render()
         }
 
         SessionEvent::AddToSetlist { item_id } => {
@@ -1839,6 +1877,135 @@ mod tests {
             matches!(m.session_status, SessionStatus::Idle),
             "a failed seed must not leave an empty building session"
         );
+    }
+
+    // ── The Up next card's seeding event (#1082) ─────────────────────
+
+    fn suggestion_model() -> Model {
+        let mut m = linked_model();
+        // Pin the anchor so these tests assert the seeding, not the ranking
+        // (which `suggestion.rs` covers).
+        for item in &mut m.items {
+            if item.id == "piece-P" {
+                item.priority = true;
+            }
+        }
+        m
+    }
+
+    fn start_from_suggestion(model: &mut Model) {
+        update(
+            model,
+            Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
+        );
+    }
+
+    #[test]
+    fn start_building_from_suggestion_seeds_the_derived_block() {
+        let mut m = suggestion_model();
+        start_from_suggestion(&mut m);
+
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        let e = building_entries(&m);
+        assert!(e[0].group_id.is_some(), "the seeded block has a group_id");
+        assert!(
+            e.iter().all(|x| x.group_id == e[0].group_id),
+            "one block, not three standalone entries"
+        );
+        assert_eq!(m.last_error, None);
+    }
+
+    #[test]
+    fn start_building_from_suggestion_caps_the_block_at_three_items() {
+        let mut m = suggestion_model();
+        for item in &mut m.items {
+            if item.id == "piece-P" {
+                item.linked_exercise_ids = vec![
+                    "ex-A".to_string(),
+                    "ex-B".to_string(),
+                    "ex-C".to_string(),
+                    "ex-D".to_string(),
+                ];
+            }
+        }
+        start_from_suggestion(&mut m);
+
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+    }
+
+    #[test]
+    fn start_building_from_suggestion_rejects_when_not_idle() {
+        let mut m = suggestion_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        start_from_suggestion(&mut m);
+
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("A practice is already in progress")
+        );
+        assert_eq!(ids(&m), ["ex-C"], "existing setlist untouched");
+    }
+
+    #[test]
+    fn start_building_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
+        // No piece has a related exercise linked, so there is no block to resume.
+        let mut m = linked_model();
+        m.items.retain(|i| i.id == "piece-Q" || i.id == "ex-D");
+        start_from_suggestion(&mut m);
+
+        assert!(
+            matches!(m.session_status, SessionStatus::Idle),
+            "an empty derivation must not leave an empty building session"
+        );
+        assert_eq!(m.last_error, None, "nothing to suggest is not an error");
+    }
+
+    #[test]
+    fn start_building_from_suggestion_attributes_the_current_step() {
+        let mut m = suggestion_model();
+        let step_id = "v-C".to_string();
+        for item in &mut m.items {
+            if item.id == "ex-A" {
+                item.variants = vec![crate::domain::variant::Variant {
+                    id: step_id.clone(),
+                    label: "C".to_string(),
+                    position: 0,
+                    updated_at: Utc::now(),
+                    deleted_at: None,
+                }];
+            }
+        }
+        start_from_suggestion(&mut m);
+
+        let e = building_entries(&m);
+        let seeded = e.iter().find(|x| x.item_id == "ex-A").expect("ex-A seeded");
+        assert_eq!(seeded.variant_id.as_deref(), Some(step_id.as_str()));
+        let unladdered = e.iter().find(|x| x.item_id == "ex-B").expect("ex-B seeded");
+        assert_eq!(unladdered.variant_id, None);
+    }
+
+    #[test]
+    fn start_building_from_suggestion_makes_no_network_call() {
+        let mut m = suggestion_model();
+        m.local_first = true;
+        let app = Intrada;
+        let mut cmd = app.update(
+            Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
+            &mut m,
+        );
+        assert!(
+            cmd.effects().all(|e| matches!(e, Effect::Render(_))),
+            "the suggestion is derived from data already in the model: no HTTP, \
+             no storage read (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn start_building_from_suggestion_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::Session(
+            SessionEvent::StartBuildingFromSuggestion { now: Utc::now() },
+        ));
     }
 
     #[test]

@@ -22,7 +22,6 @@ pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_SET_NAME: usize = 200;
 pub const MAX_VARIANT_LABEL: usize = 100;
 pub const MAX_VARIANTS: usize = 24;
-pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 300;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
 pub const MIN_SESSION_TARGET_MINS: u32 = 5;

@@ -370,185 +370,10 @@ impl Intrada {
     fn build_view(&self, model: &Model) -> ViewModel {
         use std::collections::HashMap;
 
-        // Build an id→item index for O(1) linked-exercise lookup.
         let item_index: HashMap<&str, &crate::domain::item::Item> =
             model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
-        // Build a reverse index: exercise_id → [PieceRefView] in one pass.
-        // Mirror the forward filter: only push a PieceRefView when the target
-        // id resolves to a present item whose kind == Exercise.
-        let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
-        for item in &model.items {
-            if item.kind == ItemKind::Piece {
-                for ex_id in &item.linked_exercise_ids {
-                    if item_index
-                        .get(ex_id.as_str())
-                        .is_some_and(|t| t.kind == ItemKind::Exercise)
-                    {
-                        piece_refs_by_exercise
-                            .entry(ex_id.as_str())
-                            .or_default()
-                            .push(PieceRefView {
-                                id: item.id.clone(),
-                                title: item.title.clone(),
-                                subtitle: item.composer.clone(),
-                            });
-                    }
-                }
-            }
-        }
-
-        // Derived per-exercise practice contexts (piece + "on its own"), keyed
-        // by exercise id. Built once over sessions, attached to exercises below.
-        let contexts_by_exercise = build_exercise_contexts(&model.sessions, &item_index);
-
-        // Per-step score history, keyed by (item id, variant id); one pass
-        // over sessions, attached to laddered exercises below (#1083).
-        let variant_scores = build_variant_score_index(&model.sessions);
-
-        let mut items: Vec<LibraryItemView> = Vec::new();
-
-        for item in &model.items {
-            let practice = model.practice_summaries.get(&item.id).cloned();
-            let subtitle = item.composer.clone().unwrap_or_default();
-            let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
-
-            let linked_exercises = if item.kind == ItemKind::Piece {
-                item.linked_exercise_ids
-                    .iter()
-                    .filter_map(|ex_id| {
-                        let ex = item_index.get(ex_id.as_str())?;
-                        if ex.kind != ItemKind::Exercise {
-                            return None;
-                        }
-                        // The exercise's score in *this piece's* context, pulled
-                        // from the same derivation the exercise screen uses so
-                        // both sides agree (#1087 B2).
-                        let piece_context_score = contexts_by_exercise
-                            .get(ex.id.as_str())
-                            .and_then(|contexts| {
-                                contexts
-                                    .iter()
-                                    .find(|c| {
-                                        c.piece.as_ref().map(|p| p.id.as_str())
-                                            == Some(item.id.as_str())
-                                    })
-                                    .and_then(|c| c.latest_score)
-                            });
-                        Some(LinkedExerciseView {
-                            id: ex.id.clone(),
-                            title: ex.title.clone(),
-                            key: ex.key.clone(),
-                            tempo: ex
-                                .tempo
-                                .as_ref()
-                                .map(|t| t.format_display())
-                                .filter(|s| !s.is_empty()),
-                            practice: model.practice_summaries.get(&ex.id).cloned(),
-                            piece_context_score,
-                        })
-                    })
-                    .collect()
-            } else {
-                vec![]
-            };
-
-            let linked_from_pieces = if item.kind == ItemKind::Exercise {
-                piece_refs_by_exercise
-                    .get(item.id.as_str())
-                    .cloned()
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            };
-
-            let exercise_contexts = if item.kind == ItemKind::Exercise {
-                contexts_by_exercise
-                    .get(item.id.as_str())
-                    .cloned()
-                    .unwrap_or_default()
-            } else {
-                vec![]
-            };
-
-            // `already_linked` uses the same reconciliation key `CommitScaffold`
-            // does, so the read-only preview and the commit agree.
-            let scaffold_preview = item.chord_chart.as_ref().map(|chart| {
-                let (linked_kinds, linked_titles) =
-                    crate::domain::item::linked_scaffold_state(model, &item.id);
-                let specs = crate::domain::chart::derive_scaffold(chart);
-                let mut fallback_total: u8 = 0;
-                let spec_views = specs
-                    .iter()
-                    .map(|s| {
-                        let fallback = s.fallback_count > 0;
-                        if fallback {
-                            fallback_total = fallback_total.saturating_add(1);
-                        }
-                        ScaffoldSpecView {
-                            kind: s.kind,
-                            title: s.title.clone(),
-                            rationale: s.rationale.clone(),
-                            key: s.key.clone(),
-                            fallback,
-                            already_linked: crate::domain::item::scaffold_already_linked(
-                                &linked_kinds,
-                                &linked_titles,
-                                s.kind,
-                                &s.title,
-                            ),
-                        }
-                    })
-                    .collect();
-                ScaffoldPreviewView {
-                    key: chart.key.clone(),
-                    specs: spec_views,
-                    fallback_total,
-                }
-            });
-
-            let variants = if item.kind == ItemKind::Exercise {
-                build_variant_views(item, &variant_scores)
-            } else {
-                vec![]
-            };
-
-            items.push(LibraryItemView {
-                id: item.id.clone(),
-                item_type: item.kind.clone(),
-                title: item.title.clone(),
-                subtitle,
-                key: item.key.clone(),
-                modality: item.modality,
-                tempo: item
-                    .tempo
-                    .as_ref()
-                    .map(|t| t.format_display())
-                    .filter(|s| !s.is_empty()),
-                tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
-                tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
-                notes: item.notes.clone(),
-                // Reserved scaffold markers never reach the UI or the tag
-                // vocabulary (`available_tags` derives from these view tags).
-                tags: item
-                    .tags
-                    .iter()
-                    .filter(|t| !crate::domain::chart::is_scaffold_tag(t))
-                    .cloned()
-                    .collect(),
-                created_at: item.created_at.to_rfc3339(),
-                updated_at: item.updated_at.to_rfc3339(),
-                practice,
-                latest_achieved_tempo,
-                priority: item.priority,
-                linked_exercises,
-                linked_from_pieces,
-                exercise_contexts,
-                scaffold_preview,
-                chord_chart: item.chord_chart.clone(),
-                variants,
-            });
-        }
+        let mut items = build_library_item_views(model, &item_index);
 
         // Computed before the filter so the vocabulary stays stable as the
         // filter narrows. Case-insensitive dedupe, first-seen casing.
@@ -580,6 +405,16 @@ impl Intrada {
             composers.sort_by_key(|c| c.to_lowercase());
             composers
         };
+
+        // Uses Utc::now(), making view() impure: a pragmatic tradeoff, since the
+        // date changes once a day and the computation fns take a `LocalClock`
+        // for testability.
+        let clock =
+            crate::analytics::LocalClock::from_now(chrono::Utc::now(), model.utc_offset_minutes);
+
+        // Derived before the filter: a narrowed library must not hide the
+        // suggestion the Practice tab leads with (#1082).
+        let up_next = crate::suggestion::compute_up_next(&items, clock);
 
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
@@ -694,16 +529,9 @@ impl Intrada {
             SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
 
-        // Uses Utc::now(), making view() impure — pragmatic tradeoff since the
-        // date changes once/day; computation fns take a `LocalClock` for
-        // testability.
         let (analytics, last_practised) = if model.sessions.is_empty() {
             (None, None)
         } else {
-            let clock = crate::analytics::LocalClock::from_now(
-                chrono::Utc::now(),
-                model.utc_offset_minutes,
-            );
             (
                 Some(compute_analytics(&model.sessions, &model.items, clock)),
                 crate::analytics::compute_last_practised(&model.sessions, clock),
@@ -765,8 +593,210 @@ impl Intrada {
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
+            up_next,
         }
     }
+}
+
+/// Every library item projected for the view, unfiltered and unsorted. Shared
+/// by `build_view` and the Up next derivation, so the card reads the same marks
+/// the Library screens show rather than deriving its own (#1082).
+fn build_library_item_views(
+    model: &Model,
+    item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
+) -> Vec<LibraryItemView> {
+    use std::collections::HashMap;
+
+    // Build a reverse index: exercise_id → [PieceRefView] in one pass.
+    // Mirror the forward filter: only push a PieceRefView when the target
+    // id resolves to a present item whose kind == Exercise.
+    let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
+    for item in &model.items {
+        if item.kind == ItemKind::Piece {
+            for ex_id in &item.linked_exercise_ids {
+                if item_index
+                    .get(ex_id.as_str())
+                    .is_some_and(|t| t.kind == ItemKind::Exercise)
+                {
+                    piece_refs_by_exercise
+                        .entry(ex_id.as_str())
+                        .or_default()
+                        .push(PieceRefView {
+                            id: item.id.clone(),
+                            title: item.title.clone(),
+                            subtitle: item.composer.clone(),
+                        });
+                }
+            }
+        }
+    }
+
+    // Derived per-exercise practice contexts (piece + "on its own"), keyed
+    // by exercise id. Built once over sessions, attached to exercises below.
+    let contexts_by_exercise = build_exercise_contexts(&model.sessions, item_index);
+
+    // Per-step score history, keyed by (item id, variant id); one pass
+    // over sessions, attached to laddered exercises below (#1083).
+    let variant_scores = build_variant_score_index(&model.sessions);
+
+    let mut items: Vec<LibraryItemView> = Vec::new();
+
+    for item in &model.items {
+        let practice = model.practice_summaries.get(&item.id).cloned();
+        let subtitle = item.composer.clone().unwrap_or_default();
+        let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
+
+        let linked_exercises = if item.kind == ItemKind::Piece {
+            item.linked_exercise_ids
+                .iter()
+                .filter_map(|ex_id| {
+                    let ex = item_index.get(ex_id.as_str())?;
+                    if ex.kind != ItemKind::Exercise {
+                        return None;
+                    }
+                    // The exercise's score in *this piece's* context, pulled
+                    // from the same derivation the exercise screen uses so
+                    // both sides agree (#1087 B2).
+                    let piece_context_score =
+                        contexts_by_exercise
+                            .get(ex.id.as_str())
+                            .and_then(|contexts| {
+                                contexts
+                                    .iter()
+                                    .find(|c| {
+                                        c.piece.as_ref().map(|p| p.id.as_str())
+                                            == Some(item.id.as_str())
+                                    })
+                                    .and_then(|c| c.latest_score)
+                            });
+                    Some(LinkedExerciseView {
+                        id: ex.id.clone(),
+                        title: ex.title.clone(),
+                        key: ex.key.clone(),
+                        tempo: ex
+                            .tempo
+                            .as_ref()
+                            .map(|t| t.format_display())
+                            .filter(|s| !s.is_empty()),
+                        practice: model.practice_summaries.get(&ex.id).cloned(),
+                        piece_context_score,
+                    })
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let linked_from_pieces = if item.kind == ItemKind::Exercise {
+            piece_refs_by_exercise
+                .get(item.id.as_str())
+                .cloned()
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        let exercise_contexts = if item.kind == ItemKind::Exercise {
+            contexts_by_exercise
+                .get(item.id.as_str())
+                .cloned()
+                .unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+        // `already_linked` uses the same reconciliation key `CommitScaffold`
+        // does, so the read-only preview and the commit agree.
+        let scaffold_preview = item.chord_chart.as_ref().map(|chart| {
+            let (linked_kinds, linked_titles) =
+                crate::domain::item::linked_scaffold_state(model, &item.id);
+            let specs = crate::domain::chart::derive_scaffold(chart);
+            let mut fallback_total: u8 = 0;
+            let spec_views = specs
+                .iter()
+                .map(|s| {
+                    let fallback = s.fallback_count > 0;
+                    if fallback {
+                        fallback_total = fallback_total.saturating_add(1);
+                    }
+                    ScaffoldSpecView {
+                        kind: s.kind,
+                        title: s.title.clone(),
+                        rationale: s.rationale.clone(),
+                        key: s.key.clone(),
+                        fallback,
+                        already_linked: crate::domain::item::scaffold_already_linked(
+                            &linked_kinds,
+                            &linked_titles,
+                            s.kind,
+                            &s.title,
+                        ),
+                    }
+                })
+                .collect();
+            ScaffoldPreviewView {
+                key: chart.key.clone(),
+                specs: spec_views,
+                fallback_total,
+            }
+        });
+
+        let variants = if item.kind == ItemKind::Exercise {
+            build_variant_views(item, &variant_scores)
+        } else {
+            vec![]
+        };
+
+        items.push(LibraryItemView {
+            id: item.id.clone(),
+            item_type: item.kind.clone(),
+            title: item.title.clone(),
+            subtitle,
+            key: item.key.clone(),
+            modality: item.modality,
+            tempo: item
+                .tempo
+                .as_ref()
+                .map(|t| t.format_display())
+                .filter(|s| !s.is_empty()),
+            tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
+            tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
+            notes: item.notes.clone(),
+            // Reserved scaffold markers never reach the UI or the tag
+            // vocabulary (`available_tags` derives from these view tags).
+            tags: item
+                .tags
+                .iter()
+                .filter(|t| !crate::domain::chart::is_scaffold_tag(t))
+                .cloned()
+                .collect(),
+            created_at: item.created_at.to_rfc3339(),
+            updated_at: item.updated_at.to_rfc3339(),
+            practice,
+            latest_achieved_tempo,
+            priority: item.priority,
+            linked_exercises,
+            linked_from_pieces,
+            exercise_contexts,
+            scaffold_preview,
+            chord_chart: item.chord_chart.clone(),
+            variants,
+        });
+    }
+
+    items
+}
+
+/// The Up next suggestion for a given instant. The seeding event re-derives
+/// through this rather than trusting anything the shell sends (#1082).
+pub(crate) fn derive_up_next(
+    model: &Model,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<crate::suggestion::SuggestedSession> {
+    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
+    crate::suggestion::compute_up_next(&build_library_item_views(model, &item_index), clock)
 }
 
 /// Build practice summaries (keyed by item_id) in a single pass over sessions.
@@ -3636,6 +3666,72 @@ mod tests {
             chord_chart: None,
             variants: vec![],
         }
+    }
+
+    #[test]
+    fn view_exposes_the_up_next_suggestion() {
+        // Wiring only: the ranking and the wording are pinned in
+        // suggestion::tests, which can hold the clock still.
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+
+        let up_next = app.view(&model).up_next.expect("a suggestion");
+        assert_eq!(up_next.piece_id, "p1");
+        assert_eq!(
+            up_next
+                .items
+                .iter()
+                .map(|i| i.item_id.as_str())
+                .collect::<Vec<_>>(),
+            ["ex1", "p1"]
+        );
+    }
+
+    #[test]
+    fn a_library_filter_cannot_hide_the_up_next_suggestion() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        // Filtering the library to exercises hides the anchor piece from the
+        // list; the suggestion is derived pre-filter and must survive it.
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert!(
+            !vm.items.iter().any(|i| i.id == "p1"),
+            "the filter really does hide the piece from the list"
+        );
+        assert_eq!(
+            vm.up_next.expect("a suggestion").piece_id,
+            "p1",
+            "the suggestion is derived before the filter"
+        );
+    }
+
+    #[test]
+    fn view_has_no_up_next_when_no_piece_has_a_related_exercise() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Sonata", ItemKind::Piece, now),
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+        ];
+
+        assert!(
+            app.view(&model).up_next.is_none(),
+            "it suggests, it never invents"
+        );
     }
 
     #[test]
