@@ -128,6 +128,30 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  func testPracticeScreenSuggestion() {
+    assertSnapshot(
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPracticeSuggestion), as: config)
+  }
+
+  /// No star, no ladder step, never-marked wording: conditionals that can
+  /// regress without the full screen moving.
+  func testUpNextHeroNeverMarked() {
+    assertSnapshot(
+      of: host(upNextHeroCard(.previewFresh)),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 370),
+        traits: .init(displayScale: 2)))
+  }
+
+  private func upNextHeroCard(_ suggestion: SuggestedSession) -> some View {
+    UpNextHero(suggestion: suggestion, onStart: {}, onBuildOwn: {})
+      .padding(IntradaSpacing.card)
+      .background(IntradaColor.paperTop)
+      .frame(width: 390)
+  }
+
   func testRecoveryPromptCard() throws {
     // Component-level (not full-screen): the card is the load-bearing state and
     // the flat crop keeps the reference PNG well under the size ceiling (#840).

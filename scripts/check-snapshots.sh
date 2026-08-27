@@ -14,18 +14,33 @@ set -euo pipefail
 ROOT="ios/IntradaTests"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
-# Full-screen references that stay large as lossless PNG even after
-# `oxipng -o max -Z`: smooth gradients (Practice one-tap hero, Focus player
-# radial) and dense-control screens (Session summary's per-item score-pill rows
-# over the gold gradient toast). They get a higher bound. Keep this list TIGHT —
-# add only a reference proven irreducible, with the reason. Cropping does not
-# help these: flat paper costs almost nothing and the gradient is the whole bill.
+# References that stay large as lossless PNG even after `oxipng -o max -Z`:
+# smooth gradients (Practice one-tap hero, Focus player radial, the Up next
+# hero's card-level reference) and dense-control screens (Session summary's
+# per-item score-pill rows over the gold gradient toast). They get a higher
+# bound. Keep this list TIGHT — add only a reference proven irreducible, with
+# the reason. Cropping does not help these: flat paper costs almost nothing and
+# the gradient is the whole bill, which is why a component crop is on the list
+# alongside the full screens.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
+      testUpNextHeroNeverMarked | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# One tier above `is_large`: the Up next hero (#1082) is the largest unbroken
+# gradient the app draws — over half a full-screen reference — so it clears the
+# 300k bound even fully optimized. Keep this bucket to references that are
+# mostly one gradient; anything else belongs in `is_large` or under the default.
+XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
+is_xl() {
+  case "$1" in
+    testPracticeScreenSuggestion) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -43,6 +58,7 @@ while IFS= read -r png; do
   fi
   ceiling="$MAX_BYTES"
   is_large "$method" && ceiling="$LARGE_MAX_BYTES"
+  is_xl "$method" && ceiling="$XL_MAX_BYTES"
   size=$(wc -c < "$png" | tr -d ' ')
   if [ "$size" -gt "$ceiling" ]; then
     echo "::error file=$png::$size bytes > $ceiling ceiling — run 'just ios-snapshots-optimize' (or raise SNAPSHOT_MAX_BYTES if genuinely large)"

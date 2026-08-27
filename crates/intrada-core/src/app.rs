@@ -1268,6 +1268,14 @@ fn sample_items() -> Vec<Item> {
             })
             .collect();
     }
+    // One related exercise, so seed mode has a block worth resuming and the Up
+    // next card (#1082) has something to show. Anchored on the Nocturne, not
+    // the first two items: `SessionBuilderUITests` needs Clair de Lune to have
+    // no related exercises (it drives the empty-state CTA) and adds the top two
+    // library cards expecting two standalone rows.
+    if let Some(nocturne) = items.iter_mut().find(|i| i.id == "sample-nocturne") {
+        nocturne.linked_exercise_ids = vec!["sample-scales".to_string()];
+    }
     items
 }
 

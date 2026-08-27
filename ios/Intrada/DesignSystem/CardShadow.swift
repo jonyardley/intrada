@@ -8,4 +8,10 @@ extension View {
   func cardShadow(above: Bool = false) -> some View {
     shadow(color: IntradaColor.shadow, radius: 5, x: 0, y: above ? -2 : 2)
   }
+
+  /// The deeper elevation the Practice hero sits on — the app's largest card,
+  /// and the only one that needs to float this far off the paper.
+  func heroShadow() -> some View {
+    shadow(color: .black.opacity(0.18), radius: 20, y: 10)
+  }
 }

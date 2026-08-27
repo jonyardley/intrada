@@ -11,6 +11,9 @@ struct PracticeScreen: View {
   private let referenceDate: Date
   @State private var selectedDay: Date?
   @State private var weekIndexOverride: Int?
+  // Shell state by decision 9 of specs/up-next-card.md: dismissal lasts the app
+  // run, has no domain consequence and is deliberately not persisted.
+  @State private var suggestionDismissed = false
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -58,7 +61,7 @@ struct PracticeScreen: View {
             )
             .fadeUp(0)
           }
-          hero
+          heroSection
             .fadeUp(0)
           thisWeek
             .fadeUp(1)
@@ -91,9 +94,32 @@ struct PracticeScreen: View {
       })
   }
 
-  // MARK: - (0) Last session, one tap to the next
+  // MARK: - (0) The suggestion, or one tap to the next
 
   private var lastPractised: LastPractisedView? { store.viewModel?.lastPractised }
+
+  /// `nil` whenever nothing qualifies or the user has waved it away, which is
+  /// what keeps the card a suggestion and never a gate (design-principles T15).
+  private var suggestion: SuggestedSession? {
+    suggestionDismissed ? nil : store.viewModel?.upNext
+  }
+
+  @ViewBuilder private var heroSection: some View {
+    if let suggestion {
+      UpNextHero(
+        suggestion: suggestion,
+        onStart: {
+          store.send(
+            .session(.startBuildingFromSuggestion(now: SessionClock.nowRFC3339())),
+            onSuccess: .impact)
+        },
+        onBuildOwn: { withAnimation(IntradaMotion.standard) { suggestionDismissed = true } }
+      )
+      .transition(.opacity)
+    } else {
+      hero
+    }
+  }
 
   private var hero: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
@@ -142,7 +168,7 @@ struct PracticeScreen: View {
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
+    .heroShadow()
   }
 
   private var heroEyebrow: String {
@@ -288,6 +314,11 @@ struct PracticeScreen: View {
   #Preview("Populated") {
     PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
       .environment(Store.previewPractice)
+  }
+
+  #Preview("Up next") {
+    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
+      .environment(Store.previewPracticeSuggestion)
   }
 
   #Preview("Empty") {

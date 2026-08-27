@@ -29,6 +29,9 @@ pub struct SuggestedSession {
     pub piece_subtitle: Option<String>,
     /// Why this block: priority and staleness, in the user's language.
     pub reason: String,
+    /// The user's own star on the anchor, so the card can mark it without
+    /// reading `reason` back for the word — the shell renders, never parses.
+    pub priority: bool,
     pub items: Vec<SuggestedItem>,
     /// What this block usually takes, to the nearest 5 minutes. An estimate
     /// drawn from past sessions, never a target and never enforced.
@@ -145,6 +148,7 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
             (!composer.is_empty()).then(|| composer.to_string())
         },
         reason,
+        priority: anchor.priority,
         items: items_out,
         estimated_minutes,
     })
@@ -531,6 +535,15 @@ mod tests {
             suggest(&library).reason,
             "A priority · not practised for 6 days"
         );
+    }
+
+    #[test]
+    fn the_star_is_carried_as_a_flag_the_card_can_draw() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        assert!(!suggest(&library).priority);
+
+        library[0].priority = true;
+        assert!(suggest(&library).priority);
     }
 
     #[test]
