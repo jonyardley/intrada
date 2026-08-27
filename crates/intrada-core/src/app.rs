@@ -1268,6 +1268,11 @@ fn sample_items() -> Vec<Item> {
             })
             .collect();
     }
+    // One related exercise, so seed mode has a block worth resuming and the Up
+    // next card (#1082) has something to show.
+    if let Some(clair) = items.iter_mut().find(|i| i.id == "sample-clair") {
+        clair.linked_exercise_ids = vec!["sample-scales".to_string()];
+    }
     items
 }
 

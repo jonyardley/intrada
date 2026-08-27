@@ -128,6 +128,32 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  func testPracticeScreenSuggestion() {
+    // The Up next hero in place of the one-tap play button (#1082) — the
+    // load-bearing state of the screen when the core has something to suggest.
+    assertSnapshot(
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPracticeSuggestion), as: config)
+  }
+
+  /// Component-level: no star, no ladder step, and the never-marked wording on
+  /// every row. Those conditionals can regress without the full screen moving.
+  func testUpNextHeroNeverMarked() {
+    assertSnapshot(
+      of: host(upNextHeroCard(.previewFresh)),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 370),
+        traits: .init(displayScale: 2)))
+  }
+
+  private func upNextHeroCard(_ suggestion: SuggestedSession) -> some View {
+    UpNextHero(suggestion: suggestion, onStart: {}, onBuildOwn: {})
+      .padding(IntradaSpacing.card)
+      .background(IntradaColor.paperTop)
+      .frame(width: 390)
+  }
+
   func testRecoveryPromptCard() throws {
     // Component-level (not full-screen): the card is the load-bearing state and
     // the flat crop keeps the reference PNG well under the size ceiling (#840).

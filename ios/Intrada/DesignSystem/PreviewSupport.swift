@@ -28,12 +28,14 @@
 
     private let analytics: AnalyticsView?
     private let lastPractised: LastPractisedView?
+    private let upNext: SuggestedSession?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
-      analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil
+      analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
+      upNext: SuggestedSession? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -43,6 +45,7 @@
       self.summary = summary
       self.analytics = analytics
       self.lastPractised = lastPractised
+      self.upNext = upNext
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -68,6 +71,7 @@
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
       viewModel.lastPractised = lastPractised
+      viewModel.upNext = upNext
       return viewModel
     }
   }
@@ -132,6 +136,15 @@
         bridge: PreviewBridge(
           sessions: [.previewCompleted, .previewEndedEarly],
           lastPractised: .previewYesterday))
+    }
+
+    /// Practice home with something to suggest (#1082) — the Up next hero in
+    /// place of the one-tap play button.
+    static var previewPracticeSuggestion: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly],
+          lastPractised: .previewYesterday, upNext: .previewStarred))
     }
 
     /// Practice home with a crash-recovery blob pending (#962) — drives the
@@ -622,6 +635,51 @@
       LastPractisedView(
         itemTitle: "Clair de Lune", relativeDay: "Yesterday",
         label: "Last practised yesterday")
+    }
+  }
+
+  extension SuggestedSession {
+    /// The mock's own case: a starred piece gone cold, one drill never marked
+    /// here and one sitting on a ladder step. Reasons are the core's strings.
+    static var previewStarred: SuggestedSession {
+      SuggestedSession(
+        pieceId: "piece-1", pieceTitle: "Like Someone in Love",
+        pieceSubtitle: "Jimmy Van Heusen",
+        reason: "A priority · not practised for 6 days", priority: true,
+        items: [
+          SuggestedItem(
+            itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
+            variantId: nil, variantLabel: nil, latestScore: nil,
+            reason: "Not marked with this piece"),
+          SuggestedItem(
+            itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
+            variantId: "step-f", variantLabel: "F", latestScore: 4,
+            reason: "Marked 4 of 10 last time"),
+          SuggestedItem(
+            itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
+            variantId: nil, variantLabel: nil, latestScore: 6,
+            reason: "Marked 6 of 10 last time"),
+        ],
+        estimatedMinutes: 15)
+    }
+
+    /// Unstarred and untouched: no star, no step, and every row's reason is the
+    /// never-marked wording — the longest copy the card has to fit.
+    static var previewFresh: SuggestedSession {
+      SuggestedSession(
+        pieceId: "piece-2", pieceTitle: "Prelude in C", pieceSubtitle: nil,
+        reason: "Not practised yet", priority: false,
+        items: [
+          SuggestedItem(
+            itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
+            variantId: nil, variantLabel: nil, latestScore: nil,
+            reason: "Not marked with this piece"),
+          SuggestedItem(
+            itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
+            variantId: nil, variantLabel: nil, latestScore: nil,
+            reason: "Not marked yet"),
+        ],
+        estimatedMinutes: 10)
     }
   }
 

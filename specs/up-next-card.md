@@ -11,19 +11,21 @@
 
 ## Design
 
-Mockup: [`up-next-card/design/up-next-card.dc.html`](up-next-card/design/up-next-card.dc.html),
-also in the Claude Design project as **Up Next Card**. Three frames: the
-suggestion *as* the hero (A, taken), the card added under the existing hero
-(B, kept for the record until fold-in), and the nothing-to-suggest state that
-both share. No new tokens and no new components:
-card surface, eyebrow, type badges, hero gradient and the brand button are all
-catalogue parts.
-
-**Decided 2026-08-27 (Jon): A, the suggestion is the hero**, recorded as
+**Decided 2026-08-27 (Jon): the suggestion is the hero**, recorded as
 design-principles T15. The alternative put two start buttons a thumb apart and
-repeated the piece title the header subtitle already carries. Because A changes
-a canonical pillar screen, the design system's Practice screen folds in with
-the screens PR and this file then shrinks to the journey.
+repeated the piece title the header subtitle already carries.
+
+Because it changes a canonical pillar screen, the design system's Practice
+screen was folded in with the screens PR: `design/intrada-design-system.dc.html`
+now draws the Up next hero, and the feature file
+[`up-next-card/design/up-next-card.dc.html`](up-next-card/design/up-next-card.dc.html)
+shrank to the one state that screen cannot also show — nothing to suggest.
+Both are in the Claude Design project (**Intrada Design System**, **Up Next
+Card**).
+
+No new components. Two new tokens: the type language needed a light-on-dark
+pair for the indigo hero, where the paper badge colours go muddy
+(`onHeroExercise` / `onHeroPiece`, read through `ItemKind.onHeroAccent`).
 
 ## Problem
 
@@ -122,7 +124,10 @@ exactly as it does today.
    the exercise. A fully solid ladder has no current step; the exercise rides
    along unattributed.
 
-6. **Reasons are core-owned strings.** The shell renders, never composes. One
+6. **Reasons are core-owned strings.** The shell renders, never composes.
+   `SuggestedSession.priority` rides alongside for the same reason: the card
+   draws the user's own star from a flag, never by reading the word "priority"
+   back out of `reason`. One
    clause per item row, up to two for the card headline, joined with the house
    separator ` · `. Written against
    [`docs/tone-of-voice.md`](../docs/tone-of-voice.md): British, sentence case,
@@ -168,9 +173,10 @@ exactly as it does today.
 
 9. **Dismissal is shell state.** "Build my own instead" hides the card for the
    app run and is `@State` in Swift: no domain consequence, no persistence, and
-   the issue's "no new storage" holds. If it should ever stay dismissed across
-   launches it becomes a `crux_kv` singleton, which is a later decision, not
-   this one.
+   the issue's "no new storage" holds. It reveals the hero that shipped rather
+   than opening the builder, so the escape hatch lands on exactly the screen
+   the user already knows. If it should ever stay dismissed across launches it
+   becomes a `crux_kv` singleton, which is a later decision, not this one.
 
 10. **No wire hazard to manage.** `up_next` is appended to `ViewModel`, which is
     rebuilt every render and never stored, so the positional-bincode
@@ -218,6 +224,21 @@ struct update) so a new view field costs one edit.
   the stalest item alive (reachable via the shell's reported UTC offset, not
   only a broken clock), and a summary with no sessions falls back to the
   default estimate rather than dividing by zero.
+
+On the screens side:
+
+- **Two snapshot references, not the cross-product.** The Practice screen with
+  the suggestion in place, and the card alone in its never-marked, no-star,
+  no-step shape — the conditionals that can regress without the screen moving.
+  The hero is the largest unbroken gradient the app draws, so the full-screen
+  reference gets its own bucket in `scripts/check-snapshots.sh` rather than
+  loosening the existing one.
+- **Dynamic Type is verified on device, not snapshotted.** An
+  accessibility-XXXL reference of this card is ~470 KB of gradient per
+  re-record; the reflow was checked by driving the simulator instead.
+- **The demo library gains one link** (`sample-scales` → `sample-clair`), so
+  seed mode has a block worth resuming and the card is reachable in
+  `just ios-run`.
 
 ## Open questions (deferred, tracked on #1082)
 
