@@ -18,9 +18,7 @@ final class SessionRecoveryUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Practice"].tap()
-    let build = app.buttons["Start practising"]
-    XCTAssertTrue(build.waitForExistence(timeout: 10), "Start practising hero button")
-    build.tap()
+    app.openEmptyBuilder()
 
     let addRow = app.buttons["Add piece or exercise"]
     XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")

@@ -11,7 +11,7 @@ struct UpNextHero: View {
   let onBuildOwn: () -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.row) {
       headline
       itemList
       startButton
@@ -21,11 +21,9 @@ struct UpNextHero: View {
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
+    .heroShadow()
     .accessibilityElement(children: .contain)
   }
-
-  // ── Headline ─────────────────────────────────────────────────────────
 
   // Eyebrow, title, count and reason read as one sentence: split up, VoiceOver
   // announces "3 items · 15 min" detached from the piece it describes.
@@ -50,7 +48,7 @@ struct UpNextHero: View {
         if suggestion.priority {
           Image(systemName: "star.fill")
             .font(.system(size: 11))
-            .foregroundStyle(IntradaColor.onHeroExercise)
+            .foregroundStyle(IntradaColor.onHeroStar)
         }
         Text(suggestion.reason)
           .font(IntradaFont.subtitle)
@@ -62,8 +60,6 @@ struct UpNextHero: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(headlineLabel)
   }
-
-  // ── Items ────────────────────────────────────────────────────────────
 
   private var itemList: some View {
     VStack(spacing: 0) {
@@ -83,7 +79,6 @@ struct UpNextHero: View {
       RoundedRectangle(cornerRadius: IntradaRadius.card)
         .strokeBorder(IntradaColor.paperTop.opacity(0.14), lineWidth: 1)
     )
-    .padding(.top, 4)
   }
 
   private func row(_ item: SuggestedItem) -> some View {
@@ -114,12 +109,10 @@ struct UpNextHero: View {
     var line = AttributedString(item.itemTitle)
     guard let step = item.variantLabel else { return line }
     var suffix = AttributedString(" · step \(step)")
-    suffix.foregroundColor = IntradaColor.onHeroExercise
+    suffix.foregroundColor = item.itemType.onHeroAccent
     line.append(suffix)
     return line
   }
-
-  // ── Actions ──────────────────────────────────────────────────────────
 
   private var startButton: some View {
     Button(action: onStart) {
@@ -137,7 +130,6 @@ struct UpNextHero: View {
     .buttonStyle(PressRebound())
     .accessibilityLabel("Start practising")
     .accessibilityValue("\(itemCountLabel), about \(suggestion.estimatedMinutes) minutes")
-    .padding(.top, 4)
   }
 
   private var buildOwnButton: some View {
@@ -148,8 +140,6 @@ struct UpNextHero: View {
       .padding(.vertical, IntradaSpacing.controlGap)
       .accessibilityHint("Hides the suggestion and shows the usual Practice screen")
   }
-
-  // ── Copy ─────────────────────────────────────────────────────────────
 
   private var itemCountLabel: String {
     let count = suggestion.items.count

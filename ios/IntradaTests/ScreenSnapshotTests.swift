@@ -129,16 +129,14 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreenSuggestion() {
-    // The Up next hero in place of the one-tap play button (#1082) — the
-    // load-bearing state of the screen when the core has something to suggest.
     assertSnapshot(
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
         store: .previewPracticeSuggestion), as: config)
   }
 
-  /// Component-level: no star, no ladder step, and the never-marked wording on
-  /// every row. Those conditionals can regress without the full screen moving.
+  /// No star, no ladder step, never-marked wording: conditionals that can
+  /// regress without the full screen moving.
   func testUpNextHeroNeverMarked() {
     assertSnapshot(
       of: host(upNextHeroCard(.previewFresh)),

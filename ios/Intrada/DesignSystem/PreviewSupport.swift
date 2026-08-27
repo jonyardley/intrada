@@ -138,8 +138,7 @@
           lastPractised: .previewYesterday))
     }
 
-    /// Practice home with something to suggest (#1082) — the Up next hero in
-    /// place of the one-tap play button.
+    /// Practice home with something to suggest (#1082).
     static var previewPracticeSuggestion: Store {
       Store(
         bridge: PreviewBridge(
@@ -638,9 +637,10 @@
     }
   }
 
+  // Reason strings below are copies of the core's, per the table in
+  // specs/up-next-card.md decision 6 — reword there and these go stale silently.
   extension SuggestedSession {
-    /// The mock's own case: a starred piece gone cold, one drill never marked
-    /// here and one sitting on a ladder step. Reasons are the core's strings.
+    /// The mock's case: starred and cold, one drill unmarked, one on a step.
     static var previewStarred: SuggestedSession {
       SuggestedSession(
         pieceId: "piece-1", pieceTitle: "Like Someone in Love",
@@ -663,8 +663,7 @@
         estimatedMinutes: 15)
     }
 
-    /// Unstarred and untouched: no star, no step, and every row's reason is the
-    /// never-marked wording — the longest copy the card has to fit.
+    /// Unstarred and untouched — the longest copy the card has to fit.
     static var previewFresh: SuggestedSession {
       SuggestedSession(
         pieceId: "piece-2", pieceTitle: "Prelude in C", pieceSubtitle: nil,

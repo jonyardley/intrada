@@ -17,20 +17,11 @@ final class SessionBuilderUITests: XCTestCase {
     return app
   }
 
-  // The builder opens from the Practice hero's one-tap start button.
-  @discardableResult
-  private func openBuilder(_ app: XCUIApplication) -> XCUIElement {
-    let build = app.buttons["Start practising"]
-    XCTAssertTrue(build.waitForExistence(timeout: 10), "Start practising hero button")
-    build.tap()
-    return build
-  }
-
   func testBuildSetlistAddRemoveThenCancel() {
     let app = launchSeeded()
 
     app.tabBars.buttons["Practice"].tap()
-    let build = openBuilder(app)
+    app.openEmptyBuilder()
 
     // Adding moved to the "Add to session" sheet — open it from the dashed row.
     let addRow = app.buttons["Add piece or exercise"]
@@ -63,7 +54,9 @@ final class SessionBuilderUITests: XCTestCase {
 
     app.buttons["Cancel"].tap()
     app.buttons["Discard"].tap()
-    XCTAssertTrue(build.waitForExistence(timeout: 5), "Discard returns to Practice")
+    XCTAssertTrue(
+      app.buttons["Start practising"].waitForExistence(timeout: 5),
+      "Discard returns to Practice")
   }
 
   /// Direct manipulation: top-level units reorder by long-press drag with NO
@@ -72,7 +65,7 @@ final class SessionBuilderUITests: XCTestCase {
     let app = launchSeeded()
 
     app.tabBars.buttons["Practice"].tap()
-    openBuilder(app)
+    app.openEmptyBuilder()
 
     let addRow = app.buttons["Add piece or exercise"]
     XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
@@ -158,7 +151,7 @@ final class SessionBuilderUITests: XCTestCase {
     app.buttons["Done"].tap()
 
     app.tabBars.buttons["Practice"].tap()
-    openBuilder(app)
+    app.openEmptyBuilder()
     let addRow = app.buttons["Add piece or exercise"]
     XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
     addRow.tap()

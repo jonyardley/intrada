@@ -74,6 +74,10 @@ enum IntradaColor {
   /// Read `ItemKind.onHeroAccent`, not these directly.
   static let onHeroExercise = Color(hex: 0xE8D9A8)
   static let onHeroPiece = Color(hex: 0xC7BEEA)
+  /// The priority star on the hero. `accent` is its colour on paper and is
+  /// invisible on indigo; gold reads, and the star is the only thing wearing it
+  /// that isn't an exercise.
+  static let onHeroStar = Color(hex: 0xE8D9A8)
   // Session-summary gold celebration toast.
   static let celebrationBgTop = Color(hex: 0xF1E9D6)
   static let celebrationBgBottom = Color(hex: 0xECE0C6)
