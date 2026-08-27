@@ -21,19 +21,24 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1082 — the Up next card, step 6 of the adopted order
-  ([`research/comparison.md`](research/comparison.md)). Tier 3, spec at
-  [`specs/up-next-card.md`](../specs/up-next-card.md). The core landed in
-  #1409 (the derivation, `ViewModel.up_next`, and
-  `SessionEvent::StartBuildingFromSuggestion`, which re-derives and seeds the
-  builder). **Screens PR up**: the Practice hero now carries the suggestion
-  itself — piece, reason, its two or three items with theirs, and one
-  `Start · N min` — per design-principles T15, with the design system's
-  canonical Practice screen folded in the same pass. Held to
-  suggest-never-gate: with no suggestion, and after "Build my own instead",
-  the screen is exactly what shipped.
+Nothing. The next unstarted item is step 7 of the adopted order — see **Next**.
 
 ## Recently landed
+
+- #1082 (#1409, #1414) — **the Up next card**, step 6 of the adopted order
+  ([`research/comparison.md`](research/comparison.md)). Tier 3, spec at
+  [`specs/up-next-card.md`](../specs/up-next-card.md), shipped core-first then
+  screens. The core derives one block worth resuming from the same
+  `LibraryItemView` projection the Library screens read, ranks it on named keys
+  rather than a weighted score so every reason it gives is sayable, and owns
+  every string the card shows. The Practice hero then carries that suggestion
+  instead of a play glyph (design-principles **T15**): the piece, why, its two
+  or three items with their own reasons, and one `Start · N min`, with "Build
+  my own instead" revealing exactly the hero that shipped. Held to
+  suggest-never-gate throughout — with nothing to suggest, the tab is
+  unchanged. The design system's canonical Practice screen was folded in with
+  the screens, which also cleared the retired coach-era "Today's plan" frame it
+  was still showing. Deferred: #1411, #1412, #1413.
 
 - #1081 — per-piece tracking **was already shipped**, back in July, and the
   issue was simply never closed. Verified 2026-08-20 against the whole of its
@@ -126,13 +131,16 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)):
-  use the chord-chart flow on a real tune (the metronome click is done, tempo
-  capture is in flight as #1404), then per-piece tracking (#1081, where the
-  Tier-3 spec starts). Real use has started (Like Someone in Love,
-  2026-08-14) and filed its first findings: #1390 (add the chord chart and
-  related exercises while creating the item, not in a second trip) and a
-  parser friction note on #1387. #1390 rides with the chord-chart step's
-  findings, design-first.
+- The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md))
+  is clear through step 6. **Step 7, the tempo trend, is gated**: it is blocked
+  on roadmap Q3 (does a mastery score mean anything without its tempo?) being
+  answered, so the honest next build is **step 8, the getting-cold signal** —
+  a graded staleness estimate replacing the binary 14-day flag, landing as new
+  Up next reason lines rather than a surface of its own. The reason strings are
+  the seam it arrives through, which is why they are core-owned. 1–2 days.
+- Real use has started (Like Someone in Love, 2026-08-14) and filed its first
+  findings: #1390 (add the chord chart and related exercises while creating the
+  item, not in a second trip) and a parser friction note on #1387. #1390 is
+  design-first.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
