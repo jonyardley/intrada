@@ -448,6 +448,73 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
+  private func bridgeWithCompletedEntry() throws -> (LiveBridge, String) {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Arpeggios", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let ids = try bridge.view().items.map(\.id)
+    XCTAssertEqual(ids.count, 2, "two distinct items: addToSetlist is idempotent by item id")
+
+    _ = try bridge.update(.session(.startBuilding))
+    for id in ids { _ = try bridge.update(.session(.addToSetlist(itemId: id))) }
+    _ = try bridge.update(.session(.startSession(now: "2026-08-28T09:00:00Z")))
+    // Advancing completes the first entry; tempo only lands on a completed one.
+    _ = try bridge.update(.session(.nextItem(now: "2026-08-28T09:10:00Z")))
+
+    let entries = try XCTUnwrap(try bridge.view().activeSession?.entries)
+    XCTAssertEqual(
+      entries.first?.status, .completed,
+      "the negative test must be asserting against a real completed entry")
+    return (bridge, try XCTUnwrap(entries.first?.id))
+  }
+
+  /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
+  /// `TempoObservation` payload has to cross the bincode wire intact and the
+  /// core's ruling has to hold end to end. A wire break would let an
+  /// unevidenced default through, and the trend would draw it as a measurement.
+  func testRealBridgeRecordsATempoTheUserSetThemselves() throws {
+    let (bridge, entryId) = try bridgeWithCompletedEntry()
+
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: 132,
+          observed: TempoObservation(userSet: true, clickSounding: false))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "the observation must decode on the wire (#846)")
+    XCTAssertEqual(
+      view.activeSession?.entries.first?.achievedTempo, 132,
+      "a tempo the user set themselves is a measurement")
+  }
+
+  func testRealBridgeDoesNotRecordAnUntouchedPreFill() throws {
+    let (bridge, entryId) = try bridgeWithCompletedEntry()
+
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: 96,
+          observed: TempoObservation(userSet: false, clickSounding: false))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "declining to record is a silent success, not an error")
+    XCTAssertNil(
+      view.activeSession?.entries.first?.achievedTempo,
+      "a pre-fill nobody looked at leaves no point for the trend to draw")
+  }
+
   /// but returns a nested `ChordChart` + `ScaffoldPreviewView` across the bincode
   /// wire — a shape a stub bridge can't exercise. A bad chart must surface an
   /// error and never store a partial.
@@ -628,11 +695,19 @@ final class StoreEffectLoopTests: XCTestCase {
       try bridge.view().summary?.entries.first?.notes, "clearing an entry note round-trips")
     // Achieved tempo — the hand-off sheet's TempoStepper write, never previously
     // sent from Swift (#846). Round-trip set + clear through the live bridge.
-    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: 96)))
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: 96,
+          observed: TempoObservation(userSet: true, clickSounding: false))))
     XCTAssertEqual(
       try bridge.view().summary?.entries.first?.achievedTempo, 96,
       "the tempo stepper's achieved tempo should round-trip")
-    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: nil)))
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: nil,
+          observed: TempoObservation(userSet: true, clickSounding: false))))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.achievedTempo,
       "clearing an achieved tempo round-trips")

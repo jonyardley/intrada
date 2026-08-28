@@ -61,7 +61,7 @@ struct AddStepsSheet: View {
   }
 
   /// Trims and drops blank rows — pulled out as a static func so it's directly
-  /// testable, same as `ReflectionSheet.resolvedAchievedTempo`.
+  /// testable, same as `ReflectionSheet.initialVariantId`.
   static func trimmedLabels(_ labels: [String]) -> [String] {
     labels.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
   }

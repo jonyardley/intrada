@@ -113,9 +113,13 @@ Then, each building on the last:
 6. **The Up next card (#1082)** — one dismissible suggested session with its
    reasons in plain words; held to suggest-never-gate. Needed step 5, which is
    already satisfied, so this is the next unstarted item. 2–3 days.
-7. **The tempo trend** — draw the already-computed tempo history per item;
-   blocked on roadmap Q3 (does a mastery score mean anything without its
-   tempo?) being answered first.
+7. **The tempo trend** — draw the already-computed tempo history per item.
+   Q3 answered 2026-08-27 and the answer moved the work: the history it would
+   have drawn was a mixture of real measurements and untouched defaults, so the
+   first half of this step is making the recording honest. **Evidence contract
+   done 2026-08-28** (#1420, design-principles T16): a tempo is recorded when
+   it was measured and never otherwise, so every point in `tempo_history` is
+   now evidenced by construction. The chart itself is the second PR.
 8. **The getting-cold signal** — a graded staleness estimate replacing the
    binary 14-day flag, landing as Up next reason lines rather than a surface
    of its own. 1–2 days once step 6 exists. **Done 2026-08-27** (#1416,

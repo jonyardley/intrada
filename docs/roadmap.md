@@ -208,6 +208,15 @@ These are unresolved product questions. Each one likely produces issues
    `tempo_history` already skips `None`. Keep it that way, because
    `SetlistEntry` sits inside the `ActiveSession` crash-recovery blob.
 
+   **Implemented 2026-08-28** (#1420, first of two PRs) as design-principles
+   **T16**. One correction to the framing above: the untouched pre-fill is not
+   always the neutral 96. `ClickController` seeds from the item's own declared
+   target, so for an item marked ♩ = 132 the app was recording 132 as achieved. The shell forwards two observed facts (`TempoObservation`) and the
+   core rules on them; no new field, no crash-recovery key bump. Pre-fix
+   history on device is accepted rather than migrated away: there was
+   essentially none, so nulling it would have been destructive work with
+   nothing to show for it.
+
 4. **Teacher integration timing.** Currently a Layer-5 horizon. Basic
    sharing (routines, item suggestions) could come earlier without AI.
    The teacher-assignment capture (#267) addressed the immediate capture

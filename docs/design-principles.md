@@ -472,3 +472,60 @@ strip below the fold); a suggestion *line* inside the existing hero with no
 item rows (rejected: the reasons are the honest part, and a piece title with
 no reasons is the app having an opinion it will not show its working for,
 which is the road the coach died on).
+
+### T16 — A tempo is recorded when it was measured, never as a default
+
+**Status:** DECIDED 2026-08-27 (Jon, roadmap open question 3), implemented in
+jonyardley/intrada#1420. Supersedes the question that log entry originally
+asked.
+
+Tempo capture (**T14**, #1398/#1401) put the stepper on the reflection sheet
+for every item and always saved a number, pre-filled from the click. When the
+click had never sounded, that pre-fill was whatever `ClickController` had
+seeded: the item's own declared target where it has one, and a neutral 96 where
+it does not. So a large share of the recorded tempos were a default nobody
+looked at, sitting in the same history as real measurements with nothing
+telling them apart. **For an item declaring ♩ = 132, that default was 132** —
+the app quietly recording the target as achieved, which is a worse falsehood
+than a stray 96 and the strongest argument for the ruling.
+
+**A tempo is worth recording when there is evidence behind it, and never
+otherwise.** Evidence is either of two things: the user moved the stepper, or
+the click was sounding when the item ended, so the pre-filled number measures
+what they actually played to. Anything else is a default, and a default is not
+data.
+
+This dissolves the original question rather than answering it. Tempo is never
+required, and it is not optional-by-item-target either. It is recorded when it
+was measured.
+
+Two rulings come with it:
+
+- **The sheet does not change.** The stepper still appears on every item and
+  still pre-fills, because a musician reaching for it should find it already
+  showing a sensible number. What changed is only whether an untouched number
+  is kept, and no banner or hint says so: nothing was asked of the user, so
+  there is nothing to report. The one visible consequence is downstream — the
+  session summary's meta row reads `Exercise` rather than `Exercise · 96 bpm`
+  when there was nothing to measure, which is the row telling the truth.
+- **Dialling the click without starting it is not evidence.** The tempo has to
+  have been sounding. Changing a number on a silent row is intent, and intent
+  is not measurement; the musician never played to it. Deliberate, not an
+  oversight.
+- **The shell reports, the core rules.** Both facts are shell-observable and
+  neither is a judgement, so Swift forwards them untouched and the core decides
+  what counts as evidence. Deciding in the shell would be domain logic in the
+  dumb pipe, and it would put the rule somewhere no core test could reach it.
+
+Why it matters beyond tidiness: the tempo trend draws this history as a chart,
+and a chart looks like measurement. Drawing a line through numbers the user
+never considered is the borrowed authority the getting-cold signal (**#1416**)
+was careful to avoid, and much harder to spot in a chart than in a sentence.
+
+Options considered: requiring a tempo on every mark (rejected: it taxes every
+hand-off for a number most items do not want, and a required field gets
+answered carelessly, which is how you manufacture the same noise deliberately);
+recording only when the item declares a target (rejected: scales and exercises
+declare targets least and want a click most, so it would drop exactly the
+measurements worth having); letting the shell send nil (rejected under the
+second ruling above).
