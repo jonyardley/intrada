@@ -397,9 +397,7 @@ pub struct ScoreHistoryEntry {
     pub session_id: String,
 }
 
-/// One session's slot in an item's tempo trend, oldest first. `tempo` is `None`
-/// where that session measured none, which the chart draws as a break in the
-/// line rather than a zero or an interpolated point (#1420).
+/// One practised session's slot in a `TempoTrendView`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoTrendPoint {
@@ -408,18 +406,19 @@ pub struct TempoTrendPoint {
     pub tempo: Option<u16>,
 }
 
-/// An item's measured tempo over time, as a plottable series. Every number in
-/// it was measured: the shell reports what it observed and the core rules on
-/// whether that is evidence (design-principles T16, #1422), so an unevidenced
-/// default never reaches a point.
+/// An item's measured tempo over time, as a plottable series. A session that
+/// measured no tempo keeps its slot with `tempo: None`, so the chart breaks the
+/// line there rather than drawing a zero or interpolating across it (#1420).
+/// Every number present was measured, because the evidence contract keeps
+/// unevidenced defaults out of `achieved_tempo` upstream (T16, #1422).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoTrendView {
-    /// One point per time this item was practised, oldest first (the reverse of
-    /// `score_history`, which is newest-first for rows rather than a plot).
+    /// Oldest first, the reverse of `score_history`. One point per setlist
+    /// entry, matching `session_count`: an item practised twice in one session
+    /// contributes two points at the same date.
     pub points: Vec<TempoTrendPoint>,
-    /// Two or more measured tempos. Below that there is no direction to read,
-    /// and the screen says so plainly instead of drawing a chart.
+    /// Two or more measured tempos; below that there is no direction to read.
     pub has_trend: bool,
 }
 

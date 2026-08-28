@@ -3,6 +3,22 @@
   import IntradaCoreFFI
   import SharedTypes
 
+  extension TempoTrendView {
+    /// `tempos[i]` is the i-th session's tempo, `nil` where none was measured.
+    /// Dates end on the newest, so a summary's `lastPracticedAt` and its trend
+    /// agree.
+    static func fixture(_ tempos: [UInt16?]) -> TempoTrendView {
+      let dates = [
+        "2026-06-09T09:00:00Z", "2026-06-12T09:00:00Z", "2026-06-15T09:00:00Z",
+        "2026-06-18T09:00:00Z", "2026-06-21T09:00:00Z", "2026-06-24T09:00:00Z",
+      ].suffix(tempos.count)
+      let points = zip(dates, tempos.enumerated()).map { date, entry in
+        TempoTrendPoint(sessionDate: date, sessionId: "t\(entry.offset)", tempo: entry.element)
+      }
+      return TempoTrendView(points: points, hasTrend: tempos.compactMap { $0 }.count >= 2)
+    }
+  }
+
   extension ItemPracticeSummary {
     /// Preview and snapshot fixture. A new core field costs one edit here rather
     /// than one per call site (CLAUDE.md, Testing).
@@ -456,7 +472,8 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
           ],
-          latestTempo: 72, lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 72, tempoTrend: .fixture([66, nil, 69, 72]),
+          lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false,
         linkedExercises: [
           // Per-piece scores deliberately differ from the exercises' overall
@@ -465,7 +482,8 @@
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
             practice: ItemPracticeSummary.fixture(
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
-              latestTempo: 108, lastPracticedAt: "2026-06-28T09:00:00Z"),
+              latestTempo: 108, tempoTrend: .fixture([100, 104, 108]),
+              lastPracticedAt: "2026-06-28T09:00:00Z"),
             pieceContextScore: 5),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil,
@@ -495,7 +513,8 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
           ],
-          latestTempo: 108, lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 108, tempoTrend: .fixture([96, 100, nil, 104, 108]),
+          lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
@@ -517,7 +536,8 @@
           scoreHistory: [
             ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1")
           ],
-          latestTempo: 120, lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 120, tempoTrend: .fixture([120]),
+          lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw")

@@ -118,8 +118,10 @@ Then, each building on the last:
    have drawn was a mixture of real measurements and untouched defaults, so the
    first half of this step is making the recording honest. **Evidence contract
    done 2026-08-28** (#1420, design-principles T16): a tempo is recorded when
-   it was measured and never otherwise, so every point in `tempo_history` is
-   now evidenced by construction. The chart itself is the second PR.
+   it was measured and never otherwise, so every point in the history is now
+   evidenced by construction. **Series done 2026-08-28** (#1423): `tempo_trend`
+   replaces `tempo_history`, carrying a slot for every practised session so the
+   gaps have a position. The chart itself is the third PR.
 8. **The getting-cold signal** — a graded staleness estimate replacing the
    binary 14-day flag, landing as Up next reason lines rather than a surface
    of its own. 1–2 days once step 6 exists. **Done 2026-08-27** (#1416,

@@ -205,10 +205,13 @@ These are unresolved product questions. Each one likely produces issues
    history as a chart, and a chart looks like measurement.
 
    Costs no new field: `UpdateEntryTempo` already carries `Option<u16>` and
-   `tempo_history` already skips `None`. Keep it that way, because
-   `SetlistEntry` sits inside the `ActiveSession` crash-recovery blob.
+   `SetlistEntry.achieved_tempo` already skips `None`. Keep it that way, because
+   `SetlistEntry` sits inside the `ActiveSession` crash-recovery blob. The
+   ViewModel projection is the opposite: `tempo_trend` deliberately carries a
+   slot for every practised session, so the chart can break its line where
+   nothing was measured.
 
-   **Implemented 2026-08-28** (#1420, first of two PRs) as design-principles
+   **Implemented 2026-08-28** (#1420, first of three PRs) as design-principles
    **T16**. One correction to the framing above: the untouched pre-fill is not
    always the neutral 96. `ClickController` seeds from the item's own declared
    target, so for an item marked ♩ = 132 the app was recording 132 as achieved. The shell forwards two observed facts (`TempoObservation`) and the

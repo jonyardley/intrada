@@ -838,14 +838,14 @@ pub(crate) fn build_practice_summaries(
 
             if let Some(score) = entry.score {
                 record.2.push(ScoreHistoryEntry {
-                    session_date: session.started_at.to_rfc3339(),
+                    session_date: session_date.clone(),
                     score,
                     session_id: session.id.clone(),
                 });
             }
 
             record.3.push(TempoTrendPoint {
-                session_date: session.started_at.to_rfc3339(),
+                session_date: session_date.clone(),
                 session_id: session.id.clone(),
                 tempo: entry.achieved_tempo,
             });
@@ -3091,11 +3091,10 @@ mod tests {
         score: Option<u8>,
         tempo: Option<u16>,
     ) -> PracticeSession {
-        let now = started_at;
         PracticeSession {
             id: id.to_string(),
-            started_at: now,
-            completed_at: now,
+            started_at,
+            completed_at: started_at,
             total_duration_secs: 300,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
@@ -3147,11 +3146,15 @@ mod tests {
 
     // ── The tempo trend (#1420) ──
 
-    fn tempo_trend_for(measured: &[Option<u16>]) -> crate::model::TempoTrendView {
+    /// `measured[i]` is the tempo of the i-th session chronologically. The
+    /// sessions are handed over newest first, so a projection that skipped its
+    /// own sort would emit the series backwards.
+    fn summary_for_tempos(measured: &[Option<u16>]) -> ItemPracticeSummary {
         let base = chrono::Utc::now() - chrono::Duration::days(30);
         let sessions: Vec<PracticeSession> = measured
             .iter()
             .enumerate()
+            .rev()
             .map(|(i, tempo)| {
                 make_session_at(
                     &format!("s{i}"),
@@ -3165,7 +3168,10 @@ mod tests {
         build_practice_summaries(&sessions)
             .remove("item-1")
             .expect("summary for item-1")
-            .tempo_trend
+    }
+
+    fn tempo_trend_for(measured: &[Option<u16>]) -> crate::model::TempoTrendView {
+        summary_for_tempos(measured).tempo_trend
     }
 
     #[test]
@@ -3191,6 +3197,12 @@ mod tests {
             trend.points.iter().map(|p| p.tempo).collect::<Vec<_>>(),
             vec![Some(88), None, Some(104)]
         );
+    }
+
+    #[test]
+    fn latest_tempo_is_the_newest_measured_not_the_newest_session() {
+        // Reading the newest slot rather than the newest number would drop it.
+        assert_eq!(summary_for_tempos(&[Some(88), None]).latest_tempo, Some(88));
     }
 
     #[test]
