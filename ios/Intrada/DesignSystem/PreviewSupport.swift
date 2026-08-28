@@ -3,6 +3,37 @@
   import IntradaCoreFFI
   import SharedTypes
 
+  extension TempoTrendDisplay {
+    /// Nine sessions, seven measured: two breaks in the line, one of them two
+    /// sessions wide.
+    static let previewWithGaps = make([88, 92, 96, nil, 100, 104, nil, 108, 116])
+    /// One measurement, which is less than a trend.
+    static let previewSingleMeasurement = make([108])
+
+    /// Dates run three days apart from a fixed instant, formatted against a
+    /// pinned locale and calendar, so the plot's spacing and the footer's
+    /// labels are the same on any host.
+    static func make(_ tempos: [Int?]) -> TempoTrendDisplay {
+      let start = Date(timeIntervalSince1970: 1_783_324_800)
+      let marks = tempos.enumerated().map { index, tempo in
+        TempoTrendMark(
+          id: "t\(index)",
+          date: start.addingTimeInterval(Double(index) * 3 * 86_400),
+          tempo: tempo)
+      }
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "en_US")
+      formatter.calendar = PreviewCalendar.utc
+      formatter.timeZone = PreviewCalendar.utc.timeZone
+      formatter.dateFormat = "d MMM"
+      return TempoTrendDisplay(
+        marks: marks,
+        hasTrend: tempos.compactMap { $0 }.count >= 2,
+        startDateText: marks.first.map { formatter.string(from: $0.date) } ?? "",
+        endDateText: marks.last.map { formatter.string(from: $0.date) } ?? "")
+    }
+  }
+
   extension TempoTrendView {
     /// `tempos[i]` is the i-th session's tempo, `nil` where none was measured.
     /// Dates end on the newest, so a summary's `lastPracticedAt` and its trend

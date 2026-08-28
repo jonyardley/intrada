@@ -781,4 +781,28 @@ final class ScreenSnapshotTests: XCTestCase {
     }
     assertSnapshot(of: host(cards), as: config)
   }
+
+  /// Both tempo-trend states in one frame: the plot with two breaks in the line
+  /// where sessions measured nothing, and the too-little-to-plot line beneath.
+  func testTempoTrend() {
+    let trends = ZStack {
+      PaperBackground()
+      VStack(spacing: 14) {
+        TempoTrend(display: .previewWithGaps)
+        TempoTrend(display: .previewSingleMeasurement)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(trends), as: config)
+  }
+
+  /// At accessibility sizes the footer keeps the measured count and drops the
+  /// end dates, rather than crushing three labels into one row.
+  func testTempoTrendAccessibilityText() {
+    let trend = ZStack {
+      PaperBackground()
+      TempoTrend(display: .previewWithGaps).padding(16)
+    }
+    assertSnapshot(of: host(trend), as: axConfig)
+  }
 }

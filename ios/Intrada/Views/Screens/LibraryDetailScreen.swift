@@ -75,6 +75,10 @@ struct LibraryDetailScreen: View {
             byPieceSection
           }
 
+          if let tempoTrend = item.practice?.tempoTrendDisplay(locale: locale, calendar: calendar) {
+            TempoTrend(display: tempoTrend)
+          }
+
           if hasRecentSessions {
             recentSessionsSection
           }

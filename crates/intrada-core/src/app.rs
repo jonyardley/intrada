@@ -1369,7 +1369,11 @@ fn sample_sessions() -> Vec<PracticeSession> {
             1,
             CompletionStatus::Completed,
             vec![
-                entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480),
+                {
+                    let mut e = entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480);
+                    e.achieved_tempo = Some(104);
+                    e
+                },
                 {
                     let mut e = entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600);
                     e.variant_id = Some("sample-scales-step-g".to_string());
@@ -1383,8 +1387,16 @@ fn sample_sessions() -> Vec<PracticeSession> {
             3,
             CompletionStatus::EndedEarly,
             vec![
-                entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 1500),
-                entry(1, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 600),
+                {
+                    let mut e = entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 1500);
+                    e.achieved_tempo = Some(66);
+                    e
+                },
+                {
+                    let mut e = entry(1, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 600);
+                    e.achieved_tempo = Some(96);
+                    e
+                },
                 entry(
                     2,
                     "sample-nocturne",
