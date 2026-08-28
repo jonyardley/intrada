@@ -147,15 +147,22 @@ Nothing.
 
 ## Next
 
-- The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md))
-  is clear through step 8. **Step 7, the tempo trend, is still gated** on
-  roadmap Q3 (does a mastery score mean anything without its tempo?), and
-  steps 9 to 11 are the big bets, each a fresh decision gated on lived use.
-  So the honest next move is **not another build**: use the Up next card and
-  the getting-cold signal on the week's lesson tune and file the friction, the
-  way step 2 and step 5 were treated. Two weeks of real use is what tells us
-  whether the staleness thresholds are anywhere near right, and there is no
-  substitute for it.
+- **The tempo trend (#1420) is the next unstarted build.** Step 7 of the
+  adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)),
+  unblocked because roadmap Q3 is now answered (Jon, 2026-08-27): **a tempo is
+  recorded when there is evidence behind it** (the user moved the stepper, or
+  the click was sounding), and never otherwise. The question had been overtaken
+  by #1398 and #1401, which made the stepper always save a click-prefilled
+  default, so `tempo_history` today mixes real measurements with numbers nobody
+  looked at. Costs no schema change; #1420 carries the reasoning and the
+  contract question to pin first. Steps 9 to 11 remain the big bets, each a
+  fresh decision gated on lived use.
+- Running alongside, and not a build: **use** the Up next card and the
+  getting-cold signal on the week's lesson tune and file the friction, the way
+  step 2 and step 5 were treated. Two weeks of real use is what tells us
+  whether the staleness thresholds are anywhere near right (#1419), and there
+  is no substitute for it. A coldness clause on the card's item rows is held
+  back deliberately (#1418).
 - Real use has started (Like Someone in Love, 2026-08-14) and filed its first
   findings: #1390 (add the chord chart and related exercises while creating the
   item, not in a second trip) and a parser friction note on #1387. #1390 is

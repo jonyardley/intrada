@@ -189,8 +189,24 @@ These are unresolved product questions. Each one likely produces issues
    test-enforced invariants (see CLAUDE.md). #41 closed. What remains is the
    future paid sync tier, deliberately deferred.
 
-3. **Scoring + tempo coupling.** Should every mastery rating require a
-   tempo? Or is tempo optional (only for items with tempo targets)?
+3. **Scoring + tempo coupling (answered 2026-08-27).** The question as
+   written (must every mark carry a tempo, or is tempo optional for items
+   with targets?) was overtaken by the code: tempo capture shipped inside
+   the metronome work (#1398, #1401) and made the stepper appear on every
+   item, always saving, pre-filled from the click's tempo even when the
+   click never sounded. So every mark already carries a tempo and many of
+   those numbers are an untouched default.
+
+   **A tempo is recorded when there is evidence behind it, and never
+   otherwise** (Jon): either the user moved the stepper, or the click was
+   sounding, so the number measures what they actually played to. Tempo is
+   neither required nor optional-by-target; it is recorded when it was
+   measured. This matters for the tempo trend (#1420), which draws the
+   history as a chart, and a chart looks like measurement.
+
+   Costs no new field: `UpdateEntryTempo` already carries `Option<u16>` and
+   `tempo_history` already skips `None`. Keep it that way, because
+   `SetlistEntry` sits inside the `ActiveSession` crash-recovery blob.
 
 4. **Teacher integration timing.** Currently a Layer-5 horizon. Basic
    sharing (routines, item suggestions) could come earlier without AI.
