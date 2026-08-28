@@ -14,6 +14,7 @@ struct LibraryDetailScreen: View {
   @State private var editingLinks: Bool
   @State private var editingSteps: Bool
   @State private var showingPicker = false
+  @State private var creatingExercise = false
   @State private var editingChart = false
   @State private var showingScaffold = false
   @State private var showingAddSteps = false
@@ -125,6 +126,10 @@ struct LibraryDetailScreen: View {
       )
       .environment(store)
     }
+    .sheet(isPresented: $creatingExercise) {
+      LibraryAddScreen(relatedToPieceId: item.id)
+        .environment(store)
+    }
     .sheet(isPresented: $editingChart) {
       ChordChartEditSheet(
         pieceId: item.id, pieceKey: item.key, pieceModality: item.modality,
@@ -171,8 +176,7 @@ struct LibraryDetailScreen: View {
 
       if let chart = item.chordChart {
         chartSubtitle(chart)
-        chartBarGrid(chart)
-        seeCurriculumButton
+        chartBarGrid(chart).padding(.bottom, IntradaSpacing.controlGap)
       } else {
         chartEmptyState
       }
@@ -229,19 +233,8 @@ struct LibraryDetailScreen: View {
     section.bars.flatMap { $0.chords.map { $0.symbol.raw } }
   }
 
-  private var seeCurriculumButton: some View {
-    BrandBarButton(action: { showingScaffold = true }) {
-      Image(systemName: "sparkles")
-      Text("See the curriculum")
-    }
-    .padding(.horizontal, IntradaSpacing.card)
-    .padding(.bottom, IntradaSpacing.card)
-    .accessibilityLabel("See the derived curriculum")
-    .accessibilityHint("Shows the exercises derived from these changes")
-  }
-
   private var chartEmptyState: some View {
-    Text("Paste the changes to see the exercises they imply.")
+    Text("Paste the changes to keep them with the piece.")
       .font(IntradaFont.body)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -268,13 +261,129 @@ struct LibraryDetailScreen: View {
             .padding(.bottom, IntradaSpacing.cardCompact)
         }
         linkedExercisesRows
-        linkExerciseButton
+        populatedFooterActions
+      }
+      if item.scaffoldPreview != nil {
+        HairlineDivider()
+        suggestionsFromChart
       }
     }
     .cardSurface()
     .onChange(of: item.linkedExercises.isEmpty) { _, isEmpty in
       if isEmpty { editingLinks = false }
     }
+  }
+
+  // The brand bar belongs to the empty state, where there is one obvious next
+  // step; once the card holds exercises both actions recede (T18).
+  private var populatedFooterActions: some View {
+    HStack(spacing: 0) {
+      Button {
+        creatingExercise = true
+      } label: {
+        Label("Create an exercise", systemImage: "plus")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, IntradaSpacing.cardCompact)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Create an exercise for this piece")
+      Button {
+        showingPicker = true
+      } label: {
+        Text("Choose one")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, IntradaSpacing.cardCompact)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Choose an existing exercise for this piece")
+    }
+    .padding(.horizontal, IntradaSpacing.controlGap)
+    .padding(.vertical, IntradaSpacing.controlGap)
+  }
+
+  // Drawn as a control, not a section: read as plain content its eyebrow gets
+  // mistaken for the button, and it creates several library items (T18).
+  @ViewBuilder private var suggestionsFromChart: some View {
+    if let preview = item.scaffoldPreview {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        Eyebrow("From the chord chart")
+        Button {
+          showingScaffold = true
+        } label: {
+          HStack(spacing: IntradaSpacing.cardCompact) {
+            Image(systemName: "sparkles")
+              .font(IntradaFont.bodyMedium)
+              .foregroundStyle(IntradaColor.exerciseBadgeFg)
+              .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+              Text(suggestionHeadline(preview))
+                .font(IntradaFont.bodyMedium)
+                .foregroundStyle(IntradaColor.ink)
+                .multilineTextAlignment(.leading)
+              Text(suggestionSubtitle(preview))
+                .font(IntradaFont.meta)
+                .foregroundStyle(IntradaColor.inkSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+              .font(IntradaFont.meta)
+              .foregroundStyle(IntradaColor.exerciseBadgeFg)
+              .accessibilityHidden(true)
+          }
+          .padding(IntradaSpacing.cardCompact)
+          .background(
+            IntradaColor.surfaceSunken, in: RoundedRectangle(cornerRadius: IntradaRadius.card)
+          )
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(suggestionAccessibilityLabel(preview))
+        .accessibilityHint("Opens the exercises worked out from these changes")
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.top, IntradaSpacing.cardCompact)
+      .padding(.bottom, IntradaSpacing.card)
+    }
+  }
+
+  /// Names the first two suggestions rather than counting them: what they are
+  /// is the reason to tap, and a bare count says nothing about the music.
+  private func suggestionHeadline(_ preview: ScaffoldPreviewView) -> String {
+    let names = preview.specs.filter { !$0.alreadyLinked }.map(\.title)
+    guard let first = names.first else { return "All of them are already added" }
+    let shown = names.prefix(2).enumerated().map { index, title in
+      index == 0 ? title : lowercasingFirstLetter(title)
+    }
+    let rest = names.count - shown.count
+    if rest > 0 {
+      return shown.joined(separator: ", ") + " and \(rest) more"
+    }
+    return shown.count == 2 ? shown.joined(separator: " and ") : first
+  }
+
+  /// "Shells, guide-tone lines and 3 more" — the run reads as one sentence, so
+  /// every title after the first drops its capital (tone doc, sentence case).
+  private func lowercasingFirstLetter(_ title: String) -> String {
+    guard let first = title.first else { return title }
+    return first.lowercased() + title.dropFirst()
+  }
+
+  private func suggestionSubtitle(_ preview: ScaffoldPreviewView) -> String {
+    let added = preview.specs.filter(\.alreadyLinked).count
+    if added > 0 {
+      return "\(added) of \(preview.specs.count) already added"
+    }
+    return "Worked out from these changes, in \(preview.key)"
+  }
+
+  private func suggestionAccessibilityLabel(_ preview: ScaffoldPreviewView) -> String {
+    "From the chord chart: \(suggestionHeadline(preview)) · \(suggestionSubtitle(preview))"
   }
 
   private var linkedExercisesHeader: some View {
@@ -336,37 +445,32 @@ struct LibraryDetailScreen: View {
   }
 
   private var linkedExercisesEmptyState: some View {
-    VStack(spacing: IntradaSpacing.cardCompact) {
-      Image(systemName: "link")
-        .imageScale(.large)
-        .font(IntradaFont.body)
-        .foregroundStyle(IntradaColor.inkFaint)
-        .accessibilityHidden(true)
-      Text("No related exercises yet")
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-      Text("Add scales, arpeggios, or any exercise you practise alongside this piece.")
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      Text("Scales, arpeggios, and anything else you practise alongside this piece.")
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkSecondary)
-        .multilineTextAlignment(.center)
-      AddRowButton(title: "Add a related exercise") {
-        showingPicker = true
+        .fixedSize(horizontal: false, vertical: true)
+      BrandBarButton(action: { creatingExercise = true }) {
+        Image(systemName: "plus")
+        Text("Create an exercise")
       }
-      .padding(.top, IntradaSpacing.controlGap)
-      .accessibilityLabel("Add a related exercise to this piece")
+      .accessibilityLabel("Create an exercise for this piece")
+      Button {
+        showingPicker = true
+      } label: {
+        Text("Choose one from the library")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, IntradaSpacing.controlGap)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Choose an existing exercise for this piece")
     }
-    .frame(maxWidth: .infinity)
-    .padding(IntradaSpacing.card)
-    .padding(.bottom, IntradaSpacing.cardCompact)
-  }
-
-  private var linkExerciseButton: some View {
-    AddRowButton(title: "Add a related exercise") {
-      showingPicker = true
-    }
-    .accessibilityLabel("Add a related exercise to this piece")
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, IntradaSpacing.card)
-    .padding(.vertical, IntradaSpacing.cardCompact)
+    .padding(.bottom, IntradaSpacing.card)
   }
 
   // ── Exercise hero + provenance ──

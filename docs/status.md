@@ -189,14 +189,17 @@ audit backlog and its five-phase build order.
   findings: #1390 (add the chord chart and related exercises while creating the
   item, not in a second trip) and a parser friction note on #1387. #1390 is
   design-first.
-- Real use has filed a second round (2026-08-28, piece page). Jon's calls:
-  **writing your own related exercise becomes the obvious action on a piece**,
-  with the chart's five derived exercises demoted to suggestions rather than a
-  curriculum (#1431, now, design-first — it needs a core event so the new
-  exercise lands already linked). **Showing the chord chart properly** (#1432,
-  next) is parked for a design conversation, but its first finding is concrete:
-  the piece-page preview does not draw bars, so any bar holding two chords
-  pushes the rest of the grid out of line. Adding several exercises to a
-  grouped piece one sheet at a time (#1103) moved to now.
+- Real use has filed a second round (2026-08-28, piece page). **#1431 has
+  landed its core half** (#1434: `AddLinkedExercise`, so an exercise written on
+  a piece saves already linked) and its screens are in flight: the piece page
+  now leads with **Create an exercise**, the picker is the secondary path, and
+  the chart's five are suggestions rather than a curriculum. Rulings are
+  design-principles **T18**; spec and mockups in
+  [`specs/piece-related-exercises.md`](../specs/piece-related-exercises.md).
+  **Showing the chord chart properly** (#1432, next) is parked for a design
+  conversation, but its first finding is concrete: the piece-page preview does
+  not draw bars, so any bar holding two chords pushes the rest of the grid out
+  of line. Adding several exercises to a grouped piece one sheet at a time
+  (#1103) moved to now.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).

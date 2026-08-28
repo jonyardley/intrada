@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Full-width "+ Add …" affordance. Three styles share one label:
-/// `.dashed` (default) reads as an empty slot inviting input; `.outlined` is the
-/// solid-accent-border empty-state CTA; `.plain` is the borderless text footer
-/// (e.g. "Add a related exercise" under a populated card).
+/// Full-width "+ Add …" affordance. Two styles share one label: `.dashed`
+/// (default) reads as an empty slot inviting input; `.plain` is the borderless
+/// text footer.
 struct AddRowButton: View {
-  enum Style { case dashed, outlined, plain }
+  enum Style { case dashed, plain }
 
   let title: String
   var style: Style = .dashed
@@ -26,7 +25,7 @@ struct AddRowButton: View {
   private var verticalPadding: CGFloat {
     switch style {
     case .plain: IntradaSpacing.cardCompact
-    case .dashed, .outlined: IntradaSpacing.row
+    case .dashed: IntradaSpacing.row
     }
   }
 
@@ -36,9 +35,6 @@ struct AddRowButton: View {
       RoundedRectangle(cornerRadius: IntradaRadius.card)
         .strokeBorder(
           IntradaColor.addDashOutline, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-    case .outlined:
-      RoundedRectangle(cornerRadius: IntradaRadius.card)
-        .strokeBorder(IntradaColor.accent, lineWidth: 1)
     case .plain:
       Color.clear
     }
@@ -49,7 +45,6 @@ struct AddRowButton: View {
   #Preview("Add row") {
     VStack(spacing: 16) {
       AddRowButton(title: "Add a related exercise") {}
-      AddRowButton(title: "Add a first exercise", style: .outlined) {}
       AddRowButton(title: "Add a related exercise", style: .plain) {}
     }
     .padding()

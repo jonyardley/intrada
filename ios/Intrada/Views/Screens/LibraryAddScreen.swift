@@ -7,9 +7,18 @@ import SwiftUI
 struct LibraryAddScreen: View {
   @Environment(Store.self) private var store
   @State private var form: ItemFormModel
+  /// Set when the exercise is being written for a piece: the core creates and
+  /// links it in one event, so it can never land unlinked (#1431).
+  private let relatedToPieceId: String?
 
   init(defaultKind: ItemKind = .piece) {
     _form = State(initialValue: ItemFormModel(kind: defaultKind))
+    relatedToPieceId = nil
+  }
+
+  init(relatedToPieceId: String) {
+    _form = State(initialValue: ItemFormModel(kind: .exercise))
+    self.relatedToPieceId = relatedToPieceId
   }
 
   #if DEBUG
@@ -17,6 +26,7 @@ struct LibraryAddScreen: View {
       let form = ItemFormModel(kind: .piece)
       form.formError = previewError
       _form = State(initialValue: form)
+      relatedToPieceId = nil
     }
   #endif
 
@@ -26,9 +36,14 @@ struct LibraryAddScreen: View {
       title: "New \(form.kind.label)",
       confirmLabel: "Add",
       composerSuggestions: store.viewModel?.availableComposers ?? [],
-      tagSuggestions: store.viewModel?.availableTags ?? []
+      tagSuggestions: store.viewModel?.availableTags ?? [],
+      showsKindPicker: relatedToPieceId == nil
     ) {
-      store.send(.item(.add(form.createInput())))
+      if let pieceId = relatedToPieceId {
+        store.send(.item(.addLinkedExercise(pieceId: pieceId, input: form.createInput())))
+      } else {
+        store.send(.item(.add(form.createInput())))
+      }
     }
   }
 }
