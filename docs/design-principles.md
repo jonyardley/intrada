@@ -582,3 +582,49 @@ rather than filtered: nothing distinguishes them from the real measurements a
 user made with the click sounding, so any filter would need a cut-off date
 invented for the purpose and would delete genuine measurements alongside the
 noise. It stops growing at #1422 and ages out as real history accumulates.
+
+### T18 — On a piece, the exercise you write outranks the one the app suggests
+
+**Status:** DECIDED 2026-08-28 (jonyardley/intrada#1431), from Jon's second
+round of real use. Spec:
+[`specs/piece-related-exercises.md`](../specs/piece-related-exercises.md).
+Mocked on the
+[design canvas](https://claude.ai/code/artifact/c646b020-6a05-4fe9-9479-73bdbd42528e).
+
+The chord-chart derivation shipped with the loudest affordance on the piece
+page: a full-width brand bar reading **See the curriculum**, one tap from five
+ready-made exercises. Writing your own sat four taps away inside a picker for
+existing ones, and did not even link what it made. The page therefore said the
+app's idea of what to practise mattered more than the musician's.
+
+- **The musician's own exercise is the primary action, and it is the card's
+  only brand bar.** Choosing an existing exercise drops to plain text beneath
+  it. Two brand bars on one screen was the ambiguity that made the page read
+  the wrong way round, and removing the chart card's is most of the fix.
+- **Creating an exercise on a piece saves it already related to that piece.**
+  The primary action is only primary if it completes: a create that leaves you
+  to go and tick your own new exercise in a picker has not done the job. This
+  is what makes the change a core change rather than a layout one.
+- **The derived five are suggestions, offered second, and the word
+  *curriculum* goes.** They keep every mechanic they have. What changes is that
+  the app now proposes rather than prescribes, which is the difference between
+  a suggestion and a syllabus. `Curriculum` becomes `From the chord chart` and
+  `Derived in G minor` becomes `Worked out from these changes`.
+- **The suggestions live in the Related exercises card**, not on the chart
+  card. Everything about exercises for this piece then reads in one place, and
+  the idea does not disappear on a piece with no chart, which is most of the
+  library. The chart-card placement is mocked as `AltOnChartCard` if it is
+  reopened.
+- **The suggestions row is drawn as a control, on `surfaceSunken` with the gold
+  exercise tint.** Drawn as a plain row carrying only a chevron, Jon read the
+  eyebrow above it as the button. A row that creates five library items cannot
+  hang its whole affordance on a chevron, and the gold says what will be
+  produced before it is tapped.
+- **The brand bar belongs to the empty state.** With exercises already in the
+  card the primary action recedes to a plain footer action beside "choose one".
+  One primary action per screen means one obvious *next step*, and once the
+  card is populated, adding another exercise is not it.
+
+**What this does not settle:** whether `Learn the melody` and
+`Constrained improv` are exercises at all (#1389), and the chord chart's own
+display (#1432). Both were deliberately held out.

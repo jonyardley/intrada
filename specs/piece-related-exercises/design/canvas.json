@@ -1,0 +1,106 @@
+{
+  "artboards": [
+    {
+      "file": "Before.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Today"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Proposed · nothing added yet"
+    },
+    {
+      "file": "Populated.dc.html",
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 760,
+      "title": "Proposed · two already added"
+    },
+    {
+      "file": "NoChart.dc.html",
+      "x": 0,
+      "y": 1180,
+      "w": 390,
+      "h": 700,
+      "title": "Proposed · piece with no chart"
+    },
+    {
+      "file": "AltOnChartCard.dc.html",
+      "x": 470,
+      "y": 1180,
+      "w": 390,
+      "h": 700,
+      "title": "Alternative · suggestions stay on the chart card"
+    },
+    {
+      "file": "Suggestions.dc.html",
+      "x": 940,
+      "y": 1180,
+      "w": 390,
+      "h": 700,
+      "title": "The sheet, reworded"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -230,
+      "w": 1330,
+      "text": "Piece page: related exercises (#1431)\n\nJon's two calls, 28 Aug: writing your own exercise becomes the obvious action on a piece, and the five the app works out from the chord chart drop to suggestions rather than a curriculum.\n\nEverything here uses the shipped Paper & Score tokens from Theme.swift. No new tokens, no new primitives."
+    },
+    {
+      "id": "note-today",
+      "x": 0,
+      "y": 900,
+      "w": 390,
+      "text": "TODAY\n\nThe loudest thing on the piece is the app writing five exercises for you: a full-width brand bar. Writing your own is a dashed button in the card below, and it opens a picker of exercises you already have, with Create new exercise as a row inside it.\n\nFour taps to your own exercise, one to the app's."
+    },
+    {
+      "id": "note-main",
+      "x": 470,
+      "y": 900,
+      "w": 390,
+      "text": "PROPOSED\n\nThe brand bar moves to Create an exercise, and it is the only one on the page. Choose one from the library sits under it as plain text.\n\nThe suggestions sit on the sunken surface with the gold exercise tint, so the row reads as a control rather than a section of content, and the colour says up front that these become exercises. The chart card keeps the chart and loses its button."
+    },
+    {
+      "id": "note-populated",
+      "x": 940,
+      "y": 900,
+      "w": 390,
+      "text": "ONCE THERE IS SOMETHING IN IT\n\nThe brand bar recedes to two plain footer actions: the loud CTA belongs to the empty state, where there is one obvious next step.\n\nThe suggestions row now says how many are already in, so the app is not offering you what you have."
+    },
+    {
+      "id": "note-nochart",
+      "x": 0,
+      "y": 1920,
+      "w": 390,
+      "text": "NO CHART ON THE PIECE\n\nMost of the library will look like this. The card is the same minus the suggestions block, so the primary action does not depend on having pasted changes.\n\nThe chart card's empty line drops \"to see the exercises they imply\" with it."
+    },
+    {
+      "id": "note-alt",
+      "x": 470,
+      "y": 1920,
+      "w": 390,
+      "text": "ALTERNATIVE\n\nSuggestions stay on the chord chart card, as a row rather than a brand bar.\n\nFor: the suggestions sit next to the thing they came from. Against: two cards now talk about exercises, and on a piece with no chart the idea vanishes entirely rather than being absent from a place you already know."
+    },
+    {
+      "id": "note-sheet",
+      "x": 940,
+      "y": 1920,
+      "w": 390,
+      "text": "THE SHEET\n\nSame rows and same mechanics. Curriculum becomes From the chord chart, and \"Derived in G minor\" becomes \"Worked out from these changes\".\n\nAlready linked becomes Already added. Two rationales lose an em dash for the house middle dot, which the tone doc has banned all along."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
