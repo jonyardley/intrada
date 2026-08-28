@@ -140,8 +140,7 @@ pub struct TempoObservation {
 
 impl TempoObservation {
     /// A tempo is worth recording when there is evidence behind it, and never
-    /// otherwise. Anything else is a default nobody looked at, and a chart
-    /// drawn through those numbers looks like measurement (#1420).
+    /// otherwise (design-principles T16, #1420).
     pub fn is_evidenced(&self) -> bool {
         self.user_set || self.click_sounding
     }
@@ -4392,172 +4391,6 @@ mod tests {
 
     // --- UpdateEntryTempo Tests ---
 
-    #[test]
-    fn test_update_entry_tempo_on_completed_entry() {
-        let mut model = model_with_summary();
-
-        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
-            s.entries[0].id.clone()
-        } else {
-            panic!("Expected Summary state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.entries[0].achieved_tempo, Some(120));
-        } else {
-            panic!("Expected Summary state");
-        }
-    }
-
-    #[test]
-    fn test_update_entry_tempo_none_clears() {
-        let mut model = model_with_summary();
-
-        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
-            s.entries[0].id.clone()
-        } else {
-            panic!("Expected Summary state");
-        };
-
-        // Set tempo to 120
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        // Clear tempo by setting to None
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                tempo: None,
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.entries[0].achieved_tempo, None);
-        } else {
-            panic!("Expected Summary state");
-        }
-    }
-
-    #[test]
-    fn test_update_entry_tempo_rejected_on_skipped() {
-        // Build a summary with a skipped entry: skip item 1, complete item 2
-        let (mut model, start) = model_with_active_session(2);
-        let t1 = start + chrono::Duration::seconds(10);
-        let t2 = t1 + chrono::Duration::seconds(30);
-
-        // Skip first item
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SkipItem { now: t1 }),
-        );
-        // Finish session (completes second item, transitions to summary)
-        update(
-            &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
-        );
-
-        // Find the skipped entry
-        let skipped_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
-            s.entries
-                .iter()
-                .find(|e| e.status == EntryStatus::Skipped)
-                .expect("Should have a skipped entry")
-                .id
-                .clone()
-        } else {
-            panic!("Expected Summary state");
-        };
-
-        // Try to set tempo on the skipped entry — should be a no-op
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: skipped_entry_id.clone(),
-                tempo: Some(100),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            let skipped = s.entries.iter().find(|e| e.id == skipped_entry_id).unwrap();
-            assert_eq!(skipped.achieved_tempo, None);
-        }
-    }
-
-    #[test]
-    fn test_update_entry_tempo_rejected_out_of_range() {
-        let mut model = model_with_summary();
-
-        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
-            s.entries[0].id.clone()
-        } else {
-            panic!("Expected Summary state");
-        };
-
-        // Tempo 0 — out of range
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                tempo: Some(0),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.entries[0].achieved_tempo, None);
-        }
-
-        // Tempo 501 — out of range
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                tempo: Some(501),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-            }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.entries[0].achieved_tempo, None);
-        }
-    }
-
     // --- Tempo evidence (#1420, roadmap Q3) ---
 
     fn tempo_entry_id(model: &Model) -> String {
@@ -4570,11 +4403,11 @@ mod tests {
     fn achieved_tempo(model: &Model, entry_id: &str) -> Option<u16> {
         match model.session_status {
             SessionStatus::Summary(ref s) => {
-                s.entries
-                    .iter()
-                    .find(|e| e.id == entry_id)
-                    .unwrap()
-                    .achieved_tempo
+                let entry = s.entries.iter().find(|e| e.id == entry_id).unwrap();
+                // Without this the negative tests would also pass against a
+                // skipped entry, which the handler rejects for another reason.
+                assert_eq!(entry.status, EntryStatus::Completed);
+                entry.achieved_tempo
             }
             _ => panic!("Expected Summary state"),
         }
@@ -4720,6 +4553,143 @@ mod tests {
                 click_sounding: true,
             },
         }));
+    }
+
+    #[test]
+    fn test_update_entry_tempo_none_clears() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Set tempo to 120
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        // Clear tempo by setting to None
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: None,
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_rejected_on_skipped() {
+        // Build a summary with a skipped entry: skip item 1, complete item 2
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(10);
+        let t2 = t1 + chrono::Duration::seconds(30);
+
+        // Skip first item
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem { now: t1 }),
+        );
+        // Finish session (completes second item, transitions to summary)
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        // Find the skipped entry
+        let skipped_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries
+                .iter()
+                .find(|e| e.status == EntryStatus::Skipped)
+                .expect("Should have a skipped entry")
+                .id
+                .clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Try to set tempo on the skipped entry — should be a no-op
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: skipped_entry_id.clone(),
+                tempo: Some(100),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            let skipped = s.entries.iter().find(|e| e.id == skipped_entry_id).unwrap();
+            assert_eq!(skipped.achieved_tempo, None);
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_rejected_out_of_range() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Tempo 0 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(0),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
+        }
+
+        // Tempo 501 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(501),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
+        }
     }
 
     // --- format_duration_display Tests ---

@@ -64,6 +64,39 @@ final class ReflectionSheetStepSelectionTests: XCTestCase {
   }
 }
 
+/// The shell half of the tempo evidence contract (#1420): if `userSet` ever
+/// stops tracking the stepper, every tempo becomes unevidenced and the trend
+/// goes silently empty — the #846 failure mode with no other guard on it.
+@MainActor
+final class TrackedTempoTests: XCTestCase {
+  func testAPreFillIsNotUserSet() {
+    XCTAssertFalse(
+      TrackedTempo(startingBpm: 96).userSet,
+      "the sheet opening at a pre-filled number is not the user setting one")
+  }
+
+  func testSettingMarksItUserSet() {
+    var tempo = TrackedTempo(startingBpm: 96)
+    tempo.set(120)
+    XCTAssertEqual(tempo.bpm, 120)
+    XCTAssertTrue(tempo.userSet)
+  }
+
+  func testSettingBackToTheStartingValueStillCounts() {
+    var tempo = TrackedTempo(startingBpm: 96)
+    tempo.set(98)
+    tempo.set(96)
+    XCTAssertTrue(
+      tempo.userSet, "stepping up and back is still the user considering the number")
+  }
+
+  func testAnOutOfRangeStartClampsWithoutCountingAsUserSet() {
+    let tempo = TrackedTempo(startingBpm: 400)
+    XCTAssertEqual(tempo.bpm, TempoStepper.range.upperBound)
+    XCTAssertFalse(tempo.userSet, "clamping is the app tidying up, not the user choosing")
+  }
+}
+
 @MainActor
 final class AddStepsSheetTests: XCTestCase {
   func testEmptyArrayTrimsToEmpty() {

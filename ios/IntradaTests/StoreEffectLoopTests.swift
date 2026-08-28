@@ -448,11 +448,6 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
-  /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
-  /// `TempoObservation` payload has to cross the bincode wire intact, and the
-  /// core's ruling has to hold end to end. A wire break would let an
-  /// unevidenced default through, and the tempo trend would draw it as a
-  /// measurement.
   private func bridgeWithCompletedEntry() throws -> (LiveBridge, String) {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
@@ -484,6 +479,10 @@ final class StoreEffectLoopTests: XCTestCase {
     return (bridge, try XCTUnwrap(entries.first?.id))
   }
 
+  /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
+  /// `TempoObservation` payload has to cross the bincode wire intact and the
+  /// core's ruling has to hold end to end. A wire break would let an
+  /// unevidenced default through, and the trend would draw it as a measurement.
   func testRealBridgeRecordsATempoTheUserSetThemselves() throws {
     let (bridge, entryId) = try bridgeWithCompletedEntry()
 

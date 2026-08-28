@@ -481,9 +481,13 @@ asked.
 
 Tempo capture (**T14**, #1398/#1401) put the stepper on the reflection sheet
 for every item and always saved a number, pre-filled from the click. When the
-click had never sounded that pre-fill was a neutral 96, so a large share of the
-recorded tempos were a default nobody looked at, sitting in the same history as
-real measurements with nothing telling them apart.
+click had never sounded, that pre-fill was whatever `ClickController` had
+seeded: the item's own declared target where it has one, and a neutral 96 where
+it does not. So a large share of the recorded tempos were a default nobody
+looked at, sitting in the same history as real measurements with nothing
+telling them apart. **For an item declaring ♩ = 132, that default was 132** —
+the app quietly recording the target as achieved, which is a worse falsehood
+than a stray 96 and the strongest argument for the ruling.
 
 **A tempo is worth recording when there is evidence behind it, and never
 otherwise.** Evidence is either of two things: the user moved the stepper, or
@@ -500,8 +504,14 @@ Two rulings come with it:
 - **The sheet does not change.** The stepper still appears on every item and
   still pre-fills, because a musician reaching for it should find it already
   showing a sensible number. What changed is only whether an untouched number
-  is kept. Nothing on screen tells the user their tempo was not recorded,
-  because nothing was asked of them and there is nothing to report.
+  is kept, and no banner or hint says so: nothing was asked of the user, so
+  there is nothing to report. The one visible consequence is downstream — the
+  session summary's meta row reads `Exercise` rather than `Exercise · 96 bpm`
+  when there was nothing to measure, which is the row telling the truth.
+- **Dialling the click without starting it is not evidence.** The tempo has to
+  have been sounding. Changing a number on a silent row is intent, and intent
+  is not measurement; the musician never played to it. Deliberate, not an
+  oversight.
 - **The shell reports, the core rules.** Both facts are shell-observable and
   neither is a judgement, so Swift forwards them untouched and the core decides
   what counts as evidence. Deciding in the shell would be domain logic in the

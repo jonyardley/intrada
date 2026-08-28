@@ -1,6 +1,22 @@
 import SharedTypes
 import SwiftUI
 
+/// A tempo and whether the user set it, as one value: `bpm` is not writable
+/// except through `set`, so the sheet cannot report a number without also
+/// reporting where it came from (#1420).
+@MainActor
+struct TrackedTempo {
+  private(set) var bpm: Int
+  private(set) var userSet = false
+
+  init(startingBpm: Int) { bpm = TempoStepper.clamp(startingBpm) }
+
+  mutating func set(_ next: Int) {
+    bpm = TempoStepper.clamp(next)
+    userSet = true
+  }
+}
+
 /// What the sheet collected. `tempoUserSet` is an observation, not a
 /// judgement: whether it amounts to evidence is the core's ruling (#1420).
 struct ReflectionResult {
@@ -25,8 +41,7 @@ struct ReflectionSheet: View {
 
   @State private var score: Int = 0
   @State private var note: String = ""
-  @State private var achievedTempo: Int
-  @State private var tempoUserSet = false
+  @State private var achievedTempo: TrackedTempo
   @State private var selectedVariantId: String?
 
   init(
@@ -43,7 +58,7 @@ struct ReflectionSheet: View {
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
-    _achievedTempo = State(initialValue: TempoStepper.clamp(startingTempoBpm))
+    _achievedTempo = State(initialValue: TrackedTempo(startingBpm: startingTempoBpm))
     _selectedVariantId = State(
       initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
   }
@@ -98,8 +113,8 @@ struct ReflectionSheet: View {
           ReflectionResult(
             score: score == 0 ? nil : UInt8(score),
             note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-            achievedTempo: UInt16(achievedTempo),
-            tempoUserSet: tempoUserSet,
+            achievedTempo: UInt16(achievedTempo.bpm),
+            tempoUserSet: achievedTempo.userSet,
             variantId: selectedVariantId))
       } label: {
         Text("Save & continue")
@@ -127,15 +142,9 @@ struct ReflectionSheet: View {
   }
 
   // TempoStepper only writes on an explicit tap or accessibility adjustment,
-  // never on appear, so a write here is the user considering the number —
-  // which is one of the two things that make a tempo worth recording (#1420).
+  // never on appear, so a write here is the user considering the number (#1420).
   private var achievedTempoBinding: Binding<Int> {
-    Binding(
-      get: { achievedTempo },
-      set: {
-        achievedTempo = $0
-        tempoUserSet = true
-      })
+    Binding(get: { achievedTempo.bpm }, set: { achievedTempo.set($0) })
   }
 
   private var selectedVariantIdBinding: Binding<String> {

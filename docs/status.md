@@ -26,7 +26,8 @@ audit backlog and its five-phase build order.
   then screens. The **evidence contract** is the first PR: tempo capture
   (#1398) put the stepper on every item and always saved a number, pre-filled
   from the click, so a large share of the recorded tempos were an untouched
-  default nobody looked at. A tempo is now recorded only when it was measured
+  default nobody looked at. For an item declaring a target the default was that
+  target, so the app was quietly recording it as achieved. A tempo is now recorded only when it was measured
   (design-principles **T16**, answering roadmap Q3): the shell forwards two
   observed facts and the core rules on whether they amount to evidence. No new
   field, so no crash-recovery key bump. The chart itself is the second PR.
