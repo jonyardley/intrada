@@ -21,10 +21,26 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-Nothing. The next unstarted item is step 7 of the adopted order — see **Next**.
+Nothing.
 
 ## Recently landed
 
+- #1416 — **the getting-cold signal**, step 8 of the adopted order
+  ([`research/comparison.md`](research/comparison.md)). Spec at
+  [`specs/getting-cold-signal.md`](../specs/getting-cold-signal.md). How long an
+  item has sat is now measured against the return interval its own history
+  earns it, so a piece marked 3 of 10 and played once and a piece marked 9 of 10
+  across twenty returns no longer go cold on the same clock, which is exactly
+  what the binary 14-day flag got wrong. The Up next card's headline reason says
+  the grade in words (`going cold after 3 weeks`, `cold for 3 months`) and its
+  ranking moved to the same graded number, so the headline still says the thing
+  the ranking used. `compute_neglected_items` reads the estimate instead of its
+  own 14-day cut, so the core has one opinion about coldness rather than two.
+  Core only: it arrived through the reason strings the card spec made
+  core-owned, with no ViewModel field, no bindings change and no Swift logic.
+  Nothing new gates anything. Whether the thresholds are right is empirical,
+  so use it for a few weeks before tuning them (#1419). A coldness clause on
+  the card's item rows was held back deliberately (#1418).
 - #1082 (#1409, #1414) — **the Up next card**, step 6 of the adopted order
   ([`research/comparison.md`](research/comparison.md)). Tier 3, spec at
   [`specs/up-next-card.md`](../specs/up-next-card.md), shipped core-first then
@@ -132,12 +148,14 @@ Nothing. The next unstarted item is step 7 of the adopted order — see **Next**
 ## Next
 
 - The adopted Stage 4 order ([`research/comparison.md`](research/comparison.md))
-  is clear through step 6. **Step 7, the tempo trend, is gated**: it is blocked
-  on roadmap Q3 (does a mastery score mean anything without its tempo?) being
-  answered, so the honest next build is **step 8, the getting-cold signal** —
-  a graded staleness estimate replacing the binary 14-day flag, landing as new
-  Up next reason lines rather than a surface of its own. The reason strings are
-  the seam it arrives through, which is why they are core-owned. 1–2 days.
+  is clear through step 8. **Step 7, the tempo trend, is still gated** on
+  roadmap Q3 (does a mastery score mean anything without its tempo?), and
+  steps 9 to 11 are the big bets, each a fresh decision gated on lived use.
+  So the honest next move is **not another build**: use the Up next card and
+  the getting-cold signal on the week's lesson tune and file the friction, the
+  way step 2 and step 5 were treated. Two weeks of real use is what tells us
+  whether the staleness thresholds are anywhere near right, and there is no
+  substitute for it.
 - Real use has started (Like Someone in Love, 2026-08-14) and filed its first
   findings: #1390 (add the chord chart and related exercises while creating the
   item, not in a second trip) and a parser friction note on #1387. #1390 is

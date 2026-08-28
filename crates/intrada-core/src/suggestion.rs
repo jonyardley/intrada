@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
 use crate::model::{ItemPracticeSummary, LibraryItemView, VariantView};
+use crate::staleness::{self, Staleness};
 
 /// Related exercises the card suggests alongside the piece; with the piece
 /// itself that makes the two-to-three rows the surface was designed for.
@@ -69,8 +70,9 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
             b.priority
                 .cmp(&a.priority)
                 .then_with(|| {
-                    staleness_key(b.practice.as_ref(), clock)
-                        .cmp(&staleness_key(a.practice.as_ref(), clock))
+                    staleness_of(b, clock)
+                        .overdue_key()
+                        .cmp(&staleness_of(a, clock).overdue_key())
                 })
                 .then_with(|| latest_mark(a).cmp(&latest_mark(b)))
                 .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
@@ -83,22 +85,28 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
     let mut ranked: Vec<Suggestable> = anchor
         .linked_exercises
         .iter()
-        .map(|ex| Suggestable {
-            id: ex.id.as_str(),
-            title: ex.title.as_str(),
-            step: by_id
+        .map(|ex| {
+            let step = by_id
                 .get(ex.id.as_str())
-                .and_then(|full| full.variants.iter().find(|v| v.is_current)),
-            context_mark: ex.piece_context_score,
-            practice: ex.practice.as_ref(),
+                .and_then(|full| full.variants.iter().find(|v| v.is_current));
+            let mark = match step {
+                Some(step) => step.latest_score,
+                None => ex.piece_context_score,
+            };
+            Suggestable {
+                id: ex.id.as_str(),
+                title: ex.title.as_str(),
+                step,
+                mark,
+                staleness: staleness::assess(ex.practice.as_ref(), mark, clock),
+                practice: ex.practice.as_ref(),
+            }
         })
         .collect();
     ranked.sort_by(|a, b| {
-        a.mark().cmp(&b.mark()).then_with(|| {
-            staleness_key(a.practice, clock)
-                .cmp(&staleness_key(b.practice, clock))
-                .reverse()
-        })
+        a.mark
+            .cmp(&b.mark)
+            .then_with(|| b.staleness.overdue_key().cmp(&a.staleness.overdue_key()))
     });
     ranked.truncate(MAX_SUGGESTED_EXERCISES);
 
@@ -110,12 +118,12 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
             item_type: ItemKind::Exercise,
             variant_id: ex.step.map(|s| s.id.clone()),
             variant_label: ex.step.map(|s| s.label.clone()),
-            latest_score: ex.mark(),
-            reason: mark_clause(ex.mark(), ex.step.is_some()),
+            latest_score: ex.mark,
+            reason: mark_clause(ex.mark, ex.step.is_some()),
         })
         .collect();
 
-    let piece_staleness = staleness_days(anchor.practice.as_ref(), clock);
+    let piece_staleness = staleness_of(anchor, clock);
     items_out.push(SuggestedItem {
         item_id: anchor.id.clone(),
         item_title: anchor.title.clone(),
@@ -135,9 +143,9 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
     );
 
     let reason = if anchor.priority {
-        format!("A priority · {}", staleness_clause(piece_staleness))
+        format!("A priority · {}", piece_staleness.clause())
     } else {
-        capitalise(&staleness_clause(piece_staleness))
+        capitalise(&piece_staleness.clause())
     };
 
     Some(SuggestedSession {
@@ -160,48 +168,22 @@ struct Suggestable<'a> {
     id: &'a str,
     title: &'a str,
     step: Option<&'a VariantView>,
-    context_mark: Option<u8>,
-    practice: Option<&'a ItemPracticeSummary>,
-}
-
-impl Suggestable<'_> {
     /// The step's mark where a step was chosen, otherwise the exercise's mark
     /// in this piece's context. Per-piece, not flat: a drill solid under one
     /// tune can be rough under another (#1081).
-    fn mark(&self) -> Option<u8> {
-        match self.step {
-            Some(step) => step.latest_score,
-            None => self.context_mark,
-        }
-    }
+    mark: Option<u8>,
+    staleness: Staleness,
+    practice: Option<&'a ItemPracticeSummary>,
 }
 
-fn staleness_days(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> Option<u32> {
-    let at = practice?.last_practiced_at.as_deref()?;
-    let parsed = chrono::DateTime::parse_from_rfc3339(at).ok()?;
-    let day = clock.day_of(parsed.with_timezone(&chrono::Utc));
-    Some((clock.today - day).num_days().max(0) as u32)
-}
-
-/// Ranking key for staleness: never practised is the stalest of all. One
-/// convention for pieces and exercises alike, so the two rankings can't drift.
-fn staleness_key(practice: Option<&ItemPracticeSummary>, clock: LocalClock) -> u32 {
-    staleness_days(practice, clock).unwrap_or(u32::MAX)
+/// One convention for pieces and exercises alike, so the two rankings can't
+/// drift (#1416).
+fn staleness_of(item: &LibraryItemView, clock: LocalClock) -> Staleness {
+    staleness::assess(item.practice.as_ref(), latest_mark(item), clock)
 }
 
 fn latest_mark(item: &LibraryItemView) -> Option<u8> {
     item.practice.as_ref().and_then(|p| p.latest_score)
-}
-
-/// Mid-sentence, so it can follow the priority clause; `capitalise` heads a
-/// line with it.
-fn staleness_clause(days: Option<u32>) -> String {
-    match days {
-        None => "not practised yet".to_string(),
-        Some(0) => "practised today".to_string(),
-        Some(1) => "practised yesterday".to_string(),
-        Some(d) => format!("not practised for {d} days"),
-    }
 }
 
 fn mark_clause(mark: Option<u8>, has_step: bool) -> String {
@@ -364,11 +346,11 @@ mod tests {
     }
 
     #[test]
-    fn the_lowest_mark_breaks_a_staleness_tie() {
+    fn the_lowest_mark_breaks_a_tie_between_equally_overdue_pieces() {
         let mut library = piece_with_exercises("solid", "Nocturne", 1);
         library[0].practice = Some(ItemPracticeSummary {
             latest_score: Some(9),
-            ..practised(5, 10, 1)
+            ..practised(30, 10, 1)
         });
 
         let mut rough = piece_with_exercises("rough", "Fugue", 1);
@@ -379,6 +361,26 @@ mod tests {
         library.extend(rough);
 
         assert_eq!(suggest(&library).piece_id, "rough");
+    }
+
+    /// Raw days would have picked the other one, and so would the title
+    /// tie-break, so only the overdue ratio can be what decided this (#1416).
+    #[test]
+    fn a_piece_further_through_its_own_interval_beats_a_longer_raw_gap() {
+        let mut library = piece_with_exercises("newer", "Zortziko", 1);
+        library[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(5),
+            ..practised(12, 10, 1)
+        });
+
+        let mut established = piece_with_exercises("established", "Aria", 1);
+        established[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(5),
+            ..practised(16, 200, 20)
+        });
+        library.extend(established);
+
+        assert_eq!(suggest(&library).piece_id, "newer");
     }
 
     #[test]
@@ -428,6 +430,18 @@ mod tests {
         let mut library = piece_with_exercises("p1", "Prelude", 2);
         library[0].linked_exercises[0].piece_context_score = Some(2);
         library[0].linked_exercises[1].piece_context_score = None;
+
+        assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
+    }
+
+    #[test]
+    fn an_exercise_further_through_its_own_interval_beats_a_longer_raw_gap() {
+        let mut library = piece_with_exercises("p1", "Prelude", 2);
+        for ex in &mut library[0].linked_exercises {
+            ex.piece_context_score = Some(5);
+        }
+        library[0].linked_exercises[0].practice = Some(practised(16, 200, 20));
+        library[0].linked_exercises[1].practice = Some(practised(12, 10, 1));
 
         assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
     }
@@ -533,8 +547,45 @@ mod tests {
 
         assert_eq!(
             suggest(&library).reason,
-            "A priority · not practised for 6 days"
+            "A priority · practised 6 days ago"
         );
+    }
+
+    /// The gap alone does not decide the wording; the gap measured against this
+    /// piece's own interval does (#1416).
+    #[test]
+    fn the_headline_grades_the_gap_rather_than_counting_days() {
+        let mut fragile = piece_with_exercises("p1", "Prelude", 1);
+        fragile[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(2),
+            ..practised(12, 10, 1)
+        });
+        assert_eq!(suggest(&fragile).reason, "Cold for 12 days");
+
+        let mut returned_to = piece_with_exercises("p1", "Prelude", 1);
+        returned_to[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(2),
+            ..practised(12, 60, 6)
+        });
+        assert_eq!(suggest(&returned_to).reason, "Going cold after 12 days");
+
+        let mut consolidated = piece_with_exercises("p1", "Prelude", 1);
+        consolidated[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(9),
+            ..practised(12, 120, 20)
+        });
+        assert_eq!(suggest(&consolidated).reason, "Practised 12 days ago");
+    }
+
+    #[test]
+    fn a_piece_long_gone_is_called_cold_in_months() {
+        let mut library = piece_with_exercises("p1", "Prelude", 1);
+        library[0].practice = Some(ItemPracticeSummary {
+            latest_score: Some(6),
+            ..practised(97, 30, 4)
+        });
+
+        assert_eq!(suggest(&library).reason, "Cold for 3 months");
     }
 
     #[test]
@@ -551,7 +602,7 @@ mod tests {
         let mut library = piece_with_exercises("p1", "Prelude", 1);
         library[0].practice = Some(practised(6, 10, 1));
 
-        assert_eq!(suggest(&library).reason, "Not practised for 6 days");
+        assert_eq!(suggest(&library).reason, "Practised 6 days ago");
     }
 
     #[test]
