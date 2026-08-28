@@ -525,6 +525,21 @@ fails) before hardening. If nothing can distinguish the behaviour being present
 from absent, the honest fix is to **delete** the test, not to bulk it out with
 assertions about something else while keeping the name.
 
+**Mutation-test by deleting the line, not by inverting it.** Inverting is the
+weaker mutation and it hides exactly the failure above: reverse a sort and a
+test fails whether or not it constrains anything, because reversed input is
+wrong under any assertion about order. Delete the sort instead and a test whose
+fixture was already in order goes green, which is the truth about it. Same for a
+filter, a guard, a clamp: remove it rather than flipping it. If deletion won't
+compile, substitute the naive version a future reader would plausibly write
+(`points.last()` for a `rev().find_map(...)` that skips gaps) — that is the
+regression you are actually guarding against.
+
+Why (2026-08-28, #1423): two derivations shipped in a PR whose own author had
+"mutation-tested" both by inverting them. The reviewer deleted each and the full
+695-test suite stayed green. One of the two, replaced with its naive form, would
+have silently dropped a tempo the user had earned.
+
 **A parser or validator gets a table test against its consumer, not cases you
 invented.** Hand-picked inputs are picked to match the implementation you just
 wrote, so they agree with it by construction. Write the table as a list of
