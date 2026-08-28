@@ -360,18 +360,10 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-pub fn validate_link_exercise(
-    piece_id: &str,
-    exercise_id: &str,
-    model: &Model,
-) -> Result<(), LibraryError> {
-    if piece_id == exercise_id {
-        return Err(LibraryError::Validation {
-            field: "exercise_id".to_string(),
-            message: "A piece cannot be linked to itself".to_string(),
-        });
-    }
-
+/// The host half of `validate_link_exercise`: the id names an item that exists
+/// and is a piece. Shared with `AddLinkedExercise`, where the exercise does not
+/// exist yet and so only this half can run.
+pub fn validate_piece_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
     let piece = model
         .items
         .iter()
@@ -386,6 +378,23 @@ pub fn validate_link_exercise(
             message: "Target must be a piece, not an exercise".to_string(),
         });
     }
+
+    Ok(())
+}
+
+pub fn validate_link_exercise(
+    piece_id: &str,
+    exercise_id: &str,
+    model: &Model,
+) -> Result<(), LibraryError> {
+    if piece_id == exercise_id {
+        return Err(LibraryError::Validation {
+            field: "exercise_id".to_string(),
+            message: "A piece cannot be linked to itself".to_string(),
+        });
+    }
+
+    validate_piece_host(piece_id, model)?;
 
     let exercise = model
         .items
@@ -402,7 +411,12 @@ pub fn validate_link_exercise(
         });
     }
 
-    if piece.linked_exercise_ids.contains(&exercise_id.to_string()) {
+    let already_linked = model
+        .items
+        .iter()
+        .find(|i| i.id == piece_id)
+        .is_some_and(|p| p.linked_exercise_ids.iter().any(|id| id == exercise_id));
+    if already_linked {
         return Err(LibraryError::Validation {
             field: "exercise_id".to_string(),
             message: "Exercise is already linked to this piece".to_string(),

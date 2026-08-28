@@ -96,6 +96,16 @@ pub enum ItemEvent {
         piece_id: String,
         exercise_id: String,
     },
+    /// Create one hand-written exercise already linked to `piece_id`. Single
+    /// event so the shell never has to learn the minted ulid: `Add` alone
+    /// leaves the exercise unlinked and the shell with no id to link it by
+    /// (#1431). Local-first only, like `AddVariant` — the online create path
+    /// reassigns ids server-side, which is the dangling-link trap #1108 marks
+    /// inside `CommitScaffold`.
+    AddLinkedExercise {
+        piece_id: String,
+        input: CreateItem,
+    },
     UnlinkExercise {
         piece_id: String,
         exercise_id: String,
@@ -255,6 +265,67 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     crux_core::render::render(),
                 ])
             }
+        }
+        ItemEvent::AddLinkedExercise { piece_id, input } => {
+            if !model.local_first {
+                model.last_error =
+                    Some("Related exercises aren't available online yet".to_string());
+                return crux_core::render::render();
+            }
+
+            if let Err(e) = validation::validate_piece_host(&piece_id, model) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            // Coerced before validation, not after: a piece linked as a related
+            // exercise would break the link invariant `validate_link_exercise`
+            // guards, and the piece-shaped rules must not run on the way past.
+            let input = CreateItem {
+                kind: ItemKind::Exercise,
+                ..input
+            };
+            let input = validation::normalize_create_item(input);
+            if let Err(e) = validation::validate_create_item(&input) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let now = chrono::Utc::now();
+            let exercise = Item {
+                id: ulid::Ulid::generate().to_string(),
+                title: input.title,
+                kind: input.kind,
+                composer: input.composer,
+                key: input.key,
+                modality: input.modality,
+                tempo: input.tempo,
+                notes: input.notes,
+                tags: input.tags,
+                linked_exercise_ids: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+                chord_chart: None,
+                variants: vec![],
+            };
+
+            let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                return crux_core::render::render();
+            };
+            piece.linked_exercise_ids.push(exercise.id.clone());
+            piece.updated_at = now;
+            let piece = piece.clone();
+
+            model.items.push(exercise.clone());
+            model.last_error = None;
+            model.record_success();
+
+            Command::all([
+                crate::persistence::save_items(vec![exercise, piece]),
+                crux_core::render::render(),
+            ])
         }
         ItemEvent::Update { id, input } => {
             let input = validation::normalize_update_item(input);
@@ -2422,5 +2493,162 @@ mod tests {
         let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
         assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
         assert!(model.last_error.is_none());
+    }
+
+    // ── AddLinkedExercise ──
+
+    fn new_exercise_input(title: &str) -> CreateItem {
+        CreateItem {
+            title: title.to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: Some("G".to_string()),
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        }
+    }
+
+    #[test]
+    fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "piece-1".to_string(),
+                input: new_exercise_input("Shell voicings"),
+            },
+        );
+
+        let created = model
+            .items
+            .iter()
+            .find(|i| i.title == "Shell voicings")
+            .expect("the exercise is created");
+        assert_eq!(created.kind, ItemKind::Exercise);
+        assert_eq!(created.key.as_deref(), Some("G"));
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(
+            piece.linked_exercise_ids.contains(&created.id),
+            "the point of the event: created already linked, with no second step"
+        );
+        assert!(model.last_error.is_none());
+
+        let batch = emits_save_items(&mut cmd).expect("a SaveItems batch is persisted");
+        assert_eq!(batch.len(), 2, "the exercise + the piece, one transaction");
+        assert!(batch.contains(&"piece-1".to_string()));
+        assert!(
+            !emits_http(&mut cmd),
+            "local-first create makes no HTTP (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn add_linked_exercise_forces_the_kind_to_exercise() {
+        let mut model = model_with_piece_and_exercise();
+        let mut input = new_exercise_input("Not a piece");
+        input.kind = ItemKind::Piece;
+
+        send(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "piece-1".to_string(),
+                input,
+            },
+        );
+
+        let created = model
+            .items
+            .iter()
+            .find(|i| i.title == "Not a piece")
+            .expect("the item is created");
+        assert_eq!(
+            created.kind,
+            ItemKind::Exercise,
+            "a piece linked as a related exercise would break the link invariant"
+        );
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn add_linked_exercise_rejects_a_non_piece_host() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "ex-1".to_string(),
+                input: new_exercise_input("Shell voicings"),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert!(
+            !model.items.iter().any(|i| i.title == "Shell voicings"),
+            "a rejected host creates nothing"
+        );
+        assert!(emits_save_items(&mut cmd).is_none());
+    }
+
+    #[test]
+    fn add_linked_exercise_missing_piece_surfaces_not_found() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "nope".to_string(),
+                input: new_exercise_input("Shell voicings"),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert!(!model.items.iter().any(|i| i.title == "Shell voicings"));
+    }
+
+    #[test]
+    fn add_linked_exercise_rejects_a_blank_title() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "piece-1".to_string(),
+                input: new_exercise_input("   "),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), before, "nothing is created");
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(
+            piece.linked_exercise_ids.is_empty(),
+            "and nothing is linked"
+        );
+    }
+
+    #[test]
+    fn add_linked_exercise_online_mode_is_scoped_out_gracefully() {
+        let mut model = model_with_piece_and_exercise();
+        model.local_first = false;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddLinkedExercise {
+                piece_id: "piece-1".to_string(),
+                input: new_exercise_input("Shell voicings"),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert!(
+            !model.items.iter().any(|i| i.title == "Shell voicings"),
+            "online would link against a client ulid the server reassigns (#1108)"
+        );
+        assert!(!emits_http(&mut cmd));
     }
 }

@@ -664,7 +664,7 @@ fn shells_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
         kind: ScaffoldKind::Shells,
         title: "Shells".to_string(),
         key: key.to_string(),
-        rationale: "3rd + 7th of every chord — the voice-leading skeleton".to_string(),
+        rationale: "3rd + 7th of every chord · the voice-leading skeleton".to_string(),
         content,
         fallback_count,
     }
@@ -789,7 +789,7 @@ fn improv_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
         kind: ScaffoldKind::ConstrainedImprov,
         title: "Constrained improv".to_string(),
         key: key.to_string(),
-        rationale: "Chord tones only, then rhythm — one ladder".to_string(),
+        rationale: "Chord tones only, then rhythm · one ladder".to_string(),
         content,
         fallback_count,
     }
