@@ -30,7 +30,14 @@ audit backlog and its five-phase build order.
   target, so the app was quietly recording it as achieved. A tempo is now recorded only when it was measured
   (design-principles **T16**, answering roadmap Q3): the shell forwards two
   observed facts and the core rules on whether they amount to evidence. No new
-  field, so no crash-recovery key bump. The chart itself is the second PR.
+  field, so no crash-recovery key bump.
+
+  The **series** is the second PR: `ItemPracticeSummary.tempo_history` is
+  replaced by `tempo_trend`, one point per practised session oldest first, with
+  `tempo: None` where nothing was measured. The core rules on what counts as a
+  trend (two measured tempos or more) so the screen never has to. The chart
+  drawing that series is the third PR. Mock:
+  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd).
 
 ## Recently landed
 

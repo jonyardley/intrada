@@ -3,6 +3,25 @@
   import IntradaCoreFFI
   import SharedTypes
 
+  extension ItemPracticeSummary {
+    /// Preview and snapshot fixture. A new core field costs one edit here rather
+    /// than one per call site (CLAUDE.md, Testing).
+    static func fixture(
+      sessionCount: UInt64 = 0,
+      totalMinutes: UInt32 = 0,
+      latestScore: UInt8? = nil,
+      scoreHistory: [ScoreHistoryEntry] = [],
+      latestTempo: UInt16? = nil,
+      tempoTrend: TempoTrendView = TempoTrendView(points: [], hasTrend: false),
+      lastPracticedAt: String? = nil
+    ) -> ItemPracticeSummary {
+      ItemPracticeSummary(
+        sessionCount: sessionCount, totalMinutes: totalMinutes, latestScore: latestScore,
+        scoreHistory: scoreHistory, latestTempo: latestTempo, tempoTrend: tempoTrend,
+        lastPracticedAt: lastPracticedAt)
+    }
+  }
+
   /// A fixed Gregorian/UTC calendar so date-derived UI (the week strip) renders
   /// identically on any host — pair it with `previewReferenceDate` in previews
   /// and pin it via `.environment(\.calendar, PreviewCalendar.utc)` in snapshot hosts.
@@ -281,9 +300,9 @@
 
     private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
       var copy = item
-      copy.practice = ItemPracticeSummary(
+      copy.practice = ItemPracticeSummary.fixture(
         sessionCount: 8, totalMinutes: 120, latestScore: score, scoreHistory: [],
-        latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-05-30T09:00:00Z")
+        latestTempo: nil, lastPracticedAt: "2026-05-30T09:00:00Z")
       return copy
     }
   }
@@ -430,29 +449,29 @@
         tempoBpm: 72,
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist"], createdAt: "", updatedAt: "",
-        practice: ItemPracticeSummary(
+        practice: ItemPracticeSummary.fixture(
           sessionCount: 12, totalMinutes: 240, latestScore: 6,
           scoreHistory: [
             ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 6, sessionId: "s1"),
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
           ],
-          latestTempo: 72, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 72, lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false,
         linkedExercises: [
           // Per-piece scores deliberately differ from the exercises' overall
           // `latestScore` (7 / 4), so the snapshot shows the B2 re-source.
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
-            practice: ItemPracticeSummary(
+            practice: ItemPracticeSummary.fixture(
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
-              latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-28T09:00:00Z"),
+              latestTempo: 108, lastPracticedAt: "2026-06-28T09:00:00Z"),
             pieceContextScore: 5),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil,
-            practice: ItemPracticeSummary(
+            practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
-              latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-06-25T09:00:00Z"),
+              latestTempo: nil, lastPracticedAt: "2026-06-25T09:00:00Z"),
             pieceContextScore: 6),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
@@ -469,14 +488,14 @@
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: ItemPracticeSummary(
+        practice: ItemPracticeSummary.fixture(
           sessionCount: 9, totalMinutes: 90, latestScore: 7,
           scoreHistory: [
             ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1"),
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
           ],
-          latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 108, lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
@@ -493,12 +512,12 @@
         subtitle: "Bebop vocabulary",
         key: "C", modality: .major, tempo: "120 BPM", tempoMarking: nil, tempoBpm: 120,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: ItemPracticeSummary(
+        practice: ItemPracticeSummary.fixture(
           sessionCount: 10, totalMinutes: 120, latestScore: 7,
           scoreHistory: [
             ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1")
           ],
-          latestTempo: 120, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
+          latestTempo: 120, lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw")
