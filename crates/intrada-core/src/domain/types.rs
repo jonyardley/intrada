@@ -429,6 +429,38 @@ mod tests {
             piece_id: "p1".to_string(),
             ordered_ids: vec!["e1".to_string(), "e2".to_string()],
         });
+        // A nested CreateItem inside an event payload, with the Option-heavy
+        // fields on both their Some and None sides — the #846 shape, pinned
+        // here before any screen sends it (#1431).
+        assert_round_trips(ItemEvent::AddLinkedExercise {
+            piece_id: "p1".to_string(),
+            input: CreateItem {
+                title: "Shell voicings".to_string(),
+                kind: ItemKind::Exercise,
+                composer: None,
+                key: Some("G".to_string()),
+                modality: Some(Modality::Minor),
+                tempo: Some(Tempo {
+                    marking: Some("Andante".to_string()),
+                    bpm: Some(96),
+                }),
+                notes: Some("3rds and 7ths".to_string()),
+                tags: vec!["voicings".to_string()],
+            },
+        });
+        assert_round_trips(ItemEvent::AddLinkedExercise {
+            piece_id: "p1".to_string(),
+            input: CreateItem {
+                title: "Bare".to_string(),
+                kind: ItemKind::Exercise,
+                composer: None,
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            },
+        });
     }
 
     #[test]
