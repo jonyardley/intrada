@@ -30,7 +30,14 @@ audit backlog and its five-phase build order.
   target, so the app was quietly recording it as achieved. A tempo is now recorded only when it was measured
   (design-principles **T16**, answering roadmap Q3): the shell forwards two
   observed facts and the core rules on whether they amount to evidence. No new
-  field, so no crash-recovery key bump. The chart itself is the second PR.
+  field, so no crash-recovery key bump.
+
+  The **series** is the second PR: `ItemPracticeSummary.tempo_history` is
+  replaced by `tempo_trend`, one point per practised session oldest first, with
+  `tempo: None` where nothing was measured. The core rules on what counts as a
+  trend (two measured tempos or more) so the screen never has to. The chart
+  drawing that series is the third PR. Mock:
+  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd).
 
 ## Recently landed
 
@@ -156,16 +163,13 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- **The tempo trend (#1420) is the next unstarted build.** Step 7 of the
-  adopted Stage 4 order ([`research/comparison.md`](research/comparison.md)),
-  unblocked because roadmap Q3 is now answered (Jon, 2026-08-27): **a tempo is
-  recorded when there is evidence behind it** (the user moved the stepper, or
-  the click was sounding), and never otherwise. The question had been overtaken
-  by #1398 and #1401, which made the stepper always save a click-prefilled
-  default, so `tempo_history` today mixes real measurements with numbers nobody
-  looked at. Costs no schema change; #1420 carries the reasoning and the
-  contract question to pin first. Steps 9 to 11 remain the big bets, each a
-  fresh decision gated on lived use.
+- **The chart on the detail screen** finishes the tempo trend (#1420): it draws
+  the `tempo_trend` series, breaking the line where a session measured no tempo
+  and saying so plainly where there is less than a trend to show. Mocked as
+  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd);
+  one call open on it, whether the item's declared target draws as a reference
+  line. Needs no core change either way. Steps 9 to 11 remain the big bets,
+  each a fresh decision gated on lived use.
 - Running alongside, and not a build: **use** the Up next card and the
   getting-cold signal on the week's lesson tune and file the friction, the way
   step 2 and step 5 were treated. Two weeks of real use is what tells us

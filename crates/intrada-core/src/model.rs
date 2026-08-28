@@ -382,7 +382,7 @@ pub struct ItemPracticeSummary {
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
     pub latest_tempo: Option<u16>,
-    pub tempo_history: Vec<TempoHistoryEntry>,
+    pub tempo_trend: TempoTrendView,
     /// Most recent session date for this item (max `started_at`), independent
     /// of whether a score/tempo was recorded. `None` if never practised.
     /// RFC3339 — sorts chronologically as a string.
@@ -397,12 +397,29 @@ pub struct ScoreHistoryEntry {
     pub session_id: String,
 }
 
+/// One practised session's slot in a `TempoTrendView`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct TempoHistoryEntry {
+pub struct TempoTrendPoint {
     pub session_date: String,
-    pub tempo: u16,
     pub session_id: String,
+    pub tempo: Option<u16>,
+}
+
+/// An item's measured tempo over time, as a plottable series. A session that
+/// measured no tempo keeps its slot with `tempo: None`, so the chart breaks the
+/// line there rather than drawing a zero or interpolating across it (#1420).
+/// Every number present was measured, because the evidence contract keeps
+/// unevidenced defaults out of `achieved_tempo` upstream (T16, #1422).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct TempoTrendView {
+    /// Oldest first, the reverse of `score_history`. One point per setlist
+    /// entry, matching `session_count`: an item practised twice in one session
+    /// contributes two points at the same date.
+    pub points: Vec<TempoTrendPoint>,
+    /// Two or more measured tempos; below that there is no direction to read.
+    pub has_trend: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -618,7 +635,7 @@ impl ItemPracticeSummary {
             latest_score: None,
             score_history: Vec::new(),
             latest_tempo: None,
-            tempo_history: Vec::new(),
+            tempo_trend: TempoTrendView::default(),
             last_practiced_at: None,
         }
     }

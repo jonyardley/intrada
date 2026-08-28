@@ -809,15 +809,15 @@ pub(crate) fn derive_up_next(
 pub(crate) fn build_practice_summaries(
     sessions: &[PracticeSession],
 ) -> std::collections::HashMap<String, ItemPracticeSummary> {
-    use crate::model::{ScoreHistoryEntry, TempoHistoryEntry};
+    use crate::model::{ScoreHistoryEntry, TempoTrendPoint, TempoTrendView};
     use std::collections::HashMap;
 
-    // (count, secs, score_history, tempo_history, last_practiced_at)
+    // (count, secs, score_history, tempo_points, last_practiced_at)
     type Acc = (
         usize,
         u64,
         Vec<ScoreHistoryEntry>,
-        Vec<TempoHistoryEntry>,
+        Vec<TempoTrendPoint>,
         Option<String>,
     );
 
@@ -838,19 +838,17 @@ pub(crate) fn build_practice_summaries(
 
             if let Some(score) = entry.score {
                 record.2.push(ScoreHistoryEntry {
-                    session_date: session.started_at.to_rfc3339(),
+                    session_date: session_date.clone(),
                     score,
                     session_id: session.id.clone(),
                 });
             }
 
-            if let Some(tempo) = entry.achieved_tempo {
-                record.3.push(TempoHistoryEntry {
-                    session_date: session.started_at.to_rfc3339(),
-                    tempo,
-                    session_id: session.id.clone(),
-                });
-            }
+            record.3.push(TempoTrendPoint {
+                session_date: session_date.clone(),
+                session_id: session.id.clone(),
+                tempo: entry.achieved_tempo,
+            });
         }
     }
 
@@ -858,19 +856,20 @@ pub(crate) fn build_practice_summaries(
         .map(
             |(
                 item_id,
-                (
-                    session_count,
-                    total_secs,
-                    mut score_history,
-                    mut tempo_history,
-                    last_practiced_at,
-                ),
+                (session_count, total_secs, mut score_history, mut tempo_points, last_practiced_at),
             )| {
                 score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
                 let latest_score = score_history.first().map(|e| e.score);
 
-                tempo_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
-                let latest_tempo = tempo_history.first().map(|e| e.tempo);
+                tempo_points.sort_by(|a, b| {
+                    (&a.session_date, &a.session_id).cmp(&(&b.session_date, &b.session_id))
+                });
+                let latest_tempo = tempo_points.iter().rev().find_map(|p| p.tempo);
+                let measured = tempo_points.iter().filter(|p| p.tempo.is_some()).count();
+                let tempo_trend = TempoTrendView {
+                    points: tempo_points,
+                    has_trend: measured >= 2,
+                };
 
                 (
                     item_id,
@@ -880,7 +879,7 @@ pub(crate) fn build_practice_summaries(
                         latest_score,
                         score_history,
                         latest_tempo,
-                        tempo_history,
+                        tempo_trend,
                         last_practiced_at,
                     },
                 )
@@ -2667,18 +2666,15 @@ mod tests {
         let p2_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
 
         // p1 has 2 entries totalling 45 minutes, no scores, no tempo
-        assert_eq!(
-            p1_view.practice,
-            Some(ItemPracticeSummary {
-                session_count: 2,
-                total_minutes: 45,
-                latest_score: None,
-                score_history: vec![],
-                latest_tempo: None,
-                tempo_history: vec![],
-                last_practiced_at: Some(sess1_started.to_rfc3339()),
-            })
-        );
+        let p1 = p1_view.practice.as_ref().expect("p1 practice summary");
+        assert_eq!(p1.session_count, 2);
+        assert_eq!(p1.total_minutes, 45);
+        assert_eq!(p1.latest_score, None);
+        assert_eq!(p1.latest_tempo, None);
+        assert!(p1.score_history.is_empty());
+        assert_eq!(p1.last_practiced_at, Some(sess1_started.to_rfc3339()));
+        assert_eq!(p1.tempo_trend.points.len(), 2);
+        assert!(!p1.tempo_trend.has_trend);
         // p2 has no entries
         assert_eq!(p2_view.practice, None);
     }
@@ -3085,11 +3081,20 @@ mod tests {
         score: Option<u8>,
         tempo: Option<u16>,
     ) -> PracticeSession {
-        let now = chrono::Utc::now();
+        make_session_at(id, item_id, chrono::Utc::now(), score, tempo)
+    }
+
+    fn make_session_at(
+        id: &str,
+        item_id: &str,
+        started_at: chrono::DateTime<chrono::Utc>,
+        score: Option<u8>,
+        tempo: Option<u16>,
+    ) -> PracticeSession {
         PracticeSession {
             id: id.to_string(),
-            started_at: now,
-            completed_at: now,
+            started_at,
+            completed_at: started_at,
             total_duration_secs: 300,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
@@ -3137,6 +3142,85 @@ mod tests {
         assert_eq!(summary.total_minutes, 5);
         assert_eq!(summary.latest_score, Some(4));
         assert_eq!(summary.latest_tempo, Some(120));
+    }
+
+    // ── The tempo trend (#1420) ──
+
+    /// `measured[i]` is the tempo of the i-th session chronologically. The
+    /// sessions are handed over newest first, so a projection that skipped its
+    /// own sort would emit the series backwards.
+    fn summary_for_tempos(measured: &[Option<u16>]) -> ItemPracticeSummary {
+        let base = chrono::Utc::now() - chrono::Duration::days(30);
+        let sessions: Vec<PracticeSession> = measured
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(i, tempo)| {
+                make_session_at(
+                    &format!("s{i}"),
+                    "item-1",
+                    base + chrono::Duration::days(i as i64),
+                    None,
+                    *tempo,
+                )
+            })
+            .collect();
+        build_practice_summaries(&sessions)
+            .remove("item-1")
+            .expect("summary for item-1")
+    }
+
+    fn tempo_trend_for(measured: &[Option<u16>]) -> crate::model::TempoTrendView {
+        summary_for_tempos(measured).tempo_trend
+    }
+
+    #[test]
+    fn tempo_trend_runs_oldest_first_one_point_per_session() {
+        let trend = tempo_trend_for(&[Some(88), Some(96), Some(104)]);
+
+        assert_eq!(
+            trend.points.iter().map(|p| p.tempo).collect::<Vec<_>>(),
+            vec![Some(88), Some(96), Some(104)]
+        );
+        let dates: Vec<&String> = trend.points.iter().map(|p| &p.session_date).collect();
+        assert!(
+            dates.windows(2).all(|w| w[0] < w[1]),
+            "oldest first: {dates:?}"
+        );
+    }
+
+    #[test]
+    fn tempo_trend_leaves_a_gap_where_no_tempo_was_measured() {
+        let trend = tempo_trend_for(&[Some(88), None, Some(104)]);
+
+        assert_eq!(
+            trend.points.iter().map(|p| p.tempo).collect::<Vec<_>>(),
+            vec![Some(88), None, Some(104)]
+        );
+    }
+
+    #[test]
+    fn latest_tempo_is_the_newest_measured_not_the_newest_session() {
+        // Reading the newest slot rather than the newest number would drop it.
+        assert_eq!(summary_for_tempos(&[Some(88), None]).latest_tempo, Some(88));
+    }
+
+    #[test]
+    fn tempo_trend_has_no_trend_below_two_measured_tempos() {
+        assert!(!tempo_trend_for(&[None, None]).has_trend);
+        assert!(!tempo_trend_for(&[Some(96), None, None]).has_trend);
+    }
+
+    #[test]
+    fn tempo_trend_has_a_trend_at_two_measured_tempos() {
+        assert!(tempo_trend_for(&[Some(96), None, Some(104)]).has_trend);
+    }
+
+    #[test]
+    fn tempo_trend_round_trips_a_gap_on_the_ffi_bincode_wire() {
+        // A `None` inside the points vec is the shape most at risk on the
+        // positional wire, and the gap is the whole point of the chart (#846).
+        crate::domain::types::assert_round_trips(tempo_trend_for(&[Some(88), None, Some(104)]));
     }
 
     #[test]
@@ -3606,7 +3690,9 @@ mod tests {
         assert!(summary.latest_score.is_none());
         assert!(summary.latest_tempo.is_none());
         assert!(summary.score_history.is_empty());
-        assert!(summary.tempo_history.is_empty());
+        assert_eq!(summary.tempo_trend.points.len(), 1);
+        assert!(summary.tempo_trend.points[0].tempo.is_none());
+        assert!(!summary.tempo_trend.has_trend);
     }
 
     #[test]
@@ -3786,11 +3872,8 @@ mod tests {
             crate::model::ItemPracticeSummary {
                 session_count: 1,
                 total_minutes: 1,
-                latest_score: None,
-                score_history: vec![],
-                latest_tempo: None,
-                tempo_history: vec![],
                 last_practiced_at: Some(at.to_rfc3339()),
+                ..crate::model::ItemPracticeSummary::fixture()
             },
         );
     }

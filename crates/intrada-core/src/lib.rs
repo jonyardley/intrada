@@ -34,7 +34,7 @@ pub use crux_http::{HttpError, HttpRequest};
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
     PracticeSessionView, ScoreHistoryEntry, SessionStatusView, SetEntryView, SetSourceStatus,
-    SetView, SetlistEntryView, SummaryView, TempoHistoryEntry, ViewModel,
+    SetView, SetlistEntryView, SummaryView, TempoTrendPoint, TempoTrendView, ViewModel,
 };
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_SET_NAME, MAX_TAG, MAX_TEMPO_MARKING,
