@@ -22,25 +22,31 @@ audit backlog and its five-phase build order.
 ## In flight
 
 - #1420 — **the tempo trend**, step 7 of the adopted order
-  ([`research/comparison.md`](research/comparison.md)), shipping core-first
-  then screens. The **evidence contract** is the first PR: tempo capture
-  (#1398) put the stepper on every item and always saved a number, pre-filled
-  from the click, so a large share of the recorded tempos were an untouched
-  default nobody looked at. For an item declaring a target the default was that
-  target, so the app was quietly recording it as achieved. A tempo is now recorded only when it was measured
-  (design-principles **T16**, answering roadmap Q3): the shell forwards two
-  observed facts and the core rules on whether they amount to evidence. No new
-  field, so no crash-recovery key bump.
-
-  The **series** is the second PR: `ItemPracticeSummary.tempo_history` is
-  replaced by `tempo_trend`, one point per practised session oldest first, with
-  `tempo: None` where nothing was measured. The core rules on what counts as a
-  trend (two measured tempos or more) so the screen never has to. The chart
-  drawing that series is the third PR. Mock:
+  ([`research/comparison.md`](research/comparison.md)). The first two PRs have
+  landed (below); the **chart** is the last one (#1425): a line across the
+  sessions that measured a tempo, breaking where one did not, on a date axis
+  with `7 of 9 sessions measured` underneath, and a plain line rather than a
+  plot where there is less than a trend to show. Its design rulings are
+  design-principles **T17**, including the one open call: the item's declared
+  target is deliberately not drawn on the plot, because the card sits directly
+  under the Key/Tempo rows and that row already carries it. Mock:
   [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd).
 
 ## Recently landed
 
+- #1420 — the tempo trend's first two PRs. The **evidence contract** (#1422):
+  tempo capture (#1398) put the stepper on every item and always saved a number
+  pre-filled from the click, so a large share of the recorded tempos were an
+  untouched default nobody looked at, and for an item declaring a target that
+  default *was* the target, so the app was quietly recording it as achieved. A
+  tempo is now recorded only when it was measured (design-principles **T16**,
+  answering roadmap Q3): the shell forwards two observed facts and the core
+  rules on whether they amount to evidence. No new field, so no crash-recovery
+  key bump. The **series** (#1423): `ItemPracticeSummary.tempo_history` is
+  replaced by `tempo_trend`, one point per practised session oldest first with
+  `tempo: None` where nothing was measured, so the gaps the chart draws have a
+  position. What counts as a trend (two measured tempos or more) is the core's
+  ruling, so the screen never has to make it.
 - #1416 — **the getting-cold signal**, step 8 of the adopted order
   ([`research/comparison.md`](research/comparison.md)). Spec at
   [`specs/getting-cold-signal.md`](../specs/getting-cold-signal.md). How long an
@@ -163,13 +169,8 @@ audit backlog and its five-phase build order.
 
 ## Next
 
-- **The chart on the detail screen** finishes the tempo trend (#1420): it draws
-  the `tempo_trend` series, breaking the line where a session measured no tempo
-  and saying so plainly where there is less than a trend to show. Mocked as
-  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd);
-  one call open on it, whether the item's declared target draws as a reference
-  line. Needs no core change either way. Steps 9 to 11 remain the big bets,
-  each a fresh decision gated on lived use.
+- Steps 9 to 11 of the adopted order remain the big bets, each a fresh decision
+  gated on lived use.
 - Running alongside, and not a build: **use** the Up next card and the
   getting-cold signal on the week's lesson tune and file the friction, the way
   step 2 and step 5 were treated. Two weeks of real use is what tells us

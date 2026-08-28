@@ -529,3 +529,56 @@ recording only when the item declares a target (rejected: scales and exercises
 declare targets least and want a click most, so it would drop exactly the
 measurements worth having); letting the shell send nil (rejected under the
 second ruling above).
+
+### T17 — The tempo trend reports what was played, and shows where it did not
+
+**Status:** DECIDED 2026-08-28 (jonyardley/intrada#1420), implemented in
+jonyardley/intrada#1425. Follows **T16**, which made the recording honest; this
+is how the chart drawing it stays honest.
+
+The chart is a line across the sessions that measured a tempo, on a date axis.
+Four rulings, all of them about not claiming more than the data says:
+
+- **A session that measured no tempo breaks the line.** Never a zero, never a
+  point interpolated between its neighbours. The line stops and restarts, and
+  the session gets a small tick **below the axis, outside the plot**. Inside it,
+  a mark on the baseline would read as ♩ = 0, which is precisely the falsehood
+  T16 exists to prevent.
+- **The count carries the honesty.** `7 of 9 sessions measured`, in one line
+  under the plot, is what stops the breaks reading as a fault. It is also the
+  one part of the footer that survives at accessibility text sizes; the end
+  dates go.
+- **Fewer than two measurements is not a trend, and says so.**
+  `Measured once, at ♩ = 108 · no trend yet` rather than a one-point chart. That
+  ruling is the core's (`TempoTrendView.has_trend`), not Swift's. **Nothing
+  measured at all draws no card**, because nothing was asked of the user and so
+  there is nothing to report (T16's first ruling, applied downstream). That one is the
+  shell's, in `tempoTrendDisplay`, because it is the absence of anything to
+  draw rather than a judgement about the data. If a third state ever needs
+  distinguishing in copy, it moves to the core.
+- **The vertical scale is relative, with a floor.** There are no axis labels:
+  the plot shows the shape and the chip carries the numbers. Left unbounded that
+  would draw a two-beat drift and a thirty-beat climb identically, so the scale
+  never spans less than 8 BPM. Below that the line flattens, which is what
+  actually happened.
+- **The `♩ = 88 → 116` chip is neutral, never a success colour.** A faster
+  tempo is not a better one: deliberately slowing down to fix a passage is
+  practice, not a decline. This is where it departs from `RecentSessions`, whose
+  mastery chip does go teal on the way up, because a mastery score genuinely has
+  a good direction and a tempo does not.
+
+**The item's declared target is not drawn on the plot.** Considered and
+rejected: a reference line repeats what is already on screen, and it costs the
+trend most of its height (an item at ♩ = 96 working towards 132 loses two thirds
+of the plot to empty space above the line). The card is placed **directly under
+the Key/Tempo rows** for exactly this reason, on pieces as well as exercises, so
+the declared tempo and the measured ones are two lines apart. Mocked as option B
+on the [design canvas](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd)
+if the call is ever reopened.
+
+**The tempos recorded before T16 stay.** History from #1398 onwards contains
+click-prefilled defaults, and the chart will draw them. Accepted deliberately
+rather than filtered: nothing distinguishes them from the real measurements a
+user made with the click sounding, so any filter would need a cut-off date
+invented for the purpose and would delete genuine measurements alongside the
+noise. It stops growing at #1422 and ages out as real history accumulates.

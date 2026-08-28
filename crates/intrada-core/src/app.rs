@@ -1369,7 +1369,11 @@ fn sample_sessions() -> Vec<PracticeSession> {
             1,
             CompletionStatus::Completed,
             vec![
-                entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480),
+                {
+                    let mut e = entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480);
+                    e.achieved_tempo = Some(104);
+                    e
+                },
                 {
                     let mut e = entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600);
                     e.variant_id = Some("sample-scales-step-g".to_string());
@@ -1383,7 +1387,11 @@ fn sample_sessions() -> Vec<PracticeSession> {
             3,
             CompletionStatus::EndedEarly,
             vec![
-                entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 1500),
+                {
+                    let mut e = entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 1500);
+                    e.achieved_tempo = Some(66);
+                    e
+                },
                 entry(1, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 600),
                 entry(
                     2,
@@ -1398,12 +1406,19 @@ fn sample_sessions() -> Vec<PracticeSession> {
             "sample-session-5d",
             5,
             CompletionStatus::Completed,
-            vec![{
-                let mut e = entry(0, "sample-scales", "Major Scales", ItemKind::Exercise, 720);
-                e.variant_id = Some("sample-scales-step-c".to_string());
-                e.score = Some(8);
-                e
-            }],
+            vec![
+                {
+                    let mut e = entry(0, "sample-scales", "Major Scales", ItemKind::Exercise, 720);
+                    e.variant_id = Some("sample-scales-step-c".to_string());
+                    e.score = Some(8);
+                    e
+                },
+                {
+                    let mut e = entry(1, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 420);
+                    e.achieved_tempo = Some(88);
+                    e
+                },
+            ],
         ),
     ]
 }

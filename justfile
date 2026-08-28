@@ -299,20 +299,25 @@ ios-snapshots-record filter: _ios-sync
     # A method filter names one reference; a class filter names all of its own.
     # Newline-delimited rather than an array: macOS ships bash 3.2, no mapfile.
     method="$(basename "{{filter}}")"
-    if [ "$method" != "{{filter}}" ]; then
-        refs="$(find "$snaps" -name "$method.*.png")"
-    else
-        refs="$(find "$snaps/$method" -name '*.png' 2>/dev/null || true)"
-    fi
+    matching() {
+        if [ "$method" != "{{filter}}" ]; then
+            find "$snaps" -name "$method.*.png"
+        else
+            find "$snaps/$method" -name '*.png' 2>/dev/null || true
+        fi
+    }
+    refs="$(matching)"
     [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 rm -v
     just _ios-build-for-testing
     # First run writes the references and fails by design; the second is the
     # one whose result means anything.
     just _ios-test-without-building "IntradaTests/{{filter}}" 0 || true
     just _ios-test-without-building "IntradaTests/{{filter}}" 0
-    # Only what was just written: `oxipng -o max` over the whole suite costs
-    # more than the test run it follows.
-    [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 oxipng -o max --quiet
+    # Re-find rather than reusing `$refs`: a first record has nothing to delete,
+    # so optimising that list would skip the reference it just wrote and leave
+    # `ios-snapshots-check` failing on an un-optimised PNG.
+    written="$(matching)"
+    [ -z "$written" ] || printf '%s\n' "$written" | tr '\n' '\0' | xargs -0 oxipng -o max --quiet
     just ios-snapshots-check
 
 # Orphan + size-ceiling check on snapshot references (same as CI).

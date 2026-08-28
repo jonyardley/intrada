@@ -3,17 +3,41 @@
   import IntradaCoreFFI
   import SharedTypes
 
+  extension TempoTrendDisplay {
+    /// Nine sessions, seven measured: two breaks in the line, one of them two
+    /// sessions wide.
+    static let previewWithGaps = make([88, 92, 96, nil, 100, 104, nil, 108, 116])
+    /// One measurement, which is less than a trend.
+    static let previewSingleMeasurement = make([108])
+
+    /// Built through the shipped mapping, so a fixture cannot drift from what
+    /// the screen actually renders.
+    static func make(_ tempos: [Int?]) -> TempoTrendDisplay {
+      let summary = ItemPracticeSummary.fixture(
+        tempoTrend: .fixture(tempos.map { $0.map { UInt16($0) } }))
+      guard
+        let display = summary.tempoTrendDisplay(
+          locale: Locale(identifier: "en_US"), calendar: PreviewCalendar.utc)
+      else { preconditionFailure("preview tempos must include a measurement") }
+      return display
+    }
+  }
+
   extension TempoTrendView {
     /// `tempos[i]` is the i-th session's tempo, `nil` where none was measured.
-    /// Dates end on the newest, so a summary's `lastPracticedAt` and its trend
-    /// agree.
+    /// Dates run three days apart and end on 2026-06-24, matching the
+    /// `scoreHistory` fixtures beside it, so a summary's `lastPracticedAt` and
+    /// its trend agree however many tempos are passed.
     static func fixture(_ tempos: [UInt16?]) -> TempoTrendView {
-      let dates = [
-        "2026-06-09T09:00:00Z", "2026-06-12T09:00:00Z", "2026-06-15T09:00:00Z",
-        "2026-06-18T09:00:00Z", "2026-06-21T09:00:00Z", "2026-06-24T09:00:00Z",
-      ].suffix(tempos.count)
-      let points = zip(dates, tempos.enumerated()).map { date, entry in
-        TempoTrendPoint(sessionDate: date, sessionId: "t\(entry.offset)", tempo: entry.element)
+      let newest = Date(timeIntervalSince1970: 1_782_291_600)
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withInternetDateTime]
+      let points = tempos.enumerated().map { index, tempo in
+        let daysBack = Double(tempos.count - 1 - index) * 3 * 86_400
+        return TempoTrendPoint(
+          sessionDate: formatter.string(from: newest.addingTimeInterval(-daysBack)),
+          sessionId: "t\(index)",
+          tempo: tempo)
       }
       return TempoTrendView(points: points, hasTrend: tempos.compactMap { $0 }.count >= 2)
     }
