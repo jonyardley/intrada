@@ -152,8 +152,6 @@ struct LinkedExercisePickerSheet: View {
     withAnimation(IntradaMotion.standard) { searchRevealed = false }
   }
 
-  // ── Selected count ──
-
   private var selectedItems: [LibraryItemView] {
     available.filter { selected.contains($0.id) }
   }
