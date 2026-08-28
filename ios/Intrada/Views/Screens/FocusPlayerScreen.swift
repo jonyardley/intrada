@@ -32,10 +32,7 @@ struct FocusPlayerScreen: View {
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
         variants: target.variants, currentVariantId: target.currentVariantId,
-        onSave: { score, note, achievedTempo, variantId in
-          handleReflection(
-            target, score: score, note: note, achievedTempo: achievedTempo, variantId: variantId)
-        },
+        onSave: { result in handleReflection(target, result) },
         onSkip: { handleSkipRating() }
       )
       .presentationDetents([.medium, .large])
@@ -236,6 +233,9 @@ struct FocusPlayerScreen: View {
     let elapsedDisplay: String
     let tempoTargetBpm: UInt16?
     let startingTempoBpm: Int
+    /// The click was sounding when the item ended, so `startingTempoBpm`
+    /// measures what they played to rather than being an untouched default.
+    let clickSounding: Bool
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.
     let variants: [VariantView]
@@ -250,7 +250,9 @@ struct FocusPlayerScreen: View {
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
-    let startingTempoBpm = click.bpm  // read before stop() below
+    // Both read before stop() below.
+    let startingTempoBpm = click.bpm
+    let clickSounding = click.isRunning
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
@@ -260,6 +262,7 @@ struct FocusPlayerScreen: View {
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
       tempoTargetBpm: active.currentItemTempoBpm, startingTempoBpm: startingTempoBpm,
+      clickSounding: clickSounding,
       // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
       // over the item's derived "current step" — otherwise a pre-assigned
       // step would be silently overwritten on save.
@@ -271,24 +274,27 @@ struct FocusPlayerScreen: View {
   // then NextItem completes the entry so the score and tempo can land (both
   // need Completed). Errors surface on RootView's banner, so dismiss only on
   // success.
-  private func handleReflection(
-    _ target: ReflectionTarget, score: UInt8?, note: String, achievedTempo: UInt16?,
-    variantId: String?
-  ) {
-    if !note.isEmpty {
+  private func handleReflection(_ target: ReflectionTarget, _ result: ReflectionResult) {
+    if !result.note.isEmpty {
       let before = store.viewModel?.errorSeq
-      store.send(.session(.updateEntryNotes(entryId: target.id, notes: note)))
+      store.send(.session(.updateEntryNotes(entryId: target.id, notes: result.note)))
       if store.viewModel?.errorSeq != before { return }
     }
     store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
-    if let score {
+    if let score = result.score {
       store.send(.session(.updateEntryScore(entryId: target.id, score: score)))
     }
-    if let achievedTempo {
-      store.send(.session(.updateEntryTempo(entryId: target.id, tempo: achievedTempo)))
-    }
+    // Always sent: the two facts go over as observed and the core rules on
+    // whether they amount to evidence (#1420). Deciding here would be domain
+    // logic in the shell.
+    store.send(
+      .session(
+        .updateEntryTempo(
+          entryId: target.id, tempo: result.achievedTempo,
+          observed: TempoObservation(
+            userSet: result.tempoUserSet, clickSounding: target.clickSounding))))
     if !target.variants.isEmpty {
-      store.send(.session(.setEntryVariant(entryId: target.id, variantId: variantId)))
+      store.send(.session(.setEntryVariant(entryId: target.id, variantId: result.variantId)))
     }
     reflecting = nil
   }

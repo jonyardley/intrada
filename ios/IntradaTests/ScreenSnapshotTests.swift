@@ -364,7 +364,7 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
-        onSave: { _, _, _, _ in }, onSkip: {})
+        onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }
@@ -374,7 +374,7 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
-        onSave: { _, _, _, _ in }, onSkip: {})
+        onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }
@@ -389,7 +389,7 @@ final class ScreenSnapshotTests: XCTestCase {
         currentVariantId: LibraryItemView.previewExerciseWithSteps.variants.first(
           where: \.isCurrent
         )?.id,
-        onSave: { _, _, _, _ in }, onSkip: {})
+        onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }

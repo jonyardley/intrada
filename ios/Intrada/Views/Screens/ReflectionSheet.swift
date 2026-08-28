@@ -1,6 +1,17 @@
 import SharedTypes
 import SwiftUI
 
+/// What the sheet collected. `tempoUserSet` is an observation, not a
+/// judgement: whether it amounts to evidence is the core's ruling (#1420).
+struct ReflectionResult {
+  let score: UInt8?
+  let note: String
+  let achievedTempo: UInt16
+  /// The user moved the stepper rather than accepting the pre-fill.
+  let tempoUserSet: Bool
+  let variantId: String?
+}
+
 struct ReflectionSheet: View {
   let itemTitle: String
   let elapsedDisplay: String
@@ -9,23 +20,20 @@ struct ReflectionSheet: View {
   /// The item's step ladder, if any. Empty hides the step picker entirely.
   let variants: [VariantView]
   let currentVariantId: String?
-  let onSave:
-    (_ score: UInt8?, _ note: String, _ achievedTempo: UInt16?, _ variantId: String?) -> Void
+  let onSave: (ReflectionResult) -> Void
   let onSkip: () -> Void
 
   @State private var score: Int = 0
   @State private var note: String = ""
   @State private var achievedTempo: Int
+  @State private var tempoUserSet = false
   @State private var selectedVariantId: String?
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
     startingTempoBpm: Int = ClickController.defaultBpm,
     variants: [VariantView] = [], currentVariantId: String? = nil,
-    onSave:
-      @escaping (
-        _ score: UInt8?, _ note: String, _ achievedTempo: UInt16?, _ variantId: String?
-      ) -> Void,
+    onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void
   ) {
     self.itemTitle = itemTitle
@@ -73,7 +81,7 @@ struct ReflectionSheet: View {
 
       eyebrow(tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached")
         .padding(.top, IntradaSpacing.card)
-      TempoStepper(value: $achievedTempo)
+      TempoStepper(value: achievedTempoBinding)
         .padding(.top, IntradaSpacing.controlGap)
 
       eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
@@ -87,10 +95,12 @@ struct ReflectionSheet: View {
 
       BrandBarButton {
         onSave(
-          score == 0 ? nil : UInt8(score),
-          note.trimmingCharacters(in: .whitespacesAndNewlines),
-          UInt16(achievedTempo),
-          selectedVariantId)
+          ReflectionResult(
+            score: score == 0 ? nil : UInt8(score),
+            note: note.trimmingCharacters(in: .whitespacesAndNewlines),
+            achievedTempo: UInt16(achievedTempo),
+            tempoUserSet: tempoUserSet,
+            variantId: selectedVariantId))
       } label: {
         Text("Save & continue")
         Image(systemName: "arrow.right")
@@ -114,6 +124,18 @@ struct ReflectionSheet: View {
   private var stepPicker: some View {
     SegmentedPills(
       options: variants.map(\.id), selection: selectedVariantIdBinding, label: chipLabel)
+  }
+
+  // TempoStepper only writes on an explicit tap or accessibility adjustment,
+  // never on appear, so a write here is the user considering the number —
+  // which is one of the two things that make a tempo worth recording (#1420).
+  private var achievedTempoBinding: Binding<Int> {
+    Binding(
+      get: { achievedTempo },
+      set: {
+        achievedTempo = $0
+        tempoUserSet = true
+      })
   }
 
   private var selectedVariantIdBinding: Binding<String> {
@@ -141,7 +163,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
-          onSave: { _, _, _, _ in }, onSkip: {}
+          onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.medium, .large])
       }
@@ -152,7 +174,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
-          onSave: { _, _, _, _ in }, onSkip: {}
+          onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.medium, .large])
       }

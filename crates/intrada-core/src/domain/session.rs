@@ -126,6 +126,27 @@ pub enum ReflectionField {
     NextTarget,
 }
 
+/// What the shell saw about where an end-of-item tempo came from. Facts only:
+/// whether they amount to evidence is the core's ruling (#1420, roadmap Q3).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct TempoObservation {
+    /// The user set the number themselves rather than accepting the pre-fill.
+    pub user_set: bool,
+    /// The click was sounding when the item ended, so the pre-filled number
+    /// measures what they actually played to.
+    pub click_sounding: bool,
+}
+
+impl TempoObservation {
+    /// A tempo is worth recording when there is evidence behind it, and never
+    /// otherwise. Anything else is a default nobody looked at, and a chart
+    /// drawn through those numbers looks like measurement (#1420).
+    pub fn is_evidenced(&self) -> bool {
+        self.user_set || self.click_sounding
+    }
+}
+
 // ── Transient State Types ──────────────────────────────────────────────
 
 /// State during setlist assembly (Building phase).
@@ -330,6 +351,7 @@ pub enum SessionEvent {
     UpdateEntryTempo {
         entry_id: String,
         tempo: Option<u16>,
+        observed: TempoObservation,
     },
     UpdateSessionNotes {
         notes: Option<String>,
@@ -1488,8 +1510,19 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
-        SessionEvent::UpdateEntryTempo { entry_id, tempo } => {
+        SessionEvent::UpdateEntryTempo {
+            entry_id,
+            tempo,
+            observed,
+        } => {
             if let Err(_e) = validation::validate_achieved_tempo(&tempo) {
+                return crux_core::render::render();
+            }
+
+            // An unevidenced number is a pre-fill nobody looked at: record
+            // nothing, and clear nothing, so it cannot destroy a real
+            // measurement. Clearing is always honoured.
+            if tempo.is_some() && !observed.is_evidenced() {
                 return crux_core::render::render();
             }
 
@@ -3884,6 +3917,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id,
                 tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -3992,6 +4029,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: "no-such-entry".to_string(),
                 tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4366,6 +4407,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: entry_id.clone(),
                 tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4392,6 +4437,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: entry_id.clone(),
                 tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4401,6 +4450,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: entry_id.clone(),
                 tempo: None,
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4447,6 +4500,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: skipped_entry_id.clone(),
                 tempo: Some(100),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4472,6 +4529,10 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: entry_id.clone(),
                 tempo: Some(0),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
@@ -4485,12 +4546,180 @@ mod tests {
             Event::Session(SessionEvent::UpdateEntryTempo {
                 entry_id: entry_id.clone(),
                 tempo: Some(501),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
             }),
         );
 
         if let SessionStatus::Summary(ref s) = model.session_status {
             assert_eq!(s.entries[0].achieved_tempo, None);
         }
+    }
+
+    // --- Tempo evidence (#1420, roadmap Q3) ---
+
+    fn tempo_entry_id(model: &Model) -> String {
+        match model.session_status {
+            SessionStatus::Summary(ref s) => s.entries[0].id.clone(),
+            _ => panic!("Expected Summary state"),
+        }
+    }
+
+    fn achieved_tempo(model: &Model, entry_id: &str) -> Option<u16> {
+        match model.session_status {
+            SessionStatus::Summary(ref s) => {
+                s.entries
+                    .iter()
+                    .find(|e| e.id == entry_id)
+                    .unwrap()
+                    .achieved_tempo
+            }
+            _ => panic!("Expected Summary state"),
+        }
+    }
+
+    #[test]
+    fn tempo_the_user_set_themselves_is_recorded() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
+    }
+
+    #[test]
+    fn tempo_played_to_a_sounding_click_is_recorded() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: true,
+                },
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
+    }
+
+    #[test]
+    fn an_untouched_default_is_not_recorded() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(96),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        assert_eq!(
+            achieved_tempo(&model, &entry_id),
+            None,
+            "a pre-fill nobody looked at is not a measurement"
+        );
+    }
+
+    #[test]
+    fn an_untouched_default_does_not_erase_a_measured_tempo() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(96),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        assert_eq!(
+            achieved_tempo(&model, &entry_id),
+            Some(120),
+            "a report that is not a measurement must not destroy one that was"
+        );
+    }
+
+    #[test]
+    fn clearing_the_tempo_needs_no_evidence() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: None,
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: false,
+                },
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), None);
+    }
+
+    #[test]
+    fn update_entry_tempo_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateEntryTempo {
+            entry_id: "entry-1".to_string(),
+            tempo: Some(132),
+            observed: TempoObservation {
+                user_set: true,
+                click_sounding: true,
+            },
+        }));
     }
 
     // --- format_duration_display Tests ---
