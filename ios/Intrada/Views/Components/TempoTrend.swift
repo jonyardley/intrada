@@ -1,50 +1,110 @@
 import SwiftUI
 
-/// One session in `TempoTrend`. `tempo` is nil where that session measured
-/// none, which the plot draws as a break rather than a zero.
-struct TempoTrendMark: Identifiable {
-  let id: String
+/// One practised session's slot in a `TempoTrendSeries`. `tempo` is nil where
+/// that session measured none.
+struct TempoTrendMark {
   let date: Date
   let tempo: Int?
+}
+
+/// The plot's arithmetic, apart from the drawing so it can be tested directly:
+/// which sessions carry a dot, which stretches of line may be joined, and where
+/// each point lands. Oldest first, matching the core's `tempoTrend.points`.
+struct TempoTrendSeries {
+  let marks: [TempoTrendMark]
+
+  /// A two-beat drift would otherwise fill the same height as a thirty-beat
+  /// climb, which is a shape claiming more than the numbers hold.
+  static let minimumSpan = 8
+
+  var measured: [Int] { marks.compactMap(\.tempo) }
+
+  var measuredIndices: [Int] {
+    marks.enumerated().filter { $0.element.tempo != nil }.map(\.offset)
+  }
+
+  var unmeasuredIndices: [Int] {
+    marks.enumerated().filter { $0.element.tempo == nil }.map(\.offset)
+  }
+
+  /// Stretches of consecutive measured sessions, each two or more long: a lone
+  /// measurement has nothing to join to, and no run ever spans a session that
+  /// measured nothing.
+  var runs: [[Int]] {
+    var runs: [[Int]] = []
+    var current: [Int] = []
+    for (index, mark) in marks.enumerated() {
+      if mark.tempo == nil {
+        if current.count > 1 { runs.append(current) }
+        current = []
+      } else {
+        current.append(index)
+      }
+    }
+    if current.count > 1 { runs.append(current) }
+    return runs
+  }
+
+  /// Spaced by date, so a fortnight off reads as a fortnight and not as one
+  /// step. Marks sharing a date (or a single mark) fall back to even spacing.
+  func x(at index: Int, width: CGFloat, inset: CGFloat) -> CGFloat {
+    let usable = max(1, width - inset * 2)
+    guard marks.count > 1 else { return inset + usable / 2 }
+    let dates = marks.map(\.date)
+    guard let first = dates.min(), let last = dates.max() else { return inset }
+    let span = last.timeIntervalSince(first)
+    guard span > 0 else {
+      return inset + usable * CGFloat(index) / CGFloat(marks.count - 1)
+    }
+    return inset + usable * CGFloat(marks[index].date.timeIntervalSince(first) / span)
+  }
+
+  func y(at index: Int, height: CGFloat, inset: CGFloat) -> CGFloat {
+    guard let tempo = marks[index].tempo, let low = measured.min(), let high = measured.max()
+    else { return height - inset }
+    let top = inset
+    let bottom = height - inset
+    let span = Double(max(Self.minimumSpan, high - low))
+    let floor = Double(low + high) / 2 - span / 2
+    return bottom - (bottom - top) * CGFloat((Double(tempo) - floor) / span)
+  }
 }
 
 /// Everything `TempoTrend` draws, with the end dates already formatted against
 /// the environment's locale and calendar so snapshot hosts stay deterministic
 /// (the same reason `recentSessionRows` takes them).
 struct TempoTrendDisplay {
-  /// Oldest first, matching the core's `tempoTrend.points` ordering.
-  let marks: [TempoTrendMark]
+  let series: TempoTrendSeries
   let hasTrend: Bool
   let startDateText: String
   let endDateText: String
 }
 
-/// An item's measured tempo over time: a line across the sessions that measured
-/// one, breaking wherever a session measured none. Presentation only — which
-/// sessions carry a number, and whether there is a trend at all, are the core's
-/// rulings (`TempoTrendView`, design-principles T16).
+/// An item's measured tempo over time. Presentation only: which sessions carry
+/// a number, and whether there is a trend at all, are the core's rulings
+/// (`TempoTrendView`, design-principles T17).
 struct TempoTrend: View {
   let display: TempoTrendDisplay
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-  private var marks: [TempoTrendMark] { display.marks }
-  private var hasTrend: Bool { display.hasTrend }
-
   private let plotHeight: CGFloat = 84
   private let dotRadius: CGFloat = 3.5
   private let latestDotRadius: CGFloat = 5
+  private let tickHeight: CGFloat = 6
+
+  private var series: TempoTrendSeries { display.series }
+  private var measured: [Int] { series.measured }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       header
-      if hasTrend {
+      if display.hasTrend {
         plot
-          .frame(height: plotHeight + 6)
-          .padding(.top, 2)
+          .frame(height: plotHeight + tickHeight)
         footer
-      } else {
-        Text(singleMeasurementText)
+      } else if let only = measured.first {
+        Text("Measured once, at ♩ = \(only) · no trend yet")
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -65,12 +125,12 @@ struct TempoTrend: View {
       // the row leaves the eyebrow too narrow for its own first word.
       if dynamicTypeSize.isAccessibilitySize {
         VStack(alignment: .leading, spacing: 2) {
-          eyebrow
+          Eyebrow("Measured tempo")
           chip
         }
       } else {
         HStack(alignment: .firstTextBaseline) {
-          eyebrow
+          Eyebrow("Measured tempo")
           Spacer(minLength: IntradaSpacing.controlGap)
           chip
         }
@@ -79,16 +139,8 @@ struct TempoTrend: View {
     .padding(.bottom, IntradaSpacing.controlGap)
   }
 
-  private var eyebrow: some View {
-    Text("Measured tempo")
-      .font(IntradaFont.eyebrow)
-      .textCase(.uppercase)
-      .kerning(1.2)
-      .foregroundStyle(IntradaColor.inkFaint)
-  }
-
   @ViewBuilder private var chip: some View {
-    if hasTrend, let first = measured.first, let latest = measured.last {
+    if display.hasTrend, let first = measured.first, let latest = measured.last {
       // Neutral, never a success colour: a faster tempo is not a better one,
       // and slowing down deliberately is practice, not a decline.
       Text("♩ = \(first) → \(latest)")
@@ -108,16 +160,16 @@ struct TempoTrend: View {
           .frame(height: 1)
           .offset(y: plotHeight)
 
-        ForEach(unmeasuredIndices, id: \.self) { index in
+        ForEach(series.unmeasuredIndices, id: \.self) { index in
           // Below the axis, never on it: a mark inside the plot would read as
-          // ♩ = 0, which is the reading this whole feature exists to avoid.
+          // ♩ = 0, which is the reading this whole card exists to avoid.
           Rectangle()
             .fill(IntradaColor.inkFainter)
-            .frame(width: 1.5, height: 6)
+            .frame(width: 1.5, height: tickHeight)
             .offset(x: x(at: index, width: width) - 0.75, y: plotHeight + 1)
         }
 
-        ForEach(Array(runs.enumerated()), id: \.offset) { _, run in
+        ForEach(Array(series.runs.enumerated()), id: \.offset) { _, run in
           Path { path in
             for (step, index) in run.enumerated() {
               let point = CGPoint(x: x(at: index, width: width), y: y(at: index))
@@ -133,8 +185,8 @@ struct TempoTrend: View {
             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         }
 
-        ForEach(measuredIndices, id: \.self) { index in
-          let isLatest = index == measuredIndices.last
+        ForEach(series.measuredIndices, id: \.self) { index in
+          let isLatest = index == series.measuredIndices.last
           let radius = isLatest ? latestDotRadius : dotRadius
           Circle()
             .fill(IntradaColor.accent)
@@ -143,9 +195,7 @@ struct TempoTrend: View {
               Circle()
                 .stroke(IntradaColor.cardFill, lineWidth: isLatest ? 2 : 0)
             )
-            .offset(
-              x: x(at: index, width: width) - radius,
-              y: y(at: index) - radius)
+            .offset(x: x(at: index, width: width) - radius, y: y(at: index) - radius)
         }
       }
     }
@@ -153,9 +203,9 @@ struct TempoTrend: View {
 
   private var footer: some View {
     HStack(alignment: .firstTextBaseline) {
-      // At accessibility sizes three labels cannot share the row, and the count
-      // is the one that earns its place: it is what stops the breaks in the
-      // line reading as a fault.
+      // Three labels cannot share this row at accessibility sizes, and the
+      // count is the one that earns its place: it is what stops the breaks in
+      // the line reading as a fault.
       if !dynamicTypeSize.isAccessibilitySize {
         Text(display.startDateText)
         Spacer()
@@ -168,80 +218,32 @@ struct TempoTrend: View {
     }
     .font(IntradaFont.micro)
     .foregroundStyle(IntradaColor.inkFaint)
-    .padding(.top, 6)
+    .padding(.top, IntradaSpacing.controlGap)
   }
 
-  // ── Geometry ──
-
-  /// Spaced by date, so a fortnight off reads as a fortnight and not as one
-  /// step. Sessions sharing a date (or a single one) fall back to even spacing.
   private func x(at index: Int, width: CGFloat) -> CGFloat {
-    let inset = latestDotRadius
-    let usable = max(1, width - inset * 2)
-    guard marks.count > 1 else { return inset + usable / 2 }
-    guard let first = marks.first?.date, let last = marks.last?.date else { return inset }
-    let span = last.timeIntervalSince(first)
-    guard span > 0 else {
-      return inset + usable * CGFloat(index) / CGFloat(marks.count - 1)
-    }
-    let offset = marks[index].date.timeIntervalSince(first)
-    return inset + usable * CGFloat(offset / span)
+    series.x(at: index, width: width, inset: latestDotRadius)
   }
 
   private func y(at index: Int) -> CGFloat {
-    guard let tempo = marks[index].tempo, let low = measured.min(), let high = measured.max()
-    else { return plotHeight }
-    let span = CGFloat(high - low)
-    let top = latestDotRadius
-    let bottom = plotHeight - latestDotRadius
-    guard span > 0 else { return (top + bottom) / 2 }
-    return bottom - (bottom - top) * CGFloat(tempo - low) / span
-  }
-
-  // ── Series ──
-
-  private var measured: [Int] { marks.compactMap(\.tempo) }
-  private var measuredIndices: [Int] {
-    marks.enumerated().filter { $0.element.tempo != nil }.map(\.offset)
-  }
-  private var unmeasuredIndices: [Int] {
-    marks.enumerated().filter { $0.element.tempo == nil }.map(\.offset)
-  }
-
-  /// Runs of consecutive measured sessions. A run of one draws its dot and no
-  /// line, so nothing is ever joined across a session that measured nothing.
-  private var runs: [[Int]] {
-    var runs: [[Int]] = []
-    var current: [Int] = []
-    for (index, mark) in marks.enumerated() {
-      if mark.tempo == nil {
-        if current.count > 1 { runs.append(current) }
-        current = []
-      } else {
-        current.append(index)
-      }
-    }
-    if current.count > 1 { runs.append(current) }
-    return runs
+    series.y(at: index, height: plotHeight, inset: latestDotRadius)
   }
 
   // ── Copy ──
 
   private var measuredCountText: String {
-    "\(measured.count) of \(marks.count) sessions measured"
+    "\(measured.count) of \(series.marks.count) sessions measured"
   }
 
-  private var singleMeasurementText: String {
-    guard let only = measured.first else { return "No tempo measured yet" }
-    return "Measured once, at ♩ = \(only) · no trend yet"
-  }
-
+  /// Spelled out, because VoiceOver reads neither the ♩ glyph nor the middle
+  /// dot (the same reason `TempoFormatting.spoken` exists).
   private var accessibilityLabel: String {
-    guard hasTrend, let first = measured.first, let latest = measured.last else {
-      return "Measured tempo. \(singleMeasurementText)"
+    guard display.hasTrend, let first = measured.first, let latest = measured.last else {
+      guard let only = measured.first else { return "Measured tempo" }
+      return "Measured tempo, measured once at \(only) beats per minute, no trend yet"
     }
     return
-      "Measured tempo, \(first) to \(latest) beats per minute across \(measured.count) of \(marks.count) sessions"
+      "Measured tempo, \(first) to \(latest) beats per minute across \(measured.count) of \(series.marks.count) sessions"
   }
 }
 

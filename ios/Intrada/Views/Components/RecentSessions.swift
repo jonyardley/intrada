@@ -42,11 +42,7 @@ struct RecentSessions: View {
 
   private var header: some View {
     HStack {
-      Text("Recent sessions")
-        .font(IntradaFont.eyebrow)
-        .textCase(.uppercase)
-        .kerning(1.2)
-        .foregroundStyle(IntradaColor.inkFaint)
+      Eyebrow("Recent sessions")
       Spacer()
       if let trend {
         let up = trend.to > trend.from

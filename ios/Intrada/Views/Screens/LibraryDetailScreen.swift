@@ -50,6 +50,12 @@ struct LibraryDetailScreen: View {
             .cardSurface()
           }
 
+          if let tempoTrend = item.practice?.tempoTrendDisplay(
+            locale: locale, calendar: calendar)
+          {
+            TempoTrend(display: tempoTrend)
+          }
+
           if let notes = item.notes, !notes.isEmpty {
             Text(notes)
               .font(IntradaFont.body)
@@ -73,10 +79,6 @@ struct LibraryDetailScreen: View {
 
           if item.itemType == .exercise, !item.exerciseContexts.isEmpty {
             byPieceSection
-          }
-
-          if let tempoTrend = item.practice?.tempoTrendDisplay(locale: locale, calendar: calendar) {
-            TempoTrend(display: tempoTrend)
           }
 
           if hasRecentSessions {

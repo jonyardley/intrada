@@ -21,19 +21,15 @@ extension ItemPracticeSummary {
     }
   }
 
-  /// The tempo trend ready to draw, or nil when there is nothing to draw:
-  /// nothing was ever measured, or a point's date will not parse. Dropping the
-  /// unplaceable point instead would leave the core's `hasTrend` describing a
-  /// series the plot no longer holds.
+  /// The tempo trend ready to draw, or nil when there is nothing to draw.
+  /// A point whose date will not parse takes the whole card with it, rather
+  /// than being dropped: the plot places points on a time axis, and a series
+  /// missing one no longer matches the `hasTrend` the core computed for it.
   func tempoTrendDisplay(locale: Locale, calendar: Calendar) -> TempoTrendDisplay? {
     var marks: [TempoTrendMark] = []
-    for (index, point) in tempoTrend.points.enumerated() {
+    for point in tempoTrend.points {
       guard let date = SessionClock.parseRFC3339(point.sessionDate) else { return nil }
-      // Ids are per point, not per session: one session can hold two entries
-      // for the same item, and `Identifiable` will not take a repeat.
-      marks.append(
-        TempoTrendMark(
-          id: "\(index)-\(point.sessionId)", date: date, tempo: point.tempo.map(Int.init)))
+      marks.append(TempoTrendMark(date: date, tempo: point.tempo.map(Int.init)))
     }
     guard marks.contains(where: { $0.tempo != nil }) else { return nil }
 
@@ -44,7 +40,7 @@ extension ItemPracticeSummary {
     formatter.dateFormat = "d MMM"
     let text = { (mark: TempoTrendMark?) in mark.map { formatter.string(from: $0.date) } ?? "" }
     return TempoTrendDisplay(
-      marks: marks,
+      series: TempoTrendSeries(marks: marks),
       hasTrend: tempoTrend.hasTrend,
       startDateText: text(marks.first),
       endDateText: text(marks.last))

@@ -10,41 +10,34 @@
     /// One measurement, which is less than a trend.
     static let previewSingleMeasurement = make([108])
 
-    /// Dates run three days apart from a fixed instant, formatted against a
-    /// pinned locale and calendar, so the plot's spacing and the footer's
-    /// labels are the same on any host.
+    /// Built through the shipped mapping, so a fixture cannot drift from what
+    /// the screen actually renders.
     static func make(_ tempos: [Int?]) -> TempoTrendDisplay {
-      let start = Date(timeIntervalSince1970: 1_783_324_800)
-      let marks = tempos.enumerated().map { index, tempo in
-        TempoTrendMark(
-          id: "t\(index)",
-          date: start.addingTimeInterval(Double(index) * 3 * 86_400),
-          tempo: tempo)
-      }
-      let formatter = DateFormatter()
-      formatter.locale = Locale(identifier: "en_US")
-      formatter.calendar = PreviewCalendar.utc
-      formatter.timeZone = PreviewCalendar.utc.timeZone
-      formatter.dateFormat = "d MMM"
-      return TempoTrendDisplay(
-        marks: marks,
-        hasTrend: tempos.compactMap { $0 }.count >= 2,
-        startDateText: marks.first.map { formatter.string(from: $0.date) } ?? "",
-        endDateText: marks.last.map { formatter.string(from: $0.date) } ?? "")
+      let summary = ItemPracticeSummary.fixture(
+        tempoTrend: .fixture(tempos.map { $0.map { UInt16($0) } }))
+      guard
+        let display = summary.tempoTrendDisplay(
+          locale: Locale(identifier: "en_US"), calendar: PreviewCalendar.utc)
+      else { preconditionFailure("preview tempos must include a measurement") }
+      return display
     }
   }
 
   extension TempoTrendView {
     /// `tempos[i]` is the i-th session's tempo, `nil` where none was measured.
-    /// Dates end on the newest, so a summary's `lastPracticedAt` and its trend
-    /// agree.
+    /// Dates run three days apart and end on 2026-06-24, matching the
+    /// `scoreHistory` fixtures beside it, so a summary's `lastPracticedAt` and
+    /// its trend agree however many tempos are passed.
     static func fixture(_ tempos: [UInt16?]) -> TempoTrendView {
-      let dates = [
-        "2026-06-09T09:00:00Z", "2026-06-12T09:00:00Z", "2026-06-15T09:00:00Z",
-        "2026-06-18T09:00:00Z", "2026-06-21T09:00:00Z", "2026-06-24T09:00:00Z",
-      ].suffix(tempos.count)
-      let points = zip(dates, tempos.enumerated()).map { date, entry in
-        TempoTrendPoint(sessionDate: date, sessionId: "t\(entry.offset)", tempo: entry.element)
+      let newest = Date(timeIntervalSince1970: 1_782_291_600)
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withInternetDateTime]
+      let points = tempos.enumerated().map { index, tempo in
+        let daysBack = Double(tempos.count - 1 - index) * 3 * 86_400
+        return TempoTrendPoint(
+          sessionDate: formatter.string(from: newest.addingTimeInterval(-daysBack)),
+          sessionId: "t\(index)",
+          tempo: tempo)
       }
       return TempoTrendView(points: points, hasTrend: tempos.compactMap { $0 }.count >= 2)
     }
