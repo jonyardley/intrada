@@ -739,30 +739,6 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  func testLinkedExercisePickerSelectedTray() {
-    // Two of three pre-selected → the tray shows two removable chips above the
-    // filter bar and list.
-    let sheet = LinkedExercisePickerSheet(
-      available: [
-        .previewExercise,
-        LibraryItemView(
-          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
-          key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
-          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
-        LibraryItemView(
-          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
-          key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
-          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
-      ],
-      linkedIds: ["exercise-1", "exercise-3"],
-      onApply: { _ in })
-    assertSnapshot(of: host(sheet), as: config)
-  }
-
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]

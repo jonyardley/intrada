@@ -9,7 +9,7 @@ import SwiftUI
 /// The filter bar (star / sort / tag / search) drives *shell-local* state over
 /// the passed-in `available` list — the picker curates its own subset rather
 /// than the core's shared Library `ListQuery`, so filtering here never disturbs
-/// the Library screen. A selected tray of removable chips sits above the list.
+/// the Library screen.
 struct LinkedExercisePickerSheet: View {
   let available: [LibraryItemView]
   let linkedIds: [String]
@@ -50,7 +50,7 @@ struct LinkedExercisePickerSheet: View {
         } else {
           VStack(spacing: 0) {
             filterBar
-            selectedTray
+            selectedCount
             list
           }
         }
@@ -152,39 +152,26 @@ struct LinkedExercisePickerSheet: View {
     withAnimation(IntradaMotion.standard) { searchRevealed = false }
   }
 
-  // ── Selected tray ──
-
   private var selectedItems: [LibraryItemView] {
     available.filter { selected.contains($0.id) }
   }
 
-  @ViewBuilder private var selectedTray: some View {
-    let items = selectedItems
+  @ViewBuilder private var selectedCount: some View {
+    let count = selectedItems.count
     Group {
-      if items.isEmpty {
+      if count == 0 {
         Text("No related exercises yet · tap to add.")
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkFaint)
-          .frame(maxWidth: .infinity, alignment: .leading)
       } else {
-        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          Text("\(items.count) related")
-            .font(IntradaFont.eyebrow)
-            .textCase(.uppercase)
-            .kerning(1.2)
-            .foregroundStyle(IntradaColor.inkFaint)
-          ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-              ForEach(items, id: \.id) { exercise in
-                TagChip(
-                  exercise.title, style: .outlined,
-                  onRemove: { toggle(exercise.id, isOn: true) })
-              }
-            }
-          }
-        }
+        Text("\(count) related")
+          .font(IntradaFont.eyebrow)
+          .textCase(.uppercase)
+          .kerning(1.2)
+          .foregroundStyle(IntradaColor.inkFaint)
       }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
     .padding(.bottom, IntradaSpacing.controlGap)
