@@ -111,8 +111,8 @@ Do now (days, not weeks):
 Then, each building on the last:
 
 6. **The Up next card (#1082)** — one dismissible suggested session with its
-   reasons in plain words; held to suggest-never-gate. Needed step 5, which is
-   already satisfied, so this is the next unstarted item. 2–3 days.
+   reasons in plain words; held to suggest-never-gate. **Done 2026-08-27**
+   (#1409, #1414).
 7. **The tempo trend** — draw the already-computed tempo history per item.
    Q3 answered 2026-08-27 and the answer moved the work: the history it would
    have drawn was a mixture of real measurements and untouched defaults, so the
@@ -121,7 +121,10 @@ Then, each building on the last:
    it was measured and never otherwise, so every point in the history is now
    evidenced by construction. **Series done 2026-08-28** (#1423): `tempo_trend`
    replaces `tempo_history`, carrying a slot for every practised session so the
-   gaps have a position. The chart itself is the third PR.
+   gaps have a position. **Chart done 2026-08-28** (#1425, design-principles
+   T17): the line breaks where a session measured no tempo, never drawing a
+   zero and never interpolating across it, and says so plainly where there is
+   less than a trend to show. Step 7 complete.
 8. **The getting-cold signal** — a graded staleness estimate replacing the
    binary 14-day flag, landing as Up next reason lines rather than a surface
    of its own. 1–2 days once step 6 exists. **Done 2026-08-27** (#1416,

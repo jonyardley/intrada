@@ -21,20 +21,28 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1420 — **the tempo trend**, step 7 of the adopted order
-  ([`research/comparison.md`](research/comparison.md)). The first two PRs have
-  landed (below); the **chart** is the last one (#1425): a line across the
-  sessions that measured a tempo, breaking where one did not, on a date axis
-  with `7 of 9 sessions measured` underneath, and a plain line rather than a
-  plot where there is less than a trend to show. Its design rulings are
-  design-principles **T17**, including the one open call: the item's declared
-  target is deliberately not drawn on the plot, because the card sits directly
-  under the Key/Tempo rows and that row already carries it. Mock:
-  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd).
+- No build. #1420, the tempo trend, was the last of the adopted order's numbered
+  steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
+  each a fresh decision gated on lived use, not queued work. What *is* running
+  is the real-use thread under **Next** (the week's lesson tune), which is where
+  the next build should come from.
 
 ## Recently landed
 
-- #1420 — the tempo trend's first two PRs. The **evidence contract** (#1422):
+- #1420 — **the tempo trend**, step 7 of the adopted order
+  ([`research/comparison.md`](research/comparison.md)), in three PRs. The
+  **chart** (#1425) draws an item's measured tempo over time on the detail
+  screen: a line across the sessions that measured one, breaking wherever a
+  session measured none, with `7 of 9 sessions measured` underneath and a plain
+  line rather than a plot where there is less than a trend to show. Its rulings
+  are design-principles **T17**, including the two worth knowing: the item's
+  declared target is not drawn on the plot (the card sits directly under the
+  Key/Tempo rows, which already carries it), and the vertical scale never spans
+  less than 8 BPM, so a two-beat drift cannot draw the same climb as a
+  thirty-beat one. Mock:
+  [Tempo Trend](https://claude.ai/code/artifact/b0aff8b0-b9e7-45bb-a209-fe8bb866f6fd).
+
+  Before it, the **evidence contract** (#1422):
   tempo capture (#1398) put the stepper on every item and always saved a number
   pre-filled from the click, so a large share of the recorded tempos were an
   untouched default nobody looked at, and for an item declaring a target that
