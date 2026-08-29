@@ -80,8 +80,8 @@ struct LibraryDetailScreen: View {
             linkedExercisesSection
           }
 
-          if item.itemType == .exercise, !item.exerciseContexts.isEmpty {
-            byPieceSection
+          if item.itemType == .exercise, !item.usedIn.isEmpty {
+            usedInSection
           }
 
           if hasRecentSessions {
@@ -480,77 +480,17 @@ struct LibraryDetailScreen: View {
   // ── Exercise hero + provenance ──
 
   private var exerciseHero: some View {
-    VStack(spacing: IntradaSpacing.cardCompact) {
-      VStack(spacing: 6) {
-        ScoreRing(
-          score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
-        // Names the hero as the score across every piece, so it can't be read as
-        // one piece's — the distinction the "By piece" rows below make (#1087 B2).
-        if !item.exerciseContexts.isEmpty {
-          Eyebrow("Overall")
-        }
+    VStack(spacing: 6) {
+      ScoreRing(
+        score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
+      // Names the hero as the score across every piece, so it can't be read as
+      // one piece's — the distinction the "Used in" rows below make (#1087 B2).
+      if !item.usedIn.isEmpty {
+        Eyebrow("Overall")
       }
-      relatedBreadcrumb
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, IntradaSpacing.controlGap)
-  }
-
-  @ViewBuilder private var relatedBreadcrumb: some View {
-    if let first = item.linkedFromPieces.first {
-      if item.linkedFromPieces.count == 1 {
-        NavigationLink(value: first.id) {
-          breadcrumbRow(first, discloses: false)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(breadcrumbAccessibility(first))
-      } else {
-        Menu {
-          ForEach(item.linkedFromPieces, id: \.id) { piece in
-            NavigationLink(value: piece.id) {
-              Text(piece.title)
-              if let subtitle = piece.subtitle {
-                Text(subtitle)
-              }
-            }
-          }
-        } label: {
-          breadcrumbRow(first, discloses: true)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(breadcrumbAccessibility(first, discloses: true))
-        .accessibilityHint("Choose a piece to open")
-      }
-    }
-  }
-
-  private func breadcrumbRow(_ piece: PieceRefView, discloses: Bool) -> some View {
-    HStack(spacing: 5) {
-      Image(systemName: "arrow.turn.down.right")
-        .imageScale(.small)
-        .accessibilityHidden(true)
-      breadcrumbLabel(piece)
-      if discloses {
-        Image(systemName: "chevron.down")
-          .imageScale(.small)
-          .accessibilityHidden(true)
-      }
-    }
-    .foregroundStyle(IntradaColor.exerciseBadgeFg)
-  }
-
-  private func breadcrumbLabel(_ piece: PieceRefView) -> Text {
-    let extra = item.linkedFromPieces.count - 1
-    let base =
-      Text("Related to ").font(IntradaFont.metaMedium) + Text(piece.title).font(IntradaFont.badge)
-    return extra > 0 ? base + Text(" · +\(extra) more").font(IntradaFont.metaMedium) : base
-  }
-
-  private func breadcrumbAccessibility(_ piece: PieceRefView, discloses: Bool = false) -> String {
-    let extra = item.linkedFromPieces.count - 1
-    let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
-    let role = discloses ? "" : ", related piece"
-    return "Related to \(piece.title)\(others)\(role)"
   }
 
   // ── Steps (exercise step ladder) ──
@@ -686,35 +626,34 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  // ── By piece (exercise contexts) ──
+  // ── Used in (pieces this exercise serves) ──
 
-  // Per-piece score breakdown derived from session blocks (#1087 B2): where this
-  // exercise has done its work and how it scores there. Gated on non-empty upstream.
-  private var byPieceSection: some View {
+  // Gated on non-empty upstream until the empty state lands (#1363).
+  private var usedInSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "By piece")
+      SectionHeader(title: "Used in")
       VStack(spacing: 0) {
-        ForEach(Array(item.exerciseContexts.enumerated()), id: \.offset) { index, context in
+        ForEach(Array(item.usedIn.enumerated()), id: \.offset) { index, usage in
           if index > 0 {
             HairlineDivider()
           }
-          byPieceRow(context)
+          usedInRow(usage)
         }
       }
       .cardSurface()
     }
   }
 
-  @ViewBuilder private func byPieceRow(_ context: ExerciseContextView) -> some View {
+  @ViewBuilder private func usedInRow(_ usage: ExerciseUsageView) -> some View {
     // A live piece taps through; the "On its own" bucket and since-removed pieces
     // (#1093, 2a) are inert rows — nowhere to navigate.
-    if let piece = context.piece, !context.pieceRemoved {
+    if let piece = usage.piece, !usage.pieceRemoved {
       NavigationLink(value: piece.id) {
-        ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: true)
+        UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: true)
       }
       .buttonStyle(.plain)
     } else {
-      ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: false)
+      UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: false)
     }
   }
 
@@ -1034,22 +973,22 @@ private struct StepEditRow: View {
   }
 }
 
-private struct ByPieceRow: View {
-  let context: ExerciseContextView
+private struct UsedInRow: View {
+  let usage: ExerciseUsageView
   let locale: Locale
   let calendar: Calendar
   let discloses: Bool
 
-  private var isStandalone: Bool { context.piece == nil }
+  private var isStandalone: Bool { usage.piece == nil }
 
   var body: some View {
     HStack(spacing: IntradaSpacing.row) {
-      ScoreRing(score: context.latestScore.map(Int.init), size: 44)
+      ScoreRing(score: usage.latestScore.map(Int.init), size: 44)
       VStack(alignment: .leading, spacing: 3) {
-        Text(context.contextTitle)
+        Text(usage.rowTitle)
           .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle())
-          .foregroundStyle(context.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
-        Text(context.metaLine(locale: locale, calendar: calendar))
+          .foregroundStyle(usage.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
+        Text(usage.metaLine(locale: locale, calendar: calendar))
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -1070,14 +1009,18 @@ private struct ByPieceRow: View {
   }
 
   private var accessibilityLabel: String {
-    var parts = [context.contextTitle]
-    if context.pieceRemoved { parts.append("removed from the library") }
-    if let score = context.latestScore {
+    var parts = [usage.rowTitle]
+    if usage.pieceRemoved { parts.append("removed from the library") }
+    guard usage.sessionCount > 0 else {
+      parts.append("not practised together yet")
+      return parts.joined(separator: ", ")
+    }
+    if let score = usage.latestScore {
       parts.append("mark \(score) of 10")
     } else {
       parts.append("not yet rated")
     }
-    let n = Int(context.sessionCount)
+    let n = Int(usage.sessionCount)
     parts.append("\(n) \(n == 1 ? "session" : "sessions")")
     return parts.joined(separator: ", ")
   }
@@ -1178,9 +1121,9 @@ private struct LinkedExerciseEditRow: View {
 
   #Preview("Exercise — Related pieces") {
     NavigationStack {
-      LibraryDetailScreen(item: .previewExerciseWithLinkedFrom)
+      LibraryDetailScreen(item: .previewExerciseLinkedOnly)
     }
-    .environment(Store.previewExerciseLinkedFrom)
+    .environment(Store.previewExerciseLinkedOnlyStore)
   }
 
   /// Snapshot seed: renders the detail screen with editingLinks already on,

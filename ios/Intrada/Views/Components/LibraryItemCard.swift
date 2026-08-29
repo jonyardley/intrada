@@ -28,7 +28,7 @@ struct LibraryItemCard: View {
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
-        if item.priority || hasLinkedExercises || !item.tags.isEmpty {
+        if item.priority || hasLinkedExercises || hasStepLadder || !item.tags.isEmpty {
           HStack(spacing: 6) {
             if item.priority {
               Image(systemName: "star.fill")
@@ -37,7 +37,12 @@ struct LibraryItemCard: View {
                 .accessibilityHidden(true)
             }
             if hasLinkedExercises {
-              linkedCountChip
+              countChip("\(item.linkedExercises.count)") {
+                Image(systemName: "dumbbell.fill").font(.system(size: 9))
+              }
+            }
+            if hasStepLadder {
+              countChip(Self.ladderLabel(item.variants)) { ladderGlyph }
             }
             if !item.tags.isEmpty {
               TagPills(tags: item.tags)
@@ -74,17 +79,40 @@ struct LibraryItemCard: View {
     item.itemType == .piece && !item.linkedExercises.isEmpty
   }
 
-  // Count of related exercises — the gold dumbbell mirrors the exercise type bar.
-  private var linkedCountChip: some View {
+  // A one-rung ladder is the same as no ladder, so the chip starts at two.
+  private var hasStepLadder: Bool {
+    item.itemType == .exercise && item.variants.count > 1
+  }
+
+  // The gold capsule mirrors the exercise type bar.
+  private func countChip(_ text: String, @ViewBuilder leading: () -> some View) -> some View {
     HStack(spacing: 3) {
-      Image(systemName: "dumbbell.fill").font(.system(size: 9))
-      Text("\(item.linkedExercises.count)").font(IntradaFont.meta)
+      leading()
+      Text(text).font(IntradaFont.meta)
     }
     .foregroundStyle(IntradaColor.exerciseBadgeFg)
     .padding(.horizontal, 7)
     .padding(.vertical, 3)
     .background(IntradaColor.exerciseBadgeBg, in: Capsule())
     .accessibilityHidden(true)
+  }
+
+  // The character, not a symbol: the app writes real ♯/♭ elsewhere (`KeyHelper.prettify`).
+  @ViewBuilder private var ladderGlyph: some View {
+    if Self.ladderIsKeys(item.variants) {
+      Text(verbatim: "♯").font(IntradaFont.meta)
+    } else {
+      Image(systemName: "stairs").font(.system(size: 9))
+    }
+  }
+
+  // Static so the naming is testable without the view (`AddStepsSheet.trimmedLabels`).
+  static func ladderIsKeys(_ variants: [VariantView]) -> Bool {
+    variants.allSatisfy { KeyHelper.isKeyLabel($0.label) }
+  }
+
+  static func ladderLabel(_ variants: [VariantView]) -> String {
+    "\(variants.count) \(ladderIsKeys(variants) ? "keys" : "steps")"
   }
 
   private var metaLine: String? {
@@ -99,6 +127,7 @@ struct LibraryItemCard: View {
       let n = item.linkedExercises.count
       parts.append("\(n) connected exercise\(n == 1 ? "" : "s")")
     }
+    if hasStepLadder { parts.append(Self.ladderLabel(item.variants)) }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }
@@ -113,6 +142,7 @@ struct LibraryItemCard: View {
       VStack(spacing: IntradaSpacing.row) {
         LibraryItemCard(item: .previewPiece)
         LibraryItemCard(item: .previewExercise)
+        LibraryItemCard(item: .previewExerciseWithFullLadder)
       }
       .padding(IntradaSpacing.card)
     }

@@ -14,8 +14,9 @@
 > native iOS only.** API/Turso out of scope.
 >
 > Status: **phase A landed** ([#1443] core, [#1449] screens; #1355 closed
-> 2026-08-29); **phase B landed** ([#1455] core, [#1457] screens; [#1436]
-> closed 2026-08-29); **phase C in flight** ([#1437]). D is unstarted. The rest is the design as written
+> 2026-08-29); **phase B landed** ([#1455] core, [#1457] screens, [#1461] what
+> photographing real pages taught; [#1436] closed 2026-08-29); **phase C in
+> flight** ([#1437]). D is unstarted. The rest is the design as written
 > 2026-08-29 from a feasibility review of the iOS on-device stack (appendix).
 
 [#1098]: https://github.com/jonyardley/intrada/issues/1098
@@ -31,6 +32,7 @@
 [#1454]: https://github.com/jonyardley/intrada/issues/1454
 [#1455]: https://github.com/jonyardley/intrada/pull/1455
 [#1457]: https://github.com/jonyardley/intrada/pull/1457
+[#1461]: https://github.com/jonyardley/intrada/pull/1461
 
 ## Problem
 
@@ -234,7 +236,9 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft;
 ```
 
 New events: `ItemEvent::SetPhoto { id, photo_id }`, `ItemEvent::ClearPhoto { id }`,
-and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. GRDB migration
+and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. `CreateItem` also
+carries `photo_id` (appended last), so the page a piece was read from is kept
+on it rather than photographed a second time. GRDB migration
 `v16_item_photo` adds a nullable `photo_id TEXT`.
 
 `photo_id` is appended **after `variants`**, the current last field, because
@@ -304,9 +308,17 @@ actually photograph their charts.
 
 ## Open questions
 
-1. **What do people actually photograph?** The whole design assumes a mix of
-   printed text charts and Real Book pages. Phase A ships a photo store, which
-   means phase A also gives us the answer before D commits to a parser.
+1. **What do people actually photograph?** ~~The whole design assumes a mix of
+   printed text charts and Real Book pages...~~ **First answer, 2026-08-29:** a
+   **handwritten** Real Book page, photographed off a music stand. Phase B's
+   first device test was one, which matters twice over. Handwriting is listed
+   under Deferred below on the assumption it is an edge case; the first real
+   use says otherwise. And the page read badly for reasons that had nothing to
+   do with handwriting: `automaticallyDetectsLanguage` hallucinated a
+   non-Latin line that outranked the title, and ranking the title on height
+   alone let a slash-chord stack beat it. Both fixed. Still open, and worth
+   more photographs before betting on it: how far Vision gets on handwriting
+   once it is no longer fighting our own heuristics.
 2. **Confirm sheet or pre-filled form?** ~~Whether recognition opens its own
    review screen or simply pre-fills `ItemFormScaffold`...~~ **Answered
    2026-08-29: pre-fill the add form; no confirm sheet.** Recognition gets no

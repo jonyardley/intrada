@@ -37,6 +37,21 @@ audit backlog and its five-phase build order.
   plus the M1 iPads; every other device is exactly as it was. The one thing the
   self-review could not check without that hardware is whether the read's
   twelve-second budget stops the model or only stops the wait (#1472).
+  weak Vision read already does. The screens PR wires Foundation Models behind
+  `SystemLanguageModel.default.availability` and `if #available(iOS 26)`, on the
+  devices that have it. No new screen: the same add form, better answers, and
+  the substring clamp still means the model may choose but never invent.
+- #1363 — **an exercise says which pieces it is used in**. The exercise screen
+  carried a singular "Related to <piece>" line under the score ring that hid
+  extra pieces behind a menu and vanished entirely for a standalone drill, plus
+  a separate "By piece" card built only from practice history. Neither list was
+  complete. The core PR merges them: one `used_in` row per piece, seeded from
+  the links a piece declares and folded together with the sessions the pair were
+  practised in, with a `linked` flag saying which source it came from. The
+  breadcrumb is deleted and the section is now "Used in". The screens PR adds
+  the three row states, the "On its own" empty state and linking from the
+  exercise side. Spec:
+  [`specs/exercise-relations.md`](../specs/exercise-relations.md).
 
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
@@ -55,7 +70,24 @@ audit backlog and its five-phase build order.
   them, rather than opening a confirm sheet of its own (spec open question 2),
   which also unblocked #1446. Every field it filled says **From the photo**
   underneath, dimmed where the read was weak, and the mark clears the moment you
-  type in that field. Nothing is saved until you press Add.
+  type in that field. Nothing is saved until you press Add. A third PR (#1461)
+  is what three rounds of photographing real pages taught: the language set is
+  pinned to Latin so a handwritten page cannot read as confident nonsense, a
+  title has to be spelled rather than merely tall, both capture routes crop to
+  the page, the credit reader takes the strongest claim and knows the dash form
+  a Real Book uses, and the page you scanned to fill the form is kept on the
+  piece rather than photographed twice. Spec open question 1 has its first
+  answer, and it is not the one the design assumed: a handwritten Real Book
+  page.
+- #1462 — **the Library says when an exercise runs through several keys**.
+  A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
+  list; the ladder only showed after you tapped in and reached **Steps**. The
+  row now carries a count chip beside the star and the tags: **12 keys** when
+  every rung reads as a key, **12 steps** when it does not, so a ladder of
+  inversions is still named for what it holds. The rows already carried the
+  ladder, so nothing changed in the core — and that is the follow-up: the
+  judgement lives in the shell for now, and #1467 moves it to the core where it
+  belongs. The detail screen still heads the section **Steps** (#1464).
 - #1447 — **accented titles file under their own letter**. Sorting the Library
   by title put "Étude" after "Waltz", behind every plain-ASCII title, because
   the sort compared the text byte by byte. Piano repertoire is full of Études,
@@ -165,11 +197,11 @@ audit backlog and its five-phase build order.
 
 - #1081 — per-piece tracking **was already shipped**, back in July, and the
   issue was simply never closed. Verified 2026-08-20 against the whole of its
-  stated scope: the core derivation (`build_exercise_contexts`, #1095), the
-  "By piece" rows and the per-this-piece rings on piece detail (#1097), the
-  FFI round-trip guard
+  stated scope: the core derivation (`build_exercise_usage`, then named
+  `build_exercise_contexts`, #1095), the per-piece rows and the
+  per-this-piece rings on piece detail (#1097), the FFI round-trip guard
   (`setlist_entry_group_id_round_trips_on_ffi_bincode_wire`), the
-  `testExerciseDetailByPiece` snapshot, and the design mock committed under
+  exercise-detail snapshot, and the design mock committed under
   `specs/track-exercises-per-piece/`. It came through the coach revert intact:
   `AddToSetlist` still forms blocks, and `group_id` still round-trips the
   local-first JSON codec, so the feature works with no network. No Tier 3 spec
