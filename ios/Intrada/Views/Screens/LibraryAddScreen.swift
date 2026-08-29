@@ -37,7 +37,13 @@ struct LibraryAddScreen: View {
       confirmLabel: "Add",
       composerSuggestions: store.viewModel?.availableComposers ?? [],
       tagSuggestions: store.viewModel?.availableTags ?? [],
-      showsKindPicker: relatedToPieceId == nil
+      showsKindPicker: relatedToPieceId == nil,
+      header: {
+        ScanPageEntry(
+          photoId: recognition?.photoId,
+          reading: recognition?.status == .reading,
+          onCaptured: { store.send(.item(.readPhoto(photoId: $0))) })
+      }
     ) {
       if let pieceId = relatedToPieceId {
         store.send(.item(.addLinkedExercise(pieceId: pieceId, input: form.createInput())))
@@ -45,7 +51,16 @@ struct LibraryAddScreen: View {
         store.send(.item(.add(form.createInput())))
       }
     }
+    .onChange(of: recognition?.draft) { _, draft in
+      guard let draft else { return }
+      form.fill(from: draft)
+    }
+    // The draft belongs to this sheet. Leaving without it cleared would hand
+    // the next Add screen the last page's fields.
+    .onDisappear { store.send(.discardPhotoDraft) }
   }
+
+  private var recognition: PhotoRecognitionView? { store.viewModel?.photoRecognition }
 }
 
 #if DEBUG

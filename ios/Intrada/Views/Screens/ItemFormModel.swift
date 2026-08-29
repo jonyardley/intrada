@@ -5,16 +5,59 @@ import SwiftUI
 /// `LibraryEditScreen`. The shell only collects values; the core validates.
 @Observable
 final class ItemFormModel {
+  /// The fields a photographed page can fill (#1436). Key and notes are not
+  /// among them: nothing on a page reliably says either.
+  enum ReadField: Hashable {
+    case title, composer, marking, bpm
+  }
+
   var kind: ItemKind
-  var title = ""
-  var composer = ""
   var key = ""
   var modality: Modality?
-  var marking = ""
-  var bpm = ""
   var notes = ""
   var tags: [String] = []
   var formError: String?
+
+  /// Which fields still hold what the photo was read into, and whether that
+  /// read was weak. Typing in a field takes it off this list — the value is the
+  /// user's from that keystroke on, so it must stop claiming to be the page's.
+  private(set) var readFrom: [ReadField: Bool] = [:]
+
+  // The four readable fields write through `edited`, so the mark clears on the
+  // keystroke rather than on submit. `fill(from:)` sets the storage directly.
+  var title: String {
+    get { storedTitle }
+    set {
+      storedTitle = newValue
+      edited(.title)
+    }
+  }
+  var composer: String {
+    get { storedComposer }
+    set {
+      storedComposer = newValue
+      edited(.composer)
+    }
+  }
+  var marking: String {
+    get { storedMarking }
+    set {
+      storedMarking = newValue
+      edited(.marking)
+    }
+  }
+  var bpm: String {
+    get { storedBpm }
+    set {
+      storedBpm = newValue
+      edited(.bpm)
+    }
+  }
+
+  private var storedTitle = ""
+  private var storedComposer = ""
+  private var storedMarking = ""
+  private var storedBpm = ""
 
   init(kind: ItemKind = .piece) {
     self.kind = kind
@@ -22,21 +65,50 @@ final class ItemFormModel {
 
   init(item: LibraryItemView) {
     kind = item.itemType
-    title = item.title
-    composer = item.subtitle
+    storedTitle = item.title
+    storedComposer = item.subtitle
     tags = item.tags
     // Normalise on load so editing self-heals legacy combined values
     // ("F# major") into tonic + modality even if the user never re-taps a spoke.
     let selection = KeyHelper.selection(key: item.key ?? "", modality: item.modality)
     key = selection?.spelling ?? item.key ?? ""
     modality = selection?.mode ?? item.modality
-    marking = item.tempoMarking ?? ""
-    bpm = item.tempoBpm.map(String.init) ?? ""
+    storedMarking = item.tempoMarking ?? ""
+    storedBpm = item.tempoBpm.map(String.init) ?? ""
     notes = item.notes ?? ""
   }
 
+  /// Pre-fill from a page the core has read. Only empty fields are written: a
+  /// value the user typed before scanning is theirs, and a scan must never
+  /// overwrite it. Nothing here is saved — pressing Add is what writes.
+  func fill(from draft: PhotoDraft) {
+    func take(_ field: ReadField, _ value: String, weak: Bool, into store: (String) -> Void) {
+      store(value)
+      readFrom[field] = weak
+    }
+
+    if let read = draft.title, storedTitle.isEmpty {
+      take(.title, read.value, weak: read.weak) { storedTitle = $0 }
+    }
+    if let read = draft.composer, storedComposer.isEmpty {
+      take(.composer, read.value, weak: read.weak) { storedComposer = $0 }
+    }
+    if let read = draft.tempo {
+      if let marking = read.value.marking, storedMarking.isEmpty {
+        take(.marking, marking, weak: read.weak) { storedMarking = $0 }
+      }
+      if let beats = read.value.bpm, storedBpm.isEmpty {
+        take(.bpm, String(beats), weak: read.weak) { storedBpm = $0 }
+      }
+    }
+  }
+
+  private func edited(_ field: ReadField) {
+    readFrom[field] = nil
+  }
+
   var canSubmit: Bool {
-    !title.trimmingCharacters(in: .whitespaces).isEmpty
+    !storedTitle.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
   func createInput() -> CreateItem {

@@ -947,3 +947,21 @@
     }
   }
 #endif
+
+#if DEBUG
+  extension PhotoDraft {
+    /// A page read as Vision plus `read_fields` would: a clean title and tempo,
+    /// and a composer the OCR was not sure of (#1436).
+    static var readPage: PhotoDraft {
+      PhotoDraft(
+        title: TextDraftField(
+          value: "Autumn Leaves", source: .recognised, confidence: 0.93, weak: false),
+        composer: TextDraftField(
+          value: "Joseph Kosmo", source: .recognised, confidence: 0.34, weak: true),
+        tempo: TempoDraftField(
+          value: Tempo(marking: "Moderato", bpm: 120), source: .recognised, confidence: 0.9,
+          weak: false),
+        chartText: nil)
+    }
+  }
+#endif

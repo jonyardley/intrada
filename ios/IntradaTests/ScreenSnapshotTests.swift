@@ -601,6 +601,35 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(LibraryAddScreen(defaultKind: .exercise)), as: config)
   }
 
+  /// #1436: the add form as it arrives from a page the core has read. The
+  /// composer was read weakly, so its mark is dimmed — the one decision the
+  /// design conversation settled, and the one a pixel diff can actually hold.
+  func testLibraryAddScreenReadFromAPhoto() {
+    assertSnapshot(of: host(addForm(from: .readPage)), as: config)
+  }
+
+  /// The mark clears on the keystroke, not on submit: the composer is the
+  /// user's from the moment they correct it.
+  func testLibraryAddScreenAfterEditingAReadField() {
+    let form = ItemFormModel(kind: .piece)
+    form.fill(from: .readPage)
+    form.composer = "Joseph Kosma"
+    assertSnapshot(of: host(addForm(form)), as: config)
+  }
+
+  private func addForm(from draft: PhotoDraft) -> some View {
+    let form = ItemFormModel(kind: .piece)
+    form.fill(from: draft)
+    return addForm(form)
+  }
+
+  private func addForm(_ form: ItemFormModel) -> some View {
+    ItemFormScaffold(
+      form: form, title: "New Piece", confirmLabel: "Add", composerSuggestions: [],
+      tagSuggestions: []
+    ) {}
+  }
+
   func testLibraryEditScreen() {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: config)
   }

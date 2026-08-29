@@ -1,7 +1,6 @@
 import PhotosUI
 import SharedTypes
 import SwiftUI
-import VisionKit
 
 /// The photo an item carries as an aide-memoire (#1355): the page you practise
 /// from, kept with the piece.
@@ -52,13 +51,14 @@ struct PhotoCard: View {
     .cardSurface()
     .onChange(of: photoId) { _, next in image = next.flatMap(loadImage) }
     .fullScreenCover(isPresented: $scanning) {
-      DocumentScanner { finished(scanning: $0) }
+      DocumentScanner { capture.finished(scanning: $0) }
         .ignoresSafeArea()
     }
     .photosPicker(isPresented: $choosingFromLibrary, selection: $picked, matching: .images)
     .onChange(of: picked) { _, item in
       guard let item else { return }
-      Task { await savePicked(item) }
+      picked = nil
+      Task { await capture.loaded(item) }
     }
     .alert("Remove this photo?", isPresented: $confirmingRemove) {
       Button("Remove", role: .destructive, action: remove)
@@ -77,7 +77,7 @@ struct PhotoCard: View {
         .foregroundStyle(IntradaColor.ink)
       Spacer()
       Menu {
-        if VNDocumentCameraViewController.isSupported {
+        if PhotoCaptureSources.canScan {
           Button {
             failure = nil
             scanning = true
@@ -146,45 +146,10 @@ struct PhotoCard: View {
 
   // ── Capture ──
 
-  private func finished(scanning capture: PhotoCapture) {
-    self.scanning = false
-    switch capture {
-    case .captured(let image): save(image)
-    case .cancelled: break
-    case .failed(let error):
-      report(error, "document scan")
-      surface("Couldn't scan the page. Try again.")
-    }
-  }
-
-  private func savePicked(_ item: PhotosPickerItem) async {
-    picked = nil
-    do {
-      guard let data = try await item.loadTransferable(type: Data.self),
-        let image = UIImage(data: data)
-      else {
-        surface("Couldn't read that photo. Try another.")
-        return
-      }
-      save(image)
-    } catch {
-      report(error, "photo library load")
-      surface("Couldn't read that photo. Try another.")
-    }
-  }
-
-  /// Bytes first, then the core. The order is the whole point: an item can
-  /// never end up naming a file that was never written.
-  private func save(_ image: UIImage) {
-    let newPhotoId = Ulid.generate()
-    do {
-      try PhotoFileStore.write(image, id: newPhotoId)
-    } catch {
-      report(error, "photo write")
-      surface("Couldn't save the photo. Try again.")
-      return
-    }
-    confirm(.item(.setPhoto(id: itemId, photoId: newPhotoId)))
+  private var capture: PhotoCaptureSources {
+    PhotoCaptureSources(
+      onCaptured: { confirm(.item(.setPhoto(id: itemId, photoId: $0))) },
+      onFailure: surface)
   }
 
   private func remove() {

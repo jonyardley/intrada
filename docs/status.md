@@ -29,9 +29,12 @@ audit backlog and its five-phase build order.
   or a number after an `=` is the tempo. A model suggestion (phase C) is only
   ever accepted when it appears verbatim on the page, so it can choose but
   never invent. Nothing is written without the user pressing Add. The screens
-  follow in a second PR now that spec open question 2 is answered:
-  recognition **pre-fills the add form**, it does not open a confirm sheet of
-  its own, which also unblocks #1446.
+  follow in a second PR: spec open question 2 is answered, so recognition
+  **pre-fills the add form** rather than opening a confirm sheet of its own,
+  which also unblocks #1446. **Scan a page** sits above the fields; every field
+  it filled says **From the photo** underneath, dimmed where the read was weak,
+  and the mark clears the moment you type in that field. Nothing is saved until
+  you press Add.
 
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
