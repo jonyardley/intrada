@@ -47,6 +47,13 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1462 — **the Library says when an exercise runs through several keys**.
+  A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
+  list; the ladder only showed after you tapped in and reached **Steps**. The
+  row now carries a count chip beside the star and the tags: **12 keys** when
+  every rung reads as a key, **12 steps** when it does not, so a ladder of
+  inversions is still named for what it holds. The rows already carried the
+  ladder, so nothing changed in the core.
 - #1447 — **accented titles file under their own letter**. Sorting the Library
   by title put "Étude" after "Waltz", behind every plain-ASCII title, because
   the sort compared the text byte by byte. Piano repertoire is full of Études,

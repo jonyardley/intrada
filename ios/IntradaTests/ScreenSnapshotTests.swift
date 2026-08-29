@@ -844,6 +844,7 @@ final class ScreenSnapshotTests: XCTestCase {
         LibraryItemCard(item: .previewDetail)
         LibraryItemCard(item: manyTags)  // 5 tags → +2 overflow pill
         LibraryItemCard(item: starred, showsMastery: true)
+        LibraryItemCard(item: .previewExerciseWithFullLadder)
       }
       .padding(16)
     }
