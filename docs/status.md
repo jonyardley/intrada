@@ -21,6 +21,18 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- #1363 — **an exercise says which pieces it is used in**. The exercise screen
+  carried a singular "Related to <piece>" line under the score ring that hid
+  extra pieces behind a menu and vanished entirely for a standalone drill, plus
+  a separate "By piece" card built only from practice history. Neither list was
+  complete. The core PR merges them: one `used_in` row per piece, seeded from
+  the links a piece declares and folded together with the sessions the pair were
+  practised in, with a `linked` flag saying which source it came from. The
+  breadcrumb is deleted and the section is now "Used in". The screens PR adds
+  the three row states, the "On its own" empty state and linking from the
+  exercise side. Spec:
+  [`specs/exercise-relations.md`](../specs/exercise-relations.md).
+
 - #1436 — **reading a photographed page into title, composer and tempo**.
   Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md). The
   core landed as #1455; the screens are in flight. The core adds the `RecognitionOperation` effect, Vision text recognition

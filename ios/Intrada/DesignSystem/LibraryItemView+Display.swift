@@ -68,17 +68,23 @@ enum TempoFormatting {
   }
 }
 
-extension ExerciseContextView {
+extension ExerciseUsageView {
   var contextTitle: String { piece?.title ?? "On its own" }
 
   /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
   /// since-deleted piece (#1093, 2a) — composer dropped once the piece is gone.
+  /// A piece linked but never practised alongside says so instead of "0
+  /// sessions", which reads as a failure rather than a fresh link (#1363).
   func metaLine(locale: Locale, calendar: Calendar) -> String {
     var parts: [String] = []
     if pieceRemoved {
       parts.append("Removed")
     } else if let subtitle = piece?.subtitle, !subtitle.isEmpty {
       parts.append(subtitle)
+    }
+    guard sessionCount > 0 else {
+      parts.append("not practised together yet")
+      return parts.joined(separator: " · ")
     }
     let n = Int(sessionCount)
     parts.append("\(n) \(n == 1 ? "session" : "sessions")")
