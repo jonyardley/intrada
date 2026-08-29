@@ -214,6 +214,7 @@ const EXPLICIT_CREDIT: f32 = 1.0;
 const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("words and music by", 1.0),
     ("music and lyrics by", 1.0),
+    ("lyrics and music by", 1.0),
     ("composed by", 1.0),
     ("music by", 1.0),
     ("written by", 0.9),
@@ -303,10 +304,13 @@ fn normalise(text: &str) -> String {
 }
 
 fn heuristic_draft(page: &PageReading) -> PhotoDraft {
+    // Title first: it keeps its line, so "Allegro Barbaro" is not a tempo.
+    let title = heuristic_title(&page.lines);
+    let tempo = heuristic_tempo(&page.lines, title.as_ref().map(|f| f.value.as_str()));
     PhotoDraft {
-        title: heuristic_title(&page.lines),
+        title,
         composer: heuristic_composer(&page.lines),
-        tempo: heuristic_tempo(&page.lines),
+        tempo,
         chart_text: None,
     }
 }
@@ -319,11 +323,13 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         .filter(|l| l.y < TITLE_BAND)
         .filter(|l| !l.text.trim().is_empty())
         .filter(|l| credit_prefix(&l.text).is_none())
-        .filter(|l| tempo_line(&l.text).is_none())
+        .filter(|l| tempo_line(&l.text, true).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
         .max_by(|a, b| {
-            (a.height * a.confidence)
-                .total_cmp(&(b.height * b.confidence))
+            // Confident first: an artefact can dwarf the heading (#1436).
+            (a.confidence >= LOW_CONFIDENCE)
+                .cmp(&(b.confidence >= LOW_CONFIDENCE))
+                .then_with(|| (a.height * a.confidence).total_cmp(&(b.height * b.confidence)))
                 .then(b.y.total_cmp(&a.y))
         })
         .map(|l| TextDraftField {
@@ -381,11 +387,12 @@ fn credit_prefix(text: &str) -> Option<(&str, f32)> {
     })
 }
 
-fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
+fn heuristic_tempo(lines: &[RecognisedLine], title: Option<&str>) -> Option<TempoDraftField> {
     let band: Vec<(&RecognisedLine, TempoRead)> = lines
         .iter()
         .filter(|l| l.y < TITLE_BAND)
-        .filter_map(|l| tempo_line(&l.text).map(|read| (l, read)))
+        .filter(|l| Some(l.text.trim()) != title)
+        .filter_map(|l| tempo_line(&l.text, false).map(|read| (l, read)))
         .collect();
 
     let marking = band
@@ -415,7 +422,7 @@ fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
 /// "Swing Low, Sweet Chariot", "Ballad of the Sad Young Men" — and reading it
 /// as a tempo costs the title as well, since a title line is skipped once it
 /// has explained itself as a tempo.
-fn tempo_line(text: &str) -> Option<TempoRead> {
+fn tempo_line(text: &str, strict: bool) -> Option<TempoRead> {
     let bpm = bpm_in(text);
     let before_bpm = text.rsplit_once('=').map_or(text, |(before, _)| before);
     let words: Vec<String> = before_bpm
@@ -439,13 +446,18 @@ fn tempo_line(text: &str) -> Option<TempoRead> {
         }
     }
 
-    // A leftover single character is the note glyph Vision mangled out of
-    // `♩=`; anything longer is a word this line is really about.
-    let only_qualifiers = rest
+    // A single leftover character is the mangled `♩` glyph.
+    let unexplained = rest
         .iter()
-        .all(|w| w.chars().count() == 1 || TEMPO_QUALIFIERS.contains(w));
+        .filter(|w| w.chars().count() > 1 && !TEMPO_QUALIFIERS.contains(w))
+        .count();
 
-    (only_qualifiers && (marking.is_some() || bpm.is_some())).then_some(TempoRead { marking, bpm })
+    // Strict means the line is *only* a tempo, so it cannot be the title. Loose
+    // allows one unknown word, since print carries misprints (#1436).
+    let allowed = if strict { 0 } else { 1 };
+
+    (unexplained <= allowed && (marking.is_some() || bpm.is_some()))
+        .then_some(TempoRead { marking, bpm })
 }
 
 /// What a tempo-only line says. Both parts are optional because a line can
@@ -664,6 +676,41 @@ mod tests {
             draft.tempo.expect("a tempo").value.marking.as_deref(),
             Some("Ballad")
         );
+    }
+
+    /// Lines as Vision returned them (#1436): all three read, two dropped.
+    #[test]
+    fn a_printed_lead_sheet_gives_up_all_three_fields() {
+        let mut lines = vec![
+            line("th ct isu imthht to", 0.237, 0.0924),
+            line("Cry Me A River", 0.121, 0.0176),
+            line("Andrante Moderato (o = 88)", 0.170, 0.0161),
+            line("Slowly and Rhythmically", 0.156, 0.0131),
+            line("Lyrics and Music by Arthur Hamilton", 0.144, 0.0119),
+        ];
+        lines[0].confidence = 0.30;
+        for l in lines.iter_mut().skip(1) {
+            l.confidence = 1.0;
+        }
+
+        let draft = read_fields(&page(lines));
+
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
+        assert_eq!(draft.composer.expect("a composer").value, "Arthur Hamilton");
+        let tempo = draft.tempo.expect("a tempo");
+        assert_eq!(tempo.value.marking.as_deref(), Some("Moderato"));
+        assert_eq!(tempo.value.bpm, Some(88));
+    }
+
+    /// The title is chosen first and the tempo cannot claim its line back.
+    #[test]
+    fn a_title_that_names_a_tempo_is_still_only_a_title() {
+        let draft = read_fields(&page(vec![
+            line("Allegro Barbaro", 0.08, 0.09),
+            line("Bela Bartok", 0.18, 0.03),
+        ]));
+        assert_eq!(draft.title.expect("a title").value, "Allegro Barbaro");
+        assert!(draft.tempo.is_none());
     }
 
     #[test]
