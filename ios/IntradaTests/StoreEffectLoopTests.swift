@@ -408,6 +408,36 @@ final class StoreEffectLoopTests: XCTestCase {
       "current step is the first not-yet-solid step")
   }
 
+  /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
+  /// the Rust deserializer and the `ViewModel` projection must all agree on the
+  /// new `Item` field and the two new `ItemEvent` variants. A stub bridge
+  /// cannot catch a break in any of the three.
+  func testRealBridgePhotoIdCrossesTheWireBothWays() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.item(.setPhoto(id: id, photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")))
+
+    let afterSet = try bridge.view()
+    XCTAssertNil(afterSet.error, "setPhoto should cross the wire cleanly")
+    XCTAssertEqual(
+      afterSet.items.first { $0.id == id }?.photoId, "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "the id the screens read comes back through the projection")
+
+    _ = try bridge.update(.item(.clearPhoto(id: id)))
+
+    XCTAssertNil(
+      try bridge.view().items.first { $0.id == id }?.photoId,
+      "an absent Option must decode as absent, not as the previous value")
+  }
+
   /// Real-bridge wire pin for `SetUtcOffset` (#1330): the Swift serializer and
   /// the Rust deserializer must agree on the new Event variant. Semantics are
   /// pinned by core tests; a wire break here surfaces as a throw or an error
@@ -910,7 +940,7 @@ final class StoreEffectLoopTests: XCTestCase {
     id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
     tempo: nil,
     notes: nil, tags: [], linkedExerciseIds: [], createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [])
+    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [], photoId: nil)
 
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral

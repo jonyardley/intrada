@@ -79,8 +79,9 @@ final class LibraryStore: ItemStore {
       sql: """
         INSERT INTO item
           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-           linked_exercise_ids, created_at, updated_at, priority, chord_chart, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id,
+           deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title, kind = excluded.kind, composer = excluded.composer,
           key = excluded.key, modality = excluded.modality,
@@ -88,7 +89,8 @@ final class LibraryStore: ItemStore {
           tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
           linked_exercise_ids = excluded.linked_exercise_ids,
           updated_at = excluded.updated_at, priority = excluded.priority,
-          chord_chart = excluded.chord_chart, deleted_at = NULL
+          chord_chart = excluded.chord_chart, photo_id = excluded.photo_id,
+          deleted_at = NULL
         """,
       arguments: [
         item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
@@ -97,7 +99,7 @@ final class LibraryStore: ItemStore {
         Self.encodeTags(item.tags),
         Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
-        Self.encodeChordChart(item.chordChart),
+        Self.encodeChordChart(item.chordChart), item.photoId,
       ])
     // Same transaction as the item row, keyed by id; no delete-missing: the
     // core always carries the tombstones it loaded and writes them back
@@ -434,6 +436,11 @@ final class LibraryStore: ItemStore {
         sql: "ALTER TABLE reflection ADD COLUMN steer TEXT NOT NULL DEFAULT 'unoffered'")
       try db.execute(sql: "ALTER TABLE reflection ADD COLUMN steer_at TEXT")
     }
+    migrator.registerMigration("v16_item_photo") { db in
+      // Id only: a BLOB would fatten every row of a table `loadItems` reads
+      // whole (specs/piece-from-photo.md, key decision 1).
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN photo_id TEXT")
+    }
     return migrator
   }()
 
@@ -462,7 +469,8 @@ final class LibraryStore: ItemStore {
       createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"],
       chordChart: decodeChordChart(row["chord_chart"]),
-      variants: variants)
+      variants: variants,
+      photoId: row["photo_id"])
   }
 
   // ── Row ↔ Variant codec ──────────────────────────────────────────────

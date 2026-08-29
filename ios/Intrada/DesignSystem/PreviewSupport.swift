@@ -439,7 +439,7 @@
             pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [])
+        variants: [], photoId: nil)
     }
 
     static var previewExercise: LibraryItemView {
@@ -449,7 +449,7 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -460,7 +460,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     static var previewDetail: LibraryItemView {
@@ -472,7 +472,7 @@
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [])
+        variants: [], photoId: nil)
     }
 
     /// A charted piece — exercises the chord-chart card (parsed grid + preview).
@@ -499,7 +499,8 @@
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, variants: [])
+        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, variants: [],
+        photoId: nil)
     }
 
     static var previewMinimal: LibraryItemView {
@@ -508,7 +509,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -551,7 +552,7 @@
             practice: nil, pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [])
+        variants: [], photoId: nil)
     }
 
     /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
@@ -574,7 +575,7 @@
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     /// An exercise with a full "By piece" breakdown — a live piece, a
@@ -610,7 +611,7 @@
           ExerciseContextView(
             piece: nil, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, variants: [])
+        ], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     /// A step-ladder exercise — one solid, one current (rated but not
@@ -633,7 +634,7 @@
           VariantView(
             id: "step-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
             isSolid: false, isCurrent: false),
-        ])
+        ], photoId: nil)
     }
 
     /// A 12-step chromatic ladder — stress-tests the Steps horizontal scroller
@@ -656,7 +657,7 @@
             id: "step-\(index)", label: label, position: UInt64(index),
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
             isSolid: solid, isCurrent: current)
-        })
+        }, photoId: nil)
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -668,7 +669,7 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
-        chordChart: nil, variants: [])
+        chordChart: nil, variants: [], photoId: nil)
     }
   }
 

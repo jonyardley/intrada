@@ -627,6 +627,7 @@ mod tests {
                     deleted_at: Some(at),
                 },
             ],
+            photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));
