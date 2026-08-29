@@ -96,13 +96,10 @@ struct ScreenEdgeTests {
     expectOnScreen(AnalyticsScreen(), store: .previewProgress, "Progress")
   }
 
-  /// The scaffold is the shared shell, so it is guarded against an un-shrinkable
-  /// child directly rather than only through the screen that exposed one (#1481).
   @Test("An over-wide child cannot drag the scaffold off its leading edge")
   func scaffoldHoldsItsLeadingEdge() {
     let scaffold = ScreenScaffold(title: "Library", subtitle: "2 pieces") {
-      // A TextField, not a Color: SwiftUI backs a plain fill with a drawing
-      // layer and no `UIView`, which the traversal cannot see.
+      // A TextField, not a Color: a plain fill gets no `UIView` to measure.
       TextField("", text: .constant("")).frame(width: 900, height: 200)
     }
     for width in Self.widths {

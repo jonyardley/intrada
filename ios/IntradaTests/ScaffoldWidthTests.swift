@@ -4,10 +4,8 @@ import UIKit
 
 @testable import Intrada
 
-/// The scaffold must report the width it was offered, not its content's:
-/// growing is what let ancestors centre it and clip both edges (#1470). The
-/// assertion is two-sided, so it also catches the background it now leans on
-/// for sizing failing to fill. `ScreenEdgeTests` covers the visible symptom.
+/// Growing to its content's width is what let ancestors centre the scaffold and
+/// clip both edges (#1470). Two-sided: the background it leans on must fill too.
 @MainActor
 struct ScaffoldWidthTests {
   private static let offered = CGSize(width: 390, height: 844)
