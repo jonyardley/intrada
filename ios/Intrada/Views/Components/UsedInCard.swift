@@ -34,10 +34,8 @@ struct UsedInCard: View {
     }
   }
 
-  /// "3 pieces" counts pieces, so the "On its own" bucket is left out of it;
-  /// with nothing but that bucket there is no count worth printing.
   private var pieceCountCaption: String? {
-    let pieces = usage.filter { $0.piece != nil }.count
+    let pieces = usage.filter { $0.piece != nil && !$0.pieceRemoved }.count
     guard pieces > 0 else { return nil }
     return "\(pieces) \(pieces == 1 ? "piece" : "pieces")"
   }
@@ -73,12 +71,11 @@ struct UsedInCard: View {
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.accent)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
+        .padding(.vertical, IntradaSpacing.cardCompact + IntradaSpacing.controlGap)
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Link a piece to this exercise")
-    .padding(.vertical, IntradaSpacing.controlGap)
     .background(IntradaColor.cardFill)
   }
 }
