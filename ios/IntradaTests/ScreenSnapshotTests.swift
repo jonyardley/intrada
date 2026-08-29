@@ -351,7 +351,6 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       VStack(spacing: 16) {
         AddRowButton(title: "Add a related exercise") {}
-        AddRowButton(title: "Add a first exercise", style: .outlined) {}
         AddRowButton(title: "Add a related exercise", style: .plain) {}
       }
       .padding(16)

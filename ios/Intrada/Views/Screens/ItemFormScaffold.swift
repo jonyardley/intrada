@@ -14,6 +14,9 @@ struct ItemFormScaffold: View {
   let confirmLabel: String
   let composerSuggestions: [String]
   let tagSuggestions: [String]
+  // Hidden when the caller already fixes the kind (creating an exercise from a
+  // piece), so the form can't offer a choice the core will discard anyway.
+  var showsKindPicker = true
   let send: () -> Void
 
   var body: some View {
@@ -29,7 +32,9 @@ struct ItemFormScaffold: View {
           }
           ScrollView {
             VStack(spacing: IntradaSpacing.card) {
-              KindSegment(selection: $form.kind)
+              if showsKindPicker {
+                KindSegment(selection: $form.kind)
+              }
 
               VStack(spacing: 0) {
                 FormField(label: "Title", text: $form.title, placeholder: "Required")

@@ -46,7 +46,7 @@ struct LinkedExercisePickerSheet: View {
         if available.isEmpty {
           PlaceholderContent(
             systemImage: "music.note.list",
-            message: "No exercises yet. Create an exercise to relate it to this piece.")
+            message: "No exercises yet. Create one from the piece to relate it.")
         } else {
           VStack(spacing: 0) {
             filterBar
@@ -217,8 +217,6 @@ struct LinkedExercisePickerSheet: View {
   private var list: some View {
     ScrollView {
       VStack(spacing: 0) {
-        createNewRow
-        HairlineDivider().padding(.leading, IntradaSpacing.card)
         let rows = filtered
         if rows.isEmpty {
           Text("No exercises match the filters.")
@@ -261,29 +259,6 @@ struct LinkedExercisePickerSheet: View {
   }
 
   // ── Rows ──
-
-  private var createNewRow: some View {
-    NavigationLink(destination: LibraryAddScreen(defaultKind: .exercise)) {
-      HStack(spacing: IntradaSpacing.cardCompact) {
-        Image(systemName: "plus")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(IntradaColor.accent)
-          .frame(width: 28, height: 28)
-          .background(Circle().fill(IntradaColor.pieceBadgeBg))
-          .accessibilityHidden(true)
-        Text("Create new exercise")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-        Spacer(minLength: 0)
-      }
-      .padding(.vertical, IntradaSpacing.cardCompact)
-      .padding(.horizontal, IntradaSpacing.card)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Create a new exercise")
-  }
 
   private func exerciseRow(_ exercise: LibraryItemView, isOn: Bool) -> some View {
     HStack(spacing: IntradaSpacing.cardCompact) {

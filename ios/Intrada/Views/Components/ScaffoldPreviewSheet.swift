@@ -1,8 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// The curriculum derived from a piece's chord chart, as a selectable commit
-/// sheet (chart-to-scaffold Phase B). The core derives; this only renders and
+/// The exercises worked out from a piece's chord chart, as a selectable commit
+/// sheet (chart-to-scaffold Phase B). Offered as suggestions, not a syllabus
+/// (T18). The core derives; this only renders and
 /// hands back the ticked `kind`s — the core re-derives and materialises them,
 /// so no spec content crosses the wire (#1106). Already-linked specs are shown
 /// but not selectable (dedup); "Add N" commits the rest.
@@ -23,7 +24,7 @@ struct ScaffoldPreviewSheet: View {
 
   var body: some View {
     BottomSheet(
-      title: "Curriculum",
+      title: "From the chord chart",
       confirmationLabel: confirmationLabel,
       confirmationDisabled: selected.isEmpty,
       onDone: { onCommit(selected) },
@@ -60,13 +61,14 @@ struct ScaffoldPreviewSheet: View {
         .font(IntradaFont.meta)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
         .accessibilityHidden(true)
-      Text("Derived in \(preview.key) · \(preview.specs.count) exercises")
+      Text("Worked out from these changes, in \(preview.key)")
         .font(IntradaFont.meta)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("Derived in \(preview.key), \(preview.specs.count) exercises")
+    .accessibilityLabel(
+      "Worked out from these changes, in \(preview.key), \(preview.specs.count) exercises")
   }
 
   @ViewBuilder private func specRow(_ spec: ScaffoldSpecView) -> some View {
@@ -123,7 +125,7 @@ private struct SpecRow: View {
             .font(IntradaFont.cardTitle())
             .foregroundStyle(IntradaColor.ink)
           if spec.alreadyLinked {
-            FlagBadge(text: "Already linked", tint: IntradaColor.inkSecondary)
+            FlagBadge(text: "Already added", tint: IntradaColor.inkSecondary)
           }
           if spec.fallback {
             FlagBadge(text: "Fallback", tint: IntradaColor.exerciseBadgeFg)
@@ -167,7 +169,7 @@ private struct SpecRow: View {
   private var accessibilityLabel: String {
     var parts = [spec.title, spec.rationale]
     if spec.alreadyLinked {
-      parts.append("already linked")
+      parts.append("already added")
     } else {
       parts.append(isOn ? "selected, tap to remove" : "not selected, tap to add")
     }
@@ -194,7 +196,7 @@ private struct FlagBadge: View {
 }
 
 #if DEBUG
-  #Preview("Curriculum") {
+  #Preview("From the chord chart") {
     Color.clear.sheet(isPresented: .constant(true)) {
       ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })
     }
