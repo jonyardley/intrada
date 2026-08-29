@@ -32,10 +32,12 @@ audit backlog and its five-phase build order.
   the three row states, the "On its own" empty state and linking from the
   exercise side. Spec:
   [`specs/exercise-relations.md`](../specs/exercise-relations.md).
+- Recognition quality on a photographed page, following #1436's device test:
+  a hallucinated line could outrank the real title. Fix in flight.
 
 - #1436 — **reading a photographed page into title, composer and tempo**.
-  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md). The
-  core landed as #1455; the screens are in flight. The core adds the `RecognitionOperation` effect, Vision text recognition
+  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md),
+  landed in two PRs: the core (#1455) and the screens (#1457). The core adds the `RecognitionOperation` effect, Vision text recognition
   in the shell as a dumb pipe, and `read_fields` in the core: the largest text
   in the top band is the title, a `Music by` line is the composer, a tempo word
   or a number after an `=` is the tempo. A model suggestion (phase C) is only

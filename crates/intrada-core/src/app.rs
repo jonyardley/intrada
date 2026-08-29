@@ -2391,6 +2391,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec!["  warm-up ".to_string()],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2410,6 +2411,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2431,6 +2433,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2462,6 +2465,7 @@ mod tests {
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
                 tags: vec!["日本語タグ".to_string()],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2662,6 +2666,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -4645,6 +4650,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -4713,6 +4719,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );

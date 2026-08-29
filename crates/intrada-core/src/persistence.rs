@@ -275,6 +275,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         }
     }
 
