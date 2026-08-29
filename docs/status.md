@@ -32,6 +32,7 @@ audit backlog and its five-phase build order.
   the three row states, the "On its own" empty state and linking from the
   exercise side. Spec:
   [`specs/exercise-relations.md`](../specs/exercise-relations.md).
+
 - Recognition quality on a photographed page, following #1436's device test:
   a hallucinated line could outrank the real title. Fix in flight.
 
