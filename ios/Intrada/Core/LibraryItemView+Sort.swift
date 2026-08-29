@@ -23,14 +23,19 @@ private func compareField(
 ) -> ComparisonResult {
   switch field {
   case .title:
-    // The core's lowercased compare, not a localised one, so both screens agree.
-    return compare(a.title.lowercased(), b.title.lowercased())
+    // Mirrors the core's `title_sort_key`: accents folded onto the base letter,
+    // then case removed, so "Étude" files under E (#1447).
+    return compare(titleSortKey(a.title), titleSortKey(b.title))
   case .dateAdded:
     return compare(a.createdAt, b.createdAt)
   case .lastPracticed:
     // Never practised sorts earliest, as `Option`'s own ordering does in the core.
     return compare(a.practice?.lastPracticedAt ?? "", b.practice?.lastPracticedAt ?? "")
   }
+}
+
+private func titleSortKey(_ title: String) -> String {
+  title.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
 }
 
 private func compare(_ a: String, _ b: String) -> ComparisonResult {

@@ -19,6 +19,7 @@ serde_json = { workspace = true }
 ulid = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
+unicode-normalization = { workspace = true }
 # `chrono` feature provides the Facet impl for the `DateTime<Utc>` fields on
 # domain types (created_at/updated_at) so they're typegen-representable.
 facet = { workspace = true, optional = true, features = ["chrono"] }

@@ -39,6 +39,12 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1447 — **accented titles file under their own letter**. Sorting the Library
+  by title put "Étude" after "Waltz", behind every plain-ASCII title, because
+  the sort compared the text byte by byte. Piano repertoire is full of Études,
+  Valses and Ländler, so scrolling to E did not find them. The core now folds
+  accents onto the base letter before comparing, and the exercise picker
+  mirrors it, so both screens still agree (#1445).
 - #1445 — **the exercise picker no longer orders exercises differently from the
   Library**. Sorting by **Last practised** put exercises that have never been
   practised in one order on the Library screen and another in the **Add

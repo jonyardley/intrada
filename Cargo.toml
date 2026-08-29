@@ -25,6 +25,9 @@ serde_json = "1"
 ulid = "3"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+# Title collation: folds accents onto their base letter so "Étude" files under
+# E rather than after every ASCII title (#1447).
+unicode-normalization = "0.1"
 # Reads the authored content (content/gates.toml) at startup. `parse` only:
 # the engine never writes TOML back.
 
