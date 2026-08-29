@@ -29,13 +29,6 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
-    /// Reclaim the image file behind a photo id (#1355). The core decides when
-    /// a photo stops belonging to an item — replaced, removed, or the item
-    /// deleted — so that decision never drifts into Swift. Image bytes never
-    /// cross the bridge; the shell resolves the id to a path.
-    DeletePhoto {
-        photo_id: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -74,11 +67,6 @@ pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Eve
 pub fn load_sessions() -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::LoadSessions)
         .then_send(Event::SessionsStoreLoaded)
-}
-
-pub fn delete_photo(photo_id: String) -> Command<Effect, Event> {
-    Command::request_from_shell(PersistenceOperation::DeletePhoto { photo_id })
-        .then_send(Event::StoreWritten)
 }
 
 pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
@@ -287,7 +275,6 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
-            photo_id: None,
         }
     }
 

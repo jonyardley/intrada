@@ -73,11 +73,6 @@ pub struct CreateItem {
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
-    /// A photo taken on the create form (#1355). It rides the create event
-    /// because the core mints the item's ulid, so the shell has no id to send
-    /// an `AttachPhoto` against — the same reason `AddLinkedExercise` exists.
-    #[serde(default)]
-    pub photo_id: Option<String>,
 }
 
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
@@ -401,7 +396,6 @@ mod tests {
             }),
             notes: None,
             tags: vec!["impressionist".to_string()],
-            photo_id: None,
         });
     }
 
@@ -452,7 +446,6 @@ mod tests {
                 }),
                 notes: Some("3rds and 7ths".to_string()),
                 tags: vec!["voicings".to_string()],
-                photo_id: None,
             },
         });
         assert_round_trips(ItemEvent::AddLinkedExercise {
@@ -466,7 +459,6 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
-                photo_id: None,
             },
         });
     }
@@ -639,9 +631,6 @@ mod tests {
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));
-        assert_round_trips(PersistenceOperation::DeletePhoto {
-            photo_id: "01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string(),
-        });
     }
 
     #[test]

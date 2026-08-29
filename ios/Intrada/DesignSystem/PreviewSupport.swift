@@ -460,7 +460,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
     static var previewDetail: LibraryItemView {

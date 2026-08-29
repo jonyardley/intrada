@@ -354,7 +354,6 @@ pub struct LibraryItemView {
     /// empty for pieces and un-laddered exercises.
     #[serde(default)]
     pub variants: Vec<VariantView>,
-    /// The item's photo id, for the shell to resolve to a file on disk (#1355).
     #[serde(default)]
     pub photo_id: Option<String>,
 }

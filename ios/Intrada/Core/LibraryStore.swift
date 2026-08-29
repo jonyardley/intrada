@@ -437,10 +437,8 @@ final class LibraryStore: ItemStore {
       try db.execute(sql: "ALTER TABLE reflection ADD COLUMN steer_at TEXT")
     }
     migrator.registerMigration("v16_item_photo") { db in
-      // The aide-memoire photo (#1355). Nullable id only; the image itself is a
-      // file in the app container, because `loadItems` builds every `Item`
-      // eagerly and a BLOB here would make hydration a multi-megabyte read
-      // (specs/piece-from-photo.md). Additive — existing rows have no photo.
+      // Id only: a BLOB would fatten every row of a table `loadItems` reads
+      // whole (specs/piece-from-photo.md, key decision 1).
       try db.execute(sql: "ALTER TABLE item ADD COLUMN photo_id TEXT")
     }
     return migrator
