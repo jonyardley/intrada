@@ -410,8 +410,9 @@ pub struct LibraryItemView {
     pub variants: Vec<VariantView>,
     /// Every live rung of `variants` names a key, so the shell prints "keys"
     /// rather than "steps" beside the count (#1467). False for pieces and for
-    /// a ladder with no rungs.
-    #[serde(default)]
+    /// a ladder with no rungs. No `serde(default)`: the bridge is positional
+    /// bincode, where serde never reaches a default, and the attribute would
+    /// read as "optional on the wire" to the next person (#846).
     pub ladder_is_keys: bool,
     #[serde(default)]
     pub photo_id: Option<String>,

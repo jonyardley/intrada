@@ -92,7 +92,7 @@ pub fn reconcile_variants(
 /// Library row can say "12 keys" rather than "12 steps" (#1467). All or
 /// nothing: one rung that isn't a key and "keys" would be a lie about it.
 /// A ladder with no rungs has nothing to be all of, so it is not keys.
-pub fn ladder_is_all_keys<'a>(labels: impl IntoIterator<Item = &'a str>) -> bool {
+pub(crate) fn ladder_is_all_keys<'a>(labels: impl IntoIterator<Item = &'a str>) -> bool {
     let mut any = false;
     for label in labels {
         any = true;
@@ -193,6 +193,10 @@ mod tests {
             "H",
             "",
             "major",
+            // Spelled-out accidentals are a deliberate gap, carried over from
+            // the Swift this replaces: the tonic is a letter and a sign.
+            "E flat major",
+            "F sharp minor",
         ] {
             assert!(!is_key_label(label), "{label:?} does not name a key");
         }

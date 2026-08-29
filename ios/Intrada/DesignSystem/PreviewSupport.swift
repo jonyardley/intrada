@@ -666,6 +666,23 @@
         }, ladderIsKeys: true, photoId: nil)
     }
 
+    /// A ladder of inversions, not keys — pins the "steps" word and the stairs
+    /// glyph, the one judgement the shell still makes for itself (#1467).
+    static var previewExerciseWithStepLadder: LibraryItemView {
+      let rungs = ["Root position", "1st inversion", "2nd inversion"]
+      return LibraryItemView(
+        id: "exercise-4", itemType: .exercise, title: "Triad inversions", subtitle: "",
+        key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        variants: rungs.enumerated().map { index, label in
+          VariantView(
+            id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
+            scoreHistory: [], isSolid: false, isCurrent: index == 0)
+        }, ladderIsKeys: false, photoId: nil)
+    }
+
     /// A piece with no linked exercises — for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(
