@@ -21,22 +21,6 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- #1355 — **a photo on a piece**, phase A of
-  [`specs/piece-from-photo.md`](../specs/piece-from-photo.md) (#1439). One image
-  per item as an aide-memoire: the page in front of you, kept on the device,
-  shown on the item. No recognition of any kind in this phase, and it is useful
-  alone. The **core PR** carries `Item.photo_id`, `SetPhoto`/`ClearPhoto`, the
-  `ViewModel` projection the screens will read, migration v16 and the GRDB
-  codec. Phase A never deletes a photo file — replacing, clearing and deleting
-  the item all leave it on disk for the reaping pass (#1442), because an orphan
-  costs disk and an eager delete costs the user their photo. The **screens PR**
-  adds the Photo card on the item detail (between the key/tempo rows and the
-  chord chart), the scanner and library routes behind one Add/Change menu, and
-  the full-screen viewer. Two calls settled while building: the file is JPEG at
-  a 2048px long edge, not the HEIC the spec first wrote (spec open question 6),
-  and capture stays off the add/edit form in this phase, because a photo row
-  cannot ride the form's own submit and phase B inverts the shape anyway
-  (question 4, deferred as #1446).
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
   each a fresh decision gated on lived use, not queued work. What *is* running
@@ -44,6 +28,24 @@ audit backlog and its five-phase build order.
   the next build should come from.
 
 ## Recently landed
+
+- #1355 — **a photo of the page you practise from, kept on the piece**. Phase A
+  of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md) (#1439), in two
+  PRs: the core (#1443) carries `Item.photo_id`, `SetPhoto`/`ClearPhoto`,
+  migration v16 and the GRDB codec; the screens (#1449) put a Photo card on the
+  item detail between the key/tempo rows and the chord chart, with one menu for
+  Scan the page, Choose a photo and Remove, and the photo full screen on a tap
+  with pinch and double-tap zoom. **No recognition of any kind** — that is
+  phases B to D — and it earns its place without any. Nothing deletes a photo
+  file: replacing, clearing and deleting the item all leave the bytes on disk
+  for the reaping pass (#1442), because an orphan costs disk and an eager delete
+  costs the user their only copy. Three of the spec's open questions were
+  answered on the way: the file is JPEG at a 2048px long edge rather than HEIC
+  (6), nothing reaps in this phase (5), and capture stays off the add/edit form
+  (4, deferred as #1446, because a photo row cannot ride that form's own submit
+  and phase B inverts the shape anyway). The shell now mints one id of its own,
+  a photo's file name, pinned against the ulid spec and against the core's
+  validator through the live bridge.
 
 - #1445 — **the exercise picker no longer orders exercises differently from the
   Library**. Sorting by **Last practised** put exercises that have never been
@@ -245,13 +247,18 @@ audit backlog and its five-phase build order.
   (#1103) moved to now.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
-- **Adding a piece from a photo is designed, not built**
-  ([`specs/piece-from-photo.md`](../specs/piece-from-photo.md)). Four phases:
-  #1355 stores the photo and does no recognition; #1436 reads title, composer
-  and tempo with Vision OCR through a new `RecognitionOperation` effect; #1437
-  adds on-device model suggestions, clamped so the model may only choose text
-  that appears in the OCR; #1387 part 2 reads a photographed *text* chart.
-  Phase A is useful alone and is the entry point. The load-bearing finding:
-  chord symbols on a stave are text so OCR reads them, but barlines are
-  graphics, so a lead sheet gives no bar structure and `parse_chart` needs bars
-  above all else. That half is a spike (#1438), explicitly not a phase.
+- **Adding a piece from a photo: phase A has landed, recognition has not**
+  ([`specs/piece-from-photo.md`](../specs/piece-from-photo.md)). #1355 stores
+  the photo and does no recognition, and is done. **#1436 is the next one**:
+  read title, composer and tempo with Vision OCR through a new
+  `RecognitionOperation` effect. Then #1437 adds on-device model suggestions,
+  clamped so the model may only choose text that appears in the OCR, and #1387
+  part 2 reads a photographed *text* chart. Phase A also answers the spec's
+  first open question by shipping: it is what tells us what people actually
+  photograph, before #1387 part 2 commits to a parser. The load-bearing
+  finding stands: chord symbols on a stave are text so OCR reads them, but
+  barlines are graphics, so a lead sheet gives no bar structure and
+  `parse_chart` needs bars above all else. That half is a spike (#1438),
+  explicitly not a phase. Design conversation due before #1436's screens —
+  spec open question 2, whether recognition opens its own confirm sheet or
+  pre-fills `ItemFormScaffold`, which #1446 is also waiting on.
