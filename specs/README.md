@@ -25,6 +25,12 @@ Companion documents outside this folder:
 [`docs/roadmap.md`](../docs/roadmap.md) (direction and phase order) and
 [`docs/status.md`](../docs/status.md) (what's in flight).
 
+## Planned — designed, not built
+
+| Spec | Scope |
+|---|---|
+| [`piece-from-photo.md`](piece-from-photo.md) | Adding a piece from a photograph of the page: storage, then OCR, then on-device extraction (#1355, #1387) |
+
 ## Shipped record — verify against the code before extending
 
 Builder-era specs whose surfaces returned with the restored session builder.

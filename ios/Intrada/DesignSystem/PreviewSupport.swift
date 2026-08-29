@@ -283,6 +283,26 @@
             sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
     }
 
+    /// Session builder where one of the block's related exercises is also in
+    /// the library — the added state of the add-related sheet (#1103).
+    static var previewBuildingGroupedAdded: Store {
+      let block: [SetlistEntryView] = [.previewGroupedScales, .previewGroupedPiece]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewScales, .previewExercise],
+          buildingSetlist: BuildingSetlistView(
+            entries: block,
+            itemCount: 2,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
+                durationDisplay: "12 min", entries: block)
+            ],
+            blockCount: 1,
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min",
+            sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
+    }
+
     /// Player Focus — a piece mid-session with a session intention and a time
     /// target (the target bar), no reps.
     static var previewActive: Store {
@@ -430,6 +450,17 @@
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
         exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+    }
+
+    /// The library item behind `previewGroupedScales`, so a block member and a
+    /// library row can share an id.
+    static var previewScales: LibraryItemView {
+      LibraryItemView(
+        id: "ex-a", itemType: .exercise, title: "Scales", subtitle: "",
+        key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     static var previewDetail: LibraryItemView {

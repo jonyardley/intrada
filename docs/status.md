@@ -43,6 +43,14 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1103 — **the related-exercise picker now behaves like the add-to-session
+  sheet**. Adding three exercises to a block used to mean opening the sheet
+  three times, and a long exercise list had no search in it. The sheet now
+  stays open, each row shows whether it is in the block (tap again to take it
+  back out), and it carries the same browse bar as "Add to session" — search,
+  sort and tag filter, minus the piece/exercise menu, since the sheet is
+  exercises only. The added-state row treatment is now one shared component
+  across both sheets.
 - #1420 — **the tempo trend**, step 7 of the adopted order
   ([`research/comparison.md`](research/comparison.md)), in three PRs. The
   **chart** (#1425) draws an item's measured tempo over time on the detail
@@ -217,3 +225,13 @@ audit backlog and its five-phase build order.
   (#1103) moved to now.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
+- **Adding a piece from a photo is designed, not built**
+  ([`specs/piece-from-photo.md`](../specs/piece-from-photo.md)). Four phases:
+  #1355 stores the photo and does no recognition; #1436 reads title, composer
+  and tempo with Vision OCR through a new `RecognitionOperation` effect; #1437
+  adds on-device model suggestions, clamped so the model may only choose text
+  that appears in the OCR; #1387 part 2 reads a photographed *text* chart.
+  Phase A is useful alone and is the entry point. The load-bearing finding:
+  chord symbols on a stave are text so OCR reads them, but barlines are
+  graphics, so a lead sheet gives no bar structure and `parse_chart` needs bars
+  above all else. That half is a spike (#1438), explicitly not a phase.

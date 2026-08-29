@@ -1,253 +1,306 @@
-# A photo on a piece
+# Add a piece from a photo
 
-> Tier 3 spec. Issue [#1355]. Touches the FFI bridge contract and the on-device
-> schema, so Tier 3 by the domain-sensitivity override rather than by size.
+> Tier 3 by domain sensitivity: a new `Item` field crosses the FFI bridge, a
+> new GRDB migration lands on the only copy of the user's data, and a new
+> `Effect` family is added. Issues [#1355] (photo on an item) and [#1387]
+> part 2 (a chart from a photo); [#1390] (one-pass create) is adjacent and
+> should land after, or reuse, phase A's capture surface. Roadmap: Layer 1
+> (Capture), `pillar:plan`. Graduates "photo-of-your-own-chart OMR" from
+> [#1098] theme 4.
 >
-> **Phase A** — the photo itself: capture or pick one image, keep it on the
-> device, show it on the item. No text recognition, no titles read off the page.
-> Ships in two PRs: **core first** (this spec, `Item.photo_id`, the events, the
-> `ViewModel` projection, migration v16, the Swift codec, tests), **screens
-> second** (capture/pick on create and edit, the photo on the detail screen,
-> snapshots + VoiceOver), with Claude Design between them.
+> **Four phases, each its own issue and PR pair.** A is useful alone and does
+> no recognition at all. Design conversation (Claude Design) before A's
+> screens PR and again before B's confirm sheet. **Scope: `intrada-core` +
+> native iOS only.** API/Turso out of scope.
 >
-> **Phase B** — reading the photo (extracting a title, composer, key from a
-> score page) is out of scope here and is not designed yet. The spec is named
-> for the arc, not for Phase A.
+> Status: **not started.** This doc is the design, written 2026-08-29 from a
+> feasibility review of the iOS on-device stack (appendix).
 
+[#1098]: https://github.com/jonyardley/intrada/issues/1098
 [#1355]: https://github.com/jonyardley/intrada/issues/1355
+[#1387]: https://github.com/jonyardley/intrada/issues/1387
+[#1390]: https://github.com/jonyardley/intrada/issues/1390
 
 ## Problem
 
-You add a piece to the library while the music is in front of you. The thing
-that identifies it, for you, is the page: the title block on the first system,
-your teacher's notes in the margin, the photocopy in the folder. Typing
-"Chopin — Nocturne in E flat, Op. 9 No. 2" reproduces some of that and loses the
-rest, and the rest is what you actually recognise the piece by three weeks later.
+Adding a piece is typing. Title, composer, key, tempo, then a separate trip to
+the detail screen to type the changes into a syntax the user has to learn
+(`ChordChartEditSheet`, and the friction filed as [#1387] part 1). Meanwhile
+the thing being copied from is sitting on the music stand, already carrying
+every one of those fields in print.
 
-So: let one photo ride along with the item as an aide-memoire. Not a document
-library, not a score reader. One picture you took, on the item you took it for.
-
-Photos existed once before in this codebase and were rolled back with the
-lessons vertical (`docs/roadmap.md` §6): server-side, in R2, coupled to a
-feature nobody kept. This is the opposite shape — on-device, no account, no
-network, attached to something that already earns its keep.
-
-## Scope
-
-**In (Phase A):**
-
-- Exactly one photo per item, piece or exercise.
-- Attached at create, or attached/replaced/removed at edit.
-- Stored on the device. Works with no network and no account.
-- Shown on the item detail screen.
-
-**Out (later iterations, named here only so the data shape does not fight them):**
-
-- Multiple photos per item, ordering, captions.
-- A photo management surface (a gallery, bulk delete, reuse across items).
-- Versions/history of a photo.
-- Text recognition and the create-from-photo flow (Phase B).
-- Sync. The photo file is device-local; the sync engine does not exist yet and
-  this does not build any part of it.
-
-**Item, not piece.** The issue title says "create item", the body says "one
-photo per item", and nothing about an aide-memoire is piece-shaped — an exercise
-photographed from a technique book is the same need. No `ItemKind` restriction.
-(The spec filename says "piece" because Phase B is piece-shaped.)
+The user's own instinct is to photograph it. Today they cannot: there is no
+camera, no photo storage and no image handling anywhere in the shell.
 
 ## Approach
 
-### The core stores an id; the bytes never cross the bridge
+One capture surface, four fields, and a hard split between what a photo can
+reliably give us and what it cannot.
 
-`Item` gains one field:
+| Field | Source | Reliability |
+|---|---|---|
+| The photo itself | Nothing to recognise | Certain |
+| Title | Largest text near the top of the page | High |
+| Composer | A line matching `by` / `Music by` / `Words and Music` | Good |
+| Tempo | A `marking` word, or a `bpm` number near a note glyph | Medium |
+| Chord chart | Depends entirely on what was photographed | **Split, see below** |
 
-```rust
-/// The item's aide-memoire photo, if it has one. An opaque ULID the shell
-/// resolves to a file on disk; the core never sees image bytes.
-#[serde(default)]
-pub photo_id: Option<String>,
-```
+**The chart splits in two, and only one half is tractable.**
 
-The image itself is a file in the app container, written and read by the shell
-at a path derived from the id. The core holds only the id.
+1. **A text chart** (chords over lyrics, or a typed grid of bars). Vision OCR
+   reads this well. Reconstruct lines by y-position and the result is close
+   enough to the bar-and-pipe grammar `parse_chart` already accepts
+   ([`chart.rs:147`](../crates/intrada-core/src/domain/chart.rs)) to hand to
+   the user for a quick edit. This is phase D.
+2. **A lead sheet** (chord symbols floating over a stave). OCR finds `Cmaj7`
+   because it is text, and tells us nothing about barlines, repeats, endings or
+   sections, because those are graphics. `parse_chart` needs bar boundaries
+   above all else, so a bag of chord symbols with coordinates is not a chart.
+   Martinez-Sevilla et al. (2025) put it plainly: chord notation is "a score
+   component not handled by existing OMR systems", against a corpus of 293
+   handwritten sheets. There is nothing to drop in. **Out of scope; a spike,
+   not a phase.**
 
-This is the one genuinely load-bearing decision, so the reasoning, in full:
+Recovering barlines geometrically (they are long vertical strokes) is possible
+in principle and is real research. We are not betting the feature on it.
 
-- **Bytes on the bincode bridge would be ruinous.** A phone photo is 2–5 MB.
-  `Item` crosses the FFI bridge on every hydrate and every `ViewModel` render.
-  Put a `Vec<u8>` in it and the whole library's photos are copied, encoded and
-  decoded on every render pass.
-- **Bytes in SQLite would be nearly as bad.** `loadItems()` does
-  `SELECT * FROM item` and builds every `Item` eagerly. A BLOB column turns
-  library hydration into a multi-megabyte read.
-- **SwiftUI wants the file.** `AsyncImage`/`Image(contentsOfFile:)` load and
-  downsample off the main thread from a URL. Handing SwiftUI a `[UInt8]` that
-  arrived through the bridge throws that away.
+## Non-goals
 
-So the shell owns the bytes and the filesystem layout; the core owns the id and
-every decision about **when a photo starts and stops belonging to an item**.
-That split keeps the dumb-pipe rule honest: the shell is doing I/O, not deciding
-anything.
-
-### Lifecycle, and who decides it
-
-The shell mints a ULID, writes the image, and only then tells the core. The core
-never has a half-attached photo, and a failed write simply never becomes an
-event.
-
-| Moment | Core does | Effect emitted |
-|--------|-----------|----------------|
-| Create with a photo | Stamps `photo_id` on the new item | `SaveItem` |
-| Attach to an item with no photo | Sets `photo_id`, bumps `updated_at` | `SaveItem` |
-| Attach over an existing photo | Replaces `photo_id` | `SaveItem` + `DeletePhoto(old)` |
-| Remove | Clears `photo_id`, bumps `updated_at` | `SaveItem` + `DeletePhoto(old)` |
-| Delete the item | Tombstones the item as today | `DeleteItem` + `DeletePhoto` |
-
-The **core** emits the file deletions. The shell never decides a photo is
-garbage, which is exactly the decision that would rot if it lived in Swift.
-
-`DeletePhoto` is a new `PersistenceOperation` alongside the item and session
-ops. It resolves `Ack`/`Failed` like the rest, so a store failure surfaces
-rather than being assumed (invariant 5, #816).
-
-**Item delete does remove the file** even though the row is only tombstoned.
-There is no undelete surface, and the alternative is that every deleted piece
-leaks a few megabytes forever. The tombstoned row keeps its `photo_id` so a
-future sync still sees the last known state.
-
-### Events
-
-```rust
-ItemEvent::AttachPhoto { item_id: String, photo_id: String }
-ItemEvent::RemovePhoto { item_id: String }
-```
-
-plus `CreateItem.photo_id: Option<String>`, so a photo taken on the create form
-lands in the same event as the rest of the form. It has to: the core mints the
-item's ULID, so the shell has no id to send an `AttachPhoto` against — the same
-reason `AddLinkedExercise` exists (#1431).
-
-Photo changes are **not** folded into `UpdateItem`. Two paths to the same field
-means two places the old-file deletion has to be right, and `UpdateItem`'s
-three-state `Option<Option<T>>` encoding is the fiddliest thing on the bridge.
-Tags already set the precedent: `AddTags`/`RemoveTags` sit beside `Update`.
-
-### Validating the id
-
-`photo_id` must parse as a ULID. This is not tidiness — the id becomes a path
-component in the shell, so `../../…` in that string is a path traversal out of
-the app container. The core is the only place that can refuse it before it is
-written to the item, and validation is the single source of truth for rules of
-this kind (`validation.rs`).
-
-Local-first only. `AttachPhoto`/`RemovePhoto` against the online path set
-`last_error` and change nothing, like `AddLinkedExercise` — photos are
-device-local by construction and there is no server surface to write them to.
-
-### View projection
-
-`LibraryItemView.photo_id: Option<String>`, so the screens PR reads the
-`ViewModel` rather than reaching back into core types. The core PR ships the
-projection the screens will consume; a core PR that does not is a core PR the
-screens PR has to reopen.
-
-### Storage: schema
-
-Migration **v16**, additive and nullable:
-
-```sql
-ALTER TABLE item ADD COLUMN photo_id TEXT
-```
-
-Existing rows get `NULL`, which is "no photo". Nothing is dropped, renamed or
-retyped, so the migration is safe on the free offline tier where the device is
-the only copy of the data.
-
-The file lives at
-`<Application Support>/photos/<photo_id>.jpg`, written by a `PhotoStore` the
-Store resolves `DeletePhoto` against — a protocol, like `ItemStore`, so a test
-can inject a failing fake and assert the core surfaces `Failed`.
+- **No melodies, again.** Same line `specs/chart-to-scaffold.md` already draws:
+  we read changes, never tunes.
+- **No silent write.** Nothing recognised is ever saved without the user seeing
+  it first, for the same reason the scaffold preview exists. A wrong composer
+  written silently is worse than no composer.
+- **The model never invents.** See decision 5. This is a hard, testable rule,
+  not a hope.
+- **No photo management.** Exactly one photo per item, per [#1355] iteration 1.
+  Multiple photos, ordering and versions are later, and the data shape leaves
+  room for them.
+- **No sync.** The photo stays on the device. The row is sync-ready; the bytes
+  are not, and that is a deliberate deferral.
+- **No cloud model.** Not as a fallback, not as an opt-in. If it does not run
+  on the device it does not ship in this feature.
 
 ## Key decisions
 
-**1. A column on `item`, not a `photo` child table.** Iteration 1 is exactly one
-photo, and at one-per-item the photo is an *attribute* of the item, not an
-entity of its own — the same category as `composer` or `key`, which carry no
-tombstone either. Offline-first invariant 2 is satisfied by the item's own
-`updated_at`/`deleted_at`: removing a photo moves `item.updated_at`, and
-item-granular LWW resolves it correctly when exactly one photo can exist.
+1. **The photo is a file; the item carries only its id.** `Item` gains
+   `photo_id: Option<String>` (`#[serde(default)]`, appended last). The bytes
+   live at `Application Support/photos/<ulid>.heic`. Blobs in GRDB fatten every
+   row read on a table already loaded whole, and make a bad migration
+   unrecoverable on a device that is the only copy of the data.
+2. **Soft delete tombstones the row and leaves the file.** Invariant 2 is about
+   rows. Orphan files are reaped on a later explicit pass, or never on the free
+   tier; an orphan file costs disk, an eagerly deleted file costs the user
+   their photo.
+3. **A new `Item` field does not touch the crash-recovery blob.**
+   `SetlistEntry` denormalises item fields rather than embedding `Item`
+   ([`session.rs:56`](../crates/intrada-core/src/domain/session.rs)), so
+   `ActiveSession` is unaffected and the #1223 class of trap does not apply
+   here. Verified, and worth re-verifying if that ever changes.
+4. **Recognition is an `Effect`, not Swift logic.** The shell owns the
+   frameworks (VisionKit, Vision, Foundation Models) and returns recognised
+   text with geometry. The core decides what any of it *means*. This keeps the
+   dumb-pipe rule intact with an on-device model in the loop, and it is the
+   same shape [#1098] already proposed for inference generally.
+5. **The model may choose, never invent.** Every field the on-device LLM
+   suggests must appear as a substring of the OCR lines, or the core discards
+   it and falls back to its own heuristic. A ~3B model asked to extract will
+   sometimes produce a plausible composer that is not on the page; this clamp
+   makes that structurally impossible and is a pure function, tested in Rust
+   with no device involved.
+6. **Heuristics are the mechanism; the LLM is an enhancement.** The app targets
+   iOS 17.0; Foundation Models needs iOS 26 *and* Apple Intelligence hardware.
+   Every phase must be fully useful with Vision OCR alone, on every supported
+   device. Phase C adds accuracy, never capability.
+7. **The confirm sheet is the feature.** Recognition fills a form the user
+   reviews and edits before saving. Low confidence is shown, not hidden. This
+   is the design-principles "spend friction deliberately" call: one screen of
+   friction buys trust in everything behind it.
+8. **Reuse `ChordChartEditSheet`, do not clone it.** Phase D's output is text
+   in the existing sheet, with the existing per-token parse errors. Consolidate
+   before you template.
 
-The trade-off, stated plainly: this shape cannot express a per-photo tombstone,
-so **multiple photos is a migration, not a column** — a `photo` child table
-keyed by `item_id` with its own `updated_at`/`deleted_at`, exactly as `variant`
-did for step ladders in #1083. That migration is cheap (additive table, backfill
-one row per item that has a `photo_id`) and it is the right moment to pay for
-the sync machinery, rather than carrying a table's worth of ceremony now for a
-feature that is explicitly out of scope.
+## The contract
 
-**2. The shell mints the photo ULID, not the core.** The shell needs an id
-*before* it writes the file; getting one from the core first would be an extra
-round trip through the bridge for no gain. Invariant 3 asks for client-minted
-ids, and the shell is the client. The core validates what it receives.
+Pin this before either side is written.
 
-**3. JPEG, re-encoded by the shell.** The shell downsizes and re-encodes to JPEG
-before writing. HEIC from the camera is smaller but the source may be a
-screenshot, a PNG from Files, or a shared image, and one format on disk means
-one decode path. Quality and max dimension are shell constants, tuned in the
-screens PR against real photos of real music.
+```rust
+// crates/intrada-core/src/recognition.rs
 
-**4. No `AppEffect` for the write.** The shell writes the file itself and then
-sends the event, rather than the core commanding the write. The alternative
-(stage the file, event, core mints an id, core commands a move) is a round trip
-and a staging directory to buy a marginally tidier ownership story, and it does
-not remove the failure mode it appears to fix — a crash between any two steps
-still orphans a file. See the open question below.
+pub enum RecognitionOperation {
+    /// Read a captured page. The shell runs OCR and, where the device allows,
+    /// on-device structured extraction; the core owns what the result means.
+    ReadPage { photo_id: String },
+}
 
-**5. `ActiveSession` is untouched.** The crash-recovery blob's transitive graph
-is `SetlistEntry`, not `Item`, so adding a field to `Item` does not invalidate
-the positional-bincode snapshots already sitting in UserDefaults on devices, and
-the key does not need bumping. (Confirmed by reading the graph, not assumed —
-this is the trap that bit #1223, #1244 and #1256.)
+pub enum RecognitionOutput {
+    Page(PageReading),
+    /// No recognition available on this device. Not an error: the user
+    /// types the fields, and the photo is still saved.
+    Unsupported,
+    Failed,
+}
 
-## Open questions
+pub struct PageReading {
+    /// Recognised lines, reading order, with normalised geometry so the core
+    /// can reason about position without ever seeing the image.
+    pub lines: Vec<RecognisedLine>,
+    /// Populated only where Foundation Models ran. `None` on most devices, and
+    /// the core must produce a usable draft regardless (decision 6).
+    pub suggested: Option<SuggestedFields>,
+}
 
-**Orphan reclamation.** A crash between the shell's file write and the core
-receiving `AttachPhoto` leaves a file no item references. It is a leak, not
-corruption: nothing reads it, nothing shows it, and it costs a few megabytes at
-worst. The fix is a prune sweep after hydration — the core emits
-`PrunePhotos { keep: [ids] }` and the shell deletes everything else in the
-directory. Deliberately not in Phase A: it needs the hydration path to be
-provably complete before it is safe to delete on that signal, and getting that
-wrong deletes a user's photo. Tracked as a follow-up.
+pub struct RecognisedLine {
+    pub text: String,
+    /// Normalised 0..1, origin top-left.
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+    pub confidence: f32,
+}
 
-**iCloud backup.** Application Support is backed up by default, so photos ride
-along in an iCloud device backup. That is probably what a user wants and
-definitely what they would assume. If library size becomes a complaint, the
-directory can be excluded — not a Phase A decision.
+pub struct SuggestedFields {
+    pub title: Option<String>,
+    pub composer: Option<String>,
+    pub tempo_marking: Option<String>,
+    pub bpm: Option<u16>,
+    pub chart_text: Option<String>,
+}
+```
+
+The interpretation is one pure function, and it is where the tests live:
+
+```rust
+/// A proposal, exactly as `ScaffoldSpec` is: it becomes an `Item` only when
+/// the user confirms. Every field carries where it came from, so the sheet can
+/// show a low-confidence read differently from a clean one.
+pub struct PhotoDraft {
+    pub title: Option<DraftField<String>>,
+    pub composer: Option<DraftField<String>>,
+    pub tempo: Option<DraftField<Tempo>>,
+    pub chart_text: Option<DraftField<String>>,
+}
+
+pub struct DraftField<T> {
+    pub value: T,
+    pub source: DraftSource,
+    pub confidence: f32,
+}
+
+pub enum DraftSource {
+    /// Geometry heuristics in the core. The floor, available everywhere.
+    Recognised,
+    /// The on-device model chose it and it survived the substring clamp.
+    Suggested,
+}
+
+/// Deterministic. Prefers `suggested` where every field survives the
+/// substring clamp (decision 5), otherwise falls back to geometry heuristics.
+pub fn read_fields(page: &PageReading) -> PhotoDraft;
+```
+
+New events: `ItemEvent::SetPhoto { id, photo_id }`, `ItemEvent::ClearPhoto { id }`,
+and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. GRDB migration
+`v16_item_photo` adds a nullable `photo_id TEXT`.
+
+`photo_id` is appended **after `variants`**, the current last field, because
+the bincode wire is positional. Every one of these types crosses the bridge, so
+each needs a real-bridge round-trip in `assert_round_trips` **before** it is
+wired to a screen: a stub-bridge test cannot catch a wire break (#846).
+
+Against the offline-first checklist: recognition runs entirely on-device and
+issues no `Http` (invariant 1); the photo row carries the item's `updated_at`
+and `deleted_at` and is never hard-deleted (invariant 2); the photo id is a
+client-minted ulid (invariant 3); `read_fields` and the clamp are core, not
+shell (invariant 4); a failed file write resolves `Failed`, never a faked `Ack`
+(invariant 5); all of this is new code and so local-first only (invariant 6).
+
+Info.plist keys go through `ios/project.yml` as `INFOPLIST_KEY_NSCameraUsageDescription`
+and `INFOPLIST_KEY_NSPhotoLibraryUsageDescription`; both strings are written
+against `docs/tone-of-voice.md`, not Apple's boilerplate.
 
 ## Phases
 
-- **Phase A, core PR** (this spec): `Item.photo_id`, `CreateItem.photo_id`,
-  `LibraryItemView.photo_id`, `AttachPhoto`/`RemovePhoto`,
-  `PersistenceOperation::DeletePhoto`, validation, migration v16, the Swift
-  codec and `PhotoStore`, round-trip and upgrade-path tests.
-- **Phase A, design**: Claude Design for capture/pick and display, against the
-  existing kit. Where the photo sits on the detail screen, what the create form
-  shows before and after a photo is taken, how removal is confirmed.
-- **Phase A, screens PR**: the SwiftUI, its snapshots, VoiceOver labels, iPad.
-- **Phase B**: recognition. Not designed. Separate issue when Phase A has shipped
-  and there is a real photo on a real item to read.
+Each phase is its own issue and, where it spans core and screens, two PRs
+(core first, reviewed before the screens start). **The day figures are rough**:
+they assume the shape of a comparable landed slice and no comparable slice has
+used Vision or a camera in this codebase before, so treat phase A's as the only
+one worth planning against.
 
-## Testing
+- **A. A photo on a piece.** [#1355]. `photo_id`, migration v16, the file
+  store, `VNDocumentCameraViewController` capture plus a library picker,
+  display on `LibraryDetailScreen`. **No recognition of any kind.** Useful
+  alone: a photo of the page you are practising from earns its place with
+  nothing else attached. About 2 days.
+- **B. Read the page into title, composer and tempo.** The
+  `RecognitionOperation` effect, Vision OCR in the shell, `read_fields` and its
+  heuristics in the core, the confirm sheet. 2 to 3 days.
+- **C. On-device model suggestions.** Foundation Models behind
+  `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
+  filling `suggested`, clamped by decision 5. Same sheet, better answers, no
+  new surface. About 2 days.
+- **D. A chart from a text chart.** Reconstruct lines by geometry into the
+  bar-and-pipe grammar, drop the result into `ChordChartEditSheet` for editing.
+  3 to 4 days, and the least certain of the four.
 
-- Round-trip (`assert_round_trips`) on `AttachPhoto`, `RemovePhoto`, and an
-  `Item` carrying a `photo_id` — a bridge-crossing write payload gets a real
-  round-trip before it is wired to a screen (#846).
-- Attach over an existing photo emits `DeletePhoto` for the **old** id, and
-  deleting an item with a photo emits `DeletePhoto`. These are the assertions
-  that fail if the lifecycle drifts into Swift.
-- A non-ULID `photo_id` is rejected and stores nothing.
-- Online mode refuses both events and leaves the item unchanged.
-- Migration upgrade path: a database populated at v15 migrates to v16 with the
-  items intact and `photo_id` NULL.
-- A `PhotoStore` that throws resolves `Failed`, not `Ack`.
+**Not a phase: lead sheet barline recovery.** A timeboxed spike, whose only
+deliverable is a findings doc saying whether it is worth a phase at all. Weeks,
+and it may land on "no". Do not start it before D has taught us how people
+actually photograph their charts.
+
+## Open questions
+
+1. **What do people actually photograph?** The whole design assumes a mix of
+   printed text charts and Real Book pages. Phase A ships a photo store, which
+   means phase A also gives us the answer before D commits to a parser.
+2. **Confirm sheet or pre-filled form?** Whether recognition opens its own
+   review screen or simply pre-fills `ItemFormScaffold` with the recognised
+   values marked as suggestions. Design conversation, before B's screens PR.
+   The second reads as less ceremony and folds neatly into [#1390].
+3. **Tempo from a note glyph.** `♩= 120` is common in print and OCR mangles the
+   glyph often. Whether a bare number near the top is safe to read as bpm, or
+   whether it needs the glyph, is a question for real photographs.
+4. **Where the camera lives.** Create form, detail screen, or both. Ties
+   directly to [#1390]'s one-pass create.
+5. **Who reaps orphan files.** Decision 2 leaves the bytes behind on a
+   tombstone, which is right for the user and unbounded for the disk. A
+   settings-screen figure with an explicit clear, a reap on a later explicit
+   pass, or nothing at all on the free tier. Answer before phase A ships, not
+   after.
+6. **HEIC or JPEG.** HEIC is materially smaller for the same page and is what
+   the camera produces natively; JPEG is the safer thing to hand to a future
+   export or sync. Cheap to decide, expensive to change once photos exist on
+   devices.
+
+## Deferred
+
+- Sync of the photo bytes. The row is sync-ready from day one; the file is not.
+- Multiple photos per item, ordering, replacement history.
+- Handwritten charts. OCR accuracy on handwriting is a different problem and a
+  different bet.
+- MusicXML import, which is the reliable path to a chart and has nothing to do
+  with a camera. Worth its own issue.
+- Any API or web surface.
+
+## Appendix: what iOS gives us on-device
+
+All free, all offline, no key, no cloud cost.
+
+- **VisionKit `VNDocumentCameraViewController`** (iOS 13+): the scanner UI with
+  edge detection and perspective correction. Available on every device we
+  target.
+- **Vision text recognition** (iOS 13+): on-device, accurate on print, returns
+  bounding boxes and per-observation confidence. This is the mechanism.
+- **`RecognizeDocumentsRequest`** (iOS 26): groups text into paragraphs, lists
+  and tables with rows and columns. Would materially help a grid-style chart in
+  phase D, on the devices that have it. Verify the availability annotation
+  against the SDK before relying on it.
+- **Foundation Models** (iOS 26 and Apple Intelligence hardware, iPhone 15 Pro
+  and later): the ~3B on-device model with `@Generable` guided generation into
+  a Swift struct. Apple names entity extraction as a strength, which is exactly
+  phase C's job. A minority of the installed base, hence decision 6.
+
+Sources: [Read documents using the Vision framework (WWDC25)](https://developer.apple.com/videos/play/wwdc2025/272/),
+[Optical Music Recognition of Jazz Lead Sheets](https://arxiv.org/abs/2509.05329),
+[Apple on-device foundation model updates](https://machinelearning.apple.com/research/apple-foundation-models-2025-updates).

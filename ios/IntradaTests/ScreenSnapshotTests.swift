@@ -688,6 +688,13 @@ final class ScreenSnapshotTests: XCTestCase {
       as: config)
   }
 
+  func testAddRelatedExerciseSheetAdded() {
+    assertSnapshot(
+      of: host(
+        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGroupedAdded),
+      as: config)
+  }
+
   func testEntrySettingsSheetEmpty() {
     assertSnapshot(
       of: host(EntrySettingsSheet(entry: .previewGroupedScales), store: .previewBuildingGrouped),
