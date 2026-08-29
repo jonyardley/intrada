@@ -120,10 +120,11 @@ in principle and is real research. We are not betting the feature on it.
    against all the lines joined, case- and whitespace-insensitively, not
    per line — a name Vision wrapped across two lines must still be accepted.
    The cost is that a suggestion may span a line boundary; that is the right
-   trade, but phase C should not assume per-line.* Phase C settles what the clamp then
-   claims: a surviving suggestion carries the OCR confidence of the weakest line
-   it spanned, not a perfect 1.0 (#1454), so the field with the least evidence
-   behind it is no longer the one that looks strongest.* A ~3B model asked to extract will
+   trade, but phase C should not assume per-line. Phase C settles what the clamp
+   then claims: a surviving suggestion carries the OCR confidence of the weakest
+   line it spanned, not a perfect 1.0 (#1454), so the field with the least
+   evidence behind it is no longer the one that looks strongest.* A ~3B model
+   asked to extract will
    sometimes produce a plausible composer that is not on the page; this clamp
    makes that structurally impossible and is a pure function, tested in Rust
    with no device involved.
@@ -285,10 +286,10 @@ one worth planning against.
   filling `suggested`, clamped by decision 5. Same sheet, better answers, no
   new surface. About 2 days. Two PRs: the core one carries honest confidence
   through the clamp (#1454, decision 5 above), the screens one runs the model.
-  The preference rule is unchanged by that — a clamped suggestion still wins
-  over the heuristic even when it reads weakly, because both are reading the
-  same shaky text and the model is choosing *which* of it to use, not whether
-  Vision got it right.
+  The preference rule is unchanged by that: a clamped suggestion still wins over
+  the heuristic even when it reads weakly, because both are reading the same
+  shaky text and the model is choosing *which* of it to use, not whether Vision
+  got it right.
 - **D. A chart from a text chart.** Reconstruct lines by geometry into the
   bar-and-pipe grammar, drop the result into `ChordChartEditSheet` for editing.
   3 to 4 days, and the least certain of the four.

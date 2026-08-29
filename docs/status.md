@@ -42,9 +42,9 @@ audit backlog and its five-phase build order.
 
 - #1436 — **a photographed page reads into title, composer and tempo**. Phase B
   of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs:
-  the core (#1455) adds the `RecognitionOperation` effect and `read_fields` —
-  the largest text in the top band is the title, a `Music by` line is the
-  composer, a tempo word or a number after an `=` is the tempo; the screens
+  the core (#1455) adds the `RecognitionOperation` effect and `read_fields`, in
+  which the largest text in the top band is the title, a `Music by` line is the
+  composer, and a tempo word or a number after an `=` is the tempo; the screens
   (#1457) put **Scan a page** above the fields on the add form and pre-fill
   them, rather than opening a confirm sheet of its own (spec open question 2),
   which also unblocked #1446. Every field it filled says **From the photo**
