@@ -21,6 +21,18 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- #1363 — **an exercise says which pieces it is used in**. The exercise screen
+  carried a singular "Related to <piece>" line under the score ring that hid
+  extra pieces behind a menu and vanished entirely for a standalone drill, plus
+  a separate "By piece" card built only from practice history. Neither list was
+  complete. The core PR merges them: one `used_in` row per piece, seeded from
+  the links a piece declares and folded together with the sessions the pair were
+  practised in, with a `linked` flag saying which source it came from. The
+  breadcrumb is deleted and the section is now "Used in". The screens PR adds
+  the three row states, the "On its own" empty state and linking from the
+  exercise side. Spec:
+  [`specs/exercise-relations.md`](../specs/exercise-relations.md).
+
 - Recognition quality on a photographed page, following #1436's device test:
   a hallucinated line could outrank the real title. Fix in flight.
 
@@ -184,11 +196,11 @@ audit backlog and its five-phase build order.
 
 - #1081 — per-piece tracking **was already shipped**, back in July, and the
   issue was simply never closed. Verified 2026-08-20 against the whole of its
-  stated scope: the core derivation (`build_exercise_contexts`, #1095), the
-  "By piece" rows and the per-this-piece rings on piece detail (#1097), the
-  FFI round-trip guard
+  stated scope: the core derivation (`build_exercise_usage`, then named
+  `build_exercise_contexts`, #1095), the per-piece rows and the
+  per-this-piece rings on piece detail (#1097), the FFI round-trip guard
   (`setlist_entry_group_id_round_trips_on_ffi_bincode_wire`), the
-  `testExerciseDetailByPiece` snapshot, and the design mock committed under
+  exercise-detail snapshot, and the design mock committed under
   `specs/track-exercises-per-piece/`. It came through the coach revert intact:
   `AddToSetlist` still forms blocks, and `group_id` still round-trips the
   local-first JSON codec, so the feature works with no network. No Tier 3 spec
