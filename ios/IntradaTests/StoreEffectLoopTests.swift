@@ -371,7 +371,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Original", kind: .piece, composer: "Bach", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
 
     let afterAdd = try bridge.view()
     XCTAssertEqual(
@@ -407,7 +407,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.addVariant(itemId: id, label: "F major")))
@@ -436,7 +436,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.setPhoto(id: id, photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")))
@@ -499,6 +499,27 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(draft.composer?.weak ?? false, "the credit was read weakly")
   }
 
+  /// `CreateItem` gained a field, and it is the field that stops the user
+  /// photographing the same page twice (#1436).
+  func testRealBridgeCreateCarriesTheScannedPage() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let photoId = Ulid.generate()
+
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Cry Me A River", kind: .piece, composer: "Arthur Hamilton", key: nil,
+            modality: nil, tempo: nil, notes: nil, tags: [], photoId: photoId))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error)
+    XCTAssertEqual(
+      view.items.first?.photoId, photoId,
+      "the page the form was read off has to reach the piece it created")
+  }
+
   /// The shell mints a photo's id (offline-first invariant 3) and the core
   /// refuses any id that is not a ulid, so `Ulid` and Rust's parser have to
   /// agree.
@@ -510,7 +531,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Gymnopedie", kind: .piece, composer: "Satie", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     let minted = Ulid.generate()
 
@@ -545,7 +566,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "F major")))
@@ -569,13 +590,13 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
             title: "Arpeggios", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let ids = try bridge.view().items.map(\.id)
     XCTAssertEqual(ids.count, 2, "two distinct items: addToSetlist is idempotent by item id")
 
@@ -639,7 +660,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: []))))
+            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(
@@ -674,7 +695,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: []))))
+            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     _ = try bridge.update(
       .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | F7 | Bbmaj7 |")))
@@ -708,7 +729,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let item = try XCTUnwrap(try bridge.view().items.first)
     XCTAssertFalse(item.priority, "new items start non-priority")
 
@@ -741,7 +762,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
@@ -765,7 +786,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
@@ -886,7 +907,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let exId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.setVariants(id: exId, labels: ["C", "F", "B♭"])))

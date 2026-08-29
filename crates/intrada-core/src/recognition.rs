@@ -1014,6 +1014,7 @@ mod tests {
                 tempo: draft.tempo.as_ref().map(|f| f.value.clone()),
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             };
             validation::validate_create_item(&input)
                 .unwrap_or_else(|e| panic!("{name}: the create form rejected the read: {e}"));

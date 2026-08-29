@@ -222,7 +222,9 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft;
 ```
 
 New events: `ItemEvent::SetPhoto { id, photo_id }`, `ItemEvent::ClearPhoto { id }`,
-and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. GRDB migration
+and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. `CreateItem` also
+carries `photo_id` (appended last), so the page a piece was read from is kept
+on it rather than photographed a second time. GRDB migration
 `v16_item_photo` adds a nullable `photo_id TEXT`.
 
 `photo_id` is appended **after `variants`**, the current last field, because

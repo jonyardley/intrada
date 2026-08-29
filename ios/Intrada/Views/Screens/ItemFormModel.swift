@@ -17,6 +17,9 @@ final class ItemFormModel {
   var notes = ""
   var tags: [String] = []
   var formError: String?
+  /// The page the fields were read off, carried onto the piece the form
+  /// creates so it is not photographed a second time (#1436).
+  var photoId: String?
 
   /// Which fields still hold what the photo was read into, and whether that
   /// read was weak. Typing takes a field off: it is the user's from that
@@ -125,7 +128,8 @@ final class ItemFormModel {
       modality: modality,
       tempo: buildTempo(),
       notes: emptyToNil(notes),
-      tags: tags)
+      tags: tags,
+      photoId: photoId)
   }
 
   func updateInput() -> UpdateItem {
