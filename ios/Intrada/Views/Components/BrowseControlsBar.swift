@@ -11,14 +11,21 @@ struct BrowseControlsBar: View {
   // Opt-in leading "priorities only" star — only the Library passes it; the
   // session builder reuses this bar without it.
   private let starFilter: Binding<Bool>?
+  // The related-exercise sheet is exercise-only, so a type menu there could
+  // only empty its own list (#1103).
+  private let showsTypeFilter: Bool
   @State private var filtering = false
   @State private var searchText: String
   @State private var searchRevealed: Bool
   @FocusState private var searchFocused: Bool
 
-  init(elevated: Bool = false, previewSearch: String? = nil, starFilter: Binding<Bool>? = nil) {
+  init(
+    elevated: Bool = false, previewSearch: String? = nil, starFilter: Binding<Bool>? = nil,
+    showsTypeFilter: Bool = true
+  ) {
     self.elevated = elevated
     self.starFilter = starFilter
+    self.showsTypeFilter = showsTypeFilter
     _searchText = State(initialValue: previewSearch ?? "")
     _searchRevealed = State(initialValue: previewSearch != nil)
   }
@@ -81,10 +88,12 @@ struct BrowseControlsBar: View {
         .accessibilityLabel("Show priorities only")
         .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
       }
-      LibraryFilterMenu(
-        current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 }
-      )
-      .padding(.leading, IntradaSpacing.controlGap)
+      if showsTypeFilter {
+        LibraryFilterMenu(
+          current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 }
+        )
+        .padding(.leading, IntradaSpacing.controlGap)
+      }
       Spacer(minLength: IntradaSpacing.controlGap)
       LibrarySortMenu(
         current: store.viewModel?.activeSort
