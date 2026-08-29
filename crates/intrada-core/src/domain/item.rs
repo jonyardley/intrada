@@ -323,7 +323,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
-                photo_id: None,
+                photo_id: input.photo_id,
             };
 
             model.items.push(item.clone());
@@ -387,7 +387,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
-                photo_id: None,
+                // No scan surface writes an exercise yet, but a `CreateItem`
+                // carrying one must not mean two different things by event.
+                photo_id: input.photo_id,
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
@@ -2593,6 +2595,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         }
     }
 
@@ -2736,6 +2739,62 @@ mod tests {
             "online would link against a client ulid the server reassigns (#1108)"
         );
         assert!(!emits_http(&mut cmd));
+    }
+
+    // ── The photo a piece is created with ──
+
+    /// The page the form was read off is the page you practise from: adding
+    /// the piece must keep it, or the user photographs it a second time
+    /// (#1436). Delete the assignment in `Add` and this fails.
+    #[test]
+    fn a_piece_created_from_a_scan_keeps_the_page_it_was_read_from() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+
+        let _ = app.update(
+            crate::app::Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Cry Me A River".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Arthur Hamilton".to_string()),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                photo_id: Some(PHOTO.to_string()),
+            })),
+            &mut model,
+        );
+
+        assert_eq!(model.items[0].photo_id.as_deref(), Some(PHOTO));
+    }
+
+    /// The id becomes a path component in the shell, so a create carrying a
+    /// bad one is refused rather than stored.
+    #[test]
+    fn a_create_naming_an_unreadable_photo_is_refused() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+
+        let _ = app.update(
+            crate::app::Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Cry Me A River".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Arthur Hamilton".to_string()),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                photo_id: Some("../../etc/passwd".to_string()),
+            })),
+            &mut model,
+        );
+
+        assert!(model.items.is_empty());
+        assert!(model.last_error.is_some());
     }
 
     // ── SetPhoto / ClearPhoto ──

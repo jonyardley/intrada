@@ -73,6 +73,12 @@ pub struct CreateItem {
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
+    /// The page the fields were read off (#1436). Appended last, because the
+    /// bincode wire is positional. Keeping it on the create is what stops the
+    /// user photographing the same page twice: the one they scanned to fill
+    /// the form is the one they practise from.
+    #[serde(default)]
+    pub photo_id: Option<String>,
 }
 
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
@@ -396,6 +402,7 @@ mod tests {
             }),
             notes: None,
             tags: vec!["impressionist".to_string()],
+            photo_id: None,
         });
     }
 
@@ -446,6 +453,7 @@ mod tests {
                 }),
                 notes: Some("3rds and 7ths".to_string()),
                 tags: vec!["voicings".to_string()],
+                photo_id: None,
             },
         });
         assert_round_trips(ItemEvent::AddLinkedExercise {
@@ -459,6 +467,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             },
         });
     }

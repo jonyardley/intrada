@@ -209,11 +209,18 @@ const TEMPO_MARKINGS: &[&str] = &[
 /// where it sits on the page.
 const EXPLICIT_CREDIT: f32 = 1.0;
 
+/// How much a bare dash dampens the line's own confidence: the weakest credit
+/// form, and the only one that has to prove itself geometrically.
+const DASH_CREDIT: f32 = 0.8;
+
+const DASHES: [char; 3] = ['-', '\u{2013}', '\u{2014}'];
+
 /// Credit prefixes, longest first. The `f32` is how much the match dampens the
 /// line's own OCR confidence: a bare `by` is a weaker claim than `Music by`.
 const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("words and music by", 1.0),
     ("music and lyrics by", 1.0),
+    ("lyrics and music by", 1.0),
     ("composed by", 1.0),
     ("music by", 1.0),
     ("written by", 0.9),
@@ -366,24 +373,51 @@ fn normalise(text: &str) -> String {
 }
 
 fn heuristic_draft(page: &PageReading) -> PhotoDraft {
+    // Title first: it keeps its line, so "Allegro Barbaro" is not a tempo.
+    let title = heuristic_title(&page.lines);
+    let tempo = heuristic_tempo(&page.lines, title.as_ref().map(|f| f.value.as_str()));
     PhotoDraft {
-        title: heuristic_title(&page.lines),
+        title,
         composer: heuristic_composer(&page.lines),
-        tempo: heuristic_tempo(&page.lines),
+        tempo,
         chart_text: None,
     }
 }
 
-/// The largest text in the top band, ignoring anything that has already
-/// explained itself as a credit or a tempo.
+/// Height alone picks the slash-chord stack that outsizes the title at a third
+/// of its confidence (#1436).
+/// A title is spelled. What sits above one on a photographed page is a page
+/// number, a photocopier's reduction mark or a staple, and what sits beside it
+/// is a chord row — all of them more figure than word (#1436 read both `66% =`
+/// and `-7 C7#5` as fields before this).
+fn looks_like_a_title(text: &str) -> bool {
+    let letters = text.chars().filter(|c| c.is_alphabetic()).count();
+    letters > 0 && letters > text.chars().filter(char::is_ascii_digit).count()
+}
+
 fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
-    lines
+    let candidates: Vec<&RecognisedLine> = lines
         .iter()
         .filter(|l| l.y < TITLE_BAND)
-        .filter(|l| !l.text.trim().is_empty())
+        .filter(|l| looks_like_a_title(&l.text))
         .filter(|l| credit_prefix(&l.text).is_none())
-        .filter(|l| tempo_line(&l.text).is_none())
+        .filter(|l| tempo_line(&l.text, true).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
+        .collect();
+
+    // A hallucinated line can dwarf the real heading (#1436); a weak one takes
+    // the field only when nothing was read confidently, and is marked weak.
+    let confident: Vec<&RecognisedLine> = candidates
+        .iter()
+        .copied()
+        .filter(|l| l.confidence >= LOW_CONFIDENCE)
+        .collect();
+    let pool = if confident.is_empty() {
+        &candidates
+    } else {
+        &confident
+    };
+    pool.iter()
         .max_by(|a, b| a.height.total_cmp(&b.height).then(b.y.total_cmp(&a.y)))
         .map(|l| TextDraftField {
             value: l.text.trim().to_string(),
@@ -394,54 +428,77 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
 }
 
 fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
-    lines.iter().find_map(|l| {
-        let (rest, damping) = credit_prefix(&l.text)?;
-        // A bare `by` is ordinary English and appears in lyrics ("By the light
-        // of the silvery moon"), so it only counts where a credit is actually
-        // printed. "Music by" is unambiguous enough to run the whole page.
-        if damping < EXPLICIT_CREDIT && l.y >= TITLE_BAND {
-            return None;
-        }
-        let rest = rest.trim();
-        (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then(|| {
-            let confidence = l.confidence * damping;
-            TextDraftField {
-                value: rest.to_string(),
-                source: DraftSource::Recognised,
-                confidence,
-                weak: confidence < LOW_CONFIDENCE,
+    lines
+        .iter()
+        .filter_map(|l| {
+            let (rest, damping) = credit_prefix(&l.text)?;
+            // A bare `by` turns up in lyrics, so the weak forms only count
+            // where a credit is printed. "Music by" runs the whole page.
+            if damping < EXPLICIT_CREDIT && l.y >= TITLE_BAND {
+                return None;
             }
+            let rest = rest.trim().trim_end_matches([')', ']', '(', '[']).trim();
+            (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then_some((l, rest, damping))
         })
-    })
+        // Strongest claim, then topmost: Vision's order is not the page's,
+        // and its first match let a lyric beat an explicit credit (#1436).
+        .max_by(|(a, _, ad), (b, _, bd)| ad.total_cmp(bd).then(b.y.total_cmp(&a.y)))
+        .map(|(l, rest, damping)| TextDraftField {
+            value: rest.to_string(),
+            source: DraftSource::Recognised,
+            confidence: l.confidence * damping,
+            weak: l.confidence * damping < LOW_CONFIDENCE,
+        })
 }
 
 /// Returns what follows the credit prefix, and how far the prefix dampens
 /// confidence. Matched only at the start of the line.
+/// A composer is spelled, capitalised and short. Everything else a dash can
+/// start on a lead sheet is not: a chord row is figures (`-7 C7#5`) and a
+/// hyphenated lyric runs on in lower case (`-er, I cried a riv-er over you`).
+/// Both read as the composer before this (#1436).
+fn looks_like_a_credited_name(text: &str) -> bool {
+    (1..=4).contains(&text.split_whitespace().count())
+        && !text.contains(',')
+        && !text.chars().any(|c| c.is_ascii_digit() || c == '#')
+        && text.starts_with(char::is_uppercase)
+}
+
 fn credit_prefix(text: &str) -> Option<(&str, f32)> {
     let trimmed = text.trim();
-    CREDIT_PREFIXES.iter().find_map(|(prefix, damping)| {
-        // Compared on `trimmed`, not on its lowercase: `to_lowercase` is not
-        // length-preserving, so a byte index taken from one is not an index
-        // into the other.
-        let head = trimmed.get(..prefix.len())?;
+    // A leading dash does not stop an explicit credit being one.
+    let undashed = trimmed.trim_start_matches(|c| DASHES.contains(&c) || c == ' ');
+
+    let worded = CREDIT_PREFIXES.iter().find_map(|(prefix, damping)| {
+        // Compared on `undashed`, not its lowercase: `to_lowercase` is not
+        // length-preserving, so a byte index from one is not an index into it.
+        let head = undashed.get(..prefix.len())?;
         if !head.eq_ignore_ascii_case(prefix) {
             return None;
         }
-        let rest = &trimmed[prefix.len()..];
-        // Must be a word boundary: "Bydgoszcz Suite" is not a credit.
+        let rest = &undashed[prefix.len()..];
+        // Must end on a word boundary: "Bydgoszcz Suite" is not a credit.
         if !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':') {
             return None;
         }
-        let rest = &trimmed[prefix.len()..];
         Some((rest.trim_start_matches([':', ' ', '\t']), *damping))
-    })
+    });
+    if worded.is_some() {
+        return worded;
+    }
+
+    // How a Real Book credits a composer: a dash and the name, nothing else.
+    let name = undashed.trim_end_matches([')', ']', '(', '[']).trim();
+    (undashed.len() < trimmed.len() && looks_like_a_credited_name(name))
+        .then_some((name, DASH_CREDIT))
 }
 
-fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
+fn heuristic_tempo(lines: &[RecognisedLine], title: Option<&str>) -> Option<TempoDraftField> {
     let band: Vec<(&RecognisedLine, TempoRead)> = lines
         .iter()
         .filter(|l| l.y < TITLE_BAND)
-        .filter_map(|l| tempo_line(&l.text).map(|read| (l, read)))
+        .filter(|l| Some(l.text.trim()) != title)
+        .filter_map(|l| tempo_line(&l.text, false).map(|read| (l, read)))
         .collect();
 
     let marking = band
@@ -471,7 +528,7 @@ fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
 /// "Swing Low, Sweet Chariot", "Ballad of the Sad Young Men" — and reading it
 /// as a tempo costs the title as well, since a title line is skipped once it
 /// has explained itself as a tempo.
-fn tempo_line(text: &str) -> Option<TempoRead> {
+fn tempo_line(text: &str, strict: bool) -> Option<TempoRead> {
     let bpm = bpm_in(text);
     let before_bpm = text.rsplit_once('=').map_or(text, |(before, _)| before);
     let words: Vec<String> = before_bpm
@@ -495,13 +552,18 @@ fn tempo_line(text: &str) -> Option<TempoRead> {
         }
     }
 
-    // A leftover single character is the note glyph Vision mangled out of
-    // `♩=`; anything longer is a word this line is really about.
-    let only_qualifiers = rest
+    // A single leftover character is the mangled `♩` glyph.
+    let unexplained = rest
         .iter()
-        .all(|w| w.chars().count() == 1 || TEMPO_QUALIFIERS.contains(w));
+        .filter(|w| w.chars().count() > 1 && !TEMPO_QUALIFIERS.contains(w))
+        .count();
 
-    (only_qualifiers && (marking.is_some() || bpm.is_some())).then_some(TempoRead { marking, bpm })
+    // Strict means the line is *only* a tempo, so it cannot be the title. Loose
+    // allows one unknown word, since print carries misprints (#1436).
+    let allowed = if strict { 0 } else { 1 };
+
+    (unexplained <= allowed && (marking.is_some() || bpm.is_some()))
+        .then_some(TempoRead { marking, bpm })
 }
 
 /// What a tempo-only line says. Both parts are optional because a line can
@@ -675,6 +737,138 @@ mod tests {
             line("Music by Henry Mancini", 0.88, 0.03),
         ]));
         assert_eq!(draft.composer.expect("a composer").value, "Henry Mancini");
+    }
+
+    #[test]
+    fn a_dash_before_a_name_is_a_credit() {
+        for (text, expected) in [
+            ("-J.J. Johnson", "J.J. Johnson"),
+            ("- Cole Porter", "Cole Porter"),
+            ("\u{2014} Clara Schumann", "Clara Schumann"),
+        ] {
+            let draft = read_fields(&page(vec![line(text, 0.16, 0.02)]));
+            assert_eq!(
+                draft.composer.expect("a composer").value,
+                expected,
+                "reading {text:?}"
+            );
+        }
+    }
+
+    /// What a dash actually starts on a lead sheet, all of it inside the band
+    /// where the band check never protected anything.
+    #[test]
+    fn a_dash_reads_as_a_credit_only_when_a_name_follows_it() {
+        let credits = [
+            ("-J.J. JOHNSON", Some("J.J. JOHNSON")),
+            ("- Cole Porter", Some("Cole Porter")),
+            ("- Music by Cole Porter", Some("Cole Porter")),
+            ("-7 C7#5 Bb7", None),
+            ("-er, I cried a riv-er over you", None),
+            ("-ly, you say you're lone-ly", None),
+            ("- er", None),
+        ];
+        for (text, expected) in credits {
+            let draft = read_fields(&page(vec![
+                line("LAMENT", 0.048, 0.0459),
+                line(text, 0.119, 0.0293),
+            ]));
+            assert_eq!(
+                draft.composer.map(|f| f.value).as_deref(),
+                expected,
+                "reading {text:?}"
+            );
+        }
+    }
+
+    /// Vision's ordering is not the page's, so taking its first match let a
+    /// lyric fragment beat an explicit credit printed above it (#1436).
+    #[test]
+    fn an_explicit_credit_beats_a_weaker_one_listed_before_it() {
+        let draft = read_fields(&page(vec![
+            line("Cry Me A River", 0.029, 0.0247),
+            line("By the light of the silvery moon", 0.31, 0.02),
+            line("Lyrics and Music by Arthur Hamilton", 0.06, 0.0119),
+        ]));
+        assert_eq!(draft.composer.expect("a composer").value, "Arthur Hamilton");
+    }
+
+    /// A photocopier's reduction mark and a page number are all figure (#1436).
+    #[test]
+    fn a_photocopier_mark_above_the_title_is_not_the_title() {
+        let draft = read_fields(&page(vec![
+            line("66% =", 0.008, 0.0240),
+            line("239", 0.039, 0.0174),
+            line("Cry Me A River", 0.029, 0.0247),
+        ]));
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
+    }
+
+    #[test]
+    fn a_tall_uncertain_line_measured_off_a_page_loses_to_the_title() {
+        let mut lines = vec![
+            line("D/C Bbmi -7", 0.276, 0.0432),
+            line("LAMENT", 0.104, 0.0417),
+            line("(BALLAD)", 0.102, 0.0320),
+        ];
+        lines[0].confidence = 0.30;
+        lines[1].confidence = 1.00;
+        lines[2].confidence = 1.00;
+
+        let draft = read_fields(&page(lines));
+
+        assert_eq!(draft.title.expect("a title").value, "LAMENT");
+        assert_eq!(
+            draft.tempo.expect("a tempo").value.marking.as_deref(),
+            Some("Ballad")
+        );
+    }
+
+    /// Lines as Vision returned them (#1436): all three read, two dropped.
+    #[test]
+    fn a_printed_lead_sheet_gives_up_all_three_fields() {
+        let mut lines = vec![
+            line("th ct isu imthht to", 0.237, 0.0924),
+            line("Cry Me A River", 0.121, 0.0176),
+            line("Andrante Moderato (o = 88)", 0.170, 0.0161),
+            line("Slowly and Rhythmically", 0.156, 0.0131),
+            line("Lyrics and Music by Arthur Hamilton", 0.144, 0.0119),
+        ];
+        lines[0].confidence = 0.30;
+        for l in lines.iter_mut().skip(1) {
+            l.confidence = 1.0;
+        }
+
+        let draft = read_fields(&page(lines));
+
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
+        assert_eq!(draft.composer.expect("a composer").value, "Arthur Hamilton");
+        let tempo = draft.tempo.expect("a tempo");
+        assert_eq!(tempo.value.marking.as_deref(), Some("Moderato"));
+        assert_eq!(tempo.value.bpm, Some(88));
+    }
+
+    /// Superscripts inflate a chord row's box past the title's, so size cannot
+    /// separate them — but a chord row is more figure than word (#1436).
+    #[test]
+    fn a_chord_row_taller_than_the_title_is_not_a_title() {
+        let draft = read_fields(&page(vec![
+            line("B6 B67$5 E6A", 0.123, 0.0253),
+            line("Cry Me A River", 0.029, 0.0247),
+            line("Fm/Bb", 0.221, 0.0239),
+        ]));
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
+    }
+
+    /// The title is chosen first and the tempo cannot claim its line back.
+    #[test]
+    fn a_title_that_names_a_tempo_is_still_only_a_title() {
+        let draft = read_fields(&page(vec![
+            line("Allegro Barbaro", 0.08, 0.09),
+            line("Bela Bartok", 0.18, 0.03),
+        ]));
+        assert_eq!(draft.title.expect("a title").value, "Allegro Barbaro");
+        assert!(draft.tempo.is_none());
     }
 
     #[test]
@@ -1131,6 +1325,7 @@ mod tests {
                 tempo: draft.tempo.as_ref().map(|f| f.value.clone()),
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             };
             validation::validate_create_item(&input)
                 .unwrap_or_else(|e| panic!("{name}: the create form rejected the read: {e}"));
@@ -1442,5 +1637,118 @@ mod tests {
             );
             assert_round_trips(Intrada.view(&model).photo_recognition);
         }
+    }
+}
+
+#[cfg(test)]
+mod real_pages {
+    use super::*;
+
+    fn line_at(text: &str, y: f32, height: f32, confidence: f32) -> RecognisedLine {
+        RecognisedLine {
+            text: text.to_string(),
+            x: 0.1,
+            y,
+            width: 0.8,
+            height,
+            confidence,
+        }
+    }
+
+    fn read(lines: Vec<RecognisedLine>) -> PhotoDraft {
+        read_fields(&PageReading {
+            lines,
+            suggested: None,
+        })
+    }
+
+    /// The whole of what Vision returned for a photographed handwritten Real
+    /// Book page, cropped as the shell crops it (#1436).
+    #[test]
+    fn a_handwritten_real_book_page() {
+        let draft = read(vec![
+            line_at("OLIDAY", 0.09, 0.0189, 1.0),
+            line_at("(BALIAO)", 0.048, 0.0436, 1.0),
+            line_at("F-9", 0.105, 0.0203, 1.0),
+            line_at("LAMENT", 0.048, 0.0459, 1.0),
+            line_at("Eb-", 0.108, 0.0247, 0.3),
+            line_at("AbT", 0.115, 0.0233, 1.0),
+            line_at("Dbmej?", 0.122, 0.0276, 1.0),
+            line_at("Fma7", 0.19, 0.0262, 0.3),
+            line_at("D-9", 0.202, 0.0218, 1.0),
+            line_at("฿ 4 Л", 0.221, 0.0278, 0.3),
+            line_at("G-7", 0.214, 0.0218, 1.0),
+            line_at("D-", 0.285, 0.0247, 1.0),
+            line_at("DC Bbm -", 0.269, 0.048, 0.3),
+            line_at("D-7", 0.297, 0.0233, 1.0),
+            line_at("G-1", 0.299, 0.0233, 1.0),
+            line_at("F&...", 0.315, 0.0291, 0.3),
+            line_at("F-7 Bb7", 0.369, 0.0308, 1.0),
+            line_at("Eb-7", 0.376, 0.0291, 1.0),
+            line_at("AbT", 0.379, 0.0291, 1.0),
+            line_at("G-765", 0.381, 0.0349, 1.0),
+            line_at("239", 0.039, 0.0174, 1.0),
+            line_at("-J.J. JOHNSON)", 0.068, 0.0176, 1.0),
+            line_at("G-105 C7", 0.119, 0.0293, 1.0),
+            line_at("E-705", 0.201, 0.0262, 1.0),
+            line_at("/A", 0.219, 0.0247, 1.0),
+            line_at("AT#9", 0.209, 0.0291, 1.0),
+            line_at("Cтba", 0.294, 0.0349, 1.0),
+            line_at("ства", 0.384, 0.0349, 0.5),
+        ]);
+        assert_eq!(draft.title.expect("a title").value, "LAMENT");
+        assert_eq!(draft.composer.expect("a composer").value, "J.J. JOHNSON");
+    }
+
+    /// The same for a printed lead sheet.
+    #[test]
+    fn a_printed_lead_sheet() {
+        let draft = read(vec![
+            line_at("Cry Me A River", 0.029, 0.0247, 1.0),
+            line_at("Lyrics and Music by Arthur Hamilton", 0.06, 0.0161, 1.0),
+            line_at("Slowly and Raythmically", 0.084, 0.016, 1.0),
+            line_at("Andrante Moderato (o = 88)", 0.103, 0.022, 1.0),
+            line_at("Cm", 0.131, 0.0174, 1.0),
+            line_at("Cm#5", 0.125, 0.0218, 1.0),
+            line_at("Ств", 0.125, 0.0218, 1.0),
+            line_at("Cт?", 0.125, 0.0218, 1.0),
+            line_at("Fm", 0.126, 0.0203, 1.0),
+            line_at("B6 B67$5 E6A", 0.123, 0.0253, 1.0),
+            line_at("Dm'", 0.126, 0.0203, 1.0),
+            line_at("Gm?", 0.222, 0.0203, 1.0),
+            line_at("C7#5", 0.221, 0.0218, 1.0),
+            line_at("Fm?", 0.221, 0.0218, 1.0),
+            line_at("Fm/Bb", 0.221, 0.0239, 1.0),
+            line_at("EL6", 0.221, 0.0233, 1.0),
+            line_at("D769 G", 0.219, 0.022, 1.0),
+            line_at("Cry", 0.292, 0.0131, 1.0),
+            line_at("Cm", 0.327, 0.0174, 1.0),
+            line_at("Me A Riv -er,", 0.29, 0.0161, 1.0),
+            line_at("Cm*s", 0.321, 0.0233, 1.0),
+            line_at("Ст®", 0.323, 0.0218, 1.0),
+            line_at("Cry_ Me A Riv-or,", 0.291, 0.0147, 1.0),
+            line_at("Cm?", 0.323, 0.0218, 1.0),
+            line_at("1 cried a riv-er o - ver", 0.291, 0.0147, 1.0),
+            line_at("you......", 0.292, 0.0102, 1.0),
+            line_at("Fm?", 0.323, 0.0218, 1.0),
+            line_at("G'", 0.321, 0.0218, 1.0),
+            line_at("Gm?", 0.42, 0.0203, 1.0),
+            line_at("C?#5", 0.419, 0.0218, 1.0),
+            line_at("F°", 0.422, 0.0174, 1.0),
+            line_at("Fm?", 0.419, 0.0218, 1.0),
+            line_at("Fm/Bb", 0.418, 0.0235, 1.0),
+            line_at("EL6", 0.419, 0.0218, 0.3),
+            line_at("Btpes ldaidd l. ol.", 0.433, 0.0503, 0.3),
+            line_at("Cry-", 0.488, 0.0131, 1.0),
+            line_at("Me A Riv-er,", 0.488, 0.0132, 1.0),
+            line_at("Cry— My A Riv-er,", 0.488, 0.0146, 1.0),
+            line_at("I cried a riv-er o - ver", 0.488, 0.0103, 1.0),
+            line_at("you.", 0.49, 0.0102, 1.0),
+        ]);
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
+        assert_eq!(draft.composer.expect("a composer").value, "Arthur Hamilton");
+        let tempo = draft.tempo.expect("a tempo");
+        assert_eq!(tempo.value.marking.as_deref(), Some("Moderato"));
+        assert_eq!(tempo.value.bpm, Some(88));
     }
 }

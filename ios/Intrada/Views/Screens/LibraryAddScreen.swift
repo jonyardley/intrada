@@ -55,6 +55,7 @@ struct LibraryAddScreen: View {
     // Keyed on the projection, not the draft: re-picking the same library file
     // reads to an equal `PhotoDraft`, so a rescan would silently do nothing.
     .onChange(of: recognition) { _, next in
+      form.photoId = next?.photoId
       guard let draft = next?.draft else { return }
       form.fill(from: draft)
     }
