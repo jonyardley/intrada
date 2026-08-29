@@ -27,7 +27,7 @@ audit backlog and its five-phase build order.
   OCR confidence of the lines it matched, instead of claiming a perfect 1.0
   (#1454), so the field with the least evidence behind it stops being the one
   that looks strongest. It reads as **From the photo**, dimmed, exactly as a
-  weak Vision read already does. The screens one (#1470) wires Foundation Models
+  weak Vision read already does. The screens one (#1476) wires Foundation Models
   behind `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
   on the devices that have it. The shell hands the model the lines Vision read
   and passes back what it says without inspecting it: whether a suggestion is

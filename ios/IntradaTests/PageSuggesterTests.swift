@@ -3,11 +3,7 @@ import Testing
 
 @testable import Intrada
 
-/// The model is skipped under test (`UITestFlags.onDeviceModelDisabled`), so
-/// what is left is the rule about what is worth asking, and what crosses back.
 struct PageSuggesterTests {
-  /// Asserted against the rule, not `suggest`: on a simulator the availability
-  /// check answers `nil` first whether or not this held.
   @Test func aPageWithNothingOnItIsNeverAsked() {
     #expect(!PageSuggester.hasSomethingToRead([]))
     #expect(!PageSuggester.hasSomethingToRead(["", "   ", "\n", "\t"]))

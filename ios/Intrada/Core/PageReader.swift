@@ -2,9 +2,9 @@ import SharedTypes
 import UIKit
 import Vision
 
-/// Runs Vision over a stored page and hands the core lines with geometry, plus
-/// whatever the on-device model made of them. Owns no interpretation: what a
-/// line *means* is `recognition::read_fields` in the core (spec decision 4).
+/// Runs Vision text recognition over a stored page and hands the core lines
+/// with geometry. Owns no interpretation: what a line *means* is
+/// `recognition::read_fields` in the core (spec decision 4).
 enum PageReader {
   /// What crosses back from the recognition thread. The generated bridge types
   /// are not `Sendable`, so they are built on the main actor from this.
@@ -31,8 +31,6 @@ enum PageReader {
       return .failed
     }
 
-    // Only on the minority of devices with Apple Intelligence; the core
-    // produces a usable draft without it on every device we target (decision 6).
     let suggested = await PageSuggester.suggest(readingFrom: lines.map(\.text))
 
     return .page(
