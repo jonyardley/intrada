@@ -35,6 +35,9 @@ audit backlog and its five-phase build order.
   it filled says **From the photo** underneath, dimmed where the read was weak,
   and the mark clears the moment you type in that field. Nothing is saved until
   you press Add.
+  follow in a second PR now that spec open question 2 is answered:
+  recognition **pre-fills the add form**, it does not open a confirm sheet of
+  its own, which also unblocks #1446.
 
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
@@ -44,6 +47,12 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1447 — **accented titles file under their own letter**. Sorting the Library
+  by title put "Étude" after "Waltz", behind every plain-ASCII title, because
+  the sort compared the text byte by byte. Piano repertoire is full of Études,
+  Valses and Ländler, so scrolling to E did not find them. The core now folds
+  accents onto the base letter before comparing, and the exercise picker
+  mirrors it, so both screens still agree (#1445).
 - #1355 — **a photo of the page you practise from, kept on the piece**. Phase A
   of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md) (#1439), in two
   PRs: the core (#1443) carries `Item.photo_id`, `SetPhoto`/`ClearPhoto`,

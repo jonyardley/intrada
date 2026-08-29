@@ -1172,11 +1172,23 @@ fn build_variant_views(
     views
 }
 
+/// Accents folded onto their base letter, then case removed, so "Étude" files
+/// under E instead of after every ASCII title, and beside "Etude" rather than
+/// after it (#1447). The iOS shell mirrors this in `sortedLikeTheLibrary`.
+fn title_sort_key(title: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    title
+        .nfd()
+        .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
 fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
     items.sort_by(|a, b| {
         let primary = match sort.field {
             SortField::DateAdded => a.created_at.cmp(&b.created_at),
-            SortField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+            SortField::Title => title_sort_key(&a.title).cmp(&title_sort_key(&b.title)),
             SortField::LastPracticed => {
                 // None = "never practised" = earliest. Option ordering puts
                 // None < Some, which is exactly that.
@@ -4075,6 +4087,45 @@ mod tests {
         let vm = app.view(&model);
         let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
         assert_eq!(titles, vec!["Ballade", "etude", "Sonata"]);
+    }
+
+    #[test]
+    fn view_sorts_accented_titles_by_their_base_letter() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Waltz", ItemKind::Piece, now),
+            make_item("b", "\u{c9}tude", ItemKind::Piece, now),
+            make_item("c", "Ballade", ItemKind::Piece, now),
+        ];
+        model.active_sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let vm = app.view(&model);
+        let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(titles, vec!["Ballade", "\u{c9}tude", "Waltz"]);
+    }
+
+    /// The accent is dropped, not just decomposed: kept as a combining mark it
+    /// would sort after every letter, putting "Étude" behind "Etudes".
+    #[test]
+    fn view_sorts_an_accented_title_beside_its_unaccented_neighbour() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Etudes", ItemKind::Piece, now),
+            make_item("b", "\u{c9}tude", ItemKind::Piece, now),
+        ];
+        model.active_sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let vm = app.view(&model);
+        let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(titles, vec!["\u{c9}tude", "Etudes"]);
     }
 
     #[test]
