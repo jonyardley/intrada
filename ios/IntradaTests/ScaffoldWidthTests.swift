@@ -4,16 +4,11 @@ import UIKit
 
 @testable import Intrada
 
-/// `ScreenScaffold` used to report its *content's* width rather than the width
-/// it was offered, so one un-shrinkable row made the whole screen over-large
-/// and every ancestor then centred it — which is how the Library lost the first
-/// characters of its title and every card at accessibility sizes (#1470).
-///
-/// Asserted as a measurement, not by walking the view hierarchy: any wrapper
-/// placed around an over-wide view centres it, so a traversal reports an offset
-/// the view under test is not responsible for. A plain leading `VStack` scores
-/// identically to a broken scaffold under that method, which is why #1481 could
-/// not be closed with it.
+/// `ScreenScaffold` used to report its content's width rather than the width it
+/// was offered, so one un-shrinkable row made the whole screen over-large and
+/// every ancestor then centred it (#1470, #1481). Measured, not walked: any
+/// wrapper around an over-wide view centres it, so a hierarchy traversal scores
+/// a plain `VStack` exactly like a broken scaffold.
 @MainActor
 struct ScaffoldWidthTests {
   private static let offered = CGSize(width: 390, height: 844)
@@ -36,8 +31,7 @@ struct ScaffoldWidthTests {
     )
   }
 
-  /// The baseline the test above is meaningless without: an offered width that
-  /// the content fits inside must come back unchanged.
+  /// The baseline the test above is meaningless without.
   @Test("The scaffold reports the offered width for content that fits")
   func scaffoldReportsOfferedWidthWhenContentFits() {
     let scaffold = ScreenScaffold(title: "Library", subtitle: "2 pieces") {

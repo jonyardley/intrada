@@ -27,10 +27,8 @@ struct ScreenScaffold<Content: View>: View {
   }
 
   var body: some View {
-    // The background owns the sizing and the content floats in an overlay: in a
-    // ZStack an un-shrinkable child made the whole scaffold over-large, and
-    // every ancestor then centred it, so the screen lost characters off both
-    // edges instead of overflowing to the right (#1470, #1481).
+    // Background sizes, content floats: a ZStack sized to an un-shrinkable child
+    // instead, and every ancestor then centred it (#1470, #1481).
     PaperBackground()
       .overlay(alignment: .topLeading) {
         VStack(alignment: .leading, spacing: 0) {
