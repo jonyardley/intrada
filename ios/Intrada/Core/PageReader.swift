@@ -55,10 +55,8 @@ enum PageReader {
   private nonisolated static func recognise(_ cgImage: CGImage) -> [TextLine]? {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
-    // Pinned, not auto-detected: on handwritten music auto-detection picks a
-    // non-Latin recogniser and returns confident nonsense, which then outranks
-    // the real title (#1436, a handwritten Real Book page read as CJK). The set
-    // is Latin-script because a marking is as often Italian or German.
+    // Auto-detection picks a non-Latin recogniser on handwritten music and
+    // returns confident nonsense that outranks the real title (#1436).
     request.recognitionLanguages = ["en-GB", "en-US", "it-IT", "de-DE", "fr-FR"]
     // A stave is not a paragraph: correcting against a lexicon turns chord
     // symbols and tempo markings into ordinary words.

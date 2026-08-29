@@ -218,9 +218,7 @@ const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("music by", 1.0),
     ("written by", 0.9),
     ("by", 0.8),
-    // How a Real Book page credits a composer: a dash and the name, top right,
-    // no "by" anywhere (#1436). Weak on its own, so it is band-limited like a
-    // bare `by`.
+    // How a Real Book credits a composer: a dash and the name (#1436).
     ("-", 0.8),
     ("\u{2013}", 0.8),
     ("\u{2014}", 0.8),
@@ -313,13 +311,8 @@ fn heuristic_draft(page: &PageReading) -> PhotoDraft {
     }
 }
 
-/// The biggest *confident* text in the top band, ignoring anything that has
-/// already explained itself as a credit or a tempo.
-///
-/// Height alone is not enough: on a lead sheet a two-row slash-chord stack has
-/// a taller box than the title and comes back at a third of the confidence.
-/// Weighting one by the other tells a heading from a tall smudge (#1436,
-/// measured on a photographed Real Book page).
+/// Height alone picks the slash-chord stack that outsizes the title at a third
+/// of its confidence (#1436).
 fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
     lines
         .iter()
@@ -628,7 +621,6 @@ mod tests {
         assert_eq!(draft.composer.expect("a composer").value, "Henry Mancini");
     }
 
-    /// How a Real Book page credits a composer: a dash and the name, no "by".
     #[test]
     fn a_dash_before_a_name_is_a_credit() {
         for (text, expected) in [
@@ -645,8 +637,6 @@ mod tests {
         }
     }
 
-    /// The dash is a weak signal, so it is band-limited like a bare `by`:
-    /// deleting that check reads a chord continuation as the composer.
     #[test]
     fn a_dash_below_the_top_band_is_not_a_credit() {
         let draft = read_fields(&page(vec![
@@ -656,12 +646,8 @@ mod tests {
         assert!(draft.composer.is_none());
     }
 
-    /// The numbers are what Vision actually returned for a photographed Real
-    /// Book page (#1436): the hallucinated line and the slash-chord stack are
-    /// both *taller* than the title, and both come back at 0.3. Rank on height
-    /// alone and the form fills with one of them.
     #[test]
-    fn a_tall_uncertain_line_does_not_outrank_a_confident_title() {
+    fn a_tall_uncertain_line_measured_off_a_page_loses_to_the_title() {
         let mut lines = vec![
             line("D/C Bbmi -7", 0.276, 0.0432),
             line("LAMENT", 0.104, 0.0417),
