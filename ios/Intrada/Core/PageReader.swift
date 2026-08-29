@@ -31,6 +31,8 @@ enum PageReader {
       return .failed
     }
 
+    let suggested = await PageSuggester.suggest(readingFrom: lines.map(\.text))
+
     return .page(
       PageReading(
         lines: lines.map {
@@ -38,9 +40,7 @@ enum PageReader {
             text: $0.text, x: $0.x, y: $0.y, width: $0.width, height: $0.height,
             confidence: $0.confidence)
         },
-        // Phase C fills this from Foundation Models; the core produces a usable
-        // draft without it on every device we target (spec decision 6).
-        suggested: nil
+        suggested: suggested?.bridged
       )
     )
   }

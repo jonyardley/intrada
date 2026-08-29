@@ -32,9 +32,9 @@ timer and rep counting, and score how it went. Organised as three pillars —
 built through Phase 2b and reversed on 2026-08-13, #1344 — see
 `docs/roadmap.md`'s banner.)
 
-Direction and phases: `docs/roadmap.md`. What's in flight now: `docs/status.md`,
-generated from GitHub by `just status` — refresh it rather than reading a stale
-copy, and never edit it by hand.
+Direction and phases: `docs/roadmap.md`. Which release and phase we are on:
+`docs/where-we-are.md`. What's in flight right now: run `just status`, which
+reads GitHub rather than a file anyone has to remember to update.
 
 ## Project Structure
 
@@ -733,10 +733,10 @@ say exactly what needs user verification.
    mode.
 
 ### After completing work
-1. Close the GitHub issue and drop its `in-flight` label; update
-   `docs/roadmap.md` if a phase or direction changed. **Do not hand-edit
-   `docs/status.md`** — it is generated from GitHub by `just status`, so
-   closing the issue *is* the status update.
+1. Close the GitHub issue and drop its `in-flight` label — that *is* the
+   status update, since `just status` reads GitHub. Update `docs/roadmap.md`
+   if a phase or direction changed, and `docs/where-we-are.md` if the release
+   or phase did. **There is no status file to edit**, deliberately.
 2. Update this file if architecture or patterns changed.
 3. Update the Claude Design system
    (`design/intrada-design-system.dc.html`) if UI diverged from design, and
@@ -756,7 +756,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
 - No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
   One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
-  list item** in a structured doc (`docs/status.md`, `docs/roadmap.md`,
+  list item** in a structured doc (`docs/roadmap.md`,
   `design/CLAUDE.md` and this file's own lists) is house style, so match the
   siblings there. Sentences never take one, in a list item or anywhere else.
 - **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
@@ -789,9 +789,8 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   ships; do not keep it warm.
 - **Clear a "conflicting" PR by merging main in, never by rebasing.**
   `git fetch origin main && git merge origin/main && git push`. Feature
-  branches no longer write `docs/status.md`, which was the file every
-  concurrent branch used to collide on, so a conflict now means two branches
-  really did touch the same code.
+  No tracked file is written by every PR any more, so a conflict now means two
+  branches really did touch the same code.
 - **Dependent PRs stack natively, depth 2 max.** Open the child PR with base =
   the parent's branch; GitHub retargets it to main when the parent merges.
   After the parent squash-merges, rebase the child:
@@ -831,7 +830,7 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
 - [ ] PR opened via the `ship` skill; self-review comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
 - [ ] Roadmap updated if a phase changed; deferred items tracked as issues
-      (`docs/status.md` is generated — nothing to update)
+      (there is no status file to update)
 - [ ] A human reviews and merges. Agents never merge.
 
 ## Known Tech Debt

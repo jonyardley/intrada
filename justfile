@@ -46,7 +46,7 @@ hygiene:
     typos
     cargo-shear
 
-# Rebuild docs/status.md from GitHub: open PRs, in-flight issues, recent merges.
+# Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
 status:
     ./scripts/generate-status.sh
 

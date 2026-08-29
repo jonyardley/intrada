@@ -9,7 +9,7 @@ Prepare the current branch to ship. Do these in order and STOP at the first fail
 3. **Self-review**: per CLAUDE.md §Workflow/Always(5): for non-trivial work, run the code-reviewer subagent via the `requesting-code-review` skill (include "comment-policy violations are Blockers, not Nits"); for small fixes use `/review`. Apply blockers inline.
 4. **Deferred items**: open a GitHub issue for every deferred/out-of-scope item BEFORE posting the review (Always(7)). The self-review PR comment MUST end with `Deferred items tracked: #N, #M` or `none — all flagged items addressed inline`.
 5. **Coverage** (Tier 2+): confirm the PR description has a `Coverage:` line; check the Codecov comment after CI.
-6. **Status**: nothing to do. `docs/status.md` is generated from GitHub by `just status`, so opening the PR and labelling the issue *is* the status update. Never hand-edit it on a feature branch — that is what used to make every concurrent branch collide.
+6. **Status**: nothing to write. What's in flight is read from GitHub by `just status`, so opening the PR and labelling the issue *is* the status update. Update `docs/roadmap.md` only if a phase or direction changed, and `docs/where-we-are.md` only if the release or phase did.
 
 Reminders: never push to `main` — always a feature branch + PR. Run fmt + clippy locally (not just commit-time) to avoid the ~3-min CI roundtrip; for `ios/` changes run `just ios-test-full` (or `just check-all`, which uses the fast `ios-test` tier for the inner loop) to avoid the slower ~5-min macOS CI roundtrip. If UI changed, drive the preview to verify or explicitly hand off verification steps.
 

@@ -98,6 +98,27 @@ extension ExerciseUsageView {
     }
     return parts.joined(separator: " · ")
   }
+
+  /// The whole VoiceOver announcement for a "Used in" row; the ring beside it is
+  /// decorative (#1468). A row with no practice stops at "not practised
+  /// together yet" — the ring's unrated rest says the same thing, and "not yet
+  /// rated" after it would be the fact twice.
+  var spokenRow: String {
+    var parts = [rowTitle]
+    if pieceRemoved { parts.append("removed from the library") }
+    guard sessionCount > 0 else {
+      parts.append("not practised together yet")
+      return parts.joined(separator: ", ")
+    }
+    if let score = latestScore {
+      parts.append("mark \(score) of 10")
+    } else {
+      parts.append("not yet rated")
+    }
+    let n = Int(sessionCount)
+    parts.append("\(n) \(n == 1 ? "session" : "sessions")")
+    return parts.joined(separator: ", ")
+  }
 }
 
 extension LibraryItemView {
