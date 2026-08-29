@@ -218,6 +218,12 @@ const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("music by", 1.0),
     ("written by", 0.9),
     ("by", 0.8),
+    // How a Real Book page credits a composer: a dash and the name, top right,
+    // no "by" anywhere (#1436). Weak on its own, so it is band-limited like a
+    // bare `by`.
+    ("-", 0.8),
+    ("\u{2013}", 0.8),
+    ("\u{2014}", 0.8),
 ];
 
 /// A line this high up the page can be the title. Below it we are into the
@@ -307,8 +313,13 @@ fn heuristic_draft(page: &PageReading) -> PhotoDraft {
     }
 }
 
-/// The largest text in the top band, ignoring anything that has already
-/// explained itself as a credit or a tempo.
+/// The biggest *confident* text in the top band, ignoring anything that has
+/// already explained itself as a credit or a tempo.
+///
+/// Height alone is not enough: on a lead sheet a two-row slash-chord stack has
+/// a taller box than the title and comes back at a third of the confidence.
+/// Weighting one by the other tells a heading from a tall smudge (#1436,
+/// measured on a photographed Real Book page).
 fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
     lines
         .iter()
@@ -317,7 +328,11 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         .filter(|l| credit_prefix(&l.text).is_none())
         .filter(|l| tempo_line(&l.text).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
-        .max_by(|a, b| a.height.total_cmp(&b.height).then(b.y.total_cmp(&a.y)))
+        .max_by(|a, b| {
+            (a.height * a.confidence)
+                .total_cmp(&(b.height * b.confidence))
+                .then(b.y.total_cmp(&a.y))
+        })
         .map(|l| TextDraftField {
             value: l.text.trim().to_string(),
             source: DraftSource::Recognised,
@@ -361,12 +376,15 @@ fn credit_prefix(text: &str) -> Option<(&str, f32)> {
             return None;
         }
         let rest = &trimmed[prefix.len()..];
-        // Must be a word boundary: "Bydgoszcz Suite" is not a credit.
-        if !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':') {
+        // A word prefix must end on a boundary ("Bydgoszcz Suite" is not a
+        // credit); a dash is its own boundary and usually butts the name.
+        let is_word = prefix.starts_with(|c: char| c.is_alphanumeric());
+        if is_word && !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':')
+        {
             return None;
         }
         let rest = &trimmed[prefix.len()..];
-        Some((rest.trim_start_matches([':', ' ', '\t']), *damping))
+        Some((rest.trim_start_matches([':', ' ', '\t', '-']), *damping))
     })
 }
 
@@ -608,6 +626,58 @@ mod tests {
             line("Music by Henry Mancini", 0.88, 0.03),
         ]));
         assert_eq!(draft.composer.expect("a composer").value, "Henry Mancini");
+    }
+
+    /// How a Real Book page credits a composer: a dash and the name, no "by".
+    #[test]
+    fn a_dash_before_a_name_is_a_credit() {
+        for (text, expected) in [
+            ("-J.J. Johnson", "J.J. Johnson"),
+            ("- Cole Porter", "Cole Porter"),
+            ("\u{2014} Clara Schumann", "Clara Schumann"),
+        ] {
+            let draft = read_fields(&page(vec![line(text, 0.16, 0.02)]));
+            assert_eq!(
+                draft.composer.expect("a composer").value,
+                expected,
+                "reading {text:?}"
+            );
+        }
+    }
+
+    /// The dash is a weak signal, so it is band-limited like a bare `by`:
+    /// deleting that check reads a chord continuation as the composer.
+    #[test]
+    fn a_dash_below_the_top_band_is_not_a_credit() {
+        let draft = read_fields(&page(vec![
+            line("Blues in F", 0.08, 0.09),
+            line("-7 Bb7 -7", 0.66, 0.03),
+        ]));
+        assert!(draft.composer.is_none());
+    }
+
+    /// The numbers are what Vision actually returned for a photographed Real
+    /// Book page (#1436): the hallucinated line and the slash-chord stack are
+    /// both *taller* than the title, and both come back at 0.3. Rank on height
+    /// alone and the form fills with one of them.
+    #[test]
+    fn a_tall_uncertain_line_does_not_outrank_a_confident_title() {
+        let mut lines = vec![
+            line("D/C Bbmi -7", 0.276, 0.0432),
+            line("LAMENT", 0.104, 0.0417),
+            line("(BALLAD)", 0.102, 0.0320),
+        ];
+        lines[0].confidence = 0.30;
+        lines[1].confidence = 1.00;
+        lines[2].confidence = 1.00;
+
+        let draft = read_fields(&page(lines));
+
+        assert_eq!(draft.title.expect("a title").value, "LAMENT");
+        assert_eq!(
+            draft.tempo.expect("a tempo").value.marking.as_deref(),
+            Some("Ballad")
+        );
     }
 
     #[test]
