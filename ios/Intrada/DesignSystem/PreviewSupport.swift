@@ -947,3 +947,34 @@
     }
   }
 #endif
+
+#if DEBUG
+  extension PhotoDraft {
+    /// A clean title and tempo, and a composer the OCR was not sure of (#1436).
+    static var readPage: PhotoDraft {
+      PhotoDraft(
+        title: TextDraftField(
+          value: "Autumn Leaves", source: .recognised, confidence: 0.93, weak: false),
+        composer: TextDraftField(
+          value: "Joseph Kosmo", source: .recognised, confidence: 0.34, weak: true),
+        tempo: TempoDraftField(
+          value: Tempo(marking: "Moderato", bpm: 120), source: .recognised, confidence: 0.9,
+          weak: false),
+        chartText: nil)
+    }
+
+    static var otherReadPage: PhotoDraft {
+      PhotoDraft(
+        title: TextDraftField(
+          value: "Blues in F", source: .recognised, confidence: 0.9, weak: false),
+        composer: TextDraftField(
+          value: "Count Basie", source: .recognised, confidence: 0.88, weak: false),
+        tempo: nil,
+        chartText: nil)
+    }
+
+    static var readNothing: PhotoDraft {
+      PhotoDraft(title: nil, composer: nil, tempo: nil, chartText: nil)
+    }
+  }
+#endif

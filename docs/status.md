@@ -22,13 +22,19 @@ audit backlog and its five-phase build order.
 ## In flight
 
 - #1436 — **reading a photographed page into title, composer and tempo**.
-  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), core
-  PR first. It adds the `RecognitionOperation` effect, Vision text recognition
+  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md). The
+  core landed as #1455; the screens are in flight. The core adds the `RecognitionOperation` effect, Vision text recognition
   in the shell as a dumb pipe, and `read_fields` in the core: the largest text
   in the top band is the title, a `Music by` line is the composer, a tempo word
   or a number after an `=` is the tempo. A model suggestion (phase C) is only
   ever accepted when it appears verbatim on the page, so it can choose but
-  never invent. Nothing is written without the user pressing Add. The screens
+  never invent. Nothing is written without the user pressing Add. The screens PR:
+  spec open question 2 is answered, so recognition
+  **pre-fills the add form** rather than opening a confirm sheet of its own,
+  which also unblocks #1446. **Scan a page** sits above the fields; every field
+  it filled says **From the photo** underneath, dimmed where the read was weak,
+  and the mark clears the moment you type in that field. Nothing is saved until
+  you press Add.
   follow in a second PR now that spec open question 2 is answered:
   recognition **pre-fills the add form**, it does not open a confirm sheet of
   its own, which also unblocks #1446.

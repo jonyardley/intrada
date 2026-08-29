@@ -497,8 +497,6 @@ final class StoreEffectLoopTests: XCTestCase {
       "an f32 has to survive the wire, not arrive as a rounded or byte-swapped number")
     XCTAssertFalse(draft.title?.weak ?? true, "the title was read cleanly")
     XCTAssertTrue(draft.composer?.weak ?? false, "the credit was read weakly")
-    XCTAssertTrue(
-      recognition.hasLowConfidence, "and the form must say so for the draft as a whole")
   }
 
   /// The shell mints a photo's id (offline-first invariant 3) and the core

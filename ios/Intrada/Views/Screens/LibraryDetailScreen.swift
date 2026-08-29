@@ -128,7 +128,9 @@ struct LibraryDetailScreen: View {
       )
       .environment(store)
     }
-    .sheet(isPresented: $creatingExercise) {
+    // The read belongs to the sheet. `onDismiss`, not the add screen's own
+    // `onDisappear`, which the scanner's full-screen cover also triggers.
+    .sheet(isPresented: $creatingExercise, onDismiss: { store.send(.discardPhotoDraft) }) {
       LibraryAddScreen(relatedToPieceId: item.id)
         .environment(store)
     }

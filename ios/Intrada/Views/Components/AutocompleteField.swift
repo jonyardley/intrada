@@ -9,6 +9,7 @@ struct AutocompleteField: View {
   var placeholder: String = ""
   var suggestions: [String]
   var autocapitalization: TextInputAutocapitalization = .words
+  var readWeakly: Bool?
 
   @FocusState private var focused: Bool
 
@@ -44,6 +45,10 @@ struct AutocompleteField: View {
           .textInputAutocapitalization(autocapitalization)
           .autocorrectionDisabled()
           .focused($focused)
+          .accessibilityHint(FieldMark.spoken(readWeakly))
+        if let readWeakly {
+          FieldMark(weak: readWeakly)
+        }
       }
       .padding(.vertical, 10)
       .padding(.horizontal, IntradaSpacing.card)

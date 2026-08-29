@@ -5,7 +5,7 @@ import SwiftUI
 /// confirm/cancel toolbar and the error-reconcile flow. `send` dispatches the
 /// add/update event; the scaffold owns the "don't celebrate until the core
 /// confirms" handling so both screens behave identically.
-struct ItemFormScaffold: View {
+struct ItemFormScaffold<Header: View>: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
 
@@ -17,7 +17,27 @@ struct ItemFormScaffold: View {
   // Hidden when the caller already fixes the kind (creating an exercise from a
   // piece), so the form can't offer a choice the core will discard anyway.
   var showsKindPicker = true
+  /// Sits above the fields. The add screen puts the scan entry here rather than
+  /// as a row inside the form: once a page is read it is not a field beside
+  /// title and composer, it is what fills them (#1446).
+  @ViewBuilder var header: () -> Header
   let send: () -> Void
+
+  init(
+    form: ItemFormModel, title: String, confirmLabel: String, composerSuggestions: [String],
+    tagSuggestions: [String], showsKindPicker: Bool = true,
+    @ViewBuilder header: @escaping () -> Header = { EmptyView() },
+    send: @escaping () -> Void
+  ) {
+    self.form = form
+    self.title = title
+    self.confirmLabel = confirmLabel
+    self.composerSuggestions = composerSuggestions
+    self.tagSuggestions = tagSuggestions
+    self.showsKindPicker = showsKindPicker
+    self.header = header
+    self.send = send
+  }
 
   var body: some View {
     NavigationStack {
@@ -32,24 +52,33 @@ struct ItemFormScaffold: View {
           }
           ScrollView {
             VStack(spacing: IntradaSpacing.card) {
+              header()
+
               if showsKindPicker {
                 KindSegment(selection: $form.kind)
               }
 
               VStack(spacing: 0) {
-                FormField(label: "Title", text: $form.title, placeholder: "Required")
+                FormField(
+                  label: "Title", text: $form.title, placeholder: "Required",
+                  readWeakly: form.readFrom[.title])
                 HairlineDivider()
                 AutocompleteField(
-                  label: "Composer", text: $form.composer, suggestions: composerSuggestions)
+                  label: "Composer", text: $form.composer, suggestions: composerSuggestions,
+                  readWeakly: form.readFrom[.composer])
                 HairlineDivider()
                 KeyPicker(label: "Key", key: $form.key, modality: $form.modality)
               }
               .cardSurface()
 
               VStack(spacing: 0) {
-                FormField(label: "Tempo marking", text: $form.marking, placeholder: "e.g. Allegro")
+                FormField(
+                  label: "Tempo marking", text: $form.marking, placeholder: "e.g. Allegro",
+                  readWeakly: form.readFrom[.marking])
                 HairlineDivider()
-                FormField(label: "Beats per minute", text: $form.bpm, keyboard: .numberPad)
+                FormField(
+                  label: "Beats per minute", text: $form.bpm, keyboard: .numberPad,
+                  readWeakly: form.readFrom[.bpm])
               }
               .cardSurface()
 

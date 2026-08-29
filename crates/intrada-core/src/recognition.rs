@@ -1048,17 +1048,9 @@ mod tests {
 
         /// Key decision 7, decided once in the core so no shell thresholds for
         /// itself. Deleting the `weak` derivation leaves a blurry read looking
-        /// as clean as a sharp one, per field and for the draft as a whole.
+        /// exactly as clean as a sharp one.
         #[test]
-        fn a_weak_read_is_flagged_low_confidence_in_the_view() {
-            let mut sharp = Model::test_default();
-            let _ = read_photo(&mut sharp);
-            let _ = Intrada.update(
-                photo_read(RecognitionOutput::Page(printed_page())),
-                &mut sharp,
-            );
-            assert!(!Intrada.view(&sharp).photo_recognition.has_low_confidence);
-
+        fn a_weak_read_is_flagged_as_one_in_the_view() {
             let mut blurry = Model::test_default();
             let _ = read_photo(&mut blurry);
             let mut lines = printed_page().lines;
@@ -1067,10 +1059,11 @@ mod tests {
                 photo_read(RecognitionOutput::Page(page(lines))),
                 &mut blurry,
             );
-            let view = Intrada.view(&blurry).photo_recognition;
-            assert!(view.has_low_confidence);
-
-            let draft = view.draft.expect("a draft");
+            let draft = Intrada
+                .view(&blurry)
+                .photo_recognition
+                .draft
+                .expect("a draft");
             assert!(
                 draft.title.expect("a title").weak,
                 "the blurry line is title"

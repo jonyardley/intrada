@@ -8,6 +8,9 @@ struct FormField: View {
   var axis: Axis = .horizontal
   var keyboard: UIKeyboardType = .default
   var autocapitalization: TextInputAutocapitalization = .sentences
+  /// Non-nil while the value is what a photographed page was read into, `true`
+  /// when that read was weak (#1436).
+  var readWeakly: Bool?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
@@ -19,6 +22,10 @@ struct FormField: View {
         .foregroundStyle(IntradaColor.ink)
         .keyboardType(keyboard)
         .textInputAutocapitalization(autocapitalization)
+        .accessibilityHint(FieldMark.spoken(readWeakly))
+      if let readWeakly {
+        FieldMark(weak: readWeakly)
+      }
     }
     .padding(.vertical, 10)
     .padding(.horizontal, IntradaSpacing.card)

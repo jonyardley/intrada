@@ -37,7 +37,14 @@ struct LibraryAddScreen: View {
       confirmLabel: "Add",
       composerSuggestions: store.viewModel?.availableComposers ?? [],
       tagSuggestions: store.viewModel?.availableTags ?? [],
-      showsKindPicker: relatedToPieceId == nil
+      showsKindPicker: relatedToPieceId == nil,
+      header: {
+        ScanPageEntry(
+          photoId: recognition?.photoId,
+          status: recognition?.status ?? .idle,
+          readNothing: recognition?.draft.map(readNothing) ?? false,
+          onCaptured: { store.send(.item(.readPhoto(photoId: $0))) })
+      }
     ) {
       if let pieceId = relatedToPieceId {
         store.send(.item(.addLinkedExercise(pieceId: pieceId, input: form.createInput())))
@@ -45,6 +52,18 @@ struct LibraryAddScreen: View {
         store.send(.item(.add(form.createInput())))
       }
     }
+    // Keyed on the projection, not the draft: re-picking the same library file
+    // reads to an equal `PhotoDraft`, so a rescan would silently do nothing.
+    .onChange(of: recognition) { _, next in
+      guard let draft = next?.draft else { return }
+      form.fill(from: draft)
+    }
+  }
+
+  private var recognition: PhotoRecognitionView? { store.viewModel?.photoRecognition }
+
+  private func readNothing(_ draft: PhotoDraft) -> Bool {
+    draft.title == nil && draft.composer == nil && draft.tempo == nil && draft.chartText == nil
   }
 }
 
