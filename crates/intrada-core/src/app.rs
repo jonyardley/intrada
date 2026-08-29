@@ -668,7 +668,7 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
         PhotoRecognition::Ready { photo_id, draft } => PhotoRecognitionView {
             status: PhotoRecognitionStatus::Ready,
             photo_id: Some(photo_id.clone()),
-            has_low_confidence: draft_confidences(draft).any(|c| c < recognition::LOW_CONFIDENCE),
+            has_low_confidence: draft_is_weak(draft),
             draft: Some(draft.clone()),
         },
         PhotoRecognition::Unsupported { photo_id } => PhotoRecognitionView {
@@ -686,15 +686,17 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
     }
 }
 
-fn draft_confidences(draft: &recognition::PhotoDraft) -> impl Iterator<Item = f32> + '_ {
+/// One field the form will mark as a weak read is enough (key decision 7).
+fn draft_is_weak(draft: &recognition::PhotoDraft) -> bool {
     [
-        draft.title.as_ref().map(|f| f.confidence),
-        draft.composer.as_ref().map(|f| f.confidence),
-        draft.tempo.as_ref().map(|f| f.confidence),
-        draft.chart_text.as_ref().map(|f| f.confidence),
+        draft.title.as_ref().map(|f| f.weak),
+        draft.composer.as_ref().map(|f| f.weak),
+        draft.chart_text.as_ref().map(|f| f.weak),
     ]
     .into_iter()
     .flatten()
+    .chain(draft.tempo.as_ref().map(|f| f.weak))
+    .any(|weak| weak)
 }
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared

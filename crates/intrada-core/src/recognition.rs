@@ -95,6 +95,11 @@ pub struct TextDraftField {
     pub value: String,
     pub source: DraftSource,
     pub confidence: f32,
+    /// Whether the form shows this as a weak read. Decided here rather than
+    /// against `confidence` in the shell: where the line between a clean read
+    /// and a doubtful one falls is a domain judgement, and a shell that
+    /// thresholded for itself would be the second place it lives.
+    pub weak: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -103,6 +108,8 @@ pub struct TempoDraftField {
     pub value: Tempo,
     pub source: DraftSource,
     pub confidence: f32,
+    /// See `TextDraftField::weak`.
+    pub weak: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -260,6 +267,7 @@ fn clamped_text(value: Option<&str>, haystack: &str, max: usize) -> Option<TextD
         value: value.to_string(),
         source: DraftSource::Suggested,
         confidence: 1.0,
+        weak: false,
     })
 }
 
@@ -279,6 +287,7 @@ fn clamped_tempo(suggested: &SuggestedFields, haystack: &str) -> Option<TempoDra
         value,
         source: DraftSource::Suggested,
         confidence: 1.0,
+        weak: false,
     })
 }
 
@@ -313,6 +322,7 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
             value: l.text.trim().to_string(),
             source: DraftSource::Recognised,
             confidence: l.confidence,
+            weak: l.confidence < LOW_CONFIDENCE,
         })
 }
 
@@ -326,10 +336,14 @@ fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
             return None;
         }
         let rest = rest.trim();
-        (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then(|| TextDraftField {
-            value: rest.to_string(),
-            source: DraftSource::Recognised,
-            confidence: l.confidence * damping,
+        (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then(|| {
+            let confidence = l.confidence * damping;
+            TextDraftField {
+                value: rest.to_string(),
+                source: DraftSource::Recognised,
+                confidence,
+                weak: confidence < LOW_CONFIDENCE,
+            }
         })
     })
 }
@@ -380,6 +394,7 @@ fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
         value,
         source: DraftSource::Recognised,
         confidence,
+        weak: confidence < LOW_CONFIDENCE,
     })
 }
 
@@ -1031,9 +1046,9 @@ mod tests {
             );
         }
 
-        /// Key decision 7, projected once in the core so no shell thresholds
-        /// for itself. Deleting the `has_low_confidence` derivation leaves a
-        /// blurry read looking as clean as a sharp one.
+        /// Key decision 7, decided once in the core so no shell thresholds for
+        /// itself. Deleting the `weak` derivation leaves a blurry read looking
+        /// as clean as a sharp one, per field and for the draft as a whole.
         #[test]
         fn a_weak_read_is_flagged_low_confidence_in_the_view() {
             let mut sharp = Model::test_default();
@@ -1052,7 +1067,18 @@ mod tests {
                 photo_read(RecognitionOutput::Page(page(lines))),
                 &mut blurry,
             );
-            assert!(Intrada.view(&blurry).photo_recognition.has_low_confidence);
+            let view = Intrada.view(&blurry).photo_recognition;
+            assert!(view.has_low_confidence);
+
+            let draft = view.draft.expect("a draft");
+            assert!(
+                draft.title.expect("a title").weak,
+                "the blurry line is title"
+            );
+            assert!(
+                !draft.composer.expect("a composer").weak,
+                "the sharp lines are not dragged down with it"
+            );
         }
 
         /// Not an error: the photo is still saved and the user types the
