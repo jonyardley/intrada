@@ -25,13 +25,21 @@ struct Eyebrow: View {
 
 /// An eyebrow with an optional trailing caption (e.g. "THIS MONTH" · "best week ·
 /// 95 min"). The trailing caption uses `inkSecondary` — real metadata, AA-safe.
+/// `caption` sits against the eyebrow instead, for a count that qualifies the
+/// title rather than commenting on the section ("USED IN · 3 pieces").
 struct SectionHeader: View {
   let title: String
+  var caption: String?
   var trailing: String?
 
   var body: some View {
     HStack(alignment: .firstTextBaseline) {
       Eyebrow(title)
+      if let caption {
+        Text("· \(caption)")
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
       if let trailing {
         Spacer(minLength: IntradaSpacing.controlGap)
         Text(trailing)
@@ -49,6 +57,7 @@ struct SectionHeader: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.section) {
         Eyebrow("Recent mastery")
         SectionHeader(title: "This month", trailing: "best week · 95 min")
+        SectionHeader(title: "Used in", caption: "3 pieces")
       }
       .padding(IntradaSpacing.card)
     }

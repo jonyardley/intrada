@@ -813,7 +813,8 @@ final class ScreenSnapshotTests: XCTestCase {
   func testLinkedExercisePicker() {
     // Three exercises; the first is already related (pre-selected → check), the
     // rest show the outlined add control.
-    let sheet = LinkedExercisePickerSheet(
+    let sheet = LinkedItemPickerSheet(
+      kind: .exercise,
       available: [
         .previewExercise,
         LibraryItemView(
@@ -832,6 +833,63 @@ final class ScreenSnapshotTests: XCTestCase {
       linkedIds: ["exercise-1"],
       onApply: { _ in })
     assertSnapshot(of: host(sheet), as: config)
+  }
+
+  // #1363: the same picker with pieces in it, opened from the exercise screen —
+  // composer as the meta line, indigo membership control, "Link a piece".
+  func testLinkedPiecePicker() {
+    let sheet = LinkedItemPickerSheet(
+      kind: .piece,
+      available: [.previewPiece, piece(id: "piece-9", "Blue Bossa", "Kenny Dorham")],
+      linkedIds: [LibraryItemView.previewPiece.id],
+      onApply: { _ in })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  // #1363: the card framed on its own — the screen snapshots above cut off
+  // before it — with every row state in one reference.
+  func testUsedInCardRowStates() {
+    assertSnapshot(
+      of: usedInCard(LibraryItemView.previewExerciseUsedIn.usedIn), as: config)
+  }
+
+  // #1363: at the largest text size the Link row has to reflow, not clip — it
+  // carries a ring, two lines of text, a button and a chevron across one width.
+  func testUsedInCardRowStatesAccessibilityText() {
+    assertSnapshot(
+      of: usedInCard(LibraryItemView.previewExerciseUsedIn.usedIn), as: axConfig)
+  }
+
+  // #1363: standalone is a state the card says out loud, not a missing card.
+  func testUsedInCardOnItsOwn() {
+    assertSnapshot(of: usedInCard([]), as: config)
+  }
+
+  private func piece(id: String, _ title: String, _ composer: String) -> LibraryItemView {
+    LibraryItemView(
+      id: id, itemType: .piece, title: title, subtitle: composer, key: nil, modality: nil,
+      tempo: nil, tempoMarking: nil, tempoBpm: nil, notes: nil, tags: [], createdAt: "",
+      updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
+      linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [],
+      photoId: nil)
+  }
+
+  private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {
+    // Hosted in a NavigationStack: outside one the rows' NavigationLinks render
+    // disabled, which greys the whole row and makes the reference a lie.
+    host(
+      NavigationStack {
+        ZStack {
+          PaperBackground()
+          ScrollView {
+            UsedInCard(
+              usage: usage, locale: Locale(identifier: "en_US"),
+              calendar: PreviewCalendar.utc, onLink: { _ in }, onLinkAPiece: {}
+            )
+            .padding(IntradaSpacing.card)
+          }
+        }
+      })
   }
 
   func testLibraryItemCards() {

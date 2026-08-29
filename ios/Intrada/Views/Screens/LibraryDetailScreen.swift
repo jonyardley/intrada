@@ -14,6 +14,7 @@ struct LibraryDetailScreen: View {
   @State private var editingLinks: Bool
   @State private var editingSteps: Bool
   @State private var showingPicker = false
+  @State private var showingPiecePicker = false
   @State private var creatingExercise = false
   @State private var editingChart = false
   @State private var showingScaffold = false
@@ -80,7 +81,7 @@ struct LibraryDetailScreen: View {
             linkedExercisesSection
           }
 
-          if item.itemType == .exercise, !item.usedIn.isEmpty {
+          if item.itemType == .exercise {
             usedInSection
           }
 
@@ -121,10 +122,20 @@ struct LibraryDetailScreen: View {
         .environment(store)
     }
     .sheet(isPresented: $showingPicker) {
-      LinkedExercisePickerSheet(
+      LinkedItemPickerSheet(
+        kind: .exercise,
         available: allExercises,
         linkedIds: item.linkedExercises.map(\.id),
         onApply: { applyLinkChanges($0) }
+      )
+      .environment(store)
+    }
+    .sheet(isPresented: $showingPiecePicker) {
+      LinkedItemPickerSheet(
+        kind: .piece,
+        available: allPieces,
+        linkedIds: linkedPieceIds,
+        onApply: { applyPieceLinkChanges($0) }
       )
       .environment(store)
     }
@@ -628,33 +639,11 @@ struct LibraryDetailScreen: View {
 
   // ── Used in (pieces this exercise serves) ──
 
-  // Gated on non-empty upstream until the empty state lands (#1363).
   private var usedInSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "Used in")
-      VStack(spacing: 0) {
-        ForEach(Array(item.usedIn.enumerated()), id: \.offset) { index, usage in
-          if index > 0 {
-            HairlineDivider()
-          }
-          usedInRow(usage)
-        }
-      }
-      .cardSurface()
-    }
-  }
-
-  @ViewBuilder private func usedInRow(_ usage: ExerciseUsageView) -> some View {
-    // A live piece taps through; the "On its own" bucket and since-removed pieces
-    // (#1093, 2a) are inert rows — nowhere to navigate.
-    if let piece = usage.piece, !usage.pieceRemoved {
-      NavigationLink(value: piece.id) {
-        UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: true)
-      }
-      .buttonStyle(.plain)
-    } else {
-      UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: false)
-    }
+    UsedInCard(
+      usage: item.usedIn, locale: locale, calendar: calendar,
+      onLink: { linkPiece(id: $0) },
+      onLinkAPiece: { showingPiecePicker = true })
   }
 
   // One-tap into the session builder seeded with this exercise (core
@@ -692,6 +681,46 @@ struct LibraryDetailScreen: View {
 
   private var allExercises: [LibraryItemView] {
     (store.viewModel?.items ?? []).filter { $0.itemType == .exercise }
+  }
+
+  private var allPieces: [LibraryItemView] {
+    (store.viewModel?.items ?? []).filter { $0.itemType == .piece }
+  }
+
+  /// The pieces that declare the link, as opposed to the ones this exercise has
+  /// merely been practised alongside — only a declared link can be unticked.
+  private var linkedPieceIds: [String] {
+    item.usedIn.filter { $0.linked }.compactMap { $0.piece?.id }
+  }
+
+  private func linkPiece(id: String) {
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.linkExercise(pieceId: id, exerciseId: item.id)))
+    if store.viewModel?.errorSeq == before {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+  }
+
+  // The mirror of `applyLinkChanges`, from the exercise side: the same
+  // LinkExercise/UnlinkExercise pair with the two ids the other way round.
+  private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
+    let current = Swift.Set(linkedPieceIds)
+    let toLink = selected.subtracting(current)
+    let toUnlink = current.subtracting(selected)
+    var ok = true
+    for pieceId in toLink {
+      let before = store.viewModel?.errorSeq
+      store.send(.item(.linkExercise(pieceId: pieceId, exerciseId: item.id)))
+      if store.viewModel?.errorSeq != before { ok = false }
+    }
+    for pieceId in toUnlink {
+      let before = store.viewModel?.errorSeq
+      store.send(.item(.unlinkExercise(pieceId: pieceId, exerciseId: item.id)))
+      if store.viewModel?.errorSeq != before { ok = false }
+    }
+    if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
   }
 
   // Reconcile the picker's final set against what's linked now: link the added,
@@ -970,59 +999,6 @@ private struct StepEditRow: View {
       onDrop(droppedId)
       return true
     }
-  }
-}
-
-private struct UsedInRow: View {
-  let usage: ExerciseUsageView
-  let locale: Locale
-  let calendar: Calendar
-  let discloses: Bool
-
-  private var isStandalone: Bool { usage.piece == nil }
-
-  var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
-      ScoreRing(score: usage.latestScore.map(Int.init), size: 44)
-      VStack(alignment: .leading, spacing: 3) {
-        Text(usage.rowTitle)
-          .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle())
-          .foregroundStyle(usage.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
-        Text(usage.metaLine(locale: locale, calendar: calendar))
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      if discloses {
-        Image(systemName: "chevron.right")
-          .imageScale(.small)
-          .foregroundStyle(IntradaColor.inkFaint)
-          .accessibilityHidden(true)
-      }
-    }
-    .padding(.vertical, IntradaSpacing.row)
-    .padding(.horizontal, IntradaSpacing.card)
-    .background(IntradaColor.cardFill)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel)
-    .accessibilityAddTraits(discloses ? [.isButton] : [])
-  }
-
-  private var accessibilityLabel: String {
-    var parts = [usage.rowTitle]
-    if usage.pieceRemoved { parts.append("removed from the library") }
-    guard usage.sessionCount > 0 else {
-      parts.append("not practised together yet")
-      return parts.joined(separator: ", ")
-    }
-    if let score = usage.latestScore {
-      parts.append("mark \(score) of 10")
-    } else {
-      parts.append("not yet rated")
-    }
-    let n = Int(usage.sessionCount)
-    parts.append("\(n) \(n == 1 ? "session" : "sessions")")
-    return parts.joined(separator: ", ")
   }
 }
 
