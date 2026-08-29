@@ -237,8 +237,7 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft {
 
     PhotoDraft {
         title: clamped_text(suggested.title.as_deref(), &haystack, MAX_TITLE).or(heuristic.title),
-        composer: clamped_text(suggested.composer.as_deref(), &haystack, MAX_COMPOSER)
-            .or(heuristic.composer),
+        composer: clamped_composer(suggested.composer.as_deref(), &haystack).or(heuristic.composer),
         tempo: clamped_tempo(suggested, &haystack).or(heuristic.tempo),
         chart_text: clamped_text(suggested.chart_text.as_deref(), &haystack, MAX_NOTES)
             .or(heuristic.chart_text),
@@ -285,12 +284,9 @@ impl Haystack {
         Self { text, lines: spans }
     }
 
-    /// Weakest line spanned, matching what `heuristic_tempo` already does with
-    /// its two lines: a suggestion is worth no more than the shakiest text it
-    /// rests on. Best occurrence rather than first, because the page can print
-    /// the same text twice and nothing says which one the model read; crediting
-    /// the first would let a smudged catalogue number decide the confidence of
-    /// a cleanly printed tempo.
+    /// Weakest line spanned, as `heuristic_tempo` already takes of its two. Best
+    /// occurrence, not first: a smudged catalogue number printing the same
+    /// digits must not decide a cleanly printed tempo's confidence.
     fn confidence_of(&self, value: &str) -> Option<f32> {
         let needle = normalise(value);
         if needle.is_empty() {
@@ -326,6 +322,14 @@ fn clamped_text(value: Option<&str>, haystack: &Haystack, max: usize) -> Option<
         confidence,
         weak: confidence < LOW_CONFIDENCE,
     })
+}
+
+/// The clamp says a suggestion is on the page, not that it is the right span of
+/// it, and "Music by Kosma" is on the page. `heuristic_composer` strips it too.
+fn clamped_composer(value: Option<&str>, haystack: &Haystack) -> Option<TextDraftField> {
+    let value = value?.trim();
+    let named = credit_prefix(value).map_or(value, |(rest, _)| rest);
+    clamped_text(Some(named), haystack, MAX_COMPOSER)
 }
 
 fn clamped_tempo(suggested: &SuggestedFields, haystack: &Haystack) -> Option<TempoDraftField> {
@@ -867,10 +871,8 @@ mod tests {
         assert!(draft.title.is_none(), "too long for the form either way");
     }
 
-    /// #1454: a suggestion used to claim `confidence: 1.0`, so the field with
-    /// the least evidence behind it was the one that looked strongest and could
-    /// never be shown as weak. Hard-coding a certainty fails here: the line it
-    /// matched was read at 0.31.
+    /// #1454: a suggestion claimed `confidence: 1.0`, so the field with the least
+    /// evidence looked strongest. Hard-coding it fails here; the line read 0.31.
     #[test]
     fn a_suggestion_carries_the_confidence_of_the_text_it_matched() {
         let mut lines = vec![line("Autumn Leaves", 0.08, 0.09)];
@@ -911,9 +913,8 @@ mod tests {
         assert_eq!(composer.confidence, 0.35);
     }
 
-    /// A suggestion confined to one line takes that line's confidence and not
-    /// the weakest on the page: deleting the overlap filter takes the minimum
-    /// of every line instead.
+    /// Deleting the overlap filter takes the minimum of every line on the page,
+    /// not of the lines the value actually spans.
     #[test]
     fn a_suggestion_is_not_dragged_down_by_a_line_it_did_not_match() {
         let mut lines = vec![
@@ -955,9 +956,8 @@ mod tests {
         assert!(tempo.weak);
     }
 
-    /// A catalogue number and a metronome mark can both print "120". Taking the
-    /// first occurrence hands the tempo the smudged line's confidence, which is
-    /// #1454 surviving inside the fix for it.
+    /// A catalogue number and a metronome mark both print "120". Taking the first
+    /// occurrence is #1454 surviving inside the fix for it.
     #[test]
     fn a_suggestion_the_page_prints_twice_takes_the_clearer_printing() {
         let mut lines = vec![line("Sonata K. 120", 0.06, 0.05), line("= 120", 0.28, 0.02)];
@@ -978,8 +978,7 @@ mod tests {
     }
 
     /// Deleting the blank-line skip in `Haystack::of` pushes a second separator
-    /// space, and this suggestion stops matching across it — narrowing the
-    /// clamp that phase B pinned.
+    /// space, and this stops matching across it, narrowing the phase B clamp.
     #[test]
     fn a_blank_line_between_two_lines_does_not_break_the_join() {
         let composer = read_fields(&PageReading {
@@ -999,8 +998,7 @@ mod tests {
         assert_eq!(composer.source, DraftSource::Suggested);
     }
 
-    /// Plenty of pages print a marking and no metronome mark. Hard-coding a
-    /// certainty in that arm leaves every other test green.
+    /// Hard-coding a certainty in this arm leaves every other test green.
     #[test]
     fn a_suggested_marking_with_no_bpm_carries_its_own_lines_confidence() {
         let mut lines = vec![line("Andante", 0.25, 0.02)];
@@ -1036,6 +1034,20 @@ mod tests {
         assert_eq!(tempo.source, DraftSource::Suggested);
         assert_eq!(tempo.confidence, 0.38);
         assert!(tempo.weak);
+    }
+
+    /// "Music by Joseph Kosma" is on the page, so it survives the clamp and beats
+    /// the heuristic. Deleting the strip pre-fills the field with the credit.
+    #[test]
+    fn a_suggested_composer_that_kept_its_credit_prefix_is_still_just_the_name() {
+        let composer = read_fields(&suggested_page(SuggestedFields {
+            composer: Some("Music by Joseph Kosma".to_string()),
+            ..no_suggestions()
+        }))
+        .composer
+        .expect("a composer");
+        assert_eq!(composer.value, "Joseph Kosma");
+        assert_eq!(composer.source, DraftSource::Suggested);
     }
 
     #[test]

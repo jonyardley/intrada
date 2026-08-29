@@ -123,7 +123,10 @@ in principle and is real research. We are not betting the feature on it.
    trade, but phase C should not assume per-line. Phase C settles what the clamp
    then claims: a surviving suggestion carries the OCR confidence of the weakest
    line it spanned, not a perfect 1.0 (#1454), so the field with the least
-   evidence behind it is no longer the one that looks strongest.* A ~3B model
+   evidence behind it is no longer the one that looks strongest. Note what the
+   clamp does not do: it constrains where a suggestion came from, never what
+   shape it is in. "Music by Kosma" is on the page, so the composer clamp has to
+   strip the credit prefix the same way the heuristic does.* A ~3B model
    asked to extract will
    sometimes produce a plausible composer that is not on the page; this clamp
    makes that structurally impossible and is a pure function, tested in Rust
