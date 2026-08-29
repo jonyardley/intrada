@@ -3,8 +3,8 @@
 *Agreed 2026-08-14. This is the working plan for the phase that follows the
 coach revert (#1344): audit the restored builder, design and implement the
 improvements, and choose the next major direction through research-backed,
-iterative decision making. [`status.md`](status.md) tracks which step is live;
-when this doc and the issues disagree, the issues are right.*
+iterative decision making. Which step is live is whichever issue carries an
+open PR; when this doc and the issues disagree, the issues are right.*
 
 ## Ground rules for the whole phase
 

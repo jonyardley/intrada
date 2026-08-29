@@ -114,7 +114,7 @@ specs/                # Design specs for major features
 | Document | Purpose |
 |----------|---------|
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
-| [`docs/status.md`](docs/status.md) | What's in flight right now — updated in every scope-changing PR |
+| [`docs/status.md`](docs/status.md) | What's in flight right now — generated from GitHub by `just status` |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
 | [`VISION.md`](VISION.md) | Product vision |
