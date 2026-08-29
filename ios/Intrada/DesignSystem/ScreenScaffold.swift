@@ -27,8 +27,8 @@ struct ScreenScaffold<Content: View>: View {
   }
 
   var body: some View {
-    // Background sizes, content floats: a ZStack sized to an un-shrinkable child
-    // instead, and every ancestor then centred it (#1470, #1481).
+    // The background sizes and the content floats: a ZStack used to size to an
+    // un-shrinkable child, and every ancestor then centred it (#1470, #1481).
     PaperBackground()
       .overlay(alignment: .topLeading) {
         VStack(alignment: .leading, spacing: 0) {
@@ -38,7 +38,7 @@ struct ScreenScaffold<Content: View>: View {
             .frame(height: 1)
             .padding(.top, IntradaSpacing.cardCompact)
           content
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
       }
       // Clamp the floor (avoid sub-readable text) but allow the full accessibility

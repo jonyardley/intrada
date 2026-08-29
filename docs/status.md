@@ -63,19 +63,17 @@ audit backlog and its five-phase build order.
 ## Recently landed
 
 - #1481 — **a too-wide row can no longer shift a whole screen sideways**. The
-  amplifier behind #1470, left out of that PR because nothing could prove it.
-  `ScreenScaffold` used a `ZStack`, which sizes to its largest child, so one
-  un-shrinkable row made the whole scaffold report a width wider than the
-  device and every ancestor then centred it: the screen lost characters off
-  both edges rather than simply overflowing to the right. The background now
-  owns the sizing and the content floats in a `topLeading` overlay, so an
-  over-wide child overflows without dragging the scaffold's width with it. All
-  five screens built on the scaffold are covered, and every existing snapshot
-  is pixel-identical, which is the evidence the restructure changed nothing
-  visible. Measured rather than walked: the harness that defeated the first
-  attempt is written up in the issue, since any wrapper placed around an
-  over-wide view centres it and a plain `VStack` scores exactly like a broken
-  scaffold under that method.
+  amplifier behind #1470, left out of that PR because nothing there could prove
+  it. `ScreenScaffold` used a `ZStack`, which sizes to its largest child, so one
+  un-shrinkable row made the whole scaffold report a width wider than the device
+  and every ancestor then centred it: the screen lost characters off both edges
+  rather than simply overflowing to the right. The background now owns the
+  sizing and the content floats in a `topLeading` overlay, so an over-wide child
+  overflows without dragging the scaffold's width with it. All five screens
+  built on the scaffold inherit the fix, and every existing snapshot is
+  pixel-identical, which is the evidence the restructure changed nothing
+  visible. Guarded two ways: the scaffold's reported width against an over-wide
+  child, and a leading-edge check on a real layout pass.
 - #1470 — **the Library stays on screen at accessibility text sizes**. From
   accessibility-extra-large upward the whole screen slid off its leading edge:
   the title read **brary**, the count line **eces · 2 exercises**, every card
