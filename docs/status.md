@@ -62,6 +62,22 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1470 — **the Library stays on screen at accessibility text sizes**. From
+  accessibility-extra-large upward the whole screen slid off its leading edge:
+  the title read **brary**, the count line **eces · 2 exercises**, every card
+  lost its type-coded bar, and the search button ran off the other side. The
+  cause was the browse bar's type filter, which reserved the width of its
+  widest option and pinned it with `fixedSize`, so the row could not shrink;
+  the scaffold then centred the oversized layout and clipped it at both ends.
+  The bar and the type filter now use `ViewThatFits`, so they reflow exactly
+  when the row will not fit rather than at a guessed text-size threshold:
+  narrow devices are covered, and the sizes that always fitted keep their
+  single row. Practice and Progress share the scaffold and were checked in the
+  same pass: both already reflowed cleanly, and both now carry a guard.
+  Covered by a Library snapshot at the largest accessibility size plus
+  structural tests asserting nothing on the pillar screens or the sheets that
+  reuse the browse bar runs off either edge, at two device widths. Hardening
+  the scaffold itself against any future un-shrinkable child is #1481.
 - #1436 — **a photographed page reads into title, composer and tempo**. Phase B
   of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs:
   the core (#1455) adds the `RecognitionOperation` effect and `read_fields`, in
