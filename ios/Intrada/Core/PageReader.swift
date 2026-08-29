@@ -3,7 +3,8 @@ import UIKit
 import Vision
 
 /// Runs Vision text recognition over a stored page and hands the core lines
-/// with geometry. Owns no interpretation: what a line *means* is
+/// with geometry, plus whatever the on-device model made of them where there is
+/// one. Owns no interpretation: what a line *means* is
 /// `recognition::read_fields` in the core (spec decision 4).
 enum PageReader {
   /// What crosses back from the recognition thread. The generated bridge types
@@ -31,6 +32,10 @@ enum PageReader {
       return .failed
     }
 
+    // Only on the minority of devices with Apple Intelligence; the core
+    // produces a usable draft without it on every device we target (decision 6).
+    let suggested = await PageSuggester.suggest(readingFrom: lines.map(\.text))
+
     return .page(
       PageReading(
         lines: lines.map {
@@ -38,9 +43,7 @@ enum PageReader {
             text: $0.text, x: $0.x, y: $0.y, width: $0.width, height: $0.height,
             confidence: $0.confidence)
         },
-        // Phase C fills this from Foundation Models; the core produces a usable
-        // draft without it on every device we target (spec decision 6).
-        suggested: nil
+        suggested: suggested?.bridged
       )
     )
   }
