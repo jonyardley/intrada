@@ -86,7 +86,7 @@ the executor it advises).
 2. **Opus 5, high** — slice planning inside a settled direction: claim checks,
    serialisation points, decomposition, Plan mode before Tier 2 work.
 3. **Sonnet 5, medium** — plan mechanics: turning an agreed plan into GitHub
-   issues, writing handover openers, updating `docs/status.md`.
+   issues, writing handover openers.
 
 **Plan on a stronger model than you implement on.** An Opus plan executed by
 Sonnet beats Sonnet planning for Sonnet: the plan is where errors are cheapest

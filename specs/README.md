@@ -23,7 +23,7 @@ document?"**
 
 Companion documents outside this folder:
 [`docs/roadmap.md`](../docs/roadmap.md) (direction and phase order) and
-[`docs/status.md`](../docs/status.md) (what's in flight).
+`just status` (what's in flight, read from GitHub).
 
 ## Planned — designed, not built
 
