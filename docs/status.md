@@ -37,10 +37,6 @@ audit backlog and its five-phase build order.
   plus the M1 iPads; every other device is exactly as it was. The one thing the
   self-review could not check without that hardware is whether the read's
   twelve-second budget stops the model or only stops the wait (#1472).
-  weak Vision read already does. The screens PR wires Foundation Models behind
-  `SystemLanguageModel.default.availability` and `if #available(iOS 26)`, on the
-  devices that have it. No new screen: the same add form, better answers, and
-  the substring clamp still means the model may choose but never invent.
 - #1363 — **an exercise says which pieces it is used in**. The exercise screen
   carried a singular "Related to <piece>" line under the score ring that hid
   extra pieces behind a menu and vanished entirely for a standalone drill, plus
