@@ -123,6 +123,53 @@ final class StoreEffectLoopTests: XCTestCase {
       "a failing local store must resolve .failed, not a phantom .ack")
   }
 
+  func testDeletePhotoReclaimsTheFileAndAcks() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 10, effect: .persistence(.deletePhoto(photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")))]
+    }
+    let photos = RecordingPhotoStore()
+    let store = Store(bridge: bridge, session: mockSession(), photos: photos)
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      photos.deleted, ["01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+      "the core decides a photo is garbage; the shell only executes it")
+    XCTAssertEqual(bridge.persistenceResolved.first?.output, .ack)
+  }
+
+  func testDeletePhotoFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 11, effect: .persistence(.deletePhoto(photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), photos: FailingPhotoStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a failed local write is never a silent success (#816)")
+  }
+
+  func testFilePhotoStoreDeletesTheFileAndToleratesAMissingOne() throws {
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+      .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let photos = FilePhotoStore(directory: dir)
+    let file = dir.appendingPathComponent("01ARZ3NDEKTSV4RRFFQ69G5FAV.jpg")
+    try Data("not really a jpeg".utf8).write(to: file)
+
+    try photos.delete(photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+    XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+
+    // A crash between the core's write and its delete would otherwise turn a
+    // second attempt into a thrown error and a spurious .failed.
+    XCTAssertNoThrow(try photos.delete(photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV"))
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -355,7 +402,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Original", kind: .piece, composer: "Bach", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
 
     let afterAdd = try bridge.view()
     XCTAssertEqual(
@@ -391,7 +438,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.addVariant(itemId: id, label: "F major")))
@@ -432,7 +479,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "F major")))
@@ -456,13 +503,13 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
             title: "Arpeggios", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let ids = try bridge.view().items.map(\.id)
     XCTAssertEqual(ids.count, 2, "two distinct items: addToSetlist is idempotent by item id")
 
@@ -526,7 +573,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: []))))
+            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(
@@ -561,7 +608,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: []))))
+            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     _ = try bridge.update(
       .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | F7 | Bbmaj7 |")))
@@ -595,7 +642,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let item = try XCTUnwrap(try bridge.view().items.first)
     XCTAssertFalse(item.priority, "new items start non-priority")
 
@@ -628,7 +675,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
@@ -652,7 +699,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
@@ -773,7 +820,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
     let exId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.item(.setVariants(id: exId, labels: ["C", "F", "B♭"])))
@@ -910,7 +957,7 @@ final class StoreEffectLoopTests: XCTestCase {
     id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
     tempo: nil,
     notes: nil, tags: [], linkedExerciseIds: [], createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [])
+    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [], photoId: nil)
 
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral
@@ -986,6 +1033,15 @@ private final class ResolveGate {
 private struct TestError: Error {}
 
 /// An `ItemStore` that always throws — drives the failure path (#816).
+private final class RecordingPhotoStore: PhotoStore {
+  private(set) var deleted: [String] = []
+  func delete(photoId: String) throws { deleted.append(photoId) }
+}
+
+private struct FailingPhotoStore: PhotoStore {
+  func delete(photoId: String) throws { throw TestError() }
+}
+
 private struct FailingStore: ItemStore {
   func loadItems() throws -> [Item] { throw TestError() }
   func save(_ item: Item) throws { throw TestError() }

@@ -48,7 +48,10 @@ final class ItemFormModel {
       modality: modality,
       tempo: buildTempo(),
       notes: emptyToNil(notes),
-      tags: tags)
+      tags: tags,
+      // The create form has no photo picker yet — it arrives with the screens
+      // PR for #1355, which is what CreateItem.photoId exists for.
+      photoId: nil)
   }
 
   func updateInput() -> UpdateItem {

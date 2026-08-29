@@ -725,13 +725,13 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })

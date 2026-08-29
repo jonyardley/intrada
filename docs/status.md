@@ -21,7 +21,21 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
-- No build. #1420, the tempo trend, was the last of the adopted order's numbered
+- #1355 — **a photo on a piece**, from Jon's v0.7.0 audit. Spec:
+  [`specs/piece-from-photo.md`](../specs/piece-from-photo.md). One image per
+  item as an aide-memoire: the page in front of you, kept on the device, shown
+  on the item. No text recognition in this phase. The **core PR** carries
+  `Item.photo_id`, the attach/remove events, the `ViewModel` projection the
+  screens will read, migration v16 and the Swift codec. The load-bearing
+  decision is that the core stores an opaque ulid and the image bytes never
+  cross the bridge or land in SQLite: a phone photo is megabytes, and `Item`
+  crosses the FFI bridge on every render while `loadItems` builds every one
+  eagerly. The shell owns the file; the core owns every decision about when a
+  photo stops belonging to an item, which is why replaced, removed and deleted
+  all reclaim through a core-emitted `DeletePhoto`. Design for capture and
+  display, then the screens PR, follow. Orphan reclamation after a crash
+  mid-write is deferred to #1442.
+- #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
   each a fresh decision gated on lived use, not queued work. What *is* running
   is the real-use thread under **Next** (the week's lesson tune), which is where

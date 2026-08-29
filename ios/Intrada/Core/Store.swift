@@ -20,16 +20,19 @@ final class Store {
   private let bridge: CoreBridge
   private let session: URLSession
   private let store: (any ItemStore)?
+  private let photos: (any PhotoStore)?
   private let sortDefaults: UserDefaults
 
   init(
     bridge: CoreBridge = LiveBridge(), session: URLSession = .shared,
-    store: (any ItemStore)? = nil, sortDefaults: UserDefaults = .standard,
+    store: (any ItemStore)? = nil, photos: (any PhotoStore)? = nil,
+    sortDefaults: UserDefaults = .standard,
     degraded: Bool = false
   ) {
     self.bridge = bridge
     self.session = session
     self.degraded = degraded
+    self.photos = photos ?? (try? FilePhotoStore.inAppContainer())
     // Default to in-memory so tests/previews never touch disk; the real app
     // passes an on-disk store. `try?` (not `guarded`) because `self` isn't fully
     // initialized yet here; in-memory creation effectively never fails.
@@ -148,6 +151,10 @@ final class Store {
       case .loadSessions: return .sessions(try store.loadSessions())
       case .saveSession(let session):
         try store.saveSession(session)
+        return .ack
+      case .deletePhoto(let photoId):
+        guard let photos else { return .failed }
+        try photos.delete(photoId: photoId)
         return .ack
       }
     } catch {

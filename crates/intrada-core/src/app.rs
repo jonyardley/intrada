@@ -786,6 +786,7 @@ fn build_library_item_views(
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
             variants,
+            photo_id: item.photo_id.clone(),
         });
     }
 
@@ -1191,6 +1192,7 @@ fn sample_items() -> Vec<Item> {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     };
 
@@ -1451,6 +1453,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         let _ = app.update(
@@ -1502,6 +1505,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             },
             Item {
                 id: "ex1".to_string(),
@@ -1519,6 +1523,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             },
         ];
 
@@ -1646,6 +1651,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -1819,6 +1825,42 @@ mod tests {
     }
 
     #[test]
+    fn view_carries_the_photo_id_through_to_the_screens() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let item = Item {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec![],
+            priority: false,
+            chord_chart: None,
+            variants: vec![],
+            photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
+        };
+        let model = Model {
+            items: vec![item],
+            ..Model::test_default()
+        };
+
+        let view = app.view(&model);
+
+        assert_eq!(
+            view.items[0].photo_id.as_deref(),
+            Some("01ARZ3NDEKTSV4RRFFQ69G5FAV"),
+            "the screens read the ViewModel, never the core Item"
+        );
+    }
+
+    #[test]
     fn test_view_with_items() {
         let app = Intrada;
         let now = chrono::Utc::now();
@@ -1843,6 +1885,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "p2".to_string(),
@@ -1863,6 +1906,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "p3".to_string(),
@@ -1883,6 +1927,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "e1".to_string(),
@@ -1900,6 +1945,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
             ],
             ..Default::default()
@@ -1976,6 +2022,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -1993,6 +2040,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         let vm = app.view(&model);
@@ -2055,6 +2103,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -2072,6 +2121,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -2106,6 +2156,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -2123,6 +2174,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -2156,6 +2208,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -2200,6 +2253,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -2236,6 +2290,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -2273,6 +2328,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec!["  warm-up ".to_string()],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2292,6 +2348,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2313,6 +2370,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2344,6 +2402,7 @@ mod tests {
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
                 tags: vec!["日本語タグ".to_string()],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2412,6 +2471,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             });
         }
         for i in 0..5000 {
@@ -2435,6 +2495,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             });
         }
         let populate_time = start.elapsed();
@@ -2542,6 +2603,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -2594,6 +2656,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -2611,6 +2674,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         model.items = vec![p1, p2];
 
@@ -2718,6 +2782,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         use crate::domain::session::{
@@ -2832,6 +2897,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         use crate::domain::session::{
@@ -2904,6 +2970,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         use crate::domain::session::{
@@ -3003,6 +3070,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         use crate::domain::session::{
@@ -3333,6 +3401,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             ..Model::test_default()
         };
@@ -3353,6 +3422,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -3382,6 +3452,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             ..Model::test_default()
         };
@@ -3402,6 +3473,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -3460,6 +3532,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -3779,6 +3852,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 
@@ -4388,6 +4462,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
 
         let server_item = Item {
@@ -4406,6 +4481,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -4441,6 +4517,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -4471,6 +4548,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -4503,6 +4581,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             ..Model::test_default()
         };
@@ -4538,6 +4617,7 @@ mod tests {
                 tempo: None,
                 notes: None,
                 tags: vec![],
+                photo_id: None,
             })),
             &mut model,
         );
@@ -4570,6 +4650,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             ..Model::test_default()
         };
@@ -4636,6 +4717,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             ..Model::test_default()
         };
@@ -4687,6 +4769,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -4704,6 +4787,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         let model = Model {
             items: vec![piece, ex],
@@ -4751,6 +4835,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -4771,6 +4856,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -4788,6 +4874,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -4805,6 +4892,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
             ],
             ..Default::default()
@@ -4918,6 +5006,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 
@@ -5353,6 +5442,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -5370,6 +5460,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 },
             ],
             ..Default::default()

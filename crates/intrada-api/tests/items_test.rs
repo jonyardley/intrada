@@ -536,6 +536,7 @@ async fn update_priority_is_scoped_to_owner() {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         },
     )
     .await

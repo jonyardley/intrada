@@ -29,6 +29,13 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
+    /// Reclaim the image file behind a photo id (#1355). The core decides when
+    /// a photo stops belonging to an item — replaced, removed, or the item
+    /// deleted — so that decision never drifts into Swift. Image bytes never
+    /// cross the bridge; the shell resolves the id to a path.
+    DeletePhoto {
+        photo_id: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -69,6 +76,11 @@ pub fn load_sessions() -> Command<Effect, Event> {
         .then_send(Event::SessionsStoreLoaded)
 }
 
+pub fn delete_photo(photo_id: String) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::DeletePhoto { photo_id })
+        .then_send(Event::StoreWritten)
+}
+
 pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::SaveSession(session))
         .then_send(Event::SessionStoreWritten)
@@ -99,6 +111,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 
@@ -274,6 +287,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         }
     }
 

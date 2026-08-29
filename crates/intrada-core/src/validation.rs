@@ -131,6 +131,9 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     if let Some(ref tempo) = input.tempo {
         validate_tempo(tempo)?;
     }
+    if let Some(ref photo_id) = input.photo_id {
+        validate_photo_id(photo_id)?;
+    }
     Ok(())
 }
 
@@ -363,6 +366,19 @@ pub fn validate_rep_consistency(
 /// The host half of `validate_link_exercise`: the id names an item that exists
 /// and is a piece. Shared with `AddLinkedExercise`, where the exercise does not
 /// exist yet and so only this half can run.
+/// A photo id becomes a path component in the shell, so a value that is not a
+/// ulid is a traversal out of the app container (`specs/piece-from-photo.md`).
+/// The core is the only layer that can refuse it before it is stored.
+pub fn validate_photo_id(photo_id: &str) -> Result<(), LibraryError> {
+    if ulid::Ulid::from_string(photo_id).is_err() {
+        return Err(LibraryError::Validation {
+            field: "photo_id".to_string(),
+            message: "That photo could not be saved".to_string(),
+        });
+    }
+    Ok(())
+}
+
 pub fn validate_piece_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
     let piece = model
         .items
@@ -537,6 +553,7 @@ mod tests {
                 "   ".to_string(),
                 "scales".to_string(),
             ],
+            photo_id: None,
         };
 
         let out = normalize_create_item(input);
@@ -568,6 +585,7 @@ mod tests {
                 "  JAZZ  ".to_string(),
                 "blues".to_string(),
             ],
+            photo_id: None,
         };
         assert_eq!(
             normalize_create_item(input).tags,
@@ -600,6 +618,7 @@ mod tests {
             }),
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         assert_eq!(
             normalize_create_item(input).tempo,
@@ -621,6 +640,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         assert_eq!(
             normalize_create_item(input).composer,
@@ -682,6 +702,7 @@ mod tests {
             }),
             notes: Some("First movement".to_string()),
             tags: vec!["classical".to_string(), "piano".to_string()],
+            photo_id: None,
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -697,6 +718,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -719,6 +741,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -741,6 +764,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -763,6 +787,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -785,6 +810,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -807,6 +833,7 @@ mod tests {
             tempo: None,
             notes: Some("x".repeat(5001)),
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -829,6 +856,7 @@ mod tests {
             tempo: None,
             notes: Some("x".repeat(5000)),
             tags: vec![],
+            photo_id: None,
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -844,6 +872,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -864,6 +893,7 @@ mod tests {
             }),
             notes: Some("Practice daily".to_string()),
             tags: vec!["technique".to_string()],
+            photo_id: None,
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -879,6 +909,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -901,6 +932,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -923,6 +955,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -945,6 +978,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -967,6 +1001,7 @@ mod tests {
             tempo: None,
             notes: Some("x".repeat(5001)),
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -989,6 +1024,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1304,6 +1340,7 @@ mod tests {
             }),
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1326,6 +1363,7 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec!["good".to_string(), "".to_string()],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1351,6 +1389,7 @@ mod tests {
             }),
             notes: None,
             tags: vec![],
+            photo_id: None,
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {

@@ -149,6 +149,7 @@ pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Ef
         tempo: item.tempo.clone(),
         notes: item.notes.clone(),
         tags: item.tags.clone(),
+        photo_id: None,
     };
     let temp_id = temp_id.to_string();
     Http::post(url(api_base_url, "/api/items"))
@@ -540,6 +541,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 

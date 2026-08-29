@@ -354,6 +354,9 @@ pub struct LibraryItemView {
     /// empty for pieces and un-laddered exercises.
     #[serde(default)]
     pub variants: Vec<VariantView>,
+    /// The item's photo id, for the shell to resolve to a file on disk (#1355).
+    #[serde(default)]
+    pub photo_id: Option<String>,
 }
 
 /// One step of an exercise's ladder with its derived practice state (#1083).
@@ -593,6 +596,7 @@ impl LibraryItemView {
             scaffold_preview: None,
             chord_chart: None,
             variants: Vec::new(),
+            photo_id: None,
         }
     }
 }
@@ -962,6 +966,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -1156,6 +1161,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1349,6 +1355,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()
