@@ -5,9 +5,14 @@ import UIKit
 /// Nothing here deletes: removing a photo tombstones the id and leaves the
 /// bytes (spec decision 2). Reaping is #1442.
 enum PhotoFileStore {
-  enum Failure: Error {
+  enum Failure: Error, Equatable {
     case couldNotEncode
+    /// An id hydrated from GRDB never passes the core's validator again, and
+    /// it becomes a path component here.
+    case notAPhotoId
   }
+
+  private static let crockford = Set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
   /// JPEG, not the HEIC the spec first wrote (open question 6, settled
   /// 2026-08-29): the scanner hands back a `UIImage` either way, so neither is
@@ -18,7 +23,10 @@ enum PhotoFileStore {
   private static let longestEdge: CGFloat = 2048
 
   static func url(for photoId: String) throws -> URL {
-    try directory().appendingPathComponent("\(photoId).jpg")
+    guard photoId.count == 26, photoId.allSatisfy(crockford.contains) else {
+      throw Failure.notAPhotoId
+    }
+    return try directory().appendingPathComponent("\(photoId).jpg")
   }
 
   @discardableResult
@@ -31,10 +39,25 @@ enum PhotoFileStore {
     return destination
   }
 
+  /// Cached because SwiftUI re-evaluates `State(initialValue:)` on every `init`,
+  /// so this ran on the main actor each time the detail screen's body changed.
+  /// Nothing invalidates it: every save mints a fresh ulid.
+  @MainActor
   static func image(for photoId: String) -> UIImage? {
-    guard let source = try? url(for: photoId) else { return nil }
-    return UIImage(contentsOfFile: source.path)
+    if let cached = cache.object(forKey: photoId as NSString) { return cached }
+    guard let source = try? url(for: photoId),
+      let image = UIImage(contentsOfFile: source.path)
+    else { return nil }
+    cache.setObject(image, forKey: photoId as NSString)
+    return image
   }
+
+  @MainActor
+  private static let cache: NSCache<NSString, UIImage> = {
+    let cache = NSCache<NSString, UIImage>()
+    cache.countLimit = 4
+    return cache
+  }()
 
   private static func directory() throws -> URL {
     let support = try FileManager.default.url(

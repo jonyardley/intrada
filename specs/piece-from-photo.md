@@ -22,6 +22,7 @@
 [#1387]: https://github.com/jonyardley/intrada/issues/1387
 [#1390]: https://github.com/jonyardley/intrada/issues/1390
 [#1443]: https://github.com/jonyardley/intrada/pull/1443
+[#1442]: https://github.com/jonyardley/intrada/issues/1442
 [#1446]: https://github.com/jonyardley/intrada/issues/1446
 
 ## Problem
@@ -239,8 +240,14 @@ one worth planning against.
   nothing else attached. About 2 days. Two departures from the plan above, both
   settled during the build: the library route is SwiftUI's `PhotosPicker`, not a
   `PHPickerViewController` wrapper, which needs no photo-library permission at
-  all; and the shell mints the photo's ulid itself (`ios/Intrada/Core/Ulid.swift`),
-  since it needs the id before it can write the file.
+  all; the shell mints the photo's ulid itself (`ios/Intrada/Core/Ulid.swift`),
+  since it needs the id before it can write the file; and **the bytes are
+  written shell-side, not through a persistence `Effect`**. The invariant-5
+  paragraph above reads as though the write is core-driven; it is not, because
+  the bytes must never cross the bridge and the shell needs the id first. The
+  failure is still surfaced rather than faked — a failed write sends no event at
+  all. This matters for phase B, where `ReadPhoto { photo_id }` has the shell
+  read a file the core assumes is there.
 - **B. Read the page into title, composer and tempo.** The
   `RecognitionOperation` effect, Vision OCR in the shell, `read_fields` and its
   heuristics in the core, the confirm sheet. 2 to 3 days.
@@ -278,11 +285,12 @@ actually photograph their charts.
    composer, it is what fills them, and the add surface's affordance becomes an
    entry point above the form rather than a row inside it. Tracked as [#1446],
    to fold into phase B's conversation (open question 2) or take on its own.
-5. **Who reaps orphan files.** Decision 2 leaves the bytes behind on a
-   tombstone, which is right for the user and unbounded for the disk. A
-   settings-screen figure with an explicit clear, a reap on a later explicit
-   pass, or nothing at all on the free tier. Answer before phase A ships, not
-   after.
+5. **Who reaps orphan files.** ~~Decision 2 leaves the bytes behind...~~
+   **Answered 2026-08-29: a later explicit pass, tracked as [#1442]; nothing
+   reaps in phase A.** Replacing a photo, clearing it and deleting the item all
+   leave the bytes on disk, deliberately, because an orphan costs disk and an
+   eager delete costs the user their only copy. What that pass looks like — a
+   settings figure with an explicit clear, or a sweep — is #1442's to decide.
 6. **HEIC or JPEG.** ~~HEIC is materially smaller...~~ **Answered 2026-08-29:
    JPEG, quality 0.8, long edge capped at 2048px.** "What the camera produces
    natively" does not apply here: `VNDocumentCameraScan` hands back a `UIImage`

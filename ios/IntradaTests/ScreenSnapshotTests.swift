@@ -61,6 +61,22 @@ final class ScreenSnapshotTests: XCTestCase {
       })
   }
 
+  /// Flat fills only: the reference stays byte-stable and cheap as lossless PNG.
+  private static let page: UIImage = {
+    let size = CGSize(width: 600, height: 850)
+    return UIGraphicsImageRenderer(size: size).image { context in
+      UIColor(white: 0.98, alpha: 1).setFill()
+      context.fill(CGRect(origin: .zero, size: size))
+      UIColor(white: 0.55, alpha: 1).setFill()
+      for stave in 0..<5 {
+        for line in 0..<5 {
+          context.fill(
+            CGRect(x: 60, y: 140 + stave * 130 + line * 12, width: 480, height: 2))
+        }
+      }
+    }
+  }()
+
   func testRootShell() {
     assertSnapshot(of: host(RootView()), as: config)
   }
@@ -478,22 +494,6 @@ final class ScreenSnapshotTests: XCTestCase {
     }
     assertSnapshot(of: host(cards), as: config)
   }
-
-  /// Flat fills only: the reference stays byte-stable and cheap as lossless PNG.
-  private static let page: UIImage = {
-    let size = CGSize(width: 600, height: 850)
-    return UIGraphicsImageRenderer(size: size).image { context in
-      UIColor(white: 0.98, alpha: 1).setFill()
-      context.fill(CGRect(origin: .zero, size: size))
-      UIColor(white: 0.55, alpha: 1).setFill()
-      for stave in 0..<5 {
-        for line in 0..<5 {
-          context.fill(
-            CGRect(x: 60, y: 140 + stave * 130 + line * 12, width: 480, height: 2))
-        }
-      }
-    }
-  }()
 
   /// The selectable derived-curriculum commit sheet, with already-linked (not
   /// selectable) + fallback flags and per-row selection controls.

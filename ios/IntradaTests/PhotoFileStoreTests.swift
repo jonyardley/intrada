@@ -8,6 +8,12 @@ import UIKit
 /// photo is re-read at scale 1, so its `size` is its pixel count.
 @MainActor
 struct PhotoFileStoreTests {
+  /// The store never deletes, so the tests clear up after themselves.
+  private func discard(_ photoId: String) {
+    guard let url = try? PhotoFileStore.url(for: photoId) else { return }
+    try? FileManager.default.removeItem(at: url)
+  }
+
   private func page(_ size: CGSize, scale: CGFloat = 1) -> UIImage {
     let format = UIGraphicsImageRendererFormat.default()
     format.scale = scale
@@ -19,6 +25,7 @@ struct PhotoFileStoreTests {
 
   @Test func writesAPhotoThatReadsBack() throws {
     let photoId = Ulid.generate()
+    defer { discard(photoId) }
 
     try PhotoFileStore.write(page(CGSize(width: 300, height: 400)), id: photoId)
 
@@ -29,8 +36,19 @@ struct PhotoFileStoreTests {
     #expect(PhotoFileStore.image(for: Ulid.generate()) == nil)
   }
 
+  /// The id becomes a path component, and GRDB rows skip the core's validator.
+  @Test func refusesAnIdThatIsNotAUlid() {
+    #expect(throws: PhotoFileStore.Failure.notAPhotoId) {
+      try PhotoFileStore.url(for: "../../../etc/passwd")
+    }
+    #expect(throws: PhotoFileStore.Failure.notAPhotoId) {
+      try PhotoFileStore.url(for: "01ARZ3NDEKTSV4RRFFQ69G5FA")
+    }
+  }
+
   @Test func bringsACameraSizedPageDownToTheLongEdgeCap() throws {
     let photoId = Ulid.generate()
+    defer { discard(photoId) }
 
     try PhotoFileStore.write(page(CGSize(width: 4032, height: 3024)), id: photoId)
 
@@ -43,6 +61,7 @@ struct PhotoFileStoreTests {
   /// come down, even though its `size` is comfortably under the limit.
   @Test func measuresTheCapInPixelsNotPoints() throws {
     let photoId = Ulid.generate()
+    defer { discard(photoId) }
 
     try PhotoFileStore.write(page(CGSize(width: 1024, height: 768), scale: 3), id: photoId)
 
@@ -52,6 +71,7 @@ struct PhotoFileStoreTests {
 
   @Test func leavesAPageThatIsAlreadySmallEnoughAlone() throws {
     let photoId = Ulid.generate()
+    defer { discard(photoId) }
 
     try PhotoFileStore.write(page(CGSize(width: 1024, height: 768)), id: photoId)
 

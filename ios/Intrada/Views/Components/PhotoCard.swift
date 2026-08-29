@@ -10,7 +10,7 @@ struct PhotoCard: View {
   let photoId: String?
   /// Injected so a snapshot test can hand over a fixed image instead of
   /// reaching into the simulator's Application Support directory.
-  let loadImage: (String) -> UIImage?
+  let loadImage: @MainActor (String) -> UIImage?
 
   @Environment(Store.self) private var store
   @State private var image: UIImage?
@@ -26,7 +26,7 @@ struct PhotoCard: View {
   /// looks like a piece that does not.
   init(
     itemId: String, photoId: String?,
-    loadImage: @escaping (String) -> UIImage? = PhotoFileStore.image(for:)
+    loadImage: @escaping @MainActor (String) -> UIImage? = PhotoFileStore.image(for:)
   ) {
     self.itemId = itemId
     self.photoId = photoId
@@ -91,7 +91,7 @@ struct PhotoCard: View {
         } label: {
           Label("Choose a photo", systemImage: "photo.on.rectangle")
         }
-        if image != nil {
+        if photoId != nil {
           Button(role: .destructive) {
             confirmingRemove = true
           } label: {
@@ -99,19 +99,21 @@ struct PhotoCard: View {
           }
         }
       } label: {
-        Text(image == nil ? "Add" : "Change")
+        Text(photoId == nil ? "Add" : "Change")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.accent)
       }
-      .accessibilityLabel(image == nil ? "Add a photo" : "Change the photo")
+      .accessibilityLabel(photoId == nil ? "Add a photo" : "Change the photo")
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
     .padding(.bottom, image == nil ? IntradaSpacing.card : IntradaSpacing.cardCompact)
   }
 
+  /// A stored id whose file has gone says so rather than posing as "no photo
+  /// yet", which would hide Remove behind the very id it needs to clear.
   private var emptyState: some View {
-    Text("Keep the page you practise from.")
+    Text(photoId == nil ? "Keep the page you practise from." : "That photo is missing.")
       .font(IntradaFont.body)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -157,13 +159,18 @@ struct PhotoCard: View {
 
   private func savePicked(_ item: PhotosPickerItem) async {
     picked = nil
-    guard let data = try? await item.loadTransferable(type: Data.self),
-      let image = UIImage(data: data)
-    else {
+    do {
+      guard let data = try await item.loadTransferable(type: Data.self),
+        let image = UIImage(data: data)
+      else {
+        surface("Couldn't read that photo. Try another.")
+        return
+      }
+      save(image)
+    } catch {
+      report(error, "photo library load")
       surface("Couldn't read that photo. Try another.")
-      return
     }
-    save(image)
   }
 
   /// Bytes first, then the core. The order is the whole point: an item can

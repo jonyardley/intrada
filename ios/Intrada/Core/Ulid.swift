@@ -10,7 +10,7 @@ enum Ulid {
   private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
   static func generate(
-    millisecondsSinceEpoch: UInt64 = UInt64(Date().timeIntervalSince1970 * 1000),
+    millisecondsSinceEpoch: UInt64 = UInt64(max(0, Date().timeIntervalSince1970 * 1000)),
     randomByte: () -> UInt8 = { UInt8.random(in: .min ... .max) }
   ) -> String {
     let timestamp = stride(from: 40, through: 0, by: -8).map {
