@@ -15,6 +15,7 @@ struct ScanPageEntry: View {
 
   @State private var captureState = PhotoCaptureState()
   @State private var failure: String?
+  @State private var viewing = false
 
   /// Injected so a snapshot test needs no Application Support directory.
   var loadImage: @MainActor (String) -> UIImage? = PhotoFileStore.image(for:)
@@ -66,14 +67,24 @@ struct ScanPageEntry: View {
 
   private func scanned(_ image: UIImage) -> some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
-      Image(uiImage: image)
-        .resizable()
-        .scaledToFill()
-        .frame(width: 40, height: 52)
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.badge))
-        .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.badge)
-            .stroke(IntradaColor.hairline, lineWidth: 1))
+      // The scanner shows nothing back after the shutter, so without this there
+      // is no way to see what was actually captured, or why a field read oddly.
+      Button {
+        viewing = true
+      } label: {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+          .frame(width: 40, height: 52)
+          .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.badge))
+          .overlay(
+            RoundedRectangle(cornerRadius: IntradaRadius.badge)
+              .stroke(IntradaColor.hairline, lineWidth: 1))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("The page you scanned")
+      .accessibilityHint("Opens it full screen")
+      .fullScreenCover(isPresented: $viewing) { PhotoViewer(image: image) }
       Text(outcome)
         .font(IntradaFont.subtitle)
         .foregroundStyle(IntradaColor.inkSecondary)

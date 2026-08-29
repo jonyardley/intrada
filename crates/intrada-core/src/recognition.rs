@@ -326,7 +326,8 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         .filter(|l| tempo_line(&l.text, true).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
         .max_by(|a, b| {
-            // Confident first: an artefact can dwarf the heading (#1436).
+            // Confident first: a hallucinated line can dwarf the real heading,
+            // which is how a scan filled the title with nonsense (#1436).
             (a.confidence >= LOW_CONFIDENCE)
                 .cmp(&(b.confidence >= LOW_CONFIDENCE))
                 .then_with(|| (a.height * a.confidence).total_cmp(&(b.height * b.confidence)))
