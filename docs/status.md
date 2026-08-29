@@ -21,6 +21,16 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- #1437 — **on-device model suggestions for a photographed page**. Phase C of
+  [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs. The
+  core one lands first: a field the on-device model suggested now carries the
+  OCR confidence of the lines it matched, instead of claiming a perfect 1.0
+  (#1454), so the field with the least evidence behind it stops being the one
+  that looks strongest. It reads as **From the photo**, dimmed, exactly as a
+  weak Vision read already does. The screens PR wires Foundation Models behind
+  `SystemLanguageModel.default.availability` and `if #available(iOS 26)`, on the
+  devices that have it. No new screen: the same add form, better answers, and
+  the substring clamp still means the model may choose but never invent.
 - #1363 — **an exercise says which pieces it is used in**. The exercise screen
   carried a singular "Related to <piece>" line under the score ring that hid
   extra pieces behind a menu and vanished entirely for a standalone drill, plus
@@ -32,27 +42,6 @@ audit backlog and its five-phase build order.
   the three row states, the "On its own" empty state and linking from the
   exercise side. Spec:
   [`specs/exercise-relations.md`](../specs/exercise-relations.md).
-
-- Recognition quality on a photographed page, following #1436's device test:
-  a hallucinated line could outrank the real title. Fix in flight.
-
-- #1436 — **reading a photographed page into title, composer and tempo**.
-  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md),
-  landed in two PRs: the core (#1455) and the screens (#1457). The core adds the `RecognitionOperation` effect, Vision text recognition
-  in the shell as a dumb pipe, and `read_fields` in the core: the largest text
-  in the top band is the title, a `Music by` line is the composer, a tempo word
-  or a number after an `=` is the tempo. A model suggestion (phase C) is only
-  ever accepted when it appears verbatim on the page, so it can choose but
-  never invent. Nothing is written without the user pressing Add. The screens PR:
-  spec open question 2 is answered, so recognition
-  **pre-fills the add form** rather than opening a confirm sheet of its own,
-  which also unblocks #1446. **Scan a page** sits above the fields; every field
-  it filled says **From the photo** underneath, dimmed where the read was weak,
-  and the mark clears the moment you type in that field. Nothing is saved until
-  you press Add.
-  follow in a second PR now that spec open question 2 is answered:
-  recognition **pre-fills the add form**, it does not open a confirm sheet of
-  its own, which also unblocks #1446.
 
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
@@ -73,6 +62,24 @@ audit backlog and its five-phase build order.
   quietly say **steps** about a ladder of keys, with no error to notice. The
   new Rust parser is scoped to that one question; the Swift `KeyHelper` keeps
   its circle of fifths for the key picker, which answers a different one.
+- #1436 — **a photographed page reads into title, composer and tempo**. Phase B
+  of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs:
+  the core (#1455) adds the `RecognitionOperation` effect and `read_fields`, in
+  which the largest text in the top band is the title, a `Music by` line is the
+  composer, and a tempo word or a number after an `=` is the tempo; the screens
+  (#1457) put **Scan a page** above the fields on the add form and pre-fill
+  them, rather than opening a confirm sheet of its own (spec open question 2),
+  which also unblocked #1446. Every field it filled says **From the photo**
+  underneath, dimmed where the read was weak, and the mark clears the moment you
+  type in that field. Nothing is saved until you press Add. A third PR (#1461)
+  is what three rounds of photographing real pages taught: the language set is
+  pinned to Latin so a handwritten page cannot read as confident nonsense, a
+  title has to be spelled rather than merely tall, both capture routes crop to
+  the page, the credit reader takes the strongest claim and knows the dash form
+  a Real Book uses, and the page you scanned to fill the form is kept on the
+  piece rather than photographed twice. Spec open question 1 has its first
+  answer, and it is not the one the design assumed: a handwritten Real Book
+  page.
 - #1462 — **the Library says when an exercise runs through several keys**.
   A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
   list; the ladder only showed after you tapped in and reached **Steps**. The
@@ -306,13 +313,13 @@ audit backlog and its five-phase build order.
   (#1103) moved to now.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
-- **Adding a piece from a photo: phase A has landed, recognition has not**
+- **Adding a piece from a photo: phases A and B have landed**
   ([`specs/piece-from-photo.md`](../specs/piece-from-photo.md)). #1355 stores
-  the photo and does no recognition, and is done. **#1436 is the next one**:
-  read title, composer and tempo with Vision OCR through a new
-  `RecognitionOperation` effect. Then #1437 adds on-device model suggestions,
-  clamped so the model may only choose text that appears in the OCR, and #1387
-  part 2 reads a photographed *text* chart. Phase A also answers the spec's
+  the photo; #1436 reads title, composer and tempo off it with Vision OCR
+  through the `RecognitionOperation` effect. **#1437 is the one in flight**:
+  on-device model suggestions, clamped so the model may only choose text that
+  appears in the OCR. Then #1387 part 2 reads a photographed *text* chart.
+  Phase A also answers the spec's
   first open question by shipping: it is what tells us what people actually
   photograph, before #1387 part 2 commits to a parser. The load-bearing
   finding stands: chord symbols on a stave are text so OCR reads them, but
@@ -320,9 +327,9 @@ audit backlog and its five-phase build order.
   `parse_chart` needs bars above all else. That half is a spike (#1438),
   explicitly not a phase. Spec open question 2 is now answered (Jon,
   2026-08-29): recognition pre-fills `ItemFormScaffold` on the add path rather
-  than opening a confirm sheet, which is what #1446 was waiting on. What is
-  left for the design conversation before #1436's screens is narrower — how a
-  recognised field is marked, whether a weak read is marked differently again,
-  and whether the mark clears once the user edits it. Open question 3 is
+  than opening a confirm sheet, which is what #1446 was waiting on, and #1436's
+  screens answered the rest of it: a recognised field is marked **From the
+  photo**, a weak read wears the same mark dimmed, and the mark clears once the
+  user types in that field. Open question 3 is
   answered too: a bpm is only read when it follows an `=`, never from a bare
   number, which would as often be a page or bar number.
