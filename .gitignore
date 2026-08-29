@@ -58,3 +58,4 @@ graphify-out/
 # Per-developer mise overlay (e.g. RUSTC_WRAPPER=sccache) — see SETUP.md §6.
 # Never committed: mise.toml itself must stay identical for everyone.
 mise.local.toml
+docs/status.md

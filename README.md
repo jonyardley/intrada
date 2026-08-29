@@ -2,7 +2,7 @@
 
 A **practice notebook** for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Build a session from your music library, group and reorder what you'll practise, play it through with a timer and rep counting, and score how it went. Organised as three pillars — **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working).
 
-See [`docs/roadmap.md`](docs/roadmap.md) for direction, [`docs/status.md`](docs/status.md) for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its design record lives in [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md), bannered.)
+See [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its design record lives in [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md), bannered.)
 
 The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQLite is the source of truth and the app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/rebuild-review.md`](docs/rebuild-review.md)), and the app has been native-iOS-only since.
 
@@ -114,7 +114,7 @@ specs/                # Design specs for major features
 | Document | Purpose |
 |----------|---------|
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
-| [`docs/status.md`](docs/status.md) | What's in flight right now — updated in every scope-changing PR |
+| [`docs/where-we-are.md`](docs/where-we-are.md) | Which release and phase we are on — hand-written, changed when they change |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
 | [`VISION.md`](VISION.md) | Product vision |

@@ -1,8 +1,8 @@
 # intrada — Product Roadmap
 
 *This is a vision and prioritisation doc, not a project plan. For what's
-actually shipping right now, see [`status.md`](status.md) (one screen, updated
-per PR), the [project board](https://github.com/users/jonyardley/projects/2)
+actually shipping right now, run `just status` (one screen, read from GitHub),
+or see the [project board](https://github.com/users/jonyardley/projects/2)
 and [open issues](https://github.com/jonyardley/intrada/issues).*
 
 ---
@@ -73,7 +73,7 @@ The coach pivot is reversed (see the banner at the top); v0.7.0, the
 restored session-builder product, is on TestFlight. The immediate work is
 the five-phase audit backlog in [`audit-2026-08.md`](audit-2026-08.md),
 run under [`rethink-plan.md`](rethink-plan.md). See
-[`status.md`](status.md) and the
+`just status` and the
 [project board](https://github.com/users/jonyardley/projects/2)
 for what's actually in flight.
 

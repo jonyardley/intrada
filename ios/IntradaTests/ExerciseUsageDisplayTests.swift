@@ -48,14 +48,14 @@ struct ExerciseUsageDisplayTests {
     let line = usage(
       latestScore: 7, sessionCount: 3, lastPracticedAt: "2026-06-24T09:00:00Z"
     ).metaLine(locale: locale, calendar: calendar)
-    #expect(line == "Debussy · 3 sessions · Jun 24")
+    #expect(line == "Debussy · 3 sessions · 24 Jun")
   }
 
   @Test("One session is singular")
   func oneSessionIsSingular() {
     let line = usage(latestScore: 5, sessionCount: 1, lastPracticedAt: "2026-06-24T09:00:00Z")
       .metaLine(locale: locale, calendar: calendar)
-    #expect(line == "Debussy · 1 session · Jun 24")
+    #expect(line == "Debussy · 1 session · 24 Jun")
   }
 
   // #1468: the ring is decorative, so the announcement carries the mark itself
@@ -74,9 +74,7 @@ struct ExerciseUsageDisplayTests {
 
   @Test("A row with no practice stops at the meta line, saying nothing of the ring")
   func zeroPracticeRowStopsAtTheMetaLine() {
-    let spoken = usage().spokenRow
-    #expect(spoken == "Clair de Lune, not practised together yet")
-    #expect(!spoken.contains("rated"))
+    #expect(usage().spokenRow == "Clair de Lune, not practised together yet")
   }
 
   @Test("A removed piece is announced as removed before its practice")

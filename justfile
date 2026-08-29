@@ -46,6 +46,10 @@ hygiene:
     typos
     cargo-shear
 
+# Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
+status:
+    ./scripts/generate-status.sh
+
 # Check everything (fmt → clippy → test → hygiene, cheapest first). Mirrors
 # the iOS test-tier green-stamp (#1200): skips on a clean, already-green HEAD
 # (#1204). Delete `target/.check-stamp` to force a re-run.

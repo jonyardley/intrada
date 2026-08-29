@@ -842,8 +842,6 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  // #1363: the same picker with pieces in it, opened from the exercise screen —
-  // composer as the meta line, indigo membership control, "Link a piece".
   func testLinkedPiecePicker() {
     let sheet = LinkedItemPickerSheet(
       kind: .piece,
@@ -867,7 +865,6 @@ final class ScreenSnapshotTests: XCTestCase {
       of: usedInCard(LibraryItemView.previewExerciseUsedIn.usedIn), as: axConfig)
   }
 
-  // #1363: standalone is a state the card says out loud, not a missing card.
   func testUsedInCardOnItsOwn() {
     assertSnapshot(of: usedInCard([]), as: config)
   }
