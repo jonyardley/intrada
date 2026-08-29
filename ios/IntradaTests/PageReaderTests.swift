@@ -88,3 +88,37 @@ struct PageReaderTests {
     #expect(output == .failed)
   }
 }
+
+/// The orientation half of cropping a chosen photo (#1436). `toPage` itself is
+/// device-only: document segmentation does not run on the simulator.
+@MainActor
+struct PageCropTests {
+  /// A photo taken holding the phone upright is a landscape buffer plus a
+  /// `.right` orientation, and `cgImage` hands back the buffer alone.
+  private func rotatedPhoto() throws -> UIImage {
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    let landscapeBuffer = UIGraphicsImageRenderer(
+      size: CGSize(width: 1600, height: 1200), format: format
+    ).image { context in
+      UIColor.white.setFill()
+      context.fill(CGRect(x: 0, y: 0, width: 1600, height: 1200))
+    }
+    return UIImage(cgImage: try #require(landscapeBuffer.cgImage), scale: 1, orientation: .right)
+  }
+
+  @Test func aRotatedPhotoIsRedrawnUprightBeforeAnythingReadsIt() throws {
+    let photo = try rotatedPhoto()
+    #expect(photo.size.height > photo.size.width, "the photo is portrait")
+    #expect(
+      try #require(photo.cgImage).width > #require(photo.cgImage).height,
+      "but its buffer is not, which is the whole problem")
+
+    let upright = PageCrop.redrawnUpright(photo)
+
+    #expect(upright.imageOrientation == .up)
+    #expect(
+      try #require(upright.cgImage).height > #require(upright.cgImage).width,
+      "the buffer now matches the page, so Vision reads it the right way up")
+  }
+}

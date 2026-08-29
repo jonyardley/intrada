@@ -222,7 +222,9 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft;
 ```
 
 New events: `ItemEvent::SetPhoto { id, photo_id }`, `ItemEvent::ClearPhoto { id }`,
-and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. GRDB migration
+and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. `CreateItem` also
+carries `photo_id` (appended last), so the page a piece was read from is kept
+on it rather than photographed a second time. GRDB migration
 `v16_item_photo` adds a nullable `photo_id TEXT`.
 
 `photo_id` is appended **after `variants`**, the current last field, because
@@ -287,9 +289,17 @@ actually photograph their charts.
 
 ## Open questions
 
-1. **What do people actually photograph?** The whole design assumes a mix of
-   printed text charts and Real Book pages. Phase A ships a photo store, which
-   means phase A also gives us the answer before D commits to a parser.
+1. **What do people actually photograph?** ~~The whole design assumes a mix of
+   printed text charts and Real Book pages...~~ **First answer, 2026-08-29:** a
+   **handwritten** Real Book page, photographed off a music stand. Phase B's
+   first device test was one, which matters twice over. Handwriting is listed
+   under Deferred below on the assumption it is an edge case; the first real
+   use says otherwise. And the page read badly for reasons that had nothing to
+   do with handwriting: `automaticallyDetectsLanguage` hallucinated a
+   non-Latin line that outranked the title, and ranking the title on height
+   alone let a slash-chord stack beat it. Both fixed. Still open, and worth
+   more photographs before betting on it: how far Vision gets on handwriting
+   once it is no longer fighting our own heuristics.
 2. **Confirm sheet or pre-filled form?** ~~Whether recognition opens its own
    review screen or simply pre-fills `ItemFormScaffold`...~~ **Answered
    2026-08-29: pre-fill the add form; no confirm sheet.** Recognition gets no

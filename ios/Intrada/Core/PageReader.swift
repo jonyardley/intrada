@@ -55,8 +55,9 @@ enum PageReader {
   private nonisolated static func recognise(_ cgImage: CGImage) -> [TextLine]? {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
-    // A title is as often Italian or German as English.
-    request.automaticallyDetectsLanguage = true
+    // Auto-detection picks a non-Latin recogniser on handwritten music and
+    // returns confident nonsense that outranks the real title (#1436).
+    request.recognitionLanguages = ["en-GB", "en-US", "it-IT", "de-DE", "fr-FR"]
     // A stave is not a paragraph: correcting against a lexicon turns chord
     // symbols and tempo markings into ordinary words.
     request.usesLanguageCorrection = false
