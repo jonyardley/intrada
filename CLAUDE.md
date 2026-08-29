@@ -32,7 +32,9 @@ timer and rep counting, and score how it went. Organised as three pillars —
 built through Phase 2b and reversed on 2026-08-13, #1344 — see
 `docs/roadmap.md`'s banner.)
 
-Direction and phases: `docs/roadmap.md`. What's in flight now: `docs/status.md`.
+Direction and phases: `docs/roadmap.md`. Which release and phase we are on:
+`docs/where-we-are.md`. What's in flight right now: run `just status`, which
+reads GitHub rather than a file anyone has to remember to update.
 
 ## Project Structure
 
@@ -700,8 +702,8 @@ say exactly what needs user verification.
    - Why (2026-08-07): #1214 got two complete independent implementations
      (#1243, #1247) fifteen hours apart. The merged one was the weaker, and
      #1250 had to port back what was lost. The issue carried no assignee, label
-     or comment, and `docs/status.md`'s "in flight" only lands at merge — so an
-     open PR was the sole live claim signal and nothing required looking.
+     or comment, and nothing required looking at the one live claim signal,
+     which is an open PR. `just status` now puts both signals on one screen.
 2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
 4. Never push to main. Always a feature branch + PR.
@@ -731,10 +733,10 @@ say exactly what needs user verification.
    mode.
 
 ### After completing work
-1. Update `docs/status.md` in the same PR; update `docs/roadmap.md` if a phase or
-   direction changed; close the GitHub issue and drop its `in-flight` label.
-   A landed item also leaves the **Next** list, or the next session reads a
-   stale plan and re-does it.
+1. Close the GitHub issue and drop its `in-flight` label — that *is* the
+   status update, since `just status` reads GitHub. Update `docs/roadmap.md`
+   if a phase or direction changed, and `docs/where-we-are.md` if the release
+   or phase did. **There is no status file to edit**, deliberately.
 2. Update this file if architecture or patterns changed.
 3. Update the Claude Design system
    (`design/intrada-design-system.dc.html`) if UI diverged from design, and
@@ -754,7 +756,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
 - No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
   One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
-  list item** in a structured doc (`docs/status.md`, `docs/roadmap.md`,
+  list item** in a structured doc (`docs/roadmap.md`,
   `design/CLAUDE.md` and this file's own lists) is house style, so match the
   siblings there. Sentences never take one, in a list item or anywhere else.
 - **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
@@ -786,11 +788,9 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   simulator safety rule under Commands. Close the second session when its task
   ships; do not keep it warm.
 - **Clear a "conflicting" PR by merging main in, never by rebasing.**
-  `git fetch origin main && git merge origin/main && git push`. `docs/status.md`
-  is union-merged (`.gitattributes`), which local git honours but GitHub's
-  conflict checker does not — so the flag is usually false and the merge
-  resolves clean with no manual conflict work. Union keeps both sides' lines,
-  so eyeball status.md for duplicated prose before pushing.
+  `git fetch origin main && git merge origin/main && git push`. Feature
+  No tracked file is written by every PR any more, so a conflict now means two
+  branches really did touch the same code.
 - **Dependent PRs stack natively, depth 2 max.** Open the child PR with base =
   the parent's branch; GitHub retargets it to main when the parent merges.
   After the parent squash-merges, rebase the child:
@@ -829,8 +829,8 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
 - [ ] Tests shipped with the new code (see Testing)
 - [ ] PR opened via the `ship` skill; self-review comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
-- [ ] `docs/status.md` updated (roadmap too if a phase changed); deferred items
-      tracked as issues
+- [ ] Roadmap updated if a phase changed; deferred items tracked as issues
+      (there is no status file to update)
 - [ ] A human reviews and merges. Agents never merge.
 
 ## Known Tech Debt
