@@ -7,16 +7,17 @@ import Testing
 /// Each field carries a word none of the others do, so dropping any one branch
 /// of `matchesSearch` fails a case here (#1440).
 struct LibraryItemSearchTests {
+  // Mutates the shared fixture so a new `LibraryItemView` field costs no edit.
   private static func exercise(
     title: String = "Hanon No. 1", subtitle: String = "Charles-Louis",
     notes: String? = "left hand only", tags: [String] = ["warm-up"]
   ) -> LibraryItemView {
-    LibraryItemView(
-      id: "exercise-1", itemType: .exercise, title: title, subtitle: subtitle,
-      key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
-      notes: notes, tags: tags, createdAt: "", updatedAt: "", practice: nil,
-      latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-      exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
+    var item = LibraryItemView.previewExercise
+    item.title = title
+    item.subtitle = subtitle
+    item.notes = notes
+    item.tags = tags
+    return item
   }
 
   @Test(
