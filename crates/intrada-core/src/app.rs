@@ -125,9 +125,15 @@ pub enum Event {
     SessionStoreWritten(PersistenceOutput),
 
     // ── On-device recognition ────────────────────────────────────────
-    /// The shell read the page. `Unsupported` and `Failed` are outcomes the
-    /// confirm surface shows, not errors that mute the banner.
-    PhotoRead(RecognitionOutput),
+    /// The shell read the page. Carries the `photo_id` it was asked to read, so
+    /// a result can only ever land on the read that asked for it — two scans in
+    /// flight would otherwise show one page beside the other's fields.
+    /// `Unsupported` and `Failed` are outcomes the form shows, not errors that
+    /// mute the banner.
+    PhotoRead {
+        photo_id: String,
+        output: RecognitionOutput,
+    },
     /// The user finished with (or backed out of) the recognised draft.
     DiscardPhotoDraft,
 }
@@ -377,15 +383,18 @@ impl Intrada {
             },
 
             // ── On-device recognition ────────────────────────────────
-            Event::PhotoRead(output) => {
-                let crate::model::PhotoRecognition::Reading { photo_id } =
-                    std::mem::take(&mut model.photo_recognition)
-                else {
-                    // Nothing is waiting on this read: the user has already
-                    // moved on, and a late result must not repopulate a sheet
-                    // they have left.
+            Event::PhotoRead { photo_id, output } => {
+                // Anything but "still reading this exact photo" is a result
+                // nothing is waiting on — a scan the user backed out of, or one
+                // superseded by a later scan. Leave the state untouched: the
+                // read that *is* current must survive its predecessor landing.
+                if model.photo_recognition
+                    != (crate::model::PhotoRecognition::Reading {
+                        photo_id: photo_id.clone(),
+                    })
+                {
                     return crux_core::render::render();
-                };
+                }
 
                 model.photo_recognition = match output {
                     RecognitionOutput::Page(page) => crate::model::PhotoRecognition::Ready {

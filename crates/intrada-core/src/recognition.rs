@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
 use crate::domain::types::Tempo;
-use crate::validation::{MAX_BPM, MAX_COMPOSER, MAX_TEMPO_MARKING, MAX_TITLE, MIN_BPM};
+use crate::validation::{MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TEMPO_MARKING, MAX_TITLE};
 
 // ── The effect contract ─────────────────────────────────────────────
 
@@ -118,9 +118,19 @@ pub enum DraftSource {
 /// Below this a read is shown as uncertain rather than hidden (decision 7).
 pub const LOW_CONFIDENCE: f32 = 0.5;
 
+/// `MIN_BPM` is the floor for a tempo the user *typed*. One guessed off a page
+/// can be stricter: nobody prints a five-beats-a-minute marking, so a number
+/// that low is a bar count or a fingering that happened to follow an `=`.
+const MIN_READ_BPM: u16 = 20;
+
 pub fn read_page(photo_id: String) -> Command<Effect, Event> {
-    Command::request_from_shell(RecognitionOperation::ReadPage { photo_id })
-        .then_send(Event::PhotoRead)
+    let read = photo_id.clone();
+    Command::request_from_shell(RecognitionOperation::ReadPage { photo_id }).then_send(
+        move |output| Event::PhotoRead {
+            photo_id: read.clone(),
+            output,
+        },
+    )
 }
 
 // ── Interpretation ──────────────────────────────────────────────────
@@ -128,6 +138,34 @@ pub fn read_page(photo_id: String) -> Command<Effect, Event> {
 /// Tempo markings we will name from a page, longest first so
 /// "Allegro moderato" wins over "Allegro". Canonical spelling is ours, not the
 /// page's: OCR reads `ALLEGRO` and the user should see `Allegro`.
+/// Words that can stand beside a marking without making the line something
+/// other than a tempo instruction: "Medium Swing", "Lento ma non troppo".
+const TEMPO_QUALIFIERS: &[&str] = &[
+    "slow",
+    "slowly",
+    "medium",
+    "med",
+    "fast",
+    "up",
+    "easy",
+    "moderately",
+    "very",
+    "molto",
+    "poco",
+    "ma",
+    "non",
+    "troppo",
+    "e",
+    "con",
+    "quasi",
+    "tempo",
+    "di",
+    "bpm",
+    "feel",
+    "circa",
+    "ca",
+];
+
 const TEMPO_MARKINGS: &[&str] = &[
     "Allegro moderato",
     "Allegro vivace",
@@ -159,6 +197,10 @@ const TEMPO_MARKINGS: &[&str] = &[
     "Latin",
     "Rubato",
 ];
+
+/// A credit that names itself as one, and so needs no damping and no help from
+/// where it sits on the page.
+const EXPLICIT_CREDIT: f32 = 1.0;
 
 /// Credit prefixes, longest first. The `f32` is how much the match dampens the
 /// line's own OCR confidence: a bare `by` is a weaker claim than `Music by`.
@@ -198,7 +240,7 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft {
         composer: clamped_text(suggested.composer.as_deref(), &haystack, MAX_COMPOSER)
             .or(heuristic.composer),
         tempo: clamped_tempo(suggested, &haystack).or(heuristic.tempo),
-        chart_text: clamped_text(suggested.chart_text.as_deref(), &haystack, usize::MAX)
+        chart_text: clamped_text(suggested.chart_text.as_deref(), &haystack, MAX_NOTES)
             .or(heuristic.chart_text),
     }
 }
@@ -230,7 +272,7 @@ fn clamped_tempo(suggested: &SuggestedFields, haystack: &str) -> Option<TempoDra
     .map(|f| f.value);
     let bpm = suggested
         .bpm
-        .filter(|bpm| (MIN_BPM..=MAX_BPM).contains(bpm))
+        .filter(|bpm| (MIN_READ_BPM..=MAX_BPM).contains(bpm))
         .filter(|bpm| haystack.contains(&bpm.to_string()));
 
     Tempo::from_parts(marking, bpm).map(|value| TempoDraftField {
@@ -264,7 +306,7 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         .filter(|l| l.y < TITLE_BAND)
         .filter(|l| !l.text.trim().is_empty())
         .filter(|l| credit_prefix(&l.text).is_none())
-        .filter(|l| marking_in(&l.text).is_none() && bpm_in(&l.text).is_none())
+        .filter(|l| tempo_line(&l.text).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
         .max_by(|a, b| a.height.total_cmp(&b.height).then(b.y.total_cmp(&a.y)))
         .map(|l| TextDraftField {
@@ -277,6 +319,12 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
 fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
     lines.iter().find_map(|l| {
         let (rest, damping) = credit_prefix(&l.text)?;
+        // A bare `by` is ordinary English and appears in lyrics ("By the light
+        // of the silvery moon"), so it only counts where a credit is actually
+        // printed. "Music by" is unambiguous enough to run the whole page.
+        if damping < EXPLICIT_CREDIT && l.y >= TITLE_BAND {
+            return None;
+        }
         let rest = rest.trim();
         (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then(|| TextDraftField {
             value: rest.to_string(),
@@ -290,30 +338,37 @@ fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
 /// confidence. Matched only at the start of the line.
 fn credit_prefix(text: &str) -> Option<(&str, f32)> {
     let trimmed = text.trim();
-    let lower = trimmed.to_lowercase();
     CREDIT_PREFIXES.iter().find_map(|(prefix, damping)| {
-        let rest = lower.strip_prefix(prefix)?;
+        // Compared on `trimmed`, not on its lowercase: `to_lowercase` is not
+        // length-preserving, so a byte index taken from one is not an index
+        // into the other.
+        let head = trimmed.get(..prefix.len())?;
+        if !head.eq_ignore_ascii_case(prefix) {
+            return None;
+        }
+        let rest = &trimmed[prefix.len()..];
         // Must be a word boundary: "Bydgoszcz Suite" is not a credit.
         if !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':') {
             return None;
         }
-        let rest = &trimmed[trimmed
-            .char_indices()
-            .nth(prefix.chars().count())
-            .map_or(trimmed.len(), |(at, _)| at)..];
+        let rest = &trimmed[prefix.len()..];
         Some((rest.trim_start_matches([':', ' ', '\t']), *damping))
     })
 }
 
 fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
-    let band: Vec<&RecognisedLine> = lines.iter().filter(|l| l.y < TITLE_BAND).collect();
+    let band: Vec<(&RecognisedLine, TempoRead)> = lines
+        .iter()
+        .filter(|l| l.y < TITLE_BAND)
+        .filter_map(|l| tempo_line(&l.text).map(|read| (l, read)))
+        .collect();
 
     let marking = band
         .iter()
-        .find_map(|l| marking_in(&l.text).map(|m| (m, l.confidence)));
+        .find_map(|(l, read)| read.marking.clone().map(|m| (m, l.confidence)));
     let bpm = band
         .iter()
-        .find_map(|l| bpm_in(&l.text).map(|b| (b, l.confidence)));
+        .find_map(|(l, read)| read.bpm.map(|b| (b, l.confidence)));
 
     let confidence = match (&marking, &bpm) {
         (Some((_, a)), Some((_, b))) => a.min(*b),
@@ -328,26 +383,50 @@ fn heuristic_tempo(lines: &[RecognisedLine]) -> Option<TempoDraftField> {
     })
 }
 
-fn marking_in(text: &str) -> Option<String> {
-    let lower = text.to_lowercase();
-    TEMPO_MARKINGS.iter().find_map(|marking| {
-        let needle = marking.to_lowercase();
-        lower
-            .match_indices(&needle)
-            .any(|(at, _)| {
-                let before_ok = at == 0
-                    || !lower[..at]
-                        .chars()
-                        .next_back()
-                        .is_some_and(char::is_alphanumeric);
-                let after_ok = !lower[at + needle.len()..]
-                    .chars()
-                    .next()
-                    .is_some_and(char::is_alphanumeric);
-                before_ok && after_ok
-            })
-            .then(|| (*marking).to_string())
-    })
+/// What the line says, if it is a tempo instruction and nothing else.
+///
+/// A marking *inside* a longer line belongs to a title — "Allegro Barbaro",
+/// "Swing Low, Sweet Chariot", "Ballad of the Sad Young Men" — and reading it
+/// as a tempo costs the title as well, since a title line is skipped once it
+/// has explained itself as a tempo.
+fn tempo_line(text: &str) -> Option<TempoRead> {
+    let bpm = bpm_in(text);
+    let before_bpm = text.rsplit_once('=').map_or(text, |(before, _)| before);
+    let words: Vec<String> = before_bpm
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_lowercase)
+        .collect();
+
+    let mut marking = None;
+    let mut rest: Vec<&str> = words.iter().map(String::as_str).collect();
+    for candidate in TEMPO_MARKINGS {
+        let needle: Vec<String> = candidate
+            .to_lowercase()
+            .split(' ')
+            .map(String::from)
+            .collect();
+        if let Some(at) = rest.windows(needle.len()).position(|w| w == needle) {
+            marking = Some((*candidate).to_string());
+            rest.drain(at..at + needle.len());
+            break;
+        }
+    }
+
+    // A leftover single character is the note glyph Vision mangled out of
+    // `♩=`; anything longer is a word this line is really about.
+    let only_qualifiers = rest
+        .iter()
+        .all(|w| w.chars().count() == 1 || TEMPO_QUALIFIERS.contains(w));
+
+    (only_qualifiers && (marking.is_some() || bpm.is_some())).then_some(TempoRead { marking, bpm })
+}
+
+/// What a tempo-only line says. Both parts are optional because a line can
+/// carry either half on its own: `Andante`, or a bare `= 120`.
+struct TempoRead {
+    marking: Option<String>,
+    bpm: Option<u16>,
 }
 
 /// Only a number that follows an `=` counts. `♩= 120` OCRs with the glyph
@@ -364,7 +443,7 @@ fn bpm_in(text: &str) -> Option<u16> {
     digits
         .parse::<u16>()
         .ok()
-        .filter(|bpm| (MIN_BPM..=MAX_BPM).contains(bpm))
+        .filter(|bpm| (MIN_READ_BPM..=MAX_BPM).contains(bpm))
 }
 
 #[cfg(test)]
@@ -494,6 +573,28 @@ mod tests {
         );
     }
 
+    /// Deleting the band check on a bare `by` reads the lyric as the composer,
+    /// at a confidence high enough that the form would not even mark it as a
+    /// weak read.
+    #[test]
+    fn a_lyric_that_starts_with_by_is_not_a_composer() {
+        let draft = read_fields(&page(vec![
+            line("Moon River", 0.08, 0.09),
+            line("By the light of the silvery moon she waits", 0.72, 0.03),
+        ]));
+        assert!(draft.composer.is_none());
+        assert_eq!(draft.title.expect("a title").value, "Moon River");
+    }
+
+    #[test]
+    fn an_explicit_credit_is_read_wherever_it_is_printed() {
+        let draft = read_fields(&page(vec![
+            line("Moon River", 0.08, 0.09),
+            line("Music by Henry Mancini", 0.88, 0.03),
+        ]));
+        assert_eq!(draft.composer.expect("a composer").value, "Henry Mancini");
+    }
+
     #[test]
     fn a_credit_with_no_name_after_it_is_not_a_composer() {
         let draft = read_fields(&page(vec![line("Music by", 0.2, 0.03)]));
@@ -527,6 +628,39 @@ mod tests {
         );
     }
 
+    /// Deleting the whole-line requirement in `tempo_line` costs both fields at
+    /// once: the tempo is invented, and the title it was invented from is
+    /// skipped as a line that has already explained itself.
+    #[test]
+    fn a_title_containing_a_marking_word_stays_a_title() {
+        for title in [
+            "Swing Low, Sweet Chariot",
+            "Ballad of the Sad Young Men",
+            "Allegro Barbaro",
+            "Latin Jazz Suite",
+        ] {
+            let draft = read_fields(&page(vec![line(title, 0.08, 0.09)]));
+            assert_eq!(draft.title.map(|f| f.value).as_deref(), Some(title));
+            assert!(draft.tempo.is_none(), "{title:?} is not a tempo marking");
+        }
+    }
+
+    #[test]
+    fn a_marking_still_reads_beside_the_words_that_qualify_it() {
+        for (text, expected) in [
+            ("Medium Swing", "Swing"),
+            ("Slow Ballad", "Ballad"),
+            ("Lento ma non troppo", "Lento"),
+        ] {
+            let draft = read_fields(&page(vec![line(text, 0.2, 0.03)]));
+            assert_eq!(
+                draft.tempo.expect("a tempo").value.marking.as_deref(),
+                Some(expected),
+                "reading {text:?}"
+            );
+        }
+    }
+
     /// Open question 3, answered conservatively. Deleting the `=` requirement
     /// reads the page number as a tempo.
     #[test]
@@ -538,9 +672,11 @@ mod tests {
         assert!(draft.tempo.is_none());
     }
 
+    /// Deleting the floor reads a fingering or a bar count that happened to
+    /// follow an `=` as a tempo nobody could play.
     #[test]
     fn a_bpm_outside_the_accepted_range_is_dropped() {
-        for text in ["= 0", "= 900", "= 40000"] {
+        for text in ["= 0", "= 5", "= 900", "= 40000"] {
             let draft = read_fields(&page(vec![line(text, 0.2, 0.03)]));
             assert!(draft.tempo.is_none(), "reading {text:?}");
         }
@@ -663,6 +799,22 @@ mod tests {
                 ]),
             ),
             (
+                "title made of a genre word",
+                page(vec![
+                    line("Swing Low, Sweet Chariot", 0.07, 0.08),
+                    line("Traditional", 0.18, 0.03),
+                    line("Medium Swing", 0.26, 0.02),
+                ]),
+            ),
+            (
+                "lyric that opens with by",
+                page(vec![
+                    line("Moon River", 0.06, 0.09),
+                    line("Music by Henry Mancini", 0.16, 0.03),
+                    line("By the light of the silvery moon she waits", 0.62, 0.04),
+                ]),
+            ),
+            (
                 "skewed capture, title not first in reading order",
                 page(vec![
                     line("Swing", 0.22, 0.02),
@@ -740,6 +892,13 @@ mod tests {
 
         const PHOTO: &str = "01JB0000000000000000000000";
 
+        fn photo_read(output: RecognitionOutput) -> Event {
+            Event::PhotoRead {
+                photo_id: PHOTO.to_string(),
+                output,
+            }
+        }
+
         fn read_photo(model: &mut Model) -> crux_core::Command<Effect, Event> {
             Intrada.update(
                 Event::Item(ItemEvent::ReadPhoto {
@@ -793,7 +952,7 @@ mod tests {
             let mut model = Model::test_default();
             let _ = read_photo(&mut model);
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut model,
             );
 
@@ -814,7 +973,7 @@ mod tests {
             let mut sharp = Model::test_default();
             let _ = read_photo(&mut sharp);
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut sharp,
             );
             assert!(!Intrada.view(&sharp).photo_recognition.has_low_confidence);
@@ -824,7 +983,7 @@ mod tests {
             let mut lines = printed_page().lines;
             lines[0].confidence = 0.2;
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(page(lines))),
+                photo_read(RecognitionOutput::Page(page(lines))),
                 &mut blurry,
             );
             assert!(Intrada.view(&blurry).photo_recognition.has_low_confidence);
@@ -836,7 +995,7 @@ mod tests {
         fn a_device_without_recognition_is_an_outcome_not_an_error() {
             let mut model = Model::test_default();
             let _ = read_photo(&mut model);
-            let _ = Intrada.update(Event::PhotoRead(RecognitionOutput::Unsupported), &mut model);
+            let _ = Intrada.update(photo_read(RecognitionOutput::Unsupported), &mut model);
 
             assert_eq!(
                 Intrada.view(&model).photo_recognition.status,
@@ -849,11 +1008,42 @@ mod tests {
         fn a_failed_read_is_surfaced_as_failed_not_as_an_empty_draft() {
             let mut model = Model::test_default();
             let _ = read_photo(&mut model);
-            let _ = Intrada.update(Event::PhotoRead(RecognitionOutput::Failed), &mut model);
+            let _ = Intrada.update(photo_read(RecognitionOutput::Failed), &mut model);
 
             let view = Intrada.view(&model).photo_recognition;
             assert_eq!(view.status, PhotoRecognitionStatus::Failed);
             assert!(view.draft.is_none());
+        }
+
+        /// Two scans in flight: the first to resolve must not land on the
+        /// second's photo. Deleting the id comparison shows photo B beside the
+        /// fields read off photo A, on the surface the user presses Add from.
+        #[test]
+        fn a_read_never_lands_on_a_photo_it_did_not_come_from() {
+            const OTHER: &str = "01JB0000000000000000000001";
+            let mut model = Model::test_default();
+
+            let _ = read_photo(&mut model);
+            let _ = Intrada.update(
+                Event::Item(ItemEvent::ReadPhoto {
+                    photo_id: OTHER.to_string(),
+                }),
+                &mut model,
+            );
+
+            // The first scan resolves second, as the slower page would.
+            let _ = Intrada.update(
+                photo_read(RecognitionOutput::Page(printed_page())),
+                &mut model,
+            );
+
+            assert_eq!(
+                model.photo_recognition,
+                PhotoRecognition::Reading {
+                    photo_id: OTHER.to_string()
+                },
+                "the current read must survive its predecessor landing"
+            );
         }
 
         /// Deleting the `Reading` guard lets a read the user walked away from
@@ -864,7 +1054,7 @@ mod tests {
             let _ = read_photo(&mut model);
             let _ = Intrada.update(Event::DiscardPhotoDraft, &mut model);
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut model,
             );
             assert_eq!(model.photo_recognition, PhotoRecognition::Idle);
@@ -875,7 +1065,7 @@ mod tests {
             let mut model = Model::test_default();
             let _ = read_photo(&mut model);
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut model,
             );
             let _ = Intrada.update(Event::DiscardPhotoDraft, &mut model);
@@ -895,7 +1085,7 @@ mod tests {
             assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
 
             let mut cmd = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut model,
             );
             assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
@@ -907,7 +1097,7 @@ mod tests {
             assert_round_trips(Event::Item(ItemEvent::ReadPhoto {
                 photo_id: PHOTO.to_string(),
             }));
-            assert_round_trips(Event::PhotoRead(RecognitionOutput::Unsupported));
+            assert_round_trips(photo_read(RecognitionOutput::Unsupported));
             assert_round_trips(Event::DiscardPhotoDraft);
         }
 
@@ -916,7 +1106,7 @@ mod tests {
             let mut model = Model::test_default();
             let _ = read_photo(&mut model);
             let _ = Intrada.update(
-                Event::PhotoRead(RecognitionOutput::Page(printed_page())),
+                photo_read(RecognitionOutput::Page(printed_page())),
                 &mut model,
             );
             assert_round_trips(Intrada.view(&model).photo_recognition);

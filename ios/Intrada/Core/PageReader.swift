@@ -19,17 +19,13 @@ enum PageReader {
 
   @MainActor
   static func read(photoId: String) async -> RecognitionOutput {
-    guard let source = try? PhotoFileStore.url(for: photoId),
-      let image = UIImage(contentsOfFile: source.path),
-      let cgImage = image.cgImage
-    else {
-      return .failed
-    }
+    guard let source = try? PhotoFileStore.url(for: photoId) else { return .failed }
 
-    // Vision blocks for the best part of a second on a full page, so it runs
-    // off the main actor and only the plain values come back.
+    // Decoding a 2048px JPEG and running Vision over it both block for long
+    // enough to drop frames, so the whole job runs off the main actor and only
+    // the plain values come back.
     guard
-      let lines = await Task.detached(priority: .userInitiated, operation: { recognise(cgImage) })
+      let lines = await Task.detached(priority: .userInitiated, operation: { read(from: source) })
         .value
     else {
       return .failed
@@ -47,6 +43,13 @@ enum PageReader {
         suggested: nil
       )
     )
+  }
+
+  private nonisolated static func read(from source: URL) -> [TextLine]? {
+    guard let image = UIImage(contentsOfFile: source.path), let cgImage = image.cgImage else {
+      return nil
+    }
+    return recognise(cgImage)
   }
 
   private nonisolated static func recognise(_ cgImage: CGImage) -> [TextLine]? {

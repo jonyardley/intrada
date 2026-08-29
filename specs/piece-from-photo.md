@@ -111,7 +111,11 @@ in principle and is real research. We are not betting the feature on it.
    same shape [#1098] already proposed for inference generally.
 5. **The model may choose, never invent.** Every field the on-device LLM
    suggests must appear as a substring of the OCR lines, or the core discards
-   it and falls back to its own heuristic. A ~3B model asked to extract will
+   it and falls back to its own heuristic. *Pinned in phase B: the match is
+   against all the lines joined, case- and whitespace-insensitively, not
+   per line — a name Vision wrapped across two lines must still be accepted.
+   The cost is that a suggestion may span a line boundary; that is the right
+   trade, but phase C should not assume per-line.* A ~3B model asked to extract will
    sometimes produce a plausible composer that is not on the page; this clamp
    makes that structurally impossible and is a pure function, tested in Rust
    with no device involved.
