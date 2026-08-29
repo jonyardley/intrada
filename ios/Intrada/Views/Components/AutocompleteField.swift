@@ -9,7 +9,6 @@ struct AutocompleteField: View {
   var placeholder: String = ""
   var suggestions: [String]
   var autocapitalization: TextInputAutocapitalization = .words
-  /// See `FormField.readWeakly` (#1436).
   var readWeakly: Bool?
 
   @FocusState private var focused: Bool

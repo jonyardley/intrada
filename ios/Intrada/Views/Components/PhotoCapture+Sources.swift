@@ -36,10 +36,9 @@ extension View {
   }
 }
 
-/// The capture half of a photo surface: the scanner, the library picker, and
-/// writing the bytes before anything names them. Shared by `PhotoCard` (the
-/// photo on a piece) and `ScanPageEntry` (the photo the add form is read from),
-/// which otherwise duplicate every step of it.
+/// The capture half of a photo surface, shared by `PhotoCard` (the photo on a
+/// piece) and `ScanPageEntry` (the photo the add form is read from), which
+/// otherwise duplicate every step of it.
 @MainActor
 struct PhotoCaptureSources {
   let onCaptured: (String) -> Void

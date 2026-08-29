@@ -950,8 +950,7 @@
 
 #if DEBUG
   extension PhotoDraft {
-    /// A page read as Vision plus `read_fields` would: a clean title and tempo,
-    /// and a composer the OCR was not sure of (#1436).
+    /// A clean title and tempo, and a composer the OCR was not sure of (#1436).
     static var readPage: PhotoDraft {
       PhotoDraft(
         title: TextDraftField(
@@ -964,7 +963,6 @@
         chartText: nil)
     }
 
-    /// A different page, for the rescan path.
     static var otherReadPage: PhotoDraft {
       PhotoDraft(
         title: TextDraftField(
@@ -975,7 +973,6 @@
         chartText: nil)
     }
 
-    /// A photograph of something that is not a page of music.
     static var readNothing: PhotoDraft {
       PhotoDraft(title: nil, composer: nil, tempo: nil, chartText: nil)
     }

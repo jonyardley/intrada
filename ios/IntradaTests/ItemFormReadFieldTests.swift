@@ -3,9 +3,8 @@ import Testing
 
 @testable import Intrada
 
-/// The provenance half of the add form (#1436): which fields still hold what a
-/// photographed page was read into. The core decides what a page *says*; this
-/// is only about how long the form goes on claiming it.
+/// The provenance half of the add form (#1436). The core decides what a page
+/// *says*; this is only about how long the form goes on claiming it.
 @MainActor
 struct ItemFormReadFieldTests {
   private func filled() -> ItemFormModel {
@@ -37,9 +36,8 @@ struct ItemFormReadFieldTests {
     #expect(filled().readFrom[.composer] == true)
   }
 
-  /// The mark clears on the keystroke, not on submit: from the moment the user
-  /// corrects a field, the value is theirs and must stop claiming to be the
-  /// page's. Delete the write-through in `composer` and this passes forever.
+  /// From the keystroke on, the value is theirs. Delete the write-through in
+  /// `composer` and this passes forever.
   @Test func editingAFieldTakesItsMarkOff() {
     let form = filled()
 
@@ -62,10 +60,8 @@ struct ItemFormReadFieldTests {
     #expect(form.composer == "Joseph Kosmo", "the fields they left empty still fill")
   }
 
-  /// Rescan is one of only two controls on the entry, and it promises exactly
-  /// this. Guarding the write on `isEmpty` alone made it a no-op: after the
-  /// first scan every field is non-empty, so a second page changed nothing and
-  /// said nothing — the silent-no-op class (#846).
+  /// Guarding the write on `isEmpty` alone made Rescan a no-op: every field is
+  /// non-empty after the first scan, so a second page said nothing (#846).
   @Test func asecondScanReplacesWhatTheFirstOneRead() {
     let form = filled()
 

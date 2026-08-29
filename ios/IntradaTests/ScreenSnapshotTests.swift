@@ -601,9 +601,8 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(LibraryAddScreen(defaultKind: .exercise)), as: config)
   }
 
-  /// #1436: the add form as it arrives from a page the core has read. The
-  /// composer was read weakly, so its mark is dimmed — the one decision the
-  /// design conversation settled, and the one a pixel diff can actually hold.
+  /// #1436: the composer was read weakly, so its mark is dimmed — the one
+  /// decision the design conversation settled, and one a pixel diff can hold.
   func testLibraryAddScreenReadFromAPhoto() {
     assertSnapshot(of: host(addForm(from: .readPage)), as: config)
   }
@@ -617,9 +616,8 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(addForm(form)), as: config)
   }
 
-  /// The entry's own states. The outcomes matter more than they look: a read
-  /// that failed, or one the device could not run, must not render identically
-  /// to one that worked.
+  /// A read that failed, or one the device could not run, must not render
+  /// identically to one that worked.
   func testScanPageEntryStates() {
     let stub = UIGraphicsImageRenderer(size: CGSize(width: 60, height: 80)).image { context in
       UIColor(IntradaColor.surfaceSunken).setFill()

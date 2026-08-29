@@ -253,12 +253,10 @@ pub struct PhotoRecognitionView {
     pub status: PhotoRecognitionStatus,
     /// The photo being read, so the shell can show it beside the fields.
     pub photo_id: Option<String>,
-    /// Present only under `Ready`.
+    /// Present only under `Ready`. Each field carries its own `weak`, which is
+    /// what the form marks; there is deliberately no whole-draft flag beside
+    /// it, since nothing would read one.
     pub draft: Option<PhotoDraft>,
-    /// True when at least one read field is below `recognition::LOW_CONFIDENCE`
-    /// — shown, not hidden (key decision 7). Derived here so the shell does no
-    /// thresholding of its own.
-    pub has_low_confidence: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
