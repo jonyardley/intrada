@@ -24,6 +24,7 @@ struct AddToSessionSheet: View {
         library
       }
     }
+    .libraryQueryScope()
   }
 
   @ViewBuilder private var library: some View {

@@ -10,7 +10,6 @@ import SwiftUI
 struct AddRelatedExerciseSheet: View {
   let groupId: String
   @Environment(Store.self) private var store
-  @State private var queryBeforeSheet: ListQuery?
 
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
 
@@ -33,8 +32,7 @@ struct AddRelatedExerciseSheet: View {
         list
       }
     }
-    .onAppear(perform: scopeQueryToExercises)
-    .onDisappear { store.send(.setQuery(queryBeforeSheet)) }
+    .libraryQueryScope()
   }
 
   @ViewBuilder private var list: some View {
@@ -65,13 +63,6 @@ struct AddRelatedExerciseSheet: View {
       blockEntryByItem[item.id].map { .session(.removeFromSetlist(entryId: $0)) }
       ?? .session(.addExerciseToBlock(groupId: groupId, itemId: item.id))
     store.send(event, onSuccess: .impact)
-  }
-
-  // The shared library query is whatever Library last left behind; its text or
-  // type filter would narrow this sheet with no control here showing why.
-  private func scopeQueryToExercises() {
-    queryBeforeSheet = store.viewModel?.activeQuery
-    store.send(.setQuery(ListQuery(text: nil, itemType: .exercise, key: nil, tags: [])))
   }
 
   private var searchText: String { store.viewModel?.activeQuery?.text ?? "" }
