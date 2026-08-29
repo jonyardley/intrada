@@ -762,6 +762,34 @@ mod tests {
     }
 
     #[test]
+    fn a_suggested_tempo_the_page_carries_is_preferred_over_the_heuristic() {
+        let draft = read_fields(&suggested_page(SuggestedFields {
+            tempo_marking: Some("Moderato".to_string()),
+            bpm: Some(120),
+            ..no_suggestions()
+        }));
+        let tempo = draft.tempo.expect("a tempo");
+        assert_eq!(tempo.value.marking.as_deref(), Some("Moderato"));
+        assert_eq!(tempo.value.bpm, Some(120));
+        assert_eq!(tempo.source, DraftSource::Suggested);
+    }
+
+    /// Deleting the length check hands the create form a title it will reject,
+    /// which the table test guards from the other side.
+    #[test]
+    fn a_suggestion_longer_than_the_field_allows_is_discarded() {
+        let long = "La ".repeat(MAX_TITLE);
+        let draft = read_fields(&PageReading {
+            lines: vec![line(&long, 0.08, 0.09)],
+            suggested: Some(SuggestedFields {
+                title: Some(long.clone()),
+                ..no_suggestions()
+            }),
+        });
+        assert!(draft.title.is_none(), "too long for the form either way");
+    }
+
+    #[test]
     fn suggestions_never_replace_a_field_they_left_empty() {
         let draft = read_fields(&suggested_page(no_suggestions()));
         assert_eq!(draft, read_fields(&printed_page()));
@@ -923,6 +951,44 @@ mod tests {
                     photo_id: PHOTO.to_string()
                 }
             );
+        }
+
+        /// The id correlation is only worth anything if the effect's own
+        /// resolution carries it: deleting the capture in `read_page`'s closure
+        /// leaves the event naming a photo the core never asked about.
+        #[test]
+        fn resolving_the_effect_sends_back_the_photo_it_asked_for() {
+            let mut cmd = crate::recognition::read_page(PHOTO.to_string());
+            let mut request = cmd
+                .effects()
+                .find_map(|e| match e {
+                    Effect::Recognition(req) => Some(req),
+                    _ => None,
+                })
+                .expect("a Recognition effect");
+
+            request
+                .resolve(RecognitionOutput::Unsupported)
+                .expect("the shell resolves this once");
+
+            let Some(Event::PhotoRead { photo_id, output }) = cmd.events().next() else {
+                panic!("resolving should send PhotoRead");
+            };
+            assert_eq!(photo_id, PHOTO);
+            assert_eq!(output, RecognitionOutput::Unsupported);
+        }
+
+        /// The screens show a spinner off this, so `Reading` has to reach the
+        /// projection and not only the model.
+        #[test]
+        fn a_read_in_progress_is_visible_in_the_view() {
+            let mut model = Model::test_default();
+            let _ = read_photo(&mut model);
+
+            let view = Intrada.view(&model).photo_recognition;
+            assert_eq!(view.status, PhotoRecognitionStatus::Reading);
+            assert_eq!(view.photo_id.as_deref(), Some(PHOTO));
+            assert!(view.draft.is_none());
         }
 
         /// Offline-first invariant 1: recognition is on-device, end to end.
