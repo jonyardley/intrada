@@ -344,26 +344,25 @@ pub struct PieceRefView {
     pub subtitle: Option<String>,
 }
 
-/// One derived context an exercise has been practised in: either alongside a
-/// piece (the block's anchor, resolved per past session from `group_id`), or on
-/// its own. Derived from session history, not from the static links — it
-/// answers "where has this drill actually done its work, and how's it scoring
-/// there?" (#1087 B1). Rollup v1 = `latest_score` per context.
+/// One piece an exercise is used in, or the "On its own" bucket. A row comes
+/// from the piece's `linked_exercise_ids` (an intention), from practising the
+/// two together (history, resolved per session from `group_id` — #1087 B1), or
+/// from both; `linked` says which (#1363).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ExerciseContextView {
-    /// The piece this exercise was practised alongside; `None` is the "On its
-    /// own" bucket — standalone practice with no piece in the session block.
+pub struct ExerciseUsageView {
+    /// `None` is the "On its own" bucket: practice with no piece in the block.
     pub piece: Option<PieceRefView>,
-    /// The exercise's most recent recorded score in this context.
+    /// Always `false` for "On its own".
+    pub linked: bool,
     pub latest_score: Option<u8>,
     /// Distinct sessions the exercise was practised in, in this context.
     pub session_count: usize,
     /// Most recent session date for this context (RFC3339, sorts as a string).
     pub last_practiced_at: Option<String>,
-    /// `true` when this context's `piece` no longer exists in the library — the
-    /// piece was deleted since it was practised (#1093, decision 2a). The
-    /// context is kept (its sessions are real history), but `piece.title` is the
+    /// `true` when this row's `piece` no longer exists in the library — the
+    /// piece was deleted since it was practised (#1093, decision 2a). The row
+    /// is kept (its sessions are real history), but `piece.title` is the
     /// snapshot title and the shell renders the row muted + non-tappable. Always
     /// `false` for the "On its own" bucket.
     #[serde(default)]
@@ -390,12 +389,11 @@ pub struct LibraryItemView {
     pub latest_achieved_tempo: Option<u16>,
     pub priority: bool,
     pub linked_exercises: Vec<LinkedExerciseView>,
-    pub linked_from_pieces: Vec<PieceRefView>,
-    /// For exercises: the piece (and standalone) contexts this exercise has
-    /// been practised in, derived from session history (#1087 B1). Empty for
+    /// For exercises: every piece this exercise is used in, plus the "On its
+    /// own" bucket — links and practice history merged (#1363). Empty for
     /// pieces.
     #[serde(default)]
-    pub exercise_contexts: Vec<ExerciseContextView>,
+    pub used_in: Vec<ExerciseUsageView>,
     /// For a charted piece: the derived scaffold curriculum (read-only preview).
     /// `None` for exercises and un-charted pieces.
     #[serde(default)]
@@ -650,8 +648,7 @@ impl LibraryItemView {
             latest_achieved_tempo: None,
             priority: false,
             linked_exercises: Vec::new(),
-            linked_from_pieces: Vec::new(),
-            exercise_contexts: Vec::new(),
+            used_in: Vec::new(),
             scaffold_preview: None,
             chord_chart: None,
             variants: Vec::new(),
@@ -873,16 +870,17 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    /// `ExerciseContextView` crosses the bincode FFI bridge inside the
+    /// `ExerciseUsageView` crosses the bincode FFI bridge inside the
     /// ViewModel; guard it against the #846 silent-drop class.
     #[test]
-    fn exercise_context_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(ExerciseContextView {
+    fn exercise_usage_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(ExerciseUsageView {
             piece: Some(PieceRefView {
                 id: "P".to_string(),
                 title: "Sonata".to_string(),
                 subtitle: Some("Beethoven".to_string()),
             }),
+            linked: true,
             latest_score: Some(6),
             session_count: 2,
             last_practiced_at: Some("2026-07-01T00:00:00+00:00".to_string()),

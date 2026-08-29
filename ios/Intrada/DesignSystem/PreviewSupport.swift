@@ -354,9 +354,9 @@
       Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
     }
 
-    /// Detail view: exercise related to 2 pieces — shows the "Related pieces" card.
-    static var previewExerciseLinkedFrom: Store {
-      Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    /// Detail view: exercise linked to 2 pieces it has never been practised with.
+    static var previewExerciseLinkedOnlyStore: Store {
+      Store(bridge: PreviewBridge(items: [.previewExerciseLinkedOnly]))
     }
 
     private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
@@ -439,7 +439,7 @@
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil,
             pieceContextScore: nil),
         ],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -449,9 +449,9 @@
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-        ladderIsKeys: false, photoId: nil)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -461,9 +461,9 @@
         id: "ex-a", itemType: .exercise, title: "Scales", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-        ladderIsKeys: false, photoId: nil)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     static var previewDetail: LibraryItemView {
@@ -474,7 +474,7 @@
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -501,9 +501,8 @@
         id: "piece-charted", itemType: .piece, title: "Autumn Leaves", subtitle: "Standard",
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, variants: [],
-        ladderIsKeys: false,
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: .preview, chordChart: chart, variants: [], ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -512,9 +511,9 @@
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-        ladderIsKeys: false, photoId: nil)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -556,12 +555,12 @@
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
             practice: nil, pieceContextScore: nil),
         ],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
-    /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
-    static var previewExerciseWithLinkedFrom: LibraryItemView {
+    /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
+    static var previewExerciseLinkedOnly: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
@@ -577,17 +576,21 @@
           latestTempo: 108, tempoTrend: .fixture([96, 100, nil, 104, 108]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [
-          PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
-          PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-        ladderIsKeys: false, photoId: nil)
+        usedIn: [
+          ExerciseUsageView(
+            piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
+            linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
+            pieceRemoved: false),
+          ExerciseUsageView(
+            piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
+            linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
+            pieceRemoved: false),
+        ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
 
-    /// An exercise with a full "By piece" breakdown — a live piece, a
-    /// since-removed piece (snapshot title, no composer, muted), and the "On its
-    /// own" bucket — for the B2 exercise-detail snapshot (#1087 B2).
-    static var previewExerciseWithContexts: LibraryItemView {
+    /// Every "Used in" row state at once: linked and practised, practised
+    /// only, linked only, removed, and "On its own" (#1087 B2, #1363).
+    static var previewExerciseUsedIn: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Enclosures",
         subtitle: "Bebop vocabulary",
@@ -601,22 +604,27 @@
           latestTempo: 120, tempoTrend: .fixture([120]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [
-          PieceRefView(id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw")
-        ],
-        exerciseContexts: [
-          ExerciseContextView(
+        usedIn: [
+          ExerciseUsageView(
             piece: PieceRefView(
               id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
-            latestScore: 7, sessionCount: 3, lastPracticedAt: "2026-06-24T09:00:00Z",
-            pieceRemoved: false),
-          ExerciseContextView(
-            piece: PieceRefView(id: "piece-gone", title: "Blue Bossa", subtitle: nil),
-            latestScore: 4, sessionCount: 2, lastPracticedAt: "2026-06-20T09:00:00Z",
-            pieceRemoved: true),
-          ExerciseContextView(
-            piece: nil, latestScore: 6, sessionCount: 4,
+            linked: true, latestScore: 7, sessionCount: 3,
+            lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false),
+          ExerciseUsageView(
+            piece: PieceRefView(id: "piece-2", title: "Blue Bossa", subtitle: "Kenny Dorham"),
+            linked: false, latestScore: 5, sessionCount: 2,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
+          ExerciseUsageView(
+            piece: PieceRefView(id: "piece-3", title: "Autumn Leaves", subtitle: "Kosma"),
+            linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
+            pieceRemoved: false),
+          ExerciseUsageView(
+            piece: PieceRefView(id: "piece-gone", title: "Solar", subtitle: nil),
+            linked: false, latestScore: 4, sessionCount: 2,
+            lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true),
+          ExerciseUsageView(
+            piece: nil, linked: false, latestScore: 6, sessionCount: 4,
+            lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -629,7 +637,7 @@
         key: "C", modality: .major, tempo: "132 BPM", tempoMarking: nil, tempoBpm: 132,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: [
           VariantView(
             id: "step-c", label: "C", position: 0, latestScore: 9, scoreHistory: [],
@@ -655,7 +663,7 @@
         key: nil, modality: nil, tempo: "72 BPM", tempoMarking: nil, tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: keys.enumerated().map { index, label in
           let solid = index < 4
           let current = index == 4
@@ -675,7 +683,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
         variants: rungs.enumerated().map { index, label in
           VariantView(
             id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
@@ -691,7 +699,7 @@
         tempoMarking: "Lent et douloureux",
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
-        linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
+        linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
   }

@@ -25,7 +25,7 @@ use crate::http;
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
-    PhotoRecognitionView, PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView,
+    PhotoRecognitionView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView,
     SetSourceStatus, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
@@ -689,35 +689,7 @@ fn build_library_item_views(
     model: &Model,
     item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
 ) -> Vec<LibraryItemView> {
-    use std::collections::HashMap;
-
-    // Build a reverse index: exercise_id → [PieceRefView] in one pass.
-    // Mirror the forward filter: only push a PieceRefView when the target
-    // id resolves to a present item whose kind == Exercise.
-    let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
-    for item in &model.items {
-        if item.kind == ItemKind::Piece {
-            for ex_id in &item.linked_exercise_ids {
-                if item_index
-                    .get(ex_id.as_str())
-                    .is_some_and(|t| t.kind == ItemKind::Exercise)
-                {
-                    piece_refs_by_exercise
-                        .entry(ex_id.as_str())
-                        .or_default()
-                        .push(PieceRefView {
-                            id: item.id.clone(),
-                            title: item.title.clone(),
-                            subtitle: item.composer.clone(),
-                        });
-                }
-            }
-        }
-    }
-
-    // Derived per-exercise practice contexts (piece + "on its own"), keyed
-    // by exercise id. Built once over sessions, attached to exercises below.
-    let contexts_by_exercise = build_exercise_contexts(&model.sessions, item_index);
+    let usage_by_exercise = build_exercise_usage(model, item_index);
 
     // Per-step score history, keyed by (item id, variant id); one pass
     // over sessions, attached to laddered exercises below (#1083).
@@ -742,17 +714,14 @@ fn build_library_item_views(
                     // from the same derivation the exercise screen uses so
                     // both sides agree (#1087 B2).
                     let piece_context_score =
-                        contexts_by_exercise
-                            .get(ex.id.as_str())
-                            .and_then(|contexts| {
-                                contexts
-                                    .iter()
-                                    .find(|c| {
-                                        c.piece.as_ref().map(|p| p.id.as_str())
-                                            == Some(item.id.as_str())
-                                    })
-                                    .and_then(|c| c.latest_score)
-                            });
+                        usage_by_exercise.get(ex.id.as_str()).and_then(|rows| {
+                            rows.iter()
+                                .find(|r| {
+                                    r.piece.as_ref().map(|p| p.id.as_str())
+                                        == Some(item.id.as_str())
+                                })
+                                .and_then(|r| r.latest_score)
+                        });
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -771,17 +740,8 @@ fn build_library_item_views(
             vec![]
         };
 
-        let linked_from_pieces = if item.kind == ItemKind::Exercise {
-            piece_refs_by_exercise
-                .get(item.id.as_str())
-                .cloned()
-                .unwrap_or_default()
-        } else {
-            vec![]
-        };
-
-        let exercise_contexts = if item.kind == ItemKind::Exercise {
-            contexts_by_exercise
+        let used_in = if item.kind == ItemKind::Exercise {
+            usage_by_exercise
                 .get(item.id.as_str())
                 .cloned()
                 .unwrap_or_default()
@@ -862,8 +822,7 @@ fn build_library_item_views(
             latest_achieved_tempo,
             priority: item.priority,
             linked_exercises,
-            linked_from_pieces,
-            exercise_contexts,
+            used_in,
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
             variants,
@@ -971,21 +930,20 @@ pub(crate) fn build_practice_summaries(
         .collect()
 }
 
-/// Derive, per exercise, the piece/standalone contexts it has been practised
-/// in across `sessions` (#1087 B1). For each session entry that is an exercise,
-/// the context is the piece sharing its block `group_id` in that same session,
-/// or the "On its own" bucket (`piece: None`) when the entry is ungrouped or its
-/// block carries no piece. Rollup v1 keeps the latest recorded score, distinct
-/// session count, and most-recent date per context.
-fn build_exercise_contexts(
-    sessions: &[PracticeSession],
+/// Every piece an exercise is used in, keyed by exercise id: the pieces that
+/// *link* it and the pieces it has been *practised with*, merged into one row
+/// each (#1363). A pair that has both sources produces one row, not two.
+fn build_exercise_usage(
+    model: &Model,
     item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
-) -> std::collections::HashMap<String, Vec<crate::model::ExerciseContextView>> {
-    use crate::model::{ExerciseContextView, PieceRefView};
+) -> std::collections::HashMap<String, Vec<crate::model::ExerciseUsageView>> {
+    use crate::model::{ExerciseUsageView, PieceRefView};
     use std::collections::{HashMap, HashSet};
 
-    // (exercise_id, piece_id | None) → accumulated rollup for that context.
+    // (exercise_id, piece_id | None) → accumulated rollup for that pairing.
+    #[derive(Default)]
     struct Acc {
+        linked: bool,
         piece_title: Option<String>,
         session_ids: HashSet<String>,
         last_practiced_at: Option<String>,
@@ -995,7 +953,23 @@ fn build_exercise_contexts(
 
     let mut acc: HashMap<(String, Option<String>), Acc> = HashMap::new();
 
-    for session in sessions {
+    // Seeding from links first is what lets a piece appear before any history
+    // exists. The kind check mirrors the piece side's forward filter.
+    for piece in model.items.iter().filter(|i| i.kind == ItemKind::Piece) {
+        for ex_id in &piece.linked_exercise_ids {
+            if !item_index
+                .get(ex_id.as_str())
+                .is_some_and(|t| t.kind == ItemKind::Exercise)
+            {
+                continue;
+            }
+            acc.entry((ex_id.clone(), Some(piece.id.clone())))
+                .or_default()
+                .linked = true;
+        }
+    }
+
+    for session in &model.sessions {
         let date = session.started_at.to_rfc3339();
         for entry in &session.entries {
             if entry.item_type != ItemKind::Exercise {
@@ -1011,14 +985,7 @@ fn build_exercise_contexts(
             });
             let piece_id = piece.map(|p| p.item_id.clone());
 
-            let record = acc
-                .entry((entry.item_id.clone(), piece_id))
-                .or_insert_with(|| Acc {
-                    piece_title: None,
-                    session_ids: HashSet::new(),
-                    last_practiced_at: None,
-                    latest_scored: None,
-                });
+            let record = acc.entry((entry.item_id.clone(), piece_id)).or_default();
             if let Some(p) = piece {
                 record.piece_title = Some(p.item_title.clone());
             }
@@ -1038,7 +1005,7 @@ fn build_exercise_contexts(
         }
     }
 
-    let mut by_exercise: HashMap<String, Vec<ExerciseContextView>> = HashMap::new();
+    let mut by_exercise: HashMap<String, Vec<ExerciseUsageView>> = HashMap::new();
     for ((exercise_id, piece_id), record) in acc {
         // #1093 (1a): prefer the live piece's current title so a rename shows
         // through; fall back to the practice-time snapshot when the piece is
@@ -1061,8 +1028,9 @@ fn build_exercise_contexts(
         by_exercise
             .entry(exercise_id)
             .or_default()
-            .push(ExerciseContextView {
+            .push(ExerciseUsageView {
                 piece: piece.map(|(p, _)| p),
+                linked: record.linked,
                 latest_score: record.latest_scored.map(|(_, s)| s),
                 session_count: record.session_ids.len(),
                 last_practiced_at: record.last_practiced_at,
@@ -1070,13 +1038,17 @@ fn build_exercise_contexts(
             });
     }
 
-    // Deterministic order: piece contexts first (most-recent practice first,
-    // tie-broken by piece id), then the "On its own" bucket last.
-    for contexts in by_exercise.values_mut() {
-        contexts.sort_by(|a, b| match (&a.piece, &b.piece) {
-            (Some(x), Some(y)) => b
-                .last_practiced_at
-                .cmp(&a.last_practiced_at)
+    // Live pieces, then deleted ones, then "On its own". Within each, recency
+    // descending — which sinks never-practised rows for free, `None` sorting
+    // last under the reversed compare — then title, so linked-only rows (all
+    // `None`) read alphabetically.
+    for rows in by_exercise.values_mut() {
+        rows.sort_by(|a, b| match (&a.piece, &b.piece) {
+            (Some(x), Some(y)) => a
+                .piece_removed
+                .cmp(&b.piece_removed)
+                .then_with(|| b.last_practiced_at.cmp(&a.last_practiced_at))
+                .then_with(|| x.title.cmp(&y.title))
                 .then_with(|| x.id.cmp(&y.id)),
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
@@ -4929,13 +4901,18 @@ mod tests {
         let vm = app.view(&model);
         let exercise = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(
-            exercise.linked_from_pieces[0].subtitle.as_deref(),
+            exercise.used_in[0]
+                .piece
+                .as_ref()
+                .unwrap()
+                .subtitle
+                .as_deref(),
             Some("Debussy")
         );
     }
 
     #[test]
-    fn test_view_resolves_linked_exercises_and_linked_from_pieces() {
+    fn test_view_resolves_linked_exercises_and_used_in() {
         let app = Intrada;
         let now = chrono::Utc::now();
 
@@ -5048,25 +5025,257 @@ mod tests {
             piece_view.linked_exercises[0].tempo,
             Some("80 BPM".to_string())
         );
-        assert!(piece_view.linked_from_pieces.is_empty());
+        assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");
 
-        // Linked exercise ex-1: linked_from_pieces lists the piece.
         let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert_eq!(ex1_view.linked_from_pieces.len(), 1);
-        assert_eq!(ex1_view.linked_from_pieces[0].id, "piece-1");
-        assert_eq!(ex1_view.linked_from_pieces[0].title, "Sonata");
+        assert_eq!(ex1_view.used_in.len(), 1);
+        assert!(ex1_view.used_in[0].linked);
+        assert_eq!(ex1_view.used_in[0].piece.as_ref().unwrap().id, "piece-1");
+        assert_eq!(ex1_view.used_in[0].piece.as_ref().unwrap().title, "Sonata");
         assert!(ex1_view.linked_exercises.is_empty());
 
-        // Linked exercise ex-2: also appears in linked_from_pieces.
         let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
-        assert_eq!(ex2_view.linked_from_pieces.len(), 1);
-        assert_eq!(ex2_view.linked_from_pieces[0].id, "piece-1");
+        assert_eq!(ex2_view.used_in.len(), 1);
+        assert_eq!(ex2_view.used_in[0].piece.as_ref().unwrap().id, "piece-1");
         assert!(ex2_view.linked_exercises.is_empty());
 
         // Unrelated exercise: both lists empty.
         let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
         assert!(ex3_view.linked_exercises.is_empty());
-        assert!(ex3_view.linked_from_pieces.is_empty());
+        assert!(ex3_view.used_in.is_empty());
+    }
+
+    // ── Used in: links merged with practice history (#1363) ──────────────
+
+    /// A link is an intention, so the row has to exist before any history does.
+    #[test]
+    fn used_in_includes_a_linked_piece_with_no_practice() {
+        let app = Intrada;
+        let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
+        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1.used_in.len(), 1, "the link alone makes a row");
+
+        let row = &ex1.used_in[0];
+        assert!(row.linked, "seeded from the piece's link");
+        assert_eq!(row.piece.as_ref().unwrap().id, "P");
+        assert_eq!(
+            row.piece.as_ref().unwrap().subtitle.as_deref(),
+            Some("Beethoven")
+        );
+        assert_eq!(row.latest_score, None, "never practised together");
+        assert_eq!(row.session_count, 0);
+        assert_eq!(row.last_practiced_at, None);
+        assert!(!row.piece_removed);
+    }
+
+    /// `linked: false` is what the shell hangs its "Link" action off.
+    #[test]
+    fn used_in_marks_a_practised_piece_that_is_not_linked() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let model = Model {
+            items: vec![
+                ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven")),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
+                    ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1.used_in.len(), 1);
+
+        let row = &ex1.used_in[0];
+        assert!(!row.linked, "history without a link");
+        assert_eq!(row.latest_score, Some(7));
+        assert_eq!(row.session_count, 1);
+    }
+
+    /// Two lists disagreeing is the bug #1363 fixes, so the merge is the test.
+    #[test]
+    fn used_in_merges_a_linked_and_practised_piece_into_one_row() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
+        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
+                    ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1.used_in.len(), 1, "one row, both sources");
+        assert!(ex1.used_in[0].linked);
+        assert_eq!(ex1.used_in[0].latest_score, Some(7));
+        assert_eq!(ex1.used_in[0].session_count, 1);
+    }
+
+    #[test]
+    fn used_in_orders_practised_first_then_linked_only_then_on_its_own() {
+        let app = Intrada;
+        let old = chrono::Utc::now() - chrono::Duration::days(9);
+        let recent = chrono::Utc::now() - chrono::Duration::days(1);
+        let solo_day = chrono::Utc::now() - chrono::Duration::days(4);
+
+        // Ids deliberately run counter to the titles, so an id-only tie-break
+        // would order these the other way round.
+        let mut zeta = ctx_item("p-1", "Zeta", ItemKind::Piece, None);
+        zeta.linked_exercise_ids = vec!["ex-1".to_string()];
+        let mut alpha = ctx_item("p-2", "Alpha", ItemKind::Piece, None);
+        alpha.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![
+                ctx_item("p-old", "Older practice", ItemKind::Piece, None),
+                ctx_item("p-recent", "Recent practice", ItemKind::Piece, None),
+                zeta,
+                alpha,
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            sessions: vec![
+                ctx_session(
+                    "s-old",
+                    old,
+                    vec![
+                        ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(3), Some("g1")),
+                        ctx_entry("p-old", "Older practice", ItemKind::Piece, None, Some("g1")),
+                    ],
+                ),
+                ctx_session(
+                    "s-solo",
+                    solo_day,
+                    vec![ctx_entry(
+                        "ex-1",
+                        "Scales",
+                        ItemKind::Exercise,
+                        Some(5),
+                        None,
+                    )],
+                ),
+                ctx_session(
+                    "s-recent",
+                    recent,
+                    vec![
+                        ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(8), Some("g2")),
+                        ctx_entry(
+                            "p-recent",
+                            "Recent practice",
+                            ItemKind::Piece,
+                            None,
+                            Some("g2"),
+                        ),
+                    ],
+                ),
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let order: Vec<&str> = ex1
+            .used_in
+            .iter()
+            .map(|c| c.piece.as_ref().map(|p| p.id.as_str()).unwrap_or("solo"))
+            .collect();
+        assert_eq!(
+            order,
+            vec!["p-recent", "p-old", "p-2", "p-1", "solo"],
+            "practised newest-first, then linked-only by title, then on its own"
+        );
+    }
+
+    /// Same kind filter the piece side already applies, in reverse. Asserted on
+    /// the derivation rather than the view: the view drops these anyway (only
+    /// exercises are given a `used_in`), so a view-level assert would pass with
+    /// the filter deleted.
+    #[test]
+    fn used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item() {
+        let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
+        piece.linked_exercise_ids = vec!["gone".to_string(), "other-piece".to_string()];
+
+        let model = Model {
+            items: vec![
+                piece,
+                ctx_item("other-piece", "Nocturne", ItemKind::Piece, None),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            ..Default::default()
+        };
+        let index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+            model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+
+        let usage = build_exercise_usage(&model, &index);
+        assert!(
+            usage.is_empty(),
+            "a dangling id and a piece-kind target both seed nothing, got {usage:?}"
+        );
+    }
+
+    /// A piece deleted since it was practised sinks below every live piece,
+    /// including ones with no practice at all.
+    #[test]
+    fn used_in_sorts_removed_pieces_below_live_ones() {
+        let recent = chrono::Utc::now() - chrono::Duration::days(1);
+
+        let mut linked_only = ctx_item("p-live", "Live linked", ItemKind::Piece, None);
+        linked_only.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![
+                linked_only,
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            // "p-gone" is practised and recent, but no longer in the library.
+            sessions: vec![ctx_session(
+                "s-gone",
+                recent,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(9), Some("g1")),
+                    ctx_entry("p-gone", "Deleted piece", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
+            ..Default::default()
+        };
+
+        let vm = Intrada.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let order: Vec<&str> = ex1
+            .used_in
+            .iter()
+            .map(|r| r.piece.as_ref().map(|p| p.id.as_str()).unwrap_or("solo"))
+            .collect();
+        assert_eq!(
+            order,
+            vec!["p-live", "p-gone"],
+            "the removed piece sinks despite being the only one practised"
+        );
+        assert!(ex1.used_in[1].piece_removed);
     }
 
     // ── Exercise context derivation (#1087 B1) ───────────────────────────
@@ -5252,7 +5461,7 @@ mod tests {
     /// and standalone once yields two contexts — the piece (latest score, count,
     /// date rolled up) then the "On its own" bucket last.
     #[test]
-    fn test_exercise_contexts_derive_piece_and_on_its_own() {
+    fn test_used_in_derives_piece_and_on_its_own() {
         let app = Intrada;
         let d1 = chrono::Utc::now() - chrono::Duration::days(5);
         let d2 = chrono::Utc::now() - chrono::Duration::days(3);
@@ -5300,9 +5509,9 @@ mod tests {
 
         let vm = app.view(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert_eq!(ex1.exercise_contexts.len(), 2, "piece + on-its-own");
+        assert_eq!(ex1.used_in.len(), 2, "piece + on-its-own");
 
-        let piece_ctx = &ex1.exercise_contexts[0];
+        let piece_ctx = &ex1.used_in[0];
         let piece = piece_ctx.piece.as_ref().expect("piece context first");
         assert_eq!(piece.id, "P");
         assert_eq!(piece.title, "Sonata");
@@ -5319,7 +5528,7 @@ mod tests {
         assert_eq!(piece_ctx.session_count, 2);
         assert_eq!(piece_ctx.last_practiced_at, Some(d2.to_rfc3339()));
 
-        let solo = &ex1.exercise_contexts[1];
+        let solo = &ex1.used_in[1];
         assert!(solo.piece.is_none(), "'On its own' bucket has no piece");
         assert_eq!(solo.latest_score, Some(8));
         assert_eq!(solo.session_count, 1);
@@ -5327,13 +5536,13 @@ mod tests {
 
         // Pieces themselves carry no contexts.
         let piece_view = vm.items.iter().find(|i| i.id == "P").unwrap();
-        assert!(piece_view.exercise_contexts.is_empty());
+        assert!(piece_view.used_in.is_empty());
     }
 
     /// A grouped run with no piece entry (a dissolved block) falls into the
     /// "On its own" bucket, not a phantom piece context.
     #[test]
-    fn test_exercise_contexts_grouped_without_piece_is_on_its_own() {
+    fn test_used_in_grouped_without_piece_is_on_its_own() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
@@ -5358,9 +5567,9 @@ mod tests {
             .into_iter()
             .find(|i| i.id == "ex-1")
             .unwrap();
-        assert_eq!(ex1.exercise_contexts.len(), 1);
-        assert!(ex1.exercise_contexts[0].piece.is_none());
-        assert_eq!(ex1.exercise_contexts[0].latest_score, Some(5));
+        assert_eq!(ex1.used_in.len(), 1);
+        assert!(ex1.used_in[0].piece.is_none());
+        assert_eq!(ex1.used_in[0].latest_score, Some(5));
     }
 
     // #1093 (1a): a live rename shows through; the snapshot title is only a
@@ -5391,7 +5600,7 @@ mod tests {
             .into_iter()
             .find(|i| i.id == "ex-1")
             .unwrap();
-        let ctx = &ex1.exercise_contexts[0];
+        let ctx = &ex1.used_in[0];
         let piece = ctx.piece.as_ref().expect("piece context");
         assert_eq!(piece.title, "Sonata No. 14", "live title, not snapshot");
         assert_eq!(piece.subtitle.as_deref(), Some("Beethoven"));
@@ -5423,12 +5632,8 @@ mod tests {
             .into_iter()
             .find(|i| i.id == "ex-1")
             .unwrap();
-        assert_eq!(
-            ex1.exercise_contexts.len(),
-            1,
-            "removed piece kept, not dropped"
-        );
-        let ctx = &ex1.exercise_contexts[0];
+        assert_eq!(ex1.used_in.len(), 1, "removed piece kept, not dropped");
+        let ctx = &ex1.used_in[0];
         let piece = ctx.piece.as_ref().expect("context retained");
         assert_eq!(piece.id, "P");
         assert_eq!(piece.title, "Autumn Leaves", "snapshot title survives");
@@ -5490,7 +5695,7 @@ mod tests {
     /// online `SessionsLoaded` path or the local-first `SessionsStoreLoaded`
     /// persistence path — it's a pure projection over `model.sessions`.
     #[test]
-    fn test_exercise_contexts_identical_in_both_modes() {
+    fn test_used_in_identical_in_both_modes() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let items = vec![
@@ -5521,7 +5726,7 @@ mod tests {
             .into_iter()
             .find(|i| i.id == "ex-1")
             .unwrap()
-            .exercise_contexts;
+            .used_in;
 
         // Local-first: sessions arrive via the persistence store.
         let mut local = Model::test_default();
@@ -5537,7 +5742,7 @@ mod tests {
             .into_iter()
             .find(|i| i.id == "ex-1")
             .unwrap()
-            .exercise_contexts;
+            .used_in;
 
         assert_eq!(online_ctx.len(), 1);
         assert_eq!(online_ctx[0].piece.as_ref().unwrap().id, "P");
@@ -5552,7 +5757,7 @@ mod tests {
     fn test_reverse_index_drops_non_exercise_kind() {
         // Symmetric to the forward-path kind filter: if a linked id resolves to a
         // Piece (not an Exercise), both views must drop it — the forward
-        // linked_exercises already does this; the reverse linked_from_pieces must too.
+        // linked_exercises already does this; the reverse used_in must too.
         let app = Intrada;
         let now = chrono::Utc::now();
 
@@ -5608,13 +5813,9 @@ mod tests {
             "forward path must drop non-Exercise from linked_exercises"
         );
 
-        // Reverse: item-b's linked_from_pieces must also be empty — it is not an
-        // Exercise, so it should never appear as a link target's back-reference.
-        let item_b = vm.items.iter().find(|i| i.id == "item-b").unwrap();
-        assert!(
-            item_b.linked_from_pieces.is_empty(),
-            "reverse path must drop non-Exercise from linked_from_pieces (symmetric drop)"
-        );
+        // Reverse: covered on the derivation itself by
+        // `used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item`
+        // — a view-level assert here passes whether or not the filter exists.
     }
     // ── Step ladder view derivation (#1083 C1) ─────────────────────────
 
