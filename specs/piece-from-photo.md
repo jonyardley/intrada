@@ -14,7 +14,9 @@
 > native iOS only.** API/Turso out of scope.
 >
 > Status: **phase A landed** ([#1443] core, [#1449] screens; #1355 closed
-> 2026-08-29); **phase B core in flight** ([#1436]). C and D are unstarted. The rest is the design as written
+> 2026-08-29); **phase B landed** ([#1455] core, [#1457] screens, [#1461] what
+> photographing real pages taught; [#1436] closed 2026-08-29); **phase C in
+> flight** ([#1437]). D is unstarted. The rest is the design as written
 > 2026-08-29 from a feasibility review of the iOS on-device stack (appendix).
 
 [#1098]: https://github.com/jonyardley/intrada/issues/1098
@@ -26,6 +28,11 @@
 [#1442]: https://github.com/jonyardley/intrada/issues/1442
 [#1446]: https://github.com/jonyardley/intrada/issues/1446
 [#1436]: https://github.com/jonyardley/intrada/issues/1436
+[#1437]: https://github.com/jonyardley/intrada/issues/1437
+[#1454]: https://github.com/jonyardley/intrada/issues/1454
+[#1455]: https://github.com/jonyardley/intrada/pull/1455
+[#1457]: https://github.com/jonyardley/intrada/pull/1457
+[#1461]: https://github.com/jonyardley/intrada/pull/1461
 
 ## Problem
 
@@ -115,7 +122,14 @@ in principle and is real research. We are not betting the feature on it.
    against all the lines joined, case- and whitespace-insensitively, not
    per line — a name Vision wrapped across two lines must still be accepted.
    The cost is that a suggestion may span a line boundary; that is the right
-   trade, but phase C should not assume per-line.* A ~3B model asked to extract will
+   trade, but phase C should not assume per-line. Phase C settles what the clamp
+   then claims: a surviving suggestion carries the OCR confidence of the weakest
+   line it spanned, not a perfect 1.0 (#1454), so the field with the least
+   evidence behind it is no longer the one that looks strongest. Note what the
+   clamp does not do: it constrains where a suggestion came from, never what
+   shape it is in. "Music by Kosma" is on the page, so the composer clamp has to
+   strip the credit prefix the same way the heuristic does.* A ~3B model
+   asked to extract will
    sometimes produce a plausible composer that is not on the page; this clamp
    makes that structurally impossible and is a pure function, tested in Rust
    with no device involved.
@@ -277,7 +291,12 @@ one worth planning against.
 - **C. On-device model suggestions.** Foundation Models behind
   `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
   filling `suggested`, clamped by decision 5. Same sheet, better answers, no
-  new surface. About 2 days.
+  new surface. About 2 days. Two PRs: the core one carries honest confidence
+  through the clamp (#1454, decision 5 above), the screens one runs the model.
+  The preference rule is unchanged by that: a clamped suggestion still wins over
+  the heuristic even when it reads weakly, because both are reading the same
+  shaky text and the model is choosing *which* of it to use, not whether Vision
+  got it right.
 - **D. A chart from a text chart.** Reconstruct lines by geometry into the
   bar-and-pipe grammar, drop the result into `ChordChartEditSheet` for editing.
   3 to 4 days, and the least certain of the four.

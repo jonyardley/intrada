@@ -240,61 +240,128 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft {
         return heuristic;
     };
 
-    let haystack = normalise(
-        &page
-            .lines
-            .iter()
-            .map(|l| l.text.as_str())
-            .collect::<Vec<_>>()
-            .join(" "),
-    );
+    let haystack = Haystack::of(&page.lines);
 
     PhotoDraft {
         title: clamped_text(suggested.title.as_deref(), &haystack, MAX_TITLE).or(heuristic.title),
-        composer: clamped_text(suggested.composer.as_deref(), &haystack, MAX_COMPOSER)
-            .or(heuristic.composer),
+        composer: clamped_composer(suggested.composer.as_deref(), &haystack).or(heuristic.composer),
         tempo: clamped_tempo(suggested, &haystack).or(heuristic.tempo),
         chart_text: clamped_text(suggested.chart_text.as_deref(), &haystack, MAX_NOTES)
             .or(heuristic.chart_text),
     }
 }
 
+/// Keeps which line each byte came from, so a clamped suggestion carries the
+/// confidence of the text it matched rather than one it has not earned (#1454).
+struct Haystack {
+    text: String,
+    lines: Vec<Span>,
+}
+
+struct Span {
+    start: usize,
+    end: usize,
+    confidence: f32,
+}
+
+impl Haystack {
+    /// Joined, not per line: a name Vision wrapped across two lines must still
+    /// be accepted (decision 5, as amended in phase B).
+    fn of(lines: &[RecognisedLine]) -> Self {
+        let mut text = String::new();
+        let mut spans = Vec::new();
+        for line in lines {
+            let normalised = normalise(&line.text);
+            // A blank line would push a second separator space, and a needle
+            // whose own spaces are single could then no longer match across it.
+            if normalised.is_empty() {
+                continue;
+            }
+            if !text.is_empty() {
+                text.push(' ');
+            }
+            let start = text.len();
+            text.push_str(&normalised);
+            spans.push(Span {
+                start,
+                end: text.len(),
+                confidence: line.confidence,
+            });
+        }
+        Self { text, lines: spans }
+    }
+
+    /// Weakest line spanned, as `heuristic_tempo` already takes of its two. Best
+    /// occurrence, not first: a smudged catalogue number printing the same
+    /// digits must not decide a cleanly printed tempo's confidence.
+    fn confidence_of(&self, value: &str) -> Option<f32> {
+        let needle = normalise(value);
+        if needle.is_empty() {
+            return None;
+        }
+        self.text
+            .match_indices(&needle)
+            .filter_map(|(at, matched)| self.weakest_line_across(at, at + matched.len()))
+            .reduce(f32::max)
+    }
+
+    fn weakest_line_across(&self, at: usize, end: usize) -> Option<f32> {
+        self.lines
+            .iter()
+            .filter(|line| line.start < end && at < line.end)
+            .map(|line| line.confidence)
+            .reduce(f32::min)
+    }
+}
+
 /// Decision 5, the whole of it: a suggested value the page does not literally
 /// carry is discarded, so a model cannot invent a composer. Case- and
 /// whitespace-insensitive, because OCR spacing is not the user's problem.
-fn clamped_text(value: Option<&str>, haystack: &str, max: usize) -> Option<TextDraftField> {
+fn clamped_text(value: Option<&str>, haystack: &Haystack, max: usize) -> Option<TextDraftField> {
     let value = value?.trim();
     if value.is_empty() || value.len() > max {
         return None;
     }
-    if !haystack.contains(&normalise(value)) {
-        return None;
-    }
+    let confidence = haystack.confidence_of(value)?;
     Some(TextDraftField {
         value: value.to_string(),
         source: DraftSource::Suggested,
-        confidence: 1.0,
-        weak: false,
+        confidence,
+        weak: confidence < LOW_CONFIDENCE,
     })
 }
 
-fn clamped_tempo(suggested: &SuggestedFields, haystack: &str) -> Option<TempoDraftField> {
+/// The clamp says a suggestion is on the page, not that it is the right span of
+/// it, and "Music by Kosma" is on the page. `heuristic_composer` strips it too.
+fn clamped_composer(value: Option<&str>, haystack: &Haystack) -> Option<TextDraftField> {
+    let value = value?.trim();
+    let named = credit_prefix(value).map_or(value, |(rest, _)| rest);
+    clamped_text(Some(named), haystack, MAX_COMPOSER)
+}
+
+fn clamped_tempo(suggested: &SuggestedFields, haystack: &Haystack) -> Option<TempoDraftField> {
     let marking = clamped_text(
         suggested.tempo_marking.as_deref(),
         haystack,
         MAX_TEMPO_MARKING,
-    )
-    .map(|f| f.value);
+    );
     let bpm = suggested
         .bpm
         .filter(|bpm| (MIN_READ_BPM..=MAX_BPM).contains(bpm))
-        .filter(|bpm| haystack.contains(&bpm.to_string()));
+        .and_then(|bpm| haystack.confidence_of(&bpm.to_string()).map(|c| (bpm, c)));
 
-    Tempo::from_parts(marking, bpm).map(|value| TempoDraftField {
+    let confidence = match (&marking, &bpm) {
+        (Some(m), Some((_, b))) => m.confidence.min(*b),
+        (Some(m), None) => m.confidence,
+        (None, Some((_, b))) => *b,
+        (None, None) => return None,
+    };
+
+    Tempo::from_parts(marking.map(|m| m.value), bpm.map(|(b, _)| b)).map(|value| TempoDraftField {
         value,
         source: DraftSource::Suggested,
-        confidence: 1.0,
-        weak: false,
+        confidence,
+        weak: confidence < LOW_CONFIDENCE,
     })
 }
 
@@ -996,6 +1063,185 @@ mod tests {
             }),
         });
         assert!(draft.title.is_none(), "too long for the form either way");
+    }
+
+    /// #1454: a suggestion claimed `confidence: 1.0`, so the field with the least
+    /// evidence looked strongest. Hard-coding it fails here; the line read 0.31.
+    #[test]
+    fn a_suggestion_carries_the_confidence_of_the_text_it_matched() {
+        let mut lines = vec![line("Autumn Leaves", 0.08, 0.09)];
+        lines[0].confidence = 0.31;
+        let draft = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                title: Some("Autumn Leaves".to_string()),
+                ..no_suggestions()
+            }),
+        });
+        let title = draft.title.expect("a title");
+        assert_eq!(title.source, DraftSource::Suggested);
+        assert_eq!(title.confidence, 0.31);
+        assert!(title.weak, "a shaky read is shown as one (decision 7)");
+    }
+
+    /// Decision 5 matches against the lines joined, so a name Vision wrapped is
+    /// still accepted, and it is then only as good as its shakiest half.
+    #[test]
+    fn a_suggestion_spanning_two_lines_takes_the_weaker_of_them() {
+        let mut lines = vec![
+            line("Music by Joseph", 0.18, 0.03),
+            line("Kosma", 0.22, 0.03),
+        ];
+        lines[0].confidence = 0.9;
+        lines[1].confidence = 0.35;
+        let composer = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                composer: Some("Joseph Kosma".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .composer
+        .expect("a composer");
+        assert_eq!(composer.source, DraftSource::Suggested);
+        assert_eq!(composer.confidence, 0.35);
+    }
+
+    /// Deleting the overlap filter takes the minimum of every line on the page,
+    /// not of the lines the value actually spans.
+    #[test]
+    fn a_suggestion_is_not_dragged_down_by_a_line_it_did_not_match() {
+        let mut lines = vec![
+            line("Autumn Leaves", 0.08, 0.09),
+            line("The falling leaves drift by my window", 0.55, 0.04),
+        ];
+        lines[0].confidence = 0.88;
+        lines[1].confidence = 0.12;
+        let title = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                title: Some("Autumn Leaves".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .title
+        .expect("a title");
+        assert_eq!(title.confidence, 0.88);
+        assert!(!title.weak);
+    }
+
+    #[test]
+    fn a_suggested_tempo_takes_the_weaker_of_its_marking_and_its_bpm() {
+        let mut lines = vec![line("Moderato", 0.25, 0.02), line("= 120", 0.27, 0.02)];
+        lines[0].confidence = 0.7;
+        lines[1].confidence = 0.44;
+        let tempo = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                tempo_marking: Some("Moderato".to_string()),
+                bpm: Some(120),
+                ..no_suggestions()
+            }),
+        })
+        .tempo
+        .expect("a tempo");
+        assert_eq!(tempo.source, DraftSource::Suggested);
+        assert_eq!(tempo.confidence, 0.44);
+        assert!(tempo.weak);
+    }
+
+    /// A catalogue number and a metronome mark both print "120". Taking the first
+    /// occurrence is #1454 surviving inside the fix for it.
+    #[test]
+    fn a_suggestion_the_page_prints_twice_takes_the_clearer_printing() {
+        let mut lines = vec![line("Sonata K. 120", 0.06, 0.05), line("= 120", 0.28, 0.02)];
+        lines[0].confidence = 0.15;
+        lines[1].confidence = 0.92;
+        let tempo = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                bpm: Some(120),
+                ..no_suggestions()
+            }),
+        })
+        .tempo
+        .expect("a tempo");
+        assert_eq!(tempo.source, DraftSource::Suggested);
+        assert_eq!(tempo.confidence, 0.92);
+        assert!(!tempo.weak);
+    }
+
+    /// Deleting the blank-line skip in `Haystack::of` pushes a second separator
+    /// space, and this stops matching across it, narrowing the phase B clamp.
+    #[test]
+    fn a_blank_line_between_two_lines_does_not_break_the_join() {
+        let composer = read_fields(&PageReading {
+            lines: vec![
+                line("Music by Joseph", 0.18, 0.03),
+                line("   ", 0.20, 0.01),
+                line("Kosma", 0.22, 0.03),
+            ],
+            suggested: Some(SuggestedFields {
+                composer: Some("Joseph Kosma".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .composer
+        .expect("a composer");
+        assert_eq!(composer.value, "Joseph Kosma");
+        assert_eq!(composer.source, DraftSource::Suggested);
+    }
+
+    /// Hard-coding a certainty in this arm leaves every other test green.
+    #[test]
+    fn a_suggested_marking_with_no_bpm_carries_its_own_lines_confidence() {
+        let mut lines = vec![line("Andante", 0.25, 0.02)];
+        lines[0].confidence = 0.42;
+        let tempo = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                tempo_marking: Some("Andante".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .tempo
+        .expect("a tempo");
+        assert_eq!(tempo.source, DraftSource::Suggested);
+        assert_eq!(tempo.confidence, 0.42);
+        assert!(tempo.weak);
+    }
+
+    /// And plenty print the metronome mark and no word. Same arm, other half.
+    #[test]
+    fn a_suggested_bpm_with_no_marking_carries_its_own_lines_confidence() {
+        let mut lines = vec![line("= 132", 0.25, 0.02)];
+        lines[0].confidence = 0.38;
+        let tempo = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                bpm: Some(132),
+                ..no_suggestions()
+            }),
+        })
+        .tempo
+        .expect("a tempo");
+        assert_eq!(tempo.source, DraftSource::Suggested);
+        assert_eq!(tempo.confidence, 0.38);
+        assert!(tempo.weak);
+    }
+
+    /// "Music by Joseph Kosma" is on the page, so it survives the clamp and beats
+    /// the heuristic. Deleting the strip pre-fills the field with the credit.
+    #[test]
+    fn a_suggested_composer_that_kept_its_credit_prefix_is_still_just_the_name() {
+        let composer = read_fields(&suggested_page(SuggestedFields {
+            composer: Some("Music by Joseph Kosma".to_string()),
+            ..no_suggestions()
+        }))
+        .composer
+        .expect("a composer");
+        assert_eq!(composer.value, "Joseph Kosma");
+        assert_eq!(composer.source, DraftSource::Suggested);
     }
 
     #[test]
