@@ -233,14 +233,7 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft {
         return heuristic;
     };
 
-    let haystack = normalise(
-        &page
-            .lines
-            .iter()
-            .map(|l| l.text.as_str())
-            .collect::<Vec<_>>()
-            .join(" "),
-    );
+    let haystack = Haystack::of(&page.lines);
 
     PhotoDraft {
         title: clamped_text(suggested.title.as_deref(), &haystack, MAX_TITLE).or(heuristic.title),
@@ -252,42 +245,101 @@ pub fn read_fields(page: &PageReading) -> PhotoDraft {
     }
 }
 
+/// The recognised lines as one searchable string, keeping which line each byte
+/// came from so a clamped suggestion can be given the confidence of the text it
+/// actually matched (#1454) rather than a certainty it has not earned.
+struct Haystack {
+    text: String,
+    lines: Vec<Span>,
+}
+
+struct Span {
+    start: usize,
+    end: usize,
+    confidence: f32,
+}
+
+impl Haystack {
+    /// Joined, not per line: a name Vision wrapped across two lines must still
+    /// be accepted (decision 5, as amended in phase B).
+    fn of(lines: &[RecognisedLine]) -> Self {
+        let mut text = String::new();
+        let mut spans = Vec::new();
+        for line in lines {
+            let normalised = normalise(&line.text);
+            if normalised.is_empty() {
+                continue;
+            }
+            if !text.is_empty() {
+                text.push(' ');
+            }
+            let start = text.len();
+            text.push_str(&normalised);
+            spans.push(Span {
+                start,
+                end: text.len(),
+                confidence: line.confidence,
+            });
+        }
+        Self { text, lines: spans }
+    }
+
+    /// The confidence of the weakest line the value spans, or `None` where the
+    /// page does not carry it at all. Weakest rather than mean, matching what
+    /// `heuristic_tempo` already does with the two lines it reads: a suggestion
+    /// is worth no more than the shakiest text it rests on.
+    fn confidence_of(&self, value: &str) -> Option<f32> {
+        let needle = normalise(value);
+        let at = self.text.find(&needle)?;
+        let end = at + needle.len();
+        self.lines
+            .iter()
+            .filter(|line| line.start < end && at < line.end)
+            .map(|line| line.confidence)
+            .reduce(f32::min)
+    }
+}
+
 /// Decision 5, the whole of it: a suggested value the page does not literally
 /// carry is discarded, so a model cannot invent a composer. Case- and
 /// whitespace-insensitive, because OCR spacing is not the user's problem.
-fn clamped_text(value: Option<&str>, haystack: &str, max: usize) -> Option<TextDraftField> {
+fn clamped_text(value: Option<&str>, haystack: &Haystack, max: usize) -> Option<TextDraftField> {
     let value = value?.trim();
     if value.is_empty() || value.len() > max {
         return None;
     }
-    if !haystack.contains(&normalise(value)) {
-        return None;
-    }
+    let confidence = haystack.confidence_of(value)?;
     Some(TextDraftField {
         value: value.to_string(),
         source: DraftSource::Suggested,
-        confidence: 1.0,
-        weak: false,
+        confidence,
+        weak: confidence < LOW_CONFIDENCE,
     })
 }
 
-fn clamped_tempo(suggested: &SuggestedFields, haystack: &str) -> Option<TempoDraftField> {
+fn clamped_tempo(suggested: &SuggestedFields, haystack: &Haystack) -> Option<TempoDraftField> {
     let marking = clamped_text(
         suggested.tempo_marking.as_deref(),
         haystack,
         MAX_TEMPO_MARKING,
-    )
-    .map(|f| f.value);
+    );
     let bpm = suggested
         .bpm
         .filter(|bpm| (MIN_READ_BPM..=MAX_BPM).contains(bpm))
-        .filter(|bpm| haystack.contains(&bpm.to_string()));
+        .and_then(|bpm| haystack.confidence_of(&bpm.to_string()).map(|c| (bpm, c)));
 
-    Tempo::from_parts(marking, bpm).map(|value| TempoDraftField {
+    let confidence = match (&marking, &bpm) {
+        (Some(m), Some((_, b))) => m.confidence.min(*b),
+        (Some(m), None) => m.confidence,
+        (None, Some((_, b))) => *b,
+        (None, None) => return None,
+    };
+
+    Tempo::from_parts(marking.map(|m| m.value), bpm.map(|(b, _)| b)).map(|value| TempoDraftField {
         value,
         source: DraftSource::Suggested,
-        confidence: 1.0,
-        weak: false,
+        confidence,
+        weak: confidence < LOW_CONFIDENCE,
     })
 }
 
@@ -802,6 +854,94 @@ mod tests {
             }),
         });
         assert!(draft.title.is_none(), "too long for the form either way");
+    }
+
+    /// #1454: a suggestion used to claim `confidence: 1.0`, so the field with
+    /// the least evidence behind it was the one that looked strongest and could
+    /// never be shown as weak. Deleting the lookup and hard-coding a certainty
+    /// passes this test only if the page happened to be read cleanly.
+    #[test]
+    fn a_suggestion_carries_the_confidence_of_the_text_it_matched() {
+        let mut lines = vec![line("Autumn Leaves", 0.08, 0.09)];
+        lines[0].confidence = 0.31;
+        let draft = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                title: Some("Autumn Leaves".to_string()),
+                ..no_suggestions()
+            }),
+        });
+        let title = draft.title.expect("a title");
+        assert_eq!(title.source, DraftSource::Suggested);
+        assert_eq!(title.confidence, 0.31);
+        assert!(title.weak, "a shaky read is shown as one (decision 7)");
+    }
+
+    /// Decision 5 matches against the lines joined, so a name Vision wrapped is
+    /// still accepted — and it is then only as good as its shakiest half.
+    #[test]
+    fn a_suggestion_spanning_two_lines_takes_the_weaker_of_them() {
+        let mut lines = vec![
+            line("Music by Joseph", 0.18, 0.03),
+            line("Kosma", 0.22, 0.03),
+        ];
+        lines[0].confidence = 0.9;
+        lines[1].confidence = 0.35;
+        let composer = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                composer: Some("Joseph Kosma".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .composer
+        .expect("a composer");
+        assert_eq!(composer.source, DraftSource::Suggested);
+        assert_eq!(composer.confidence, 0.35);
+    }
+
+    /// A suggestion confined to one line takes that line's confidence and not
+    /// the weakest on the page: deleting the overlap filter takes the minimum
+    /// of every line instead.
+    #[test]
+    fn a_suggestion_is_not_dragged_down_by_a_line_it_did_not_match() {
+        let mut lines = vec![
+            line("Autumn Leaves", 0.08, 0.09),
+            line("The falling leaves drift by my window", 0.55, 0.04),
+        ];
+        lines[0].confidence = 0.88;
+        lines[1].confidence = 0.12;
+        let title = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                title: Some("Autumn Leaves".to_string()),
+                ..no_suggestions()
+            }),
+        })
+        .title
+        .expect("a title");
+        assert_eq!(title.confidence, 0.88);
+        assert!(!title.weak);
+    }
+
+    #[test]
+    fn a_suggested_tempo_takes_the_weaker_of_its_marking_and_its_bpm() {
+        let mut lines = vec![line("Moderato", 0.25, 0.02), line("= 120", 0.27, 0.02)];
+        lines[0].confidence = 0.7;
+        lines[1].confidence = 0.44;
+        let tempo = read_fields(&PageReading {
+            lines,
+            suggested: Some(SuggestedFields {
+                tempo_marking: Some("Moderato".to_string()),
+                bpm: Some(120),
+                ..no_suggestions()
+            }),
+        })
+        .tempo
+        .expect("a tempo");
+        assert_eq!(tempo.source, DraftSource::Suggested);
+        assert_eq!(tempo.confidence, 0.44);
+        assert!(tempo.weak);
     }
 
     #[test]
