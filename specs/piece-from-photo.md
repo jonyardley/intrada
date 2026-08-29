@@ -13,15 +13,16 @@
 > screens PR and again before B's confirm sheet. **Scope: `intrada-core` +
 > native iOS only.** API/Turso out of scope.
 >
-> Status: **phase A in flight** ([#1443] core, merged; screens on #1355). The
-> rest is the design as written 2026-08-29 from a feasibility review of the iOS
-> on-device stack (appendix).
+> Status: **phase A landed** ([#1443] core, [#1449] screens; #1355 closed
+> 2026-08-29). B, C and D are unstarted. The rest is the design as written
+> 2026-08-29 from a feasibility review of the iOS on-device stack (appendix).
 
 [#1098]: https://github.com/jonyardley/intrada/issues/1098
 [#1355]: https://github.com/jonyardley/intrada/issues/1355
 [#1387]: https://github.com/jonyardley/intrada/issues/1387
 [#1390]: https://github.com/jonyardley/intrada/issues/1390
 [#1443]: https://github.com/jonyardley/intrada/pull/1443
+[#1449]: https://github.com/jonyardley/intrada/pull/1449
 [#1442]: https://github.com/jonyardley/intrada/issues/1442
 [#1446]: https://github.com/jonyardley/intrada/issues/1446
 
