@@ -540,6 +540,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 

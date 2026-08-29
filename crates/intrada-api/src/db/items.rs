@@ -71,6 +71,7 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
         priority: priority_int != 0,
         chord_chart: None,
         variants: vec![],
+        photo_id: None,
     })
 }
 
@@ -175,6 +176,7 @@ pub async fn insert_item(
         priority: false,
         chord_chart: None,
         variants: vec![],
+        photo_id: None,
     })
 }
 
@@ -257,6 +259,7 @@ pub async fn update_item(
         priority,
         chord_chart: None,
         variants: vec![],
+        photo_id: None,
     }))
 }
 

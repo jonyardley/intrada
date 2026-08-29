@@ -70,6 +70,10 @@ pub struct Item {
     /// an empty ladder (#846). Persisted to the `variant` child table (#1083).
     #[serde(default)]
     pub variants: Vec<Variant>,
+    /// An opaque ulid the shell resolves to a file; the bytes never cross the
+    /// bridge (`specs/piece-from-photo.md`, key decision 1).
+    #[serde(default)]
+    pub photo_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -157,6 +161,17 @@ pub enum ItemEvent {
         variant_id: String,
         new_label: String,
     },
+    /// Point the item at the photo the shell has already written to disk,
+    /// replacing any it already had. Kept out of `Update` because
+    /// `UpdateItem`'s three-state `Option<Option<T>>` is the fiddliest encoding
+    /// on the bridge; `AddTags`/`RemoveTags` set the same precedent.
+    SetPhoto {
+        id: String,
+        photo_id: String,
+    },
+    ClearPhoto {
+        id: String,
+    },
 }
 
 /// Shared by Update / AddTags / RemoveTags.
@@ -202,6 +217,44 @@ pub(crate) fn scaffold_already_linked(
     kinds.contains(&kind) || titles.contains(&title.to_lowercase())
 }
 
+/// `next` is `None` for a clear. The file the item stops pointing at is left on
+/// disk for the reaping pass (#1442): a leaked file costs disk, an eagerly
+/// deleted one costs the user their photo, and the write that would justify
+/// deleting can still fail after the delete has run (spec, key decision 2).
+fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Effect, Event> {
+    if !model.local_first {
+        model.last_error = Some("Photos aren't available online yet".to_string());
+        return crux_core::render::render();
+    }
+
+    if let Some(photo_id) = next.as_deref() {
+        if let Err(e) = validation::validate_photo_id(photo_id) {
+            model.last_error = Some(e.to_string());
+            return crux_core::render::render();
+        }
+    }
+
+    let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
+        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        return crux_core::render::render();
+    };
+
+    model.last_error = None;
+    if item.photo_id == next {
+        return crux_core::render::render();
+    }
+
+    item.photo_id = next;
+    item.updated_at = chrono::Utc::now();
+    let item = item.clone();
+
+    model.record_success();
+    Command::all([
+        crate::persistence::save_item(item),
+        crux_core::render::render(),
+    ])
+}
+
 fn save_or_put(model: &mut Model, item: Item) -> Command<Effect, Event> {
     if model.local_first {
         // No server callback to clear the dismiss-mute later (online does that
@@ -245,6 +298,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             };
 
             model.items.push(item.clone());
@@ -308,6 +362,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                photo_id: None,
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
@@ -394,6 +449,8 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 ])
             }
         }
+        ItemEvent::SetPhoto { id, photo_id } => set_photo(model, id, Some(photo_id)),
+        ItemEvent::ClearPhoto { id } => set_photo(model, id, None),
         ItemEvent::AddTags { id, tags } => {
             if let Err(e) = validation::validate_tags(&tags) {
                 model.last_error = Some(e.to_string());
@@ -652,6 +709,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    photo_id: None,
                 })
                 .collect();
 
@@ -849,6 +907,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 
@@ -870,6 +929,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            photo_id: None,
         }
     }
 
@@ -2650,5 +2710,248 @@ mod tests {
             "online would link against a client ulid the server reassigns (#1108)"
         );
         assert!(!emits_http(&mut cmd));
+    }
+
+    // ── SetPhoto / ClearPhoto ──
+
+    const PHOTO: &str = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    const OTHER_PHOTO: &str = "01ARZ3NDEKTSV4RRFFQ69G5FBW";
+
+    fn photo_of(model: &Model, id: &str) -> Option<String> {
+        model
+            .items
+            .iter()
+            .find(|i| i.id == id)
+            .and_then(|i| i.photo_id.clone())
+    }
+
+    fn set_photo_event(id: &str, photo_id: &str) -> ItemEvent {
+        ItemEvent::SetPhoto {
+            id: id.to_string(),
+            photo_id: photo_id.to_string(),
+        }
+    }
+
+    #[test]
+    fn set_photo_stores_the_id_and_persists_without_http() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "piece-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(&mut model, set_photo_event("piece-1", PHOTO));
+
+        assert_eq!(photo_of(&model, "piece-1").as_deref(), Some(PHOTO));
+        assert!(model.last_error.is_none());
+        assert!(
+            model
+                .items
+                .iter()
+                .find(|i| i.id == "piece-1")
+                .unwrap()
+                .updated_at
+                > before,
+            "the photo is part of the item's state, so it moves updated_at for LWW"
+        );
+        assert!(emits_save(&mut cmd, "piece-1"));
+        assert!(
+            !emits_http(&mut cmd),
+            "photos are device-local (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn set_photo_over_an_existing_one_replaces_the_id() {
+        let mut model = model_with_piece_and_exercise();
+        send(&mut model, set_photo_event("piece-1", PHOTO));
+
+        let mut cmd = send_cmd(&mut model, set_photo_event("piece-1", OTHER_PHOTO));
+
+        assert_eq!(photo_of(&model, "piece-1").as_deref(), Some(OTHER_PHOTO));
+        assert!(emits_save(&mut cmd, "piece-1"));
+    }
+
+    #[test]
+    fn setting_the_same_photo_twice_writes_nothing_the_second_time() {
+        let mut model = model_with_piece_and_exercise();
+        send(&mut model, set_photo_event("piece-1", PHOTO));
+        let settled = model
+            .items
+            .iter()
+            .find(|i| i.id == "piece-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(&mut model, set_photo_event("piece-1", PHOTO));
+
+        assert!(
+            !emits_save(&mut cmd, "piece-1"),
+            "nothing changed, so there is nothing to write"
+        );
+        assert_eq!(
+            model
+                .items
+                .iter()
+                .find(|i| i.id == "piece-1")
+                .unwrap()
+                .updated_at,
+            settled,
+            "an unchanged item must not move updated_at and win a later LWW merge"
+        );
+    }
+
+    #[test]
+    fn clear_photo_clears_the_id() {
+        let mut model = model_with_piece_and_exercise();
+        send(&mut model, set_photo_event("piece-1", PHOTO));
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::ClearPhoto {
+                id: "piece-1".to_string(),
+            },
+        );
+
+        assert_eq!(photo_of(&model, "piece-1"), None);
+        assert!(model.last_error.is_none());
+        assert!(emits_save(&mut cmd, "piece-1"));
+    }
+
+    #[test]
+    fn clear_photo_on_an_item_without_one_is_a_no_op() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::ClearPhoto {
+                id: "piece-1".to_string(),
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        assert!(!emits_save(&mut cmd, "piece-1"));
+    }
+
+    #[test]
+    fn photo_events_reject_an_unknown_item() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(&mut model, set_photo_event("nope", PHOTO));
+        assert!(model.last_error.is_some());
+
+        model.last_error = None;
+        send(
+            &mut model,
+            ItemEvent::ClearPhoto {
+                id: "nope".to_string(),
+            },
+        );
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_photo_rejects_an_id_that_is_not_a_ulid() {
+        let mut model = model_with_piece_and_exercise();
+
+        // A photo id becomes a path component in the shell, so anything that
+        // is not a ulid is a traversal out of the app container.
+        for bad in ["../../../etc/passwd", "", "not a ulid", "01J0/0000"] {
+            model.last_error = None;
+            let mut cmd = send_cmd(&mut model, set_photo_event("piece-1", bad));
+            assert!(
+                model.last_error.is_some(),
+                "{bad:?} should be refused before it reaches the filesystem"
+            );
+            assert_eq!(photo_of(&model, "piece-1"), None, "{bad:?} stored nothing");
+            assert!(
+                !emits_save(&mut cmd, "piece-1"),
+                "{bad:?} persisted nothing"
+            );
+        }
+    }
+
+    #[test]
+    fn set_photo_accepts_an_exercise_too() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(&mut model, set_photo_event("ex-1", PHOTO));
+
+        assert_eq!(
+            photo_of(&model, "ex-1").as_deref(),
+            Some(PHOTO),
+            "an exercise photographed from a technique book is the same need"
+        );
+    }
+
+    #[test]
+    fn photo_events_are_refused_online() {
+        for event in [
+            set_photo_event("piece-1", PHOTO),
+            ItemEvent::ClearPhoto {
+                id: "piece-1".to_string(),
+            },
+        ] {
+            let mut model = model_with_piece_and_exercise();
+            model.local_first = false;
+            model.items[0].photo_id = Some(OTHER_PHOTO.to_string());
+
+            let mut cmd = send_cmd(&mut model, event);
+
+            assert!(model.last_error.is_some());
+            assert_eq!(
+                photo_of(&model, "piece-1").as_deref(),
+                Some(OTHER_PHOTO),
+                "the item is left exactly as it was"
+            );
+            assert!(
+                !emits_http(&mut cmd),
+                "there is no server surface for photos"
+            );
+        }
+    }
+
+    #[test]
+    fn deleting_an_item_leaves_its_photo_file_alone() {
+        let mut model = model_with_piece_and_exercise();
+        send(&mut model, set_photo_event("piece-1", PHOTO));
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::Delete {
+                id: "piece-1".to_string(),
+            },
+        );
+
+        // Key decision 2: the row tombstones, the file stays for the reaping
+        // pass (#1442). Deleting here would destroy the photo whenever the
+        // delete write that justified it went on to fail.
+        let ops: Vec<_> = cmd
+            .effects()
+            .filter_map(|e| match e {
+                crate::app::Effect::Persistence(req) => Some(req.operation.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            ops.iter().any(|o| matches!(
+                o,
+                crate::persistence::PersistenceOperation::DeleteItem { .. }
+            )),
+            "the row is still tombstoned"
+        );
+        assert_eq!(ops.len(), 1, "and nothing touches the file: {ops:?}");
+    }
+
+    #[test]
+    fn photo_events_round_trip_on_the_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(set_photo_event(
+            "piece-1", PHOTO,
+        )));
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::ClearPhoto {
+            id: "piece-1".to_string(),
+        }));
     }
 }

@@ -233,6 +233,50 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertNil(entry.variantId, "a pre-variant entry reads as unattributed")
   }
 
+  func testV16AddsPhotoIdColumnWithExistingItemsIntact() throws {
+    // Populate at v15 (no photo_id column), then finish the chain — the upgrade
+    // path is what matters, since on the free tier the device is the only copy.
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v15_reflection_steer",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, deleted_at, chord_chart)
+        VALUES ('p1', 'Legacy Piece', 'piece', 'Chopin', 'E', NULL, NULL, NULL, NULL, '[]',
+                '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)
+        """)
+
+    let columns = try store.columnNames(ofTable: "item")
+    XCTAssertTrue(columns.contains("photo_id"), "v16 must add photo_id; got \(columns)")
+
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1, "the pre-existing row survives v16")
+    XCTAssertEqual(loaded[0].title, "Legacy Piece")
+    XCTAssertEqual(loaded[0].composer, "Chopin", "the migration is additive, not a rebuild")
+    XCTAssertNil(loaded[0].photoId, "an item added before photos existed has none")
+  }
+
+  func testV16PhotoIdRoundTripsAndClears() throws {
+    let store = try LibraryStore.inMemory()
+    let item = Item(
+      id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+      tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
+      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
+      chordChart: nil, variants: [], photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+    try store.save(item)
+    XCTAssertEqual(try store.loadItems().first?.photoId, "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+
+    // A removal is an upsert with no photo, so the column has to clear rather
+    // than keep the id the row already held.
+    try store.save(
+      Item(
+        id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+        tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
+        createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:01:00Z", priority: false,
+        chordChart: nil, variants: [], photoId: nil))
+    XCTAssertNil(try store.loadItems().first?.photoId, "removing a photo must clear the column")
+  }
+
   func testV8ChordChartRoundTrip() throws {
     let store = try LibraryStore.inMemory()
     let symbol = ChordSymbol(
@@ -248,7 +292,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p3", title: "Autumn Leaves", kind: .piece, composer: nil, key: "G",
       modality: .minor, tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
       createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: chart, variants: [])
+      chordChart: chart, variants: [], photoId: nil)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
@@ -306,7 +350,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p2", title: "Étude", kind: .piece, composer: nil, key: nil, modality: nil,
       tempo: nil, notes: nil, tags: [], linkedExerciseIds: ["e1", "e2"],
       createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil, variants: [])
+      chordChart: nil, variants: [], photoId: nil)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
