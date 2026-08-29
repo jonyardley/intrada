@@ -57,16 +57,10 @@ struct AddToSessionSheet: View {
   }
 
   private func toggle(_ item: LibraryItemView) {
-    let before = store.viewModel?.errorSeq
-    if let entryId = entryByItem[item.id] {
-      store.send(.session(.removeFromSetlist(entryId: entryId)))
-    } else {
-      store.send(.session(.addToSetlist(itemId: item.id)))
-    }
-    // Only ack once the core confirms — errors surface in RootView's banner (#846).
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    let event: Event =
+      entryByItem[item.id].map { .session(.removeFromSetlist(entryId: $0)) }
+      ?? .session(.addToSetlist(itemId: item.id))
+    store.send(event, onSuccess: .impact)
   }
 
   private var isSearching: Bool { !(store.viewModel?.activeQuery?.text ?? "").isEmpty }

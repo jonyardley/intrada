@@ -61,37 +61,31 @@ struct AddRelatedExerciseSheet: View {
   }
 
   private func toggle(_ item: LibraryItemView) {
-    let before = store.viewModel?.errorSeq
-    if let entryId = blockEntryByItem[item.id] {
-      store.send(.session(.removeFromSetlist(entryId: entryId)))
-    } else {
-      store.send(.session(.addExerciseToBlock(groupId: groupId, itemId: item.id)))
-    }
-    // Only ack once the core confirms — errors surface in RootView's banner (#846).
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    let event: Event =
+      blockEntryByItem[item.id].map { .session(.removeFromSetlist(entryId: $0)) }
+      ?? .session(.addExerciseToBlock(groupId: groupId, itemId: item.id))
+    store.send(event, onSuccess: .impact)
   }
 
-  // The shared library query is whatever the Library screen last left behind;
-  // a piece filter would empty this sheet with no visible control to undo it.
-  // Restored on dismiss so the scoping doesn't follow the musician back to the
-  // Library.
+  // The shared library query is whatever Library last left behind; its text or
+  // type filter would narrow this sheet with no control here showing why.
   private func scopeQueryToExercises() {
-    let query = store.viewModel?.activeQuery
-    queryBeforeSheet = query
-    store.send(
-      .setQuery(
-        ListQuery(
-          text: query?.text, itemType: .exercise, key: nil, tags: query?.tags ?? [])))
+    queryBeforeSheet = store.viewModel?.activeQuery
+    store.send(.setQuery(ListQuery(text: nil, itemType: .exercise, key: nil, tags: [])))
   }
 
   private var searchText: String { store.viewModel?.activeQuery?.text ?? "" }
 
-  private var emptyIcon: String { searchText.isEmpty ? "dumbbell" : "magnifyingglass" }
+  private var activeTags: [String] { store.viewModel?.activeQuery?.tags ?? [] }
+
+  private var emptyIcon: String {
+    if !searchText.isEmpty { return "magnifyingglass" }
+    return activeTags.isEmpty ? "dumbbell" : "line.3.horizontal.decrease.circle"
+  }
 
   private var emptyMessage: String {
     if !searchText.isEmpty { return "No exercises match “\(searchText)”." }
+    if !activeTags.isEmpty { return "No exercises carry those tags." }
     return "No other exercises left to add."
   }
 }
