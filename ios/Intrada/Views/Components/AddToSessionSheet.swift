@@ -47,38 +47,20 @@ struct AddToSessionSheet: View {
   }
 
   private func libraryRow(_ item: LibraryItemView) -> some View {
-    let added = entryByItem[item.id] != nil
-    return Button {
+    SelectableLibraryRow(
+      item: item, added: entryByItem[item.id] != nil,
+      addHint: "Adds it to the session",
+      removeHint: "Removes it from the session"
+    ) {
       toggle(item)
-    } label: {
-      LibraryItemCard(item: item)
-        .overlay(alignment: .trailing) {
-          Image(systemName: added ? "checkmark.circle.fill" : "plus.circle")
-            .font(.title2)
-            .foregroundStyle(added ? IntradaColor.accent : IntradaColor.inkFaint)
-            .padding(.trailing, IntradaSpacing.card)
-            .accessibilityHidden(true)
-        }
-        .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.card)
-            .stroke(IntradaColor.accent, lineWidth: 2).opacity(added ? 1 : 0))
     }
-    .buttonStyle(.plain)
-    .accessibilityValue(added ? "Added" : "Not added")
-    .accessibilityHint(added ? "Removes it from the session" : "Adds it to the session")
   }
 
   private func toggle(_ item: LibraryItemView) {
-    let before = store.viewModel?.errorSeq
-    if let entryId = entryByItem[item.id] {
-      store.send(.session(.removeFromSetlist(entryId: entryId)))
-    } else {
-      store.send(.session(.addToSetlist(itemId: item.id)))
-    }
-    // Only ack once the core confirms — errors surface in RootView's banner (#846).
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    let event: Event =
+      entryByItem[item.id].map { .session(.removeFromSetlist(entryId: $0)) }
+      ?? .session(.addToSetlist(itemId: item.id))
+    store.send(event, onSuccess: .impact)
   }
 
   private var isSearching: Bool { !(store.viewModel?.activeQuery?.text ?? "").isEmpty }
