@@ -53,7 +53,9 @@ audit backlog and its five-phase build order.
   row now carries a count chip beside the star and the tags: **12 keys** when
   every rung reads as a key, **12 steps** when it does not, so a ladder of
   inversions is still named for what it holds. The rows already carried the
-  ladder, so nothing changed in the core.
+  ladder, so nothing changed in the core — and that is the follow-up: the
+  judgement lives in the shell for now, and #1467 moves it to the core where it
+  belongs. The detail screen still heads the section **Steps** (#1464).
 - #1447 — **accented titles file under their own letter**. Sorting the Library
   by title put "Étude" after "Waltz", behind every plain-ASCII title, because
   the sort compared the text byte by byte. Piano repertoire is full of Études,
