@@ -16,30 +16,26 @@ struct DateDisplayTests {
     calendar.date(from: DateComponents(year: 2026, month: 8, day: 28))!
   }
 
-  private func british<T>(_ body: (Locale) -> T) -> T { body(Locale(identifier: "en_GB")) }
-  private func american<T>(_ body: (Locale) -> T) -> T { body(Locale(identifier: "en_US")) }
+  private var british: DateDisplay {
+    DateDisplay(locale: Locale(identifier: "en_GB"), calendar: calendar)
+  }
+  private var american: DateDisplay {
+    DateDisplay(locale: Locale(identifier: "en_US"), calendar: calendar)
+  }
 
   @Test("A British reader gets the day before the month")
   func britishDayComesFirst() {
-    #expect(
-      british { DateDisplay.day(friday28August2026, locale: $0, calendar: calendar) } == "28 Aug")
+    #expect(british.day(friday28August2026) == "28 Aug")
   }
 
   @Test("An American reader gets their own order from the same call")
   func americanMonthComesFirst() {
-    #expect(
-      american { DateDisplay.day(friday28August2026, locale: $0, calendar: calendar) } == "Aug 28")
+    #expect(american.day(friday28August2026) == "Aug 28")
   }
 
   @Test("The weekday form keeps the design's middle dot in both regions")
   func weekdayFormKeepsTheMiddleDot() {
-    #expect(
-      british {
-        DateDisplay.weekdayAndDay(friday28August2026, locale: $0, calendar: calendar)
-      } == "Fri · 28 Aug")
-    #expect(
-      american {
-        DateDisplay.weekdayAndDay(friday28August2026, locale: $0, calendar: calendar)
-      } == "Fri · Aug 28")
+    #expect(british.weekdayAndDay(friday28August2026) == "Fri · 28 Aug")
+    #expect(american.weekdayAndDay(friday28August2026) == "Fri · Aug 28")
   }
 }

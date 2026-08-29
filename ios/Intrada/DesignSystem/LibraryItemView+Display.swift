@@ -3,12 +3,13 @@ import SharedTypes
 
 extension ItemPracticeSummary {
   func recentSessionRows(locale: Locale, calendar: Calendar) -> [RecentSession] {
-    scoreHistory.map { entry in
+    let dates = DateDisplay(locale: locale, calendar: calendar)
+    return scoreHistory.map { entry in
       RecentSession(
         id: entry.sessionId,
         score: Int(entry.score),
         dateText: SessionClock.parseRFC3339(entry.sessionDate)
-          .map { DateDisplay.weekdayAndDay($0, locale: locale, calendar: calendar) } ?? "")
+          .map(dates.weekdayAndDay) ?? "")
     }
   }
 
@@ -24,9 +25,8 @@ extension ItemPracticeSummary {
     }
     guard marks.contains(where: { $0.tempo != nil }) else { return nil }
 
-    let text = { (mark: TempoTrendMark?) in
-      mark.map { DateDisplay.day($0.date, locale: locale, calendar: calendar) } ?? ""
-    }
+    let dates = DateDisplay(locale: locale, calendar: calendar)
+    let text = { (mark: TempoTrendMark?) in mark.map { dates.day($0.date) } ?? "" }
     return TempoTrendDisplay(
       series: TempoTrendSeries(marks: marks),
       hasTrend: tempoTrend.hasTrend,
@@ -36,18 +36,25 @@ extension ItemPracticeSummary {
 }
 
 /// Short dates, always from a localised template and never a literal pattern —
-/// see `docs/tone-of-voice.md` V5 for why (#1485).
-enum DateDisplay {
-  /// "28 Aug" on a British device, "Aug 28" on an American one.
-  static func day(_ date: Date, locale: Locale, calendar: Calendar) -> String {
-    formatter(template: "dMMM", locale: locale, calendar: calendar).string(from: date)
+/// see `docs/tone-of-voice.md` V5 for why (#1485). Hold one across a run of
+/// dates: `score_history` is uncapped, so building one per date puts hundreds
+/// of ICU template lookups in a SwiftUI body.
+struct DateDisplay {
+  private let dayFormatter: DateFormatter
+  private let weekdayFormatter: DateFormatter
+
+  init(locale: Locale, calendar: Calendar) {
+    dayFormatter = Self.formatter(template: "dMMM", locale: locale, calendar: calendar)
+    weekdayFormatter = Self.formatter(template: "EEE", locale: locale, calendar: calendar)
   }
+
+  /// "28 Aug" on a British device, "Aug 28" on an American one.
+  func day(_ date: Date) -> String { dayFormatter.string(from: date) }
 
   /// "Fri · 28 Aug". Formatted apart and joined: one "EEEdMMM" template would
   /// bring the region's own separator with it (a comma, in en_US).
-  static func weekdayAndDay(_ date: Date, locale: Locale, calendar: Calendar) -> String {
-    let weekday = formatter(template: "EEE", locale: locale, calendar: calendar)
-    return "\(weekday.string(from: date)) · \(day(date, locale: locale, calendar: calendar))"
+  func weekdayAndDay(_ date: Date) -> String {
+    "\(weekdayFormatter.string(from: date)) · \(day(date))"
   }
 
   private static func formatter(template: String, locale: Locale, calendar: Calendar)
@@ -104,7 +111,7 @@ extension ExerciseUsageView {
     let n = Int(sessionCount)
     parts.append("\(n) \(n == 1 ? "session" : "sessions")")
     if let date = lastPracticedAt.flatMap(SessionClock.parseRFC3339) {
-      parts.append(DateDisplay.day(date, locale: locale, calendar: calendar))
+      parts.append(DateDisplay(locale: locale, calendar: calendar).day(date))
     }
     return parts.joined(separator: " · ")
   }
