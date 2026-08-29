@@ -77,7 +77,7 @@ audit backlog and its five-phase build order.
   Covered by a Library snapshot at the largest accessibility size plus
   structural tests asserting nothing on the pillar screens or the sheets that
   reuse the browse bar runs off either edge, at two device widths. Hardening
-  the scaffold itself against any future un-shrinkable child is #1472.
+  the scaffold itself against any future un-shrinkable child is #1481.
 - #1462 — **the Library says when an exercise runs through several keys**.
   A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
   list; the ladder only showed after you tapped in and reached **Steps**. The
