@@ -1,16 +1,20 @@
 import SharedTypes
 import SwiftUI
 
-/// Add/remove manager for a piece's related exercises. Lists every exercise
-/// with the already-related ones pre-selected; tapping toggles membership and
-/// "Done" hands the final set back — the caller links the added and unlinks the
-/// removed. (Reorder stays in the detail card's Edit mode.)
+/// Add/remove manager for one side of the piece↔exercise link. Lists every
+/// item of `kind` with the already-linked ones pre-selected; tapping toggles
+/// membership and "Done" hands the final set back — the caller links the added
+/// and unlinks the removed. (Reorder stays in the detail card's Edit mode.)
+///
+/// One component, both directions (#1363): `kind` carries the copy and the
+/// type colour.
 ///
 /// The filter bar (star / sort / tag / search) drives *shell-local* state over
 /// the passed-in `available` list — the picker curates its own subset rather
 /// than the core's shared Library `ListQuery`, so filtering here never disturbs
 /// the Library screen. Search and sort themselves are the core's (#1440, #1445).
-struct LinkedExercisePickerSheet: View {
+struct LinkedItemPickerSheet: View {
+  let kind: ItemKind
   let available: [LibraryItemView]
   let linkedIds: [String]
   let onApply: (Swift.Set<String>) -> Void
@@ -28,9 +32,10 @@ struct LinkedExercisePickerSheet: View {
   @FocusState private var searchFocused: Bool
 
   init(
-    available: [LibraryItemView], linkedIds: [String],
+    kind: ItemKind, available: [LibraryItemView], linkedIds: [String],
     onApply: @escaping (Swift.Set<String>) -> Void
   ) {
+    self.kind = kind
     self.available = available
     self.linkedIds = linkedIds
     self.onApply = onApply
@@ -39,14 +44,13 @@ struct LinkedExercisePickerSheet: View {
 
   var body: some View {
     BottomSheet(
-      title: "Add exercises",
+      title: copy.sheetTitle,
       onDone: { onApply(selected) },
       leadingAction: { Button("Cancel") { dismiss() } },
       content: {
         if available.isEmpty {
           PlaceholderContent(
-            systemImage: "music.note.list",
-            message: "No exercises yet. Create one from the piece to relate it.")
+            systemImage: kind.iconName, message: copy.noneAtAll)
         } else {
           VStack(spacing: 0) {
             filterBar
@@ -160,11 +164,11 @@ struct LinkedExercisePickerSheet: View {
     let count = selectedItems.count
     Group {
       if count == 0 {
-        Text("No related exercises yet · tap to add.")
+        Text(copy.noneSelected)
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkFaint)
       } else {
-        Text("\(count) related")
+        Text("\(count) \(copy.selectedSuffix)")
           .font(IntradaFont.eyebrow)
           .textCase(.uppercase)
           .kerning(1.2)
@@ -198,14 +202,14 @@ struct LinkedExercisePickerSheet: View {
       VStack(spacing: 0) {
         let rows = filtered
         if rows.isEmpty {
-          Text("No exercises match the filters.")
+          Text(copy.noMatches)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.vertical, IntradaSpacing.row)
         } else {
-          Text("Exercises")
+          Text(copy.listHeading)
             .font(IntradaFont.eyebrow)
             .textCase(.uppercase)
             .kerning(1.2)
@@ -214,18 +218,18 @@ struct LinkedExercisePickerSheet: View {
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.top, IntradaSpacing.cardCompact)
             .padding(.bottom, IntradaSpacing.controlGap)
-          ForEach(rows, id: \.id) { exercise in
-            let isOn = selected.contains(exercise.id)
+          ForEach(rows, id: \.id) { item in
+            let isOn = selected.contains(item.id)
             Button {
-              toggle(exercise.id, isOn: isOn)
+              toggle(item.id, isOn: isOn)
             } label: {
-              exerciseRow(exercise, isOn: isOn)
+              itemRow(item, isOn: isOn)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(rowAccessibilityLabel(exercise, isOn: isOn))
+            .accessibilityLabel(rowAccessibilityLabel(item, isOn: isOn))
             .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
-            if exercise.id != rows.last?.id {
+            if item.id != rows.last?.id {
               HairlineDivider().padding(.leading, IntradaSpacing.card)
             }
           }
@@ -239,16 +243,16 @@ struct LinkedExercisePickerSheet: View {
 
   // ── Rows ──
 
-  private func exerciseRow(_ exercise: LibraryItemView, isOn: Bool) -> some View {
+  private func itemRow(_ item: LibraryItemView, isOn: Bool) -> some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
-      ItemKind.exercise.bar
+      kind.bar
         .frame(width: 4, height: 30)
         .clipShape(Capsule())
       VStack(alignment: .leading, spacing: 3) {
-        Text(exercise.title)
+        Text(item.title)
           .font(IntradaFont.cardTitle())
           .foregroundStyle(IntradaColor.ink)
-        if let meta = metaLine(exercise) {
+        if let meta = metaLine(item) {
           Text(meta)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -266,24 +270,27 @@ struct LinkedExercisePickerSheet: View {
   private func membershipControl(isOn: Bool) -> some View {
     ZStack {
       Circle()
-        .fill(isOn ? AnyShapeStyle(IntradaColor.exerciseAccent) : AnyShapeStyle(Color.clear))
+        .fill(isOn ? AnyShapeStyle(kind.accent) : AnyShapeStyle(Color.clear))
         .overlay(
           Circle()
-            .strokeBorder(IntradaColor.exerciseAccent, lineWidth: 2)
+            .strokeBorder(kind.accent, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
         .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(isOn ? IntradaColor.onExercise : IntradaColor.exerciseAccent)
+        .foregroundStyle(isOn ? kind.onAccent : kind.accent)
     }
     .frame(width: 28, height: 28)
   }
 
   // ── Helpers ──
 
-  private func metaLine(_ exercise: LibraryItemView) -> String? {
-    let parts = [exercise.keyDisplay, exercise.tempoDisplay]
-      .compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  /// A piece is told apart by its composer, an exercise by what it drills.
+  private func metaLine(_ item: LibraryItemView) -> String? {
+    let parts =
+      kind == .piece
+      ? [item.subtitle] : [item.keyDisplay, item.tempoDisplay].compactMap { $0 }
+    let kept = parts.filter { !$0.isEmpty }
+    return kept.isEmpty ? nil : kept.joined(separator: " · ")
   }
 
   private func toggle(_ id: String, isOn: Bool) {
@@ -295,17 +302,50 @@ struct LinkedExercisePickerSheet: View {
     UISelectionFeedbackGenerator().selectionChanged()
   }
 
-  private func rowAccessibilityLabel(_ exercise: LibraryItemView, isOn: Bool) -> String {
-    var parts = [exercise.title]
-    if let meta = metaLine(exercise) { parts.append(meta) }
-    parts.append(isOn ? "related, tap to remove" : "not related, tap to add")
+  private func rowAccessibilityLabel(_ item: LibraryItemView, isOn: Bool) -> String {
+    var parts = [item.title]
+    if let meta = metaLine(item) { parts.append(meta) }
+    parts.append(isOn ? copy.spokenOn : copy.spokenOff)
     return parts.joined(separator: ", ")
   }
+
+  private var copy: PickerCopy { PickerCopy(kind: kind) }
+}
+
+/// Every string the picker changes between the two directions, in one place.
+private struct PickerCopy {
+  let kind: ItemKind
+
+  var sheetTitle: String { kind == .piece ? "Link a piece" : "Add exercises" }
+
+  var noneAtAll: String {
+    kind == .piece
+      ? "No pieces yet. Add one to the library to link it here."
+      : "No exercises yet. Create one from the piece to relate it."
+  }
+
+  var noneSelected: String {
+    kind == .piece
+      ? "Not tied to a piece yet · tap to link." : "No related exercises yet · tap to add."
+  }
+
+  var selectedSuffix: String { kind == .piece ? "linked" : "related" }
+
+  var noMatches: String {
+    kind == .piece ? "No pieces match the filters." : "No exercises match the filters."
+  }
+
+  var listHeading: String { kind == .piece ? "Pieces" : "Exercises" }
+
+  var spokenOn: String { kind == .piece ? "linked, tap to unlink" : "related, tap to remove" }
+
+  var spokenOff: String { kind == .piece ? "not linked, tap to link" : "not related, tap to add" }
 }
 
 #if DEBUG
   #Preview("Add or remove — one related") {
-    LinkedExercisePickerSheet(
+    LinkedItemPickerSheet(
+      kind: .exercise,
       available: [
         .previewExercise,
         LibraryItemView(
@@ -328,6 +368,11 @@ struct LinkedExercisePickerSheet: View {
   }
 
   #Preview("Empty") {
-    LinkedExercisePickerSheet(available: [], linkedIds: [], onApply: { _ in })
+    LinkedItemPickerSheet(kind: .exercise, available: [], linkedIds: [], onApply: { _ in })
+  }
+
+  #Preview("Link a piece — from the exercise side") {
+    LinkedItemPickerSheet(
+      kind: .piece, available: [.previewPiece], linkedIds: [], onApply: { _ in })
   }
 #endif

@@ -23,14 +23,20 @@ audit backlog and its five-phase build order.
 
 - #1437 — **on-device model suggestions for a photographed page**. Phase C of
   [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs. The
-  core one lands first: a field the on-device model suggested now carries the
-  OCR confidence of the lines it matched, instead of claiming a perfect 1.0
+  core one (#1469) has landed: a field the on-device model suggested now carries
+  the OCR confidence of the lines it matched, instead of claiming a perfect 1.0
   (#1454), so the field with the least evidence behind it stops being the one
   that looks strongest. It reads as **From the photo**, dimmed, exactly as a
-  weak Vision read already does. The screens PR wires Foundation Models behind
-  `SystemLanguageModel.default.availability` and `if #available(iOS 26)`, on the
-  devices that have it. No new screen: the same add form, better answers, and
-  the substring clamp still means the model may choose but never invent.
+  weak Vision read already does. The screens one (#1476) wires Foundation Models
+  behind `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
+  on the devices that have it. The shell hands the model the lines Vision read
+  and passes back what it says without inspecting it: whether a suggestion is
+  any good stays the core's judgement. No new screen, the same add form, better
+  answers, and the clamp still means the model may choose but never invent.
+  Apple Intelligence hardware only, which is roughly the iPhone 15 Pro and later
+  plus the M1 iPads; every other device is exactly as it was. The one thing the
+  self-review could not check without that hardware is whether the read's
+  twelve-second budget stops the model or only stops the wait (#1472).
 - #1363 — **an exercise says which pieces it is used in**. The exercise screen
   carried a singular "Related to <piece>" line under the score ring that hid
   extra pieces behind a menu and vanished entirely for a standalone drill, plus
@@ -38,9 +44,14 @@ audit backlog and its five-phase build order.
   complete. The core PR merges them: one `used_in` row per piece, seeded from
   the links a piece declares and folded together with the sessions the pair were
   practised in, with a `linked` flag saying which source it came from. The
-  breadcrumb is deleted and the section is now "Used in". The screens PR adds
-  the three row states, the "On its own" empty state and linking from the
-  exercise side. Spec:
+  breadcrumb is deleted and the section is now "Used in". The screens PR builds
+  the card itself: the three row states (a mark where you have practised them
+  together, the ring's unrated rest where the link is new, and a **Link** button
+  on a piece you have practised alongside but never linked), the "On its own"
+  empty state, and **Link a piece** from the exercise side reusing the piece
+  screen's picker sheet with pieces in it. It also settles #1468: the ring is
+  decorative on a Used in row and the meta line is the whole VoiceOver
+  announcement. Spec:
   [`specs/exercise-relations.md`](../specs/exercise-relations.md).
 
 - #1420, the tempo trend, was the last of the adopted order's numbered

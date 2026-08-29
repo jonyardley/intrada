@@ -12,6 +12,13 @@ extension ItemKind {
     }
   }
 
+  var onAccent: Color {
+    switch self {
+    case .piece: IntradaColor.onAccent
+    case .exercise: IntradaColor.onExercise
+    }
+  }
+
   /// The accent read on the indigo Practice hero, where `accent` has no contrast.
   var onHeroAccent: Color {
     switch self {
