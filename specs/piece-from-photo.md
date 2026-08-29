@@ -172,17 +172,49 @@ pub struct SuggestedFields {
 The interpretation is one pure function, and it is where the tests live:
 
 ```rust
+/// A proposal, exactly as `ScaffoldSpec` is: it becomes an `Item` only when
+/// the user confirms. Every field carries where it came from, so the sheet can
+/// show a low-confidence read differently from a clean one.
+pub struct PhotoDraft {
+    pub title: Option<DraftField<String>>,
+    pub composer: Option<DraftField<String>>,
+    pub tempo: Option<DraftField<Tempo>>,
+    pub chart_text: Option<DraftField<String>>,
+}
+
+pub struct DraftField<T> {
+    pub value: T,
+    pub source: DraftSource,
+    pub confidence: f32,
+}
+
+pub enum DraftSource {
+    /// Geometry heuristics in the core. The floor, available everywhere.
+    Recognised,
+    /// The on-device model chose it and it survived the substring clamp.
+    Suggested,
+}
+
 /// Deterministic. Prefers `suggested` where every field survives the
 /// substring clamp (decision 5), otherwise falls back to geometry heuristics.
 pub fn read_fields(page: &PageReading) -> PhotoDraft;
 ```
 
-`PhotoDraft` is a proposal, exactly as `ScaffoldSpec` is: it becomes an `Item`
-only when the user confirms.
-
 New events: `ItemEvent::SetPhoto { id, photo_id }`, `ItemEvent::ClearPhoto { id }`,
 and `ItemEvent::ReadPhoto { photo_id }` to drive the effect. GRDB migration
 `v16_item_photo` adds a nullable `photo_id TEXT`.
+
+`photo_id` is appended **after `variants`**, the current last field, because
+the bincode wire is positional. Every one of these types crosses the bridge, so
+each needs a real-bridge round-trip in `assert_round_trips` **before** it is
+wired to a screen: a stub-bridge test cannot catch a wire break (#846).
+
+Against the offline-first checklist: recognition runs entirely on-device and
+issues no `Http` (invariant 1); the photo row carries the item's `updated_at`
+and `deleted_at` and is never hard-deleted (invariant 2); the photo id is a
+client-minted ulid (invariant 3); `read_fields` and the clamp are core, not
+shell (invariant 4); a failed file write resolves `Failed`, never a faked `Ack`
+(invariant 5); all of this is new code and so local-first only (invariant 6).
 
 Info.plist keys go through `ios/project.yml` as `INFOPLIST_KEY_NSCameraUsageDescription`
 and `INFOPLIST_KEY_NSPhotoLibraryUsageDescription`; both strings are written
@@ -191,7 +223,10 @@ against `docs/tone-of-voice.md`, not Apple's boilerplate.
 ## Phases
 
 Each phase is its own issue and, where it spans core and screens, two PRs
-(core first, reviewed before the screens start).
+(core first, reviewed before the screens start). **The day figures are rough**:
+they assume the shape of a comparable landed slice and no comparable slice has
+used Vision or a camera in this codebase before, so treat phase A's as the only
+one worth planning against.
 
 - **A. A photo on a piece.** [#1355]. `photo_id`, migration v16, the file
   store, `VNDocumentCameraViewController` capture plus a library picker,
@@ -228,6 +263,15 @@ actually photograph their charts.
    whether it needs the glyph, is a question for real photographs.
 4. **Where the camera lives.** Create form, detail screen, or both. Ties
    directly to [#1390]'s one-pass create.
+5. **Who reaps orphan files.** Decision 2 leaves the bytes behind on a
+   tombstone, which is right for the user and unbounded for the disk. A
+   settings-screen figure with an explicit clear, a reap on a later explicit
+   pass, or nothing at all on the free tier. Answer before phase A ships, not
+   after.
+6. **HEIC or JPEG.** HEIC is materially smaller for the same page and is what
+   the camera produces natively; JPEG is the safer thing to hand to a future
+   export or sync. Cheap to decide, expensive to change once photos exist on
+   devices.
 
 ## Deferred
 
