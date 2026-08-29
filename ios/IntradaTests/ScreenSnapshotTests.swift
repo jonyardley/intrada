@@ -131,6 +131,13 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewLibrarySearching), as: config)
   }
 
+  /// The browse controls have to give way at accessibility sizes, or the screen
+  /// lays out wider than the device and shifts off its leading edge (#1470).
+  func testLibraryScreenAccessibilityText() {
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: axConfig)
+  }
+
   func testPracticeScreen() {
     // Pin the date: the refreshed empty state shows the (live) week strip, so an
     // unfixed `Date()` would shift the week day-to-day and flake.
