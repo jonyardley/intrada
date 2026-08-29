@@ -628,9 +628,7 @@ struct LibraryDetailScreen: View {
 
   // ── Used in (pieces this exercise serves) ──
 
-  // Every piece the exercise is used in: the ones linked to it and the ones it
-  // has actually been practised with, merged in the core into one row each
-  // (#1363). Gated on non-empty upstream until the empty state lands.
+  // Gated on non-empty upstream until the empty state lands (#1363).
   private var usedInSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(title: "Used in")

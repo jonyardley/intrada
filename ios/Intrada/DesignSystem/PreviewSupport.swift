@@ -556,8 +556,7 @@
         variants: [], photoId: nil)
     }
 
-    /// An exercise linked to 2 pieces, neither yet practised alongside it — the
-    /// "Used in" card with every row unrated (#1363).
+    /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
     static var previewExerciseWithLinkedFrom: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
@@ -586,10 +585,8 @@
         ], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
     }
 
-    /// An exercise with a full "Used in" list: a piece both linked and
-    /// practised, one practised but not linked, one linked but never practised
-    /// together, a since-removed piece (snapshot title, muted), and the "On its
-    /// own" bucket (#1087 B2, #1363).
+    /// Every "Used in" row state at once: linked and practised, practised
+    /// only, linked only, removed, and "On its own" (#1087 B2, #1363).
     static var previewExerciseWithContexts: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Enclosures",

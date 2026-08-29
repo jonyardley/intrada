@@ -4,9 +4,8 @@ import Testing
 
 @testable import Intrada
 
-/// `ExerciseUsageView.metaLine` renders the row under a piece title in the
-/// "Used in" card. Since #1363 a row can exist with no practice behind it, so
-/// the zero case has to read as a fresh link rather than a bad result.
+/// Since #1363 a "Used in" row can exist with no practice behind it, so the
+/// zero case has to read as a fresh link rather than a bad result.
 struct ExerciseUsageDisplayTests {
   private let locale = Locale(identifier: "en_GB")
   private var calendar: Calendar {

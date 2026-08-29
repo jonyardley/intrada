@@ -689,8 +689,6 @@ fn build_library_item_views(
     model: &Model,
     item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
 ) -> Vec<LibraryItemView> {
-    // Every piece each exercise is used in (links + practice history merged),
-    // keyed by exercise id. Built once, attached to exercises below.
     let usage_by_exercise = build_exercise_usage(model, item_index);
 
     // Per-step score history, keyed by (item id, variant id); one pass
@@ -958,10 +956,8 @@ fn build_exercise_usage(
 
     let mut acc: HashMap<(String, Option<String>), Acc> = HashMap::new();
 
-    // Seed a row per declared link, so a piece the user has linked but never
-    // practised alongside still appears (with no score) rather than waiting on
-    // history to exist. Mirrors the piece side's filter: the target must
-    // resolve to a present exercise.
+    // Seeding from links first is what lets a piece appear before any history
+    // exists. The kind check mirrors the piece side's forward filter.
     for piece in model.items.iter().filter(|i| i.kind == ItemKind::Piece) {
         for ex_id in &piece.linked_exercise_ids {
             if !item_index
@@ -1045,10 +1041,8 @@ fn build_exercise_usage(
             });
     }
 
-    // Deterministic order: pieces first, most-recent practice first — which
-    // puts never-practised (linked-only) rows after every practised one, since
-    // `None` sorts last under the reversed compare — then alphabetically by
-    // title, then the "On its own" bucket last.
+    // Most-recent practice first, which drops never-practised rows to the end
+    // for free: `None` sorts last under the reversed compare.
     for rows in by_exercise.values_mut() {
         rows.sort_by(|a, b| match (&a.piece, &b.piece) {
             (Some(x), Some(y)) => b
@@ -5026,7 +5020,6 @@ mod tests {
         );
         assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");
 
-        // Linked exercise ex-1: used_in names the piece, from the link alone.
         let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1_view.used_in.len(), 1);
         assert!(ex1_view.used_in[0].linked);
@@ -5034,7 +5027,6 @@ mod tests {
         assert_eq!(ex1_view.used_in[0].piece.as_ref().unwrap().title, "Sonata");
         assert!(ex1_view.linked_exercises.is_empty());
 
-        // Linked exercise ex-2: also names the piece.
         let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
         assert_eq!(ex2_view.used_in.len(), 1);
         assert_eq!(ex2_view.used_in[0].piece.as_ref().unwrap().id, "piece-1");
@@ -5048,9 +5040,7 @@ mod tests {
 
     // ── Used in: links merged with practice history (#1363) ──────────────
 
-    /// A piece that links the exercise but has never been practised alongside
-    /// it still earns a row: the link is an intention, and the screen has to
-    /// show it before any history exists.
+    /// A link is an intention, so the row has to exist before any history does.
     #[test]
     fn used_in_includes_a_linked_piece_with_no_practice() {
         let app = Intrada;
@@ -5079,9 +5069,7 @@ mod tests {
         assert!(!row.piece_removed);
     }
 
-    /// Practised alongside a piece that does not link it: real history, no
-    /// intention. The row exists and says the link is missing, which is what
-    /// the shell hangs its "Link" action off.
+    /// `linked: false` is what the shell hangs its "Link" action off.
     #[test]
     fn used_in_marks_a_practised_piece_that_is_not_linked() {
         let app = Intrada;
@@ -5112,8 +5100,7 @@ mod tests {
         assert_eq!(row.session_count, 1);
     }
 
-    /// Linked *and* practised is one row, not two. The merge is the whole
-    /// point of #1363 — two lists disagreeing is the bug being fixed.
+    /// Two lists disagreeing is the bug #1363 fixes, so the merge is the test.
     #[test]
     fn used_in_merges_a_linked_and_practised_piece_into_one_row() {
         let app = Intrada;
@@ -5142,8 +5129,6 @@ mod tests {
         assert_eq!(ex1.used_in[0].session_count, 1);
     }
 
-    /// Order: practised pieces first (most recent first), then linked-only
-    /// pieces alphabetically, then "On its own" last.
     #[test]
     fn used_in_orders_practised_first_then_linked_only_then_on_its_own() {
         let app = Intrada;
@@ -5218,8 +5203,7 @@ mod tests {
         );
     }
 
-    /// A link pointing at something that is not a present exercise never
-    /// fabricates a row — same filter the piece side already applies.
+    /// Same kind filter the piece side already applies, in reverse.
     #[test]
     fn used_in_ignores_a_link_to_a_missing_item() {
         let app = Intrada;

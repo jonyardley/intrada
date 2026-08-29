@@ -344,25 +344,18 @@ pub struct PieceRefView {
     pub subtitle: Option<String>,
 }
 
-/// One piece an exercise is used in, or the "On its own" bucket. Merges the
-/// two things that were separate lists until #1363: the *links* a piece
-/// declares (`linked_exercise_ids`, an intention) and the *history* of
-/// practising the two together (resolved per past session from `group_id`, the
-/// score rollup of #1087 B1). A row exists if either source produced it, and
-/// `linked` says which.
+/// One piece an exercise is used in, or the "On its own" bucket. A row comes
+/// from the piece's `linked_exercise_ids` (an intention), from practising the
+/// two together (history, resolved per session from `group_id` — #1087 B1), or
+/// from both; `linked` says which (#1363).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ExerciseUsageView {
-    /// The piece this exercise is used in; `None` is the "On its own" bucket —
-    /// standalone practice with no piece in the session block.
+    /// `None` is the "On its own" bucket: practice with no piece in the block.
     pub piece: Option<PieceRefView>,
-    /// `true` when the piece declares this exercise in `linked_exercise_ids`.
-    /// `false` means the pair only ever met in a session, which is what the
-    /// shell hangs its "Link" action off. Always `false` for "On its own".
+    /// Always `false` for "On its own".
     #[serde(default)]
     pub linked: bool,
-    /// The exercise's most recent recorded score in this piece; `None` until
-    /// the two have been practised together.
     pub latest_score: Option<u8>,
     /// Distinct sessions the exercise was practised in, in this context.
     pub session_count: usize,

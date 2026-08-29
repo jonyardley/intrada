@@ -73,8 +73,8 @@ extension ExerciseUsageView {
 
   /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
   /// since-deleted piece (#1093, 2a) — composer dropped once the piece is gone.
-  /// A piece linked but never practised alongside says so instead of "0
-  /// sessions", which reads as a failure rather than a fresh link (#1363).
+  /// A row with no practice says so: "0 sessions" reads as a failure rather
+  /// than a fresh link (#1363).
   func metaLine(locale: Locale, calendar: Calendar) -> String {
     var parts: [String] = []
     if pieceRemoved {
