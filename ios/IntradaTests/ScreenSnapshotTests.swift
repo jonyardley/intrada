@@ -873,7 +873,7 @@ final class ScreenSnapshotTests: XCTestCase {
       tempo: nil, tempoMarking: nil, tempoBpm: nil, notes: nil, tags: [], createdAt: "",
       updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
       linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-      photoId: nil)
+      ladderIsKeys: false, photoId: nil)
   }
 
   private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {
