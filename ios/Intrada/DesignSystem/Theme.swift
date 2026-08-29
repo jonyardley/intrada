@@ -84,6 +84,9 @@ enum IntradaColor {
   static let celebrationBorder = Color(hex: 0xE6D6B0)
   static let celebrationInk = Color(hex: 0x7A6A3F)
   static let onExercise = Color(hex: 0xF6EFD8)
+  /// The full-screen photo viewer's ground. Warm near-black from the ink family
+  /// rather than paper: cream around a photograph tints how you read the page.
+  static let viewerBackdrop = Color(hex: 0x1A1917)
 }
 
 extension LinearGradient {

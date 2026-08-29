@@ -70,6 +70,8 @@ struct LibraryDetailScreen: View {
             tags
           }
 
+          PhotoCard(itemId: item.id, photoId: item.photoId)
+
           if item.itemType == .piece {
             chordChartSection
           }

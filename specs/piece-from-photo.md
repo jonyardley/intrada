@@ -13,13 +13,17 @@
 > screens PR and again before B's confirm sheet. **Scope: `intrada-core` +
 > native iOS only.** API/Turso out of scope.
 >
-> Status: **not started.** This doc is the design, written 2026-08-29 from a
-> feasibility review of the iOS on-device stack (appendix).
+> Status: **phase A in flight** ([#1443] core, merged; screens on #1355). The
+> rest is the design as written 2026-08-29 from a feasibility review of the iOS
+> on-device stack (appendix).
 
 [#1098]: https://github.com/jonyardley/intrada/issues/1098
 [#1355]: https://github.com/jonyardley/intrada/issues/1355
 [#1387]: https://github.com/jonyardley/intrada/issues/1387
 [#1390]: https://github.com/jonyardley/intrada/issues/1390
+[#1443]: https://github.com/jonyardley/intrada/pull/1443
+[#1442]: https://github.com/jonyardley/intrada/issues/1442
+[#1446]: https://github.com/jonyardley/intrada/issues/1446
 
 ## Problem
 
@@ -85,7 +89,8 @@ in principle and is real research. We are not betting the feature on it.
 
 1. **The photo is a file; the item carries only its id.** `Item` gains
    `photo_id: Option<String>` (`#[serde(default)]`, appended last). The bytes
-   live at `Application Support/photos/<ulid>.heic`. Blobs in GRDB fatten every
+   live at `Application Support/photos/<ulid>.jpg` (JPEG, quality 0.8, long edge
+   capped at 2048px — open question 6, answered below). Blobs in GRDB fatten every
    row read on a table already loaded whole, and make a bad migration
    unrecoverable on a device that is the only copy of the data.
 2. **Soft delete tombstones the row and leaves the file.** Invariant 2 is about
@@ -232,7 +237,17 @@ one worth planning against.
   store, `VNDocumentCameraViewController` capture plus a library picker,
   display on `LibraryDetailScreen`. **No recognition of any kind.** Useful
   alone: a photo of the page you are practising from earns its place with
-  nothing else attached. About 2 days.
+  nothing else attached. About 2 days. Two departures from the plan above, both
+  settled during the build: the library route is SwiftUI's `PhotosPicker`, not a
+  `PHPickerViewController` wrapper, which needs no photo-library permission at
+  all; the shell mints the photo's ulid itself (`ios/Intrada/Core/Ulid.swift`),
+  since it needs the id before it can write the file; and **the bytes are
+  written shell-side, not through a persistence `Effect`**. The invariant-5
+  paragraph above reads as though the write is core-driven; it is not, because
+  the bytes must never cross the bridge and the shell needs the id first. The
+  failure is still surfaced rather than faked — a failed write sends no event at
+  all. This matters for phase B, where `ReadPhoto { photo_id }` has the shell
+  read a file the core assumes is there.
 - **B. Read the page into title, composer and tempo.** The
   `RecognitionOperation` effect, Vision OCR in the shell, `read_fields` and its
   heuristics in the core, the confirm sheet. 2 to 3 days.
@@ -261,17 +276,30 @@ actually photograph their charts.
 3. **Tempo from a note glyph.** `♩= 120` is common in print and OCR mangles the
    glyph often. Whether a bare number near the top is safe to read as bpm, or
    whether it needs the glyph, is a question for real photographs.
-4. **Where the camera lives.** Create form, detail screen, or both. Ties
-   directly to [#1390]'s one-pass create.
-5. **Who reaps orphan files.** Decision 2 leaves the bytes behind on a
-   tombstone, which is right for the user and unbounded for the disk. A
-   settings-screen figure with an explicit clear, a reap on a later explicit
-   pass, or nothing at all on the free tier. Answer before phase A ships, not
-   after.
-6. **HEIC or JPEG.** HEIC is materially smaller for the same page and is what
-   the camera produces natively; JPEG is the safer thing to hand to a future
-   export or sync. Cheap to decide, expensive to change once photos exist on
-   devices.
+4. **Where the camera lives.** ~~Create form, detail screen, or both.~~
+   **Answered 2026-08-29: the detail screen only, in phase A.** A photo row
+   inside `ItemFormScaffold` cannot ride the form's own submit — `SetPhoto` was
+   kept out of `UpdateItem`, and on Add there is no item id to name yet — so it
+   is a core change, not a screens change. More decisively, the shape inverts in
+   phase B: once the page is read, the photo is not a field beside title and
+   composer, it is what fills them, and the add surface's affordance becomes an
+   entry point above the form rather than a row inside it. Tracked as [#1446],
+   to fold into phase B's conversation (open question 2) or take on its own.
+5. **Who reaps orphan files.** ~~Decision 2 leaves the bytes behind...~~
+   **Answered 2026-08-29: a later explicit pass, tracked as [#1442]; nothing
+   reaps in phase A.** Replacing a photo, clearing it and deleting the item all
+   leave the bytes on disk, deliberately, because an orphan costs disk and an
+   eager delete costs the user their only copy. What that pass looks like — a
+   settings figure with an explicit clear, or a sweep — is #1442's to decide.
+6. **HEIC or JPEG.** ~~HEIC is materially smaller...~~ **Answered 2026-08-29:
+   JPEG, quality 0.8, long edge capped at 2048px.** "What the camera produces
+   natively" does not apply here: `VNDocumentCameraScan` hands back a `UIImage`
+   and the library route hands back arbitrary bytes, so we re-encode either way.
+   HEIC's size win is real but it has no encoder on some simulator
+   configurations the tests run on, and JPEG is the safer thing to hand a future
+   export. At this cap a page is roughly 400 to 600 KB, which is not the problem
+   HEIC solves. Re-encoding also drops the source EXIF, so no photo carries the
+   location it was taken at into the app's container.
 
 ## Deferred
 
