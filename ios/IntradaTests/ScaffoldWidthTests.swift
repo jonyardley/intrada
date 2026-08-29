@@ -4,10 +4,8 @@ import UIKit
 
 @testable import Intrada
 
-/// `ScreenScaffold` used to report its content's width, not the width it was
-/// offered, so one un-shrinkable row made the screen over-large and every
-/// ancestor centred it (#1470, #1481). Measured, not walked: a traversal scores
-/// a plain `VStack` exactly like a broken scaffold, since any wrapper centres.
+/// Measured, not walked: any wrapper around an over-wide view centres it, so a
+/// traversal scores a plain `VStack` like a broken scaffold (#1470, #1481).
 @MainActor
 struct ScaffoldWidthTests {
   private static let offered = CGSize(width: 390, height: 844)
@@ -30,7 +28,6 @@ struct ScaffoldWidthTests {
     )
   }
 
-  /// The baseline the test above is meaningless without.
   @Test("The scaffold reports the offered width for content that fits")
   func scaffoldReportsOfferedWidthWhenContentFits() {
     let scaffold = ScreenScaffold(title: "Library", subtitle: "2 pieces") {
