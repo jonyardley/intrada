@@ -43,25 +43,27 @@ struct LibraryItemSortTests {
     #expect(sorted.map(\.id) == ["a", "c", "b"])
   }
 
+  // Compared as typed, capital "Scales" wins; only a case-insensitive one doesn't.
   @Test("titles sort case-insensitively, ascending and descending")
   func titleOrdering() {
     let items = [
-      Self.exercise(id: "a", title: "scales", createdAt: "2026-01-01"),
-      Self.exercise(id: "b", title: "Arpeggios", createdAt: "2026-01-02"),
+      Self.exercise(id: "a", title: "Scales", createdAt: "2026-01-01"),
+      Self.exercise(id: "b", title: "arpeggios", createdAt: "2026-01-02"),
     ]
     #expect(
       items.sortedLikeTheLibrary(by: LibrarySort(field: .title, direction: .ascending))
-        .map(\.title) == ["Arpeggios", "scales"])
+        .map(\.title) == ["arpeggios", "Scales"])
     #expect(
       items.sortedLikeTheLibrary(by: LibrarySort(field: .title, direction: .descending))
-        .map(\.title) == ["scales", "Arpeggios"])
+        .map(\.title) == ["Scales", "arpeggios"])
   }
 
+  // The never-practised one is older, so the tiebreak alone would put it second.
   @Test("a practised exercise sorts after one never practised")
   func neverPractisedSortsEarliest() {
     let items = [
-      Self.exercise(id: "a", title: "Scales", createdAt: "2026-01-01", lastPractised: "2026-08-01"),
-      Self.exercise(id: "b", title: "Arpeggios", createdAt: "2026-01-02"),
+      Self.exercise(id: "a", title: "Scales", createdAt: "2026-01-02", lastPractised: "2026-08-01"),
+      Self.exercise(id: "b", title: "Arpeggios", createdAt: "2026-01-01"),
     ]
     #expect(
       items.sortedLikeTheLibrary(by: LibrarySort(field: .lastPracticed, direction: .ascending))
