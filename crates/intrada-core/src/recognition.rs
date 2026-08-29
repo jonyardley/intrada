@@ -225,6 +225,10 @@ const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("\u{2014}", 0.8),
 ];
 
+/// Lines within this fraction of the biggest count as the same size, and the
+/// higher wins: superscripts inflate a chord's box to a title's (#1436).
+const TITLE_HEIGHT_TOLERANCE: f32 = 0.8;
+
 /// A line this high up the page can be the title. Below it we are into the
 /// first stave, where the largest text is a lyric, not a heading.
 const TITLE_BAND: f32 = 0.4;
@@ -318,21 +322,32 @@ fn heuristic_draft(page: &PageReading) -> PhotoDraft {
 /// Height alone picks the slash-chord stack that outsizes the title at a third
 /// of its confidence (#1436).
 fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
-    lines
+    let candidates: Vec<&RecognisedLine> = lines
         .iter()
         .filter(|l| l.y < TITLE_BAND)
         .filter(|l| !l.text.trim().is_empty())
         .filter(|l| credit_prefix(&l.text).is_none())
         .filter(|l| tempo_line(&l.text, true).is_none())
         .filter(|l| l.text.trim().len() <= MAX_TITLE)
-        .max_by(|a, b| {
-            // Confident first: a hallucinated line can dwarf the real heading,
-            // which is how a scan filled the title with nonsense (#1436).
-            (a.confidence >= LOW_CONFIDENCE)
-                .cmp(&(b.confidence >= LOW_CONFIDENCE))
-                .then_with(|| (a.height * a.confidence).total_cmp(&(b.height * b.confidence)))
-                .then(b.y.total_cmp(&a.y))
-        })
+        .collect();
+
+    // A hallucinated line can dwarf the real heading (#1436); a weak one takes
+    // the field only when nothing was read confidently, and is marked weak.
+    let confident: Vec<&RecognisedLine> = candidates
+        .iter()
+        .copied()
+        .filter(|l| l.confidence >= LOW_CONFIDENCE)
+        .collect();
+    let pool = if confident.is_empty() {
+        &candidates
+    } else {
+        &confident
+    };
+    let tallest = pool.iter().map(|l| l.height).fold(0.0, f32::max);
+
+    pool.iter()
+        .filter(|l| l.height >= tallest * TITLE_HEIGHT_TOLERANCE)
+        .min_by(|a, b| a.y.total_cmp(&b.y).then(b.height.total_cmp(&a.height)))
         .map(|l| TextDraftField {
             value: l.text.trim().to_string(),
             source: DraftSource::Recognised,
@@ -701,6 +716,16 @@ mod tests {
         let tempo = draft.tempo.expect("a tempo");
         assert_eq!(tempo.value.marking.as_deref(), Some("Moderato"));
         assert_eq!(tempo.value.bpm, Some(88));
+    }
+
+    #[test]
+    fn a_chord_row_measured_taller_than_the_title_still_loses_to_it() {
+        let draft = read_fields(&page(vec![
+            line("B6 B67$5 E6A", 0.123, 0.0253),
+            line("Cry Me A River", 0.029, 0.0247),
+            line("Fm/Bb", 0.221, 0.0239),
+        ]));
+        assert_eq!(draft.title.expect("a title").value, "Cry Me A River");
     }
 
     /// The title is chosen first and the tempo cannot claim its line back.

@@ -65,7 +65,8 @@ struct PhotoCaptureSources {
         onFailure("Couldn't read that photo. Try another.")
         return
       }
-      write(image)
+      // The scanner route arrives cropped; a library photo does not.
+      write(PageCrop.toPage(image))
     } catch {
       report(error, "photo library load")
       onFailure("Couldn't read that photo. Try another.")
