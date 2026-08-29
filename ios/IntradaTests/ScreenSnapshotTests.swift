@@ -617,6 +617,33 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(addForm(form)), as: config)
   }
 
+  /// The entry's own states. The outcomes matter more than they look: a read
+  /// that failed, or one the device could not run, must not render identically
+  /// to one that worked.
+  func testScanPageEntryStates() {
+    let stub = UIGraphicsImageRenderer(size: CGSize(width: 60, height: 80)).image { context in
+      UIColor(IntradaColor.surfaceSunken).setFill()
+      context.fill(CGRect(origin: .zero, size: CGSize(width: 60, height: 80)))
+    }
+    let states: [(PhotoRecognitionStatus, Bool)] = [
+      (.idle, false), (.reading, false), (.ready, false), (.ready, true),
+      (.failed, false), (.unsupported, false),
+    ]
+    let stack = VStack(spacing: IntradaSpacing.card) {
+      ForEach(Array(states.enumerated()), id: \.offset) { _, state in
+        ScanPageEntry(
+          photoId: state.0 == .idle ? nil : "01JB0000000000000000000000",
+          status: state.0, readNothing: state.1, onCaptured: { _ in },
+          loadImage: { _ in stub })
+      }
+    }
+    .padding(IntradaSpacing.card)
+    .frame(width: 390)
+    .background(PaperBackground())
+
+    assertSnapshot(of: stack, as: .image(layout: .sizeThatFits))
+  }
+
   private func addForm(from draft: PhotoDraft) -> some View {
     let form = ItemFormModel(kind: .piece)
     form.fill(from: draft)

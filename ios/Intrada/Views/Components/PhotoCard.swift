@@ -13,9 +13,7 @@ struct PhotoCard: View {
 
   @Environment(Store.self) private var store
   @State private var image: UIImage?
-  @State private var scanning = false
-  @State private var choosingFromLibrary = false
-  @State private var picked: PhotosPickerItem?
+  @State private var captureState = PhotoCaptureState()
   @State private var confirmingRemove = false
   @State private var viewing = false
   @State private var failure: String?
@@ -50,16 +48,7 @@ struct PhotoCard: View {
     }
     .cardSurface()
     .onChange(of: photoId) { _, next in image = next.flatMap(loadImage) }
-    .fullScreenCover(isPresented: $scanning) {
-      DocumentScanner { capture.finished(scanning: $0) }
-        .ignoresSafeArea()
-    }
-    .photosPicker(isPresented: $choosingFromLibrary, selection: $picked, matching: .images)
-    .onChange(of: picked) { _, item in
-      guard let item else { return }
-      picked = nil
-      Task { await capture.loaded(item) }
-    }
+    .photoCapture($captureState, using: capture)
     .alert("Remove this photo?", isPresented: $confirmingRemove) {
       Button("Remove", role: .destructive, action: remove)
       Button("Cancel", role: .cancel) {}
@@ -80,14 +69,14 @@ struct PhotoCard: View {
         if PhotoCaptureSources.canScan {
           Button {
             failure = nil
-            scanning = true
+            captureState.scan()
           } label: {
             Label("Scan the page", systemImage: "doc.viewfinder")
           }
         }
         Button {
           failure = nil
-          choosingFromLibrary = true
+          captureState.chooseFromLibrary()
         } label: {
           Label("Choose a photo", systemImage: "photo.on.rectangle")
         }

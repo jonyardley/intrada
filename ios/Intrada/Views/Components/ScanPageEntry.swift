@@ -1,4 +1,5 @@
 import PhotosUI
+import SharedTypes
 import SwiftUI
 
 /// The way into recognition on the add screen (#1436): photograph the page, and
@@ -6,16 +7,16 @@ import SwiftUI
 /// not among them — a scanned page is what fills the form, not a value in it.
 struct ScanPageEntry: View {
   let photoId: String?
-  let reading: Bool
+  let status: PhotoRecognitionStatus
+  /// A photograph of something that is not a page reads cleanly and finds
+  /// nothing, which would otherwise look exactly like a good scan.
+  let readNothing: Bool
   let onCaptured: (String) -> Void
 
-  @State private var scanning = false
-  @State private var choosingFromLibrary = false
-  @State private var picked: PhotosPickerItem?
+  @State private var captureState = PhotoCaptureState()
   @State private var failure: String?
 
-  /// Snapshot tests hand over a fixed image rather than reaching into the
-  /// simulator's Application Support directory.
+  /// Injected so a snapshot test needs no Application Support directory.
   var loadImage: @MainActor (String) -> UIImage? = PhotoFileStore.image(for:)
 
   var body: some View {
@@ -29,19 +30,7 @@ struct ScanPageEntry: View {
       content
     }
     .cardSurface()
-    .fullScreenCover(isPresented: $scanning) {
-      DocumentScanner {
-        scanning = false
-        capture.finished(scanning: $0)
-      }
-      .ignoresSafeArea()
-    }
-    .photosPicker(isPresented: $choosingFromLibrary, selection: $picked, matching: .images)
-    .onChange(of: picked) { _, item in
-      guard let item else { return }
-      picked = nil
-      Task { await capture.loaded(item) }
-    }
+    .photoCapture($captureState, using: capture)
   }
 
   @ViewBuilder private var content: some View {
@@ -85,23 +74,40 @@ struct ScanPageEntry: View {
         .overlay(
           RoundedRectangle(cornerRadius: IntradaRadius.badge)
             .stroke(IntradaColor.hairline, lineWidth: 1))
-      Text(reading ? "Reading the page" : "Scanned page")
+      Text(outcome)
         .font(IntradaFont.subtitle)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer(minLength: 0)
-      if reading {
+      switch status {
+      case .reading:
         ProgressView().controlSize(.small)
-      } else {
+      case .unsupported:
+        // Nothing to offer: another page reads no better on a device that
+        // cannot read one at all.
+        EmptyView()
+      default:
         sourceMenu {
-          Text("Rescan")
+          Text("Change")
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.accent)
         }
-        .accessibilityLabel("Scan a different page")
+        .accessibilityLabel("Use a different page")
       }
     }
     .padding(.horizontal, IntradaSpacing.cardCompact)
     .padding(.vertical, 10)
+  }
+
+  /// Every outcome the core models says something: a read that failed must not
+  /// look identical to one that worked, after the user waited for it.
+  private var outcome: String {
+    switch status {
+    case .reading: "Reading the page"
+    case .failed: "Couldn't read that page. Type the fields instead."
+    case .unsupported: "This phone can't read a page. Type the fields instead."
+    case .ready where readNothing: "Nothing to read on that page."
+    default: "Scanned page"
+    }
   }
 
   private func sourceMenu<Trigger: View>(@ViewBuilder label: () -> Trigger) -> some View {
@@ -109,14 +115,14 @@ struct ScanPageEntry: View {
       if PhotoCaptureSources.canScan {
         Button {
           failure = nil
-          scanning = true
+          captureState.scan()
         } label: {
           Label("Scan the page", systemImage: "doc.viewfinder")
         }
       }
       Button {
         failure = nil
-        choosingFromLibrary = true
+        captureState.chooseFromLibrary()
       } label: {
         Label("Choose a photo", systemImage: "photo.on.rectangle")
       }

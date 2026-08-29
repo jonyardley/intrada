@@ -2,18 +2,48 @@ import PhotosUI
 import SwiftUI
 import VisionKit
 
+/// Which capture route is on screen. Driven by `.photoCapture(...)`, which
+/// owns the dismissal `VNDocumentCameraViewController` does not do itself —
+/// forgetting that once left the scanner with no way out (#1436).
+struct PhotoCaptureState {
+  fileprivate(set) var scanning = false
+  fileprivate(set) var choosingFromLibrary = false
+  fileprivate var picked: PhotosPickerItem?
+
+  mutating func scan() { scanning = true }
+  mutating func chooseFromLibrary() { choosingFromLibrary = true }
+}
+
+extension View {
+  func photoCapture(_ state: Binding<PhotoCaptureState>, using sources: PhotoCaptureSources)
+    -> some View
+  {
+    fullScreenCover(isPresented: state.scanning) {
+      DocumentScanner { capture in
+        state.wrappedValue.scanning = false
+        sources.finished(scanning: capture)
+      }
+      .ignoresSafeArea()
+    }
+    .photosPicker(
+      isPresented: state.choosingFromLibrary, selection: state.picked, matching: .images
+    )
+    .onChange(of: state.wrappedValue.picked) { _, item in
+      guard let item else { return }
+      state.wrappedValue.picked = nil
+      Task { await sources.loaded(item) }
+    }
+  }
+}
+
 /// The capture half of a photo surface: the scanner, the library picker, and
 /// writing the bytes before anything names them. Shared by `PhotoCard` (the
 /// photo on a piece) and `ScanPageEntry` (the photo the add form is read from),
 /// which otherwise duplicate every step of it.
-///
-/// The order inside `write` is the whole point: an item can never end up naming
-/// a file that was never written.
 @MainActor
 struct PhotoCaptureSources {
-  /// Called with a freshly minted photo id once its bytes are on disk.
   let onCaptured: (String) -> Void
-  /// Called with a message written for the user, never a raw error.
+  /// Takes a message written for the user, never a raw error.
   let onFailure: (String) -> Void
 
   static var canScan: Bool { VNDocumentCameraViewController.isSupported }
@@ -43,6 +73,8 @@ struct PhotoCaptureSources {
     }
   }
 
+  /// Bytes first, then whoever names them. The order is the whole point: an
+  /// item can never end up naming a file that was never written.
   private func write(_ image: UIImage) {
     let photoId = Ulid.generate()
     do {

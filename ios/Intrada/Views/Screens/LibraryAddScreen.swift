@@ -41,7 +41,8 @@ struct LibraryAddScreen: View {
       header: {
         ScanPageEntry(
           photoId: recognition?.photoId,
-          reading: recognition?.status == .reading,
+          status: recognition?.status ?? .idle,
+          readNothing: recognition?.draft.map(readNothing) ?? false,
           onCaptured: { store.send(.item(.readPhoto(photoId: $0))) })
       }
     ) {
@@ -51,16 +52,19 @@ struct LibraryAddScreen: View {
         store.send(.item(.add(form.createInput())))
       }
     }
-    .onChange(of: recognition?.draft) { _, draft in
-      guard let draft else { return }
+    // Keyed on the projection, not the draft: re-picking the same library file
+    // reads to an equal `PhotoDraft`, so a rescan would silently do nothing.
+    .onChange(of: recognition) { _, next in
+      guard let draft = next?.draft else { return }
       form.fill(from: draft)
     }
-    // The draft belongs to this sheet. Leaving without it cleared would hand
-    // the next Add screen the last page's fields.
-    .onDisappear { store.send(.discardPhotoDraft) }
   }
 
   private var recognition: PhotoRecognitionView? { store.viewModel?.photoRecognition }
+
+  private func readNothing(_ draft: PhotoDraft) -> Bool {
+    draft.title == nil && draft.composer == nil && draft.tempo == nil && draft.chartText == nil
+  }
 }
 
 #if DEBUG

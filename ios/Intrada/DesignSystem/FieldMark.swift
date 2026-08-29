@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// Says a form field was filled from a photographed page rather than typed
-/// (#1436). A weak read wears the same mark, dimmed — the read the user most
-/// needs to check is the quietest thing on screen visually, so the difference
-/// is spoken as well, never left to contrast alone.
+/// (#1436). A weak read wears the same mark, dimmed, so the difference is
+/// spoken as well and never left to contrast alone.
 struct FieldMark: View {
   let weak: Bool
 
@@ -17,8 +16,17 @@ struct FieldMark: View {
     }
     .foregroundStyle(weak ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
-      weak ? "Read from the photo, but not clearly. Worth checking" : "Read from the photo")
+    .accessibilityLabel(Self.spoken(weak))
+  }
+
+  /// Also the field's own hint: the mark is a sibling element, so alone it is
+  /// only reached by linear swipe, never by the text-fields rotor.
+  static func spoken(_ weak: Bool?) -> String {
+    switch weak {
+    case .none: ""
+    case .some(true): "Read from the photo, but not clearly. Worth checking"
+    case .some(false): "Read from the photo"
+    }
   }
 }
 

@@ -44,7 +44,9 @@ struct LibraryScreen: View {
     // The list draws its own serif header, so suppress the nav bar here; the
     // detail keeps it for the back chevron.
     .toolbar(.hidden, for: .navigationBar)
-    .sheet(isPresented: $adding) {
+    // The read belongs to the sheet. `onDismiss`, not the add screen's own
+    // `onDisappear`, which the scanner's full-screen cover also triggers.
+    .sheet(isPresented: $adding, onDismiss: { store.send(.discardPhotoDraft) }) {
       LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
         .environment(store)
     }

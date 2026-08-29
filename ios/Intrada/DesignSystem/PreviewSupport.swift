@@ -963,5 +963,21 @@
           weak: false),
         chartText: nil)
     }
+
+    /// A different page, for the rescan path.
+    static var otherReadPage: PhotoDraft {
+      PhotoDraft(
+        title: TextDraftField(
+          value: "Blues in F", source: .recognised, confidence: 0.9, weak: false),
+        composer: TextDraftField(
+          value: "Count Basie", source: .recognised, confidence: 0.88, weak: false),
+        tempo: nil,
+        chartText: nil)
+    }
+
+    /// A photograph of something that is not a page of music.
+    static var readNothing: PhotoDraft {
+      PhotoDraft(title: nil, composer: nil, tempo: nil, chartText: nil)
+    }
   }
 #endif

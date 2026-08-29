@@ -19,12 +19,12 @@ final class ItemFormModel {
   var formError: String?
 
   /// Which fields still hold what the photo was read into, and whether that
-  /// read was weak. Typing in a field takes it off this list — the value is the
-  /// user's from that keystroke on, so it must stop claiming to be the page's.
+  /// read was weak. Typing takes a field off: it is the user's from that
+  /// keystroke on, so it must stop claiming to be the page's.
   private(set) var readFrom: [ReadField: Bool] = [:]
 
-  // The four readable fields write through `edited`, so the mark clears on the
-  // keystroke rather than on submit. `fill(from:)` sets the storage directly.
+  // Written through `edited` so the mark clears on the keystroke, not on
+  // submit; `fill(from:)` sets the storage directly.
   var title: String {
     get { storedTitle }
     set {
@@ -78,29 +78,34 @@ final class ItemFormModel {
     notes = item.notes ?? ""
   }
 
-  /// Pre-fill from a page the core has read. Only empty fields are written: a
-  /// value the user typed before scanning is theirs, and a scan must never
-  /// overwrite it. Nothing here is saved — pressing Add is what writes.
+  /// A field is written when empty, or when it still holds an earlier read:
+  /// what the user typed is theirs, but a second scan must replace what the
+  /// first one wrote, and `isEmpty` alone cannot tell those apart.
+  /// Nothing here is saved; pressing Add is what writes.
   func fill(from draft: PhotoDraft) {
     func take(_ field: ReadField, _ value: String, weak: Bool, into store: (String) -> Void) {
       store(value)
       readFrom[field] = weak
     }
 
-    if let read = draft.title, storedTitle.isEmpty {
+    if let read = draft.title, replaceable(.title, storedTitle) {
       take(.title, read.value, weak: read.weak) { storedTitle = $0 }
     }
-    if let read = draft.composer, storedComposer.isEmpty {
+    if let read = draft.composer, replaceable(.composer, storedComposer) {
       take(.composer, read.value, weak: read.weak) { storedComposer = $0 }
     }
     if let read = draft.tempo {
-      if let marking = read.value.marking, storedMarking.isEmpty {
+      if let marking = read.value.marking, replaceable(.marking, storedMarking) {
         take(.marking, marking, weak: read.weak) { storedMarking = $0 }
       }
-      if let beats = read.value.bpm, storedBpm.isEmpty {
+      if let beats = read.value.bpm, replaceable(.bpm, storedBpm) {
         take(.bpm, String(beats), weak: read.weak) { storedBpm = $0 }
       }
     }
+  }
+
+  private func replaceable(_ field: ReadField, _ current: String) -> Bool {
+    current.isEmpty || readFrom[field] != nil
   }
 
   private func edited(_ field: ReadField) {
@@ -108,7 +113,7 @@ final class ItemFormModel {
   }
 
   var canSubmit: Bool {
-    !storedTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
   func createInput() -> CreateItem {

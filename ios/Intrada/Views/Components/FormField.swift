@@ -22,6 +22,7 @@ struct FormField: View {
         .foregroundStyle(IntradaColor.ink)
         .keyboardType(keyboard)
         .textInputAutocapitalization(autocapitalization)
+        .accessibilityHint(FieldMark.spoken(readWeakly))
       if let readWeakly {
         FieldMark(weak: readWeakly)
       }
