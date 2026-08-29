@@ -43,27 +43,6 @@ audit backlog and its five-phase build order.
   exercise side. Spec:
   [`specs/exercise-relations.md`](../specs/exercise-relations.md).
 
-- Recognition quality on a photographed page, following #1436's device test:
-  a hallucinated line could outrank the real title. Fix in flight.
-
-- #1436 — **reading a photographed page into title, composer and tempo**.
-  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md),
-  landed in two PRs: the core (#1455) and the screens (#1457). The core adds the `RecognitionOperation` effect, Vision text recognition
-  in the shell as a dumb pipe, and `read_fields` in the core: the largest text
-  in the top band is the title, a `Music by` line is the composer, a tempo word
-  or a number after an `=` is the tempo. A model suggestion (phase C) is only
-  ever accepted when it appears verbatim on the page, so it can choose but
-  never invent. Nothing is written without the user pressing Add. The screens PR:
-  spec open question 2 is answered, so recognition
-  **pre-fills the add form** rather than opening a confirm sheet of its own,
-  which also unblocks #1446. **Scan a page** sits above the fields; every field
-  it filled says **From the photo** underneath, dimmed where the read was weak,
-  and the mark clears the moment you type in that field. Nothing is saved until
-  you press Add.
-  follow in a second PR now that spec open question 2 is answered:
-  recognition **pre-fills the add form**, it does not open a confirm sheet of
-  its own, which also unblocks #1446.
-
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
   each a fresh decision gated on lived use, not queued work. What *is* running
@@ -81,7 +60,15 @@ audit backlog and its five-phase build order.
   them, rather than opening a confirm sheet of its own (spec open question 2),
   which also unblocked #1446. Every field it filled says **From the photo**
   underneath, dimmed where the read was weak, and the mark clears the moment you
-  type in that field. Nothing is saved until you press Add.
+  type in that field. Nothing is saved until you press Add. A third PR (#1461)
+  is what three rounds of photographing real pages taught: the language set is
+  pinned to Latin so a handwritten page cannot read as confident nonsense, a
+  title has to be spelled rather than merely tall, both capture routes crop to
+  the page, the credit reader takes the strongest claim and knows the dash form
+  a Real Book uses, and the page you scanned to fill the form is kept on the
+  piece rather than photographed twice. Spec open question 1 has its first
+  answer, and it is not the one the design assumed: a handwritten Real Book
+  page.
 - #1462 — **the Library says when an exercise runs through several keys**.
   A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
   list; the ladder only showed after you tapped in and reached **Steps**. The
