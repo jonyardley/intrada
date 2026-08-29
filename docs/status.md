@@ -39,6 +39,13 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1445 — **the exercise picker no longer orders exercises differently from the
+  Library**. Sorting by **Last practised** put exercises that have never been
+  practised in one order on the Library screen and another in the **Add
+  exercises** sheet, because the sheet sorts its own candidates and had no rule
+  for what happens when the sort key ties. It now uses the core's: newest
+  first, then id. Same class as the search divergence in #1440, one function
+  below it.
 - #1440 — **search means the same thing in the exercise picker as in the
   Library**. Choosing an exercise for a piece (**Choose one** on the piece)
   opens a sheet whose search only read the exercise's title and its key/tempo
