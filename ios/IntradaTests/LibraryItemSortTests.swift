@@ -58,6 +58,19 @@ struct LibraryItemSortTests {
         .map(\.title) == ["Scales", "arpeggios"])
   }
 
+  @Test("an accented title files under its base letter, as it does in the Library")
+  func accentedTitles() {
+    let items = [
+      Self.exercise(id: "a", title: "Waltz", createdAt: "2026-01-01"),
+      Self.exercise(id: "b", title: "\u{c9}tude", createdAt: "2026-01-02"),
+      Self.exercise(id: "c", title: "Ballade", createdAt: "2026-01-03"),
+      Self.exercise(id: "d", title: "Etudes", createdAt: "2026-01-04"),
+    ]
+    #expect(
+      items.sortedLikeTheLibrary(by: LibrarySort(field: .title, direction: .ascending))
+        .map(\.title) == ["Ballade", "\u{c9}tude", "Etudes", "Waltz"])
+  }
+
   // The never-practised one is older, so the tiebreak alone would put it second.
   @Test("a practised exercise sorts after one never practised")
   func neverPractisedSortsEarliest() {
