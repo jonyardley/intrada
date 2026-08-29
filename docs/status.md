@@ -29,8 +29,14 @@ audit backlog and its five-phase build order.
   `ViewModel` projection the screens will read, migration v16 and the GRDB
   codec. Phase A never deletes a photo file — replacing, clearing and deleting
   the item all leave it on disk for the reaping pass (#1442), because an orphan
-  costs disk and an eager delete costs the user their photo. Capture and display
-  design, then the screens PR, follow.
+  costs disk and an eager delete costs the user their photo. The **screens PR**
+  adds the Photo card on the item detail (between the key/tempo rows and the
+  chord chart), the scanner and library routes behind one Add/Change menu, and
+  the full-screen viewer. Two calls settled while building: the file is JPEG at
+  a 2048px long edge, not the HEIC the spec first wrote (spec open question 6),
+  and capture stays off the add/edit form in this phase, because a photo row
+  cannot ride the form's own submit and phase B inverts the shape anyway
+  (question 4, deferred as #1446).
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
   each a fresh decision gated on lived use, not queued work. What *is* running

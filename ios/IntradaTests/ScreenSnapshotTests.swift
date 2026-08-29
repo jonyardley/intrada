@@ -464,6 +464,37 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  /// The photo card in both of its load-bearing states (#1355). Component-level
+  /// rather than another whole-screen reference: the card is what changes, and
+  /// the two states are the only thing that can independently regress.
+  func testPhotoCardStates() {
+    let cards = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        PhotoCard(itemId: "p1", photoId: nil)
+        PhotoCard(itemId: "p1", photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV") { _ in Self.page }
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(cards), as: config)
+  }
+
+  /// Flat fills only: the reference stays byte-stable and cheap as lossless PNG.
+  private static let page: UIImage = {
+    let size = CGSize(width: 600, height: 850)
+    return UIGraphicsImageRenderer(size: size).image { context in
+      UIColor(white: 0.98, alpha: 1).setFill()
+      context.fill(CGRect(origin: .zero, size: size))
+      UIColor(white: 0.55, alpha: 1).setFill()
+      for stave in 0..<5 {
+        for line in 0..<5 {
+          context.fill(
+            CGRect(x: 60, y: 140 + stave * 130 + line * 12, width: 480, height: 2))
+        }
+      }
+    }
+  }()
+
   /// The selectable derived-curriculum commit sheet, with already-linked (not
   /// selectable) + fallback flags and per-row selection controls.
   func testScaffoldPreviewSheet() {

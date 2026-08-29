@@ -438,6 +438,28 @@ final class StoreEffectLoopTests: XCTestCase {
       "an absent Option must decode as absent, not as the previous value")
   }
 
+  /// The shell mints a photo's id (offline-first invariant 3) and the core
+  /// refuses any id that is not a ulid, so `Ulid` and Rust's parser have to
+  /// agree.
+  func testRealBridgeAcceptsAUlidTheShellMinted() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Gymnopedie", kind: .piece, composer: "Satie", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    let minted = Ulid.generate()
+
+    _ = try bridge.update(.item(.setPhoto(id: id, photoId: minted)))
+
+    let after = try bridge.view()
+    XCTAssertNil(after.error, "the core's validate_photo_id must accept what Ulid mints")
+    XCTAssertEqual(after.items.first { $0.id == id }?.photoId, minted)
+  }
+
   /// Real-bridge wire pin for `SetUtcOffset` (#1330): the Swift serializer and
   /// the Rust deserializer must agree on the new Event variant. Semantics are
   /// pinned by core tests; a wire break here surfaces as a throw or an error
