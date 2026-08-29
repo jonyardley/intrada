@@ -14,7 +14,7 @@
 > native iOS only.** API/Turso out of scope.
 >
 > Status: **phase A landed** ([#1443] core, [#1449] screens; #1355 closed
-> 2026-08-29). B, C and D are unstarted. The rest is the design as written
+> 2026-08-29); **phase B core in flight** ([#1436]). C and D are unstarted. The rest is the design as written
 > 2026-08-29 from a feasibility review of the iOS on-device stack (appendix).
 
 [#1098]: https://github.com/jonyardley/intrada/issues/1098
@@ -25,6 +25,7 @@
 [#1449]: https://github.com/jonyardley/intrada/pull/1449
 [#1442]: https://github.com/jonyardley/intrada/issues/1442
 [#1446]: https://github.com/jonyardley/intrada/issues/1446
+[#1436]: https://github.com/jonyardley/intrada/issues/1436
 
 ## Problem
 
@@ -118,10 +119,12 @@ in principle and is real research. We are not betting the feature on it.
    iOS 17.0; Foundation Models needs iOS 26 *and* Apple Intelligence hardware.
    Every phase must be fully useful with Vision OCR alone, on every supported
    device. Phase C adds accuracy, never capability.
-7. **The confirm sheet is the feature.** Recognition fills a form the user
+7. **The review surface is the feature.** Recognition fills a form the user
    reviews and edits before saving. Low confidence is shown, not hidden. This
    is the design-principles "spend friction deliberately" call: one screen of
-   friction buys trust in everything behind it.
+   friction buys trust in everything behind it. *Amended 2026-08-29 (open
+   question 2): that form is `ItemFormScaffold` on the add path, not a confirm
+   sheet of its own. The substance is unchanged; only the surface is.*
 8. **Reuse `ChordChartEditSheet`, do not clone it.** Phase D's output is text
    in the existing sheet, with the existing per-token parse errors. Consolidate
    before you template.
@@ -182,14 +185,22 @@ The interpretation is one pure function, and it is where the tests live:
 /// the user confirms. Every field carries where it came from, so the sheet can
 /// show a low-confidence read differently from a clean one.
 pub struct PhotoDraft {
-    pub title: Option<DraftField<String>>,
-    pub composer: Option<DraftField<String>>,
-    pub tempo: Option<DraftField<Tempo>>,
-    pub chart_text: Option<DraftField<String>>,
+    pub title: Option<TextDraftField>,
+    pub composer: Option<TextDraftField>,
+    pub tempo: Option<TempoDraftField>,
+    pub chart_text: Option<TextDraftField>,
 }
 
-pub struct DraftField<T> {
-    pub value: T,
+/// Split per payload type rather than generic: facet typegen emits no
+/// generics across the bridge.
+pub struct TextDraftField {
+    pub value: String,
+    pub source: DraftSource,
+    pub confidence: f32,
+}
+
+pub struct TempoDraftField {
+    pub value: Tempo,
     pub source: DraftSource,
     pub confidence: f32,
 }
@@ -251,7 +262,12 @@ one worth planning against.
   read a file the core assumes is there.
 - **B. Read the page into title, composer and tempo.** The
   `RecognitionOperation` effect, Vision OCR in the shell, `read_fields` and its
-  heuristics in the core, the confirm sheet. 2 to 3 days.
+  heuristics in the core, and the recognised values pre-filling the add form
+  (open question 2). 2 to 3 days. Two departures settled during the core build:
+  `DraftField<T>` is split into `TextDraftField` / `TempoDraftField`, because
+  facet typegen emits no generics across the bridge; and `ReadPhoto` takes only
+  a `photo_id`, never an item id, since on the add path there is no item to
+  name yet.
 - **C. On-device model suggestions.** Foundation Models behind
   `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
   filling `suggested`, clamped by decision 5. Same sheet, better answers, no
@@ -270,13 +286,26 @@ actually photograph their charts.
 1. **What do people actually photograph?** The whole design assumes a mix of
    printed text charts and Real Book pages. Phase A ships a photo store, which
    means phase A also gives us the answer before D commits to a parser.
-2. **Confirm sheet or pre-filled form?** Whether recognition opens its own
-   review screen or simply pre-fills `ItemFormScaffold` with the recognised
-   values marked as suggestions. Design conversation, before B's screens PR.
-   The second reads as less ceremony and folds neatly into [#1390].
-3. **Tempo from a note glyph.** `♩= 120` is common in print and OCR mangles the
-   glyph often. Whether a bare number near the top is safe to read as bpm, or
-   whether it needs the glyph, is a question for real photographs.
+2. **Confirm sheet or pre-filled form?** ~~Whether recognition opens its own
+   review screen or simply pre-fills `ItemFormScaffold`...~~ **Answered
+   2026-08-29: pre-fill the add form; no confirm sheet.** Recognition gets no
+   new surface. `ItemFormScaffold` receives what was read, the user corrects
+   it, and pressing **Add** is what writes. **Add only, not Edit** — a piece
+   being edited already has real values, and pre-filling over them is a
+   different and worse interaction. The scan entry point sits *above* the form
+   rather than as a row inside it, which is what unblocks [#1446]. Three things
+   stay open for the design conversation before B's screens PR: how a
+   recognised field is marked, whether a low-confidence read is marked
+   differently again, and whether the mark clears once the user edits.
+   `ItemFormScaffold` has no notion of per-field provenance today, so that is
+   where the remaining design work is.
+3. **Tempo from a note glyph.** ~~Whether a bare number near the top is safe
+   to read as bpm...~~ **Answered 2026-08-29 in phase B, conservatively: the
+   number must follow an `=`, and the glyph itself is never required.** The
+   glyph OCRs to junk or vanishes; the equals survives. A bare number near the
+   top of a page is a page number or a bar number at least as often as it is a
+   tempo, so it is not read. Still worth revisiting against real photographs,
+   which is what open question 1 will give us.
 4. **Where the camera lives.** ~~Create form, detail screen, or both.~~
    **Answered 2026-08-29: the detail screen only, in phase A.** A photo row
    inside `ItemFormScaffold` cannot ride the form's own submit — `SetPhoto` was

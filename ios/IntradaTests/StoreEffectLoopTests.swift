@@ -109,6 +109,22 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(items.isEmpty, "fresh in-memory store has no rows")
   }
 
+  /// The shell's whole job on this effect: run Vision, hand the core back a
+  /// `RecognitionOutput`, decide nothing. An id with no bytes behind it is
+  /// `Failed`, never a page of no lines (which the core would read as a blank).
+  func testRecognitionResolvesFailedForAPhotoThatIsNotOnDisk() async {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 11, effect: .recognition(.readPage(photoId: Ulid.generate())))]
+    }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    await whenResolved(bridge) { store.send(.setQuery(nil)) }
+
+    XCTAssertEqual(bridge.recognitionResolved.first?.id, 11)
+    XCTAssertEqual(bridge.recognitionResolved.first?.output, .failed)
+  }
+
   func testPersistenceWriteFailureResolvesFailed() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -988,6 +1004,7 @@ private final class FakeBridge: CoreBridge {
   private(set) var events: [Event] = []
   private(set) var resolved: [(id: UInt32, result: HttpResult)] = []
   private(set) var persistenceResolved: [(id: UInt32, output: PersistenceOutput)] = []
+  private(set) var recognitionResolved: [(id: UInt32, output: RecognitionOutput)] = []
   private(set) var emptyResolved: [UInt32] = []
   private(set) var viewCallCount = 0
 
@@ -1005,6 +1022,12 @@ private final class FakeBridge: CoreBridge {
 
   func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] {
     persistenceResolved.append((id, persistenceOutput))
+    onResolve?()
+    return []
+  }
+
+  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] {
+    recognitionResolved.append((id, recognitionOutput))
     onResolve?()
     return []
   }

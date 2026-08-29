@@ -172,6 +172,13 @@ pub enum ItemEvent {
     ClearPhoto {
         id: String,
     },
+    /// Read a photo the shell has already written to disk into a draft the
+    /// user confirms. Takes only the `photo_id`, not an item id: on Add there
+    /// is no item to name yet, and the draft is what fills the form
+    /// (#1446, spec open question 4).
+    ReadPhoto {
+        photo_id: String,
+    },
 }
 
 /// Shared by Update / AddTags / RemoveTags.
@@ -251,6 +258,24 @@ fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Eff
     model.record_success();
     Command::all([
         crate::persistence::save_item(item),
+        crux_core::render::render(),
+    ])
+}
+
+/// Kicks off recognition. The bytes are already on disk (phase A writes them
+/// shell-side), so the core only ever names the file.
+fn read_photo(model: &mut Model, photo_id: String) -> Command<Effect, Event> {
+    if let Err(e) = validation::validate_photo_id(&photo_id) {
+        model.last_error = Some(e.to_string());
+        return crux_core::render::render();
+    }
+
+    model.last_error = None;
+    model.photo_recognition = crate::model::PhotoRecognition::Reading {
+        photo_id: photo_id.clone(),
+    };
+    Command::all([
+        crate::recognition::read_page(photo_id),
         crux_core::render::render(),
     ])
 }
@@ -451,6 +476,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         }
         ItemEvent::SetPhoto { id, photo_id } => set_photo(model, id, Some(photo_id)),
         ItemEvent::ClearPhoto { id } => set_photo(model, id, None),
+        ItemEvent::ReadPhoto { photo_id } => read_photo(model, photo_id),
         ItemEvent::AddTags { id, tags } => {
             if let Err(e) = validation::validate_tags(&tags) {
                 model.last_error = Some(e.to_string());
