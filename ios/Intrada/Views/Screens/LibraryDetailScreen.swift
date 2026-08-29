@@ -633,27 +633,27 @@ struct LibraryDetailScreen: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(title: "Used in")
       VStack(spacing: 0) {
-        ForEach(Array(item.usedIn.enumerated()), id: \.offset) { index, context in
+        ForEach(Array(item.usedIn.enumerated()), id: \.offset) { index, usage in
           if index > 0 {
             HairlineDivider()
           }
-          usedInRow(context)
+          usedInRow(usage)
         }
       }
       .cardSurface()
     }
   }
 
-  @ViewBuilder private func usedInRow(_ context: ExerciseUsageView) -> some View {
+  @ViewBuilder private func usedInRow(_ usage: ExerciseUsageView) -> some View {
     // A live piece taps through; the "On its own" bucket and since-removed pieces
     // (#1093, 2a) are inert rows — nowhere to navigate.
-    if let piece = context.piece, !context.pieceRemoved {
+    if let piece = usage.piece, !usage.pieceRemoved {
       NavigationLink(value: piece.id) {
-        UsedInRow(context: context, locale: locale, calendar: calendar, discloses: true)
+        UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: true)
       }
       .buttonStyle(.plain)
     } else {
-      UsedInRow(context: context, locale: locale, calendar: calendar, discloses: false)
+      UsedInRow(usage: usage, locale: locale, calendar: calendar, discloses: false)
     }
   }
 
@@ -974,21 +974,21 @@ private struct StepEditRow: View {
 }
 
 private struct UsedInRow: View {
-  let context: ExerciseUsageView
+  let usage: ExerciseUsageView
   let locale: Locale
   let calendar: Calendar
   let discloses: Bool
 
-  private var isStandalone: Bool { context.piece == nil }
+  private var isStandalone: Bool { usage.piece == nil }
 
   var body: some View {
     HStack(spacing: IntradaSpacing.row) {
-      ScoreRing(score: context.latestScore.map(Int.init), size: 44)
+      ScoreRing(score: usage.latestScore.map(Int.init), size: 44)
       VStack(alignment: .leading, spacing: 3) {
-        Text(context.contextTitle)
+        Text(usage.rowTitle)
           .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle())
-          .foregroundStyle(context.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
-        Text(context.metaLine(locale: locale, calendar: calendar))
+          .foregroundStyle(usage.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
+        Text(usage.metaLine(locale: locale, calendar: calendar))
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -1009,18 +1009,18 @@ private struct UsedInRow: View {
   }
 
   private var accessibilityLabel: String {
-    var parts = [context.contextTitle]
-    if context.pieceRemoved { parts.append("removed from the library") }
-    guard context.sessionCount > 0 else {
+    var parts = [usage.rowTitle]
+    if usage.pieceRemoved { parts.append("removed from the library") }
+    guard usage.sessionCount > 0 else {
       parts.append("not practised together yet")
       return parts.joined(separator: ", ")
     }
-    if let score = context.latestScore {
+    if let score = usage.latestScore {
       parts.append("mark \(score) of 10")
     } else {
       parts.append("not yet rated")
     }
-    let n = Int(context.sessionCount)
+    let n = Int(usage.sessionCount)
     parts.append("\(n) \(n == 1 ? "session" : "sessions")")
     return parts.joined(separator: ", ")
   }
@@ -1121,9 +1121,9 @@ private struct LinkedExerciseEditRow: View {
 
   #Preview("Exercise — Related pieces") {
     NavigationStack {
-      LibraryDetailScreen(item: .previewExerciseWithLinkedFrom)
+      LibraryDetailScreen(item: .previewExerciseLinkedOnly)
     }
-    .environment(Store.previewExerciseLinkedFrom)
+    .environment(Store.previewExerciseLinkedOnlyStore)
   }
 
   /// Snapshot seed: renders the detail screen with editingLinks already on,

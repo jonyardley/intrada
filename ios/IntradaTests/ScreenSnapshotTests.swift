@@ -529,9 +529,9 @@ final class ScreenSnapshotTests: XCTestCase {
   // #1363: linked to pieces it has never been practised with — every row shows
   // the ring's unrated rest, so a fresh link never reads as a bad score.
   func testExerciseDetailUsedInLinkedOnly() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseLinkedOnly]))
     let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewExerciseWithLinkedFrom.id])
+      path: .constant([LibraryItemView.previewExerciseLinkedOnly.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
@@ -539,9 +539,9 @@ final class ScreenSnapshotTests: XCTestCase {
   // #1087 B2 / #1363: overall-ring caption + "Used in" rows — linked and
   // practised, practised only, linked only, removed, and on its own.
   func testExerciseDetailUsedIn() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithContexts]))
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseUsedIn]))
     let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewExerciseWithContexts.id])
+      path: .constant([LibraryItemView.previewExerciseUsedIn.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
   }

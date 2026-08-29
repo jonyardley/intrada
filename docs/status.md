@@ -168,11 +168,11 @@ audit backlog and its five-phase build order.
 
 - #1081 — per-piece tracking **was already shipped**, back in July, and the
   issue was simply never closed. Verified 2026-08-20 against the whole of its
-  stated scope: the core derivation (`build_exercise_contexts`, #1095), the
-  "By piece" rows and the per-this-piece rings on piece detail (#1097), the
-  FFI round-trip guard
+  stated scope: the core derivation (`build_exercise_usage`, then named
+  `build_exercise_contexts`, #1095), the per-piece rows and the
+  per-this-piece rings on piece detail (#1097), the FFI round-trip guard
   (`setlist_entry_group_id_round_trips_on_ffi_bincode_wire`), the
-  `testExerciseDetailByPiece` snapshot, and the design mock committed under
+  exercise-detail snapshot, and the design mock committed under
   `specs/track-exercises-per-piece/`. It came through the coach revert intact:
   `AddToSetlist` still forms blocks, and `group_id` still round-trips the
   local-first JSON codec, so the feature works with no network. No Tier 3 spec

@@ -355,8 +355,8 @@
     }
 
     /// Detail view: exercise linked to 2 pieces it has never been practised with.
-    static var previewExerciseLinkedFrom: Store {
-      Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    static var previewExerciseLinkedOnlyStore: Store {
+      Store(bridge: PreviewBridge(items: [.previewExerciseLinkedOnly]))
     }
 
     private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
@@ -557,7 +557,7 @@
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
-    static var previewExerciseWithLinkedFrom: LibraryItemView {
+    static var previewExerciseLinkedOnly: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
@@ -587,7 +587,7 @@
 
     /// Every "Used in" row state at once: linked and practised, practised
     /// only, linked only, removed, and "On its own" (#1087 B2, #1363).
-    static var previewExerciseWithContexts: LibraryItemView {
+    static var previewExerciseUsedIn: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Enclosures",
         subtitle: "Bebop vocabulary",

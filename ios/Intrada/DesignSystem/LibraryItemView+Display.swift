@@ -69,7 +69,7 @@ enum TempoFormatting {
 }
 
 extension ExerciseUsageView {
-  var contextTitle: String { piece?.title ?? "On its own" }
+  var rowTitle: String { piece?.title ?? "On its own" }
 
   /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
   /// since-deleted piece (#1093, 2a) — composer dropped once the piece is gone.

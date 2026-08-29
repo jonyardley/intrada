@@ -354,7 +354,6 @@ pub struct ExerciseUsageView {
     /// `None` is the "On its own" bucket: practice with no piece in the block.
     pub piece: Option<PieceRefView>,
     /// Always `false` for "On its own".
-    #[serde(default)]
     pub linked: bool,
     pub latest_score: Option<u8>,
     /// Distinct sessions the exercise was practised in, in this context.

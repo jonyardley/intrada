@@ -927,12 +927,6 @@ pub(crate) fn build_practice_summaries(
         .collect()
 }
 
-/// Derive, per exercise, the piece/standalone contexts it has been practised
-/// in across `sessions` (#1087 B1). For each session entry that is an exercise,
-/// the context is the piece sharing its block `group_id` in that same session,
-/// or the "On its own" bucket (`piece: None`) when the entry is ungrouped or its
-/// block carries no piece. Rollup v1 keeps the latest recorded score, distinct
-/// session count, and most-recent date per context.
 /// Every piece an exercise is used in, keyed by exercise id: the pieces that
 /// *link* it and the pieces it has been *practised with*, merged into one row
 /// each (#1363). A pair that has both sources produces one row, not two.
@@ -1041,13 +1035,16 @@ fn build_exercise_usage(
             });
     }
 
-    // Most-recent practice first, which drops never-practised rows to the end
-    // for free: `None` sorts last under the reversed compare.
+    // Live pieces, then deleted ones, then "On its own". Within each, recency
+    // descending — which sinks never-practised rows for free, `None` sorting
+    // last under the reversed compare — then title, so linked-only rows (all
+    // `None`) read alphabetically.
     for rows in by_exercise.values_mut() {
         rows.sort_by(|a, b| match (&a.piece, &b.piece) {
-            (Some(x), Some(y)) => b
-                .last_practiced_at
-                .cmp(&a.last_practiced_at)
+            (Some(x), Some(y)) => a
+                .piece_removed
+                .cmp(&b.piece_removed)
+                .then_with(|| b.last_practiced_at.cmp(&a.last_practiced_at))
                 .then_with(|| x.title.cmp(&y.title))
                 .then_with(|| x.id.cmp(&y.id)),
             (Some(_), None) => std::cmp::Ordering::Less,
@@ -5203,21 +5200,72 @@ mod tests {
         );
     }
 
-    /// Same kind filter the piece side already applies, in reverse.
+    /// Same kind filter the piece side already applies, in reverse. Asserted on
+    /// the derivation rather than the view: the view drops these anyway (only
+    /// exercises are given a `used_in`), so a view-level assert would pass with
+    /// the filter deleted.
     #[test]
-    fn used_in_ignores_a_link_to_a_missing_item() {
-        let app = Intrada;
+    fn used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item() {
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.linked_exercise_ids = vec!["gone".to_string()];
+        piece.linked_exercise_ids = vec!["gone".to_string(), "other-piece".to_string()];
 
         let model = Model {
-            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![
+                piece,
+                ctx_item("other-piece", "Nocturne", ItemKind::Piece, None),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            ..Default::default()
+        };
+        let index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+            model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+
+        let usage = build_exercise_usage(&model, &index);
+        assert!(
+            usage.is_empty(),
+            "a dangling id and a piece-kind target both seed nothing, got {usage:?}"
+        );
+    }
+
+    /// A piece deleted since it was practised sinks below every live piece,
+    /// including ones with no practice at all.
+    #[test]
+    fn used_in_sorts_removed_pieces_below_live_ones() {
+        let recent = chrono::Utc::now() - chrono::Duration::days(1);
+
+        let mut linked_only = ctx_item("p-live", "Live linked", ItemKind::Piece, None);
+        linked_only.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![
+                linked_only,
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            // "p-gone" is practised and recent, but no longer in the library.
+            sessions: vec![ctx_session(
+                "s-gone",
+                recent,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(9), Some("g1")),
+                    ctx_entry("p-gone", "Deleted piece", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = Intrada.view(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(ex1.used_in.is_empty());
+        let order: Vec<&str> = ex1
+            .used_in
+            .iter()
+            .map(|r| r.piece.as_ref().map(|p| p.id.as_str()).unwrap_or("solo"))
+            .collect();
+        assert_eq!(
+            order,
+            vec!["p-live", "p-gone"],
+            "the removed piece sinks despite being the only one practised"
+        );
+        assert!(ex1.used_in[1].piece_removed);
     }
 
     // ── Exercise context derivation (#1087 B1) ───────────────────────────
@@ -5403,7 +5451,7 @@ mod tests {
     /// and standalone once yields two contexts — the piece (latest score, count,
     /// date rolled up) then the "On its own" bucket last.
     #[test]
-    fn test_exercise_contexts_derive_piece_and_on_its_own() {
+    fn test_used_in_derives_piece_and_on_its_own() {
         let app = Intrada;
         let d1 = chrono::Utc::now() - chrono::Duration::days(5);
         let d2 = chrono::Utc::now() - chrono::Duration::days(3);
@@ -5484,7 +5532,7 @@ mod tests {
     /// A grouped run with no piece entry (a dissolved block) falls into the
     /// "On its own" bucket, not a phantom piece context.
     #[test]
-    fn test_exercise_contexts_grouped_without_piece_is_on_its_own() {
+    fn test_used_in_grouped_without_piece_is_on_its_own() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
@@ -5637,7 +5685,7 @@ mod tests {
     /// online `SessionsLoaded` path or the local-first `SessionsStoreLoaded`
     /// persistence path — it's a pure projection over `model.sessions`.
     #[test]
-    fn test_exercise_contexts_identical_in_both_modes() {
+    fn test_used_in_identical_in_both_modes() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let items = vec![
@@ -5755,13 +5803,9 @@ mod tests {
             "forward path must drop non-Exercise from linked_exercises"
         );
 
-        // Reverse: item-b's used_in must also be empty — it is not an Exercise,
-        // so it should never appear as a link target's back-reference.
-        let item_b = vm.items.iter().find(|i| i.id == "item-b").unwrap();
-        assert!(
-            item_b.used_in.is_empty(),
-            "reverse path must drop non-Exercise from used_in (symmetric drop)"
-        );
+        // Reverse: covered on the derivation itself by
+        // `used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item`
+        // — a view-level assert here passes whether or not the filter exists.
     }
     // ── Step ladder view derivation (#1083 C1) ─────────────────────────
 
