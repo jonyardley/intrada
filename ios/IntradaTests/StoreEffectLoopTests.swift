@@ -424,6 +424,35 @@ final class StoreEffectLoopTests: XCTestCase {
       "current step is the first not-yet-solid step")
   }
 
+  /// Real-bridge wire pin (#846, #1467): a `Bool` that never made it across
+  /// reads as `false`, so the row would say "steps" about a ladder of keys —
+  /// no crash, no error, just the wrong noun.
+  func testRealBridgeLadderIsKeysCrossesTheWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.item(.addVariant(itemId: id, label: "F major")))
+    _ = try bridge.update(.item(.addVariant(itemId: id, label: "B\u{266D}")))
+
+    let keys = try bridge.view()
+    XCTAssertEqual(
+      keys.items.first { $0.id == id }?.ladderIsKeys, true,
+      "a ladder of key names comes back as keys (err=\(keys.error ?? "nil"))")
+
+    _ = try bridge.update(.item(.addVariant(itemId: id, label: "Hands together")))
+
+    XCTAssertEqual(
+      try bridge.view().items.first { $0.id == id }?.ladderIsKeys, false,
+      "one non-key rung and the whole ladder is steps")
+  }
+
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
   /// the Rust deserializer and the `ViewModel` projection must all agree on the
   /// new `Item` field and the two new `ItemEvent` variants. A stub bridge

@@ -50,15 +50,26 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1467 — **the keys-or-steps judgement moved into the core**. #1462 shipped
+  the Library row's **12 keys** / **12 steps** chip with the decision in the
+  shell: Swift read each rung's label and worked out the noun. The core now
+  derives it and hands the shell a value on `LibraryItemView`, so the shell
+  only picks the word. The shell's own copy went with it rather than being
+  left inert. Nothing on screen changed, which is the point. It is a bridge
+  contract change, so it ships with a real-bridge round-trip test both ways —
+  a `Bool` that failed to cross would read as `false` and the row would
+  quietly say **steps** about a ladder of keys, with no error to notice. The
+  new Rust parser is scoped to that one question; the Swift `KeyHelper` keeps
+  its circle of fifths for the key picker, which answers a different one.
 - #1462 — **the Library says when an exercise runs through several keys**.
   A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
   list; the ladder only showed after you tapped in and reached **Steps**. The
   row now carries a count chip beside the star and the tags: **12 keys** when
   every rung reads as a key, **12 steps** when it does not, so a ladder of
   inversions is still named for what it holds. The rows already carried the
-  ladder, so nothing changed in the core — and that is the follow-up: the
-  judgement lives in the shell for now, and #1467 moves it to the core where it
-  belongs. The detail screen still heads the section **Steps** (#1464).
+  ladder, so nothing changed in the core — and that was the follow-up: #1467
+  has since moved the judgement to the core where it belongs. The detail
+  screen still heads the section **Steps** (#1464).
 - #1447 — **accented titles file under their own letter**. Sorting the Library
   by title put "Étude" after "Waltz", behind every plain-ASCII title, because
   the sort compared the text byte by byte. Piano repertoire is full of Études,

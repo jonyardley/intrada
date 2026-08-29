@@ -2,9 +2,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// One rung of an exercise's step ladder: "C", "Root position", "Land on
-/// the 3rd". The core's name; the UI says "Steps"/"Keys" (#1083). Score
-/// history is derived from session entries tagged with this `id`, never
-/// stored here.
+/// the 3rd". The core's name; on screen a ladder is "Steps", or "Keys" when
+/// every live rung names one. Which of the two is the core's call, via
+/// `ladder_is_all_keys` (#1083, moved off the shell in #1467) — the shell
+/// only prints the word. Score history is derived from session entries
+/// tagged with this `id`, never stored here.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Variant {
@@ -82,4 +84,138 @@ pub fn reconcile_variants(
     }
 
     next
+}
+
+// ── Keys or steps ─────────────────────────────────────────────────────
+
+/// True when the ladder has rungs and every one of them names a key, so the
+/// Library row can say "12 keys" rather than "12 steps" (#1467). All or
+/// nothing: one rung that isn't a key and "keys" would be a lie about it.
+/// A ladder with no rungs has nothing to be all of, so it is not keys.
+pub fn ladder_is_all_keys<'a>(labels: impl IntoIterator<Item = &'a str>) -> bool {
+    let mut any = false;
+    for label in labels {
+        any = true;
+        if !is_key_label(label) {
+            return false;
+        }
+    }
+    any
+}
+
+/// Deliberately not a circle-of-fifths lookup: spellings off the wheel
+/// ("D♯ major") are keys a musician types, and the wheel would reject them.
+/// Swift's `KeyHelper` keeps its own wheel for the picker, which answers a
+/// different question — which spoke is this — and is view-only (#819).
+fn is_key_label(raw: &str) -> bool {
+    let normalised = ascii_accidentals(raw);
+    let tonic = strip_mode_word(&normalised);
+    is_tonic(tonic)
+}
+
+fn ascii_accidentals(raw: &str) -> String {
+    raw.replace('\u{266F}', "#")
+        .replace('\u{266D}', "b")
+        .trim()
+        .to_string()
+}
+
+/// "major"/"minor" are ASCII, so a five-byte tail is a five-char tail; the
+/// boundary check keeps a multi-byte rung from slicing mid-character.
+fn strip_mode_word(value: &str) -> &str {
+    match value.len().checked_sub(5) {
+        Some(cut)
+            if value.is_char_boundary(cut)
+                && matches!(value[cut..].to_lowercase().as_str(), "major" | "minor") =>
+        {
+            &value[..cut]
+        }
+        _ => value,
+    }
+}
+
+fn is_tonic(raw: &str) -> bool {
+    let chars: Vec<char> = raw.trim().chars().collect();
+    let Some(first) = chars.first() else {
+        return false;
+    };
+    if !('A'..='G').contains(&first.to_ascii_uppercase()) {
+        return false;
+    }
+    match chars.len() {
+        1 => true,
+        2 => matches!(chars[1], '#' | 'b' | 'B'),
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Rungs a musician would actually type, not cases picked to match the
+    /// scanner; the consumer is `ladder_is_all_keys`.
+    #[test]
+    fn labels_that_read_as_keys() {
+        for label in [
+            "C",
+            "F#",
+            "Bb",
+            "F\u{266F}",
+            "B\u{266D}",
+            "c",
+            " D ",
+            "C major",
+            "f# minor",
+            // Spelled out and off the wheel: "C major, C♯ major, D♯ major…"
+            // is all keys, so this is not a circle-of-fifths lookup.
+            "D\u{266F} major",
+            "G# major",
+            "Db minor",
+        ] {
+            assert!(is_key_label(label), "{label:?} names a key");
+        }
+    }
+
+    #[test]
+    fn labels_that_do_not() {
+        for label in [
+            "Root position",
+            "1st inversion",
+            "Land on the 3rd",
+            "Hands together",
+            "Step 1",
+            "Am",
+            "Dm",
+            "C dorian",
+            "G mixolydian",
+            "C/E",
+            "H",
+            "",
+            "major",
+        ] {
+            assert!(!is_key_label(label), "{label:?} does not name a key");
+        }
+    }
+
+    #[test]
+    fn a_ladder_of_keys_is_keys() {
+        assert!(ladder_is_all_keys(["C", "G", "D"]));
+        assert!(ladder_is_all_keys([
+            "C major",
+            "C\u{266F} major",
+            "D major"
+        ]));
+    }
+
+    #[test]
+    fn one_rung_that_is_not_a_key_makes_the_whole_ladder_steps() {
+        assert!(!ladder_is_all_keys(["C", "G", "Hands together"]));
+        assert!(!ladder_is_all_keys(["Root position", "1st inversion"]));
+    }
+
+    #[test]
+    fn an_empty_ladder_is_not_keys() {
+        assert!(!ladder_is_all_keys(std::iter::empty::<&str>()));
+    }
 }

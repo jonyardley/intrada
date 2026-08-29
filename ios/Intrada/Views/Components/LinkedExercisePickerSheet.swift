@@ -314,6 +314,7 @@ struct LinkedExercisePickerSheet: View {
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
           exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
+          ladderIsKeys: false,
           photoId: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
@@ -321,6 +322,7 @@ struct LinkedExercisePickerSheet: View {
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
           exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [],
+          ladderIsKeys: false,
           photoId: nil),
       ],
       linkedIds: ["exercise-1"],
