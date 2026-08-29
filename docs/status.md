@@ -62,6 +62,20 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1481 — **a too-wide row can no longer shift a whole screen sideways**. The
+  amplifier behind #1470, left out of that PR because nothing could prove it.
+  `ScreenScaffold` used a `ZStack`, which sizes to its largest child, so one
+  un-shrinkable row made the whole scaffold report a width wider than the
+  device and every ancestor then centred it: the screen lost characters off
+  both edges rather than simply overflowing to the right. The background now
+  owns the sizing and the content floats in a `topLeading` overlay, so an
+  over-wide child overflows without dragging the scaffold's width with it. All
+  five screens built on the scaffold are covered, and every existing snapshot
+  is pixel-identical, which is the evidence the restructure changed nothing
+  visible. Measured rather than walked: the harness that defeated the first
+  attempt is written up in the issue, since any wrapper placed around an
+  over-wide view centres it and a plain `VStack` scores exactly like a broken
+  scaffold under that method.
 - #1470 — **the Library stays on screen at accessibility text sizes**. From
   accessibility-extra-large upward the whole screen slid off its leading edge:
   the title read **brary**, the count line **eces · 2 exercises**, every card
@@ -77,7 +91,7 @@ audit backlog and its five-phase build order.
   Covered by a Library snapshot at the largest accessibility size plus
   structural tests asserting nothing on the pillar screens or the sheets that
   reuse the browse bar runs off either edge, at two device widths. Hardening
-  the scaffold itself against any future un-shrinkable child is #1481.
+  the scaffold itself against any future un-shrinkable child is #1481, below.
 - #1436 — **a photographed page reads into title, composer and tempo**. Phase B
   of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), in two PRs:
   the core (#1455) adds the `RecognitionOperation` effect and `read_fields`, in
