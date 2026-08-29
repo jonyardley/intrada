@@ -71,57 +71,28 @@ struct BrowseControlsBar: View {
     }
   }
 
+  // A control row wider than the device shifted the whole screen sideways
+  // (#1470). ViewThatFits splits it exactly when it will not fit, so narrow
+  // devices are covered and the text sizes that always fitted are untouched.
   private var header: some View {
-    HStack(spacing: IntradaSpacing.controlGap) {
-      if let starFilter {
-        Button {
-          starFilter.wrappedValue.toggle()
-        } label: {
-          Image(systemName: starFilter.wrappedValue ? "star.fill" : "star")
-            .font(IntradaFont.tab)
-            .foregroundStyle(starFilter.wrappedValue ? IntradaColor.accent : IntradaColor.inkFaint)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 10)
-            .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        starButton
+        typeFilter
+        Spacer(minLength: IntradaSpacing.controlGap)
+        actionControls
+      }
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        HStack(spacing: IntradaSpacing.controlGap) {
+          starButton
+          typeFilter
+          Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Show priorities only")
-        .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
+        HStack(spacing: IntradaSpacing.controlGap) {
+          Spacer(minLength: 0)
+          actionControls
+        }
       }
-      if showsTypeFilter {
-        LibraryFilterMenu(
-          current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 }
-        )
-        .padding(.leading, IntradaSpacing.controlGap)
-      }
-      Spacer(minLength: IntradaSpacing.controlGap)
-      LibrarySortMenu(
-        current: store.viewModel?.activeSort
-          ?? LibrarySort(field: .dateAdded, direction: .descending),
-        onChange: { store.send(.setSort($0)) })
-      Button {
-        filtering = true
-      } label: {
-        Image(
-          systemName: activeTags.isEmpty
-            ? "line.3.horizontal.decrease.circle"
-            : "line.3.horizontal.decrease.circle.fill"
-        )
-        .font(IntradaFont.tab)
-        .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
-        .padding(IntradaSpacing.controlGap)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Filter by tag")
-      .accessibilityValue(activeTags.isEmpty ? "Off" : "\(activeTags.count) selected")
-      Button(action: toggleSearch) {
-        Image(systemName: "magnifyingglass")
-          .font(IntradaFont.tab)
-          .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
-          .padding(IntradaSpacing.controlGap)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Search")
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
@@ -129,6 +100,63 @@ struct BrowseControlsBar: View {
     // Opaque + on top so the bar emerges from behind the pills rather than
     // ghosting over them (see Design System Rules → animated reveals).
     .background(IntradaColor.paperTop)
+  }
+
+  @ViewBuilder private var starButton: some View {
+    if let starFilter {
+      Button {
+        starFilter.wrappedValue.toggle()
+      } label: {
+        Image(systemName: starFilter.wrappedValue ? "star.fill" : "star")
+          .font(IntradaFont.tab)
+          .foregroundStyle(starFilter.wrappedValue ? IntradaColor.accent : IntradaColor.inkFaint)
+          .padding(.vertical, 6)
+          .padding(.horizontal, 10)
+          .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Show priorities only")
+      .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
+    }
+  }
+
+  @ViewBuilder private var typeFilter: some View {
+    if showsTypeFilter {
+      LibraryFilterMenu(
+        current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 }
+      )
+      .padding(.leading, IntradaSpacing.controlGap)
+    }
+  }
+
+  @ViewBuilder private var actionControls: some View {
+    LibrarySortMenu(
+      current: store.viewModel?.activeSort
+        ?? LibrarySort(field: .dateAdded, direction: .descending),
+      onChange: { store.send(.setSort($0)) })
+    Button {
+      filtering = true
+    } label: {
+      Image(
+        systemName: activeTags.isEmpty
+          ? "line.3.horizontal.decrease.circle"
+          : "line.3.horizontal.decrease.circle.fill"
+      )
+      .font(IntradaFont.tab)
+      .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
+      .padding(IntradaSpacing.controlGap)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Filter by tag")
+    .accessibilityValue(activeTags.isEmpty ? "Off" : "\(activeTags.count) selected")
+    Button(action: toggleSearch) {
+      Image(systemName: "magnifyingglass")
+        .font(IntradaFont.tab)
+        .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
+        .padding(IntradaSpacing.controlGap)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Search")
   }
 
   private func toggleSearch() {
