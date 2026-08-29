@@ -93,7 +93,7 @@ extension ExerciseUsageView {
       formatter.locale = locale
       formatter.calendar = calendar
       formatter.timeZone = calendar.timeZone
-      formatter.dateFormat = "MMM d"
+      formatter.dateFormat = "d MMM"
       parts.append(formatter.string(from: date))
     }
     return parts.joined(separator: " · ")

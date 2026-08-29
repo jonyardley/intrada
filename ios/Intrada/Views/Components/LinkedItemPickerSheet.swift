@@ -318,9 +318,10 @@ private struct PickerCopy {
 
   var sheetTitle: String { kind == .piece ? "Link a piece" : "Add exercises" }
 
+  /// Describes the sheet, not the library: a Library filter can empty it (#1484).
   var noneAtAll: String {
     kind == .piece
-      ? "No pieces yet. Add one to the library to link it here."
+      ? "No pieces to link. A Library filter may be hiding them."
       : "No exercises yet. Create one from the piece to relate it."
   }
 

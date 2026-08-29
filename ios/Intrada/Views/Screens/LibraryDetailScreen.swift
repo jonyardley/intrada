@@ -701,8 +701,6 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  // The mirror of `applyLinkChanges`, from the exercise side: the same
-  // LinkExercise/UnlinkExercise pair with the two ids the other way round.
   private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
     let current = Swift.Set(linkedPieceIds)
     let toLink = selected.subtracting(current)
