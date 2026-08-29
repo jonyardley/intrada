@@ -33,12 +33,13 @@ audit backlog and its five-phase build order.
   Library**. Choosing an exercise for a piece (**Choose one** on the piece)
   opens a sheet whose search only read the exercise's title and its key/tempo
   line, so a composer name, a note or a tag found nothing there while the same
-  words worked everywhere else. It now matches the fields the Library matches.
+  words worked everywhere else. It now matches the fields the Library matches,
+  and no longer matches the key/tempo line, which the Library never did.
   The two add sheets in Build session also put the Library's own filter back
   when they close, instead of leaving it as the sheet left it. The deeper
-  tidy-up — the two pickers are still built differently, one on the shared
-  query and one on its own state — was weighed and left, since it costs a
-  morning and a musician cannot see it.
+  tidy-up was weighed and left: the two pickers are still built differently,
+  one on the shared query and one on its own state, and unifying them costs a
+  morning for nothing a musician can see.
 - #1103 — **the related-exercise picker now behaves like the add-to-session
   sheet**. Adding three exercises to a block used to mean opening the sheet
   three times, and a long exercise list had no search in it. The sheet now

@@ -9,8 +9,7 @@ import SwiftUI
 /// The filter bar (star / sort / tag / search) drives *shell-local* state over
 /// the passed-in `available` list — the picker curates its own subset rather
 /// than the core's shared Library `ListQuery`, so filtering here never disturbs
-/// the Library screen. Search still means what it means in the Library:
-/// `matchesSearch` mirrors the core's fields (#1440).
+/// the Library screen. Search itself is the core's fields (#1440).
 struct LinkedExercisePickerSheet: View {
   let available: [LibraryItemView]
   let linkedIds: [String]

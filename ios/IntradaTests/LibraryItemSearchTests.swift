@@ -4,12 +4,11 @@ import Testing
 
 @testable import Intrada
 
-/// The picker filters its own candidates, so this is the shell's only guard
-/// that search means there what it means in the Library — the core's
-/// `apply_query_filter` matches title, composer, notes and tags (#1440).
+/// Each field carries a word none of the others do, so dropping any one branch
+/// of `matchesSearch` fails a case here (#1440).
 struct LibraryItemSearchTests {
   private static func exercise(
-    title: String = "Hanon No. 1", subtitle: String = "Charles-Louis Hanon",
+    title: String = "Hanon No. 1", subtitle: String = "Charles-Louis",
     notes: String? = "left hand only", tags: [String] = ["warm-up"]
   ) -> LibraryItemView {
     LibraryItemView(
@@ -22,7 +21,7 @@ struct LibraryItemSearchTests {
 
   @Test(
     "words a musician would type find the exercise",
-    arguments: ["Hanon", "hanon", "Charles-Louis", "warm-up", "left hand", "  Hanon  ", ""])
+    arguments: ["No. 1", "no. 1", "Charles-Louis", "warm-up", "left hand", "  No. 1  ", ""])
   func matchesTheFieldsTheLibraryMatches(text: String) {
     #expect(Self.exercise().matchesSearch(text))
   }
