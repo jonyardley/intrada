@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Pull-down type filter — the dropdown sibling of `LibrarySortMenu`.
 struct LibraryFilterMenu: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   let current: LibraryFilter
   let onChange: (LibraryFilter) -> Void
 
@@ -19,23 +20,31 @@ struct LibraryFilterMenu: View {
         }
       }
     } label: {
-      // Reserve the slot at the widest option so the label's width never changes
-      // when the selection does — otherwise the frame animates the width down and
-      // the text clips/snaps mid-transition.
+      menuLabel
+        // The reservation copies are visual-only; the Menu's explicit label/value
+        // below own VoiceOver (`.hidden()` alone leaves them in the a11y tree).
+        .accessibilityHidden(true)
+        .padding(.vertical, IntradaSpacing.controlGap)
+    }
+    .accessibilityLabel("Filter by type")
+    .accessibilityValue(current.label)
+  }
+
+  /// Reserving the widest option stops the label's width animating when the
+  /// selection changes, but `fixedSize` made the browse bar un-shrinkable at
+  /// accessibility sizes and pushed the screen off its leading edge (#1470).
+  @ViewBuilder private var menuLabel: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      labelContent(current.label)
+    } else {
       ZStack(alignment: .leading) {
         ForEach(LibraryFilter.allCases) { option in
           labelContent(option.label).hidden()
         }
         labelContent(current.label)
       }
-      // The reservation copies are visual-only; the Menu's explicit label/value
-      // below own VoiceOver (`.hidden()` alone leaves them in the a11y tree).
-      .accessibilityHidden(true)
-      .padding(.vertical, IntradaSpacing.controlGap)
       .fixedSize()
     }
-    .accessibilityLabel("Filter by type")
-    .accessibilityValue(current.label)
   }
 
   private func labelContent(_ text: String) -> some View {

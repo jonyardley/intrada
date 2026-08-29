@@ -38,6 +38,9 @@ struct ScreenScaffold<Content: View>: View {
         content
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
+      // A ZStack centres a child wider than itself, so content that can't shrink
+      // at accessibility sizes dragged the title off the screen's left (#1470).
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
     // Clamp the floor (avoid sub-readable text) but allow the full accessibility
     // range now that the filter tabs scroll instead of wrapping (#810).

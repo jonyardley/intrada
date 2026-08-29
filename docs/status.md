@@ -50,6 +50,21 @@ audit backlog and its five-phase build order.
 
 ## Recently landed
 
+- #1470 — **the Library stays on screen at accessibility text sizes**. From
+  accessibility-extra-large upward the whole screen slid off its leading edge:
+  the title read **brary**, the count line **eces · 2 exercises**, every card
+  lost its type-coded bar, and the search button ran off the other side. The
+  cause was the browse bar's type filter, which reserved the width of its
+  widest option and pinned it with `fixedSize`, so the row could not shrink;
+  a `ZStack` then centred the oversized layout and clipped it at both ends. The
+  type filter now takes only the space it needs at accessibility sizes, the
+  browse controls stack into two rows there rather than crushing into one, and
+  `ScreenScaffold` pins its content to the leading edge so no future
+  un-shrinkable child can push a title off the screen. Practice and Progress
+  share the scaffold and were checked in the same pass: both already reflowed
+  cleanly, and both now carry a guard. Covered by a Library snapshot at the
+  largest accessibility size plus a structural test asserting nothing on the
+  three pillar screens sits left of the leading edge.
 - #1462 — **the Library says when an exercise runs through several keys**.
   A twelve-key Scales exercise looked exactly like a one-pass warm-up in the
   list; the ladder only showed after you tapped in and reached **Steps**. The
