@@ -203,3 +203,13 @@ audit backlog and its five-phase build order.
   (#1103) moved to now.
 - Follow-up: port the wire-pin test technique (per-variant bincode
   fingerprint) to the `ActiveSession` crash-recovery blob (#1345).
+- **Adding a piece from a photo is designed, not built**
+  ([`specs/piece-from-photo.md`](../specs/piece-from-photo.md)). Four phases:
+  #1355 stores the photo and does no recognition; #1436 reads title, composer
+  and tempo with Vision OCR through a new `RecognitionOperation` effect; #1437
+  adds on-device model suggestions, clamped so the model may only choose text
+  that appears in the OCR; #1387 part 2 reads a photographed *text* chart.
+  Phase A is useful alone and is the entry point. The load-bearing finding:
+  chord symbols on a stave are text so OCR reads them, but barlines are
+  graphics, so a lead sheet gives no bar structure and `parse_chart` needs bars
+  above all else. That half is a spike (#1438), explicitly not a phase.
