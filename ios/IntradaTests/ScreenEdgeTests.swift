@@ -30,9 +30,14 @@ struct ScreenEdgeTests {
 
   private func edges(of view: some View, store: Store, width: CGFloat) -> Edges {
     IntradaFonts.register()
+    // Pin the hosting root to the window: given an over-large root of its own,
+    // UIHostingController centres it, which reads as a leading-edge overflow
+    // the view under test is not responsible for (#1481).
     let vc = UIHostingController(
       rootView:
-        view
+        Color.clear
+        .frame(width: width, height: Self.height)
+        .overlay(view)
         .environment(store)
         .environment(\.locale, Locale(identifier: "en_US"))
         .environment(\.calendar, PreviewCalendar.utc)

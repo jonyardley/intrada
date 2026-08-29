@@ -27,21 +27,25 @@ struct ScreenScaffold<Content: View>: View {
   }
 
   var body: some View {
-    ZStack {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: 0) {
-        header
-        Rectangle()
-          .fill(IntradaColor.divider)
-          .frame(height: 1)
-          .padding(.top, IntradaSpacing.cardCompact)
-        content
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // The background owns the sizing and the content floats in an overlay: in a
+    // ZStack an un-shrinkable child made the whole scaffold over-large, and
+    // every ancestor then centred it, so the screen lost characters off both
+    // edges instead of overflowing to the right (#1470, #1481).
+    PaperBackground()
+      .overlay(alignment: .topLeading) {
+        VStack(alignment: .leading, spacing: 0) {
+          header
+          Rectangle()
+            .fill(IntradaColor.divider)
+            .frame(height: 1)
+            .padding(.top, IntradaSpacing.cardCompact)
+          content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
       }
-    }
-    // Clamp the floor (avoid sub-readable text) but allow the full accessibility
-    // range now that the filter tabs scroll instead of wrapping (#810).
-    .dynamicTypeSize(.xSmall ... .accessibility5)
+      // Clamp the floor (avoid sub-readable text) but allow the full accessibility
+      // range now that the filter tabs scroll instead of wrapping (#810).
+      .dynamicTypeSize(.xSmall ... .accessibility5)
   }
 
   private var header: some View {
