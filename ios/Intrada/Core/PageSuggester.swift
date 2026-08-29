@@ -1,14 +1,15 @@
 import FoundationModels
 import SharedTypes
+import os
 
-/// Asks the on-device model to pick the fields out of what Vision read, on the
-/// devices that have one. Phase C of `specs/piece-from-photo.md`: accuracy, not
-/// capability. Every device still gets the core's geometry heuristics, and
-/// nothing here can invent a field, because the core discards any suggestion
-/// the page does not literally carry (spec decision 5).
+private let logger = Logger(subsystem: "com.intrada.native", category: "recognition")
+
+/// Phase C of `specs/piece-from-photo.md`: accuracy, not capability. Every
+/// device still gets the core's heuristics, and the core discards any
+/// suggestion the page does not literally carry (decision 5).
 enum PageSuggester {
-  /// Deliberately not the `SuggestedFields` the core takes: that type is only
-  /// buildable on the actor the bridge runs on, and this crosses off it.
+  /// The generated bridge types are not `Sendable`, so what crosses back off
+  /// the model's task is this, and `SuggestedFields` is built from it.
   struct Suggestion: Sendable {
     var title: String?
     var composer: String?
@@ -25,36 +26,32 @@ enum PageSuggester {
     }
   }
 
-  /// Past this the user has been watching a spinner over an empty form for
-  /// long enough that the heuristics, which are already good, are the better
-  /// answer. Foundation Models has no timeout of its own.
+  /// Foundation Models has no timeout of its own, and the form waits behind a
+  /// spinner. Whether this stops the model or only the wait is #1472.
   private static let budget = Duration.seconds(12)
 
-  /// Checked before availability, so the rule holds on the devices that do have
-  /// a model: a blank page gives it nothing to choose from, and anything it
-  /// returned could then only be invented.
+  /// Its own function so a test can reach it: `#available` answers first on a
+  /// simulator, and would answer the same whether this held or not.
   static func hasSomethingToRead(_ lines: [String]) -> Bool {
     lines.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
   }
 
   static func suggest(readingFrom lines: [String]) async -> Suggestion? {
-    guard hasSomethingToRead(lines) else { return nil }
+    guard hasSomethingToRead(lines), !UITestFlags.onDeviceModelDisabled else { return nil }
     guard #available(iOS 26, *) else { return nil }
     return await OnDeviceModel.suggest(from: lines.joined(separator: "\n"), within: budget)
   }
 }
 
 extension PageSuggester.Suggestion {
-  /// Crosses to the core untouched, apart from the bridge's narrower bpm type.
   /// Whether a suggestion is any good is the core's judgement, not the shell's
-  /// (spec decision 4).
+  /// (spec decision 4), so nothing here inspects one.
   var bridged: SuggestedFields {
     SuggestedFields(
       title: title,
       composer: composer,
       tempoMarking: tempoMarking,
       bpm: bpm.flatMap(UInt16.init(exactly:)),
-      // Phase D. The model is not asked for a chart.
       chartText: nil)
   }
 }
@@ -65,6 +62,8 @@ private enum OnDeviceModel {
   struct Fields {
     @Guide(description: "The title of the piece, copied exactly as it appears")
     var title: String?
+    // The core strips a credit prefix anyway (`clamped_composer`); asking for
+    // it without one just saves the round trip.
     @Guide(
       description:
         "Who wrote it, copied exactly as it appears, without any 'Music by' or 'by' in front of it")
@@ -101,13 +100,18 @@ private enum OnDeviceModel {
         generating: Fields.self,
         // Deterministic, because `read_fields` is: rescanning the same page
         // twice should not offer the user two different drafts.
-        options: GenerationOptions(sampling: .greedy)
+        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 256)
       ).content
       return PageSuggester.Suggestion(
         title: fields.title,
         composer: fields.composer,
         tempoMarking: fields.tempoMarking,
         bpm: fields.bpm)
+    } catch let error as LanguageModelSession.GenerationError {
+      // A long page, a page of lyrics, a language the model does not have: all
+      // expected, all answered by falling back to the core's heuristics.
+      logger.info("page-suggestion declined: \(String(describing: error), privacy: .public)")
+      return nil
     } catch {
       report(error, "page-suggestion")
       return nil

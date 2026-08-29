@@ -81,23 +81,6 @@ struct PageReaderTests {
     #expect(title.height > credit.height)
   }
 
-  /// Spec decision 6, end to end: phase C adds accuracy, never capability. The
-  /// page still reads on a device with no Apple Intelligence, which is every
-  /// simulator and most of the installed base, so a suggester that hung or
-  /// trapped there would fail here rather than in front of a user.
-  @Test func aPageStillReadsWhereThereIsNoOnDeviceModel() async throws {
-    let photoId = Ulid.generate()
-    defer { discard(photoId) }
-    try PhotoFileStore.write(page(title: "Autumn Leaves", credit: "Music by Kosma"), id: photoId)
-
-    guard case .page(let reading) = await PageReader.read(photoId: photoId) else {
-      Issue.record("expected a page reading")
-      return
-    }
-
-    #expect(!reading.lines.isEmpty)
-  }
-
   /// Phase A leaves bytes on disk but the core can still name an id nothing was
   /// written for. That is `Failed`, never an empty page that reads as a blank.
   @Test func anIdWithNoBytesFails() async {

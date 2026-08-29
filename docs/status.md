@@ -29,12 +29,14 @@ audit backlog and its five-phase build order.
   that looks strongest. It reads as **From the photo**, dimmed, exactly as a
   weak Vision read already does. The screens one (#1470) wires Foundation Models
   behind `SystemLanguageModel.default.availability` and `if #available(iOS 26)`,
-  on the devices that have it: the shell hands the model the lines Vision read
-  and passes what it says straight to the core, untouched. No new screen, the
-  same add form, better answers, and the substring clamp still means the model
-  may choose but never invent. On the iPhone 15 Pro and later with Apple
-  Intelligence turned on; every other device is exactly as it was, which the
-  tests hold to.
+  on the devices that have it. The shell hands the model the lines Vision read
+  and passes back what it says without inspecting it: whether a suggestion is
+  any good stays the core's judgement. No new screen, the same add form, better
+  answers, and the clamp still means the model may choose but never invent.
+  Apple Intelligence hardware only, which is roughly the iPhone 15 Pro and later
+  plus the M1 iPads; every other device is exactly as it was. The one thing the
+  self-review could not check without that hardware is whether the read's
+  twelve-second budget stops the model or only stops the wait (#1472).
 
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
