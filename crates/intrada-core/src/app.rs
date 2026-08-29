@@ -25,10 +25,11 @@ use crate::http;
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
-    PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, SetSourceStatus,
-    ViewModel,
+    PhotoRecognitionView, PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView,
+    SetSourceStatus, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
+use crate::recognition::{self, RecognitionOperation, RecognitionOutput};
 
 /// Root Crux application for the music practice library.
 #[derive(Default)]
@@ -122,6 +123,19 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
+
+    // ── On-device recognition ────────────────────────────────────────
+    /// The shell read the page. Carries the `photo_id` it was asked to read, so
+    /// a result can only ever land on the read that asked for it — two scans in
+    /// flight would otherwise show one page beside the other's fields.
+    /// `Unsupported` and `Failed` are outcomes the form shows, not errors that
+    /// mute the banner.
+    PhotoRead {
+        photo_id: String,
+        output: RecognitionOutput,
+    },
+    /// The user finished with (or backed out of) the recognised draft.
+    DiscardPhotoDraft,
 }
 
 /// Side effects the core requests from shells.
@@ -136,6 +150,9 @@ pub enum Effect {
     App(AppEffect),
     /// Local-first persistence (the core's first effect with typed-data output).
     Persistence(PersistenceOperation),
+    /// On-device page recognition. The shell runs the frameworks and returns
+    /// text with geometry; the core decides what it means (spec decision 4).
+    Recognition(RecognitionOperation),
 }
 
 /// Non-HTTP side-effect operations handled by the shell (localStorage only).
@@ -364,6 +381,39 @@ impl Intrada {
                     persistence::load_sessions()
                 }
             },
+
+            // ── On-device recognition ────────────────────────────────
+            Event::PhotoRead { photo_id, output } => {
+                // Anything but "still reading this exact photo" is a result
+                // nothing is waiting on — a scan the user backed out of, or one
+                // superseded by a later scan. Leave the state untouched: the
+                // read that *is* current must survive its predecessor landing.
+                if model.photo_recognition
+                    != (crate::model::PhotoRecognition::Reading {
+                        photo_id: photo_id.clone(),
+                    })
+                {
+                    return crux_core::render::render();
+                }
+
+                model.photo_recognition = match output {
+                    RecognitionOutput::Page(page) => crate::model::PhotoRecognition::Ready {
+                        photo_id,
+                        draft: recognition::read_fields(&page),
+                    },
+                    RecognitionOutput::Unsupported => {
+                        crate::model::PhotoRecognition::Unsupported { photo_id }
+                    }
+                    RecognitionOutput::Failed => {
+                        crate::model::PhotoRecognition::Failed { photo_id }
+                    }
+                };
+                crux_core::render::render()
+            }
+            Event::DiscardPhotoDraft => {
+                model.photo_recognition = crate::model::PhotoRecognition::Idle;
+                crux_core::render::render()
+            }
         }
     }
 
@@ -599,8 +649,54 @@ impl Intrada {
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
             up_next,
+            photo_recognition: photo_recognition_view(&model.photo_recognition),
         }
     }
+}
+
+fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecognitionView {
+    use crate::model::{PhotoRecognition, PhotoRecognitionStatus};
+
+    match state {
+        PhotoRecognition::Idle => PhotoRecognitionView::default(),
+        PhotoRecognition::Reading { photo_id } => PhotoRecognitionView {
+            status: PhotoRecognitionStatus::Reading,
+            photo_id: Some(photo_id.clone()),
+            draft: None,
+            has_low_confidence: false,
+        },
+        PhotoRecognition::Ready { photo_id, draft } => PhotoRecognitionView {
+            status: PhotoRecognitionStatus::Ready,
+            photo_id: Some(photo_id.clone()),
+            has_low_confidence: draft_is_weak(draft),
+            draft: Some(draft.clone()),
+        },
+        PhotoRecognition::Unsupported { photo_id } => PhotoRecognitionView {
+            status: PhotoRecognitionStatus::Unsupported,
+            photo_id: Some(photo_id.clone()),
+            draft: None,
+            has_low_confidence: false,
+        },
+        PhotoRecognition::Failed { photo_id } => PhotoRecognitionView {
+            status: PhotoRecognitionStatus::Failed,
+            photo_id: Some(photo_id.clone()),
+            draft: None,
+            has_low_confidence: false,
+        },
+    }
+}
+
+/// One field the form will mark as a weak read is enough (key decision 7).
+fn draft_is_weak(draft: &recognition::PhotoDraft) -> bool {
+    [
+        draft.title.as_ref().map(|f| f.weak),
+        draft.composer.as_ref().map(|f| f.weak),
+        draft.chart_text.as_ref().map(|f| f.weak),
+    ]
+    .into_iter()
+    .flatten()
+    .chain(draft.tempo.as_ref().map(|f| f.weak))
+    .any(|weak| weak)
 }
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared

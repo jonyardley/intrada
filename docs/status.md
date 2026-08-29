@@ -21,6 +21,18 @@ audit backlog and its five-phase build order.
 
 ## In flight
 
+- #1436 — **reading a photographed page into title, composer and tempo**.
+  Phase B of [`specs/piece-from-photo.md`](../specs/piece-from-photo.md), core
+  PR first. It adds the `RecognitionOperation` effect, Vision text recognition
+  in the shell as a dumb pipe, and `read_fields` in the core: the largest text
+  in the top band is the title, a `Music by` line is the composer, a tempo word
+  or a number after an `=` is the tempo. A model suggestion (phase C) is only
+  ever accepted when it appears verbatim on the page, so it can choose but
+  never invent. Nothing is written without the user pressing Add. The screens
+  follow in a second PR now that spec open question 2 is answered:
+  recognition **pre-fills the add form**, it does not open a confirm sheet of
+  its own, which also unblocks #1446.
+
 - #1420, the tempo trend, was the last of the adopted order's numbered
   steps with anything to construct: steps 1 to 8 are done and steps 9 to 11 are
   each a fresh decision gated on lived use, not queued work. What *is* running
@@ -265,6 +277,11 @@ audit backlog and its five-phase build order.
   finding stands: chord symbols on a stave are text so OCR reads them, but
   barlines are graphics, so a lead sheet gives no bar structure and
   `parse_chart` needs bars above all else. That half is a spike (#1438),
-  explicitly not a phase. Design conversation due before #1436's screens —
-  spec open question 2, whether recognition opens its own confirm sheet or
-  pre-fills `ItemFormScaffold`, which #1446 is also waiting on.
+  explicitly not a phase. Spec open question 2 is now answered (Jon,
+  2026-08-29): recognition pre-fills `ItemFormScaffold` on the add path rather
+  than opening a confirm sheet, which is what #1446 was waiting on. What is
+  left for the design conversation before #1436's screens is narrower — how a
+  recognised field is marked, whether a weak read is marked differently again,
+  and whether the mark clears once the user edits it. Open question 3 is
+  answered too: a bpm is only read when it follows an `=`, never from a bare
+  number, which would as often be a page or bar number.

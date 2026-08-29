@@ -109,6 +109,22 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(items.isEmpty, "fresh in-memory store has no rows")
   }
 
+  /// The shell's whole job on this effect: run Vision, hand the core back a
+  /// `RecognitionOutput`, decide nothing. An id with no bytes behind it is
+  /// `Failed`, never a page of no lines (which the core would read as a blank).
+  func testRecognitionResolvesFailedForAPhotoThatIsNotOnDisk() async {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 11, effect: .recognition(.readPage(photoId: Ulid.generate())))]
+    }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    await whenResolved(bridge) { store.send(.setQuery(nil)) }
+
+    XCTAssertEqual(bridge.recognitionResolved.first?.id, 11)
+    XCTAssertEqual(bridge.recognitionResolved.first?.output, .failed)
+  }
+
   func testPersistenceWriteFailureResolvesFailed() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -436,6 +452,53 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(
       try bridge.view().items.first { $0.id == id }?.photoId,
       "an absent Option must decode as absent, not as the previous value")
+  }
+
+  /// Every recognition type is new on the bincode wire, and `f32` is a new
+  /// scalar on it. A stub bridge cannot catch a wire break (#846), so this
+  /// drives the whole round trip: the effect out, a `RecognitionOutput` built
+  /// in Swift back in, and the draft the form will read out of the projection.
+  func testRealBridgeReadPhotoFillsTheDraft() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let photoId = Ulid.generate()
+
+    let requests = try bridge.update(.item(.readPhoto(photoId: photoId)))
+    let request = try XCTUnwrap(
+      requests.first { if case .recognition = $0.effect { return true } else { return false } },
+      "readPhoto should emit a Recognition effect")
+    guard case .recognition(.readPage(let asked)) = request.effect else {
+      return XCTFail("expected readPage, got \(request.effect)")
+    }
+    XCTAssertEqual(asked, photoId, "the core names the file the shell just wrote")
+
+    _ = try bridge.resolve(
+      request.id,
+      recognitionOutput: .page(
+        PageReading(
+          lines: [
+            RecognisedLine(
+              text: "Autumn Leaves", x: 0.1, y: 0.08, width: 0.8, height: 0.09, confidence: 0.93),
+            RecognisedLine(
+              text: "Music by Joseph Kosma", x: 0.1, y: 0.18, width: 0.8, height: 0.03,
+              confidence: 0.4),
+          ],
+          suggested: nil)))
+
+    let recognition = try bridge.view().photoRecognition
+    XCTAssertEqual(recognition.status, .ready)
+    XCTAssertEqual(recognition.photoId, photoId)
+    let draft = try XCTUnwrap(recognition.draft)
+    XCTAssertEqual(draft.title?.value, "Autumn Leaves")
+    XCTAssertEqual(draft.composer?.value, "Joseph Kosma")
+    XCTAssertEqual(draft.title?.source, .recognised)
+    XCTAssertEqual(
+      try XCTUnwrap(draft.title?.confidence), Float(0.93), accuracy: 0.0001,
+      "an f32 has to survive the wire, not arrive as a rounded or byte-swapped number")
+    XCTAssertFalse(draft.title?.weak ?? true, "the title was read cleanly")
+    XCTAssertTrue(draft.composer?.weak ?? false, "the credit was read weakly")
+    XCTAssertTrue(
+      recognition.hasLowConfidence, "and the form must say so for the draft as a whole")
   }
 
   /// The shell mints a photo's id (offline-first invariant 3) and the core
@@ -988,6 +1051,7 @@ private final class FakeBridge: CoreBridge {
   private(set) var events: [Event] = []
   private(set) var resolved: [(id: UInt32, result: HttpResult)] = []
   private(set) var persistenceResolved: [(id: UInt32, output: PersistenceOutput)] = []
+  private(set) var recognitionResolved: [(id: UInt32, output: RecognitionOutput)] = []
   private(set) var emptyResolved: [UInt32] = []
   private(set) var viewCallCount = 0
 
@@ -1005,6 +1069,12 @@ private final class FakeBridge: CoreBridge {
 
   func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] {
     persistenceResolved.append((id, persistenceOutput))
+    onResolve?()
+    return []
+  }
+
+  func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] {
+    recognitionResolved.append((id, recognitionOutput))
     onResolve?()
     return []
   }

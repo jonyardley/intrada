@@ -14,6 +14,7 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
+use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedSession;
 
 /// Internal application state — not exposed to shells.
@@ -84,6 +85,33 @@ pub struct Model {
     /// Bumped by every update that concludes with `last_error` present, so
     /// shells can tell a repeated identical failure from a success (#1056).
     pub error_seq: u64,
+    /// What the last `ReadPhoto` produced. Transient: the confirm surface reads
+    /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
+    /// to an item without that confirmation (spec non-goal "no silent write").
+    pub photo_recognition: PhotoRecognition,
+}
+
+/// Model-side recognition state. The view projection is
+/// [`PhotoRecognitionView`].
+#[derive(Debug, Default, Clone, PartialEq)]
+pub enum PhotoRecognition {
+    #[default]
+    Idle,
+    Reading {
+        photo_id: String,
+    },
+    Ready {
+        photo_id: String,
+        draft: PhotoDraft,
+    },
+    /// The device has no recognition. Not an error: the photo is still saved
+    /// and the user types the fields.
+    Unsupported {
+        photo_id: String,
+    },
+    Failed {
+        photo_id: String,
+    },
 }
 
 impl Model {
@@ -215,6 +243,34 @@ pub struct ViewModel {
     /// The one suggested session on the Practice tab (#1082). `None` whenever
     /// nothing qualifies: it suggests, it never gates.
     pub up_next: Option<SuggestedSession>,
+    /// What the last photographed page was read into, for the confirm surface.
+    pub photo_recognition: PhotoRecognitionView,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PhotoRecognitionView {
+    pub status: PhotoRecognitionStatus,
+    /// The photo being read, so the shell can show it beside the fields.
+    pub photo_id: Option<String>,
+    /// Present only under `Ready`.
+    pub draft: Option<PhotoDraft>,
+    /// True when at least one read field is below `recognition::LOW_CONFIDENCE`
+    /// — shown, not hidden (key decision 7). Derived here so the shell does no
+    /// thresholding of its own.
+    pub has_low_confidence: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum PhotoRecognitionStatus {
+    #[default]
+    Idle,
+    Reading,
+    Ready,
+    Unsupported,
+    Failed,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

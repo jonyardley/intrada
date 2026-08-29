@@ -57,8 +57,19 @@ final class Store {
       case .persistence(let operation):
         let output = persistenceOutput(for: operation)
         process(guarded { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
+      case .recognition(let operation):
+        Task { await self.handleRecognition(operation, id: request.id) }
       }
     }
+  }
+
+  private func handleRecognition(_ operation: RecognitionOperation, id: UInt32) async {
+    let output: RecognitionOutput
+    switch operation {
+    case .readPage(let photoId):
+      output = await PageReader.read(photoId: photoId)
+    }
+    process(guarded { try bridge.resolve(id, recognitionOutput: output) } ?? [])
   }
 
   private func refreshView() {

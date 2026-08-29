@@ -360,9 +360,6 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-/// The host half of `validate_link_exercise`: the id names an item that exists
-/// and is a piece. Shared with `AddLinkedExercise`, where the exercise does not
-/// exist yet and so only this half can run.
 /// A photo id becomes a path component in the shell, so a value that is not a
 /// ulid is a traversal out of the app container (`specs/piece-from-photo.md`).
 /// The core is the only layer that can refuse it before it is stored.
@@ -376,6 +373,9 @@ pub fn validate_photo_id(photo_id: &str) -> Result<(), LibraryError> {
     Ok(())
 }
 
+/// The host half of `validate_link_exercise`: the id names an item that exists
+/// and is a piece. Shared with `AddLinkedExercise`, where the exercise does not
+/// exist yet and so only this half can run.
 pub fn validate_piece_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
     let piece = model
         .items
