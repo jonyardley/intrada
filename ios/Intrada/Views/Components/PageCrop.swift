@@ -7,8 +7,15 @@ import Vision
 /// the surround, and that competes with the real title (#1436).
 enum PageCrop {
   /// Returns the original whenever no page is found: never lose the photo.
+  /// One context, not one per photo: it spins up a Metal command queue.
+  private static let context = CIContext()
+
   static func toPage(_ image: UIImage) -> UIImage {
-    guard let cgImage = image.cgImage else { return image }
+    // `cgImage` is the raw buffer with the EXIF rotation split off into
+    // `imageOrientation`, and both Vision and CoreImage below assume `.up`.
+    // A portrait photo would otherwise be cropped, stored and read sideways.
+    let upright = image.imageOrientation == .up ? image : redrawnUpright(image)
+    guard let cgImage = upright.cgImage else { return image }
 
     let request = VNDetectDocumentSegmentationRequest()
     guard (try? VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])) != nil,
@@ -33,11 +40,20 @@ enum PageCrop {
           "inputBottomLeft": point(page.bottomLeft),
           "inputBottomRight": point(page.bottomRight),
         ])?.outputImage,
-      let rendered = CIContext().createCGImage(corrected, from: corrected.extent)
+      let rendered = context.createCGImage(corrected, from: corrected.extent)
     else {
       return image
     }
 
     return UIImage(cgImage: rendered)
+  }
+
+  /// Internal so it is testable without Vision, which `toPage` is not.
+  static func redrawnUpright(_ image: UIImage) -> UIImage {
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = image.scale
+    return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: image.size))
+    }
   }
 }

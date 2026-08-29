@@ -89,6 +89,9 @@ pub fn validate_title(title: &str) -> Result<(), LibraryError> {
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     validate_title(&input.title)?;
+    if let Some(photo_id) = input.photo_id.as_deref() {
+        validate_photo_id(photo_id)?;
+    }
     // Composer is required for pieces, optional for exercises.
     match input.kind {
         ItemKind::Piece => {

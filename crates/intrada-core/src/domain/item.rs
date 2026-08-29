@@ -305,12 +305,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
-            if let Some(photo_id) = input.photo_id.as_deref() {
-                if let Err(e) = validation::validate_photo_id(photo_id) {
-                    model.last_error = Some(e.to_string());
-                    return crux_core::render::render();
-                }
-            }
 
             let now = chrono::Utc::now();
             let item = Item {
@@ -393,7 +387,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
-                photo_id: None,
+                // No scan surface writes an exercise yet, but a `CreateItem`
+                // carrying one must not mean two different things by event.
+                photo_id: input.photo_id,
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {

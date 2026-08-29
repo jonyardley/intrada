@@ -209,6 +209,12 @@ const TEMPO_MARKINGS: &[&str] = &[
 /// where it sits on the page.
 const EXPLICIT_CREDIT: f32 = 1.0;
 
+/// How much a bare dash dampens the line's own confidence: the weakest credit
+/// form, and the only one that has to prove itself geometrically.
+const DASH_CREDIT: f32 = 0.8;
+
+const DASHES: [char; 3] = ['-', '\u{2013}', '\u{2014}'];
+
 /// Credit prefixes, longest first. The `f32` is how much the match dampens the
 /// line's own OCR confidence: a bare `by` is a weaker claim than `Music by`.
 const CREDIT_PREFIXES: &[(&str, f32)] = &[
@@ -219,15 +225,7 @@ const CREDIT_PREFIXES: &[(&str, f32)] = &[
     ("music by", 1.0),
     ("written by", 0.9),
     ("by", 0.8),
-    // How a Real Book credits a composer: a dash and the name (#1436).
-    ("-", 0.8),
-    ("\u{2013}", 0.8),
-    ("\u{2014}", 0.8),
 ];
-
-/// Lines within this fraction of the biggest count as the same size, and the
-/// higher wins: superscripts inflate a chord's box to a title's (#1436).
-const TITLE_HEIGHT_TOLERANCE: f32 = 0.8;
 
 /// A line this high up the page can be the title. Below it we are into the
 /// first stave, where the largest text is a lyric, not a heading.
@@ -352,11 +350,8 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
     } else {
         &confident
     };
-    let tallest = pool.iter().map(|l| l.height).fold(0.0, f32::max);
-
     pool.iter()
-        .filter(|l| l.height >= tallest * TITLE_HEIGHT_TOLERANCE)
-        .min_by(|a, b| a.y.total_cmp(&b.y).then(b.height.total_cmp(&a.height)))
+        .max_by(|a, b| a.height.total_cmp(&b.height).then(b.y.total_cmp(&a.y)))
         .map(|l| TextDraftField {
             value: l.text.trim().to_string(),
             source: DraftSource::Recognised,
@@ -365,59 +360,70 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         })
 }
 
-/// A composer is spelled, not figured. Chord rows are full of digits and
-/// sharps, and a row like `-7 C7#5` otherwise reads as a credit under the dash
-/// form (#1436, which is exactly what it did).
-fn looks_like_a_name(text: &str) -> bool {
-    text.chars().any(char::is_alphabetic) && !text.chars().any(|c| c.is_ascii_digit() || c == '#')
-}
-
 fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
-    lines.iter().find_map(|l| {
-        let (rest, damping) = credit_prefix(&l.text)?;
-        // A bare `by` is ordinary English and appears in lyrics ("By the light
-        // of the silvery moon"), so it only counts where a credit is actually
-        // printed. "Music by" is unambiguous enough to run the whole page.
-        if damping < EXPLICIT_CREDIT && (l.y >= TITLE_BAND || !looks_like_a_name(rest)) {
-            return None;
-        }
-        // OCR picks up a stray bracket off the stave above ("-J.J. JOHNSON)").
-        let rest = rest.trim().trim_end_matches([')', ']', '(', '[']).trim();
-        (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then(|| {
-            let confidence = l.confidence * damping;
-            TextDraftField {
-                value: rest.to_string(),
-                source: DraftSource::Recognised,
-                confidence,
-                weak: confidence < LOW_CONFIDENCE,
+    lines
+        .iter()
+        .filter_map(|l| {
+            let (rest, damping) = credit_prefix(&l.text)?;
+            // A bare `by` turns up in lyrics, so the weak forms only count
+            // where a credit is printed. "Music by" runs the whole page.
+            if damping < EXPLICIT_CREDIT && l.y >= TITLE_BAND {
+                return None;
             }
+            let rest = rest.trim().trim_end_matches([')', ']', '(', '[']).trim();
+            (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then_some((l, rest, damping))
         })
-    })
+        // Strongest claim, then topmost: Vision's order is not the page's,
+        // and its first match let a lyric beat an explicit credit (#1436).
+        .max_by(|(a, _, ad), (b, _, bd)| ad.total_cmp(bd).then(b.y.total_cmp(&a.y)))
+        .map(|(l, rest, damping)| TextDraftField {
+            value: rest.to_string(),
+            source: DraftSource::Recognised,
+            confidence: l.confidence * damping,
+            weak: l.confidence * damping < LOW_CONFIDENCE,
+        })
 }
 
 /// Returns what follows the credit prefix, and how far the prefix dampens
 /// confidence. Matched only at the start of the line.
+/// A composer is spelled, capitalised and short. Everything else a dash can
+/// start on a lead sheet is not: a chord row is figures (`-7 C7#5`) and a
+/// hyphenated lyric runs on in lower case (`-er, I cried a riv-er over you`).
+/// Both read as the composer before this (#1436).
+fn looks_like_a_credited_name(text: &str) -> bool {
+    (1..=4).contains(&text.split_whitespace().count())
+        && !text.contains(',')
+        && !text.chars().any(|c| c.is_ascii_digit() || c == '#')
+        && text.starts_with(char::is_uppercase)
+}
+
 fn credit_prefix(text: &str) -> Option<(&str, f32)> {
     let trimmed = text.trim();
-    CREDIT_PREFIXES.iter().find_map(|(prefix, damping)| {
-        // Compared on `trimmed`, not on its lowercase: `to_lowercase` is not
-        // length-preserving, so a byte index taken from one is not an index
-        // into the other.
-        let head = trimmed.get(..prefix.len())?;
+    // A leading dash does not stop an explicit credit being one.
+    let undashed = trimmed.trim_start_matches(|c| DASHES.contains(&c) || c == ' ');
+
+    let worded = CREDIT_PREFIXES.iter().find_map(|(prefix, damping)| {
+        // Compared on `undashed`, not its lowercase: `to_lowercase` is not
+        // length-preserving, so a byte index from one is not an index into it.
+        let head = undashed.get(..prefix.len())?;
         if !head.eq_ignore_ascii_case(prefix) {
             return None;
         }
-        let rest = &trimmed[prefix.len()..];
-        // A word prefix must end on a boundary ("Bydgoszcz Suite" is not a
-        // credit); a dash is its own boundary and usually butts the name.
-        let is_word = prefix.starts_with(|c: char| c.is_alphanumeric());
-        if is_word && !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':')
-        {
+        let rest = &undashed[prefix.len()..];
+        // Must end on a word boundary: "Bydgoszcz Suite" is not a credit.
+        if !rest.is_empty() && !rest.starts_with(|c: char| c.is_whitespace() || c == ':') {
             return None;
         }
-        let rest = &trimmed[prefix.len()..];
-        Some((rest.trim_start_matches([':', ' ', '\t', '-']), *damping))
-    })
+        Some((rest.trim_start_matches([':', ' ', '\t']), *damping))
+    });
+    if worded.is_some() {
+        return worded;
+    }
+
+    // How a Real Book credits a composer: a dash and the name, nothing else.
+    let name = undashed.trim_end_matches([')', ']', '(', '[']).trim();
+    (undashed.len() < trimmed.len() && looks_like_a_credited_name(name))
+        .then_some((name, DASH_CREDIT))
 }
 
 fn heuristic_tempo(lines: &[RecognisedLine], title: Option<&str>) -> Option<TempoDraftField> {
@@ -682,21 +688,45 @@ mod tests {
         }
     }
 
-    /// A chord row starting with a dash sits *inside* the title band, not below
-    /// it, so the band check alone never protected anything. It read `-7 C7#5`
-    /// as the composer on a real page (#1436).
+    /// What a dash actually starts on a lead sheet, all of it inside the band
+    /// where the band check never protected anything.
     #[test]
-    fn a_chord_row_starting_with_a_dash_is_not_a_credit() {
-        let draft = read_fields(&page(vec![
-            line("LAMENT", 0.048, 0.0459),
-            line("-7 C7#5 Bb7", 0.119, 0.0293),
-        ]));
-        assert!(draft.composer.is_none());
-        assert_eq!(draft.title.expect("a title").value, "LAMENT");
+    fn a_dash_reads_as_a_credit_only_when_a_name_follows_it() {
+        let credits = [
+            ("-J.J. JOHNSON", Some("J.J. JOHNSON")),
+            ("- Cole Porter", Some("Cole Porter")),
+            ("- Music by Cole Porter", Some("Cole Porter")),
+            ("-7 C7#5 Bb7", None),
+            ("-er, I cried a riv-er over you", None),
+            ("-ly, you say you're lone-ly", None),
+            ("- er", None),
+        ];
+        for (text, expected) in credits {
+            let draft = read_fields(&page(vec![
+                line("LAMENT", 0.048, 0.0459),
+                line(text, 0.119, 0.0293),
+            ]));
+            assert_eq!(
+                draft.composer.map(|f| f.value).as_deref(),
+                expected,
+                "reading {text:?}"
+            );
+        }
     }
 
-    /// A photocopier's reduction mark sits above everything, so "topmost wins"
-    /// handed it the title (#1436).
+    /// Vision's ordering is not the page's, so taking its first match let a
+    /// lyric fragment beat an explicit credit printed above it (#1436).
+    #[test]
+    fn an_explicit_credit_beats_a_weaker_one_listed_before_it() {
+        let draft = read_fields(&page(vec![
+            line("Cry Me A River", 0.029, 0.0247),
+            line("By the light of the silvery moon", 0.31, 0.02),
+            line("Lyrics and Music by Arthur Hamilton", 0.06, 0.0119),
+        ]));
+        assert_eq!(draft.composer.expect("a composer").value, "Arthur Hamilton");
+    }
+
+    /// A photocopier's reduction mark and a page number are all figure (#1436).
     #[test]
     fn a_photocopier_mark_above_the_title_is_not_the_title() {
         let draft = read_fields(&page(vec![
@@ -751,8 +781,10 @@ mod tests {
         assert_eq!(tempo.value.bpm, Some(88));
     }
 
+    /// Superscripts inflate a chord row's box past the title's, so size cannot
+    /// separate them — but a chord row is more figure than word (#1436).
     #[test]
-    fn a_chord_row_measured_taller_than_the_title_still_loses_to_it() {
+    fn a_chord_row_taller_than_the_title_is_not_a_title() {
         let draft = read_fields(&page(vec![
             line("B6 B67$5 E6A", 0.123, 0.0253),
             line("Cry Me A River", 0.029, 0.0247),
