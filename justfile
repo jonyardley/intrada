@@ -415,12 +415,15 @@ _ios-test-run tier:
 # running anything. Shared by `_ios-test-run` (local) and CI's
 # `native-ios-build` job (#1207) — the xcodebuild invocation lives in exactly
 # one place so CI and local dev can't drift apart.
+# No `--use-cache` here: the cache key is project.yml, which a new Swift file
+# doesn't change, so a newly added test file silently never joins the target
+# and the suite goes green without ever running it (#1456).
 [private]
 _ios-build-for-testing:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
-    xcodegen generate --use-cache
+    xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
