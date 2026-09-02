@@ -32,7 +32,14 @@ Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all busi
 
 ## Prerequisites
 
-- Rust stable (2021 edition); the pinned toolchain is in `rust-toolchain.toml`
+- Rust stable (2021 edition) via [rustup](https://rustup.rs); the pinned
+  toolchain is in `rust-toolchain.toml`. Do not also install Rust from Homebrew:
+  `/opt/homebrew/bin` sits ahead of `~/.cargo/bin` on a default PATH, so the brew
+  `cargo` shadows rustup, ignores the pin, and has no iOS targets
+- [cargo-swift](https://github.com/antoniusnaumann/cargo-swift) at exactly
+  0.9.0 (`cargo install cargo-swift --version =0.9.0`); its bundled
+  uniffi-bindgen matches our uniffi 0.29.4 runtime, and newer releases crash
+  the app with a contract mismatch
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
 - Xcode 26+, iOS 17.0+ target, [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), and the iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
 
