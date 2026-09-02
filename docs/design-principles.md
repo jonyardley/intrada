@@ -721,10 +721,12 @@ out, and the count drops its "to go" clause. Tone V1: the app has no microphone
 and does not know how it went, so a banner at ten would be the notebook claiming
 to have listened.
 
-**The words are still open.** `Passes` replaces `Repetitions`. `Clean` stays;
-`Missed` goes, because you miss a note rather than a pass and it describes the
-player rather than the playing. `Fluffed` is the draft. Alternatives are on the
-design file.
+**`Passes`, `Clean`, `Fluffed`.** `Passes` replaces `Repetitions`, and `Clean`
+stays because it is what pianists already say. `Missed` goes: you miss a note
+rather than a pass, and it describes the player rather than the playing.
+`Fluffed` is its exact British counterpart and carries no shame. Rejected:
+`Clean / Not clean` (clinical), `Solid / Scrappy`, `Got it / Not yet` (warm, but
+it edges toward the app encouraging you).
 
 Options considered: a metre picker on the resident row (rejected, it is the
 resident chrome T2 forbids and it would push the transport off screen); a

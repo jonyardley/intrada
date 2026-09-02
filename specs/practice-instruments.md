@@ -257,20 +257,22 @@ Tier 3. Expected gaps: `ios/` is excluded from Codecov, so PRs 1, 2, 4 and 6
 report little; the core PRs (3 and 5) should clear 70% on the handler, migration
 and normalisation paths.
 
-## Copy, still open
+## Copy
+
+**Settled (Jon, 2026-09-02): `Passes`, `Clean`, `Fluffed`.**
 
 The header becomes **Passes**, not Repetitions: Jon's own word on #1367 and a
 musician's rather than a data model's (tone rule 2).
 
-**Clean** stays. It is what pianists already say about a pass. **Missed** was the
-weak half: you miss a note, not a pass, and it describes the player rather than
-the playing. The draft uses **Fluffed**, its exact British counterpart, which
-describes the pass and carries no shame.
+**Clean** stays. It is what pianists already say about a pass. **Missed** goes:
+it was the weak half, because you miss a note rather than a pass and it
+describes the player rather than the playing. **Fluffed** is its exact British
+counterpart, describes the pass, and carries no shame.
 
-Not settled. Alternatives on the design file: *Clean / Not clean* (perfectly
-symmetrical, a little clinical), *Solid / Scrappy* (two adjectives, both about
-the playing), *Got it / Not yet* (warm, but edges toward the app encouraging
-you, which V1 forbids the app and V2 permits the user).
+Rejected: *Clean / Not clean* (perfectly symmetrical, a little clinical),
+*Solid / Scrappy* (two adjectives, both about the playing), *Got it / Not yet*
+(warm, but edges toward the app encouraging you, which V1 forbids the app and
+V2 permits only the user).
 
 ## Open questions
 
