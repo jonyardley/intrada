@@ -63,7 +63,7 @@ so a second source of truth cannot exist.
 pub struct Metre {
     pub beats: u8,          // numerator: 2 to 12
     pub unit: u8,           // denominator: 2, 4 or 8
-    pub groups: Option<Vec<u8>>,  // sums to `beats` when present
+    pub groups: Option<Vec<u8>>,  // sums to `beats`; enforced in validation.rs
 }
 ```
 
@@ -92,7 +92,15 @@ fields that can contradict, and the chart's is the wrong shape anyway.
   7/8 the pulse is a quaver and the row reads `♪ = 168`. Stored raw that is
   double the truth, and it would land in the tempo trend (T17) beside crotchet
   values. `achieved_tempo` keeps its existing meaning of **crotchet BPM**, and
-  the core converts: `crotchet_bpm = displayed * 4 / unit`.
+  the core converts: `crotchet_bpm = round(displayed * 4 / unit)`, rounding half
+  away from zero, i.e. `(displayed * 4 + unit / 2) / unit` in integer
+  arithmetic.
+
+  **The rounding rule is stated here on purpose.** For `unit: 8` the multiplier
+  is one half, so every odd displayed value has a half-BPM to lose: `♪ = 169`
+  must become 85, not 84. Left unstated, the table test would be written against
+  whatever the code happened to do, which is the failure CLAUDE.md's
+  parser-and-validator rule exists to prevent. `unit: 2` and `unit: 4` are exact.
 
 The shell reports what it displayed plus the click's state; the core rules and
 normalises, per the dumb-pipe rule and #1420's contract.
@@ -102,8 +110,8 @@ normalises, per the dumb-pipe rule and #1420's contract.
 /// `TempoObservation`: the core decides what they mean.
 pub struct ClickState {
     pub metre: Metre,
-    /// Bitmask over `metre.beats`, LSB = beat 1. A fixed-width int rather than
-    /// a Vec because this rides in the `ActiveSession` bincode blob.
+    /// Bitmask over `metre.beats`, LSB = beat 1. Fixed width and cheap to mask;
+    /// a `Vec<bool>` would serialise fine but costs a length prefix per entry.
     pub sounding: u16,
 }
 
@@ -138,18 +146,32 @@ can render, then `StartSession`'s current behaviour gives every entry
 looked at it, and `ItemPracticeSummary` fills with zeroes nobody earned. This is
 exactly T16's failure mode, a third time.
 
-**The rule: a displayed target is not a recorded one.**
+**The rule: a target is written when the counter is first used, never at session
+start.**
 
-- The target that renders (10 by default) is a **view concern**, projected for
-  the counter to draw against. It is not written to the entry.
-- `rep_count` and `rep_history` stay `None` until the **first tap**. That tap
-  initialises them and records itself.
-- `StartSession` therefore stops pre-initialising the rep fields. The existing
-  `rep_target.is_some()` branch goes; initialisation moves to the first
-  `RepGotIt` / `RepMissed`, which is what `InitRepCounter` already does. That
-  event stops being dead code without needing a Swift caller of its own.
-- An entry practised with the counter untouched is indistinguishable from today's
-  entries with no target: `None` everywhere, nothing in the summaries.
+- **All four rep fields stay `None` on an untouched entry.** Such an entry is
+  indistinguishable from today's entries with no target, and contributes nothing
+  to `ItemPracticeSummary`.
+- **The first tap writes all four**, target included, and records itself. This is
+  what `InitRepCounter` already does (`session.rs:1465`), so it becomes the
+  first step of `RepGotIt` / `RepMissed` rather than dead code, and needs no
+  Swift caller of its own. Both handlers currently guard on
+  `(Some(target), Some(count))` and would otherwise no-op forever on a `None`
+  entry.
+- **`StartSession` stops pre-initialising.** Its `rep_target.is_some()` branch
+  (`session.rs:1186-1189`) goes: with the counter resident, that branch would
+  bank a zero and an empty history on every entry in the setlist.
+- **The 10 the counter draws against before the first tap is a view concern**,
+  projected for the counter to render, and distinct from the `DEFAULT_REP_TARGET`
+  the first tap writes. Naming them separately is deliberate: the drawn number
+  must not imply a recorded one.
+
+`DEFAULT_REP_TARGET` rises from 5 to 10, which makes it equal to
+`MAX_REP_TARGET`. That is intended, not an oversight: the `3...10` stepper
+exists to let a musician ask for *fewer* passes than the default ten, never
+more. Two shell constants have to move with it, or the builder and the player
+disagree: `EntrySettingsSheet.swift:26,34` hardcodes the `3...10` range and an
+`?? 5` fallback that mirrors the Rust constant by hand.
 
 ## The pass counter's one schema delta
 

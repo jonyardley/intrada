@@ -646,9 +646,10 @@ The screen budget came first, because with the pass counter on the Focus Player
 already ran to the bottom edge. All three instruments are resident, so something
 had to give, and what gives is the timer ring:
 
-- **The session timer** sits in the top orientation band, taking the 28pt of
-  dead space that balanced the options menu. Orientation, never feedback: a
-  duration cannot praise you. It costs no row.
+- **The session timer** sits in the top orientation band, in the slot that was
+  28pt of dead space balancing the options menu. Orientation, never feedback: a
+  duration cannot praise you. It costs no row, though it does widen both side
+  slots, so the position label between them loses horizontal room.
 - **The pass counter is always on screen and can be ignored** (Jon,
   2026-09-02, reversing an earlier opt-in-from-the-menu plan). Deciding in the
   builder is the wrong moment, and a menu is a gesture nobody spends
@@ -656,7 +657,8 @@ had to give, and what gives is the timer ring:
   nothing**.
 - **The click's pattern is two layers down**, in a sheet. Only the bar line
   stays resident, and only while the click sounds.
-- **The ring shrinks from 236pt to about 200pt.** A resident counter has to come
+- **The ring shrinks from 236pt to about 200pt**, landing with the resident
+  counter (#1367) rather than with the timer. A resident counter has to come
   from somewhere, and the ring had the most slack: it is still far and away the
   dominant element. Stated rather than absorbed silently, because it is the
   price of the counter being always there.
@@ -716,7 +718,7 @@ drawn, the target it draws against must be a view concern; `rep_count` and
 zero nobody earned and the summaries fill with defaults, which is T16's exact
 failure mode a third time.
 
-**Reaching the pass target is not congratulated.** The dots fill, Clean greys
+**Reaching the pass target is not congratulated.** The dots fill, `Got it` greys
 out, and the count drops its "to go" clause. Tone V1: the app has no microphone
 and does not know how it went, so a banner at ten would be the notebook claiming
 to have listened.

@@ -343,6 +343,10 @@
     }
 
     /// Player Focus — an exercise with an active rep counter.
+    static var previewActiveLongSession: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActiveLongSession))
+    }
+
     static var previewActiveReps: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
     }
@@ -899,9 +903,13 @@
     /// Item start instant + the snapshot reference (start + 4:12) so the timer
     /// renders a fixed `04:12` deterministically.
     static let previewStartedAt = "2026-05-30T09:00:00Z"
-    /// Deliberately 13 minutes before the item started, so the session timer and
-    /// the item ring cannot both be right by reading the same field.
+    /// Deliberately before the item started, so the session timer and the item
+    /// ring cannot both be right by reading the same field.
     static let previewSessionStartedAt = "2026-05-30T08:47:00Z"
+    /// Past an hour, where `clockDisplay` switches to `H:MM:SS` and the reading
+    /// outgrows the orientation slot. An hour at the piano is ordinary, not an
+    /// edge case.
+    static let previewLongSessionStartedAt = "2026-05-30T07:52:00Z"
     static var previewReferenceDate: Date {
       (SessionClock.parseRFC3339(previewStartedAt) ?? .distantPast).addingTimeInterval(252)
     }
@@ -935,6 +943,24 @@
         currentRepHistory: nil, currentPlannedDurationSecs: 480, nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66)
+    }
+
+    /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
+    static var previewActiveLongSession: ActiveSessionView {
+      let base = previewActive
+      return ActiveSessionView(
+        currentItemTitle: base.currentItemTitle, currentItemType: base.currentItemType,
+        currentPosition: base.currentPosition, totalItems: base.totalItems,
+        startedAt: previewLongSessionStartedAt, currentItemStartedAt: base.currentItemStartedAt,
+        entries: base.entries, sessionIntention: base.sessionIntention,
+        currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
+        currentRepTargetReached: base.currentRepTargetReached,
+        currentRepHistory: base.currentRepHistory,
+        currentPlannedDurationSecs: base.currentPlannedDurationSecs,
+        nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
+        currentRelatedPieceTitle: base.currentRelatedPieceTitle,
+        currentItemTempoMarking: base.currentItemTempoMarking,
+        currentItemTempoBpm: base.currentItemTempoBpm)
     }
 
     static var previewActiveReps: ActiveSessionView {

@@ -267,6 +267,43 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sounding), as: axConfig)
   }
 
+  // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the
+  // orientation slot's minimum. Full-screen because the whole strip reflows.
+  func testFocusPlayerLongSession() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: .previewActiveLongSession), as: config)
+  }
+
+  // Band-level rather than full-screen: what can regress is the slot clipping a
+  // long clock, and a component reference costs a few KB against 300k+ for the
+  // player's radial gradient (snapshot hygiene).
+  private func orientationBand(elapsed: Int) -> some View {
+    SessionOrientationBand(
+      sessionElapsed: elapsed, positionLabel: "FOCUS · 3 OF 5",
+      types: [.exercise, .exercise, .exercise, .piece, .exercise], filled: 3,
+      menu: { Image(systemName: "ellipsis").frame(width: 28, height: 28) }
+    )
+    .frame(width: 342)
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.playerBgMid)
+  }
+
+  func testOrientationBandLongSession() {
+    assertSnapshot(of: orientationBand(elapsed: 3732), as: .image(precision: 0.99))
+  }
+
+  func testOrientationBandLargeText() {
+    assertSnapshot(
+      of: orientationBand(elapsed: 3732),
+      as: .image(
+        precision: 0.99,
+        traits: UITraitCollection { traits in
+          traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        }))
+  }
+
   func testFocusPlayerWithReps() {
     assertSnapshot(
       of: host(

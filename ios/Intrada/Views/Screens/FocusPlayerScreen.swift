@@ -68,47 +68,29 @@ struct FocusPlayerScreen: View {
 
   // ── Top: session elapsed + position label + progress + options menu ──
 
-  /// Equal side slots keep the position label centred while the leading one
-  /// carries the session timer (design-principles T19).
-  private static let orientationSlot: CGFloat = 56
-
-  private func topChrome(_ active: ActiveSessionView) -> some View {
-    VStack(spacing: 12) {
-      HStack(spacing: 0) {
-        sessionElapsed(active)
-          .frame(width: Self.orientationSlot, alignment: .leading)
-        Text(positionLabel(active))
-          .font(IntradaFont.badge)
-          .tracking(1.5)
-          .foregroundStyle(IntradaColor.inkFaint)
-          .frame(maxWidth: .infinity)
-        optionsMenu
-          .frame(width: Self.orientationSlot, alignment: .trailing)
+  @ViewBuilder private func topChrome(_ active: ActiveSessionView) -> some View {
+    let start = SessionClock.parseRFC3339(active.startedAt)
+    if let start, referenceDate == nil {
+      // Anchored to the session start, not `.now`: `.now` re-phases the tick on
+      // every body evaluation, so the two timers drift out of step on a screen
+      // whose brief is to sit still.
+      TimelineView(.periodic(from: start, by: 1)) { context in
+        band(active, elapsed: Int(context.date.timeIntervalSince(start)))
       }
-      SegmentedProgress(
-        types: active.entries.map(\.itemType),
-        filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)))
-    }
-  }
-
-  @ViewBuilder private func sessionElapsed(_ active: ActiveSessionView) -> some View {
-    let start = SessionClock.parseRFC3339(active.startedAt) ?? Date()
-    if let referenceDate {
-      sessionElapsedBody(Int(referenceDate.timeIntervalSince(start)))
     } else {
-      TimelineView(.periodic(from: .now, by: 1)) { context in
-        sessionElapsedBody(Int(context.date.timeIntervalSince(start)))
-      }
+      // A session total nobody can vouch for is worse than none: an unparsable
+      // anchor would otherwise count up from screen appearance and read as fact.
+      band(active, elapsed: start.map { Int((referenceDate ?? .now).timeIntervalSince($0)) })
     }
   }
 
-  private func sessionElapsedBody(_ elapsed: Int) -> some View {
-    Text(SessionClock.clockDisplay(elapsed))
-      .font(IntradaFont.metaMedium)
-      .monospacedDigit()
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .accessibilityLabel("Session so far")
-      .accessibilityValue(SessionClock.clockDisplay(elapsed))
+  private func band(_ active: ActiveSessionView, elapsed: Int?) -> some View {
+    SessionOrientationBand(
+      sessionElapsed: elapsed,
+      positionLabel: positionLabel(active),
+      types: active.entries.map(\.itemType),
+      filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)),
+      menu: { optionsMenu })
   }
 
   private func positionLabel(_ active: ActiveSessionView) -> String {
@@ -175,7 +157,7 @@ struct FocusPlayerScreen: View {
         elapsed: Int(referenceDate.timeIntervalSince(start)),
         planned: active.currentPlannedDurationSecs)
     } else {
-      TimelineView(.periodic(from: .now, by: 1)) { context in
+      TimelineView(.periodic(from: start, by: 1)) { context in
         timerBody(
           elapsed: Int(context.date.timeIntervalSince(start)),
           planned: active.currentPlannedDurationSecs)
@@ -372,12 +354,13 @@ private struct TimerRing: View {
     }
     .frame(width: 236, height: 236)
     .accessibilityElement(children: .ignore)
-    // Named for the item, not just "Elapsed": the orientation band now carries a
-    // session timer too, so an unqualified label reads as either one (T19).
-    .accessibilityLabel(
+    // Named for the item rather than just "Elapsed": the orientation band now
+    // carries a session timer too, so an unqualified label reads as either (T19).
+    .accessibilityLabel("This item")
+    .accessibilityValue(
       planned == nil
-        ? "This item, \(SessionClock.clockDisplay(elapsed))"
-        : "This item, \(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
+        ? SessionClock.clockDisplay(elapsed)
+        : "\(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
     )
   }
 }
