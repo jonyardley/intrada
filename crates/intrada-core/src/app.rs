@@ -469,6 +469,21 @@ impl Intrada {
         // Cloned pre-filter for pickers that curate their own subset (#1484).
         let all_items = items.clone();
 
+        let mut recently_practised = all_items.clone();
+        recently_practised.retain(|i| {
+            i.practice
+                .as_ref()
+                .is_some_and(|p| p.last_practiced_at.is_some())
+        });
+        sort_library_items(
+            &mut recently_practised,
+            &LibrarySort {
+                field: SortField::LastPracticed,
+                direction: SortDirection::Descending,
+            },
+        );
+        recently_practised.truncate(RECENTLY_PRACTISED_LIMIT);
+
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
         }
@@ -623,6 +638,7 @@ impl Intrada {
         ViewModel {
             items,
             all_items,
+            recently_practised,
             active_query: model.active_query.clone(),
             active_sort: model.active_sort,
             visible_pieces,
@@ -1145,6 +1161,8 @@ fn title_sort_key(title: &str) -> String {
         .flat_map(|c| c.to_lowercase())
         .collect()
 }
+
+const RECENTLY_PRACTISED_LIMIT: usize = 5;
 
 fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
     items.sort_by(|a, b| {
@@ -4168,6 +4186,69 @@ mod tests {
             app.view(&model).items.last().unwrap().title,
             "NeverPractised"
         );
+    }
+
+    #[test]
+    fn recently_practised_lists_practised_items_most_recent_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Stale", ItemKind::Piece, now),
+            make_item("b", "Fresh", ItemKind::Exercise, now),
+            make_item("c", "NeverPractised", ItemKind::Piece, now),
+        ];
+        set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
+        set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
+
+        let vm = app.view(&model);
+
+        assert_eq!(
+            vm.recently_practised
+                .iter()
+                .map(|i| i.title.as_str())
+                .collect::<Vec<_>>(),
+            ["Fresh", "Stale"],
+            "most recently practised first, never-practised excluded"
+        );
+    }
+
+    #[test]
+    fn recently_practised_caps_at_five() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        for i in 0..8 {
+            let id = format!("p{i}");
+            model.items.push(make_item(&id, &id, ItemKind::Piece, now));
+            set_last_practiced(&mut model, &id, now - chrono::Duration::days(i as i64));
+        }
+
+        let vm = app.view(&model);
+
+        assert_eq!(vm.recently_practised.len(), 5);
+        assert_eq!(vm.recently_practised[0].title, "p0");
+    }
+
+    #[test]
+    fn a_library_filter_cannot_hide_a_recently_practised_item() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Sonata", ItemKind::Piece, now),
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+        ];
+        set_last_practiced(&mut model, "p1", now - chrono::Duration::days(1));
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+
+        assert!(!vm.items.iter().any(|i| i.id == "p1"));
+        assert!(vm.recently_practised.iter().any(|i| i.id == "p1"));
     }
 
     #[test]

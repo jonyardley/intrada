@@ -205,6 +205,9 @@ pub struct ViewModel {
     /// `items`, unfiltered by `active_query` — for pickers that curate their
     /// own subset rather than mirroring the Library screen's filter (#1484).
     pub all_items: Vec<LibraryItemView>,
+    /// Up to 5 items with practice history, most recently practised first,
+    /// for the builder's "Recently practised" quick-add section (#1362).
+    pub recently_practised: Vec<LibraryItemView>,
     /// Active filter, mirrored so the shell's pill reads one source of truth (#792).
     pub active_query: Option<ListQuery>,
     /// Active sort, mirrored so the shell's menu reads one source of truth.
