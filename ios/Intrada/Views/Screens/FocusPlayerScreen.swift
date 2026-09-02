@@ -66,24 +66,31 @@ struct FocusPlayerScreen: View {
     .padding(.top, IntradaSpacing.card)
   }
 
-  // ── Top: position label + segmented session progress + options menu ──
+  // ── Top: session elapsed + position label + progress + options menu ──
 
-  private func topChrome(_ active: ActiveSessionView) -> some View {
-    VStack(spacing: 12) {
-      HStack {
-        Color.clear.frame(width: 28, height: 1)  // balances the menu so the label centres
-        Spacer()
-        Text(positionLabel(active))
-          .font(IntradaFont.badge)
-          .tracking(1.5)
-          .foregroundStyle(IntradaColor.inkFaint)
-        Spacer()
-        optionsMenu
+  @ViewBuilder private func topChrome(_ active: ActiveSessionView) -> some View {
+    let start = SessionClock.parseRFC3339(active.startedAt)
+    if let start, referenceDate == nil {
+      // Anchored to the session start, not `.now`: `.now` re-phases the tick on
+      // every body evaluation, so the two timers drift out of step on a screen
+      // whose brief is to sit still.
+      TimelineView(.periodic(from: start, by: 1)) { context in
+        band(active, elapsed: Int(context.date.timeIntervalSince(start)))
       }
-      SegmentedProgress(
-        types: active.entries.map(\.itemType),
-        filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)))
+    } else {
+      // A session total nobody can vouch for is worse than none: an unparsable
+      // anchor would otherwise count up from screen appearance and read as fact.
+      band(active, elapsed: start.map { Int((referenceDate ?? .now).timeIntervalSince($0)) })
     }
+  }
+
+  private func band(_ active: ActiveSessionView, elapsed: Int?) -> some View {
+    SessionOrientationBand(
+      sessionElapsed: elapsed,
+      positionLabel: positionLabel(active),
+      types: active.entries.map(\.itemType),
+      filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)),
+      menu: { optionsMenu })
   }
 
   private func positionLabel(_ active: ActiveSessionView) -> String {
@@ -150,7 +157,7 @@ struct FocusPlayerScreen: View {
         elapsed: Int(referenceDate.timeIntervalSince(start)),
         planned: active.currentPlannedDurationSecs)
     } else {
-      TimelineView(.periodic(from: .now, by: 1)) { context in
+      TimelineView(.periodic(from: start, by: 1)) { context in
         timerBody(
           elapsed: Int(context.date.timeIntervalSince(start)),
           planned: active.currentPlannedDurationSecs)
@@ -347,10 +354,13 @@ private struct TimerRing: View {
     }
     .frame(width: 236, height: 236)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
+    // Named for the item rather than just "Elapsed": the orientation band now
+    // carries a session timer too, so an unqualified label reads as either (T19).
+    .accessibilityLabel("This item")
+    .accessibilityValue(
       planned == nil
-        ? "Elapsed \(SessionClock.clockDisplay(elapsed))"
-        : "Elapsed \(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
+        ? SessionClock.clockDisplay(elapsed)
+        : "\(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
     )
   }
 }

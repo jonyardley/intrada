@@ -27,7 +27,7 @@ is_large() {
   case "$1" in
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
       testUpNextHeroNeverMarked | \
-      testFocusPlayerWithReps | testFocusPlayerWithTarget | \
+      testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection) return 0 ;;
     *) return 1 ;;
   esac

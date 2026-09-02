@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; -webkit-font-smoothing: antialiased; background: #EBE7D9; }
+  [data-lucide] { stroke-width: 2; }
+  code { font-size: 0.92em; background: #F0E7D6; padding: 1px 5px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; } }
+</style>
+</helmet>
+<div style="padding:44px;font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);">
+  <div style="max-width:1500px;margin:0 auto;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;">PRACTICE &middot; THE LIVE VIEW</div>
+    <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:38px;color:#2B2A26;margin-top:8px;line-height:1.05;">Three instruments on one strip</div>
+    <div style="font-size:14px;color:#6E6557;margin-top:10px;max-width:820px;line-height:1.6;">
+      One pass for <strong>#1364</strong> (a session timer), <strong>#1367</strong> (the pass counter) and
+      <strong>#1499</strong> (which beats the click sounds, and the time signature that makes that mean
+      something). They ship as separate PRs, smallest first, but they compete for the same screen, so they
+      are designed together. Spec: <code>specs/practice-instruments.md</code>.
+    </div>
+    <div style="margin-top:20px;padding:20px 22px;background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;max-width:820px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">The constraint</div>
+      <div style="font-size:13.5px;color:#6E6557;line-height:1.65;margin-top:10px;">
+        <strong style="color:#2B2A26;">The screen is already full.</strong> With the pass counter on, today's
+        Focus Player runs to the bottom edge. So the budget was spent deliberately rather than shared out:
+        the session timer is resident because it is orientation and costs no row; the pass counter is
+        opt-in and costs nothing when off; the click's pattern goes two layers down and leaves only an
+        honest indicator behind. <strong style="color:#2B2A26;">The resting screen is unchanged from what
+        shipped</strong>, which is the test T2 and T14 set.
+      </div>
+    </div>
+<div style="display:flex;gap:56px;flex-wrap:wrap;margin-top:52px;"><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1364 &middot; taken</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">The session timer sits in the orientation band</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">The elapsed session time takes the slot that was 28pt of dead space balancing the options menu, so the band carries all three orientation facts (how long, how far, which item) and no row is spent. Both side slots widen to fit it, so the position label between them gives up some width. Judgement-free by construction: a duration cannot praise you. <strong>Shipped and snapshot-tested.</strong></div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">12:34</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">04:12</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="display:flex;align-items:center;gap:8px;background:transparent;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#6E6557;"></i><span style="font-size:14.5px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">Allegro &middot; &#9833; = 132</span></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><span style="color:#6E6557;">0 of 10</span></span>
+  </div>
+  
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;opacity:0.4;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1364 &middot; alternative</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">Or a line under the progress bar</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">Dedicated, unambiguous, and it says what it is. Costs a row on the one screen with none to spare. Shown for comparison, not taken.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:28px;display:flex;justify-content:flex-start;"></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:28px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">12:34 <span style="color:#9A927F;font-weight:400;">in this session</span></div>
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">04:12</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="display:flex;align-items:center;gap:8px;background:transparent;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#6E6557;"></i><span style="font-size:14.5px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">Allegro &middot; &#9833; = 132</span></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><span style="color:#6E6557;">0 of 10</span></span>
+  </div>
+  
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;opacity:0.4;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div></div><div style="display:flex;gap:56px;flex-wrap:wrap;margin-top:52px;"><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1499 &middot; sounding</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">The bar gets its own line</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">The tempo row is exactly T14's, so tapping it still starts and stops. The bar sits under it, and <strong>that line is what opens the sheet</strong> &mdash; the two gestures cannot collide. It also gives the travelling dot room to be legible from a music stand.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">14:02</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">05:40</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9833; = 120</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">4/4</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><strong style="color:#2B2A26;">3</strong><span style="color:#6E6557;"> of 10 &middot; 7 to go</span></span>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div></div>
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1499 &middot; two layers down</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">The pattern lives in a sheet</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">Three presets cover the common cases; the grid is there for the rest, including the one that prompted the issue: beat 4 alone. The metre arrives already answered, from the chart, so T2's rule against asking mid-session holds.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">14:02</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">05:40</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9833; = 120</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">4/4</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><strong style="color:#2B2A26;">3</strong><span style="color:#6E6557;"> of 10 &middot; 7 to go</span></span>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div></div>
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div><div style="position:absolute;inset:0;background:rgba(43,42,38,0.28);z-index:50;"></div><div style="position:absolute;left:0;right:0;bottom:0;z-index:55;background:#F4F1E8;border-radius:26px 26px 43px 43px;box-shadow:0 -14px 40px -10px rgba(43,42,38,0.3);padding:14px 20px 32px;"><div style="width:36px;height:4px;border-radius:2px;background:#DCD4C1;margin:0 auto 15px;"></div><div style="display:flex;align-items:baseline;justify-content:space-between;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;color:#2B2A26;">Click</div><div style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9833; = 120</div></div><div style="font-size:12.5px;color:#6E6557;margin-top:6px;line-height:1.5;">The tempo stays &#9833; = 120. The pattern changes which beats you hear, not how fast you are playing.</div><div style="margin-top:17px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Time signature</div><div style="display:flex;gap:7px;margin-top:9px;"><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">3/4</div></div><div style="flex:1;text-align:center;background:#4C3FA6;border:1px solid #4C3FA6;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">4/4</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">6/8</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">Other</div></div></div><div style="font-size:11.5px;color:#9A927F;margin-top:7px;">From the chord chart. Changing it here holds for this session only.</div><div style="margin-top:17px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Sounds on</div><div style="display:flex;gap:7px;margin-top:9px;"><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">Every beat</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">Downbeat</div></div><div style="flex:1;text-align:center;background:#4C3FA6;border:1px solid #4C3FA6;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">2 and 4</div></div></div><div style="margin-top:12px;"><div style="display:flex;align-items:center;"><div style="display:flex;gap:7px;"><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">1</span></div><div style="width:50px;height:47px;background:#4C3FA6;border:1.5px solid #4C3FA6;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">2</span></div><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">3</span></div><div style="width:50px;height:47px;background:#4C3FA6;border:1.5px solid #4C3FA6;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">4</span></div></div></div></div></div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div></div><div style="display:flex;gap:56px;flex-wrap:wrap;margin-top:52px;"><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1499 &middot; irregular</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">5/8, 7/8 and 9/4 are the same mechanism</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">7/8 grouped 3+2+2, clicking each group start, at <strong>&#9834; = 168</strong>. The unit is a quaver and the readout says so, because &#9833; = 168 would be a lie the ear catches. Group gaps make the bar readable at a glance: three, two, two. The counter here is untouched, so it is quiet and records nothing.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">16:31</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#E7E3F4;color:#4C3FA6;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="music" width="13" height="13"></i> Piece</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Take Five</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Keep the vamp under the solo</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">03:12</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9834; = 168</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">7/8</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:16px;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:16px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><span style="color:#6E6557;">0 of 10</span></span>
+  </div>
+  
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;opacity:0.4;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Blue Rondo</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1499 &middot; the metre picker</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">Presets, then Other for anything</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">Three pills cover nine cases in ten. Other opens beats-in-the-bar, the note value that counts as a beat, and the grouping. No preset list to keep complete, and 11/8 works the day someone needs it. The grouping doubles as the accent pattern: <strong>Group starts</strong> is one tap in any metre.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">16:31</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#E7E3F4;color:#4C3FA6;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="music" width="13" height="13"></i> Piece</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Take Five</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Keep the vamp under the solo</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">03:12</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9834; = 168</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">7/8</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:16px;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div><div style="display:flex;align-items:center;margin-left:16px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;border:1.4px solid #B6AEC4;box-sizing:border-box;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><span style="color:#6E6557;">0 of 10</span></span>
+  </div>
+  
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;opacity:0.4;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Blue Rondo</div>
+</div><div style="position:absolute;inset:0;background:rgba(43,42,38,0.28);z-index:50;"></div><div style="position:absolute;left:0;right:0;bottom:0;z-index:55;background:#F4F1E8;border-radius:26px 26px 43px 43px;box-shadow:0 -14px 40px -10px rgba(43,42,38,0.3);padding:14px 20px 32px;"><div style="width:36px;height:4px;border-radius:2px;background:#DCD4C1;margin:0 auto 15px;"></div><div style="display:flex;align-items:baseline;justify-content:space-between;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;color:#2B2A26;">Click</div><div style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9834; = 168</div></div><div style="font-size:12.5px;color:#6E6557;margin-top:6px;line-height:1.5;">The tempo stays &#9834; = 168. The pattern changes which beats you hear, not how fast you are playing.</div><div style="margin-top:17px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Time signature</div><div style="display:flex;gap:7px;margin-top:9px;"><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">3/4</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">4/4</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">6/8</div></div><div style="flex:1;text-align:center;background:#4C3FA6;border:1px solid #4C3FA6;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">7/8</div></div></div><div style="margin-top:11px;background:#F0E7D6;border:1px solid #E5DECD;border-radius:14px;padding:14px;"><div style="display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12.5px;color:#6E6557;">Beats in the bar</span><div style="display:flex;align-items:center;gap:11px;"><div style="width:33px;height:33px;border-radius:50%;border:1px solid #DCD4C1;background:#FCFAF3;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="15" height="15" style="color:#6E6557;"></i></div><span style="font-size:18px;font-weight:600;color:#2B2A26;font-variant-numeric:tabular-nums;min-width:18px;text-align:center;">7</span><div style="width:33px;height:33px;border-radius:50%;border:1px solid #DCD4C1;background:#FCFAF3;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="15" height="15" style="color:#6E6557;"></i></div></div></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;"><span style="font-size:12.5px;color:#6E6557;">Beat value</span><div style="display:flex;gap:6px;"><div style="padding-left:14px;padding-right:14px;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">2</div></div><div style="padding-left:14px;padding-right:14px;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">4</div></div><div style="padding-left:14px;padding-right:14px;text-align:center;background:#4C3FA6;border:1px solid #4C3FA6;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">8</div></div></div></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;"><span style="font-size:12.5px;color:#6E6557;">Grouped</span><div style="display:flex;align-items:center;"><div style="min-width:36px;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:10px;padding:6px 0;font-size:14px;font-weight:600;color:#2B2A26;font-variant-numeric:tabular-nums;">3</div><span style="font-size:15px;color:#B0A892;margin:0 5px;">+</span><div style="min-width:36px;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:10px;padding:6px 0;font-size:14px;font-weight:600;color:#2B2A26;font-variant-numeric:tabular-nums;">2</div><span style="font-size:15px;color:#B0A892;margin:0 5px;">+</span><div style="min-width:36px;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:10px;padding:6px 0;font-size:14px;font-weight:600;color:#2B2A26;font-variant-numeric:tabular-nums;">2</div></div></div></div><div style="margin-top:17px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Sounds on</div><div style="display:flex;gap:7px;margin-top:9px;"><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">Every beat</div></div><div style="flex:1;text-align:center;background:#4C3FA6;border:1px solid #4C3FA6;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">Group starts</div></div><div style="flex:1;text-align:center;background:#FCFAF3;border:1px solid #DCD4C1;border-radius:12px;padding:9px 4px;"><div style="font-size:13px;font-weight:600;color:#6E6557;font-variant-numeric:tabular-nums;">Downbeat</div></div></div><div style="margin-top:12px;"><div style="display:flex;flex-direction:column;gap:7px;"><div style="display:flex;gap:7px;"><div style="width:50px;height:47px;background:#4C3FA6;border:1.5px solid #4C3FA6;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">1</span></div><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">2</span></div><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">3</span></div></div><div style="display:flex;gap:7px;"><div style="width:50px;height:47px;background:#4C3FA6;border:1.5px solid #4C3FA6;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">4</span></div><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">5</span></div></div><div style="display:flex;gap:7px;"><div style="width:50px;height:47px;background:#4C3FA6;border:1.5px solid #4C3FA6;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#F2EFE8;font-variant-numeric:tabular-nums;">6</span></div><div style="width:50px;height:47px;background:transparent;border:1.5px solid #DCD4C1;border-radius:13px;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#B0A892;font-variant-numeric:tabular-nums;">7</span></div></div></div></div></div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div></div><div style="display:flex;gap:56px;flex-wrap:wrap;margin-top:52px;"><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1367 &middot; counting</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">Passes, always there, ignorable</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">Resident rather than opt-in (Jon, 2026-09-02): deciding in the builder is the wrong moment, and a menu is a gesture you will not spend mid-passage. Untouched it shows no dots, reads 0 of 10 and <strong>records nothing at all</strong> &mdash; the same rule as T16, a third time. From the first tap the dots appear and every tap carries its time.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">18:20</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">02:08</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9833; = 120</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">4/4</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><strong style="color:#2B2A26;">7</strong><span style="color:#6E6557;"> of 10 &middot; 3 to go</span></span>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div><div style="width:10px;height:10px;border-radius:50%;border:1.5px solid #DCD4C1;box-sizing:border-box;"></div></div>
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div><div style="display:flex;flex-direction:column;gap:14px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">#1367 &middot; at the target</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">Reaching it changes nothing but the facts</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;">The dots fill, <code>Got it</code> greys out, and the count drops the &ldquo;to go&rdquo; clause. No banner, no congratulation: the app has no microphone and does not know how it went (tone V1). The reward is the full row and the transport under your thumb.</div>
+</div><div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+  <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,#F7F4EC 0%,#EFEADC 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;">
+      <span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i>
+        <i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i>
+        <div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div>
+      </div>
+    </div>
+    <div style="padding:6px 20px 4px;flex:none;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <div style="width:56px;display:flex;justify-content:flex-start;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;font-weight:500;">21:47</span></div>
+    <div style="flex:1;text-align:center;font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">FOCUS · 3 OF 5</div>
+    <div style="width:56px;display:flex;justify-content:flex-end;">
+      <i data-lucide="ellipsis" width="20" height="20" style="color:#6E6557;"></i>
+    </div>
+  </div>
+  <div style="margin-top:12px;"><div style="display:flex;gap:6px;"><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div><div style="flex:1;height:4px;border-radius:2px;background:#E2DBC9;"></div></div></div>
+  
+</div><div style="padding:0 20px;flex:none;text-align:center;margin-top:18px;">
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:14px;font-style:italic;color:#6E6557;">&ldquo;Keep the wrist relaxed&rdquo;</div>
+  <div style="margin-top:16px;display:flex;justify-content:center;">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:#F0E5CC;color:#8A6A2E;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:500;">
+      <i data-lucide="dumbbell" width="13" height="13"></i> Exercise</div>
+  </div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:31px;color:#2B2A26;margin-top:8px;line-height:1.05;">Hanon No. 1</div>
+  <div style="margin-top:7px;font-size:12.5px;color:#6E6557;">Aim: Land each finger evenly</div>
+</div><div style="flex:none;display:flex;justify-content:center;margin-top:10px;">
+  <div style="position:relative;width:170px;height:170px;display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid #E5DDCB;"></div>
+    <div style="position:absolute;inset:12px;border-radius:50%;border:8px solid transparent;border-top-color:#4C3FA6;border-right-color:#4C3FA6;transform:rotate(35deg);"></div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:37px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">05:35</div>
+      <div style="font-size:11.5px;color:#6E6557;margin-top:3px;">of 08:00</div>
+    </div>
+  </div>
+</div><div style="flex:none;display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;"><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="minus" width="17" height="17" style="color:#6E6557;"></i></div><div style="display:flex;align-items:center;gap:8px;background:#E7E3F4;border-radius:999px;padding:0 16px;min-height:44px;"><i data-lucide="music-4" width="15" height="15" style="color:#4C3FA6;"></i><span style="font-size:14.5px;font-weight:500;color:#4C3FA6;font-variant-numeric:tabular-nums;">&#9833; = 120</span></div><div style="width:44px;height:44px;border-radius:50%;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="17" height="17" style="color:#6E6557;"></i></div></div><div style="flex:none;display:flex;justify-content:center;margin-top:9px;"><div style="display:flex;align-items:center;gap:9px;min-height:32px;padding:0 12px;"><span style="font-size:12.5px;color:#6E6557;font-variant-numeric:tabular-nums;">4/4</span><span style="color:#B0A892;font-size:12px;">&middot;</span><div style="display:flex;align-items:center;"><div style="display:flex;align-items:center;"><div style="width:17px;height:17px;border-radius:50%;box-shadow:0 0 0 1.5px #4C3FA6;display:flex;align-items:center;justify-content:center;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div><div style="display:flex;align-items:center;margin-left:7px;"><div style="width:9px;height:9px;border-radius:50%;background:#4C3FA6;"></div></div></div></div></div><div style="flex:none;padding:0 20px;margin-top:13px;">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;">
+    <span style="font-size:12.5px;color:#6E6557;font-weight:500;">Passes</span>
+    <span style="font-size:12.5px;font-variant-numeric:tabular-nums;"><strong style="color:#2B2A26;">10</strong><span style="color:#6E6557;"> of 10</span></span>
+  </div>
+  <div style="display:flex;gap:5px;margin-top:10px;"><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#1F8A5B;"></div></div>
+  <div style="display:flex;gap:10px;margin-top:11px;">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#E7F1EB;border:1px solid #C9E2D3;border-radius:14px;padding:11px 0;opacity:0.4;">
+      <i data-lucide="check" width="17" height="17" style="color:#1F8A5B;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#1F8A5B;">Got it</span></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#EFEADC;border:1px solid #DCD4C1;border-radius:14px;padding:11px 0;">
+      <i data-lucide="rotate-ccw" width="16" height="16" style="color:#8A8170;"></i>
+      <span style="font-size:14.5px;font-weight:600;color:#8A8170;">Not quite</span></div>
+  </div>
+</div><div style="flex:none;margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;align-items:center;gap:9px;">
+  <div style="display:flex;align-items:center;gap:26px;">
+    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(43,42,38,0.35);">
+      <i data-lucide="play" width="27" height="27" style="color:#F2EFE8;fill:#F2EFE8;"></i></div>
+    <i data-lucide="skip-forward" width="21" height="21" style="color:#6E6557;"></i>
+  </div>
+  <div style="font-size:12px;color:#6E6557;">Next · Czerny Op. 299</div>
+</div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+  </div>
+</div></div></div><div style="display:flex;gap:56px;flex-wrap:wrap;margin-top:52px;"><div style="display:flex;flex-direction:column;gap:14px;max-width:392px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">Copy &middot; settled</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">Passes, Got it, Not quite</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;"><strong>Got it</strong> is already the core's own word for this: the event is <code>RepGotIt</code>, so the screen has been saying &ldquo;Clean&rdquo; over it since the builder era. <strong>Not quite</strong> narrows nothing &mdash; slipped notes, rushing, stiffness, stopping dead &mdash; and reads <strong>Not quite right</strong> at accessibility sizes where the pair stacks. Both halves are the same length and register, so neither is easier to press: a pair weighted toward the gentle option skews the count low.<br><br>Rejected: <em>Fluffed</em> (jokey at twenty taps a session, and it blames the fingers), <em>Nailed it</em> (a US idiom where British is mandated, and it overclaims a routine +1), <em>Clean / Not clean</em>, <em>Clean / Rough</em>.</div>
+</div></div><div style="display:flex;flex-direction:column;gap:14px;max-width:392px;"><div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;text-transform:uppercase;">&nbsp;</div>
+  <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:19px;color:#2B2A26;margin-top:6px;line-height:1.15;">What is deliberately not here</div>
+  <div style="font-family:'Inter',system-ui,sans-serif;font-size:12.5px;color:#6E6557;margin-top:6px;max-width:370px;line-height:1.5;"><strong>No accent timbre on the downbeat.</strong> A second click sound is a separate question from which beats sound at all, and mixing them would make this round untestable by ear.<br><br><strong>No subdivisions.</strong> The grid is beats in the bar. Playing quavers against a crotchet click is a tempo question, not a pattern one.<br><br><strong>No bar counting.</strong> The indicator says where you are in the bar, never which bar.<br><br><strong>No flash.</strong> At the top of the tempo range (208bpm, 3.5Hz) a large high-contrast flash crosses WCAG's general flash threshold, and stops being legible anyway.</div>
+</div></div></div>
+    <div style="margin-top:56px;padding:26px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:16px;max-width:900px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Settled here</div>
+      <ul style="margin:14px 0 0;padding-left:20px;font-size:13.5px;color:#6E6557;line-height:1.7;">
+        <li><strong style="color:#2B2A26;">The tempo number never changes meaning.</strong> A sparse pattern
+        does not divide the bpm; it gates which beats of the same grid sound. So <code>achieved_tempo</code>
+        keeps meaning what T16 says it means, and a click on beat 4 at 120 evidences 120.</li>
+        <li><strong style="color:#2B2A26;">The row must never imply every beat when it is not.</strong> The
+        dots are the honesty mechanism, and they are the same argument T14 made about putting a marking back
+        on a row whose next tap sounds something else.</li>
+        <li><strong style="color:#2B2A26;">The metre is offered with an answer already in it.</strong> Asking a
+        musician mid-session for a time signature is the admin friction T1 says to remove; showing the one
+        the app already holds, editable, is not.</li>
+        <li><strong style="color:#2B2A26;">&ldquo;Passes&rdquo;, and both buttons change.</strong> Jon's own
+        word on #1367, and a musician's (tone rule 2). <code>Got it</code> and <code>Not quite</code> replace
+        Clean and Missed, which were mismatched in kind: one described the pass, the other the player. A miss
+        still reads taupe rather than red.</li>
+        <li><strong style="color:#2B2A26;">Hitting the target is not congratulated.</strong> Tone V1: the app
+        does not know how it went. The dots filling is the acknowledgement.</li>
+        <li><strong style="color:#2B2A26;">No new tokens.</strong> Everything here is catalogue: the click
+        capsule, rep slot dots, <code>SegmentedPills</code> for the presets, <code>BottomSheet</code>,
+        <code>CardSurface</code>. The beat grid is the one new primitive, and it is rep slot dots given a
+        number and a tap target.</li>
+      </ul>
+    </div>
+    <div style="margin-top:22px;padding:26px;background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;max-width:900px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Left to the spec, not decided by drawing</div>
+      <ul style="margin:14px 0 0;padding-left:20px;font-size:13.5px;color:#6E6557;line-height:1.7;">
+        <li>Whether <code>ChordChart.metre</code> stays authoritative with a piece-level fallback, or moves up
+        to the piece and the chart derives from it. The sheet renders the same either way.</li>
+        <li>Whether the metre carries a denominator, which is what 6/8 needs to group 3+3.</li>
+        <li>Whether the pattern is recorded next to the tempo. The design assumes yes, because the trend
+        chart (T17) would otherwise draw &ldquo;120 straight&rdquo; and &ldquo;120 on beat 4&rdquo; as the same
+        point.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
+</script>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1500,&quot;height&quot;:4200}}">
+class Component extends DCLogic {
+  componentDidMount() { if (window.lucide) window.lucide.createIcons(); }
+}
+</script>
+</body>
+</html>

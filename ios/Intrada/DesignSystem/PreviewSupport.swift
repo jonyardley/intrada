@@ -343,6 +343,10 @@
     }
 
     /// Player Focus — an exercise with an active rep counter.
+    static var previewActiveLongSession: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActiveLongSession))
+    }
+
     static var previewActiveReps: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
     }
@@ -899,6 +903,13 @@
     /// Item start instant + the snapshot reference (start + 4:12) so the timer
     /// renders a fixed `04:12` deterministically.
     static let previewStartedAt = "2026-05-30T09:00:00Z"
+    /// Deliberately before the item started, so the session timer and the item
+    /// ring cannot both be right by reading the same field.
+    static let previewSessionStartedAt = "2026-05-30T08:47:00Z"
+    /// Past an hour, where `clockDisplay` switches to `H:MM:SS` and the reading
+    /// outgrows the orientation slot. An hour at the piano is ordinary, not an
+    /// edge case.
+    static let previewLongSessionStartedAt = "2026-05-30T07:52:00Z"
     static var previewReferenceDate: Date {
       (SessionClock.parseRFC3339(previewStartedAt) ?? .distantPast).addingTimeInterval(252)
     }
@@ -920,7 +931,7 @@
       ActiveSessionView(
         currentItemTitle: "Clair de Lune", currentItemType: .piece,
         currentPosition: 1, totalItems: 5,
-        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           previewEntry(0, "Hanon No. 1", .exercise),
           previewEntry(1, "Clair de Lune", .piece),
@@ -934,11 +945,29 @@
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66)
     }
 
+    /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
+    static var previewActiveLongSession: ActiveSessionView {
+      let base = previewActive
+      return ActiveSessionView(
+        currentItemTitle: base.currentItemTitle, currentItemType: base.currentItemType,
+        currentPosition: base.currentPosition, totalItems: base.totalItems,
+        startedAt: previewLongSessionStartedAt, currentItemStartedAt: base.currentItemStartedAt,
+        entries: base.entries, sessionIntention: base.sessionIntention,
+        currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
+        currentRepTargetReached: base.currentRepTargetReached,
+        currentRepHistory: base.currentRepHistory,
+        currentPlannedDurationSecs: base.currentPlannedDurationSecs,
+        nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
+        currentRelatedPieceTitle: base.currentRelatedPieceTitle,
+        currentItemTempoMarking: base.currentItemTempoMarking,
+        currentItemTempoBpm: base.currentItemTempoBpm)
+    }
+
     static var previewActiveReps: ActiveSessionView {
       ActiveSessionView(
         currentItemTitle: "Hanon No. 1", currentItemType: .exercise,
         currentPosition: 2, totalItems: 5,
-        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           previewEntry(0, "Warm-up Scales", .exercise),
           previewEntry(1, "Etude No. 3", .exercise),
