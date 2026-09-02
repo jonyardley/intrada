@@ -643,20 +643,30 @@ still and a flashing light is a second metronome. Both rulings were correct
 **about a flat click** and are wrong once the click sounds a subset of the bar.
 
 The screen budget came first, because with the pass counter on the Focus Player
-already runs to the bottom edge. It was spent deliberately rather than shared
-out, and **the resting screen is unchanged from what T14 shipped**:
+already ran to the bottom edge. All three instruments are resident, so something
+had to give, and what gives is the timer ring:
 
-- **The session timer is resident**, in the top orientation band, taking the
-  28pt of dead space that balanced the options menu. Orientation, never
-  feedback: a duration cannot praise you. It costs no row.
-- **The pass counter is opt-in** and costs nothing when off. Its route in is the
-  options menu, not chrome (T2), because you want the metronome nine times in
-  ten and the counter only sometimes. That is T14's own reasoning about the
-  menu, applied in the other direction.
-- **The click's pattern is two layers down**, in a sheet opened from the running
-  readout. Only an indicator stays resident.
+- **The session timer** sits in the top orientation band, taking the 28pt of
+  dead space that balanced the options menu. Orientation, never feedback: a
+  duration cannot praise you. It costs no row.
+- **The pass counter is always on screen and can be ignored** (Jon,
+  2026-09-02, reversing an earlier opt-in-from-the-menu plan). Deciding in the
+  builder is the wrong moment, and a menu is a gesture nobody spends
+  mid-passage. Untouched it shows no dots, reads `0 of 10`, and **records
+  nothing**.
+- **The click's pattern is two layers down**, in a sheet. Only the bar line
+  stays resident, and only while the click sounds.
+- **The ring shrinks from 236pt to about 200pt.** A resident counter has to come
+  from somewhere, and the ring had the most slack: it is still far and away the
+  dominant element. Stated rather than absorbed silently, because it is the
+  price of the counter being always there.
 
-Five rulings come with it.
+This is a real departure from T2's "the default live-session screen stays bare",
+and it is deliberate: counting passes is not configuration, it is the practising.
+Configuration (the metre, the pattern, the target) all stays one or two layers
+down, which is the part of T2 that still binds.
+
+Six rulings come with it.
 
 - **A pattern never divides the tempo.** The pulse grid keeps its rate and the
   pattern gates which beats sound. This is the whole point: "practise at 120
@@ -666,6 +676,12 @@ Five rulings come with it.
   the honesty mechanism, and they are the same argument T14 made about putting a
   marking back on a row whose next tap would sound something else. Filled and
   hollow, never colour alone (T3).
+- **The bar gets its own line, under the tempo.** T14 made tapping the readout
+  the start/stop toggle, so the readout cannot also open the pattern sheet: the
+  two gestures would collide on one target. Line one stays exactly T14's row;
+  line two carries the metre and the dots, appears only while sounding, and owns
+  the sheet. It also gives the travelling indicator room to be legible from a
+  music stand.
 - **The metre is offered with an answer already in it, never asked for.** This
   is what dissolves T14's objection rather than overruling it: the app now holds
   a metre (from the piece, and the chart derives from it), so nothing is
@@ -694,10 +710,21 @@ off its own timer drifts *against* the click, and a light visibly separating
 from the sound is worse than no light. The pure `schedule(beats:pulse:)` is the
 shared source of truth.
 
+**A displayed target is not a recorded one.** Because the counter is always
+drawn, the target it draws against must be a view concern; `rep_count` and
+`rep_history` stay unset until the first tap. Otherwise every entry banks a
+zero nobody earned and the summaries fill with defaults, which is T16's exact
+failure mode a third time.
+
 **Reaching the pass target is not congratulated.** The dots fill, Clean greys
 out, and the count drops its "to go" clause. Tone V1: the app has no microphone
 and does not know how it went, so a banner at ten would be the notebook claiming
 to have listened.
+
+**The words are still open.** `Passes` replaces `Repetitions`. `Clean` stays;
+`Missed` goes, because you miss a note rather than a pass and it describes the
+player rather than the playing. `Fluffed` is the draft. Alternatives are on the
+design file.
 
 Options considered: a metre picker on the resident row (rejected, it is the
 resident chrome T2 forbids and it would push the transport off screen); a
@@ -707,7 +734,9 @@ keep a keyboard out of a mid-session sheet); a tick travelling the timer ring's
 rim (rejected, the ring is the per-item timer and overloading it muddies both);
 a background flash (rejected on the flash threshold above); flat beats with a
 cell-by-cell grid for irregular metres (rejected, it makes 7/8 fiddly every
-single time for the sake of one less field).
+single time for the sake of one less field); the pattern inline on the tempo row
+(rejected, it collides with T14's toggle and leaves the dots too small to read
+at arm's length); the counter behind the options menu (rejected by Jon above).
 
 **What this does not settle:** an accent timbre on the downbeat, subdivisions,
 whether a dotted crotchet can be named as the felt beat in 6/8, and what unit

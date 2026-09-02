@@ -23,8 +23,9 @@ schema change.
 1. **No overall session timer.** The Focus Player's ring times the *current
    item*. Nothing says how long you have been practising.
 2. **The pass counter is unreachable in practice.** It is fully built (see
-   "What already exists"), but the target can only be set in the builder, before
-   you have played a note, and the increments are not timestamped.
+   "What already exists"), but it only renders when a target was set in the
+   builder, before you have played a note, and the increments are not
+   timestamped.
 3. **The click lies about the tempo.** `ClickEngine.start(bpm:)` sounds every
    beat identically. To practise with the click on beat 4 of a bar at 120 you
    set it to 30, and the app writes 30 down. `TempoObservation.click_sounding`
@@ -124,6 +125,32 @@ is the borrowed-authority failure T17 was careful to avoid.
 that writes `achieved_tempo`, and only when the tempo was evidenced. No new
 network or storage op: it rides the existing session row.
 
+## The pass counter is resident, and an untouched one records nothing
+
+**Decision (Jon, 2026-09-02): the counter is always on screen, and can be
+ignored.** Not opt-in from the options menu, which was the earlier plan:
+deciding in the builder is the wrong moment, and a menu is a gesture nobody
+spends mid-passage.
+
+That makes an old trap live again. If every entry gets a target so the counter
+can render, then `StartSession`'s current behaviour gives every entry
+`rep_count: Some(0)` and an empty history whether or not the musician ever
+looked at it, and `ItemPracticeSummary` fills with zeroes nobody earned. This is
+exactly T16's failure mode, a third time.
+
+**The rule: a displayed target is not a recorded one.**
+
+- The target that renders (10 by default) is a **view concern**, projected for
+  the counter to draw against. It is not written to the entry.
+- `rep_count` and `rep_history` stay `None` until the **first tap**. That tap
+  initialises them and records itself.
+- `StartSession` therefore stops pre-initialising the rep fields. The existing
+  `rep_target.is_some()` branch goes; initialisation moves to the first
+  `RepGotIt` / `RepMissed`, which is what `InitRepCounter` already does. That
+  event stops being dead code without needing a Swift caller of its own.
+- An entry practised with the counter untouched is indistinguishable from today's
+  entries with no target: `None` everywhere, nothing in the summaries.
+
 ## The pass counter's one schema delta
 
 `rep_history: Option<Vec<RepAction>>` records the sequence but not the time. The
@@ -156,6 +183,20 @@ than twice. In-progress sessions do not survive the upgrade; that is the
 accepted price, and it is the reason these two ship in the same round rather
 than separately.
 
+## The click's two lines
+
+**The tempo row and the bar are separate lines** (Jon, 2026-09-02). This is not
+only tidiness: it fixes a collision. T14 made tapping the readout the start/stop
+toggle, so the readout cannot also open the pattern sheet.
+
+- **Line one is exactly T14's row**, unchanged: the metre steppers either side of
+  a readout whose tap starts and stops. The resting screen keeps one line.
+- **Line two appears only while sounding** and carries the metre and the beat
+  dots. It is the sheet's tap target, so the two gestures never compete.
+
+It also buys the travelling indicator room to be legible from a music stand,
+which a readout-inline row could not.
+
 ## The click engine
 
 `ClickEngine.schedule(beats:pulse:)` is already pure and beat-indexed, which is
@@ -181,11 +222,12 @@ change breaks.
 2. **#1402, tempo constants.** Shell only. A `Tempo` enum next to
    `TempoFormatting` owns `range`, `step`, `clamp`, `stepped` and the default;
    `TempoStepper`, `ClickController` and `ReflectionSheet` read it.
-3. **#1367 core.** `RepEvent`, `now` on the rep events, default target 10, the
-   key bump, GRDB and API codec updates, round-trip and upgrade-path tests, plus
-   the plumbing the event signatures break.
-4. **#1367 shell.** The options-menu route (sending the unused
-   `InitRepCounter`), "Passes" copy, the at-target state, snapshots.
+3. **#1367 core.** `RepEvent`, `now` on the rep events, the displayed-target
+   projection, `StartSession` no longer pre-initialising, the key bump, GRDB and
+   API codec updates, round-trip and upgrade-path tests, plus the plumbing the
+   event signatures break.
+4. **#1367 shell.** The resident counter and its quiet untouched state,
+   "Passes" copy, the at-target state, the reclaimed vertical space, snapshots.
 5. **#1499 core.** `Metre` on `Item`, `ChordChart.metre` removed, the migration
    and its upgrade-path test, `ClickState`, the extended `UpdateEntryTempo`,
    crotchet normalisation, `click_pattern` recorded.
@@ -214,6 +256,21 @@ change breaks.
 Tier 3. Expected gaps: `ios/` is excluded from Codecov, so PRs 1, 2, 4 and 6
 report little; the core PRs (3 and 5) should clear 70% on the handler, migration
 and normalisation paths.
+
+## Copy, still open
+
+The header becomes **Passes**, not Repetitions: Jon's own word on #1367 and a
+musician's rather than a data model's (tone rule 2).
+
+**Clean** stays. It is what pianists already say about a pass. **Missed** was the
+weak half: you miss a note, not a pass, and it describes the player rather than
+the playing. The draft uses **Fluffed**, its exact British counterpart, which
+describes the pass and carries no shame.
+
+Not settled. Alternatives on the design file: *Clean / Not clean* (perfectly
+symmetrical, a little clinical), *Solid / Scrappy* (two adjectives, both about
+the playing), *Got it / Not yet* (warm, but edges toward the app encouraging
+you, which V1 forbids the app and V2 permits the user).
 
 ## Open questions
 

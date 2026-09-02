@@ -66,24 +66,49 @@ struct FocusPlayerScreen: View {
     .padding(.top, IntradaSpacing.card)
   }
 
-  // ── Top: position label + segmented session progress + options menu ──
+  // ── Top: session elapsed + position label + progress + options menu ──
+
+  /// Equal side slots keep the position label centred while the leading one
+  /// carries the session timer (design-principles T19).
+  private static let orientationSlot: CGFloat = 56
 
   private func topChrome(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 12) {
-      HStack {
-        Color.clear.frame(width: 28, height: 1)  // balances the menu so the label centres
-        Spacer()
+      HStack(spacing: 0) {
+        sessionElapsed(active)
+          .frame(width: Self.orientationSlot, alignment: .leading)
         Text(positionLabel(active))
           .font(IntradaFont.badge)
           .tracking(1.5)
           .foregroundStyle(IntradaColor.inkFaint)
-        Spacer()
+          .frame(maxWidth: .infinity)
         optionsMenu
+          .frame(width: Self.orientationSlot, alignment: .trailing)
       }
       SegmentedProgress(
         types: active.entries.map(\.itemType),
         filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)))
     }
+  }
+
+  @ViewBuilder private func sessionElapsed(_ active: ActiveSessionView) -> some View {
+    let start = SessionClock.parseRFC3339(active.startedAt) ?? Date()
+    if let referenceDate {
+      sessionElapsedBody(Int(referenceDate.timeIntervalSince(start)))
+    } else {
+      TimelineView(.periodic(from: .now, by: 1)) { context in
+        sessionElapsedBody(Int(context.date.timeIntervalSince(start)))
+      }
+    }
+  }
+
+  private func sessionElapsedBody(_ elapsed: Int) -> some View {
+    Text(SessionClock.clockDisplay(elapsed))
+      .font(IntradaFont.metaMedium)
+      .monospacedDigit()
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .accessibilityLabel("Session so far")
+      .accessibilityValue(SessionClock.clockDisplay(elapsed))
   }
 
   private func positionLabel(_ active: ActiveSessionView) -> String {
@@ -347,10 +372,12 @@ private struct TimerRing: View {
     }
     .frame(width: 236, height: 236)
     .accessibilityElement(children: .ignore)
+    // Named for the item, not just "Elapsed": the orientation band now carries a
+    // session timer too, so an unqualified label reads as either one (T19).
     .accessibilityLabel(
       planned == nil
-        ? "Elapsed \(SessionClock.clockDisplay(elapsed))"
-        : "Elapsed \(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
+        ? "This item, \(SessionClock.clockDisplay(elapsed))"
+        : "This item, \(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
     )
   }
 }

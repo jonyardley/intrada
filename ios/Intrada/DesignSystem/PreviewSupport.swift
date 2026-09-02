@@ -899,6 +899,9 @@
     /// Item start instant + the snapshot reference (start + 4:12) so the timer
     /// renders a fixed `04:12` deterministically.
     static let previewStartedAt = "2026-05-30T09:00:00Z"
+    /// Deliberately 13 minutes before the item started, so the session timer and
+    /// the item ring cannot both be right by reading the same field.
+    static let previewSessionStartedAt = "2026-05-30T08:47:00Z"
     static var previewReferenceDate: Date {
       (SessionClock.parseRFC3339(previewStartedAt) ?? .distantPast).addingTimeInterval(252)
     }
@@ -920,7 +923,7 @@
       ActiveSessionView(
         currentItemTitle: "Clair de Lune", currentItemType: .piece,
         currentPosition: 1, totalItems: 5,
-        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           previewEntry(0, "Hanon No. 1", .exercise),
           previewEntry(1, "Clair de Lune", .piece),
@@ -938,7 +941,7 @@
       ActiveSessionView(
         currentItemTitle: "Hanon No. 1", currentItemType: .exercise,
         currentPosition: 2, totalItems: 5,
-        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        startedAt: previewSessionStartedAt, currentItemStartedAt: previewStartedAt,
         entries: [
           previewEntry(0, "Warm-up Scales", .exercise),
           previewEntry(1, "Etude No. 3", .exercise),
