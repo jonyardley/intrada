@@ -628,3 +628,87 @@ app's idea of what to practise mattered more than the musician's.
 **What this does not settle:** whether `Learn the melody` and
 `Constrained improv` are exercises at all (#1389), and the chord chart's own
 display (#1432). Both were deliberately held out.
+
+### T19 — The click can sound a subset of the bar, and then it must show the bar
+
+**Status:** DECIDED 2026-09-02 (jonyardley/intrada#1364, #1367, #1499; spec
+[`specs/practice-instruments.md`](../specs/practice-instruments.md); design
+[`focus-player-instruments.dc.html`](../specs/practice-instruments/design/focus-player-instruments.dc.html)).
+
+**Partly reverses T14.** T14 ruled that "a click needs no time signature to be
+useful", that an accented downbeat "would mean asking for a time signature the
+app does not hold and T2 does not want asked mid-session", and rejected "a
+beat-synchronised pulse animation on the row" because the player surface sits
+still and a flashing light is a second metronome. Both rulings were correct
+**about a flat click** and are wrong once the click sounds a subset of the bar.
+
+The screen budget came first, because with the pass counter on the Focus Player
+already runs to the bottom edge. It was spent deliberately rather than shared
+out, and **the resting screen is unchanged from what T14 shipped**:
+
+- **The session timer is resident**, in the top orientation band, taking the
+  28pt of dead space that balanced the options menu. Orientation, never
+  feedback: a duration cannot praise you. It costs no row.
+- **The pass counter is opt-in** and costs nothing when off. Its route in is the
+  options menu, not chrome (T2), because you want the metronome nine times in
+  ten and the counter only sometimes. That is T14's own reasoning about the
+  menu, applied in the other direction.
+- **The click's pattern is two layers down**, in a sheet opened from the running
+  readout. Only an indicator stays resident.
+
+Five rulings come with it.
+
+- **A pattern never divides the tempo.** The pulse grid keeps its rate and the
+  pattern gates which beats sound. This is the whole point: "practise at 120
+  with the click on beat 4" used to require setting 30, and the app wrote 30
+  down. `achieved_tempo` therefore keeps meaning what T16 says it means.
+- **The row must never imply every beat when it is not.** The pattern dots are
+  the honesty mechanism, and they are the same argument T14 made about putting a
+  marking back on a row whose next tap would sound something else. Filled and
+  hollow, never colour alone (T3).
+- **The metre is offered with an answer already in it, never asked for.** This
+  is what dissolves T14's objection rather than overruling it: the app now holds
+  a metre (from the piece, and the chart derives from it), so nothing is
+  demanded mid-session. Three presets cover nine cases in ten; "Other" opens
+  beats-in-the-bar, the beat value and the grouping, so 5/8, 7/8 and 9/4 are the
+  same mechanism as 4/4 rather than a special case.
+- **The grouping is the accent pattern.** In 7/8 the useful fact is 3+2+2, not
+  seven equal beats, so the bar carries its grouping and "sounds on group
+  starts" becomes one tap in any metre. It also fixes the layout: above six
+  beats the grid takes one row per group, which reads as the shape of the bar
+  and keeps every cell a real tap target. Seven identical squares would make the
+  user toggle each one to get a click any Balkan player calls standard.
+- **A travelling indicator, not a flash.** Two reasons it is a small ring on the
+  pattern dots rather than a pulsing panel. It must say *which* beat, because a
+  click on beat 4 at 120 sounds exactly like a flat click at 30 and the ear
+  cannot separate them either. And at the top of the tempo range (208bpm, 3.5Hz)
+  a large high-contrast flash crosses WCAG's general flash threshold, while
+  ceasing to be legible anyway. The dots therefore show whenever the click
+  sounds, not only when the pattern is a subset, so the indicator always has a
+  home.
+
+**The indicator reads the audio's clock, not its own.** `ClickEngine` schedules
+beats on a host-time grid precisely because a timer-driven click drifts, and the
+existing poll runs at 100ms, which is 20% of a beat at 120bpm. A view animating
+off its own timer drifts *against* the click, and a light visibly separating
+from the sound is worse than no light. The pure `schedule(beats:pulse:)` is the
+shared source of truth.
+
+**Reaching the pass target is not congratulated.** The dots fill, Clean greys
+out, and the count drops its "to go" clause. Tone V1: the app has no microphone
+and does not know how it went, so a banner at ten would be the notebook claiming
+to have listened.
+
+Options considered: a metre picker on the resident row (rejected, it is the
+resident chrome T2 forbids and it would push the transport off screen); a
+scrolling row of metre pills out to 12/8 (rejected, still a finite list and 11/8
+is undiscoverable); typing the signature (rejected, `TempoStepper` exists to
+keep a keyboard out of a mid-session sheet); a tick travelling the timer ring's
+rim (rejected, the ring is the per-item timer and overloading it muddies both);
+a background flash (rejected on the flash threshold above); flat beats with a
+cell-by-cell grid for irregular metres (rejected, it makes 7/8 fiddly every
+single time for the sake of one less field).
+
+**What this does not settle:** an accent timbre on the downbeat, subdivisions,
+whether a dotted crotchet can be named as the felt beat in 6/8, and what unit
+the tempo trend labels its axis with. All held out in the spec's open questions.
