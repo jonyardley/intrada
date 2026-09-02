@@ -259,20 +259,34 @@ and normalisation paths.
 
 ## Copy
 
-**Settled (Jon, 2026-09-02): `Passes`, `Clean`, `Fluffed`.**
+**Settled (Jon, 2026-09-02): `Passes`, `Got it`, `Not quite`.**
 
 The header becomes **Passes**, not Repetitions: Jon's own word on #1367 and a
 musician's rather than a data model's (tone rule 2).
 
-**Clean** stays. It is what pianists already say about a pass. **Missed** goes:
-it was the weak half, because you miss a note rather than a pass and it
-describes the player rather than the playing. **Fluffed** is its exact British
-counterpart, describes the pass, and carries no shame.
+**Both buttons change.** `Clean` and `Missed` were mismatched in kind: `Clean`
+described the pass, `Missed` described the player, and you miss a note rather
+than a pass.
 
-Rejected: *Clean / Not clean* (perfectly symmetrical, a little clinical),
-*Solid / Scrappy* (two adjectives, both about the playing), *Got it / Not yet*
-(warm, but edges toward the app encouraging you, which V1 forbids the app and
-V2 permits only the user).
+- **`Got it`** is already this app's own word. The core event is
+  `SessionEvent::RepGotIt` and `RepCounter`'s accessibility hint says "bank a
+  clean repetition", so the screen has been saying `Clean` over an event called
+  `RepGotIt` since the builder era. This aligns them.
+- **`Not quite`** narrows nothing: it covers slipped notes, rushing, stiffness
+  and stopping dead alike, and it is kind without being soft.
+- **`Not quite right`** is the same label at accessibility sizes, where the pair
+  stacks and the button goes full width. Two lengths for one label is the
+  technique the coach-era `TapVerdict` used (`missedTitleCompact` /
+  `missedTitleRegular`); it is recoverable from 071b85b.
+
+Both halves are the same length and register, so neither is easier to press than
+the other. That symmetry is the point: a pair weighted toward the gentle option
+biases the tap and skews the count low.
+
+Rejected: `Fluffed` (jokey for a button pressed twenty times a session, and it
+narrows the cause to slipped fingers); `Nailed it` (a US idiom where British is
+mandated, and it overclaims a routine `+1`); `Clean / Not clean` (symmetrical
+but dead); `Solid / Scrappy`; `Clean / Rough`.
 
 ## Open questions
 

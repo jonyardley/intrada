@@ -721,12 +721,19 @@ out, and the count drops its "to go" clause. Tone V1: the app has no microphone
 and does not know how it went, so a banner at ten would be the notebook claiming
 to have listened.
 
-**`Passes`, `Clean`, `Fluffed`.** `Passes` replaces `Repetitions`, and `Clean`
-stays because it is what pianists already say. `Missed` goes: you miss a note
-rather than a pass, and it describes the player rather than the playing.
-`Fluffed` is its exact British counterpart and carries no shame. Rejected:
-`Clean / Not clean` (clinical), `Solid / Scrappy`, `Got it / Not yet` (warm, but
-it edges toward the app encouraging you).
+**`Passes`, `Got it`, `Not quite`.** `Passes` replaces `Repetitions`. Both
+buttons change, because `Clean` and `Missed` were mismatched in kind: one
+described the pass, the other the player, and you miss a note rather than a
+pass. `Got it` is already the core's own word for this (`SessionEvent::RepGotIt`),
+British, and warm without boasting. `Not quite` narrows nothing, covering
+slipped notes, rushing and stiffness alike, and reads `Not quite right` at
+accessibility sizes where the pair stacks. The two halves are deliberately equal
+in length and register: a pair weighted toward the gentle option biases the tap
+and skews the count low, which is the same concern behind the coach-era ruling
+that a miss must be equally hittable. Rejected: `Fluffed` (jokey at twenty taps
+a session, and it blames the fingers), `Nailed it` (a US idiom where British is
+mandated, and it overclaims a routine `+1`), `Clean / Not clean` (symmetrical
+but dead), `Solid / Scrappy`, `Clean / Rough`.
 
 Options considered: a metre picker on the resident row (rejected, it is the
 resident chrome T2 forbids and it would push the transport off screen); a
