@@ -773,6 +773,11 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(AddToSessionSheet(), store: .previewBuildingRecentlyPractised), as: config)
   }
 
+  func testAddToSessionSheetRecentlyPractisedHiddenWhileFiltered() {
+    assertSnapshot(
+      of: host(AddToSessionSheet(), store: .previewBuildingRecentlyPractisedFiltered), as: config)
+  }
+
   func testSessionBuilderGroupedEditing() {
     // editMode is @State — seed via the startInEditMode init to capture the
     // nested-row reorder/remove/settings controls without UI interaction.

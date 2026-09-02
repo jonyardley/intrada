@@ -276,6 +276,21 @@
           recentlyPractised: [.previewPiece, .previewExercise]))
     }
 
+    /// Same as `previewBuildingRecentlyPractised`, but with the type filter set
+    /// to exercises — the section must not survive an active filter (#1362).
+    static var previewBuildingRecentlyPractisedFiltered: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewExercise],
+          activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            totalDurationDisplay: nil, totalDurationSummary: nil,
+            sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource),
+          recentlyPractised: [.previewPiece, .previewExercise]))
+    }
+
     /// Session builder with a block (a piece + 2 related) above a standalone
     /// item — the grouped-state preview + snapshot.
     static var previewBuildingGrouped: Store {

@@ -50,8 +50,13 @@ struct AddToSessionSheet: View {
     }
   }
 
+  private var isFiltered: Bool {
+    let query = store.viewModel?.activeQuery
+    return isSearching || starFilter || query?.itemType != nil || !(query?.tags.isEmpty ?? true)
+  }
+
   private var showsRecentlyPractised: Bool {
-    !isSearching && !starFilter && !recentlyPractised.isEmpty
+    !isFiltered && !recentlyPractised.isEmpty
   }
 
   @ViewBuilder private var recentlyPractisedSection: some View {
