@@ -96,6 +96,21 @@ struct ScreenEdgeTests {
     expectOnScreen(AnalyticsScreen(), store: .previewProgress, "Progress")
   }
 
+  @Test("An over-wide child cannot drag the scaffold off its leading edge")
+  func scaffoldHoldsItsLeadingEdge() {
+    let scaffold = ScreenScaffold(title: "Library", subtitle: "2 pieces") {
+      // A TextField, not a Color: a plain fill gets no `UIView` to measure.
+      TextField("", text: .constant("")).frame(width: 900, height: 200)
+    }
+    for width in Self.widths {
+      let found = edges(of: scaffold, store: .previewLibrary, width: width)
+      #expect(found.wideViews > 0, "Scaffold at \(width)pt: measured nothing")
+      #expect(
+        found.minX >= -Self.tolerance,
+        "Scaffold at \(width)pt: runs \(-found.minX)pt off the leading edge")
+    }
+  }
+
   /// The two sheets reuse the browse bar with the type filter and the star
   /// switched off, so their control row has a different width to the Library's.
   @Test("The related-exercise sheet stays on screen at the largest accessibility size")
