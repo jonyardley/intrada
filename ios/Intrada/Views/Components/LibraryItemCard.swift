@@ -42,7 +42,7 @@ struct LibraryItemCard: View {
               }
             }
             if hasStepLadder {
-              countChip(Self.ladderLabel(item.variants)) { ladderGlyph }
+              countChip(ladderLabel) { ladderGlyph }
             }
             if !item.tags.isEmpty {
               TagPills(tags: item.tags)
@@ -99,20 +99,16 @@ struct LibraryItemCard: View {
 
   // The character, not a symbol: the app writes real ♯/♭ elsewhere (`KeyHelper.prettify`).
   @ViewBuilder private var ladderGlyph: some View {
-    if Self.ladderIsKeys(item.variants) {
+    if item.ladderIsKeys {
       Text(verbatim: "♯").font(IntradaFont.meta)
     } else {
       Image(systemName: "stairs").font(.system(size: 9))
     }
   }
 
-  // Static so the naming is testable without the view (`AddStepsSheet.trimmedLabels`).
-  static func ladderIsKeys(_ variants: [VariantView]) -> Bool {
-    variants.allSatisfy { KeyHelper.isKeyLabel($0.label) }
-  }
-
-  static func ladderLabel(_ variants: [VariantView]) -> String {
-    "\(variants.count) \(ladderIsKeys(variants) ? "keys" : "steps")"
+  // Keys or steps is the core's judgement (#1467); the shell picks the word.
+  private var ladderLabel: String {
+    "\(item.variants.count) \(item.ladderIsKeys ? "keys" : "steps")"
   }
 
   private var metaLine: String? {
@@ -127,7 +123,7 @@ struct LibraryItemCard: View {
       let n = item.linkedExercises.count
       parts.append("\(n) connected exercise\(n == 1 ? "" : "s")")
     }
-    if hasStepLadder { parts.append(Self.ladderLabel(item.variants)) }
+    if hasStepLadder { parts.append(ladderLabel) }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }

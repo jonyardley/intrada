@@ -790,6 +790,8 @@ fn build_library_item_views(
         } else {
             vec![]
         };
+        let ladder_is_keys =
+            crate::domain::variant::ladder_is_all_keys(variants.iter().map(|v| v.label.as_str()));
 
         items.push(LibraryItemView {
             id: item.id.clone(),
@@ -824,6 +826,7 @@ fn build_library_item_views(
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
             variants,
+            ladder_is_keys,
             photo_id: item.photo_id.clone(),
         });
     }
@@ -5998,6 +6001,78 @@ mod tests {
             ex.variants.iter().all(|v| !v.is_current),
             "a finished ladder has no current step"
         );
+    }
+
+    #[test]
+    fn view_marks_a_ladder_of_key_names_as_keys() {
+        let vm = step_view_model(vec![]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.ladder_is_keys, "C and F are both keys");
+    }
+
+    #[test]
+    fn view_one_non_key_rung_makes_the_whole_ladder_steps() {
+        let app = Intrada;
+        let mut exercise = laddered_exercise("ex-1");
+        exercise.variants[0].label = "Hands together".to_string();
+        let model = Model {
+            items: vec![exercise],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(!ex.ladder_is_keys, "one non-key rung and \"keys\" is a lie");
+    }
+
+    /// A rung the user removed is not on screen, so it cannot change the word.
+    #[test]
+    fn view_a_tombstoned_non_key_rung_leaves_the_ladder_reading_as_keys() {
+        let app = Intrada;
+        let mut exercise = laddered_exercise("ex-1");
+        let tombstoned = exercise
+            .variants
+            .iter_mut()
+            .find(|v| v.deleted_at.is_some())
+            .unwrap();
+        tombstoned.label = "Hands together".to_string();
+        let model = Model {
+            items: vec![exercise],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.ladder_is_keys, "the removed rung is not on the ladder");
+    }
+
+    #[test]
+    fn view_an_item_with_no_ladder_is_not_keys() {
+        let app = Intrada;
+        let model = Model {
+            items: vec![make_item(
+                "p-1",
+                "Clair de Lune",
+                ItemKind::Piece,
+                chrono::Utc::now(),
+            )],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
+        assert!(!piece.ladder_is_keys, "no rungs is not a ladder of keys");
+    }
+
+    /// Positional bincode has no "absent": a new `LibraryItemView` field that
+    /// does not survive the wire is a silent no-op, not a crash (#846).
+    #[test]
+    fn library_item_view_round_trips_on_the_ffi_bincode_wire() {
+        let mut view = LibraryItemView::fixture("ex-1", "Shells", ItemKind::Exercise);
+        view.variants = vec![crate::model::VariantView::fixture("v-c", "C", 0)];
+        view.ladder_is_keys = true;
+        crate::domain::types::assert_round_trips(view);
     }
 
     #[test]

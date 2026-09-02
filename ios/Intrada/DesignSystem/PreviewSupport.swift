@@ -440,7 +440,7 @@
             pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [], photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil)
     }
 
     static var previewExercise: LibraryItemView {
@@ -450,7 +450,8 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -461,7 +462,8 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     static var previewDetail: LibraryItemView {
@@ -473,7 +475,7 @@
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [], photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil)
     }
 
     /// A charted piece — exercises the chord-chart card (parsed grid + preview).
@@ -500,7 +502,7 @@
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: .preview, chordChart: chart, variants: [],
+        usedIn: [], scaffoldPreview: .preview, chordChart: chart, variants: [], ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -510,7 +512,8 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -553,7 +556,7 @@
             practice: nil, pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil,
-        variants: [], photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil)
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
@@ -582,7 +585,7 @@
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -622,7 +625,7 @@
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
 
     /// A step-ladder exercise — one solid, one current (rated but not
@@ -645,7 +648,7 @@
           VariantView(
             id: "step-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
             isSolid: false, isCurrent: false),
-        ], photoId: nil)
+        ], ladderIsKeys: true, photoId: nil)
     }
 
     /// A 12-step chromatic ladder — stress-tests the Steps horizontal scroller
@@ -668,7 +671,24 @@
             id: "step-\(index)", label: label, position: UInt64(index),
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
             isSolid: solid, isCurrent: current)
-        }, photoId: nil)
+        }, ladderIsKeys: true, photoId: nil)
+    }
+
+    /// A ladder of inversions, not keys — pins the "steps" word and the stairs
+    /// glyph, the one judgement the shell still makes for itself (#1467).
+    static var previewExerciseWithStepLadder: LibraryItemView {
+      let rungs = ["Root position", "1st inversion", "2nd inversion"]
+      return LibraryItemView(
+        id: "exercise-4", itemType: .exercise, title: "Triad inversions", subtitle: "",
+        key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        variants: rungs.enumerated().map { index, label in
+          VariantView(
+            id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
+            scoreHistory: [], isSolid: false, isCurrent: index == 0)
+        }, ladderIsKeys: false, photoId: nil)
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -680,7 +700,7 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
-        chordChart: nil, variants: [], photoId: nil)
+        chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
   }
 

@@ -406,6 +406,12 @@ pub struct LibraryItemView {
     /// empty for pieces and un-laddered exercises.
     #[serde(default)]
     pub variants: Vec<VariantView>,
+    /// Every live rung of `variants` names a key, so the shell prints "keys"
+    /// rather than "steps" beside the count (#1467). False for pieces and for
+    /// a ladder with no rungs. No `serde(default)`: the bridge is positional
+    /// bincode, where serde never reaches a default, and the attribute would
+    /// read as "optional on the wire" to the next person (#846).
+    pub ladder_is_keys: bool,
     #[serde(default)]
     pub photo_id: Option<String>,
 }
@@ -646,6 +652,7 @@ impl LibraryItemView {
             scaffold_preview: None,
             chord_chart: None,
             variants: Vec::new(),
+            ladder_is_keys: false,
             photo_id: None,
         }
     }

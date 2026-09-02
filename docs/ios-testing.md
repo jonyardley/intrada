@@ -166,6 +166,14 @@ Rules to keep two checkouts from colliding:
 - **Only touch sims you created.** Delete *your* UDID (or `just
   ios-test-sim-clean` for the recipe's sim) when done; never `shutdown all` /
   `delete unavailable` / restart `CoreSimulatorService` blind.
+- **A sim that has failed a launch can then fail snapshots that have nothing
+  to do with your diff.** After a `Busy ("Application failed preflight
+  checks")` launch error under host load, this worktree's sim went on to red
+  four unrelated snapshot tests, deterministically, with content identical to
+  the reference and only text metrics moved (#1467). A fresh device passed the
+  same build. Before believing a snapshot failure you can't explain, run it on
+  a new sim: `just ios-test-sim-clean` then re-run, or create a scratch UDID
+  as above.
 - **Check before any global op or a fresh test run** whether another session is
   live:
   ```bash

@@ -829,13 +829,15 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil),
+          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+          photoId: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], photoId: nil),
+          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+          photoId: nil),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })
@@ -875,7 +877,7 @@ final class ScreenSnapshotTests: XCTestCase {
       tempo: nil, tempoMarking: nil, tempoBpm: nil, notes: nil, tags: [], createdAt: "",
       updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
       linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [],
-      photoId: nil)
+      ladderIsKeys: false, photoId: nil)
   }
 
   private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {
@@ -910,6 +912,7 @@ final class ScreenSnapshotTests: XCTestCase {
         LibraryItemCard(item: manyTags)  // 5 tags → +2 overflow pill
         LibraryItemCard(item: starred, showsMastery: true)
         LibraryItemCard(item: .previewExerciseWithFullLadder)
+        LibraryItemCard(item: .previewExerciseWithStepLadder)
       }
       .padding(16)
     }

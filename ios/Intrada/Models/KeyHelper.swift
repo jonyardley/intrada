@@ -119,18 +119,6 @@ enum KeyHelper {
     return nil
   }
 
-  /// A bare tonic ("C", "F♯", "B♭") counts, as does a full "C major".
-  static func isKeyLabel(_ raw: String) -> Bool {
-    // Not `parse`: that resolves a circle-of-fifths ring, so it rejects the
-    // spellings off the wheel ("D# major") whose bare tonic is accepted here.
-    let normalised = asciiAccidentals(raw)
-    let lower = normalised.lowercased()
-    let tonic =
-      lower.hasSuffix("major") || lower.hasSuffix("minor")
-      ? String(normalised.dropLast(5)) : normalised
-    return normaliseTonic(tonic) != nil
-  }
-
   static func parse(_ raw: String) -> Selection? {
     let normalised = asciiAccidentals(raw)
     if normalised.isEmpty { return nil }
