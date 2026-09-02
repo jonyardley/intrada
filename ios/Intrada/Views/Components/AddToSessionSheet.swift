@@ -12,6 +12,7 @@ struct AddToSessionSheet: View {
   private var displayedItems: [LibraryItemView] {
     starFilter ? items.filter(\.priority) : items
   }
+  private var recentlyPractised: [LibraryItemView] { store.viewModel?.recentlyPractised ?? [] }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
   private var entryByItem: [String: String] {
     Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
@@ -34,6 +35,8 @@ struct AddToSessionSheet: View {
     } else {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+          recentlyPractisedSection
+          if showsRecentlyPractised { SectionHeader(title: "Library") }
           Text("Pieces bring their related exercises as a group.")
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -44,6 +47,27 @@ struct AddToSessionSheet: View {
         .padding(IntradaSpacing.card)
       }
       .scrollDismissesKeyboard(.interactively)
+    }
+  }
+
+  private var isFiltered: Bool {
+    let query = store.viewModel?.activeQuery
+    return isSearching || starFilter || query?.itemType != nil || !(query?.tags.isEmpty ?? true)
+  }
+
+  private var showsRecentlyPractised: Bool {
+    !isFiltered && !recentlyPractised.isEmpty
+  }
+
+  @ViewBuilder private var recentlyPractisedSection: some View {
+    if showsRecentlyPractised {
+      VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+        SectionHeader(title: "Recently practised")
+        VStack(spacing: IntradaSpacing.cardCompact) {
+          ForEach(recentlyPractised, id: \.id) { libraryRow($0) }
+        }
+        HairlineDivider()
+      }
     }
   }
 

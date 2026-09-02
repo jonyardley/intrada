@@ -88,13 +88,14 @@
     private let analytics: AnalyticsView?
     private let lastPractised: LastPractisedView?
     private let upNext: SuggestedSession?
+    private let recentlyPractised: [LibraryItemView]
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
-      upNext: SuggestedSession? = nil
+      upNext: SuggestedSession? = nil, recentlyPractised: [LibraryItemView] = []
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -105,6 +106,7 @@
       self.analytics = analytics
       self.lastPractised = lastPractised
       self.upNext = upNext
+      self.recentlyPractised = recentlyPractised
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -132,6 +134,7 @@
       if let analytics { viewModel.analytics = analytics }
       viewModel.lastPractised = lastPractised
       viewModel.upNext = upNext
+      viewModel.recentlyPractised = recentlyPractised
       return viewModel
     }
   }
@@ -257,6 +260,35 @@
             totalDurationDisplay: nil, totalDurationSummary: nil,
             sessionIntention: nil, targetDurationMins: nil,
             sourceStatus: .noSource)))
+    }
+
+    /// Session builder's add-items sheet with a "Recently practised" quick-add
+    /// section (#1362), independent of `previewBuilding`'s own items/setlist.
+    static var previewBuildingRecentlyPractised: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            totalDurationDisplay: nil, totalDurationSummary: nil,
+            sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource),
+          recentlyPractised: [.previewPiece, .previewExercise]))
+    }
+
+    /// Same as `previewBuildingRecentlyPractised`, but with the type filter set
+    /// to exercises — the section must not survive an active filter (#1362).
+    static var previewBuildingRecentlyPractisedFiltered: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewExercise],
+          activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            totalDurationDisplay: nil, totalDurationSummary: nil,
+            sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource),
+          recentlyPractised: [.previewPiece, .previewExercise]))
     }
 
     /// Session builder with a block (a piece + 2 related) above a standalone
