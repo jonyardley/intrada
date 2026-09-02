@@ -466,6 +466,9 @@ impl Intrada {
         // suggestion the Practice tab leads with (#1082).
         let up_next = crate::suggestion::compute_up_next(&items, clock);
 
+        // Cloned pre-filter for pickers that curate their own subset (#1484).
+        let all_items = items.clone();
+
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
         }
@@ -619,6 +622,7 @@ impl Intrada {
 
         ViewModel {
             items,
+            all_items,
             active_query: model.active_query.clone(),
             active_sort: model.active_sort,
             visible_pieces,
@@ -3969,6 +3973,31 @@ mod tests {
             vm.up_next.expect("a suggestion").piece_id,
             "p1",
             "the suggestion is derived before the filter"
+        );
+    }
+
+    #[test]
+    fn a_library_filter_cannot_hide_a_link_picker_candidate() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Sonata", ItemKind::Piece, now),
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+        ];
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert!(
+            !vm.items.iter().any(|i| i.id == "p1"),
+            "the filter really does hide the piece from the list"
+        );
+        assert!(
+            vm.all_items.iter().any(|i| i.id == "p1"),
+            "all_items is the unfiltered picker source and must still offer it"
         );
     }
 
