@@ -679,12 +679,13 @@ struct LibraryDetailScreen: View {
 
   // ── Actions ──
 
+  // Unfiltered so a Library search/filter can't hide picker candidates (#1484).
   private var allExercises: [LibraryItemView] {
-    (store.viewModel?.items ?? []).filter { $0.itemType == .exercise }
+    (store.viewModel?.allItems ?? []).filter { $0.itemType == .exercise }
   }
 
   private var allPieces: [LibraryItemView] {
-    (store.viewModel?.items ?? []).filter { $0.itemType == .piece }
+    (store.viewModel?.allItems ?? []).filter { $0.itemType == .piece }
   }
 
   /// The pieces that declare the link, as opposed to the ones this exercise has
