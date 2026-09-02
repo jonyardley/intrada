@@ -59,7 +59,8 @@ which was retired with the coach but whose split survives the direction change.
 ### 1. British English, always
 
 `practise` the verb, `practice` the noun. `prioritise`, `organise`, `colour`,
-`favourite`, `cancelled`. Dates read `14 Aug`, never `Aug 14`.
+`favourite`, `cancelled`. Dates read `14 Aug`, never `Aug 14` — by localising,
+not by hard-coding the British order (V5).
 
 Already right across the app (`Start practising`, `days practised`,
 `Add to priorities`). It stays right by being checked.
@@ -353,3 +354,26 @@ consistency or left alone; neither is load-bearing.
 Considered and rejected: `Grade`, which collides with ABRSM grades (the level,
 not the mark); `Rating`, which is accurate but is the data model's word, not a
 musician's.
+
+
+### V5 — Dates read `14 Aug` by localising, not by pinning
+
+**Decided 2026-08-29 (#1485).** Rule 1 says dates read `14 Aug`. The tempting
+way to enforce that is a literal `"d MMM"` pattern, and that is how the app
+drifted: three short-date formatters shipped with hand-typed patterns, one of
+them `"MMM d"`, so the same app read `24 Jun` in the tempo trend and `Jun 24`
+in the Used in card.
+
+Every short date now goes through `DateDisplay`, which builds its formatter with
+`setLocalizedDateFormatFromTemplate`. A British device gets `14 Aug`, which is
+what rule 1 asks for; an American one gets `Aug 14`, which is what rule 1 would
+ask for if it had been written by an American. **Do not "fix" a template back to
+a literal pattern to make a snapshot read British.**
+
+The snapshot host pins `en_US` for determinism, so committed references show
+`Aug 14`. That is the localisation working, not a regression:
+`DateDisplayTests` asserts both regions from the same call, and
+`ExerciseUsageDisplayTests` runs `en_GB` and asserts `24 Jun`. Pinning the
+snapshot host to `en_GB` instead would make the references read the way Jon's
+device does, at the cost of re-recording every date-bearing reference; left
+open.

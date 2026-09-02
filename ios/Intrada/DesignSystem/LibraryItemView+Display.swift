@@ -2,22 +2,14 @@ import Foundation
 import SharedTypes
 
 extension ItemPracticeSummary {
-  /// Score history (newest first) mapped to `RecentSessions` rows, formatting
-  /// each RFC3339 `sessionDate` as the compact `EEE · MMM d` the design uses.
-  /// Locale/calendar come from the SwiftUI environment so snapshot hosts stay
-  /// deterministic (see `SessionCard.dateDisplay`).
   func recentSessionRows(locale: Locale, calendar: Calendar) -> [RecentSession] {
-    let formatter = DateFormatter()
-    formatter.locale = locale
-    formatter.calendar = calendar
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = "EEE '·' MMM d"
+    let dates = DateDisplay(locale: locale, calendar: calendar)
     return scoreHistory.map { entry in
       RecentSession(
         id: entry.sessionId,
         score: Int(entry.score),
         dateText: SessionClock.parseRFC3339(entry.sessionDate)
-          .map { formatter.string(from: $0) } ?? "")
+          .map(dates.weekdayAndDay) ?? "")
     }
   }
 
@@ -33,17 +25,47 @@ extension ItemPracticeSummary {
     }
     guard marks.contains(where: { $0.tempo != nil }) else { return nil }
 
-    let formatter = DateFormatter()
-    formatter.locale = locale
-    formatter.calendar = calendar
-    formatter.timeZone = calendar.timeZone
-    formatter.dateFormat = "d MMM"
-    let text = { (mark: TempoTrendMark?) in mark.map { formatter.string(from: $0.date) } ?? "" }
+    let dates = DateDisplay(locale: locale, calendar: calendar)
+    let text = { (mark: TempoTrendMark?) in mark.map { dates.day($0.date) } ?? "" }
     return TempoTrendDisplay(
       series: TempoTrendSeries(marks: marks),
       hasTrend: tempoTrend.hasTrend,
       startDateText: text(marks.first),
       endDateText: text(marks.last))
+  }
+}
+
+/// Short dates, always from a localised template and never a literal pattern —
+/// see `docs/tone-of-voice.md` V5 for why (#1485). Hold one across a run of
+/// dates: `score_history` is uncapped, so building one per date puts hundreds
+/// of ICU template lookups in a SwiftUI body.
+struct DateDisplay {
+  private let dayFormatter: DateFormatter
+  private let weekdayFormatter: DateFormatter
+
+  init(locale: Locale, calendar: Calendar) {
+    dayFormatter = Self.formatter(template: "dMMM", locale: locale, calendar: calendar)
+    weekdayFormatter = Self.formatter(template: "EEE", locale: locale, calendar: calendar)
+  }
+
+  /// "28 Aug" on a British device, "Aug 28" on an American one.
+  func day(_ date: Date) -> String { dayFormatter.string(from: date) }
+
+  /// "Fri · 28 Aug". Formatted apart and joined: one "EEEdMMM" template would
+  /// bring the region's own separator with it (a comma, in en_US).
+  func weekdayAndDay(_ date: Date) -> String {
+    "\(weekdayFormatter.string(from: date)) · \(day(date))"
+  }
+
+  private static func formatter(template: String, locale: Locale, calendar: Calendar)
+    -> DateFormatter
+  {
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.calendar = calendar
+    formatter.timeZone = calendar.timeZone
+    formatter.setLocalizedDateFormatFromTemplate(template)
+    return formatter
   }
 }
 
@@ -89,12 +111,7 @@ extension ExerciseUsageView {
     let n = Int(sessionCount)
     parts.append("\(n) \(n == 1 ? "session" : "sessions")")
     if let date = lastPracticedAt.flatMap(SessionClock.parseRFC3339) {
-      let formatter = DateFormatter()
-      formatter.locale = locale
-      formatter.calendar = calendar
-      formatter.timeZone = calendar.timeZone
-      formatter.dateFormat = "d MMM"
-      parts.append(formatter.string(from: date))
+      parts.append(DateDisplay(locale: locale, calendar: calendar).day(date))
     }
     return parts.joined(separator: " · ")
   }
