@@ -104,7 +104,7 @@ worktree-new name:
     # metacharacter would either nest the worktree under a subdirectory the
     # collision scan below can't see, or break out of the surrounding quotes.
     if ! printf '%s' "{{name}}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
-        echo "✗ '{{name}}' must be alphanumeric plus '_'/'-' (no slashes) — .claude/worktrees/ stays flat." >&2
+        echo "✗ '{{name}}' must be alphanumeric plus '_'/'-' (no slashes) — worktree root stays flat." >&2
         exit 1
     fi
 
@@ -112,10 +112,11 @@ worktree-new name:
     # Always alongside the main checkout's own worktrees, even when this
     # recipe is invoked from inside another worktree — otherwise it nests
     # the new worktree under the current one instead of beside it.
-    target="$main_root/.claude/worktrees/{{name}}"
+    worktree_root="${INTRADA_WORKTREE_ROOT:-$(dirname "$main_root")/intrada-worktrees}"
+    target="$worktree_root/{{name}}"
 
     slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
-    for dir in "$main_root"/.claude/worktrees/*/; do
+    for dir in "$worktree_root"/*/; do
         [ -d "$dir" ] || continue
         other="$(basename "$dir" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
         if [ "$other" = "$slug" ]; then
@@ -190,7 +191,8 @@ worktree-rm name:
     #!/usr/bin/env bash
     set -euo pipefail
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    target="$main_root/.claude/worktrees/{{name}}"
+    worktree_root="${INTRADA_WORKTREE_ROOT:-$(dirname "$main_root")/intrada-worktrees}"
+    target="$worktree_root/{{name}}"
     if [ -d "$target" ]; then
         (cd "$target" && just ios-test-sim-clean) || true
     fi
