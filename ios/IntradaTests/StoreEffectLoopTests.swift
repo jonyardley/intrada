@@ -642,6 +642,47 @@ final class StoreEffectLoopTests: XCTestCase {
     return (bridge, try XCTUnwrap(entries.first?.id))
   }
 
+  /// Real-bridge wire pin for the pass counter (#1367): the timestamped tap
+  /// events and the drawn-slots projection cross the bincode wire, and the
+  /// core's rule holds end to end: an untouched entry records nothing, and the
+  /// first tap writes the target along with itself.
+  func testRealBridgeFirstTapWritesTheTargetAndItsTime() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-03T09:00:00Z")))
+
+    let untouched = try XCTUnwrap(try bridge.view().activeSession)
+    XCTAssertNil(untouched.currentRepTarget, "nothing is recorded before the first tap")
+    XCTAssertNil(untouched.currentRepCount)
+    XCTAssertNil(untouched.currentRepHistory)
+    XCTAssertEqual(untouched.currentRepSlots, 10, "the counter still has slots to draw")
+
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-03T09:01:00Z")))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-03T09:01:40Z")))
+
+    let tapped = try XCTUnwrap(try bridge.view().activeSession)
+    XCTAssertNil(try bridge.view().error)
+    XCTAssertEqual(tapped.currentRepTarget, 10, "the first tap wrote the default target")
+    XCTAssertEqual(tapped.currentRepCount, 0)
+    let history = try XCTUnwrap(tapped.currentRepHistory)
+    XCTAssertEqual(history.map(\.action), [.success, .missed])
+    XCTAssertEqual(
+      history.map { SessionClock.parseRFC3339($0.at) },
+      [
+        SessionClock.parseRFC3339("2026-09-03T09:01:00Z"),
+        SessionClock.parseRFC3339("2026-09-03T09:01:40Z"),
+      ], "each tap keeps the time the shell gave it")
+  }
+
   /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
   /// `TempoObservation` payload has to cross the bincode wire intact and the
   /// core's ruling has to hold end to end. A wire break would let an

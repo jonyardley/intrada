@@ -15,7 +15,8 @@ pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
 pub const MIN_SCORE: u8 = 1;
 pub const MAX_SCORE: u8 = 10;
-pub const DEFAULT_REP_TARGET: u8 = 5;
+// Equal to MAX on purpose: the stepper exists to ask for fewer passes, never more.
+pub const DEFAULT_REP_TARGET: u8 = 10;
 pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;

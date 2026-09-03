@@ -940,7 +940,8 @@
           previewEntry(4, "Czerny Op. 299", .exercise),
         ], sessionIntention: "Even tempo — don't rush the runs",
         currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
-        currentRepHistory: nil, currentPlannedDurationSecs: 480, nextItemTitle: "Hanon No. 1",
+        currentRepHistory: nil, currentRepSlots: 10, currentPlannedDurationSecs: 480,
+        nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66)
     }
@@ -955,7 +956,7 @@
         entries: base.entries, sessionIntention: base.sessionIntention,
         currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
         currentRepTargetReached: base.currentRepTargetReached,
-        currentRepHistory: base.currentRepHistory,
+        currentRepHistory: base.currentRepHistory, currentRepSlots: 10,
         currentPlannedDurationSecs: base.currentPlannedDurationSecs,
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
@@ -976,7 +977,8 @@
           previewEntry(4, "Czerny Op. 299", .exercise),
         ], sessionIntention: "Keep the wrist relaxed",
         currentRepTarget: 8, currentRepCount: 3, currentRepTargetReached: false,
-        currentRepHistory: nil, currentPlannedDurationSecs: nil, nextItemTitle: "Czerny Op. 299",
+        currentRepHistory: nil, currentRepSlots: 10, currentPlannedDurationSecs: nil,
+        nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
         currentRelatedPieceTitle: "Moonlight Sonata",
         currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132)

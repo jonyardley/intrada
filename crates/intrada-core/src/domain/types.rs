@@ -494,7 +494,7 @@ mod tests {
         // PracticeSession crosses the bridge as a SaveSession persistence Effect;
         // its optional-heavy SetlistEntry + rep_history is exactly the #846 risk.
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
+            CompletionStatus, EntryStatus, PracticeSession, RepAction, RepEvent, SetlistEntry,
         };
         use crate::persistence::PersistenceOperation;
         let now = chrono::Utc::now();
@@ -512,7 +512,16 @@ mod tests {
             rep_target: Some(5),
             rep_count: Some(5),
             rep_target_reached: Some(true),
-            rep_history: Some(vec![RepAction::Success, RepAction::Missed]),
+            rep_history: Some(vec![
+                RepEvent {
+                    action: RepAction::Success,
+                    at: now,
+                },
+                RepEvent {
+                    action: RepAction::Missed,
+                    at: now,
+                },
+            ]),
             planned_duration_secs: Some(300),
             achieved_tempo: Some(120),
             group_id: None,

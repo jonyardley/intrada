@@ -200,7 +200,11 @@ final class LibraryStoreTests: XCTestCase {
       id: id, itemId: "item-\(id)", itemTitle: "Etude", itemType: .exercise, position: 0,
       durationSecs: 300, status: .completed, notes: "good", score: 4, intention: "evenness",
       repTarget: 5, repCount: 5, repTargetReached: true,
-      repHistory: [.success, .missed, .success], plannedDurationSecs: 300, achievedTempo: 120,
+      repHistory: [
+        RepEvent(action: .success, at: "2026-01-01T00:01:00Z"),
+        RepEvent(action: .missed, at: "2026-01-01T00:02:00Z"),
+        RepEvent(action: .success, at: "2026-01-01T00:03:30Z"),
+      ], plannedDurationSecs: 300, achievedTempo: 120,
       groupId: nil, variantId: nil)
   }
 
@@ -229,8 +233,42 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(e.status, .completed)
     XCTAssertEqual(e.score, 4)
     XCTAssertEqual(e.repTarget, 5)
-    XCTAssertEqual(e.repHistory, [.success, .missed, .success])
+    XCTAssertEqual(
+      e.repHistory,
+      [
+        RepEvent(action: .success, at: "2026-01-01T00:01:00Z"),
+        RepEvent(action: .missed, at: "2026-01-01T00:02:00Z"),
+        RepEvent(action: .success, at: "2026-01-01T00:03:30Z"),
+      ], "each tap keeps its own time through the blob")
     XCTAssertEqual(e.achievedTempo, 120)
+  }
+
+  /// Rows written before #1367 hold bare action strings with no time. They
+  /// must still decode, and the session start stands in for the missing `at`.
+  func testLegacyUntimedRepHistoryDecodesAgainstTheSessionStart() throws {
+    let entries =
+      #"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"piece","position":0,"durationSecs":0,"status":"completed","repTarget":5,"repCount":1,"repHistory":["success","missed"]}]"#
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v3_session",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           created_at, updated_at, priority, deleted_at)
+        VALUES ('i1', 'X', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL);
+        INSERT INTO session
+          (id, started_at, completed_at, total_duration_secs, completion_status,
+           session_notes, session_intention, entries, updated_at, deleted_at)
+        VALUES ('s1', '2026-01-01T09:00:00Z', '2026-01-01T09:30:00Z', 0, 'completed',
+                NULL, NULL, '\(entries)', '2026-01-01T09:30:00Z', NULL)
+        """)
+    let e = try XCTUnwrap(try store.loadSessions().first?.entries.first)
+    XCTAssertEqual(
+      e.repHistory,
+      [
+        RepEvent(action: .success, at: "2026-01-01T09:00:00Z"),
+        RepEvent(action: .missed, at: "2026-01-01T09:00:00Z"),
+      ], "an untimed legacy tap is dated to the session start, never dropped")
   }
 
   func testEndedEarlyAndEmptyEntriesRoundTrip() throws {
@@ -307,7 +345,8 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(
       e.status, .notAttempted, "unknown entry status → conservative notAttempted, not completed")
     XCTAssertEqual(e.itemType, .piece, "unknown kind → piece")
-    XCTAssertEqual(e.repHistory, [.missed], "unknown rep action → conservative missed")
+    XCTAssertEqual(
+      e.repHistory?.map(\.action), [.missed], "unknown rep action → conservative missed")
   }
 
   /// Upgrade path: a pre-existing v2 item row survives the v3 session migration.
