@@ -271,7 +271,15 @@ across three pull-request runs that touched the app, the critical path was
 (702-739s): roughly 19 to 20 minutes of wall clock. Inside the build job,
 regenerating bindings cost 54s (only when the core changed),
 `build-for-testing` 86s, toolchain and cache setup about 90s, and the Release
-compile guard 155-197s. What those numbers changed:
+compile guard 155-197s.
+
+The run that landed the changes below came in at **11m26s** end to end: build
+162s, then the longer UI slice at 495s. One number to keep in mind before
+slicing the UI suite again: the two slices took 436s for three tests and 495s
+for four, so the cost is per test rather than per class, and a further split
+keeps paying until the per-test stall itself is fixed (#947).
+
+What those numbers changed:
 
 - **The Release guard runs beside the tests, not in front of them.** The
   `#if DEBUG` divergence check (#1177) was 155-197s of that critical path and
