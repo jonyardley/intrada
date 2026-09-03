@@ -33,15 +33,15 @@ struct ClickBarLine: View {
   }
 
   private var dots: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: IntradaSpacing.controlGap) {
       ForEach(groupRanges.indices, id: \.self) { g in
-        HStack(spacing: 6) {
+        HStack(spacing: IntradaSpacing.controlGap) {
           ForEach(groupRanges[g], id: \.self) { beat in
             BeatDot(sounding: sounds(beat), current: beat == currentBeat)
           }
         }
         if g < groupRanges.count - 1 {
-          Spacer().frame(width: IntradaSpacing.controlGap)
+          Spacer().frame(width: IntradaSpacing.cardCompact)
         }
       }
     }

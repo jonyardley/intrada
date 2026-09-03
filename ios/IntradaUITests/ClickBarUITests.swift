@@ -75,5 +75,6 @@ final class ClickBarUITests: XCTestCase {
         + "\(achieved.value as? String ?? "no value")")
 
     app.buttons["Skip rating"].tap()
+    app.discardSummary()
   }
 }

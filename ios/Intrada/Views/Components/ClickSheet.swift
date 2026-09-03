@@ -66,12 +66,7 @@ struct ClickSheet: View {
   }
 
   private var metreChoices: [MetreChoice] {
-    var choices = Self.presets.map(MetreChoice.metre)
-    if case .metre(let current) = choice, !Self.presets.contains(current) {
-      choices.append(.metre(current))
-    }
-    choices.append(.other)
-    return choices
+    Self.presets.map(MetreChoice.metre) + [.other]
   }
 
   private var metreSection: some View {
@@ -173,40 +168,27 @@ struct ClickSheet: View {
 
   private var soundsOnSection: some View {
     let metre = click.metre
-    let offered = ClickPattern.offered(for: metre)
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Eyebrow("Sounds on")
-      HStack(spacing: IntradaSpacing.controlGap) {
-        ForEach(offered, id: \.self) { pattern in
-          let selected = ClickPattern.matching(click.sounding, in: metre) == pattern
-          Button(pattern.title) { click.apply(pattern) }
-            .buttonStyle(.plain)
-            .font(IntradaFont.tab)
-            .foregroundStyle(selected ? IntradaColor.paperTop : IntradaColor.inkSecondary)
-            .padding(.horizontal, IntradaSpacing.cardCompact)
-            .frame(minHeight: 36)
-            .background(selected ? IntradaColor.accent : IntradaColor.cardFill, in: Capsule())
-            .overlay(Capsule().stroke(IntradaColor.hairline, lineWidth: selected ? 0 : 1))
-            .accessibilityAddTraits(selected ? .isSelected : [])
-        }
-      }
+      // Optional option type so a hand-toggled mask matching no preset simply
+      // selects nothing, as the grouping picker above does for "Not grouped".
+      SegmentedPills(
+        options: ClickPattern.offered(for: metre).map(Optional.some),
+        selection: Binding(
+          get: { ClickPattern.matching(click.sounding, in: metre) },
+          set: { if let pattern = $0 { click.apply(pattern) } }),
+        label: { $0?.title ?? "" },
+        unselectedColor: IntradaColor.inkSecondary,
+        layout: .fullWidthTrack)
       beatGrid(metre)
     }
   }
 
-  /// One tap per beat; above six beats one row per group, which reads as the
-  /// shape of the bar and keeps every cell a real target (T19).
+  /// One tap per beat, in rows: the metre's own groups when it declares them,
+  /// so 3 + 2 + 2 reads as the shape of the bar, and otherwise split so that a
+  /// twelve-beat bar still fits the sheet rather than running off its edge.
   private func beatGrid(_ metre: Metre) -> some View {
-    let groups = metre.groups.map { $0.map(Int.init) } ?? [Int(metre.beats)]
-    let rows: [[Int]] = {
-      var rows: [[Int]] = []
-      var start = 0
-      for group in groups {
-        rows.append(Array(start..<(start + group)))
-        start += group
-      }
-      return metre.beats > 6 ? rows : [rows.flatMap { $0 }]
-    }()
+    let rows = Self.gridRows(metre)
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       ForEach(rows.indices, id: \.self) { r in
         HStack(spacing: IntradaSpacing.controlGap) {
@@ -216,7 +198,7 @@ struct ClickSheet: View {
               .buttonStyle(.plain)
               .font(IntradaFont.bodyMedium)
               .monospacedDigit()
-              .foregroundStyle(on ? IntradaColor.paperTop : IntradaColor.inkSecondary)
+              .foregroundStyle(on ? IntradaColor.onAccent : IntradaColor.inkSecondary)
               .frame(width: 44, height: 44)
               .background(
                 on ? IntradaColor.accent : IntradaColor.cardFill,
@@ -233,5 +215,21 @@ struct ClickSheet: View {
         }
       }
     }
+  }
+
+  /// Six 44pt cells and their gaps are the widest row that fits an iPhone
+  /// sheet, so an ungrouped bar longer than that is halved rather than clipped.
+  static func gridRows(_ metre: Metre) -> [[Int]] {
+    let beats = Int(metre.beats)
+    let lengths: [Int] =
+      beats > 6
+      ? (metre.groups.map { $0.map(Int.init) } ?? [(beats + 1) / 2, beats / 2]) : [beats]
+    var rows: [[Int]] = []
+    var start = 0
+    for length in lengths {
+      rows.append(Array(start..<(start + length)))
+      start += length
+    }
+    return rows
   }
 }

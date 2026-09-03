@@ -8,11 +8,17 @@ import SwiftUI
 struct TrackedTempo {
   private(set) var bpm: Int
   private(set) var userSet = false
+  /// The beat value `bpm` counts in, so a quaver tempo is not clamped against
+  /// the crotchet band (#1499).
+  private let unit: UInt8
 
-  init(startingBpm: Int) { bpm = TempoScale.clamp(startingBpm) }
+  init(startingBpm: Int, unit: UInt8 = 4) {
+    self.unit = unit
+    bpm = TempoScale.clamp(startingBpm, unit: unit)
+  }
 
   mutating func set(_ next: Int) {
-    bpm = TempoScale.clamp(next)
+    bpm = TempoScale.clamp(next, unit: unit)
     userSet = true
   }
 }
@@ -62,7 +68,8 @@ struct ReflectionSheet: View {
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
-    _achievedTempo = State(initialValue: TrackedTempo(startingBpm: startingTempoBpm))
+    _achievedTempo = State(
+      initialValue: TrackedTempo(startingBpm: startingTempoBpm, unit: tempoUnit))
     _selectedVariantId = State(
       initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
   }

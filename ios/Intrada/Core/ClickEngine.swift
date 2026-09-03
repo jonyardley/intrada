@@ -48,7 +48,6 @@ final class ClickEngine {
     /// Bitmask, LSB = beat 1.
     let sounding: UInt16
 
-    /// Every beat, no bar: the click as it was before it knew about metre.
     static let flat = BeatPattern(beats: 1, sounding: 1)
 
     func sounds(beat index: Int) -> Bool {

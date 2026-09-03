@@ -9,7 +9,7 @@ struct TempoStepper: View {
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       TempoStepButton(systemImage: "minus", label: "Slower") {
-        value = TempoScale.stepped(from: value, by: -TempoScale.step)
+        value = TempoScale.stepped(from: value, by: -TempoScale.step, unit: unit)
       }
       Text(TempoUnit.readout(value, unit: unit))
         .font(IntradaFont.scoreNumeral(24))
@@ -17,7 +17,7 @@ struct TempoStepper: View {
         .foregroundStyle(IntradaColor.ink)
         .frame(maxWidth: .infinity)
       TempoStepButton(systemImage: "plus", label: "Faster") {
-        value = TempoScale.stepped(from: value, by: TempoScale.step)
+        value = TempoScale.stepped(from: value, by: TempoScale.step, unit: unit)
       }
     }
     .accessibilityElement(children: .ignore)
@@ -25,8 +25,8 @@ struct TempoStepper: View {
     .accessibilityValue(TempoUnit.spoken(value, unit: unit))
     .accessibilityAdjustableAction { direction in
       switch direction {
-      case .increment: value = TempoScale.stepped(from: value, by: TempoScale.step)
-      case .decrement: value = TempoScale.stepped(from: value, by: -TempoScale.step)
+      case .increment: value = TempoScale.stepped(from: value, by: TempoScale.step, unit: unit)
+      case .decrement: value = TempoScale.stepped(from: value, by: -TempoScale.step, unit: unit)
       default: break
       }
     }

@@ -32,7 +32,7 @@ struct FocusPlayerScreen: View {
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
-        tempoUnit: target.clickState.metre.unit,
+        tempoUnit: target.tempoUnit,
         variants: target.variants, currentVariantId: target.currentVariantId,
         onSave: { result in handleReflection(target, result) },
         onSkip: { handleSkipRating() }
@@ -41,7 +41,6 @@ struct FocusPlayerScreen: View {
     }
     .sheet(isPresented: $configuringClick) {
       ClickSheet(click: click, bpm: click.bpm)
-        .presentationDetents([.medium, .large])
     }
     .task { click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre) }
     .onChange(of: active?.currentPosition) { _, _ in
@@ -272,9 +271,13 @@ struct FocusPlayerScreen: View {
     /// The click was sounding when the item ended, so `startingTempoBpm`
     /// measures what they played to rather than being an untouched default.
     let clickSounding: Bool
-    /// The bar and pattern the click was set to; the core rules on whether the
-    /// tempo is in quavers and whether the pattern was evidenced (#1499).
-    let clickState: ClickState
+    /// The bar and pattern the click was set to, or `nil` when the click was
+    /// never touched for this item: the core rules on whether the tempo is in
+    /// quavers and whether the pattern was evidenced (#1499).
+    let clickState: ClickState?
+    /// The unit the stepper counts in, which is the click's when the player
+    /// chose one and crotchets when they did not.
+    var tempoUnit: UInt8 { clickState?.metre.unit ?? 4 }
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.
     let variants: [VariantView]

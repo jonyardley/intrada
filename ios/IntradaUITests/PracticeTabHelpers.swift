@@ -50,4 +50,19 @@ extension XCUIApplication {
       if discard.waitForExistence(timeout: 5) { discard.tap() }
     }
   }
+
+  /// Same job for a session that reached the summary: only `SaveSession` and
+  /// `DiscardSession` clear the in-progress blob, and reaching the summary
+  /// clears nothing.
+  @MainActor
+  func discardSummary(file: StaticString = #filePath, line: UInt = #line) {
+    let discard = buttons["Discard"]
+    XCTAssertTrue(
+      discard.waitForExistence(timeout: 10), "the summary is up", file: file, line: line)
+    discard.tap()
+    let confirm = alerts.buttons["Discard"]
+    XCTAssertTrue(
+      confirm.waitForExistence(timeout: 5), "the discard confirmation", file: file, line: line)
+    confirm.tap()
+  }
 }
