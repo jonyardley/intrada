@@ -385,6 +385,10 @@ ios-build-release: _ios-sync
 _ios-test-run tier:
     #!/usr/bin/env bash
     set -euo pipefail
+    if ! bash scripts/check-sim-free.sh; then
+        echo "✗ Another agent's iOS tests are running. Wait for them to finish or use a separate worktree." >&2
+        exit 1
+    fi
     stamp=ios/build/.ios-test-stamp
     sha="$(git rev-parse HEAD)"
     if [ -z "$(git status --porcelain)" ] && [ -f "$stamp" ]; then
