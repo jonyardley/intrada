@@ -20,12 +20,12 @@ struct ClickControl: View {
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       if isRunning {
-        TempoStepButton(systemImage: "minus", label: "Slower") { onStep(-TempoStepper.step) }
+        TempoStepButton(systemImage: "minus", label: "Slower") { onStep(-TempoScale.step) }
           .transition(.opacity)
       }
       toggle
       if isRunning {
-        TempoStepButton(systemImage: "plus", label: "Faster") { onStep(TempoStepper.step) }
+        TempoStepButton(systemImage: "plus", label: "Faster") { onStep(TempoScale.step) }
           .transition(.opacity)
       }
     }

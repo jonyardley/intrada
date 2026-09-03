@@ -5,24 +5,10 @@ import SwiftUI
 struct TempoStepper: View {
   @Binding var value: Int
 
-  /// UI range (DECISIONS.md surface 2) — narrower than the core's 1–400 BPM
-  /// validation; out-of-range targets are clamped via `clamp(_:)`.
-  static let range = 40...208
-  static let step = 2
-
-  /// Moves an out-of-range value toward the range, never past it further.
-  static func clamp(_ value: Int) -> Int {
-    min(range.upperBound, max(range.lowerBound, value))
-  }
-
-  static func stepped(from value: Int, by delta: Int) -> Int {
-    clamp(value + delta)
-  }
-
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       TempoStepButton(systemImage: "minus", label: "Slower") {
-        value = Self.stepped(from: value, by: -Self.step)
+        value = TempoScale.stepped(from: value, by: -TempoScale.step)
       }
       Text("♩ = \(value)")
         .font(IntradaFont.scoreNumeral(24))
@@ -30,7 +16,7 @@ struct TempoStepper: View {
         .foregroundStyle(IntradaColor.ink)
         .frame(maxWidth: .infinity)
       TempoStepButton(systemImage: "plus", label: "Faster") {
-        value = Self.stepped(from: value, by: Self.step)
+        value = TempoScale.stepped(from: value, by: TempoScale.step)
       }
     }
     .accessibilityElement(children: .ignore)
@@ -38,8 +24,8 @@ struct TempoStepper: View {
     .accessibilityValue("\(value) beats per minute")
     .accessibilityAdjustableAction { direction in
       switch direction {
-      case .increment: value = Self.stepped(from: value, by: Self.step)
-      case .decrement: value = Self.stepped(from: value, by: -Self.step)
+      case .increment: value = TempoScale.stepped(from: value, by: TempoScale.step)
+      case .decrement: value = TempoScale.stepped(from: value, by: -TempoScale.step)
       default: break
       }
     }

@@ -9,10 +9,10 @@ struct TrackedTempo {
   private(set) var bpm: Int
   private(set) var userSet = false
 
-  init(startingBpm: Int) { bpm = TempoStepper.clamp(startingBpm) }
+  init(startingBpm: Int) { bpm = TempoScale.clamp(startingBpm) }
 
   mutating func set(_ next: Int) {
-    bpm = TempoStepper.clamp(next)
+    bpm = TempoScale.clamp(next)
     userSet = true
   }
 }
@@ -46,7 +46,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
-    startingTempoBpm: Int = ClickController.defaultBpm,
+    startingTempoBpm: Int = TempoScale.defaultBpm,
     variants: [VariantView] = [], currentVariantId: String? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void

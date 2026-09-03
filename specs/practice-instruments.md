@@ -241,9 +241,10 @@ change breaks.
 
 1. **#1364, the session timer.** Shell only. The orientation band grows a left
    slot; VoiceOver distinguishes it from the ring; one snapshot.
-2. **#1402, tempo constants.** Shell only. A `Tempo` enum next to
-   `TempoFormatting` owns `range`, `step`, `clamp`, `stepped` and the default;
-   `TempoStepper`, `ClickController` and `ReflectionSheet` read it.
+2. **#1402, tempo constants.** Shell only. A `TempoScale` enum in `Core/` owns
+   `range`, `step`, `clamp`, `stepped` and the default (`Tempo` is taken by the
+   generated `SharedTypes.Tempo`); `TempoStepper`, `ClickController` and
+   `ReflectionSheet` read it.
 3. **#1367 core.** `RepEvent`, `now` on the rep events, the displayed-target
    projection, `StartSession` no longer pre-initialising, the key bump, GRDB and
    API codec updates, round-trip and upgrade-path tests, plus the plumbing the

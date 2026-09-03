@@ -4,37 +4,37 @@ import XCTest
 @testable import Intrada
 
 @MainActor
-final class TempoStepperTests: XCTestCase {
+final class TempoScaleTests: XCTestCase {
   func testClampWithinRangeIsUnchanged() {
-    XCTAssertEqual(TempoStepper.clamp(96), 96)
-    XCTAssertEqual(TempoStepper.clamp(TempoStepper.range.lowerBound), 40)
-    XCTAssertEqual(TempoStepper.clamp(TempoStepper.range.upperBound), 208)
+    XCTAssertEqual(TempoScale.clamp(96), 96)
+    XCTAssertEqual(TempoScale.clamp(TempoScale.range.lowerBound), 40)
+    XCTAssertEqual(TempoScale.clamp(TempoScale.range.upperBound), 208)
   }
 
   func testClampBelowRangeSnapsToLowerBound() {
-    XCTAssertEqual(TempoStepper.clamp(30), 40, "a Grave target below the UI range clamps up")
+    XCTAssertEqual(TempoScale.clamp(30), 40, "a Grave target below the UI range clamps up")
   }
 
   func testClampAboveRangeSnapsToUpperBound() {
-    XCTAssertEqual(TempoStepper.clamp(220), 208, "a Presto target above the UI range clamps down")
+    XCTAssertEqual(TempoScale.clamp(220), 208, "a Presto target above the UI range clamps down")
   }
 
   func testIncrementFromOutOfRangeMovesTowardRangeNotAway() {
-    XCTAssertEqual(TempoStepper.stepped(from: 30, by: 2), 40)
+    XCTAssertEqual(TempoScale.stepped(from: 30, by: 2), 40)
   }
 
   func testDecrementFromOutOfRangeMovesTowardRangeNotAway() {
-    XCTAssertEqual(TempoStepper.stepped(from: 220, by: -2), 208)
+    XCTAssertEqual(TempoScale.stepped(from: 220, by: -2), 208)
   }
 
   func testStepWithinRangeMovesByStep() {
-    XCTAssertEqual(TempoStepper.stepped(from: 96, by: 2), 98)
-    XCTAssertEqual(TempoStepper.stepped(from: 96, by: -2), 94)
+    XCTAssertEqual(TempoScale.stepped(from: 96, by: 2), 98)
+    XCTAssertEqual(TempoScale.stepped(from: 96, by: -2), 94)
   }
 
   func testStepClampsAtTheBoundary() {
-    XCTAssertEqual(TempoStepper.stepped(from: 208, by: 2), 208)
-    XCTAssertEqual(TempoStepper.stepped(from: 40, by: -2), 40)
+    XCTAssertEqual(TempoScale.stepped(from: 208, by: 2), 208)
+    XCTAssertEqual(TempoScale.stepped(from: 40, by: -2), 40)
   }
 }
 
@@ -92,7 +92,7 @@ final class TrackedTempoTests: XCTestCase {
 
   func testAnOutOfRangeStartClampsWithoutCountingAsUserSet() {
     let tempo = TrackedTempo(startingBpm: 400)
-    XCTAssertEqual(tempo.bpm, TempoStepper.range.upperBound)
+    XCTAssertEqual(tempo.bpm, TempoScale.range.upperBound)
     XCTAssertFalse(tempo.userSet, "clamping is the app tidying up, not the user choosing")
   }
 }
