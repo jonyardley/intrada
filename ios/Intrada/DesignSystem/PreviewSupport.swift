@@ -976,7 +976,7 @@
           previewEntry(3, "Moonlight Sonata", .piece, groupId: "g1"),
           previewEntry(4, "Czerny Op. 299", .exercise),
         ], sessionIntention: "Keep the wrist relaxed",
-        currentRepTarget: 8, currentRepCount: 3, currentRepTargetReached: false,
+        currentRepTarget: 10, currentRepCount: 7, currentRepTargetReached: false,
         currentRepHistory: nil, currentRepSlots: 10, currentPlannedDurationSecs: nil,
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",

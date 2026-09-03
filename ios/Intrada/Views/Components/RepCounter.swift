@@ -1,31 +1,39 @@
 import SwiftUI
 
-/// The in-the-moment repetition log — the "good friction" the player exists for.
-/// Clean banks a rep (teal), Missed steps back (taupe, never shaming). Slot dots
-/// fill toward the target so "how many to go" is always visible.
+/// The pass counter, resident on the Focus Player and ignorable (T19). Until
+/// the first tap it draws `slots` empty positions and no dots, because nothing
+/// has been recorded; the core writes the target with the first tap.
 ///
-/// Dumb pipe: `count`/`target` come from the core's `ActiveSessionView`; the
-/// buttons report intent up (`onClean`/`onMissed`) and the core re-derives the
-/// count. No domain state lives here. Buttons disable at each clamp end.
+/// Dumb pipe: every number comes from the core's `ActiveSessionView`, the
+/// buttons report intent up, and the core re-derives the count. A miss is
+/// always tappable below the target: whether a miss at zero counts is the
+/// core's rule, and it records one.
 struct RepCounter: View {
   let count: Int
-  let target: Int
-  let onClean: () -> Void
-  let onMissed: () -> Void
+  let slots: Int
+  let touched: Bool
+  let reached: Bool
+  let onGotIt: () -> Void
+  let onNotQuite: () -> Void
 
-  private var toGo: Int { max(0, target - count) }
+  @Environment(\.dynamicTypeSize) private var typeSize
+
+  private var toGo: Int { max(0, slots - count) }
+  private var stacked: Bool { typeSize.isAccessibilitySize }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       header
-      dots
+      if touched {
+        dots
+      }
       buttons
     }
   }
 
   private var header: some View {
     HStack {
-      Text("Repetitions")
+      Text("Passes")
         .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer()
@@ -33,34 +41,69 @@ struct RepCounter: View {
         Text("\(count)")
           .fontWeight(.semibold)
           .foregroundStyle(IntradaColor.ink)
-        Text(" of \(target) · \(toGo) to go")
+        Text(countTail)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       .font(IntradaFont.meta)
       .monospacedDigit()
     }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Passes")
+    .accessibilityValue(spokenCount)
+  }
+
+  /// The "to go" clause is dropped at the target and before the first tap:
+  /// neither state has a distance left to state.
+  private var countTail: String {
+    touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
+  }
+
+  private var spokenCount: String {
+    touched && !reached ? "\(count) of \(slots), \(toGo) to go" : "\(count) of \(slots)"
   }
 
   private var dots: some View {
     HStack(spacing: 5) {
-      ForEach(0..<max(target, 0), id: \.self) { i in
+      ForEach(0..<max(slots, 0), id: \.self) { i in
         RepDot(done: i < count)
           .popOnChange(count == i + 1)
       }
     }
+    .accessibilityHidden(true)
   }
 
-  private var buttons: some View {
-    HStack(spacing: 10) {
-      repButton(
-        title: "Clean", icon: "checkmark", fg: IntradaColor.repCleanFg,
-        bg: IntradaColor.repCleanBg, border: IntradaColor.repCleanBorder,
-        disabled: count >= target, action: onClean)
-      repButton(
-        title: "Missed", icon: "xmark", fg: IntradaColor.repMissedFg,
-        bg: IntradaColor.repMissedBg, border: IntradaColor.slotOutline,
-        disabled: count <= 0, action: onMissed)
+  @ViewBuilder private var buttons: some View {
+    if stacked {
+      VStack(spacing: IntradaSpacing.controlGap) {
+        gotIt
+        notQuite(title: "Not quite right")
+      }
+    } else {
+      HStack(spacing: IntradaSpacing.controlGap + 2) {
+        gotIt
+        notQuite(title: "Not quite")
+      }
     }
+  }
+
+  private var gotIt: some View {
+    repButton(
+      title: "Got it", icon: "checkmark", fg: IntradaColor.repCleanFg,
+      bg: IntradaColor.repCleanBg, border: IntradaColor.repCleanBorder,
+      disabled: reached, action: onGotIt
+    )
+    .accessibilityLabel("Got it")
+    .accessibilityHint("Banks a pass")
+  }
+
+  private func notQuite(title: String) -> some View {
+    repButton(
+      title: title, icon: "xmark", fg: IntradaColor.repMissedFg,
+      bg: IntradaColor.repMissedBg, border: IntradaColor.slotOutline,
+      disabled: reached, action: onNotQuite
+    )
+    .accessibilityLabel("Not quite")
+    .accessibilityHint("Marks a pass not quite there")
   }
 
   private func repButton(
@@ -72,6 +115,8 @@ struct RepCounter: View {
         Image(systemName: icon)
           .font(.system(size: 17, weight: .semibold))
         Text(title)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
       }
       .font(IntradaFont.segment.weight(.semibold))
       .foregroundStyle(fg)
@@ -85,9 +130,6 @@ struct RepCounter: View {
     .buttonStyle(PressRebound())
     .disabled(disabled)
     .opacity(disabled ? 0.4 : 1)
-    .accessibilityLabel(title)
-    .accessibilityHint(
-      title == "Clean" ? "Bank a clean repetition" : "Step back a repetition")
   }
 }
 
@@ -107,15 +149,22 @@ private struct RepDot: View {
 #if DEBUG
   #Preview {
     struct Harness: View {
-      @State private var count = 7
-      let target = 12
+      @State private var count = 0
+      @State private var touched = false
+      let slots = 10
       var body: some View {
         ZStack {
           PaperBackground()
           RepCounter(
-            count: count, target: target,
-            onClean: { if count < target { count += 1 } },
-            onMissed: { if count > 0 { count -= 1 } }
+            count: count, slots: slots, touched: touched, reached: count >= slots,
+            onGotIt: {
+              touched = true
+              count = min(slots, count + 1)
+            },
+            onNotQuite: {
+              touched = true
+              count = max(0, count - 1)
+            }
           )
           .padding(IntradaSpacing.card)
         }

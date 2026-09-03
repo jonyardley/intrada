@@ -56,9 +56,7 @@ struct FocusPlayerScreen: View {
       centerInfo(active).fadeUp(1)
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       clickRow(active).padding(.top, IntradaSpacing.controlGap)
-      if active.currentRepTarget != nil {
-        repCounter(active).fadeUp(3).padding(.top, 28)
-      }
+      repCounter(active).fadeUp(3).padding(.top, IntradaSpacing.section)
       Spacer(minLength: IntradaSpacing.card)
       controls(active).fadeUp(4)
     }
@@ -183,14 +181,16 @@ struct FocusPlayerScreen: View {
       onStep: { click.step(by: $0) })
   }
 
-  // ── Reps (only when the current item has a target) ──
+  // ── Passes (resident; the core records nothing until the first tap) ──
 
   private func repCounter(_ active: ActiveSessionView) -> some View {
     RepCounter(
       count: Int(active.currentRepCount ?? 0),
-      target: Int(active.currentRepTarget ?? 0),
-      onClean: { store.send(.session(.repGotIt(now: SessionClock.nowRFC3339()))) },
-      onMissed: { store.send(.session(.repMissed(now: SessionClock.nowRFC3339()))) })
+      slots: Int(active.currentRepSlots),
+      touched: active.currentRepTarget != nil,
+      reached: active.currentRepTargetReached ?? false,
+      onGotIt: { store.send(.session(.repGotIt(now: SessionClock.nowRFC3339()))) },
+      onNotQuite: { store.send(.session(.repMissed(now: SessionClock.nowRFC3339()))) })
   }
 
   // ── Bottom: transport (advance + skip-forward) + next-item hint ──
@@ -325,8 +325,8 @@ private struct TimerRing: View {
 
   var body: some View {
     ZStack {
-      // Inset the ring to r≈100 within the 236 box (design geometry); the time
-      // stays centred at full size.
+      // The 200 box is the price of the resident counter (T19); the ring had
+      // the most slack. The time stays centred at full size.
       ZStack {
         Circle().stroke(IntradaColor.timerTrack, lineWidth: 10)
         if planned != nil {
@@ -352,7 +352,7 @@ private struct TimerRing: View {
         }
       }
     }
-    .frame(width: 236, height: 236)
+    .frame(width: 200, height: 200)
     .accessibilityElement(children: .ignore)
     // Named for the item rather than just "Elapsed": the orientation band now
     // carries a session timer too, so an unqualified label reads as either (T19).

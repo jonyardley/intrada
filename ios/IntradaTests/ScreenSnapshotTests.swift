@@ -493,17 +493,35 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(bars), as: config)
   }
 
+  /// Untouched (no dots, no "to go"), mid-count, and at the target (Got it
+  /// greyed, "to go" dropped): the three states T19 names.
   func testRepCounter() {
     let counters = ZStack {
       PaperBackground()
       VStack(spacing: 24) {
-        RepCounter(count: 7, target: 12, onClean: {}, onMissed: {})
-        RepCounter(count: 0, target: 8, onClean: {}, onMissed: {})  // Missed disabled
-        RepCounter(count: 6, target: 6, onClean: {}, onMissed: {})  // Clean disabled
+        RepCounter(
+          count: 0, slots: 10, touched: false, reached: false, onGotIt: {}, onNotQuite: {})
+        RepCounter(
+          count: 7, slots: 10, touched: true, reached: false, onGotIt: {}, onNotQuite: {})
+        RepCounter(
+          count: 10, slots: 10, touched: true, reached: true, onGotIt: {}, onNotQuite: {})
       }
       .padding(16)
     }
     assertSnapshot(of: host(counters), as: config)
+  }
+
+  /// At accessibility sizes the pair stacks and the miss reads "Not quite right".
+  func testRepCounterAccessibilitySize() {
+    let counter = ZStack {
+      PaperBackground()
+      RepCounter(
+        count: 3, slots: 10, touched: true, reached: false, onGotIt: {}, onNotQuite: {}
+      )
+      .padding(16)
+    }
+    .dynamicTypeSize(.accessibility3)
+    assertSnapshot(of: host(counter), as: config)
   }
 
   func testLibraryDetailScreen() {
