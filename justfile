@@ -401,8 +401,8 @@ _ios-test-run tier:
         # from kills the runner process (#1203). Fast tier (unit/snapshot,
         # deterministic) stays strict. Full tier runs both targets in one
         # `xcodebuild` call locally, so retry applies to both; CI's fanned-out
-        # jobs (#1207) call `_ios-test-without-building` once per target and
-        # scope retry to the UI job only.
+        # jobs (#1207) call `_ios-test-without-building` once per slice (unit,
+        # then the two UI slices) and scope retry to the UI slices only.
         just _ios-test-without-building "" 1
     fi
     # Same exact-tree guard as `check` above (#1204).
@@ -423,6 +423,10 @@ _ios-build-for-testing:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
+    # A run file is named for its destination, so a pin bump would leave the
+    # old one beside the new one and the single-file lookup in
+    # `_ios-test-without-building` would have nothing to choose from.
+    rm -f build/dd/Build/Products/*.xctestrun
     xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"

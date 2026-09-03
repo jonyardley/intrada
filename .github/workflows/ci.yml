@@ -292,12 +292,11 @@ jobs:
       # formula to pin to, and current Homebrew rejects installing a loose
       # formula file outside a tap, so a version pin would need a full
       # homebrew-core git clone at a fixed commit — much heavier than the
-      # 4MB release zip. Since #1207's fan-out, all three native-ios jobs
-      # resolve xcodegen independently within one CI run; native-ios-build's
-      # prebuilt test products are matched against the .xcodeproj it
-      # generated, and a formula bump landing mid-run could drift that
-      # against the .xcodeproj a test job regenerates locally. Bump this WITH
-      # the two identical steps below, in lockstep.
+      # 4MB release zip. `native-ios-build` and `native-ios-build-release`
+      # both resolve xcodegen independently within one CI run, so a formula
+      # bump landing mid-run could generate the two projects from different
+      # versions. Bump this WITH the identical step in
+      # `native-ios-build-release`, in lockstep.
       - name: Install xcodegen
         if: steps.xcodegen-cache.outputs.cache-hit != 'true'
         run: |
@@ -392,12 +391,11 @@ jobs:
   native-ios-build-release:
     # Debug and Release diverge on `#if DEBUG`-gated code (#1177): the Debug
     # test build can't catch a non-DEBUG-gated file that references a
-    # DEBUG-only symbol. Compile-only, no signing, no tests. It was a step of
-    # `native-ios-build`, where its 155-197s sat on the critical path ahead of
-    # the test jobs even though nothing downstream reads its output; it runs
-    # beside them instead. `needs: native-ios-build` only for the bindings
-    # cache that job guarantees, which is what keeps the Rust toolchain out of
-    # here.
+    # DEBUG-only symbol. Compile-only, no signing, no tests. Runs beside the
+    # test jobs rather than ahead of them, since nothing downstream reads its
+    # output (timings in docs/reference.md). `needs: native-ios-build` only
+    # for the bindings cache that job guarantees, which is what keeps the Rust
+    # toolchain out of here.
     name: "Native iOS: Release build"
     runs-on: macos-26
     timeout-minutes: 30
@@ -430,11 +428,14 @@ jobs:
       # xcodegen fails ("Invalid local package") without ios/generated, and
       # `ios-build-release`'s `_ios-sync` reads the stamp inside it to decide
       # whether to regenerate: on a hit it doesn't, so no cargo is needed.
+      # This job has no Rust toolchain, so a miss is fatal either way and had
+      # better say so here rather than inside cargo-swift.
       - name: Restore generated Swift bindings
         uses: actions/cache/restore@v6
         with:
           path: ios/generated
           key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
+          fail-on-cache-miss: true
       - name: Restore SwiftPM packages
         uses: actions/cache/restore@v6
         with:
@@ -517,8 +518,8 @@ jobs:
     # relaunch-on-crash retry flags (#1203) scoped to this job only, so a UI
     # flake's retry can't also re-run (and re-cost) the unit/snapshot suite.
     #
-    # Sliced across two runners because the suite was 653-692s serial and
-    # `SessionBuilderUITests` is over a third of it on its own (#947). The
+    # Sliced across two runners because `SessionBuilderUITests` is over a
+    # third of the suite on its own (#947; timings in docs/reference.md). The
     # slices are a whole class and its complement, expressed as a skip, so a
     # UI class added later joins the second slice instead of silently running
     # nowhere (the #1456 failure mode). xcodebuild's own parallel testing

@@ -279,7 +279,11 @@ compile guard 155-197s. What those numbers changed:
   `native-ios-build-release`, which starts when the build job finishes and runs
   concurrently with the two test jobs. It keeps its own DerivedData cache
   (`ios-dd-release-v1-*`) and is listed in the fan-in gate, so a Release-only
-  break still fails the required check.
+  break still fails the required check. This is the trade #1207 parked in
+  2026-08 until "the full tier's wall time grows past ~10 minutes", which 19
+  to 20 minutes clears: the price paid is more concurrent macOS jobs (four
+  rather than two, billed at 10x) and the artifact downloaded by each test
+  job, in exchange for the wall clock.
 - **The test jobs stopped generating the Xcode project.** Both now run
   `xcodebuild test-without-building -xctestrun <path>` against the `.xctestrun`
   inside the downloaded `native-ios-test-products` artifact. That file is
