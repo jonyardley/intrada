@@ -90,11 +90,9 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
-/// Three generations of `rep_history` JSON share the column: timestamped
-/// events, then bare action strings (`["Missed", "Success"]`), then the
-/// `serde_repr` integers (`[-1, 1]`). The two older shapes carry no time, so
-/// their events take `fallback_at`, the session start: the only bound that is
-/// honest for every tap.
+/// The column holds three generations: `RepEvent` objects, bare action strings
+/// (`["Missed"]`) and `serde_repr` integers (`[-1, 1]`). The older two carry no
+/// time, so they take `fallback_at`, the session start: honest for every tap.
 fn parse_rep_history(
     json_str: &str,
     fallback_at: DateTime<Utc>,

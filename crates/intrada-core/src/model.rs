@@ -1085,6 +1085,37 @@ mod tests {
 
     // ── build_active_session_view ──────────────────────────────────────
 
+    /// The resident counter draws against `current_rep_slots`, so a builder
+    /// target of 7 must not render as ten slots.
+    #[test]
+    fn active_session_view_draws_the_builder_target_or_the_default() {
+        let mut targeted = make_entry("e1", "i1", "Scale", 0);
+        targeted.rep_target = Some(7);
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![targeted, make_entry("e2", "i2", "Etude", 1)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        assert_eq!(
+            build_active_session_view(&active, &HashMap::new()).current_rep_slots,
+            7
+        );
+
+        let untouched = ActiveSession {
+            current_index: 1,
+            ..active
+        };
+        let view = build_active_session_view(&untouched, &HashMap::new());
+        assert_eq!(view.current_rep_target, None);
+        assert_eq!(
+            view.current_rep_slots,
+            crate::validation::DEFAULT_REP_TARGET
+        );
+    }
+
     #[test]
     fn active_session_view_next_item_title() {
         let active = ActiveSession {

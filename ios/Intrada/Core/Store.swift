@@ -16,10 +16,8 @@ final class Store {
   /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
-  /// Versioned because the blob is positional bincode: a build reading an older
-  /// build's blob decodes a valid-looking wrong session, so every change to
-  /// `ActiveSession`'s graph takes a new key (#1345; the core pins the wire in
-  /// `active_session_blob_wire_is_pinned`). v2: timestamped `RepEvent` history.
+  /// Positional bincode: any change to `ActiveSession`'s graph takes a new key
+  /// (#1345; pinned by the core's `active_session_blob_wire_is_pinned`).
   static let sessionInProgressKey = "intrada.session-in-progress.v2"
   private let bridge: CoreBridge
   private let session: URLSession

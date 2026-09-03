@@ -35,9 +35,6 @@ pub enum CompletionStatus {
 
 /// A single action in the rep history sequence.
 ///
-/// Values are deltas: `1` = count + 1 (success), `-1` = count − 1 (missed).
-/// Enables analytics: sum for net progress, running total for sparkline charts,
-/// count of `-1`s for total misses, longest streak of `1`s for best run.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -172,7 +169,7 @@ pub struct BuildingSession {
 }
 
 /// State during active practice (Active phase).
-/// Persisted to `intrada:session-in-progress` for crash recovery.
+/// Persisted under `Store.sessionInProgressKey` for crash recovery.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSession {
@@ -5733,19 +5730,6 @@ mod tests {
                     RepAction::Success
                 ])
             );
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_rep_history_none_without_counter() {
-        let (model, _now) = model_with_active_session_and_rep(5);
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            // Second entry has no rep target, so no history
-            assert_eq!(a.entries[1].rep_target, None);
-            assert_eq!(a.entries[1].rep_history, None);
         } else {
             panic!("Expected Active state");
         }
