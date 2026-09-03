@@ -1,8 +1,6 @@
 import XCTest
 
-/// The pass counter end to end (#1367): the resident counter reads `0 of 10`
-/// before anyone touches it, and each tap moves the count the way the core
-/// rules. The real-bridge unit test covers the wire; this covers the buttons.
+/// The real-bridge unit test covers the wire; this covers the buttons.
 @MainActor
 final class PassCounterUITests: XCTestCase {
   override func setUp() {
@@ -41,8 +39,9 @@ final class PassCounterUITests: XCTestCase {
     app.buttons["Not quite"].tap()
     XCTAssertEqual(passes.value as? String, "0 of 10, 10 to go", "a miss steps back, floor zero")
 
+    XCTAssertTrue(app.buttons["Not quite"].isEnabled, "a miss at zero is still tappable")
     app.buttons["Not quite"].tap()
-    XCTAssertEqual(passes.value as? String, "0 of 10, 10 to go", "a miss at zero is still tappable")
+    XCTAssertEqual(passes.value as? String, "0 of 10, 10 to go", "and the count stays on the floor")
 
     // Leave the container clean for the next test: abandon via Session options.
     app.buttons["Session options"].tap()

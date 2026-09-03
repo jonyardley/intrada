@@ -1,13 +1,8 @@
 import SwiftUI
 
-/// The pass counter, resident on the Focus Player and ignorable (T19). Until
-/// the first tap it draws `slots` empty positions and no dots, because nothing
-/// has been recorded; the core writes the target with the first tap.
-///
-/// Dumb pipe: every number comes from the core's `ActiveSessionView`, the
-/// buttons report intent up, and the core re-derives the count. A miss is
-/// always tappable below the target: whether a miss at zero counts is the
-/// core's rule, and it records one.
+/// Resident and ignorable (T19): untouched it draws no dots because the core
+/// has recorded nothing yet. Not quite stays tappable at zero because the core
+/// records a miss there.
 struct RepCounter: View {
   let count: Int
   let slots: Int
@@ -52,8 +47,6 @@ struct RepCounter: View {
     .accessibilityValue(spokenCount)
   }
 
-  /// The "to go" clause is dropped at the target and before the first tap:
-  /// neither state has a distance left to state.
   private var countTail: String {
     touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
   }
@@ -79,7 +72,7 @@ struct RepCounter: View {
         notQuite(title: "Not quite right")
       }
     } else {
-      HStack(spacing: IntradaSpacing.controlGap + 2) {
+      HStack(spacing: IntradaSpacing.controlGap) {
         gotIt
         notQuite(title: "Not quite")
       }
@@ -93,7 +86,7 @@ struct RepCounter: View {
       disabled: reached, action: onGotIt
     )
     .accessibilityLabel("Got it")
-    .accessibilityHint("Banks a pass")
+    .accessibilityHint("Counts one pass")
   }
 
   private func notQuite(title: String) -> some View {
@@ -102,8 +95,8 @@ struct RepCounter: View {
       bg: IntradaColor.repMissedBg, border: IntradaColor.slotOutline,
       disabled: reached, action: onNotQuite
     )
-    .accessibilityLabel("Not quite")
-    .accessibilityHint("Marks a pass not quite there")
+    .accessibilityLabel(title)
+    .accessibilityHint("Takes one pass off")
   }
 
   private func repButton(
@@ -113,7 +106,7 @@ struct RepCounter: View {
     Button(action: action) {
       HStack(spacing: 7) {
         Image(systemName: icon)
-          .font(.system(size: 17, weight: .semibold))
+          .font(IntradaFont.segment.weight(.semibold))
         Text(title)
           .lineLimit(1)
           .minimumScaleFactor(0.8)

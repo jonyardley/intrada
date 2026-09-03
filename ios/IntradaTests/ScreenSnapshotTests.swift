@@ -493,8 +493,6 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(bars), as: config)
   }
 
-  /// Untouched (no dots, no "to go"), mid-count, and at the target (Got it
-  /// greyed, "to go" dropped): the three states T19 names.
   func testRepCounter() {
     let counters = ZStack {
       PaperBackground()
@@ -511,7 +509,6 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(counters), as: config)
   }
 
-  /// At accessibility sizes the pair stacks and the miss reads "Not quite right".
   func testRepCounterAccessibilitySize() {
     let counter = ZStack {
       PaperBackground()

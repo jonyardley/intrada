@@ -187,7 +187,7 @@ struct FocusPlayerScreen: View {
     RepCounter(
       count: Int(active.currentRepCount ?? 0),
       slots: Int(active.currentRepSlots),
-      touched: active.currentRepTarget != nil,
+      touched: active.currentRepCount != nil,
       reached: active.currentRepTargetReached ?? false,
       onGotIt: { store.send(.session(.repGotIt(now: SessionClock.nowRFC3339()))) },
       onNotQuite: { store.send(.session(.repMissed(now: SessionClock.nowRFC3339()))) })
@@ -366,7 +366,7 @@ private struct TimerRing: View {
 }
 
 #if DEBUG
-  #Preview("No reps") {
+  #Preview("Untouched") {
     FocusPlayerScreen().environment(Store.previewActive)
   }
 
