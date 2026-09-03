@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use intrada_core::domain::item::ItemKind;
 use intrada_core::domain::session::{
-    CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
+    CompletionStatus, EntryStatus, PracticeSession, RepAction, RepEvent, SetlistEntry,
 };
 
 use super::{col, item_kind_from_str, item_kind_to_str};
@@ -49,7 +49,7 @@ pub struct SaveSessionEntry {
     #[serde(default)]
     pub rep_target_reached: Option<bool>,
     #[serde(default)]
-    pub rep_history: Option<Vec<RepAction>>,
+    pub rep_history: Option<Vec<RepEvent>>,
     #[serde(default)]
     pub planned_duration_secs: Option<u32>,
     #[serde(default)]
@@ -90,26 +90,31 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
-/// Parse rep_history JSON from the database.
-///
-/// Handles both the legacy integer format (`[-1, 1, 1]`) and the current
-/// string format (`["Missed", "Success", "Success"]`). Legacy data was written
-/// when RepAction used `serde_repr` with `#[repr(i8)]`.
-fn parse_rep_history(json_str: &str) -> Result<Vec<RepAction>, ApiError> {
-    // Try the current string format first (most common going forward)
+/// The column holds three generations: `RepEvent` objects, bare action strings
+/// (`["Missed"]`) and `serde_repr` integers (`[-1, 1]`). The older two carry no
+/// time, so they take `fallback_at`, the session start: honest for every tap.
+fn parse_rep_history(
+    json_str: &str,
+    fallback_at: DateTime<Utc>,
+) -> Result<Vec<RepEvent>, ApiError> {
+    if let Ok(events) = serde_json::from_str::<Vec<RepEvent>>(json_str) {
+        return Ok(events);
+    }
+    let at_fallback = |action| RepEvent {
+        action,
+        at: fallback_at,
+    };
     if let Ok(actions) = serde_json::from_str::<Vec<RepAction>>(json_str) {
-        return Ok(actions);
+        return Ok(actions.into_iter().map(at_fallback).collect());
     }
 
-    // Fall back to legacy integer format: -1 = Missed, 1 = Success
     let integers: Vec<i8> = serde_json::from_str(json_str)
         .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?;
-
     integers
         .into_iter()
         .map(|v| match v {
-            -1 => Ok(RepAction::Missed),
-            1 => Ok(RepAction::Success),
+            -1 => Ok(at_fallback(RepAction::Missed)),
+            1 => Ok(at_fallback(RepAction::Success)),
             other => Err(ApiError::Internal(format!(
                 "Invalid legacy rep_history value: {other}"
             ))),
@@ -125,7 +130,10 @@ const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, durat
 const SESSION_IDS_FOR_USER: &str = "SELECT id FROM sessions WHERE user_id = ?1";
 
 /// Parse an entry row into a SetlistEntry (columns 0–14 matching [`ENTRY_COLUMNS`]).
-fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
+fn row_to_entry(
+    row: &libsql::Row,
+    session_started_at: DateTime<Utc>,
+) -> Result<SetlistEntry, ApiError> {
     let id: String = col!(row, 0)?;
     let item_id: String = col!(row, 1)?;
     let item_title: String = col!(row, 2)?;
@@ -142,7 +150,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let rep_target_reached: Option<i64> = col!(row, 12)?;
     let rep_history_raw: Option<String> = col!(row, 13)?;
     let rep_history = match rep_history_raw {
-        Some(json_str) => Some(parse_rep_history(&json_str)?),
+        Some(json_str) => Some(parse_rep_history(&json_str, session_started_at)?),
         None => None,
     };
     let planned_duration_secs_raw: Option<i64> = col!(row, 14)?;
@@ -173,7 +181,11 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 }
 
 /// Fetch entries for a session, ordered by position.
-async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
+async fn fetch_entries(
+    conn: &Connection,
+    session_id: &str,
+    session_started_at: DateTime<Utc>,
+) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
             &format!(
@@ -189,7 +201,7 @@ async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<Setlis
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        entries.push(row_to_entry(&row)?);
+        entries.push(row_to_entry(&row, session_started_at)?);
     }
     Ok(entries)
 }
@@ -271,14 +283,23 @@ pub async fn list_sessions(
         )
         .await?;
 
+    let started_at_by_session: HashMap<&str, DateTime<Utc>> = sessions
+        .iter()
+        .map(|s| (s.id.as_str(), s.started_at))
+        .collect();
     let mut entries_by_session: HashMap<String, Vec<SetlistEntry>> = HashMap::new();
     while let Some(row) = entry_rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let entry = row_to_entry(&row)?;
         let session_id: String = col!(row, 16)?;
+        let Some(&started_at) = started_at_by_session.get(session_id.as_str()) else {
+            return Err(ApiError::Internal(format!(
+                "entry row for unknown session {session_id}"
+            )));
+        };
+        let entry = row_to_entry(&row, started_at)?;
         entries_by_session
             .entry(session_id)
             .or_default()
@@ -314,7 +335,7 @@ pub async fn get_session(
     {
         Some(row) => {
             let mut session = row_to_session_without_entries(&row)?;
-            session.entries = fetch_entries(conn, &session.id).await?;
+            session.entries = fetch_entries(conn, &session.id, session.started_at).await?;
             Ok(Some(session))
         }
         None => Ok(None),
@@ -469,4 +490,64 @@ pub async fn delete_session(conn: &Connection, id: &str, user_id: &str) -> Resul
     .await?;
 
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn started() -> DateTime<Utc> {
+        "2026-09-03T08:47:00Z".parse().expect("fixed")
+    }
+
+    #[test]
+    fn timestamped_events_parse_with_their_own_times() {
+        let at: DateTime<Utc> = "2026-09-03T09:00:00Z".parse().expect("fixed");
+        let json = serde_json::to_string(&vec![RepEvent {
+            action: RepAction::Missed,
+            at,
+        }])
+        .expect("serialise");
+        let parsed = parse_rep_history(&json, started()).expect("parse");
+        assert_eq!(
+            parsed,
+            vec![RepEvent {
+                action: RepAction::Missed,
+                at
+            }]
+        );
+    }
+
+    #[test]
+    fn bare_action_strings_take_the_session_start() {
+        let parsed = parse_rep_history(r#"["Success","Missed"]"#, started()).expect("parse");
+        assert_eq!(
+            parsed.iter().map(|e| e.action).collect::<Vec<_>>(),
+            vec![RepAction::Success, RepAction::Missed]
+        );
+        assert!(parsed.iter().all(|e| e.at == started()));
+    }
+
+    #[test]
+    fn serde_repr_integers_take_the_session_start() {
+        let parsed = parse_rep_history("[-1, 1]", started()).expect("parse");
+        assert_eq!(
+            parsed,
+            vec![
+                RepEvent {
+                    action: RepAction::Missed,
+                    at: started()
+                },
+                RepEvent {
+                    action: RepAction::Success,
+                    at: started()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn an_unknown_integer_is_an_error_not_a_guess() {
+        assert!(parse_rep_history("[2]", started()).is_err());
+    }
 }

@@ -9,7 +9,7 @@ use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
-    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
+    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepEvent, SessionStatus,
     SetlistEntry, SummarySession,
 };
 use crate::domain::set::Set;
@@ -522,7 +522,7 @@ pub struct SetlistEntryView {
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
     pub rep_target_reached: Option<bool>,
-    pub rep_history: Option<Vec<RepAction>>,
+    pub rep_history: Option<Vec<RepEvent>>,
     pub planned_duration_secs: Option<u32>,
     pub planned_duration_display: Option<String>,
     pub achieved_tempo: Option<u16>,
@@ -552,7 +552,10 @@ pub struct ActiveSessionView {
     pub current_rep_target: Option<u8>,
     pub current_rep_count: Option<u8>,
     pub current_rep_target_reached: Option<bool>,
-    pub current_rep_history: Option<Vec<RepAction>>,
+    pub current_rep_history: Option<Vec<RepEvent>>,
+    /// How many slots the counter draws before the first tap. A drawn target
+    /// is not a recorded one: `current_rep_target` stays `None` until a tap.
+    pub current_rep_slots: u8,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
     /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
@@ -822,6 +825,9 @@ pub fn build_active_session_view(
         current_rep_count: current.rep_count,
         current_rep_target_reached: current.rep_target_reached,
         current_rep_history: current.rep_history.clone(),
+        current_rep_slots: current
+            .rep_target
+            .unwrap_or(crate::validation::DEFAULT_REP_TARGET),
         current_planned_duration_secs: current.planned_duration_secs,
         next_item_title: active
             .entries
@@ -1078,6 +1084,37 @@ mod tests {
     }
 
     // ── build_active_session_view ──────────────────────────────────────
+
+    /// The resident counter draws against `current_rep_slots`, so a builder
+    /// target of 7 must not render as ten slots.
+    #[test]
+    fn active_session_view_draws_the_builder_target_or_the_default() {
+        let mut targeted = make_entry("e1", "i1", "Scale", 0);
+        targeted.rep_target = Some(7);
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![targeted, make_entry("e2", "i2", "Etude", 1)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        assert_eq!(
+            build_active_session_view(&active, &HashMap::new()).current_rep_slots,
+            7
+        );
+
+        let untouched = ActiveSession {
+            current_index: 1,
+            ..active
+        };
+        let view = build_active_session_view(&untouched, &HashMap::new());
+        assert_eq!(view.current_rep_target, None);
+        assert_eq!(
+            view.current_rep_slots,
+            crate::validation::DEFAULT_REP_TARGET
+        );
+    }
 
     #[test]
     fn active_session_view_next_item_title() {

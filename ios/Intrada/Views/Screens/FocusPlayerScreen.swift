@@ -189,8 +189,8 @@ struct FocusPlayerScreen: View {
     RepCounter(
       count: Int(active.currentRepCount ?? 0),
       target: Int(active.currentRepTarget ?? 0),
-      onClean: { store.send(.session(.repGotIt)) },
-      onMissed: { store.send(.session(.repMissed)) })
+      onClean: { store.send(.session(.repGotIt(now: SessionClock.nowRFC3339()))) },
+      onMissed: { store.send(.session(.repMissed(now: SessionClock.nowRFC3339()))) })
   }
 
   // ── Bottom: transport (advance + skip-forward) + next-item hint ──

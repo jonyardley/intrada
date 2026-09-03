@@ -590,9 +590,9 @@ the diagnosis and the fix: [`docs/reference.md`](docs/reference.md).
   old blob decode into a valid-looking wrong session. `#[serde(default)]` does
   nothing here — serde never reaches the default on a non-self-describing wire.
   The coach era missed this three times (#1223, #1244, #1256) and answered it
-  with a per-variant wire-pin test; porting that technique to the
-  `ActiveSession` blob is a tracked follow-up of #1344. Until it lands, any
-  change to the blob's graph must bump the UserDefaults key.
+  with a per-variant wire-pin test, and `active_session_blob_wire_is_pinned`
+  (`domain/session.rs`) now pins this blob the same way (#1345). When it fails,
+  bump `Store.sessionInProgressKey` first, then re-pin; never only re-pin.
 - **`option_env!` needs `cargo:rerun-if-env-changed`.** Without it cargo caches
   the macro expansion and your "I changed the env var" rebuild silently uses
   stale values. Hit on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.

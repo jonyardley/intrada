@@ -22,8 +22,10 @@ struct EntrySettingsSheet: View {
     store.viewModel?.items.first(where: { $0.id == entry.itemId })?.variants ?? []
   }
 
-  // Mirrors crates/intrada-core/src/validation.rs MIN/MAX_REP_TARGET.
+  // Mirrors crates/intrada-core/src/validation.rs MIN/MAX_REP_TARGET and
+  // DEFAULT_REP_TARGET.
   private let repTargetRange = 3...10
+  private let defaultRepTarget = 10
   // Mirrors MIN/MAX_PLANNED_DURATION_SECS (60–3600s), in whole minutes.
   private let durationRange = 1...60
 
@@ -31,7 +33,7 @@ struct EntrySettingsSheet: View {
     self.entry = entry
     _intention = State(initialValue: entry.intention ?? "")
     _tracksReps = State(initialValue: entry.repTarget != nil)
-    _repTarget = State(initialValue: Int(entry.repTarget ?? 5))
+    _repTarget = State(initialValue: Int(entry.repTarget ?? UInt8(defaultRepTarget)))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
     _plannedMinutes = State(initialValue: Int((entry.plannedDurationSecs ?? 360) / 60))
     _variantId = State(initialValue: entry.variantId)

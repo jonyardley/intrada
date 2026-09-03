@@ -35,9 +35,6 @@ pub enum CompletionStatus {
 
 /// A single action in the rep history sequence.
 ///
-/// Values are deltas: `1` = count + 1 (success), `-1` = count − 1 (missed).
-/// Enables analytics: sum for net progress, running total for sparkline charts,
-/// count of `-1`s for total misses, longest streak of `1`s for best run.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -46,6 +43,15 @@ pub enum RepAction {
     Missed,
     /// Successful rep — count incremented.
     Success,
+}
+
+/// One tap on the pass counter and when it landed. Sequence alone cannot tell
+/// a steady ten from a hard-won one (#1367).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct RepEvent {
+    pub action: RepAction,
+    pub at: DateTime<Utc>,
 }
 
 // ── Domain Types ───────────────────────────────────────────────────────
@@ -73,7 +79,7 @@ pub struct SetlistEntry {
     #[serde(default)]
     pub rep_target_reached: Option<bool>,
     #[serde(default)]
-    pub rep_history: Option<Vec<RepAction>>,
+    pub rep_history: Option<Vec<RepEvent>>,
     #[serde(default)]
     pub planned_duration_secs: Option<u32>,
     #[serde(default)]
@@ -163,7 +169,7 @@ pub struct BuildingSession {
 }
 
 /// State during active practice (Active phase).
-/// Persisted to `intrada:session-in-progress` for crash recovery.
+/// Persisted under `Store.sessionInProgressKey` for crash recovery.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSession {
@@ -330,13 +336,15 @@ pub enum SessionEvent {
     /// Used when the user wants to discard an in-progress session from the
     /// new-session page (e.g. after crash recovery leaves a stale session).
     AbandonSession,
-    /// Increment rep count on current entry (capped at target).
-    RepGotIt,
-    /// Decrement rep count on current entry (floor 0).
-    RepMissed,
-    /// Initialise rep counter on current entry. Only sets defaults when
-    /// no prior rep state exists; otherwise preserves existing state.
-    InitRepCounter,
+    /// Bank a pass on the current entry (capped at target). The first tap on
+    /// an untouched entry writes the target too; see `record_rep`.
+    RepGotIt {
+        now: DateTime<Utc>,
+    },
+    /// Step back a pass on the current entry (floor 0).
+    RepMissed {
+        now: DateTime<Utc>,
+    },
 
     // === Summary Phase ===
     UpdateEntryNotes {
@@ -559,6 +567,42 @@ fn freeze_rep_state(entry: &mut SetlistEntry) {
     if let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) {
         entry.rep_target_reached = Some(count >= target);
     }
+}
+
+/// The first tap is what switches the counter on: it writes the target along
+/// with itself, so an untouched entry keeps all four rep fields `None` and
+/// banks nothing (design-principles T19). A target set in the builder is kept.
+fn record_rep(model: &mut Model, action: RepAction, now: DateTime<Utc>) -> Command<Effect, Event> {
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        return crux_core::render::render();
+    };
+    let Some(entry) = active.entries.get_mut(active.current_index) else {
+        return crux_core::render::render();
+    };
+    if entry.rep_target_reached == Some(true) {
+        return crux_core::render::render();
+    }
+
+    let target = *entry
+        .rep_target
+        .get_or_insert(validation::DEFAULT_REP_TARGET);
+    let count = entry.rep_count.unwrap_or(0);
+    let new_count = match action {
+        RepAction::Success => (count + 1).min(target),
+        RepAction::Missed => count.saturating_sub(1),
+    };
+    entry.rep_count = Some(new_count);
+    entry.rep_target_reached = Some(new_count >= target);
+    let history = entry.rep_history.get_or_insert_with(Vec::new);
+    if history.len() < validation::MAX_REP_HISTORY {
+        history.push(RepEvent { action, at: now });
+    }
+
+    model.last_error = None;
+    Command::all([
+        Command::notify_shell(AppEffect::SaveSessionInProgress(active.clone())).into(),
+        crux_core::render::render(),
+    ])
 }
 
 /// Find an entry by id in Active *or* Summary phase, so the mid-session
@@ -1181,18 +1225,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let mut entries = building.entries.clone();
-            for entry in &mut entries {
-                if entry.rep_target.is_some() {
-                    entry.rep_count = Some(0);
-                    entry.rep_target_reached = Some(false);
-                    entry.rep_history = Some(vec![]);
-                }
-            }
-
             let active = ActiveSession {
                 id: ulid::Ulid::generate().to_string(),
-                entries,
+                entries: building.entries.clone(),
                 current_index: 0,
                 current_item_started_at: now,
                 session_started_at: now,
@@ -1392,100 +1427,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             ])
         }
 
-        SessionEvent::RepGotIt => {
-            let SessionStatus::Active(ref mut active) = model.session_status else {
-                return crux_core::render::render();
-            };
+        SessionEvent::RepGotIt { now } => record_rep(model, RepAction::Success, now),
 
-            let Some(entry) = active.entries.get_mut(active.current_index) else {
-                return crux_core::render::render();
-            };
-
-            // No-op if counter is not active or target already reached
-            let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) else {
-                return crux_core::render::render();
-            };
-            if entry.rep_target_reached == Some(true) {
-                return crux_core::render::render();
-            }
-
-            let new_count = (count + 1).min(target);
-            entry.rep_count = Some(new_count);
-            if new_count >= target {
-                entry.rep_target_reached = Some(true);
-            }
-
-            if let Some(ref mut history) = entry.rep_history {
-                if history.len() < crate::validation::MAX_REP_HISTORY {
-                    history.push(RepAction::Success);
-                }
-            }
-
-            model.last_error = None;
-            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-            Command::all([
-                Command::notify_shell(save_effect).into(),
-                crux_core::render::render(),
-            ])
-        }
-
-        SessionEvent::RepMissed => {
-            let SessionStatus::Active(ref mut active) = model.session_status else {
-                return crux_core::render::render();
-            };
-
-            let Some(entry) = active.entries.get_mut(active.current_index) else {
-                return crux_core::render::render();
-            };
-
-            // No-op if counter is not active or target already reached
-            let (Some(_target), Some(count)) = (entry.rep_target, entry.rep_count) else {
-                return crux_core::render::render();
-            };
-            if entry.rep_target_reached == Some(true) {
-                return crux_core::render::render();
-            }
-
-            entry.rep_count = Some(count.saturating_sub(1));
-
-            if let Some(ref mut history) = entry.rep_history {
-                if history.len() < crate::validation::MAX_REP_HISTORY {
-                    history.push(RepAction::Missed);
-                }
-            }
-
-            model.last_error = None;
-            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-            Command::all([
-                Command::notify_shell(save_effect).into(),
-                crux_core::render::render(),
-            ])
-        }
-
-        SessionEvent::InitRepCounter => {
-            let SessionStatus::Active(ref mut active) = model.session_status else {
-                return crux_core::render::render();
-            };
-
-            let Some(entry) = active.entries.get_mut(active.current_index) else {
-                return crux_core::render::render();
-            };
-
-            // Preserve existing rep state (e.g. after hide/show); only seed defaults when absent.
-            if entry.rep_target.is_none() {
-                entry.rep_target = Some(validation::DEFAULT_REP_TARGET);
-                entry.rep_count = Some(0);
-                entry.rep_target_reached = Some(false);
-                entry.rep_history = Some(vec![]);
-            }
-
-            model.last_error = None;
-            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-            Command::all([
-                Command::notify_shell(save_effect).into(),
-                crux_core::render::render(),
-            ])
-        }
+        SessionEvent::RepMissed { now } => record_rep(model, RepAction::Missed, now),
 
         // ── Entry Updates (Active or Summary) ──────────────────────
         // Accepted in both phases so the mid-session reflection sheet can record
@@ -5117,6 +5061,34 @@ mod tests {
 
     // --- Rep Counter Tests ---
 
+    const TAP_AT: &str = "2026-09-03T09:00:00Z";
+
+    fn tap_at() -> DateTime<Utc> {
+        TAP_AT.parse().expect("fixed timestamp")
+    }
+
+    fn got_it() -> Event {
+        Event::Session(SessionEvent::RepGotIt { now: tap_at() })
+    }
+
+    fn missed() -> Event {
+        Event::Session(SessionEvent::RepMissed { now: tap_at() })
+    }
+
+    fn actions(entry: &SetlistEntry) -> Option<Vec<RepAction>> {
+        entry
+            .rep_history
+            .as_ref()
+            .map(|h| h.iter().map(|e| e.action).collect())
+    }
+
+    fn active_entry(model: &Model, index: usize) -> &SetlistEntry {
+        let SessionStatus::Active(ref a) = model.session_status else {
+            panic!("Expected Active state");
+        };
+        &a.entries[index]
+    }
+
     /// Helper: create an active session with a rep target on the first item.
     fn model_with_active_session_and_rep(target: u8) -> (Model, DateTime<Utc>) {
         let mut model = model_with_library();
@@ -5149,31 +5121,32 @@ mod tests {
         (model, now)
     }
 
+    /// An untouched counter records nothing (T19): a builder target alone must
+    /// not bank a zero and an empty history on session start.
     #[test]
-    fn test_rep_initialized_on_start_session() {
+    fn test_start_session_does_not_bank_rep_state() {
         let (model, _now) = model_with_active_session_and_rep(5);
 
-        if let SessionStatus::Active(ref a) = model.session_status {
-            // First entry has rep target → initialized
-            assert_eq!(a.entries[0].rep_target, Some(5));
-            assert_eq!(a.entries[0].rep_count, Some(0));
-            assert_eq!(a.entries[0].rep_target_reached, Some(false));
-            // Second entry has no rep target → not initialized
-            assert_eq!(a.entries[1].rep_target, None);
-            assert_eq!(a.entries[1].rep_count, None);
-            assert_eq!(a.entries[1].rep_target_reached, None);
-        } else {
-            panic!("Expected Active state");
-        }
+        let targeted = active_entry(&model, 0);
+        assert_eq!(targeted.rep_target, Some(5));
+        assert_eq!(targeted.rep_count, None);
+        assert_eq!(targeted.rep_target_reached, None);
+        assert_eq!(targeted.rep_history, None);
+
+        let untouched = active_entry(&model, 1);
+        assert_eq!(untouched.rep_target, None);
+        assert_eq!(untouched.rep_count, None);
+        assert_eq!(untouched.rep_target_reached, None);
+        assert_eq!(untouched.rep_history, None);
     }
 
     #[test]
     fn test_rep_got_it_increments() {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(3));
@@ -5187,9 +5160,9 @@ mod tests {
     fn test_rep_got_it_reaches_target() {
         let (mut model, _now) = model_with_active_session_and_rep(3);
 
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(3));
@@ -5205,11 +5178,11 @@ mod tests {
 
         // Reach target
         for _ in 0..3 {
-            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+            update(&mut model, got_it());
         }
 
         // Additional got-it should not increase count
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(3));
@@ -5223,11 +5196,11 @@ mod tests {
     fn test_rep_missed_decrements() {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
-        update(&mut model, Event::Session(SessionEvent::RepMissed));
+        update(&mut model, missed());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(2));
@@ -5242,7 +5215,7 @@ mod tests {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
         // Miss with count at 0
-        update(&mut model, Event::Session(SessionEvent::RepMissed));
+        update(&mut model, missed());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(0));
@@ -5257,11 +5230,11 @@ mod tests {
 
         // Reach target
         for _ in 0..3 {
-            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+            update(&mut model, got_it());
         }
 
         // Miss should not decrement after target reached
-        update(&mut model, Event::Session(SessionEvent::RepMissed));
+        update(&mut model, missed());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_count, Some(3));
@@ -5272,46 +5245,86 @@ mod tests {
     }
 
     #[test]
-    fn test_enable_rep_counter_sets_default_target() {
+    fn test_first_got_it_on_untouched_entry_writes_all_four_fields() {
         let (mut model, _now) = model_with_active_session(2);
+        assert_eq!(active_entry(&model, 0).rep_target, None);
 
-        // Current entry has no rep target
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, None);
-        }
+        update(&mut model, got_it());
 
-        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(5)); // DEFAULT_REP_TARGET
-            assert_eq!(a.entries[0].rep_count, Some(0));
-            assert_eq!(a.entries[0].rep_target_reached, Some(false));
-        } else {
-            panic!("Expected Active state");
-        }
+        let entry = active_entry(&model, 0);
+        assert_eq!(entry.rep_target, Some(validation::DEFAULT_REP_TARGET));
+        assert_eq!(entry.rep_count, Some(1));
+        assert_eq!(entry.rep_target_reached, Some(false));
+        assert_eq!(
+            entry.rep_history,
+            Some(vec![RepEvent {
+                action: RepAction::Success,
+                at: tap_at()
+            }])
+        );
     }
 
     #[test]
-    fn test_init_rep_counter_preserves_existing_state() {
+    fn test_first_missed_on_untouched_entry_records_the_miss_at_zero() {
+        let (mut model, _now) = model_with_active_session(2);
+
+        update(&mut model, missed());
+
+        let entry = active_entry(&model, 0);
+        assert_eq!(entry.rep_target, Some(validation::DEFAULT_REP_TARGET));
+        assert_eq!(entry.rep_count, Some(0));
+        assert_eq!(entry.rep_target_reached, Some(false));
+        assert_eq!(actions(entry), Some(vec![RepAction::Missed]));
+    }
+
+    #[test]
+    fn test_first_tap_keeps_a_builder_target() {
         let (mut model, _now) = model_with_active_session_and_rep(7);
 
-        // Record some progress
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
 
-        // Re-init should preserve existing state (target, count, history)
-        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
+        let entry = active_entry(&model, 0);
+        assert_eq!(entry.rep_target, Some(7));
+        assert_eq!(entry.rep_count, Some(1));
+    }
 
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(7)); // preserved original target
-            assert_eq!(a.entries[0].rep_count, Some(2)); // preserved count
-            assert_eq!(
-                a.entries[0].rep_history,
-                Some(vec![RepAction::Success, RepAction::Success])
-            ); // preserved history
-        } else {
-            panic!("Expected Active state");
-        }
+    #[test]
+    fn test_rep_history_carries_each_taps_time_in_order() {
+        let (mut model, _now) = model_with_active_session(2);
+        let first = tap_at();
+        let second = first + chrono::Duration::seconds(40);
+        let third = second + chrono::Duration::seconds(55);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RepGotIt { now: first }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RepMissed { now: second }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RepGotIt { now: third }),
+        );
+
+        assert_eq!(
+            active_entry(&model, 0).rep_history,
+            Some(vec![
+                RepEvent {
+                    action: RepAction::Success,
+                    at: first
+                },
+                RepEvent {
+                    action: RepAction::Missed,
+                    at: second
+                },
+                RepEvent {
+                    action: RepAction::Success,
+                    at: third
+                },
+            ])
+        );
     }
 
     #[test]
@@ -5319,9 +5332,9 @@ mod tests {
         let (mut model, start) = model_with_active_session_and_rep(5);
 
         // Got-it 3 times (partial progress)
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         let now = start + chrono::Duration::seconds(30);
         update(&mut model, Event::Session(SessionEvent::NextItem { now }));
@@ -5342,7 +5355,7 @@ mod tests {
         let (mut model, start) = model_with_active_session_and_rep(5);
 
         // Got-it once
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
 
         let now = start + chrono::Duration::seconds(10);
         update(&mut model, Event::Session(SessionEvent::SkipItem { now }));
@@ -5362,7 +5375,7 @@ mod tests {
 
         // Reach target
         for _ in 0..3 {
-            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+            update(&mut model, got_it());
         }
 
         let now = start + chrono::Duration::seconds(60);
@@ -5386,7 +5399,7 @@ mod tests {
 
         // Reach target
         for _ in 0..3 {
-            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+            update(&mut model, got_it());
         }
 
         let t1 = start + chrono::Duration::seconds(60);
@@ -5408,19 +5421,16 @@ mod tests {
     }
 
     #[test]
-    fn test_rep_no_counter_entry_unaffected() {
+    fn test_a_tap_touches_only_the_current_entry() {
         let (mut model, _now) = model_with_active_session(2);
 
-        // RepGotIt on entry without counter — no-op
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
 
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, None);
-            assert_eq!(a.entries[0].rep_count, None);
-            assert_eq!(a.entries[0].rep_target_reached, None);
-        } else {
-            panic!("Expected Active state");
-        }
+        let other = active_entry(&model, 1);
+        assert_eq!(other.rep_target, None);
+        assert_eq!(other.rep_count, None);
+        assert_eq!(other.rep_target_reached, None);
+        assert_eq!(other.rep_history, None);
     }
 
     #[test]
@@ -5429,7 +5439,7 @@ mod tests {
 
         // Try to go beyond target
         for _ in 0..10 {
-            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+            update(&mut model, got_it());
         }
 
         if let SessionStatus::Active(ref a) = model.session_status {
@@ -5445,8 +5455,8 @@ mod tests {
         let (mut model, now) = model_with_active_session_and_rep(5);
 
         // Increment rep count twice on item 1
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         // End session early (item 2 is never reached)
         let t1 = now + chrono::Duration::seconds(30);
@@ -5629,13 +5639,13 @@ mod tests {
             Event::Session(SessionEvent::StartSession { now }),
         );
 
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(8));
-            assert_eq!(a.entries[0].rep_count, Some(0)); // initialized
-            assert_eq!(a.entries[0].rep_target_reached, Some(false)); // initialized
-        } else {
-            panic!("Expected Active state");
-        }
+        let entry = active_entry(&model, 0);
+        assert_eq!(entry.rep_target, Some(8));
+        assert_eq!(
+            entry.rep_count, None,
+            "nothing is banked before the first tap"
+        );
+        assert_eq!(entry.rep_target_reached, None);
     }
 
     #[test]
@@ -5661,29 +5671,15 @@ mod tests {
     // --- Rep History Tests (US1) ---
 
     #[test]
-    fn test_rep_history_initialised_on_start_session() {
-        let (model, _now) = model_with_active_session_and_rep(5);
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            // Entry with rep_target should have rep_history initialised
-            assert_eq!(a.entries[0].rep_history, Some(vec![]));
-            // Entry without rep_target should have no history
-            assert_eq!(a.entries[1].rep_history, None);
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
     fn test_rep_history_appended_on_got_it() {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(
-                a.entries[0].rep_history,
+                actions(&a.entries[0]),
                 Some(vec![RepAction::Success, RepAction::Success])
             );
         } else {
@@ -5695,12 +5691,12 @@ mod tests {
     fn test_rep_history_appended_on_missed() {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepMissed));
+        update(&mut model, got_it());
+        update(&mut model, missed());
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(
-                a.entries[0].rep_history,
+                actions(&a.entries[0]),
                 Some(vec![RepAction::Success, RepAction::Missed])
             );
         } else {
@@ -5713,9 +5709,9 @@ mod tests {
         let (mut model, start) = model_with_active_session_and_rep(5);
 
         // Record some actions
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepMissed));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, missed());
+        update(&mut model, got_it());
 
         // Move to next item
         let next_time = start + chrono::Duration::seconds(60);
@@ -5727,54 +5723,13 @@ mod tests {
         if let SessionStatus::Active(ref a) = model.session_status {
             // First entry's history should be frozen with the recorded actions
             assert_eq!(
-                a.entries[0].rep_history,
+                actions(&a.entries[0]),
                 Some(vec![
                     RepAction::Success,
                     RepAction::Missed,
                     RepAction::Success
                 ])
             );
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_rep_history_none_without_counter() {
-        let (model, _now) = model_with_active_session_and_rep(5);
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            // Second entry has no rep target, so no history
-            assert_eq!(a.entries[1].rep_target, None);
-            assert_eq!(a.entries[1].rep_history, None);
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_rep_history_initialised_on_enable_counter() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        // Start session WITHOUT rep target set during building
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        // Init counter mid-session
-        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_history, Some(vec![]));
-            assert!(a.entries[0].rep_target.is_some());
         } else {
             panic!("Expected Active state");
         }
@@ -5811,9 +5766,9 @@ mod tests {
         let (mut model, start) = model_with_active_session_and_rep(3);
 
         // Hit got it 3 times to reach target
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
-        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, got_it());
+        update(&mut model, got_it());
+        update(&mut model, got_it());
 
         // Finish session
         let end_time = start + chrono::Duration::seconds(120);
@@ -5824,7 +5779,7 @@ mod tests {
 
         if let SessionStatus::Summary(ref s) = model.session_status {
             assert_eq!(
-                s.entries[0].rep_history,
+                actions(&s.entries[0]),
                 Some(vec![
                     RepAction::Success,
                     RepAction::Success,
@@ -5857,12 +5812,107 @@ mod tests {
             rep_target: Some(5),
             rep_count: Some(5),
             rep_target_reached: Some(true),
-            rep_history: Some(vec![RepAction::Success, RepAction::Missed]),
+            rep_history: Some(vec![
+                RepEvent {
+                    action: RepAction::Success,
+                    at: tap_at(),
+                },
+                RepEvent {
+                    action: RepAction::Missed,
+                    at: tap_at(),
+                },
+            ]),
             planned_duration_secs: Some(300),
             achieved_tempo: Some(96),
             group_id: Some("g1".to_string()),
             variant_id: Some("v-1".to_string()),
         });
+    }
+
+    fn pinned_active_session() -> ActiveSession {
+        let started: DateTime<Utc> = "2026-09-03T08:47:00Z".parse().expect("fixed");
+        let mut touched = create_entry("p1", "Clair de Lune", ItemKind::Piece, 0);
+        touched.id = "e1".to_string();
+        touched.status = EntryStatus::Completed;
+        touched.duration_secs = 300;
+        touched.notes = Some("phrasing".to_string());
+        touched.score = Some(4);
+        touched.intention = Some("evenness".to_string());
+        touched.rep_target = Some(10);
+        touched.rep_count = Some(1);
+        touched.rep_target_reached = Some(false);
+        touched.rep_history = Some(vec![
+            RepEvent {
+                action: RepAction::Success,
+                at: tap_at(),
+            },
+            RepEvent {
+                action: RepAction::Missed,
+                at: tap_at() + chrono::Duration::seconds(40),
+            },
+            RepEvent {
+                action: RepAction::Success,
+                at: tap_at() + chrono::Duration::seconds(95),
+            },
+        ]);
+        touched.planned_duration_secs = Some(300);
+        touched.achieved_tempo = Some(120);
+        touched.group_id = Some("g1".to_string());
+        touched.variant_id = Some("v-1".to_string());
+        let mut untouched = create_entry("x1", "Scales", ItemKind::Exercise, 1);
+        untouched.id = "e2".to_string();
+        ActiveSession {
+            id: "s1".to_string(),
+            entries: vec![touched, untouched],
+            current_index: 1,
+            current_item_started_at: tap_at(),
+            session_started_at: started,
+            session_intention: Some("warm up".to_string()),
+        }
+    }
+
+    const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
+        "02000000000000007331020000000000000002000000000000006531020000000000000070310d00",
+        "000000000000436c616972206465204c756e650000000000000000000000002c0100000000000000",
+        "0000000108000000000000007068726173696e6701040108000000000000006576656e6e65737301",
+        "0a01010100010300000000000000010000001400000000000000323032362d30392d30335430393a",
+        "30303a30305a000000001400000000000000323032362d30392d30335430393a30303a34305a0100",
+        "00001400000000000000323032362d30392d30335430393a30313a33355a012c0100000178000102",
+        "000000000000006731010300000000000000762d3102000000000000006532020000000000000078",
+        "3106000000000000005363616c657301000000010000000000000000000000000000000200000000",
+        "0000000000000000000001000000000000001400000000000000323032362d30392d30335430393a",
+        "30303a30305a1400000000000000323032362d30392d30335430383a34373a30305a010700000000",
+        "0000007761726d207570",
+    );
+
+    /// `AppEffect::SaveSessionInProgress(ActiveSession)` is positional bincode
+    /// written by one build and read by the next, so any change to this graph
+    /// must bump `Store.sessionInProgressKey` in the shell or an old blob
+    /// decodes into a valid-looking wrong session (#1345). When this fails:
+    /// bump the key, then paste the new hex. Never just paste the hex.
+    #[test]
+    fn active_session_blob_wire_is_pinned() {
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+        let session = pinned_active_session();
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, &session).expect("serialize");
+        let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(
+            hex, PINNED_ACTIVE_SESSION_HEX,
+            "the crash-recovery blob changed shape: bump Store.sessionInProgressKey, then re-pin"
+        );
+        let back: ActiveSession =
+            BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
+        assert_eq!(back, session);
+    }
+
+    /// The timestamped tap events and the history they write cross the bridge
+    /// (#846 class); pinned before any screen sends the new payloads.
+    #[test]
+    fn rep_tap_events_round_trip_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(got_it());
+        crate::domain::types::assert_round_trips(missed());
+        crate::domain::types::assert_round_trips(pinned_active_session());
     }
 
     /// The rung tag (#1083) is the newest bincode field on the entry and the

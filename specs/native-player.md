@@ -38,7 +38,7 @@ feature is a one-line phase-guard widening for per-entry intention in Slice 2
 (see Surface 2), TDD'd and kept dumb-pipe — not a new event or capability.
 
 - Events: `NextItem`, `SkipItem`, `FinishSession`, `EndSessionEarly`,
-  `AbandonSession`, `AddItemMidSession`, `RepGotIt`/`RepMissed`/`InitRepCounter`,
+  `AbandonSession`, `AddItemMidSession`, `RepGotIt`/`RepMissed`,
   `UpdateEntryScore`/`Tempo`/`Notes`, `UpdateSessionNotes`, `SaveSession`,
   `DiscardSession`, `RecoverSession`.
 - `ActiveSessionView` exposes: current item title/type, position/total,

@@ -687,7 +687,7 @@ final class LibraryStore: ItemStore {
   private static func session(from row: Row) -> PracticeSession {
     let score: Int64? = row["session_score"]
     return PracticeSession(
-      id: row["id"], entries: decodeEntries(row["entries"]),
+      id: row["id"], entries: decodeEntries(row["entries"], sessionStartedAt: row["started_at"]),
       sessionNotes: row["session_notes"], sessionIntention: row["session_intention"],
       startedAt: row["started_at"], completedAt: row["completed_at"],
       totalDurationSecs: UInt64(row["total_duration_secs"] as Int64),
@@ -715,11 +715,34 @@ final class LibraryStore: ItemStore {
     var repTarget: UInt8?
     var repCount: UInt8?
     var repTargetReached: Bool?
-    var repHistory: [String]?
+    var repHistory: [StoredRepEvent]?
     var plannedDurationSecs: UInt32?
     var achievedTempo: UInt16?
     var groupId: String?
     var variantId: String?
+  }
+
+  /// Rows written before the history was timestamped hold bare action strings;
+  /// those decode with no `at`, and the session start stands in for it.
+  private struct StoredRepEvent: Codable {
+    var action: String
+    var at: String?
+
+    init(action: String, at: String?) {
+      self.action = action
+      self.at = at
+    }
+
+    init(from decoder: Decoder) throws {
+      if let legacy = try? decoder.singleValueContainer().decode(String.self) {
+        action = legacy
+        at = nil
+        return
+      }
+      let keyed = try decoder.container(keyedBy: CodingKeys.self)
+      action = try keyed.decode(String.self, forKey: .action)
+      at = try keyed.decodeIfPresent(String.self, forKey: .at)
+    }
   }
 
   private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
@@ -729,7 +752,9 @@ final class LibraryStore: ItemStore {
         position: e.position, durationSecs: e.durationSecs, status: entryStatusString(e.status),
         notes: e.notes, score: e.score, intention: e.intention, repTarget: e.repTarget,
         repCount: e.repCount, repTargetReached: e.repTargetReached,
-        repHistory: e.repHistory.map { $0.map(repActionString) },
+        repHistory: e.repHistory.map {
+          $0.map { StoredRepEvent(action: repActionString($0.action), at: $0.at) }
+        },
         plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo,
         groupId: e.groupId, variantId: e.variantId)
     }
@@ -738,7 +763,7 @@ final class LibraryStore: ItemStore {
     return json
   }
 
-  private static func decodeEntries(_ json: String) -> [SetlistEntry] {
+  private static func decodeEntries(_ json: String, sessionStartedAt: String) -> [SetlistEntry] {
     guard let dtos = try? JSONDecoder().decode([StoredEntry].self, from: Data(json.utf8)) else {
       return []
     }
@@ -748,7 +773,9 @@ final class LibraryStore: ItemStore {
         position: d.position, durationSecs: d.durationSecs, status: entryStatus(from: d.status),
         notes: d.notes, score: d.score, intention: d.intention, repTarget: d.repTarget,
         repCount: d.repCount, repTargetReached: d.repTargetReached,
-        repHistory: d.repHistory.map { $0.map(repAction(from:)) },
+        repHistory: d.repHistory.map {
+          $0.map { RepEvent(action: repAction(from: $0.action), at: $0.at ?? sessionStartedAt) }
+        },
         plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo,
         groupId: d.groupId, variantId: d.variantId)
     }

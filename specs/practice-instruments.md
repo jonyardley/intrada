@@ -35,8 +35,8 @@ schema change.
 ## What already exists (and changes the shape of this work)
 
 **The pass counter is shipped, not shell-dead.** `SetRepTarget`, `RepGotIt`,
-`RepMissed` and `InitRepCounter` are in the core with handlers, `freeze_rep_state`
-and auto-init on `StartSession`; `MIN_REP_TARGET`/`MAX_REP_TARGET` are 3 and 10;
+`RepMissed` and `InitRepCounter` were in the core with handlers, `freeze_rep_state`
+and auto-init on `StartSession` (the last two are gone since PR 3); `MIN_REP_TARGET`/`MAX_REP_TARGET` are 3 and 10;
 `ActiveSessionView` projects all four fields; GRDB and the API both persist the
 history; `RepCounter.swift` renders in the Focus Player and has a snapshot test.
 Full audit on [#1367](https://github.com/jonyardley/intrada/issues/1367#issuecomment-5516548349).
@@ -153,11 +153,10 @@ start.**
   indistinguishable from today's entries with no target, and contributes nothing
   to `ItemPracticeSummary`.
 - **The first tap writes all four**, target included, and records itself. This is
-  what `InitRepCounter` already does (`session.rs:1465`), so it becomes the
-  first step of `RepGotIt` / `RepMissed` rather than dead code, and needs no
-  Swift caller of its own. Both handlers currently guard on
-  `(Some(target), Some(count))` and would otherwise no-op forever on a `None`
-  entry.
+  what `InitRepCounter` did, so it became the first step of `RepGotIt` /
+  `RepMissed` (`record_rep`) and the event itself was deleted: no Swift caller
+  ever sent it. Both handlers used to guard on `(Some(target), Some(count))` and
+  would otherwise have no-oped forever on a `None` entry.
 - **`StartSession` stops pre-initialising.** Its `rep_target.is_some()` branch
   (`session.rs:1186-1189`) goes: with the counter resident, that branch would
   bank a zero and an empty history on every entry in the setlist.
@@ -187,7 +186,8 @@ pub struct RepEvent {
 ```
 
 `rep_history: Option<Vec<RepEvent>>`. The core cannot read the clock, so
-`RepGotIt` and `RepMissed` gain a `now: String` the way `SkipItem` already does.
+`RepGotIt` and `RepMissed` gain a `now: DateTime<Utc>` the way `SkipItem` already
+does.
 
 **Default target rises from 5 to 10**; the `3...10` stepper stays (Jon,
 2026-09-02). `MAX_REP_HISTORY` stays 500.
