@@ -962,6 +962,28 @@ mod tests {
         });
     }
 
+    fn make_item(id: &str, title: &str, kind: ItemKind) -> Item {
+        Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            linked_exercise_ids: vec![],
+            priority: false,
+            chord_chart: None,
+            variants: vec![],
+            photo_id: None,
+            metre: None,
+        }
+    }
+
     fn make_entry(id: &str, item_id: &str, title: &str, position: usize) -> SetlistEntry {
         SetlistEntry {
             id: id.to_string(),
@@ -1097,6 +1119,44 @@ mod tests {
     }
 
     // ── build_active_session_view ──────────────────────────────────────
+
+    /// The click sheet opens with the piece's metre (T19); a dropped projection
+    /// would open every sheet at 4/4.
+    #[test]
+    fn active_session_view_carries_the_current_items_metre() {
+        let metre = Metre {
+            beats: 7,
+            unit: 8,
+            groups: Some(vec![3, 2, 2]),
+        };
+        let mut piece = make_item("i1", "Take Five", ItemKind::Piece);
+        piece.metre = Some(metre.clone());
+        let plain = make_item("i2", "Etude", ItemKind::Exercise);
+        let items: HashMap<&str, &Item> = [("i1", &piece), ("i2", &plain)].into_iter().collect();
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Take Five", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        assert_eq!(
+            build_active_session_view(&active, &items).current_item_metre,
+            Some(metre)
+        );
+        let second = ActiveSession {
+            current_index: 1,
+            ..active
+        };
+        assert_eq!(
+            build_active_session_view(&second, &items).current_item_metre,
+            None
+        );
+    }
 
     /// The resident counter draws against `current_rep_slots`, so a builder
     /// target of 7 must not render as ten slots.

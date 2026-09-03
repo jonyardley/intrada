@@ -27,7 +27,7 @@ impl Metre {
     /// quaver or minim reading is converted here, rounding half away from zero:
     /// `♪ = 169` becomes 85, not 84 (specs/practice-instruments.md, question 2).
     pub fn crotchet_bpm(&self, displayed: u16) -> u16 {
-        let unit = u32::from(self.unit.max(1));
+        let unit = u32::from(self.unit);
         let crotchets = (u32::from(displayed) * 4 + unit / 2) / unit;
         u16::try_from(crotchets).unwrap_or(u16::MAX)
     }
@@ -50,7 +50,7 @@ mod tests {
     /// every other, at the rounding the spec states.
     #[test]
     fn every_displayed_tempo_normalises_to_a_comparable_crotchet_bpm() {
-        let table: [(Metre, u16, u16); 7] = [
+        let table: [(Metre, u16, u16); 8] = [
             (metre(4, 4), 120, 120),
             (metre(3, 4), 66, 66),
             (metre(7, 8), 168, 84),
@@ -58,6 +58,8 @@ mod tests {
             (metre(6, 8), 1, 1),
             (metre(2, 2), 60, 120),
             (metre(2, 2), 40, 80),
+            // The stepper's ceiling in minims stays inside MAX_ACHIEVED_TEMPO.
+            (metre(2, 2), 208, 416),
         ];
         for (metre, displayed, expected) in table {
             assert_eq!(

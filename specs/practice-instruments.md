@@ -130,8 +130,9 @@ straight", and without the pattern the trend draws them as the same point, which
 is the borrowed-authority failure T17 was careful to avoid.
 
 `SetlistEntry.click_pattern: Option<ClickState>`, written by the same handler
-that writes `achieved_tempo`, and only when the tempo was evidenced. No new
-network or storage op: it rides the existing session row.
+that writes `achieved_tempo`, and only when the click was sounding: a number
+the user typed against a silent click evidences the tempo, not a pattern. No
+new network or storage op: it rides the existing session row.
 
 ## The pass counter is resident, and an untouched one records nothing
 

@@ -240,34 +240,6 @@ pub(crate) fn scaffold_already_linked(
 /// disk for the reaping pass (#1442): a leaked file costs disk, an eagerly
 /// deleted one costs the user their photo, and the write that would justify
 /// deleting can still fail after the delete has run (spec, key decision 2).
-fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effect, Event> {
-    if let Some(ref metre) = next {
-        if let Err(e) = validation::validate_metre(metre) {
-            model.last_error = Some(e.to_string());
-            return crux_core::render::render();
-        }
-    }
-
-    let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-        model.last_error = Some(LibraryError::NotFound { id }.to_string());
-        return crux_core::render::render();
-    };
-
-    model.last_error = None;
-    if item.metre == next {
-        return crux_core::render::render();
-    }
-
-    item.metre = next;
-    let derived = item.metre.clone().unwrap_or_default();
-    if let Some(chart) = item.chord_chart.as_mut() {
-        chart.reassign_beats(&derived);
-    }
-    item.updated_at = chrono::Utc::now();
-    let item = item.clone();
-    save_or_put(model, item)
-}
-
 fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Effect, Event> {
     if !model.local_first {
         model.last_error = Some("Photos aren't available online yet".to_string());
@@ -292,6 +264,46 @@ fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Eff
     }
 
     item.photo_id = next;
+    item.updated_at = chrono::Utc::now();
+    let item = item.clone();
+
+    model.record_success();
+    Command::all([
+        crate::persistence::save_item(item),
+        crux_core::render::render(),
+    ])
+}
+
+/// A session-local override of the metre lives in the shell's click; this is
+/// the piece's own, and the chart's beat split follows it.
+fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effect, Event> {
+    if !model.local_first {
+        model.last_error = Some("Time signatures aren't available online yet".to_string());
+        return crux_core::render::render();
+    }
+
+    if let Some(ref metre) = next {
+        if let Err(e) = validation::validate_metre(metre) {
+            model.last_error = Some(e.to_string());
+            return crux_core::render::render();
+        }
+    }
+
+    let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
+        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        return crux_core::render::render();
+    };
+
+    model.last_error = None;
+    if item.metre == next {
+        return crux_core::render::render();
+    }
+
+    item.metre = next;
+    let derived = item.metre.clone().unwrap_or_default();
+    if let Some(chart) = item.chord_chart.as_mut() {
+        chart.reassign_beats(&derived);
+    }
     item.updated_at = chrono::Utc::now();
     let item = item.clone();
 
@@ -1076,6 +1088,12 @@ mod tests {
             },
         );
         assert_eq!(beats_of(&model, "piece-1"), vec![2, 2], "4/4 by default");
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "piece-1")
+            .unwrap()
+            .updated_at;
 
         let waltz = Metre {
             beats: 3,
@@ -1092,10 +1110,33 @@ mod tests {
 
         let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
         assert_eq!(piece.metre, Some(waltz));
+        assert!(
+            piece.updated_at > before,
+            "the metre rides the piece's updated_at"
+        );
         assert_eq!(beats_of(&model, "piece-1"), vec![2, 1]);
         assert!(model.last_error.is_none());
         assert!(emits_save(&mut cmd, "piece-1"));
         assert!(!emits_http(&mut cmd), "local-first (invariant 1)");
+    }
+
+    /// The server drops the metre (invariant 6 scoped), so an online write would
+    /// be wiped by its own response; the honest answer is to refuse, as SetPhoto does.
+    #[test]
+    fn set_metre_online_refuses_rather_than_silently_losing_it() {
+        let mut model = model_with_piece_and_exercise();
+        model.local_first = false;
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetMetre {
+                id: "piece-1".to_string(),
+                metre: Some(Metre::default()),
+            },
+        );
+        assert!(model.last_error.is_some());
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(piece.metre, None);
+        assert!(!emits_http(&mut cmd));
     }
 
     #[test]

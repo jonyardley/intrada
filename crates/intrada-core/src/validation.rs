@@ -370,6 +370,16 @@ pub fn validate_rep_consistency(
 /// A photo id becomes a path component in the shell, so a value that is not a
 /// ulid is a traversal out of the app container (`specs/piece-from-photo.md`).
 /// The core is the only layer that can refuse it before it is stored.
+pub fn validate_photo_id(photo_id: &str) -> Result<(), LibraryError> {
+    if ulid::Ulid::from_string(photo_id).is_err() {
+        return Err(LibraryError::Validation {
+            field: "photo_id".to_string(),
+            message: "That photo could not be saved".to_string(),
+        });
+    }
+    Ok(())
+}
+
 pub fn validate_metre(metre: &crate::domain::Metre) -> Result<(), LibraryError> {
     let invalid = |message: String| LibraryError::Validation {
         field: "metre".to_string(),
@@ -406,16 +416,6 @@ pub fn validate_click_state(
         return Err(LibraryError::Validation {
             field: "click".to_string(),
             message: "The click must sound on at least one beat of the bar".to_string(),
-        });
-    }
-    Ok(())
-}
-
-pub fn validate_photo_id(photo_id: &str) -> Result<(), LibraryError> {
-    if ulid::Ulid::from_string(photo_id).is_err() {
-        return Err(LibraryError::Validation {
-            field: "photo_id".to_string(),
-            message: "That photo could not be saved".to_string(),
         });
     }
     Ok(())
