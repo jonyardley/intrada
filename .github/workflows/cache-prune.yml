@@ -1,0 +1,109 @@
+# GitHub evicts by LRU once a repo's Actions cache passes 10 GB, which silently
+# drops the 928 MB SwiftPM cache and the newest DerivedData entries and turns a
+# warm iOS build cold. Pruning per key family keeps the hot entries resident.
+name: Cache Prune
+
+on:
+  schedule:
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  prune:
+    name: Cache Prune
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prune cache families
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          api="repos/${{ github.repository }}/actions/caches"
+          work="$(mktemp -d)"
+          all="$work/all.tsv"
+          tab="$(printf '\t')"
+
+          default_ref="refs/heads/$(gh api "repos/${{ github.repository }}" --jq .default_branch)"
+
+          gh api --paginate "$api?per_page=100" \
+            --jq '.actions_caches[] | [.id, .created_at, .size_in_bytes, .ref, .key] | @tsv' \
+            > "$all"
+
+          gb() { awk -v b="$1" 'BEGIN { printf "%.2f", b / 1000000000 }'; }
+          total() { awk -F'\t' '{ s += $3 } END { print s + 0 }' "$1"; }
+
+          before="$(total "$all")"
+          echo "Before: $(wc -l < "$all" | tr -d ' ') entries, ${before} bytes ($(gb "$before") GB); default ref ${default_ref}"
+
+          reclaimed=0
+          deleted=0
+
+          prune_family() {
+            local prefix="$1" keep="$2" exclude="${3:-}"
+            local ranked="$work/ranked.tsv" surplus="$work/surplus.tsv"
+
+            # A cache is restorable from its own ref or the default branch only, and a
+            # restore resolves to the newest matching key, so exactly one entry needs a
+            # guaranteed slot: the newest default-branch one, which every PR can reuse.
+            # Older default-branch copies are dead weight, so age decides the rest.
+            awk -F'\t' -v p="$prefix" -v x="$exclude" '
+              index($5, p) == 1 && (x == "" || index($5, x) != 1)
+            ' "$all" \
+              | sort -t "$tab" -k2,2r \
+              | awk -F'\t' -v d="$default_ref" '
+                  {
+                    rank = 1
+                    if (!seen && $4 == d) { rank = 0; seen = 1 }
+                    print rank "\t" $0
+                  }
+                ' \
+              | sort -t "$tab" -k1,1n -k3,3r \
+              | cut -f2- \
+              > "$ranked"
+
+            tail -n "+$((keep + 1))" "$ranked" > "$surplus"
+
+            local count
+            count="$(wc -l < "$surplus" | tr -d ' ')"
+            echo "  $prefix: $(wc -l < "$ranked" | tr -d ' ') entries, keeping $(head -n "$keep" "$ranked" | cut -f1 | tr '\n' ' ')"
+            if [ "$count" -eq 0 ]; then
+              return 0
+            fi
+
+            local id created size ref key
+            while IFS="$tab" read -r id created size ref key; do
+              # A concurrent run may have evicted it already, so a 404 is not a failure.
+              if gh api -X DELETE "$api/$id" --silent 2>"$work/err"; then
+                echo "    deleted $id ($size bytes, $ref) $key"
+                reclaimed=$((reclaimed + size))
+                deleted=$((deleted + 1))
+              else
+                echo "::warning::could not delete cache $id ($key): $(tr '\n' ' ' < "$work/err")"
+              fi
+            done < "$surplus"
+          }
+
+          # ios-dd-release- lives under the ios-dd- prefix, so it is matched first and
+          # excluded from the ios-dd- bucket: neither family can starve the other.
+          prune_family "ios-dd-release-" 3
+          prune_family "ios-dd-" 3 "ios-dd-release-"
+          prune_family "ios-spm-" 2
+          prune_family "ios-bindings-" 3
+
+          # rust-cache families (native-, coverage-, msrv-, release-testflight-) manage
+          # their own eviction, and the tool caches (cargo-swift-, xcodegen-, gitleaks-,
+          # setup-ruby-) are a few MB each, so both are left alone.
+
+          fresh="$work/after.tsv"
+          gh api --paginate "$api?per_page=100" \
+            --jq '.actions_caches[] | [.id, .created_at, .size_in_bytes, .ref, .key] | @tsv' \
+            > "$fresh"
+          after="$(total "$fresh")"
+
+          echo "After: $(wc -l < "$fresh" | tr -d ' ') entries, ${after} bytes ($(gb "$after") GB); deleted ${deleted}, reclaimed ${reclaimed} bytes ($(gb "$reclaimed") GB)"

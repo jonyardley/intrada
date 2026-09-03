@@ -187,8 +187,15 @@ Rules to keep two checkouts from colliding:
 
 ## CI
 
-`.github/workflows/ci.yml` → **Native iOS (build + test)** runs `just
-ios-test-full` (the same recipe as local dev's full gate — #1198) on a pinned
-`macos-26` / Xcode 26.5 runner (clean host, no pty contention), plus
-**Snapshot Hygiene**. If snapshots/UI tests are green there, the local pty
-errors above were host-only.
+`.github/workflows/ci.yml` builds the app once in **Native iOS: build** on a
+pinned `macos-26` / Xcode 26.5 runner (clean host, no pty contention), then runs
+**Native iOS: unit + snapshot** and **Native iOS: UI** against the test products
+that job uploads, with **Native iOS (build + test)** as the fan-in required
+check. Both test jobs drive the artifact's `.xctestrun` through the same
+`_ios-build-for-testing` / `_ios-test-without-building` recipes local dev's full
+gate uses (#1198, #1207), so the CI and local invocations cannot drift apart. A
+sibling job, `native-ios-build-release`, carries the Release compile guard, and
+**Snapshot Hygiene** runs alongside. The job shape, the measurements behind it
+and the cache rules are written up in
+[`reference.md`](reference.md#why-the-native-ios-ci-is-shaped-the-way-it-is-2026-09-03).
+If snapshots/UI tests are green there, the local pty errors above were host-only.

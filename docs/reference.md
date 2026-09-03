@@ -261,6 +261,65 @@ the scanner, which is why it shipped misreading the likeliest real one.
 fourteen minutes), driving the simulator rather than trusting green tests, TDD
 on the core, and reading the spec and mockups properly.
 
+## Why the native iOS CI is shaped the way it is (2026-09-03)
+
+The native iOS gate fans out (#1207): **Native iOS: build** compiles once and
+uploads the built test products, the test jobs run against that artifact, and the
+fan-in job **Native iOS (build + test)** stays the required status check. Timed
+across three pull-request runs that touched the app, the critical path was
+**Path Changes** (10s), then the build job (339-451s), then **Native iOS: UI**
+(702-739s): roughly 19 to 20 minutes of wall clock. Inside the build job,
+regenerating bindings cost 54s (only when the core changed),
+`build-for-testing` 86s, toolchain and cache setup about 90s, and the Release
+compile guard 155-197s. What those numbers changed:
+
+- **The Release guard runs beside the tests, not in front of them.** The
+  `#if DEBUG` divergence check (#1177) was 155-197s of that critical path and
+  nothing downstream reads what it produces, so it moved to a sibling job,
+  `native-ios-build-release`, which starts when the build job finishes and runs
+  concurrently with the two test jobs. It keeps its own DerivedData cache
+  (`ios-dd-release-v1-*`) and is listed in the fan-in gate, so a Release-only
+  break still fails the required check.
+- **The test jobs stopped generating the Xcode project.** Both now run
+  `xcodebuild test-without-building -xctestrun <path>` against the `.xctestrun`
+  inside the downloaded `native-ios-test-products` artifact. That file is
+  self-describing: it names the test bundles, the host app and the environment
+  to launch them in, so running the tests needs no `.xcodeproj` and no scheme.
+  Dropping project generation takes xcodegen, the `ios/generated` bindings
+  restore and the 928 MB SwiftPM cache out of both jobs, and with no project to
+  open there is no package graph to resolve, so nothing can re-clone the
+  dependencies over the network (the #813 flake that restore guarded against).
+- **The UI suite runs as two sliced jobs.** Seven XCUITests across four
+  classes were taking 653-692s serially, the longest single step in the
+  pipeline, and `SessionBuilderUITests` is over a third of that on its own
+  (#947). **Native iOS: UI** is now a two-entry matrix: one slice runs that
+  class, the other runs its complement, expressed as `-skip-testing:` so a UI
+  class added later joins the second slice rather than silently running
+  nowhere (the #1456 failure mode). xcodebuild's own parallel testing was
+  tried first and rejected: it clones the destination simulator, and the
+  clone's test runner failed to launch with "Application failed preflight
+  checks (Busy)" under memory pressure, which reds the gate for no test
+  reason. Slicing does not explain the idle stalls in the suite, which stay
+  open as #947.
+- **The Actions cache was over its ceiling.** The repo held 10.69 GB across 48
+  entries against GitHub's 10 GB per-repo LRU limit, so entries were being
+  evicted while runs still wanted them, which is the suspected cause of the
+  unit + snapshot job's 225-509s spread. `ios-dd-*` accounted for 19 entries and
+  4.36 GB, `ios-spm-*` for 3 entries and 2.79 GB (928 MB each): caches are
+  written per ref, and the SwiftPM step had no `save-if`, so every pull-request
+  branch saved its own copy. SwiftPM now saves on main only, the rule
+  DerivedData already followed, and a scheduled **Cache Prune** workflow
+  (`.github/workflows/cache-prune.yml`) keeps the newest few entries per family.
+- **Clippy had been asking for a cache nothing ever wrote.** rust-cache composes
+  its key as `<prefix-key>-<job-name>-<arch>-…`, so `prefix-key: native` with
+  `save-if: "false"` looked for `native-clippy-…` while the only entries in the
+  repo were `native-test-Linux-x64-…` from **Test** and
+  `native-ios-native-ios-build-Darwin-arm64-…` from the iOS build. It
+  cold-compiled the workspace on every run. It now uses `prefix-key: clippy`,
+  saving on main only, so pull requests restore main's copy. The general point:
+  a rust-cache key carries the job name, so a `save-if: false` reader can only
+  share with the *same* job on another ref, never with a different job.
+
 ## Mutate-response variants, in full
 
 Writes reconcile with the server response directly, with no full-list refetch.
