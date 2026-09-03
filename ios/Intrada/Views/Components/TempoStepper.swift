@@ -4,13 +4,14 @@ import SwiftUI
 /// achieved tempo on the hand-off reflection sheet.
 struct TempoStepper: View {
   @Binding var value: Int
+  var unit: UInt8 = 4
 
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       TempoStepButton(systemImage: "minus", label: "Slower") {
         value = TempoScale.stepped(from: value, by: -TempoScale.step)
       }
-      Text("♩ = \(value)")
+      Text(TempoUnit.readout(value, unit: unit))
         .font(IntradaFont.scoreNumeral(24))
         .monospacedDigit()
         .foregroundStyle(IntradaColor.ink)
@@ -21,7 +22,7 @@ struct TempoStepper: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Achieved tempo")
-    .accessibilityValue("\(value) beats per minute")
+    .accessibilityValue(TempoUnit.spoken(value, unit: unit))
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment: value = TempoScale.stepped(from: value, by: TempoScale.step)

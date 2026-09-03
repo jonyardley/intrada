@@ -1,3 +1,4 @@
+import SharedTypes
 import Testing
 
 @testable import Intrada
@@ -87,30 +88,30 @@ struct ClickControllerTests {
   @Test func movingToANewItemReseedsToThatItemsTempo() {
     let click = ClickController()
 
-    click.reseed(target: 66)
+    click.reseed(target: 66, metre: nil)
     #expect(click.bpm == 66)
 
-    click.reseed(target: nil)
+    click.reseed(target: nil, metre: nil)
     #expect(click.bpm == TempoScale.defaultBpm)
   }
 
   @Test func steppingMovesByTheSharedTempoStepAndStopsAtTheEnds() {
     let click = ClickController()
-    click.reseed(target: 66)
+    click.reseed(target: 66, metre: nil)
 
     click.step(by: TempoScale.step)
     #expect(click.bpm == 68)
     click.step(by: -TempoScale.step)
     #expect(click.bpm == 66)
 
-    click.reseed(target: UInt16(TempoScale.range.upperBound))
+    click.reseed(target: UInt16(TempoScale.range.upperBound), metre: nil)
     click.step(by: TempoScale.step)
     #expect(click.bpm == TempoScale.range.upperBound)
   }
 
   @Test func steppingOffTheItemsTempoAndBackAgainIsNoticed() {
     let click = ClickController()
-    click.reseed(target: 66)
+    click.reseed(target: 66, metre: nil)
     #expect(click.isAtSeededTempo)
 
     click.step(by: TempoScale.step)
@@ -122,11 +123,74 @@ struct ClickControllerTests {
 
   @Test func aNewItemPutsTheRowBackOnItsOwnTempo() {
     let click = ClickController()
-    click.reseed(target: 66)
+    click.reseed(target: 66, metre: nil)
     click.step(by: TempoScale.step)
 
-    click.reseed(target: 120)
+    click.reseed(target: 120, metre: nil)
     #expect(click.bpm == 120)
     #expect(click.isAtSeededTempo)
+  }
+}
+
+@MainActor
+struct ClickPatternTests {
+  private let common = Metre(beats: 4, unit: 4, groups: nil)
+  private let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+
+  @Test func everyBeatFillsTheBar() {
+    #expect(ClickPattern.everyBeat.mask(for: common) == 0b1111)
+    #expect(ClickPattern.everyBeat.mask(for: sevenEight) == 0b1111111)
+  }
+
+  @Test func groupStartsSoundTheFirstBeatOfEachGroup() {
+    #expect(ClickPattern.groupStarts.mask(for: sevenEight) == 0b0101001)
+  }
+
+  @Test func theOfferedPresetsFollowTheMetre() {
+    #expect(ClickPattern.offered(for: common) == [.everyBeat, .downbeat, .backbeat])
+    #expect(ClickPattern.offered(for: sevenEight) == [.everyBeat, .groupStarts, .downbeat])
+    #expect(!ClickPattern.offered(for: Metre(beats: 3, unit: 4, groups: nil)).contains(.backbeat))
+  }
+
+  @Test func aHandToggledPatternMatchesNoPreset() {
+    #expect(ClickPattern.matching(0b1010, in: common) == .backbeat)
+    #expect(ClickPattern.matching(0b1000, in: common) == nil)
+  }
+
+  /// The controller seeds the piece's metre, sounds every beat, and never lets
+  /// the last sounding beat go silent.
+  @Test func theControllerSeedsTheBarAndKeepsOneBeatSounding() {
+    let click = ClickController()
+    click.reseed(target: 168, metre: sevenEight)
+    #expect(click.metre == sevenEight)
+    #expect(click.sounding == 0b1111111)
+    #expect(click.clickState == ClickState(metre: sevenEight, sounding: 0b1111111))
+
+    click.apply(.downbeat)
+    #expect(click.sounding == 1)
+    click.toggleBeat(0)
+    #expect(click.sounding == 1, "a click that sounds nothing is not a click")
+    click.toggleBeat(3)
+    #expect(click.sounding == 0b1001)
+
+    click.setMetre(Metre(beats: 3, unit: 4, groups: nil))
+    #expect(click.sounding == 0b111, "a new bar starts with every beat sounding")
+  }
+
+  @Test func everyOfferedGroupingAddsUpToItsBar() {
+    for beats in 2...12 {
+      for grouping in ClickSheet.groupings(for: beats) {
+        #expect(grouping.map(Int.init).reduce(0, +) == beats, "\(grouping) for \(beats)")
+      }
+    }
+  }
+
+  @Test func theBarLineSpeaksTheBeatsThatSound() {
+    let all = ClickBarLine(metre: common, sounding: 0b1111, currentBeat: nil, onTap: {})
+    #expect(all.spokenValue == "4 crotchet beats, click on every beat")
+    let four = ClickBarLine(metre: common, sounding: 0b1000, currentBeat: nil, onTap: {})
+    #expect(four.spokenValue == "4 crotchet beats, click on beat 4")
+    let groups = ClickBarLine(metre: sevenEight, sounding: 0b0101001, currentBeat: nil, onTap: {})
+    #expect(groups.spokenValue == "7 quaver beats, click on beats 1, 4, 6")
   }
 }

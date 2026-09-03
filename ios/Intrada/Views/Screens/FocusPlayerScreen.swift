@@ -17,6 +17,7 @@ struct FocusPlayerScreen: View {
 
   @State private var reflecting: ReflectionTarget?
   @State private var click = ClickController()
+  @State private var configuringClick = false
 
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
@@ -31,15 +32,20 @@ struct FocusPlayerScreen: View {
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
+        tempoUnit: target.clickState.metre.unit,
         variants: target.variants, currentVariantId: target.currentVariantId,
         onSave: { result in handleReflection(target, result) },
         onSkip: { handleSkipRating() }
       )
       .presentationDetents([.medium, .large])
     }
-    .task { click.reseed(target: active?.currentItemTempoBpm) }
+    .sheet(isPresented: $configuringClick) {
+      ClickSheet(click: click, bpm: click.bpm)
+        .presentationDetents([.medium, .large])
+    }
+    .task { click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre) }
     .onChange(of: active?.currentPosition) { _, _ in
-      click.reseed(target: active?.currentItemTempoBpm)
+      click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre)
     }
     // No `UIBackgroundModes: audio`, so the pulse cannot survive backgrounding
     // — stop it rather than leave the row claiming a click nobody can hear.
@@ -56,6 +62,9 @@ struct FocusPlayerScreen: View {
       centerInfo(active).fadeUp(1)
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       clickRow(active).padding(.top, IntradaSpacing.controlGap)
+      if click.isRunning {
+        barLine.padding(.top, IntradaSpacing.controlGap)
+      }
       repCounter(active).fadeUp(3).padding(.top, IntradaSpacing.section)
       Spacer(minLength: IntradaSpacing.card)
       controls(active).fadeUp(4)
@@ -173,12 +182,32 @@ struct FocusPlayerScreen: View {
   private func clickRow(_ active: ActiveSessionView) -> some View {
     let declared = active.currentItemTempoBpm != nil
     return ClickControl(
-      bpm: click.bpm, isRunning: click.isRunning, unavailable: click.unavailable,
+      bpm: click.bpm, unit: click.metre.unit, isRunning: click.isRunning,
+      unavailable: click.unavailable,
       atSeededTempo: click.isAtSeededTempo,
       targetDisplay: declared ? active.currentItemTempoDisplay : nil,
       targetSpoken: declared ? active.currentItemTempoSpoken : nil,
       onToggle: { click.toggle() },
       onStep: { click.step(by: $0) })
+  }
+
+  // The indicator reads the audio's clock through the engine on every frame,
+  // so it cannot drift against the click the way a view timer would (T19).
+  // Snapshots pass a reference date and get a settled frame with no ring.
+  @ViewBuilder private var barLine: some View {
+    if referenceDate != nil {
+      barLineBody(currentBeat: nil)
+    } else {
+      TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in
+        barLineBody(currentBeat: click.currentBeat())
+      }
+    }
+  }
+
+  private func barLineBody(currentBeat: Int?) -> some View {
+    ClickBarLine(
+      metre: click.metre, sounding: click.sounding, currentBeat: currentBeat,
+      onTap: { configuringClick = true })
   }
 
   // ── Passes (resident; the core records nothing until the first tap) ──
@@ -243,6 +272,9 @@ struct FocusPlayerScreen: View {
     /// The click was sounding when the item ended, so `startingTempoBpm`
     /// measures what they played to rather than being an untouched default.
     let clickSounding: Bool
+    /// The bar and pattern the click was set to; the core rules on whether the
+    /// tempo is in quavers and whether the pattern was evidenced (#1499).
+    let clickState: ClickState
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.
     let variants: [VariantView]
@@ -260,6 +292,7 @@ struct FocusPlayerScreen: View {
     // Both read before stop() below.
     let startingTempoBpm = click.bpm
     let clickSounding = click.isRunning
+    let clickState = click.clickState
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
@@ -269,7 +302,7 @@ struct FocusPlayerScreen: View {
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
       tempoTargetBpm: active.currentItemTempoBpm, startingTempoBpm: startingTempoBpm,
-      clickSounding: clickSounding,
+      clickSounding: clickSounding, clickState: clickState,
       // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
       // over the item's derived "current step" — otherwise a pre-assigned
       // step would be silently overwritten on save.
@@ -299,7 +332,8 @@ struct FocusPlayerScreen: View {
         .updateEntryTempo(
           entryId: target.id, tempo: result.achievedTempo,
           observed: TempoObservation(
-            userSet: result.tempoUserSet, clickSounding: target.clickSounding), click: nil)))
+            userSet: result.tempoUserSet, clickSounding: target.clickSounding),
+          click: target.clickState)))
     if !target.variants.isEmpty {
       store.send(.session(.setEntryVariant(entryId: target.id, variantId: result.variantId)))
     }

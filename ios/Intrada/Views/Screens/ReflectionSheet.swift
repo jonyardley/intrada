@@ -33,6 +33,9 @@ struct ReflectionSheet: View {
   let elapsedDisplay: String
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
+  /// The beat value the click counted in, so the stepper reads `♪` when the
+  /// player did (#1499).
+  let tempoUnit: UInt8
   /// The item's step ladder, if any. Empty hides the step picker entirely.
   let variants: [VariantView]
   let currentVariantId: String?
@@ -46,7 +49,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
-    startingTempoBpm: Int = TempoScale.defaultBpm,
+    startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
     variants: [VariantView] = [], currentVariantId: String? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void
@@ -54,6 +57,7 @@ struct ReflectionSheet: View {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
+    self.tempoUnit = tempoUnit
     self.variants = variants
     self.currentVariantId = currentVariantId
     self.onSave = onSave
@@ -96,7 +100,7 @@ struct ReflectionSheet: View {
 
       eyebrow(tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached")
         .padding(.top, IntradaSpacing.card)
-      TempoStepper(value: achievedTempoBinding)
+      TempoStepper(value: achievedTempoBinding, unit: tempoUnit)
         .padding(.top, IntradaSpacing.controlGap)
 
       eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)

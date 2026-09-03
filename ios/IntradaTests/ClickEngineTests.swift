@@ -10,6 +10,38 @@ struct ClickEngineTests {
       outputLatencyTicks: HostClock.ticks(fromSeconds: latencySeconds))
   }
 
+  /// A pattern gates which beats sound and never which beats exist: beat 4 of
+  /// a 4/4 bar at 120 is still beat 4 of the same 120 grid.
+  @Test func aPatternGatesBeatsByTheirPlaceInTheBar() {
+    let beatFour = ClickEngine.BeatPattern(beats: 4, sounding: 0b1000)
+    #expect(!beatFour.sounds(beat: 0))
+    #expect(!beatFour.sounds(beat: 2))
+    #expect(beatFour.sounds(beat: 3))
+    #expect(beatFour.sounds(beat: 7), "the bar repeats across the rolling window")
+    #expect(!beatFour.sounds(beat: 4000))
+
+    let groupStarts = ClickEngine.BeatPattern(beats: 7, sounding: 0b0101001)
+    #expect([0, 3, 5].allSatisfy { groupStarts.sounds(beat: $0) })
+    #expect(![1, 2, 4, 6].contains { groupStarts.sounds(beat: $0) })
+    #expect(ClickEngine.BeatPattern.flat.sounds(beat: 12345))
+  }
+
+  /// The indicator reads the audio's clock: the beat shown is the one being
+  /// heard, offset by output latency, and it wraps at the bar.
+  @Test func theCurrentBeatIsDerivedFromTheAudibleGrid() {
+    let p = pulse(bpm: 120, latencySeconds: 0.1)
+    let audibleStart = p.scheduledStart &+ p.outputLatencyTicks
+    let at = { (seconds: Double) in audibleStart &+ HostClock.ticks(fromSeconds: seconds) }
+
+    #expect(ClickEngine.beatIndex(at: p.scheduledStart, pulse: p, beats: 4) == nil)
+    #expect(ClickEngine.beatIndex(at: at(0.0), pulse: p, beats: 4) == 0)
+    #expect(ClickEngine.beatIndex(at: at(0.49), pulse: p, beats: 4) == 0)
+    #expect(ClickEngine.beatIndex(at: at(0.5), pulse: p, beats: 4) == 1)
+    #expect(ClickEngine.beatIndex(at: at(1.75), pulse: p, beats: 4) == 3)
+    #expect(ClickEngine.beatIndex(at: at(2.0), pulse: p, beats: 4) == 0, "wraps at the bar")
+    #expect(ClickEngine.beatIndex(at: at(3.25), pulse: p, beats: 7) == 6)
+  }
+
   @Test func everyBeatSitsOnTheGridStruckFromTheStart() {
     let beats = ClickEngine.schedule(beats: 0..<9, pulse: pulse(bpm: 120))
 
