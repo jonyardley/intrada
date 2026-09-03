@@ -38,9 +38,9 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;margin-bottom:14px;">
-        <span id="p-click-minus" style="width:44px;height:44px;border-radius:12px;background:#FCFAF3;border:1.5px solid #E5DECD;display:none;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;" style-active="transform:scale(0.94)"><i data-lucide="minus" width="15" height="15"></i></span>
-        <button id="p-click" style="border:none;background:none;min-height:44px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;font-family:Inter;font-weight:500;font-size:15px;color:#6E6557;cursor:pointer;"><i data-lucide="timer" width="16" height="16"></i><span id="p-click-read" style="font-variant-numeric:tabular-nums;">♩ = 96</span></button>
-        <span id="p-click-plus" style="width:44px;height:44px;border-radius:12px;background:#FCFAF3;border:1.5px solid #E5DECD;display:none;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;" style-active="transform:scale(0.94)"><i data-lucide="plus" width="15" height="15"></i></span>
+        <span id="p-click-minus" style="width:44px;height:44px;border-radius:12px;background:#FCFAF3;border:1.5px solid #E5DECD;display:none;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;opacity:0;transition:opacity .28s cubic-bezier(.34,1.1,.64,1);"><i data-lucide="minus" width="15" height="15"></i></span>
+        <button id="p-click" style="border:none;background:none;min-height:44px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;font-family:Inter;font-weight:500;font-size:15px;color:#6E6557;cursor:pointer;transition:transform .16s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.94)"><i data-lucide="timer" width="16" height="16"></i><span id="p-click-read" style="font-variant-numeric:tabular-nums;">♩ = 96</span></button>
+        <span id="p-click-plus" style="width:44px;height:44px;border-radius:12px;background:#FCFAF3;border:1.5px solid #E5DECD;display:none;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;opacity:0;transition:opacity .28s cubic-bezier(.34,1.1,.64,1);"><i data-lucide="plus" width="15" height="15"></i></span>
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:32px;">
         <button style="background:none;border:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;" style-active="transform:scale(0.9)"><i data-lucide="skip-back" width="25" height="25"></i></button>
@@ -77,11 +77,26 @@ class Component extends DCLogic {
     const minus = document.querySelector('#p-click-minus'), plus = document.querySelector('#p-click-plus');
     if (!cap || !read) return;
     let bpm = 96, running = false;
+    // The steppers fade in rather than appearing, matching ClickControl's
+    // `.transition(.opacity)` under IntradaMotion.snappy.
+    const showSteppers = () => [minus, plus].forEach(b => {
+      if (!b) return;
+      b.style.display = 'inline-flex';
+      // Flush layout before the opacity change, so the transition has a start
+      // value. requestAnimationFrame never fires while the preview is hidden.
+      void b.offsetWidth;
+      b.style.opacity = '1';
+    });
+    const hideSteppers = () => [minus, plus].forEach(b => {
+      if (!b) return;
+      b.style.opacity = '0';
+      setTimeout(() => { if (!running) b.style.display = 'none'; }, 280);
+    });
     const render = () => {
       cap.style.background = running ? '#E7E3F4' : 'none';
       cap.style.color = running ? '#4C3FA6' : '#6E6557';
       read.textContent = '♩ = ' + bpm;
-      [minus, plus].forEach(b => { if (b) b.style.display = running ? 'inline-flex' : 'none'; });
+      if (running) showSteppers(); else hideSteppers();
     };
     cap.addEventListener('click', () => { running = !running; render(); });
     if (minus) minus.addEventListener('click', () => { bpm = Math.max(40, bpm - 2); render(); });
