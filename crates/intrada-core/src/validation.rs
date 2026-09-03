@@ -29,6 +29,9 @@ pub const MIN_SESSION_TARGET_MINS: u32 = 5;
 pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
+pub const MIN_METRE_BEATS: u8 = 2;
+pub const MAX_METRE_BEATS: u8 = 12;
+pub const METRE_UNITS: [u8; 3] = [2, 4, 8];
 
 // ── Normalisation ──
 // Trim free-text on input and collapse a now-blank value to absent, so a
@@ -372,6 +375,47 @@ pub fn validate_photo_id(photo_id: &str) -> Result<(), LibraryError> {
         return Err(LibraryError::Validation {
             field: "photo_id".to_string(),
             message: "That photo could not be saved".to_string(),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_metre(metre: &crate::domain::Metre) -> Result<(), LibraryError> {
+    let invalid = |message: String| LibraryError::Validation {
+        field: "metre".to_string(),
+        message,
+    };
+    if !(MIN_METRE_BEATS..=MAX_METRE_BEATS).contains(&metre.beats) {
+        return Err(invalid(format!(
+            "Beats in the bar must be between {MIN_METRE_BEATS} and {MAX_METRE_BEATS}"
+        )));
+    }
+    if !METRE_UNITS.contains(&metre.unit) {
+        return Err(invalid(
+            "The beat must be a minim, crotchet or quaver".to_string(),
+        ));
+    }
+    if let Some(groups) = &metre.groups {
+        let sum: u32 = groups.iter().map(|&g| u32::from(g)).sum();
+        if groups.is_empty() || groups.contains(&0) || sum != u32::from(metre.beats) {
+            return Err(invalid(
+                "The grouping must add up to the beats in the bar".to_string(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// A click state is a valid metre plus at least one sounding beat inside it.
+pub fn validate_click_state(
+    state: &crate::domain::session::ClickState,
+) -> Result<(), LibraryError> {
+    validate_metre(&state.metre)?;
+    let in_bar: u16 = (1u16 << state.metre.beats) - 1;
+    if state.sounding == 0 || state.sounding & !in_bar != 0 {
+        return Err(LibraryError::Validation {
+            field: "click".to_string(),
+            message: "The click must sound on at least one beat of the bar".to_string(),
         });
     }
     Ok(())
@@ -1435,6 +1479,69 @@ mod tests {
             }
             _ => panic!("Expected Validation error"),
         }
+    }
+
+    // --- validate_metre / validate_click_state ---
+
+    fn metre(beats: u8, unit: u8, groups: Option<Vec<u8>>) -> crate::domain::Metre {
+        crate::domain::Metre {
+            beats,
+            unit,
+            groups,
+        }
+    }
+
+    /// Metres a musician would actually enter, and the ones the picker must
+    /// refuse, asserting what the click sheet needs: accepted means playable.
+    #[test]
+    fn metres_a_musician_enters_validate_as_the_picker_expects() {
+        let accepted = [
+            metre(4, 4, None),
+            metre(3, 4, None),
+            metre(2, 2, None),
+            metre(6, 8, Some(vec![3, 3])),
+            metre(7, 8, Some(vec![3, 2, 2])),
+            metre(12, 8, Some(vec![3, 3, 3, 3])),
+            metre(5, 4, Some(vec![3, 2])),
+        ];
+        for m in accepted {
+            assert!(validate_metre(&m).is_ok(), "{m:?}");
+        }
+        let refused = [
+            metre(1, 4, None),
+            metre(13, 8, None),
+            metre(4, 3, None),
+            metre(4, 16, None),
+            metre(7, 8, Some(vec![3, 3])),
+            metre(7, 8, Some(vec![])),
+            metre(4, 4, Some(vec![4, 0])),
+        ];
+        for m in refused {
+            assert!(validate_metre(&m).is_err(), "{m:?}");
+        }
+    }
+
+    #[test]
+    fn a_click_must_sound_inside_the_bar() {
+        use crate::domain::session::ClickState;
+        let ok = ClickState {
+            metre: metre(4, 4, None),
+            sounding: 0b1010,
+        };
+        assert!(validate_click_state(&ok).is_ok());
+        let silent = ClickState {
+            metre: metre(4, 4, None),
+            sounding: 0,
+        };
+        assert!(validate_click_state(&silent).is_err());
+        let beyond = ClickState {
+            metre: metre(3, 4, None),
+            sounding: 0b1000,
+        };
+        assert!(
+            validate_click_state(&beyond).is_err(),
+            "beat 4 of a 3/4 bar"
+        );
     }
 
     // --- validate_achieved_tempo tests ---

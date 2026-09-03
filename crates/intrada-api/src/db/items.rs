@@ -72,6 +72,7 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
         chord_chart: None,
         variants: vec![],
         photo_id: None,
+        metre: None,
     })
 }
 
@@ -177,6 +178,7 @@ pub async fn insert_item(
         chord_chart: None,
         variants: vec![],
         photo_id: None,
+        metre: None,
     })
 }
 
@@ -260,6 +262,7 @@ pub async fn update_item(
         chord_chart: None,
         variants: vec![],
         photo_id: None,
+        metre: None,
     }))
 }
 

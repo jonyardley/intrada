@@ -845,6 +845,7 @@ fn build_library_item_views(
             used_in,
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
+            metre: item.metre.clone(),
             variants,
             ladder_is_keys,
             photo_id: item.photo_id.clone(),
@@ -1281,6 +1282,7 @@ fn sample_items() -> Vec<Item> {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     };
 
@@ -1405,6 +1407,7 @@ fn sample_sessions() -> Vec<PracticeSession> {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }
     };
 
@@ -1542,6 +1545,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         let _ = app.update(
@@ -1594,6 +1598,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             },
             Item {
                 id: "ex1".to_string(),
@@ -1612,6 +1617,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             },
         ];
 
@@ -1740,6 +1746,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -1933,6 +1940,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
+            metre: None,
         };
         let model = Model {
             items: vec![item],
@@ -1974,6 +1982,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "p2".to_string(),
@@ -1995,6 +2004,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "p3".to_string(),
@@ -2016,6 +2026,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "e1".to_string(),
@@ -2034,6 +2045,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
             ],
             ..Default::default()
@@ -2111,6 +2123,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -2129,6 +2142,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         let vm = app.view(&model);
@@ -2192,6 +2206,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -2210,6 +2225,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -2245,6 +2261,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -2263,6 +2280,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -2297,6 +2315,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -2342,6 +2361,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -2379,6 +2399,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -2560,6 +2581,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             });
         }
         for i in 0..5000 {
@@ -2584,6 +2606,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             });
         }
         let populate_time = start.elapsed();
@@ -2638,6 +2661,7 @@ mod tests {
                         achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
                         group_id: None,
                         variant_id: None,
+                        click_pattern: None,
                     }
                 })
                 .collect();
@@ -2745,6 +2769,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -2763,6 +2788,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         model.items = vec![p1, p2];
 
@@ -2800,6 +2826,7 @@ mod tests {
                     achieved_tempo: None,
                     group_id: None,
                     variant_id: None,
+                    click_pattern: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2820,6 +2847,7 @@ mod tests {
                     achieved_tempo: None,
                     group_id: None,
                     variant_id: None,
+                    click_pattern: None,
                 },
             ],
             reflection_improved: None,
@@ -2871,6 +2899,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         use crate::domain::session::{
@@ -2906,6 +2935,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2941,6 +2971,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2986,6 +3017,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         use crate::domain::session::{
@@ -3021,6 +3053,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -3059,6 +3092,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         use crate::domain::session::{
@@ -3095,6 +3129,7 @@ mod tests {
                     achieved_tempo: None,
                     group_id: None,
                     variant_id: None,
+                    click_pattern: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -3115,6 +3150,7 @@ mod tests {
                     achieved_tempo: None,
                     group_id: None,
                     variant_id: None,
+                    click_pattern: None,
                 },
             ],
             reflection_improved: None,
@@ -3159,6 +3195,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         use crate::domain::session::{
@@ -3194,6 +3231,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -3290,6 +3328,7 @@ mod tests {
                 achieved_tempo: tempo,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -3427,6 +3466,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -3490,6 +3530,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             ..Model::test_default()
         };
@@ -3511,6 +3552,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -3541,6 +3583,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             ..Model::test_default()
         };
@@ -3562,6 +3605,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -3621,6 +3665,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -3941,6 +3986,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 
@@ -4485,6 +4531,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -4530,6 +4577,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -4565,6 +4613,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }
     }
 
@@ -4678,6 +4727,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
 
         let server_item = Item {
@@ -4697,6 +4747,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -4733,6 +4784,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -4797,6 +4849,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             ..Model::test_default()
         };
@@ -4866,6 +4919,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             ..Model::test_default()
         };
@@ -4933,6 +4987,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             ..Model::test_default()
         };
@@ -4985,6 +5040,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -5003,6 +5059,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let model = Model {
             items: vec![piece, ex],
@@ -5056,6 +5113,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -5077,6 +5135,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -5095,6 +5154,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -5113,6 +5173,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
             ],
             ..Default::default()
@@ -5416,6 +5477,7 @@ mod tests {
             achieved_tempo: None,
             group_id: group.map(String::from),
             variant_id: None,
+            click_pattern: None,
         }
     }
 
@@ -5459,6 +5521,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 
@@ -5891,6 +5954,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -5909,6 +5973,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
             ],
             ..Default::default()
@@ -5994,6 +6059,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: variant_id.map(str::to_string),
+                click_pattern: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,

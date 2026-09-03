@@ -208,6 +208,7 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                     achieved_tempo: None,
                     group_id: None,
                     variant_id: None,
+                    click_pattern: None,
                 });
             }
 
@@ -375,6 +376,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             },
             SetlistEntry {
                 id: "entry-2".to_string(),
@@ -395,6 +397,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             },
         ]
     }
@@ -626,6 +629,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }]);
         model.sets.push(set);
 
@@ -982,6 +986,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             });
         }
 
@@ -1038,6 +1043,7 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             });
         }
 

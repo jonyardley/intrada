@@ -299,7 +299,7 @@ struct FocusPlayerScreen: View {
         .updateEntryTempo(
           entryId: target.id, tempo: result.achievedTempo,
           observed: TempoObservation(
-            userSet: result.tempoUserSet, clickSounding: target.clickSounding))))
+            userSet: result.tempoUserSet, clickSounding: target.clickSounding), click: nil)))
     if !target.variants.isEmpty {
       store.send(.session(.setEntryVariant(entryId: target.id, variantId: result.variantId)))
     }

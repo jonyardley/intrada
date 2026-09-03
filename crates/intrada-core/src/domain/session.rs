@@ -1,5 +1,6 @@
 use crate::app::{AppEffect, Effect, Event};
 use crate::domain::item::{Item, ItemKind};
+use crate::domain::metre::Metre;
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
@@ -96,6 +97,11 @@ pub struct SetlistEntry {
     /// engine, like `group_id` (invariant 6 scoped).
     #[serde(default)]
     pub variant_id: Option<String>,
+    /// What the click was doing when `achieved_tempo` was recorded (#1499).
+    /// "120 with the click on 2 and 4" is a different achievement from "120
+    /// straight", and without this the trend draws them as one point.
+    #[serde(default)]
+    pub click_pattern: Option<ClickState>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -150,6 +156,17 @@ impl TempoObservation {
     pub fn is_evidenced(&self) -> bool {
         self.user_set || self.click_sounding
     }
+}
+
+/// What the click was set to when the item ended. Facts only, like
+/// `TempoObservation`: the core decides what they mean. The pattern never
+/// divides the tempo; the pulse keeps its rate and `sounding` gates the beats.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ClickState {
+    pub metre: Metre,
+    /// Bitmask over `metre.beats`, LSB = beat 1. Fixed width and cheap to mask.
+    pub sounding: u16,
 }
 
 // ── Transient State Types ──────────────────────────────────────────────
@@ -355,10 +372,13 @@ pub enum SessionEvent {
         entry_id: String,
         score: Option<u8>,
     },
+    /// `tempo` is as displayed, in `click.metre.unit` beats per minute; the
+    /// core normalises it to crotchets before it is stored (#1499).
     UpdateEntryTempo {
         entry_id: String,
         tempo: Option<u16>,
         observed: TempoObservation,
+        click: Option<ClickState>,
     },
     UpdateSessionNotes {
         notes: Option<String>,
@@ -461,6 +481,7 @@ fn create_entry(
         achieved_tempo: None,
         group_id: None,
         variant_id: None,
+        click_pattern: None,
     }
 }
 
@@ -560,6 +581,7 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         chord_chart: None,
         variants: vec![],
         photo_id: None,
+        metre: None,
     }
 }
 
@@ -1458,8 +1480,20 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             tempo,
             observed,
+            click,
         } => {
-            if let Err(_e) = validation::validate_achieved_tempo(&tempo) {
+            if let Some(ref state) = click {
+                if let Err(e) = validation::validate_click_state(state) {
+                    model.last_error = Some(e.to_string());
+                    return crux_core::render::render();
+                }
+            }
+            let crotchets = tempo.map(|displayed| {
+                click
+                    .as_ref()
+                    .map_or(displayed, |c| c.metre.crotchet_bpm(displayed))
+            });
+            if let Err(_e) = validation::validate_achieved_tempo(&crotchets) {
                 return crux_core::render::render();
             }
 
@@ -1478,7 +1512,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            entry.achieved_tempo = tempo;
+            entry.achieved_tempo = crotchets;
+            // The pattern is evidence only if the click was actually heard.
+            entry.click_pattern = if crotchets.is_some() && observed.click_sounding {
+                click
+            } else {
+                None
+            };
             model.last_error = None;
             crux_core::render::render()
         }
@@ -1680,6 +1720,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "piece-2".to_string(),
@@ -1698,6 +1739,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
                 Item {
                     id: "exercise-1".to_string(),
@@ -1716,6 +1758,7 @@ mod tests {
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 },
             ],
             api_base_url: "http://localhost:3001".to_string(),
@@ -1749,6 +1792,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         Model {
             items: vec![
@@ -3869,6 +3913,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -3981,6 +4026,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4183,6 +4229,7 @@ mod tests {
                 deleted_at: None,
             }],
             photo_id: None,
+            metre: None,
         });
 
         update(
@@ -4363,6 +4410,163 @@ mod tests {
         }
     }
 
+    fn seven_eight_on_group_starts() -> ClickState {
+        ClickState {
+            metre: Metre {
+                beats: 7,
+                unit: 8,
+                groups: Some(vec![3, 2, 2]),
+            },
+            sounding: 0b0101001,
+        }
+    }
+
+    fn click_pattern(model: &Model, entry_id: &str) -> Option<ClickState> {
+        match model.session_status {
+            SessionStatus::Summary(ref s) => s
+                .entries
+                .iter()
+                .find(|e| e.id == entry_id)
+                .unwrap()
+                .click_pattern
+                .clone(),
+            _ => panic!("Expected Summary state"),
+        }
+    }
+
+    /// The row read `♪ = 168` in 7/8; the trend must see 84 crotchets, and the
+    /// pattern that earned it rides alongside (#1499, spec questions 2 and 3).
+    #[test]
+    fn a_quaver_tempo_is_stored_as_crotchets_with_its_click_pattern() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(168),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: true,
+                },
+                click: Some(seven_eight_on_group_starts()),
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(84));
+        assert_eq!(
+            click_pattern(&model, &entry_id),
+            Some(seven_eight_on_group_starts())
+        );
+    }
+
+    /// A sparse pattern never divides the bpm: the click on beat 4 at 120 is
+    /// still 120 (T19).
+    #[test]
+    fn a_sparse_pattern_leaves_a_crotchet_tempo_alone() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: true,
+                },
+                click: Some(ClickState {
+                    metre: Metre::default(),
+                    sounding: 0b1000,
+                }),
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
+    }
+
+    /// A silent click is not evidence of a pattern, even when the user set the
+    /// number themselves; the unit still names what the row displayed.
+    #[test]
+    fn a_silent_click_normalises_the_unit_but_records_no_pattern() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(169),
+                observed: TempoObservation {
+                    user_set: true,
+                    click_sounding: false,
+                },
+                click: Some(seven_eight_on_group_starts()),
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(85));
+        assert_eq!(click_pattern(&model, &entry_id), None);
+    }
+
+    #[test]
+    fn clearing_the_tempo_clears_the_pattern_with_it() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+        let sounding = TempoObservation {
+            user_set: false,
+            click_sounding: true,
+        };
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(168),
+                observed: sounding,
+                click: Some(seven_eight_on_group_starts()),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: None,
+                observed: sounding,
+                click: Some(seven_eight_on_group_starts()),
+            }),
+        );
+
+        assert_eq!(achieved_tempo(&model, &entry_id), None);
+        assert_eq!(click_pattern(&model, &entry_id), None);
+    }
+
+    #[test]
+    fn a_click_that_sounds_no_beat_is_rejected_and_writes_nothing() {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+                observed: TempoObservation {
+                    user_set: false,
+                    click_sounding: true,
+                },
+                click: Some(ClickState {
+                    metre: Metre::default(),
+                    sounding: 0,
+                }),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(achieved_tempo(&model, &entry_id), None);
+    }
+
     #[test]
     fn tempo_the_user_set_themselves_is_recorded() {
         let mut model = model_with_summary();
@@ -4377,6 +4581,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4397,6 +4602,7 @@ mod tests {
                     user_set: false,
                     click_sounding: true,
                 },
+                click: None,
             }),
         );
 
@@ -4417,6 +4623,7 @@ mod tests {
                     user_set: false,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4441,6 +4648,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
         update(
@@ -4452,6 +4660,7 @@ mod tests {
                     user_set: false,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4476,6 +4685,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
         update(
@@ -4487,6 +4697,7 @@ mod tests {
                     user_set: false,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4502,6 +4713,7 @@ mod tests {
                 user_set: true,
                 click_sounding: true,
             },
+            click: None,
         }));
     }
 
@@ -4525,6 +4737,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4538,6 +4751,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4588,6 +4802,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4617,6 +4832,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -4634,6 +4850,7 @@ mod tests {
                     user_set: true,
                     click_sounding: false,
                 },
+                click: None,
             }),
         );
 
@@ -5826,6 +6043,7 @@ mod tests {
             achieved_tempo: Some(96),
             group_id: Some("g1".to_string()),
             variant_id: Some("v-1".to_string()),
+            click_pattern: None,
         });
     }
 
@@ -5859,6 +6077,7 @@ mod tests {
         touched.achieved_tempo = Some(120);
         touched.group_id = Some("g1".to_string());
         touched.variant_id = Some("v-1".to_string());
+        touched.click_pattern = Some(seven_eight_on_group_starts());
         let mut untouched = create_entry("x1", "Scales", ItemKind::Exercise, 1);
         untouched.id = "e2".to_string();
         ActiveSession {
@@ -5878,11 +6097,11 @@ mod tests {
         "0a01010100010300000000000000010000001400000000000000323032362d30392d30335430393a",
         "30303a30305a000000001400000000000000323032362d30392d30335430393a30303a34305a0100",
         "00001400000000000000323032362d30392d30335430393a30313a33355a012c0100000178000102",
-        "000000000000006731010300000000000000762d3102000000000000006532020000000000000078",
-        "3106000000000000005363616c657301000000010000000000000000000000000000000200000000",
-        "0000000000000000000001000000000000001400000000000000323032362d30392d30335430393a",
-        "30303a30305a1400000000000000323032362d30392d30335430383a34373a30305a010700000000",
-        "0000007761726d207570",
+        "000000000000006731010300000000000000762d3101070801030000000000000003020229000200",
+        "00000000000065320200000000000000783106000000000000005363616c65730100000001000000",
+        "00000000000000000000000002000000000000000000000000000000010000000000000014000000",
+        "00000000323032362d30392d30335430393a30303a30305a1400000000000000323032362d30392d",
+        "30335430383a34373a30305a0107000000000000007761726d207570",
     );
 
     /// `AppEffect::SaveSessionInProgress(ActiveSession)` is positional bincode
@@ -5915,6 +6134,31 @@ mod tests {
         crate::domain::types::assert_round_trips(pinned_active_session());
     }
 
+    /// The extended tempo payload crosses the bridge with the click state on
+    /// both its `Some` and `None` sides (#846 class), pinned before any screen
+    /// sends it.
+    #[test]
+    fn update_entry_tempo_with_click_state_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateEntryTempo {
+            entry_id: "e1".to_string(),
+            tempo: Some(168),
+            observed: TempoObservation {
+                user_set: false,
+                click_sounding: true,
+            },
+            click: Some(seven_eight_on_group_starts()),
+        }));
+        crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateEntryTempo {
+            entry_id: "e1".to_string(),
+            tempo: None,
+            observed: TempoObservation {
+                user_set: true,
+                click_sounding: false,
+            },
+            click: None,
+        }));
+    }
+
     /// The rung tag (#1083) is the newest bincode field on the entry and the
     /// sole input to per-step score derivation — a silent drop on the wire would
     /// unscore every step. Guard the entry with `variant_id` set, and the event
@@ -5940,6 +6184,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: Some("v1".to_string()),
+            click_pattern: None,
         });
 
         crate::domain::types::assert_round_trips(crate::app::Event::Session(

@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::item::Modality;
+use super::metre::Metre;
 
 // ── Pitch classes ─────────────────────────────────────────────────────────
 // A pitch class is a semitone offset from C, 0..=11 (C=0, C#=1, … B=11),
@@ -99,12 +100,18 @@ pub struct ChartSection {
 pub struct ChordChart {
     pub key: String,
     pub modality: Modality,
-    /// Beats per bar. v1 assumes 4/4; the field lets richer metres land later.
-    pub metre: u8,
     pub sections: Vec<ChartSection>,
 }
 
 impl ChordChart {
+    /// The metre lives on the item (specs/practice-instruments.md, question 1);
+    /// when it changes, every bar's beat split is derived again from it.
+    pub fn reassign_beats(&mut self, metre: &Metre) {
+        for bar in self.sections.iter_mut().flat_map(|s| s.bars.iter_mut()) {
+            assign_beats(&mut bar.chords, metre.beats);
+        }
+    }
+
     /// Every chord across every section/bar, in reading order.
     pub fn changes(&self) -> Vec<&ChordSymbol> {
         self.sections
@@ -138,8 +145,6 @@ impl std::fmt::Display for ChartParseError {
 
 // ── Parser ────────────────────────────────────────────────────────────────
 
-const DEFAULT_METRE: u8 = 4;
-
 /// Parse a text chart in the bar-and-pipe grammar we own:
 /// `[Section]` labels on their own or leading a bar line; bars delimited by
 /// `|`, chords within a bar by whitespace. Strict on root + recognised quality;
@@ -148,6 +153,7 @@ pub fn parse_chart(
     raw: &str,
     key: &str,
     modality: Modality,
+    metre: &Metre,
 ) -> Result<ChordChart, ChartParseError> {
     let mut sections: Vec<ChartSection> = Vec::new();
     let mut bar_no: usize = 0;
@@ -199,7 +205,7 @@ pub fn parse_chart(
                     beats: 0, // assigned below once the count is known
                 });
             }
-            assign_beats(&mut chords, DEFAULT_METRE);
+            assign_beats(&mut chords, metre.beats);
 
             sections
                 .last_mut()
@@ -220,20 +226,19 @@ pub fn parse_chart(
     Ok(ChordChart {
         key: key.to_string(),
         modality,
-        metre: DEFAULT_METRE,
         sections,
     })
 }
 
-/// Split `metre` beats across a bar's chords as evenly as possible; any
+/// Split the bar's beats across its chords as evenly as possible; any
 /// remainder lands on the earlier chords.
-fn assign_beats(chords: &mut [ChartChord], metre: u8) {
+fn assign_beats(chords: &mut [ChartChord], beats: u8) {
     let n = chords.len() as u8;
     if n == 0 {
         return;
     }
-    let base = (metre / n).max(1);
-    let extra = metre.saturating_sub(base * n);
+    let base = (beats / n).max(1);
+    let extra = beats.saturating_sub(base * n);
     for (i, chord) in chords.iter_mut().enumerate() {
         chord.beats = base + u8::from((i as u8) < extra);
     }
@@ -803,14 +808,21 @@ mod tests {
 
     #[test]
     fn parses_natural_and_accidental_roots() {
-        let chart = parse_chart("| C | F# | Bb |", "C", Modality::Major).unwrap();
+        let chart =
+            parse_chart("| C | F# | Bb |", "C", Modality::Major, &Metre::default()).unwrap();
         let roots: Vec<u8> = chart.changes().iter().map(|s| s.root).collect();
         assert_eq!(roots, vec![0, 6, 10]); // C, F#, Bb
     }
 
     #[test]
     fn rejects_a_non_note_root_naming_the_bar() {
-        let err = parse_chart("| Cm7 | F7 | Hm7b5 |", "C", Modality::Major).unwrap_err();
+        let err = parse_chart(
+            "| Cm7 | F7 | Hm7b5 |",
+            "C",
+            Modality::Major,
+            &Metre::default(),
+        )
+        .unwrap_err();
         assert_eq!(err.bar, 3);
         assert_eq!(err.token, "Hm7b5");
         assert!(err.message.contains("isn't a note name"));
@@ -818,7 +830,7 @@ mod tests {
 
     #[test]
     fn empty_chart_is_an_error_not_a_partial() {
-        let err = parse_chart("   \n  \n", "C", Modality::Major).unwrap_err();
+        let err = parse_chart("   \n  \n", "C", Modality::Major, &Metre::default()).unwrap_err();
         assert_eq!(err.bar, 0);
     }
 
@@ -934,7 +946,8 @@ mod tests {
     #[test]
     fn tritone_sub_dominant_takes_lydian_dominant() {
         // Db7 → Cmaj7 (down a semitone): tritone-sub, Db lydian-dominant.
-        let chart = parse_chart("| Db7 | Cmaj7 |", "C", Modality::Major).unwrap();
+        let chart =
+            parse_chart("| Db7 | Cmaj7 |", "C", Modality::Major, &Metre::default()).unwrap();
         let scales = &derive_scaffold(&chart)[3];
         assert_eq!(scales.content[0].chord, "Db7");
         assert_eq!(
@@ -996,8 +1009,13 @@ mod tests {
 
     #[test]
     fn splits_sections_and_bars() {
-        let chart =
-            parse_chart("[A]\n| Cm7 | F7 |\n[B]\n| Bbmaj7 |", "Bb", Modality::Major).unwrap();
+        let chart = parse_chart(
+            "[A]\n| Cm7 | F7 |\n[B]\n| Bbmaj7 |",
+            "Bb",
+            Modality::Major,
+            &Metre::default(),
+        )
+        .unwrap();
         assert_eq!(chart.sections.len(), 2);
         assert_eq!(chart.sections[0].label, Some("A".to_string()));
         assert_eq!(chart.sections[0].bars.len(), 2);
@@ -1005,8 +1023,24 @@ mod tests {
     }
 
     #[test]
+    fn an_odd_bar_gives_the_remainder_to_the_earlier_chord() {
+        let waltz = Metre {
+            beats: 3,
+            unit: 4,
+            groups: None,
+        };
+        let chart = parse_chart("| Cm7 F7 |", "C", Modality::Major, &waltz).unwrap();
+        let beats: Vec<u8> = chart.sections[0].bars[0]
+            .chords
+            .iter()
+            .map(|c| c.beats)
+            .collect();
+        assert_eq!(beats, vec![2, 1]);
+    }
+
+    #[test]
     fn splits_beats_evenly_within_a_bar() {
-        let chart = parse_chart("| Cm7 F7 |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| Cm7 F7 |", "C", Modality::Major, &Metre::default()).unwrap();
         let beats: Vec<u8> = chart.sections[0].bars[0]
             .chords
             .iter()
@@ -1017,7 +1051,8 @@ mod tests {
 
     #[test]
     fn a_label_can_lead_a_bar_line() {
-        let chart = parse_chart("[A] | Cm7 | F7 |", "C", Modality::Major).unwrap();
+        let chart =
+            parse_chart("[A] | Cm7 | F7 |", "C", Modality::Major, &Metre::default()).unwrap();
         assert_eq!(chart.sections.len(), 1);
         assert_eq!(chart.changes().len(), 2);
     }
@@ -1030,6 +1065,7 @@ mod tests {
             "| Cm7 | F7 | Bbmaj7 | Ebmaj7 | Am7b5 | D7 | Gm7 | Gm7 |",
             "G",
             Modality::Minor,
+            &Metre::default(),
         )
         .unwrap()
     }
@@ -1127,7 +1163,7 @@ mod tests {
     #[test]
     fn out_of_vocab_chord_falls_back_to_arpeggio_and_is_flagged() {
         // `add9` stays out of vocab (major triad add 9, no mapped scale).
-        let chart = parse_chart("| Cadd9 |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| Cadd9 |", "C", Modality::Major, &Metre::default()).unwrap();
         let specs = derive_scaffold(&chart);
         let scales = &specs[3];
         assert!(scales.content[0].fallback);
@@ -1140,7 +1176,8 @@ mod tests {
     fn seventh_less_triads_fall_back_on_shells() {
         // Sus2 and Aug have no 7th, so shells (3rd + 7th) can't voice them and
         // flag the fallback rather than inventing a seventh.
-        let chart = parse_chart("| Csus2 | Caug |", "C", Modality::Major).unwrap();
+        let chart =
+            parse_chart("| Csus2 | Caug |", "C", Modality::Major, &Metre::default()).unwrap();
         let shells = &derive_scaffold(&chart)[1];
         assert!(shells.content.iter().all(|c| c.fallback));
         assert_eq!(shells.fallback_count, 2);
@@ -1156,6 +1193,7 @@ mod tests {
             "[A] | Cmaj7 F7 | Dm7/G | Cø7 | Bbdim7 | Ealt | G7sus4 Dsus2 | Faug C7#5 |",
             "C",
             Modality::Major,
+            &Metre::default(),
         )
         .unwrap();
         crate::domain::types::assert_round_trips(chart);

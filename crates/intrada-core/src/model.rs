@@ -9,10 +9,11 @@ use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
-    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepEvent, SessionStatus,
-    SetlistEntry, SummarySession,
+    ActiveSession, ClickState, CompletionStatus, EntryStatus, PracticeSession, RepEvent,
+    SessionStatus, SetlistEntry, SummarySession,
 };
 use crate::domain::set::Set;
+use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedSession;
@@ -408,6 +409,8 @@ pub struct LibraryItemView {
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// The piece's time signature, which seeds the click's bar (#1499).
+    pub metre: Option<Metre>,
     /// The exercise's step ladder with per-step practice state (#1083);
     /// empty for pieces and un-laddered exercises.
     #[serde(default)]
@@ -531,6 +534,7 @@ pub struct SetlistEntryView {
     /// The ladder step this entry practised, when attributed (#1083).
     #[serde(default)]
     pub variant_id: Option<String>,
+    pub click_pattern: Option<ClickState>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -569,6 +573,8 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
+    /// The piece's metre, the answer the click sheet opens with (T19).
+    pub current_item_metre: Option<Metre>,
 }
 
 /// Whether the builder's entries originate from, and relate to, a saved Set.
@@ -660,6 +666,7 @@ impl LibraryItemView {
             used_in: Vec::new(),
             scaffold_preview: None,
             chord_chart: None,
+            metre: None,
             variants: Vec::new(),
             ladder_is_keys: false,
             photo_id: None,
@@ -736,6 +743,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
         variant_id: entry.variant_id.clone(),
+        click_pattern: entry.click_pattern.clone(),
     }
 }
 
@@ -837,6 +845,9 @@ pub fn build_active_session_view(
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
+        current_item_metre: item_index
+            .get(current.item_id.as_str())
+            .and_then(|i| i.metre.clone()),
     }
 }
 
@@ -951,6 +962,28 @@ mod tests {
         });
     }
 
+    fn make_item(id: &str, title: &str, kind: ItemKind) -> Item {
+        Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            linked_exercise_ids: vec![],
+            priority: false,
+            chord_chart: None,
+            variants: vec![],
+            photo_id: None,
+            metre: None,
+        }
+    }
+
     fn make_entry(id: &str, item_id: &str, title: &str, position: usize) -> SetlistEntry {
         SetlistEntry {
             id: id.to_string(),
@@ -971,6 +1004,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }
     }
 
@@ -1037,6 +1071,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -1084,6 +1119,44 @@ mod tests {
     }
 
     // ── build_active_session_view ──────────────────────────────────────
+
+    /// The click sheet opens with the piece's metre (T19); a dropped projection
+    /// would open every sheet at 4/4.
+    #[test]
+    fn active_session_view_carries_the_current_items_metre() {
+        let metre = Metre {
+            beats: 7,
+            unit: 8,
+            groups: Some(vec![3, 2, 2]),
+        };
+        let mut piece = make_item("i1", "Take Five", ItemKind::Piece);
+        piece.metre = Some(metre.clone());
+        let plain = make_item("i2", "Etude", ItemKind::Exercise);
+        let items: HashMap<&str, &Item> = [("i1", &piece), ("i2", &plain)].into_iter().collect();
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Take Five", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        assert_eq!(
+            build_active_session_view(&active, &items).current_item_metre,
+            Some(metre)
+        );
+        let second = ActiveSession {
+            current_index: 1,
+            ..active
+        };
+        assert_eq!(
+            build_active_session_view(&second, &items).current_item_metre,
+            None
+        );
+    }
 
     /// The resident counter draws against `current_rep_slots`, so a builder
     /// target of 7 must not render as ten slots.
@@ -1263,6 +1336,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1457,6 +1531,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()
