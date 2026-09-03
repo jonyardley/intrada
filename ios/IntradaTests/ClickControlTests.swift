@@ -73,15 +73,15 @@ struct ClickControllerTests {
   }
 
   @Test func anItemWithNoTempoSeedsTheNeutralDefault() {
-    #expect(ClickController.seedBpm(from: nil) == ClickController.defaultBpm)
+    #expect(ClickController.seedBpm(from: nil) == TempoScale.defaultBpm)
   }
 
   /// The core validates 1 to 400 BPM; the click's steppers only reach 40 to 208,
   /// so a target outside that has to arrive clamped or the row shows a tempo
   /// the steppers cannot get back to.
   @Test func aTargetOutsideTheStepperRangeArrivesClamped() {
-    #expect(ClickController.seedBpm(from: 30) == TempoStepper.range.lowerBound)
-    #expect(ClickController.seedBpm(from: 320) == TempoStepper.range.upperBound)
+    #expect(ClickController.seedBpm(from: 30) == TempoScale.range.lowerBound)
+    #expect(ClickController.seedBpm(from: 320) == TempoScale.range.upperBound)
   }
 
   @Test func movingToANewItemReseedsToThatItemsTempo() {
@@ -91,21 +91,21 @@ struct ClickControllerTests {
     #expect(click.bpm == 66)
 
     click.reseed(target: nil)
-    #expect(click.bpm == ClickController.defaultBpm)
+    #expect(click.bpm == TempoScale.defaultBpm)
   }
 
   @Test func steppingMovesByTheSharedTempoStepAndStopsAtTheEnds() {
     let click = ClickController()
     click.reseed(target: 66)
 
-    click.step(by: TempoStepper.step)
+    click.step(by: TempoScale.step)
     #expect(click.bpm == 68)
-    click.step(by: -TempoStepper.step)
+    click.step(by: -TempoScale.step)
     #expect(click.bpm == 66)
 
-    click.reseed(target: UInt16(TempoStepper.range.upperBound))
-    click.step(by: TempoStepper.step)
-    #expect(click.bpm == TempoStepper.range.upperBound)
+    click.reseed(target: UInt16(TempoScale.range.upperBound))
+    click.step(by: TempoScale.step)
+    #expect(click.bpm == TempoScale.range.upperBound)
   }
 
   @Test func steppingOffTheItemsTempoAndBackAgainIsNoticed() {
@@ -113,17 +113,17 @@ struct ClickControllerTests {
     click.reseed(target: 66)
     #expect(click.isAtSeededTempo)
 
-    click.step(by: TempoStepper.step)
+    click.step(by: TempoScale.step)
     #expect(!click.isAtSeededTempo)
 
-    click.step(by: -TempoStepper.step)
+    click.step(by: -TempoScale.step)
     #expect(click.isAtSeededTempo)
   }
 
   @Test func aNewItemPutsTheRowBackOnItsOwnTempo() {
     let click = ClickController()
     click.reseed(target: 66)
-    click.step(by: TempoStepper.step)
+    click.step(by: TempoScale.step)
 
     click.reseed(target: 120)
     #expect(click.bpm == 120)

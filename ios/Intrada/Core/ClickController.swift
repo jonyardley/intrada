@@ -4,22 +4,19 @@ import Observation
 /// state, so nothing here crosses the bridge and nothing is persisted.
 @MainActor @Observable
 final class ClickController {
-  /// Neutral tempo for an item declaring none; matches `ReflectionSheet` (#1402).
-  static let defaultBpm = 96
-
   private(set) var isRunning = false
-  private(set) var bpm = defaultBpm
+  private(set) var bpm = TempoScale.defaultBpm
   /// Set only when the engine refused to start: an interruption or route change
   /// stops the pulse without breaking it, and a red row for headphones is a lie.
   private(set) var unavailable = false
 
   private var engine: ClickEngine?
-  private var seeded = defaultBpm
+  private var seeded = TempoScale.defaultBpm
 
   var isAtSeededTempo: Bool { bpm == seeded }
 
   static func seedBpm(from target: UInt16?) -> Int {
-    TempoStepper.clamp(target.map(Int.init) ?? defaultBpm)
+    TempoScale.clamp(target.map(Int.init) ?? TempoScale.defaultBpm)
   }
 
   /// Silences the click: its tempo belonged to the item that just finished.
@@ -39,7 +36,7 @@ final class ClickController {
   }
 
   func step(by delta: Int) {
-    let stepped = TempoStepper.stepped(from: bpm, by: delta)
+    let stepped = TempoScale.stepped(from: bpm, by: delta)
     guard stepped != bpm else { return }
     bpm = stepped
     if isRunning { start() }
