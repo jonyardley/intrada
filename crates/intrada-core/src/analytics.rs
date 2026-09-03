@@ -615,6 +615,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }
     }
 
@@ -1241,6 +1242,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 

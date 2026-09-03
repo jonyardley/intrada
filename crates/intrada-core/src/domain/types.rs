@@ -526,6 +526,7 @@ mod tests {
             achieved_tempo: Some(120),
             group_id: None,
             variant_id: Some("v-1".to_string()),
+            click_pattern: None,
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -646,6 +647,7 @@ mod tests {
                 },
             ],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
+            metre: None,
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));
@@ -673,6 +675,7 @@ mod tests {
             achieved_tempo: None,
             group_id: Some("block-1".to_string()),
             variant_id: Some("v-1".to_string()),
+            click_pattern: None,
         });
     }
 

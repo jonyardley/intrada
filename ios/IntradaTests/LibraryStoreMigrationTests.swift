@@ -41,7 +41,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, score: 8, intention: nil, repTarget: nil, repCount: nil,
       repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-      groupId: nil, variantId: nil)
+      groupId: nil, variantId: nil, clickPattern: nil)
     let session = PracticeSession(
       id: "sess-rt", entries: [entry],
       sessionNotes: nil, sessionIntention: nil,
@@ -98,7 +98,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
       repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-      groupId: "block-1", variantId: nil)
+      groupId: "block-1", variantId: nil, clickPattern: nil)
     let session = PracticeSession(
       id: "sess-g", entries: [entry],
       sessionNotes: nil, sessionIntention: nil,
@@ -262,7 +262,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
       tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
       createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil, variants: [], photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+      chordChart: nil, variants: [], photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", metre: nil)
     try store.save(item)
     XCTAssertEqual(try store.loadItems().first?.photoId, "01ARZ3NDEKTSV4RRFFQ69G5FAV")
 
@@ -273,8 +273,47 @@ final class LibraryStoreMigrationTests: XCTestCase {
         id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
         tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
         createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:01:00Z", priority: false,
-        chordChart: nil, variants: [], photoId: nil))
+        chordChart: nil, variants: [], photoId: nil, metre: nil))
     XCTAssertNil(try store.loadItems().first?.photoId, "removing a photo must clear the column")
+  }
+
+  /// Upgrade path (#1499): a piece charted before v17 keeps its beats-per-bar
+  /// as a crotchet-unit metre on the item; an uncharted piece declares none.
+  func testV16ChartedPieceGetsItsMetreInV17() throws {
+    let chart = #"{"key":"G","modality":"minor","metre":3,"sections":[]}"#
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v16_item_photo",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id, deleted_at)
+        VALUES ('p1', 'Waltz', 'piece', NULL, 'G', 'minor', NULL, NULL, NULL, '[]', '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, '\(chart)', NULL, NULL);
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id, deleted_at)
+        VALUES ('p2', 'Plain', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]', '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL, NULL)
+        """)
+    let items = try store.loadItems()
+    let charted = try XCTUnwrap(items.first { $0.id == "p1" })
+    XCTAssertEqual(
+      charted.metre, Metre(beats: 3, unit: 4, groups: nil),
+      "the chart's beats become the item's metre in crotchets")
+    XCTAssertNotNil(charted.chordChart, "the chart itself still decodes")
+    XCTAssertNil(try XCTUnwrap(items.first { $0.id == "p2" }).metre)
+  }
+
+  func testMetreRoundTrips() throws {
+    let store = try LibraryStore.inMemory()
+    let metre = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    try store.save(
+      Item(
+        id: "p7", title: "Unsquare", kind: .piece, composer: nil, key: nil, modality: nil,
+        tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
+        createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
+        chordChart: nil, variants: [], photoId: nil, metre: metre))
+    XCTAssertEqual(try store.loadItems().first?.metre, metre)
   }
 
   func testV8ChordChartRoundTrip() throws {
@@ -282,7 +321,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let symbol = ChordSymbol(
       root: 0, quality: .min7, extensions: [], bass: 7, raw: "Cm7/G")
     let chart = ChordChart(
-      key: "G", modality: .minor, metre: 4,
+      key: "G", modality: .minor,
       sections: [
         ChartSection(
           label: "A",
@@ -292,7 +331,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p3", title: "Autumn Leaves", kind: .piece, composer: nil, key: "G",
       modality: .minor, tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
       createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: chart, variants: [], photoId: nil)
+      chordChart: chart, variants: [], photoId: nil, metre: nil)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
@@ -350,7 +389,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p2", title: "Étude", kind: .piece, composer: nil, key: nil, modality: nil,
       tempo: nil, notes: nil, tags: [], linkedExerciseIds: ["e1", "e2"],
       createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil, variants: [], photoId: nil)
+      chordChart: nil, variants: [], photoId: nil, metre: nil)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)

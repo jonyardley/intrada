@@ -100,6 +100,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 

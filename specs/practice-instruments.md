@@ -251,9 +251,13 @@ change breaks.
    event signatures break.
 4. **#1367 shell.** The resident counter and its quiet untouched state,
    "Passes" copy, the at-target state, the reclaimed vertical space, snapshots.
-5. **#1499 core.** `Metre` on `Item`, `ChordChart.metre` removed, the migration
-   and its upgrade-path test, `ClickState`, the extended `UpdateEntryTempo`,
-   crotchet normalisation, `click_pattern` recorded.
+5. **#1499 core.** `Metre` on `Item`, written by `ItemEvent::SetMetre` (kept out
+   of `Update` for the same reason as `SetPhoto`), `ChordChart.metre` removed
+   and the chart's beats derived again when the metre changes, the migration
+   (v17 backfills a charted piece's metre from the chart's old field, left in
+   place and ignored) and its upgrade-path test, `ClickState`, the extended
+   `UpdateEntryTempo`, crotchet normalisation, `click_pattern` recorded only
+   when the click was sounding.
 6. **#1499 shell.** Beat-index gating in `ClickEngine`, the display-linked
    indicator, the click sheet with the metre picker and group editor, snapshots.
 

@@ -876,14 +876,16 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+          usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
+          ladderIsKeys: false,
           photoId: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+          usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
+          ladderIsKeys: false,
           photoId: nil),
       ],
       linkedIds: ["exercise-1"],
@@ -923,7 +925,8 @@ final class ScreenSnapshotTests: XCTestCase {
       id: id, itemType: .piece, title: title, subtitle: composer, key: nil, modality: nil,
       tempo: nil, tempoMarking: nil, tempoBpm: nil, notes: nil, tags: [], createdAt: "",
       updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
-      linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [],
+      linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
+      variants: [],
       ladderIsKeys: false, photoId: nil)
   }
 

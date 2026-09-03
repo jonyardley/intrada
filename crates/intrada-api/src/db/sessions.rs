@@ -177,6 +177,7 @@ fn row_to_entry(
         achieved_tempo,
         group_id: None,
         variant_id: None,
+        click_pattern: None,
     })
 }
 
@@ -436,6 +437,7 @@ pub async fn insert_session(
                 achieved_tempo: entry.achieved_tempo,
                 group_id: None,
                 variant_id: None,
+                click_pattern: None,
             });
         }
 

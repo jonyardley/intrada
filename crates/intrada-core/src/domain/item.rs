@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
+use super::metre::Metre;
 use super::types::{CreateItem, Tempo, UpdateItem};
 pub use super::variant::Variant;
 use crate::app::{Effect, Event};
@@ -74,6 +75,10 @@ pub struct Item {
     /// bridge (`specs/piece-from-photo.md`, key decision 1).
     #[serde(default)]
     pub photo_id: Option<String>,
+    /// The piece's time signature, the one source of truth the chart derives
+    /// from (#1499). `None` means the piece does not declare one.
+    #[serde(default)]
+    pub metre: Option<Metre>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -179,6 +184,13 @@ pub enum ItemEvent {
     ReadPhoto {
         photo_id: String,
     },
+    /// Set or clear the item's time signature. Kept out of `Update` for the
+    /// same reason as `SetPhoto`. A charted piece's beat split is derived
+    /// again from the new metre.
+    SetMetre {
+        id: String,
+        metre: Option<Metre>,
+    },
 }
 
 /// Shared by Update / AddTags / RemoveTags.
@@ -228,6 +240,34 @@ pub(crate) fn scaffold_already_linked(
 /// disk for the reaping pass (#1442): a leaked file costs disk, an eagerly
 /// deleted one costs the user their photo, and the write that would justify
 /// deleting can still fail after the delete has run (spec, key decision 2).
+fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effect, Event> {
+    if let Some(ref metre) = next {
+        if let Err(e) = validation::validate_metre(metre) {
+            model.last_error = Some(e.to_string());
+            return crux_core::render::render();
+        }
+    }
+
+    let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
+        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        return crux_core::render::render();
+    };
+
+    model.last_error = None;
+    if item.metre == next {
+        return crux_core::render::render();
+    }
+
+    item.metre = next;
+    let derived = item.metre.clone().unwrap_or_default();
+    if let Some(chart) = item.chord_chart.as_mut() {
+        chart.reassign_beats(&derived);
+    }
+    item.updated_at = chrono::Utc::now();
+    let item = item.clone();
+    save_or_put(model, item)
+}
+
 fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Effect, Event> {
     if !model.local_first {
         model.last_error = Some("Photos aren't available online yet".to_string());
@@ -324,6 +364,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 chord_chart: None,
                 variants: vec![],
                 photo_id: input.photo_id,
+                metre: None,
             };
 
             model.items.push(item.clone());
@@ -390,6 +431,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 // No scan surface writes an exercise yet, but a `CreateItem`
                 // carrying one must not mean two different things by event.
                 photo_id: input.photo_id,
+                metre: None,
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
@@ -479,6 +521,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::SetPhoto { id, photo_id } => set_photo(model, id, Some(photo_id)),
         ItemEvent::ClearPhoto { id } => set_photo(model, id, None),
         ItemEvent::ReadPhoto { photo_id } => read_photo(model, photo_id),
+        ItemEvent::SetMetre { id, metre } => set_metre(model, id, metre),
         ItemEvent::AddTags { id, tags } => {
             if let Err(e) = validation::validate_tags(&tags) {
                 model.last_error = Some(e.to_string());
@@ -594,8 +637,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 return crux_core::render::render();
             }
 
-            // The chart derives in the piece's key (default C major when unset).
-            let (key, modality) = model
+            // The chart derives in the piece's key (default C major when unset)
+            // and its metre (default 4/4).
+            let (key, modality, metre) = model
                 .items
                 .iter()
                 .find(|i| i.id == piece_id)
@@ -603,11 +647,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     (
                         p.key.clone().unwrap_or_else(|| "C".to_string()),
                         p.modality.unwrap_or(Modality::Major),
+                        p.metre.clone().unwrap_or_default(),
                     )
                 })
                 .expect("validate_chart_host guarantees the piece exists");
 
-            let chart = match super::chart::parse_chart(&raw_chart, &key, modality) {
+            let chart = match super::chart::parse_chart(&raw_chart, &key, modality, &metre) {
                 Ok(chart) => chart,
                 Err(e) => {
                     // Surface the parse error; store nothing (never a partial).
@@ -738,6 +783,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     chord_chart: None,
                     variants: vec![],
                     photo_id: None,
+                    metre: None,
                 })
                 .collect();
 
@@ -936,6 +982,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 
@@ -958,6 +1005,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         }
     }
 
@@ -996,6 +1044,128 @@ mod tests {
             matches!(e, crate::app::Effect::Persistence(req)
                 if matches!(&req.operation, crate::persistence::PersistenceOperation::SaveItem(item) if item.id == id))
         })
+    }
+
+    // ── SetMetre ──
+
+    fn beats_of(model: &Model, id: &str) -> Vec<u8> {
+        model
+            .items
+            .iter()
+            .find(|i| i.id == id)
+            .and_then(|i| i.chord_chart.as_ref())
+            .expect("chart stored")
+            .sections[0]
+            .bars[0]
+            .chords
+            .iter()
+            .map(|c| c.beats)
+            .collect()
+    }
+
+    /// The chart derives its beat split from the item's metre, at parse time
+    /// and again when the metre changes (spec question 1).
+    #[test]
+    fn set_metre_rederives_a_charted_pieces_beats_and_persists() {
+        let mut model = model_with_piece_and_exercise();
+        let _ = send_cmd(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 F7 |".to_string(),
+            },
+        );
+        assert_eq!(beats_of(&model, "piece-1"), vec![2, 2], "4/4 by default");
+
+        let waltz = Metre {
+            beats: 3,
+            unit: 4,
+            groups: None,
+        };
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetMetre {
+                id: "piece-1".to_string(),
+                metre: Some(waltz.clone()),
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(piece.metre, Some(waltz));
+        assert_eq!(beats_of(&model, "piece-1"), vec![2, 1]);
+        assert!(model.last_error.is_none());
+        assert!(emits_save(&mut cmd, "piece-1"));
+        assert!(!emits_http(&mut cmd), "local-first (invariant 1)");
+    }
+
+    #[test]
+    fn set_metre_rejects_a_grouping_that_does_not_add_up() {
+        let mut model = model_with_piece_and_exercise();
+        let _ = send_cmd(
+            &mut model,
+            ItemEvent::SetMetre {
+                id: "piece-1".to_string(),
+                metre: Some(Metre {
+                    beats: 7,
+                    unit: 8,
+                    groups: Some(vec![3, 3]),
+                }),
+            },
+        );
+        assert!(model.last_error.is_some());
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(piece.metre, None);
+    }
+
+    #[test]
+    fn a_chart_parses_against_the_pieces_metre() {
+        let mut model = model_with_piece_and_exercise();
+        let _ = send_cmd(
+            &mut model,
+            ItemEvent::SetMetre {
+                id: "piece-1".to_string(),
+                metre: Some(Metre {
+                    beats: 6,
+                    unit: 8,
+                    groups: Some(vec![3, 3]),
+                }),
+            },
+        );
+        let _ = send_cmd(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 F7 |".to_string(),
+            },
+        );
+        assert_eq!(beats_of(&model, "piece-1"), vec![3, 3]);
+    }
+
+    #[test]
+    fn set_metre_event_and_item_round_trip_on_ffi_bincode_wire() {
+        let metre = Metre {
+            beats: 7,
+            unit: 8,
+            groups: Some(vec![3, 2, 2]),
+        };
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetMetre {
+            id: "p1".to_string(),
+            metre: Some(metre.clone()),
+        }));
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetMetre {
+            id: "p1".to_string(),
+            metre: None,
+        }));
+        let mut model = model_with_piece_and_exercise();
+        let _ = send_cmd(
+            &mut model,
+            ItemEvent::SetMetre {
+                id: "piece-1".to_string(),
+                metre: Some(metre),
+            },
+        );
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        crate::domain::types::assert_round_trips(piece.clone());
     }
 
     // ── SetChordChart / ClearChordChart ──

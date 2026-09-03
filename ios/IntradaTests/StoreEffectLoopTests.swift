@@ -683,6 +683,48 @@ final class StoreEffectLoopTests: XCTestCase {
       ], "each tap keeps the time the shell gave it")
   }
 
+  /// Real-bridge wire pin for the honest click (#1499): the row read `♪ = 168`
+  /// in 7/8 with the click on group starts; the core must store 84 crotchets
+  /// and the pattern that earned it, and both must come back across the wire.
+  func testRealBridgeStoresAQuaverTempoAsCrotchetsWithItsPattern() throws {
+    let (bridge, entryId) = try bridgeWithCompletedEntry()
+    let pattern = ClickState(
+      metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001)
+
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: 168,
+          observed: TempoObservation(userSet: false, clickSounding: true), click: pattern)))
+
+    let entry = try XCTUnwrap(
+      try bridge.view().activeSession?.entries.first { $0.id == entryId })
+    XCTAssertEqual(entry.achievedTempo, 84, "stored in crotchets, not quavers")
+    XCTAssertEqual(entry.clickPattern, pattern)
+  }
+
+  /// Real-bridge round trip for the item's metre (#1499): `SetMetre` carries an
+  /// optional nested struct with an optional list inside it, the #846 shape.
+  func testRealBridgeSetsAndClearsTheItemsMetre() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Take Five", kind: .piece, composer: "Desmond", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    let metre = Metre(beats: 5, unit: 4, groups: [3, 2])
+
+    _ = try bridge.update(.item(.setMetre(id: id, metre: metre)))
+    XCTAssertEqual(try bridge.view().items.first?.metre, metre)
+    XCTAssertNil(try bridge.view().error)
+
+    _ = try bridge.update(.item(.setMetre(id: id, metre: nil)))
+    XCTAssertNil(try bridge.view().items.first?.metre)
+  }
+
   /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
   /// `TempoObservation` payload has to cross the bincode wire intact and the
   /// core's ruling has to hold end to end. A wire break would let an
@@ -694,7 +736,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, tempo: 132,
-          observed: TempoObservation(userSet: true, clickSounding: false))))
+          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "the observation must decode on the wire (#846)")
@@ -710,7 +752,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, tempo: 96,
-          observed: TempoObservation(userSet: false, clickSounding: false))))
+          observed: TempoObservation(userSet: false, clickSounding: false), click: nil)))
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "declining to record is a silent success, not an error")
@@ -903,7 +945,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, tempo: 96,
-          observed: TempoObservation(userSet: true, clickSounding: false))))
+          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
     XCTAssertEqual(
       try bridge.view().summary?.entries.first?.achievedTempo, 96,
       "the tempo stepper's achieved tempo should round-trip")
@@ -911,7 +953,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, tempo: nil,
-          observed: TempoObservation(userSet: true, clickSounding: false))))
+          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.achievedTempo,
       "clearing an achieved tempo round-trips")
@@ -950,7 +992,7 @@ final class StoreEffectLoopTests: XCTestCase {
       position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
       repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-      groupId: nil, variantId: nil)
+      groupId: nil, variantId: nil, clickPattern: nil)
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
@@ -1114,7 +1156,8 @@ final class StoreEffectLoopTests: XCTestCase {
     id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
     tempo: nil,
     notes: nil, tags: [], linkedExerciseIds: [], createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [], photoId: nil)
+    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [], photoId: nil,
+    metre: nil)
 
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral

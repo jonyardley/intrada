@@ -9,10 +9,11 @@ use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
-    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepEvent, SessionStatus,
-    SetlistEntry, SummarySession,
+    ActiveSession, ClickState, CompletionStatus, EntryStatus, PracticeSession, RepEvent,
+    SessionStatus, SetlistEntry, SummarySession,
 };
 use crate::domain::set::Set;
+use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedSession;
@@ -408,6 +409,8 @@ pub struct LibraryItemView {
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// The piece's time signature, which seeds the click's bar (#1499).
+    pub metre: Option<Metre>,
     /// The exercise's step ladder with per-step practice state (#1083);
     /// empty for pieces and un-laddered exercises.
     #[serde(default)]
@@ -531,6 +534,7 @@ pub struct SetlistEntryView {
     /// The ladder step this entry practised, when attributed (#1083).
     #[serde(default)]
     pub variant_id: Option<String>,
+    pub click_pattern: Option<ClickState>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -569,6 +573,8 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
+    /// The piece's metre, the answer the click sheet opens with (T19).
+    pub current_item_metre: Option<Metre>,
 }
 
 /// Whether the builder's entries originate from, and relate to, a saved Set.
@@ -660,6 +666,7 @@ impl LibraryItemView {
             used_in: Vec::new(),
             scaffold_preview: None,
             chord_chart: None,
+            metre: None,
             variants: Vec::new(),
             ladder_is_keys: false,
             photo_id: None,
@@ -736,6 +743,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
         variant_id: entry.variant_id.clone(),
+        click_pattern: entry.click_pattern.clone(),
     }
 }
 
@@ -837,6 +845,9 @@ pub fn build_active_session_view(
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
+        current_item_metre: item_index
+            .get(current.item_id.as_str())
+            .and_then(|i| i.metre.clone()),
     }
 }
 
@@ -971,6 +982,7 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
             variant_id: None,
+            click_pattern: None,
         }
     }
 
@@ -1037,6 +1049,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -1263,6 +1276,7 @@ mod tests {
             chord_chart: None,
             variants: vec![],
             photo_id: None,
+            metre: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1457,6 +1471,7 @@ mod tests {
                 chord_chart: None,
                 variants: vec![],
                 photo_id: None,
+                metre: None,
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()

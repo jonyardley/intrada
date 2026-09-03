@@ -14,7 +14,7 @@ final class LibraryStoreTests: XCTestCase {
       id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
       tags: ["scale", "warmup"], linkedExerciseIds: [], createdAt: createdAt,
-      updatedAt: createdAt, priority: true, chordChart: nil, variants: [], photoId: nil)
+      updatedAt: createdAt, priority: true, chordChart: nil, variants: [], photoId: nil, metre: nil)
   }
 
   func testSaveThenLoadRoundTrips() throws {
@@ -205,7 +205,7 @@ final class LibraryStoreTests: XCTestCase {
         RepEvent(action: .missed, at: "2026-01-01T00:02:00Z"),
         RepEvent(action: .success, at: "2026-01-01T00:03:30Z"),
       ], plannedDurationSecs: 300, achievedTempo: 120,
-      groupId: nil, variantId: nil)
+      groupId: nil, variantId: nil, clickPattern: nil)
   }
 
   private func session(_ id: String, completedAt: String = "2026-01-01T00:00:00Z")
@@ -303,6 +303,19 @@ final class LibraryStoreTests: XCTestCase {
     let got = try XCTUnwrap(try store.loadSessions().first)
     XCTAssertEqual(got.entries[0].variantId, "v-c", "the step attribution rides the blob")
     XCTAssertNil(got.entries[1].variantId)
+  }
+
+  func testEntriesBlobRoundTripsTheClickPattern() throws {
+    let store = try makeStore()
+    var s = session("s1")
+    let pattern = ClickState(
+      metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001)
+    s.entries[0].clickPattern = pattern
+    try store.saveSession(s)
+
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(got.entries[0].clickPattern, pattern, "the pattern rides the blob")
+    XCTAssertNil(got.entries[1].clickPattern)
   }
 
   func testSessionsLoadNewestFirst() throws {

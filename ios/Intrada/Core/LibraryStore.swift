@@ -80,8 +80,8 @@ final class LibraryStore: ItemStore {
         INSERT INTO item
           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
            linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id,
-           deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           metre, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title, kind = excluded.kind, composer = excluded.composer,
           key = excluded.key, modality = excluded.modality,
@@ -90,7 +90,7 @@ final class LibraryStore: ItemStore {
           linked_exercise_ids = excluded.linked_exercise_ids,
           updated_at = excluded.updated_at, priority = excluded.priority,
           chord_chart = excluded.chord_chart, photo_id = excluded.photo_id,
-          deleted_at = NULL
+          metre = excluded.metre, deleted_at = NULL
         """,
       arguments: [
         item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
@@ -99,7 +99,7 @@ final class LibraryStore: ItemStore {
         Self.encodeTags(item.tags),
         Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
-        Self.encodeChordChart(item.chordChart), item.photoId,
+        Self.encodeChordChart(item.chordChart), item.photoId, Self.encodeMetre(item.metre),
       ])
     // Same transaction as the item row, keyed by id; no delete-missing: the
     // core always carries the tombstones it loaded and writes them back
@@ -441,6 +441,19 @@ final class LibraryStore: ItemStore {
       // whole (specs/piece-from-photo.md, key decision 1).
       try db.execute(sql: "ALTER TABLE item ADD COLUMN photo_id TEXT")
     }
+    migrator.registerMigration("v17_item_metre") { db in
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN metre TEXT")
+      // The chart carried beats-per-bar alone; a charted piece keeps that as a
+      // crotchet-unit metre. The chart's own copy stays in the JSON, ignored:
+      // ignoring is cheaper and safer than a copy-table drop (CLAUDE.md,
+      // local data migrations).
+      try db.execute(
+        sql: """
+          UPDATE item
+          SET metre = json_object('beats', json_extract(chord_chart, '$.metre'), 'unit', 4)
+          WHERE chord_chart IS NOT NULL AND json_extract(chord_chart, '$.metre') IS NOT NULL
+          """)
+    }
     return migrator
   }()
 
@@ -470,7 +483,29 @@ final class LibraryStore: ItemStore {
       priority: row["priority"],
       chordChart: decodeChordChart(row["chord_chart"]),
       variants: variants,
-      photoId: row["photo_id"])
+      photoId: row["photo_id"], metre: decodeMetre(row["metre"]))
+  }
+
+  // ── Metre codec ──────────────────────────────────────────────────────
+
+  private struct StoredMetre: Codable {
+    var beats: UInt8
+    var unit: UInt8
+    var groups: [UInt8]?
+  }
+
+  private static func encodeMetre(_ metre: Metre?) -> String? {
+    guard let metre else { return nil }
+    let dto = StoredMetre(beats: metre.beats, unit: metre.unit, groups: metre.groups)
+    guard let data = try? JSONEncoder().encode(dto) else { return nil }
+    return String(data: data, encoding: .utf8)
+  }
+
+  private static func decodeMetre(_ json: String?) -> Metre? {
+    guard let json,
+      let dto = try? JSONDecoder().decode(StoredMetre.self, from: Data(json.utf8))
+    else { return nil }
+    return Metre(beats: dto.beats, unit: dto.unit, groups: dto.groups)
   }
 
   // ── Row ↔ Variant codec ──────────────────────────────────────────────
@@ -559,7 +594,8 @@ final class LibraryStore: ItemStore {
   private struct StoredChart: Codable {
     var key: String
     var modality: String
-    var metre: UInt8
+    // Pre-v17 rows carry the beats here; the item's `metre` column owns it now.
+    var metre: UInt8?
     var sections: [StoredSection]
   }
   private struct StoredSection: Codable {
@@ -589,7 +625,7 @@ final class LibraryStore: ItemStore {
   private static func encodeChordChart(_ chart: ChordChart?) -> String? {
     guard let chart else { return nil }
     let dto = StoredChart(
-      key: chart.key, modality: modalityString(chart.modality) ?? "major", metre: chart.metre,
+      key: chart.key, modality: modalityString(chart.modality) ?? "major", metre: nil,
       sections: chart.sections.map { section in
         StoredSection(
           label: section.label,
@@ -622,7 +658,7 @@ final class LibraryStore: ItemStore {
       return nil
     }
     return ChordChart(
-      key: dto.key, modality: modality(from: dto.modality) ?? .major, metre: dto.metre,
+      key: dto.key, modality: modality(from: dto.modality) ?? .major,
       sections: dto.sections.map { section in
         ChartSection(
           label: section.label,
@@ -720,6 +756,28 @@ final class LibraryStore: ItemStore {
     var achievedTempo: UInt16?
     var groupId: String?
     var variantId: String?
+    var clickPattern: StoredClickState?
+  }
+
+  private struct StoredClickState: Codable {
+    var metre: StoredMetre
+    var sounding: UInt16
+  }
+
+  private static func storedClick(_ state: ClickState?) -> StoredClickState? {
+    state.map {
+      StoredClickState(
+        metre: StoredMetre(beats: $0.metre.beats, unit: $0.metre.unit, groups: $0.metre.groups),
+        sounding: $0.sounding)
+    }
+  }
+
+  private static func clickState(_ stored: StoredClickState?) -> ClickState? {
+    stored.map {
+      ClickState(
+        metre: Metre(beats: $0.metre.beats, unit: $0.metre.unit, groups: $0.metre.groups),
+        sounding: $0.sounding)
+    }
   }
 
   /// Rows written before the history was timestamped hold bare action strings;
@@ -756,7 +814,7 @@ final class LibraryStore: ItemStore {
           $0.map { StoredRepEvent(action: repActionString($0.action), at: $0.at) }
         },
         plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo,
-        groupId: e.groupId, variantId: e.variantId)
+        groupId: e.groupId, variantId: e.variantId, clickPattern: storedClick(e.clickPattern))
     }
     guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
     else { return "[]" }
@@ -777,7 +835,7 @@ final class LibraryStore: ItemStore {
           $0.map { RepEvent(action: repAction(from: $0.action), at: $0.at ?? sessionStartedAt) }
         },
         plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo,
-        groupId: d.groupId, variantId: d.variantId)
+        groupId: d.groupId, variantId: d.variantId, clickPattern: clickState(d.clickPattern))
     }
   }
 

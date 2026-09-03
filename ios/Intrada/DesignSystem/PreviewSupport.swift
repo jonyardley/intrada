@@ -224,13 +224,13 @@
             position: 0, durationSecs: 180, status: .completed,
             notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
             repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-            groupId: nil, variantId: nil),
+            groupId: nil, variantId: nil, clickPattern: nil),
           SetlistEntry(
             id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
             position: 1, durationSecs: 0, status: .notAttempted,
             notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
             repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-            groupId: nil, variantId: nil),
+            groupId: nil, variantId: nil, clickPattern: nil),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
@@ -475,7 +475,7 @@
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil,
             pieceContextScore: nil),
         ],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -486,7 +486,8 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
+        ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -498,7 +499,8 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
+        ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -510,7 +512,7 @@
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -522,7 +524,7 @@
           beats: 4)
       }
       let chart = ChordChart(
-        key: "G", modality: .minor, metre: 4,
+        key: "G", modality: .minor,
         sections: [
           ChartSection(
             label: "A",
@@ -538,7 +540,8 @@
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: .preview, chordChart: chart, variants: [], ladderIsKeys: false,
+        usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variants: [],
+        ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -548,7 +551,8 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
+        ladderIsKeys: false,
         photoId: nil)
     }
 
@@ -591,7 +595,7 @@
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
             practice: nil, pieceContextScore: nil),
         ],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil)
     }
 
@@ -621,7 +625,8 @@
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -661,7 +666,8 @@
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
+        photoId: nil)
     }
 
     /// A step-ladder exercise — one solid, one current (rated but not
@@ -673,7 +679,7 @@
         key: "C", modality: .major, tempo: "132 BPM", tempoMarking: nil, tempoBpm: 132,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [
           VariantView(
             id: "step-c", label: "C", position: 0, latestScore: 9, scoreHistory: [],
@@ -699,7 +705,7 @@
         key: nil, modality: nil, tempo: "72 BPM", tempoMarking: nil, tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: keys.enumerated().map { index, label in
           let solid = index < 4
           let current = index == 4
@@ -719,7 +725,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        usedIn: [], scaffoldPreview: nil, chordChart: nil,
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: rungs.enumerated().map { index, label in
           VariantView(
             id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
@@ -736,7 +742,7 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
-        chordChart: nil, variants: [], ladderIsKeys: false, photoId: nil)
+        chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil)
     }
   }
 
@@ -785,7 +791,7 @@
         durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
-        variantId: nil)
+        variantId: nil, clickPattern: nil)
     }
   }
 
@@ -895,7 +901,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: nil, variantId: nil)
+        groupId: nil, variantId: nil, clickPattern: nil)
     }
   }
 
@@ -924,7 +930,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: groupId, variantId: nil)
+        groupId: groupId, variantId: nil, clickPattern: nil)
     }
 
     static var previewActive: ActiveSessionView {
@@ -943,7 +949,7 @@
         currentRepHistory: nil, currentRepSlots: 10, currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66)
+        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil)
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -961,7 +967,7 @@
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
-        currentItemTempoBpm: base.currentItemTempoBpm)
+        currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil)
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -981,7 +987,7 @@
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
         currentRelatedPieceTitle: "Moonlight Sonata",
-        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132)
+        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil)
     }
   }
 
@@ -1036,7 +1042,7 @@
         durationDisplay: duration, status: status, notes: nil, score: score, intention: intention,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil,
-        variantId: nil)
+        variantId: nil, clickPattern: nil)
     }
   }
 #endif
