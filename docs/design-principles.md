@@ -32,7 +32,7 @@
 ## Visual principles
 
 These are mostly settled and live in code; captured here so the *intent* behind
-them isn't lost. (See `CLAUDE.md` → Design System Rules for the enforcement
+them isn't lost. (See `skill://intrada-design-system` for the enforcement
 rules and primitive catalogue.)
 
 - **Dark-on-dark glassmorphism.** Neutral gray-900→near-black gradient,
