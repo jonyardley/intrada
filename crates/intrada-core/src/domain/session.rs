@@ -280,6 +280,14 @@ pub enum SessionEvent {
     StartBuildingFromSuggestion {
         now: DateTime<Utc>,
     },
+    /// The Practice tab's "Practise your priorities" (#981): from Idle, start
+    /// building seeded with every starred item, least ready first. Carries only
+    /// `now`, for the same reason `StartBuildingFromSuggestion` does: the core
+    /// re-derives the set rather than trusting the shell's copy, and the
+    /// ordering is clock-dependent.
+    StartBuildingWithPriorities {
+        now: DateTime<Utc>,
+    },
     AddNewItemToSetlist {
         title: String,
         item_type: ItemKind,
@@ -933,6 +941,34 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.session_status = SessionStatus::Building(building);
             model.last_error = None;
             crux_core::render::render()
+        }
+
+        SessionEvent::StartBuildingWithPriorities { now } => {
+            if !matches!(model.session_status, SessionStatus::Idle) {
+                model.last_error = Some("A practice is already in progress".to_string());
+                return crux_core::render::render();
+            }
+            // Nothing starred is not an error, for the same reason as the Up
+            // next CTA: the button cannot be on screen, and a race must not
+            // strand an empty builder.
+            let ordered = crate::app::derive_priorities(model, now);
+            if ordered.is_empty() {
+                return crux_core::render::render();
+            }
+
+            model.session_status = SessionStatus::Building(BuildingSession::default());
+            // `AddToSetlist` owns block formation, deduping and idempotency
+            // (#939), so seeding folds over it rather than building entries a
+            // second way. Every step's command is kept: dropping all but the
+            // last would silently swallow any effect it grows later.
+            Command::all(
+                ordered
+                    .into_iter()
+                    .map(|item_id| {
+                        handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
+                    })
+                    .collect::<Vec<_>>(),
+            )
         }
 
         SessionEvent::AddToSetlist { item_id } => {
@@ -2030,6 +2066,142 @@ mod tests {
     fn start_building_from_suggestion_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(Event::Session(
             SessionEvent::StartBuildingFromSuggestion { now: Utc::now() },
+        ));
+    }
+
+    // ── "Practise your priorities" (#981) ────────────────────────────
+
+    fn star(model: &mut Model, starred: &[&str]) {
+        for item in &mut model.items {
+            if starred.contains(&item.id.as_str()) {
+                item.priority = true;
+            }
+        }
+    }
+
+    /// Same mark and return count on every fixture, so the expected interval
+    /// is identical and only the gap decides the order.
+    fn practised_days_ago(model: &mut Model, item_id: &str, days: i64) {
+        model.practice_summaries.insert(
+            item_id.to_string(),
+            crate::model::ItemPracticeSummary {
+                session_count: 4,
+                latest_score: Some(6),
+                last_practiced_at: Some((Utc::now() - chrono::Duration::days(days)).to_rfc3339()),
+                ..crate::model::ItemPracticeSummary::fixture()
+            },
+        );
+    }
+
+    fn start_with_priorities(model: &mut Model) {
+        update(
+            model,
+            Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
+        );
+    }
+
+    #[test]
+    fn start_building_with_priorities_seeds_every_starred_item() {
+        let mut m = linked_model();
+        star(&mut m, &["piece-Q", "ex-D"]);
+        start_with_priorities(&mut m);
+
+        assert_eq!(
+            ids(&m),
+            ["piece-Q", "ex-D"],
+            "never practised, so alphabetical"
+        );
+        assert_eq!(m.last_error, None);
+    }
+
+    #[test]
+    fn start_building_with_priorities_seeds_least_ready_first() {
+        let mut m = linked_model();
+        star(&mut m, &["piece-Q", "ex-D"]);
+        practised_days_ago(&mut m, "piece-Q", 2);
+        practised_days_ago(&mut m, "ex-D", 90);
+        start_with_priorities(&mut m);
+
+        assert_eq!(
+            ids(&m),
+            ["ex-D", "piece-Q"],
+            "the longer-neglected item leads, against both library order and the alphabet"
+        );
+    }
+
+    #[test]
+    fn start_building_with_priorities_brings_a_starred_pieces_block() {
+        let mut m = linked_model();
+        star(&mut m, &["piece-P"]);
+        start_with_priorities(&mut m);
+
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        let e = building_entries(&m);
+        assert!(e[0].group_id.is_some(), "the seeded piece keeps its block");
+        assert!(e.iter().all(|x| x.group_id == e[0].group_id));
+    }
+
+    #[test]
+    fn start_building_with_priorities_seeds_a_starred_exercise_once() {
+        let mut m = linked_model();
+        star(&mut m, &["piece-P", "ex-A"]);
+        start_with_priorities(&mut m);
+
+        assert_eq!(
+            ids(&m).iter().filter(|id| *id == "ex-A").count(),
+            1,
+            "starred in its own right and pulled in by its piece is still one entry"
+        );
+    }
+
+    #[test]
+    fn start_building_with_priorities_rejects_when_not_idle() {
+        let mut m = linked_model();
+        star(&mut m, &["piece-Q"]);
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        start_with_priorities(&mut m);
+
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("A practice is already in progress")
+        );
+        assert_eq!(ids(&m), ["ex-C"], "existing setlist untouched");
+    }
+
+    #[test]
+    fn start_building_with_priorities_is_a_no_op_with_nothing_starred() {
+        let mut m = linked_model();
+        start_with_priorities(&mut m);
+
+        assert!(
+            matches!(m.session_status, SessionStatus::Idle),
+            "an empty priority set must not leave an empty building session"
+        );
+        assert_eq!(m.last_error, None, "nothing starred is not an error");
+    }
+
+    #[test]
+    fn start_building_with_priorities_makes_no_network_call() {
+        let mut m = linked_model();
+        m.local_first = true;
+        star(&mut m, &["piece-P"]);
+        let app = Intrada;
+        let mut cmd = app.update(
+            Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
+            &mut m,
+        );
+        assert!(
+            cmd.effects().all(|e| matches!(e, Effect::Render(_))),
+            "the priority set is derived from data already in the model: no HTTP, \
+             no storage read (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn start_building_with_priorities_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::Session(
+            SessionEvent::StartBuildingWithPriorities { now: Utc::now() },
         ));
     }
 

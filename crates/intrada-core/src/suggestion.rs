@@ -178,7 +178,7 @@ struct Suggestable<'a> {
 
 /// One convention for pieces and exercises alike, so the two rankings can't
 /// drift (#1416).
-fn staleness_of(item: &LibraryItemView, clock: LocalClock) -> Staleness {
+pub(crate) fn staleness_of(item: &LibraryItemView, clock: LocalClock) -> Staleness {
     staleness::assess(item.practice.as_ref(), latest_mark(item), clock)
 }
 

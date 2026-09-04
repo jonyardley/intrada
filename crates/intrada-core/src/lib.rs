@@ -5,6 +5,7 @@ pub mod error;
 pub mod http;
 pub mod model;
 pub mod persistence;
+pub(crate) mod priorities;
 pub mod recognition;
 pub(crate) mod staleness;
 pub mod suggestion;
