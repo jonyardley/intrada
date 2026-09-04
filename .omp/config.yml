@@ -1,0 +1,13 @@
+# Project-local OMP settings. Read only from the cwd's .omp/, so start omp from
+# the repo root. Deep-merged over ~/.omp/agent/config.yml; arrays replace.
+
+# Prewalk hands the session to a cheaper model at the first edit after any todo
+# call. It cannot tell a migration from a typo, so in this repo it inverts the
+# sensitivity override in docs/model-guide.md: bridge, schema, auth and
+# migration work is exactly what must go UP a level, never down. 34 of the last
+# 120 commits touched crates/ and ios/ together, so that surface is the common
+# case here, not the exception. Arm it deliberately per session instead:
+#   omp --prewalk-into anthropic/claude-sonnet-5:xhigh
+# which is the implement tier docs/model-guide.md actually names.
+prewalk:
+  enabled: false
