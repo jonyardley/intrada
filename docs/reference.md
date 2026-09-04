@@ -344,12 +344,27 @@ What those numbers changed:
   saving on main only, so pull requests restore main's copy. The general point:
   a rust-cache key carries the job name, so a `save-if: false` reader can only
   share with the *same* job on another ref, never with a different job.
-- **The API image's layer cache builds to `mode=min`.** One `mode=max` run of
-  **API Docker Build** wrote 26 `buildkit-blob-*` entries and 1.96 GB, a
-  quarter of the repo's whole allowance, for a lane that only runs when the API
-  changes. `mode=min` keeps the final-stage layers, and the prune holds the
-  buildkit family to a 1 GB budget, oldest first: blob count grows with the
-  image rather than with the number of runs, so a keep-count would not bound it.
+
+## The API image build stopped caching its layers (2026-09-04)
+
+**API Docker Build** exported a buildkit layer cache to GitHub Actions
+(`cache-to: type=gha,mode=max`). One run of it wrote 26 `buildkit-blob-*`
+entries and 1.96 GB, a fifth of the repo's 10 GB allowance, for a lane that
+only runs when the API changes and is on hold behind the iOS pivot. Neither
+mode was worth that:
+
+- `mode=max` caches every intermediate layer, which is what made it 1.96 GB.
+- `mode=min` caches only what the final image exports, and the `Dockerfile` is
+  a cargo-chef build whose expensive layer (`cargo chef cook --release`) lives
+  in the `builder` stage, so `mode=min` would export the runtime stage and
+  never the layer the file is designed around.
+
+So the lane builds with no layer cache at all. A cold build measured **139s**,
+which is cheaper than it looks because the allowance it frees is restored by
+every iOS pull request. If the API comes back into focus, `mode=max` plus a
+prune rule that treats the blobs and their index as one all-or-nothing set is
+the shape to add: deleting blobs while keeping the index that names them
+produces buildkit's `blob not found` import failure rather than a cold build.
 
 ## Mutate-response variants, in full
 

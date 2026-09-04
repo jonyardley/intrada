@@ -97,21 +97,6 @@ jobs:
             done < "$1"
           }
 
-          # buildkit writes content-addressed layer blobs whose count grows with the
-          # image rather than with the number of runs, so a keep-count is the wrong
-          # axis and a byte budget is the right one: oldest go first, and a blob
-          # nothing looks up again is dead weight rather than a cache.
-          prune_to_budget() {
-            local prefix="$1" budget="$2" over="$work/over.tsv"
-            awk -F'\t' -v p="$prefix" 'index($5, p) == 1' "$all" \
-              | sort -t "$tab" -k2,2r \
-              | awk -F'\t' -v b="$budget" '{ total += $3; if (total > b) print }' \
-              > "$over"
-            echo "  $prefix: $(wc -l < "$over" | tr -d ' ') entries beyond $(gb "$budget") GB"
-            [ -s "$over" ] || return 0
-            delete_listed "$over"
-          }
-
           # A subfamily lives under its parent's prefix, so it is matched first and
           # excluded from the parent bucket: neither can starve the other.
           prune_family "ios-dd-release-" 3
@@ -127,11 +112,10 @@ jobs:
           prune_family "coverage-" 2
           prune_family "msrv-" 2
           prune_family "release-testflight-" 2
-          prune_to_budget "buildkit-" 1000000000
-          prune_to_budget "index-buildkit-" 10000000
 
-          # The tool caches (cargo-swift-, xcodegen-, gitleaks-, setup-ruby-)
-          # are a few MB each and one entry per family, so they are left alone.
+          # Left alone: the tool caches (cargo-swift-, xcodegen-, gitleaks-,
+          # setup-ruby-) are a few MB each. Nothing writes buildkit- entries any
+          # more, since the API image build no longer exports a layer cache.
 
           fresh="$work/after.tsv"
           gh api --paginate "$api?per_page=100" \
