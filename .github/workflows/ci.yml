@@ -204,7 +204,7 @@ jobs:
           cargo clippy --workspace --all-targets \
             --message-format=json -- -D warnings 2>&1 \
             | clippy-sarif | tee clippy-native.sarif | sarif-fmt
-          exit ${PIPESTATUS[0]}
+          exit "${PIPESTATUS[0]}"
       - name: Upload Clippy SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v4
@@ -259,7 +259,7 @@ jobs:
       # image; without this `cargo` resolves to Apple's stub. (See ios-build.)
       - name: Ensure cargo is on PATH
         run: |
-          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           cargo --version
       # iOS-only `#[cfg(target_os = "ios")]` branches in the FFI crate can't be
       # linted by the Linux `clippy` job (no Apple SDK); lint them here against
@@ -643,6 +643,10 @@ jobs:
           bash scripts/check-comment-density.sh
 
   security:
+    # The name is load-bearing: branch protection matches required checks on
+    # this exact string, so renaming it orphans the required check and the PR
+    # waits forever on a job that will never report again. actionlint runs here
+    # too, deliberately unnamed.
     name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
     runs-on: ubuntu-latest
     steps:
@@ -654,6 +658,18 @@ jobs:
       - uses: taiki-e/install-action@v2.87.0
         with:
           tool: typos@1.48,cargo-shear@1.13
+      # actionlint is a Go binary, not a crate: install-action carries no entry
+      # for it and its cargo-binstall fallback reports "actionlint is not
+      # found". Fetch the pinned release directly; keep the version in lockstep
+      # with mise.toml.
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" actionlint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # ── typos ──────────────────────────────────────────────────────────
       # Source-tree spell check (docs-heavy repo; also catches identifier
       # typos clippy/swift-format never will). Project words: _typos.toml.
@@ -665,6 +681,12 @@ jobs:
       # Unused workspace dependencies — catches dead deps that inflate CI builds.
       - name: Unused dependencies (cargo-shear)
         run: cargo-shear
+      # ── actionlint ─────────────────────────────────────────────────────
+      # A workflow's first real exercise is the event that triggers it, so a
+      # schema or expression error otherwise surfaces on the merge that needed
+      # it to work. Keep the pin in lockstep with mise.toml.
+      - name: Workflow lint (actionlint)
+        run: actionlint
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.

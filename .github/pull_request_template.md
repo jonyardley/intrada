@@ -1,22 +1,35 @@
-## Summary
+## What this fixes
 
-<!-- What does this PR do? 1-3 sentences. -->
+<!-- The situation a musician would notice. No file paths, no symbol names and
+     no code in this block. -->
 
-## Roadmap alignment
+## Where this could bite
 
-- [ ] Links to a roadmap item in [`docs/roadmap.md`](../docs/roadmap.md): issue #___ (or explicitly agreed with Jon)
-- [ ] Pillar: Plan / Practice / Track / Cross-cutting
-- [ ] Horizon: Now / Next / Later
+<!-- Residual risk in the merged code, and what is deliberately not covered.
+     Present tense, about what ships: never the history of the branch, and never
+     a wrong turn already corrected. Never spell out an exploitable gap in auth,
+     tokens or user data on a public repo: say a gap exists and route the detail
+     to Jon. -->
 
-## Coverage
+## What I checked
 
-Coverage: <!-- Tier 2+: "full: <what the new tests cover>" or the expected patch-coverage gaps and why. Tier 1: n/a. -->
+<!-- Evidence, not reassurance. "Gates green" is one line, because it is true of
+     every PR worth showing. What earns space is the check that could have
+     failed. -->
+
+Coverage: <!-- Tier 2+: what the new tests cover, or the expected patch-coverage gaps and why. Tier 1: n/a. -->
+
+## What changed where
+
+<!-- One line per file. Identifiers welcome here. -->
 
 ## Checklist
 
+- [ ] Roadmap item or issue: #___ (or explicitly agreed with Jon)
 - [ ] `just check` passes (fmt + clippy + tests, mirrors CI's flags)
-- [ ] `ios/` changes: `just ios-fmt-check` + `just ios-test-full` pass (the merge gate; `just ios-test` is the fast inner-loop tier); snapshots re-recorded + `just ios-snapshots-optimize` if UI changed
+- [ ] `ios/` changes: `just ios-fmt-check` and `just ios-test-full` pass (the merge gate; `just ios-test` is the fast inner-loop tier); snapshots re-recorded and `just ios-snapshots-optimize` run if UI changed
 - [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
-- [ ] Persistence / new-entity changes: offline-first PR checklist in `.claude/skills/intrada-offline-first/SKILL.md` applied (`updated_at`/`deleted_at`, client-minted ulid, `local_first` branches tested both ways)
-- [ ] CLAUDE.md updated (if architecture, components, or patterns changed)
+- [ ] Persistence or new-entity changes: offline-first PR checklist in `.claude/skills/intrada-offline-first/SKILL.md` applied (`updated_at` / `deleted_at`, client-minted ulid, `local_first` branches tested both ways)
+- [ ] CLAUDE.md updated (if architecture, components or patterns changed)
 - [ ] Roadmap updated (if a feature is now complete or scope changed)
+- [ ] Deferred items opened as tracked issues and listed in the self-review comment

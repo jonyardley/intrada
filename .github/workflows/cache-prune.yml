@@ -81,8 +81,8 @@ jobs:
           }
 
           delete_listed() {
-            local id created size ref key
-            while IFS="$tab" read -r id created size ref key; do
+            local id _created size ref key
+            while IFS="$tab" read -r id _created size ref key; do
               if gh api -X DELETE "$api/$id" --silent 2>"$work/err"; then
                 echo "    deleted $id ($size bytes, $ref) $key"
                 reclaimed=$((reclaimed + size))
