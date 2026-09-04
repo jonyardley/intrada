@@ -132,6 +132,24 @@ Both harnesses work here. What differs:
 - `skill://<name>` is an OMP URI. Pointers in this repo name the file path too,
   so they resolve in either harness and for a human.
 
+## Code intelligence
+
+Run `just lsp-setup` once per machine, and once per worktree that wants Swift.
+Without it the `lsp` tool answers nothing on either language, which pushes an
+agent back onto grep for navigation and rename:
+
+- `rust-analyzer` resolves on PATH as a rustup shim that fails unless the
+  component is installed for the toolchain pinned in `rust-toolchain.toml`.
+- `sourcekit-lsp` ships as a built-in and the binary is in Xcode's toolchain,
+  but it never activates, because its root markers live under `ios/` and a
+  session starts at the repo root. `.omp/lsp.json` adds `buildServer.json` as a
+  marker; `just lsp-setup` writes that file, which Zed's Swift support already
+  expected (it has been in `.gitignore` since before the agent used it).
+
+Swift diagnostics work as soon as the build server exists. Full symbol
+resolution needs the index populated, so a module that has not been built reads
+as `No such module`; one build in Xcode (`just ios`) settles it.
+
 ## Worked examples
 
 Both are real open issues, and both start the same way: claim the issue and

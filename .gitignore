@@ -49,8 +49,9 @@ ios/build/
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/test_output/
-# xcode-build-server config for sourcekit-lsp in Zed — machine-local absolute
-# paths, regenerated per checkout (see .zed/settings.json / SETUP.md)
+# xcode-build-server config for sourcekit-lsp, in Zed and in the agent's lsp
+# tool: machine-local absolute paths, regenerated per checkout by
+# `just lsp-setup` (see .zed/settings.json, docs/working-with-omp.md)
 buildServer.json
 # graphify knowledge-graph output: machine-local, never committed (a re-recorded
 # multi-MB graph.json compounds in history like snapshot PNGs). The canonical
