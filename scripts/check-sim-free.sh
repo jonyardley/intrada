@@ -29,7 +29,9 @@ check_sim_free() {
     fi
 
     local procs
-    procs="$(pgrep -fl 'xcodebuild|XCTestAgent' 2>/dev/null || true)"
+    # Anchored to the executable: unanchored, this also matched
+    # `npm exec xcodebuildmcp@2 mcp` and blocked the gate outright (#1529).
+    procs="$(pgrep -fl '(^|/)(xcodebuild|XCTestAgent)( |$)' 2>/dev/null || true)"
     if [ -n "$procs" ]; then
         echo "✗ an xcodebuild/XCTestAgent process is already running:" >&2
         echo "$procs" | sed 's/^/  /' >&2
