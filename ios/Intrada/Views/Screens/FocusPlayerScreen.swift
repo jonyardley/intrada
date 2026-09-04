@@ -47,13 +47,20 @@ struct FocusPlayerScreen: View {
     .onChange(of: active?.currentPosition) { _, _ in
       click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre)
     }
-    // No `UIBackgroundModes: audio`, so the pulse cannot survive backgrounding
-    // — stop it rather than leave the row claiming a click nobody can hear.
+    // The wake lock rides with the click: both are held only while this screen
+    // is up, and `initial: true` is what takes the hold for a session started
+    // in the foreground, where the phase never changes (#1513).
     .onChange(of: scenePhase, initial: true) { _, phase in
       wakeLock.update(sessionActive: active != nil, phase: phase)
+      // No `UIBackgroundModes: audio`, so the pulse cannot survive
+      // backgrounding — stop it rather than leave the row claiming a click
+      // nobody can hear.
       if phase == .background { click.stop() }
     }
-    .onDisappear { click.dispose() }
+    .onDisappear {
+      click.dispose()
+      wakeLock.release()
+    }
   }
 
   private func content(_ active: ActiveSessionView) -> some View {
