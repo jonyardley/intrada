@@ -20,6 +20,8 @@ permissions:
   contents: read
   checks: write
   pull-requests: write
+  # `actions: write` is the cancel-run-on-failure step's only requirement.
+  actions: write
   security-events: write
 
 env:
@@ -212,6 +214,8 @@ jobs:
           sarif_file: clippy-native.sarif
           category: clippy-native
           wait-for-processing: true
+      - if: failure()
+        uses: ./.github/actions/cancel-run-on-failure
 
   native-ios-build:
     # Native SwiftUI app, build half — regenerate bindings (facet typegen +
@@ -609,6 +613,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check snapshot references (orphans + size ceiling)
         run: bash scripts/check-snapshots.sh
+      - if: failure()
+        uses: ./.github/actions/cancel-run-on-failure
 
   fmt:
     name: Formatting
@@ -622,6 +628,8 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
       - run: cargo fmt --all -- --check
+      - if: failure()
+        uses: ./.github/actions/cancel-run-on-failure
 
   # The same comment-density gate as the local pre-push hook, enforced for
   # everyone — an opt-in hook is effectively off (.claude/skills/intrada-ios-quality/SKILL.md "stated invariant =
@@ -641,6 +649,8 @@ jobs:
         run: |
           git fetch --no-tags origin "$GITHUB_BASE_REF"
           bash scripts/check-comment-density.sh
+      - if: failure()
+        uses: ./.github/actions/cancel-run-on-failure
 
   security:
     name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear, actionlint)
@@ -653,7 +663,19 @@ jobs:
       # words, failing unrelated PRs. Bump deliberately, with mise.toml.
       - uses: taiki-e/install-action@v2.87.0
         with:
-          tool: typos@1.48,cargo-shear@1.13,actionlint@1.7.12
+          tool: typos@1.48,cargo-shear@1.13
+      # actionlint is a Go binary, not a crate: install-action carries no entry
+      # for it and its cargo-binstall fallback reports "actionlint is not
+      # found". Fetch the pinned release directly; keep the version in lockstep
+      # with mise.toml.
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" actionlint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # ── typos ──────────────────────────────────────────────────────────
       # Source-tree spell check (docs-heavy repo; also catches identifier
       # typos clippy/swift-format never will). Project words: _typos.toml.
@@ -682,6 +704,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: failure()
+        uses: ./.github/actions/cancel-run-on-failure
 
   api-docker-build:
     # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered
