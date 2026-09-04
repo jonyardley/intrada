@@ -466,6 +466,10 @@ impl Intrada {
         // suggestion the Practice tab leads with (#1082).
         let up_next = crate::suggestion::compute_up_next(&items, clock);
 
+        // Pre-filter for the same reason as `up_next`: a narrowed library must
+        // not hide the "Practise your priorities" button (#981).
+        let has_priorities = items.iter().any(|i| i.priority);
+
         // Cloned pre-filter for pickers that curate their own subset (#1484).
         let all_items = items.clone();
 
@@ -669,6 +673,7 @@ impl Intrada {
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
             up_next,
+            has_priorities,
             photo_recognition: photo_recognition_view(&model.photo_recognition),
         }
     }
@@ -4090,6 +4095,46 @@ mod tests {
         assert!(
             app.view(&model).up_next.is_none(),
             "it suggests, it never invents"
+        );
+    }
+
+    #[test]
+    fn view_flags_priorities_only_when_something_is_starred() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now)];
+
+        assert!(
+            !app.view(&model).has_priorities,
+            "nothing starred, so the button cannot be on screen"
+        );
+
+        model.items[0].priority = true;
+        assert!(app.view(&model).has_priorities);
+    }
+
+    #[test]
+    fn a_library_filter_cannot_hide_the_priorities_button() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.priority = true;
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert!(
+            !vm.items.iter().any(|i| i.id == "p1"),
+            "the filter really does hide the starred piece from the list"
+        );
+        assert!(
+            vm.has_priorities,
+            "the flag is derived before the filter, like up_next"
         );
     }
 

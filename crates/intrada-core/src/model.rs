@@ -250,6 +250,9 @@ pub struct ViewModel {
     /// The one suggested session on the Practice tab (#1082). `None` whenever
     /// nothing qualifies: it suggests, it never gates.
     pub up_next: Option<SuggestedSession>,
+    /// Anything starred? The Practice tab's "Practise your priorities" button
+    /// shows only when this is true, and like `up_next` it is derived pre-filter (#981).
+    pub has_priorities: bool,
     /// What the last photographed page was read into, for the confirm surface.
     pub photo_recognition: PhotoRecognitionView,
 }
