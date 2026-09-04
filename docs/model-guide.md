@@ -169,3 +169,11 @@ same way a phase without a test plan is.
 - **Decisions go up the ladder, execution goes down it.** If a session will
   choose between hard-to-reverse options, go up; if it applies a choice
   already made, go down.
+- **Prewalk hands work down; it does not think harder.** It switches the
+  session to the `@smol` role after the first `edit` or `write` following a
+  `todo` call, and the switch is sticky for the rest of that session. So it
+  belongs at the start of a session whose only job is executing a finished
+  plan, and a plan routing a task that way says so explicitly. Armed
+  mid-conversation it either does nothing, because no `todo` call fires, or it
+  hands every remaining decision to the cheap model. For "decide here, execute
+  cheaply", use a subagent instead: the deciding session stays strong.
