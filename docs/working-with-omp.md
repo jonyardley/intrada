@@ -132,6 +132,153 @@ Both harnesses work here. What differs:
 - `skill://<name>` is an OMP URI. Pointers in this repo name the file path too,
   so they resolve in either harness and for a human.
 
+## Worked examples
+
+Both are real open issues, and both start the same way: claim the issue and
+stop if a PR already exists.
+
+```bash
+gh pr list --repo jonyardley/intrada --state open --search "<N>"
+gh issue view <N> --json closedByPullRequestsReferences
+```
+
+### From a cold start
+
+Bare `omp` at the repo root starts on `default` (`opus-5` at `xhigh`) with
+prewalk off. Everything below is in-session, so no launch flags are needed.
+
+| Want | In session |
+|---|---|
+| A different rung | `/model`, Roles view. A role carries its pinned effort, so switching role moves model and effort together. `Ctrl+P` cycles `smol`, `default`, `slow`. |
+| A bare model | `/model`, All models. Effort does not come with it, so use `--thinking` at launch when the level matters. |
+| Read a skill now | `/skill:intrada-design-system` |
+| Run a command | `!just check`, or `$` for Python |
+| Watch subagents | `Alt+A` for the hub, `/agents` for per-agent model, prewalk and advisor |
+| Arm the cheap handoff | `/prewalk`, which always targets `@smol`; use `--prewalk-into` at launch for anything else |
+| Keys and commands | `/hotkeys`, `/help` |
+
+`ultrathink` in a prompt adds a careful-reasoning notice, but it only raises
+effort when `defaultThinkingLevel` is `auto`. Ours is `high`, so treat it as a
+prompt hint, not a rung change. `orchestrate` adds the fan-out contract, which
+is the wrong instinct on a core plus iOS slice.
+
+### Small: #1426, a hand-rolled primitive
+
+`ReflectionSheet.swift` builds an eyebrow by hand with `kerning(1.2)` where the
+`Eyebrow` primitive uses `tracking(1.5)`, so the sheet's labels are visibly
+tighter than the twenty other eyebrows in the app, and the hand-roll drops
+`Eyebrow`'s un-uppercased `accessibilityLabel`, so VoiceOver reads the shouty
+version.
+
+Tier 1. One file, no bridge, no schema, no auth, so no override applies.
+
+1. One session, no plan mode, no subagents. Delegating a one-line change costs
+   more than doing it. `sonnet-5` at `low` is the rung, but on a change this
+   small the ceremony of moving there costs more than the tokens it saves, so
+   from a cold `omp` just work on `default`. If you know before launching:
+   ```bash
+   omp --model anthropic/claude-sonnet-5 --thinking low
+   ```
+2. `skill://intrada-design-system` binds here: reuse before creating, and
+   never hand-roll something that exists. Read it before editing.
+3. Replace the hand-roll with `Eyebrow`. Check the neighbouring `.badge`
+   hand-roll on the same screen, and if it is a different primitive leave it
+   and say so rather than widening the change silently.
+4. Re-record the three affected references in one pass, then verify:
+   ```bash
+   just ios-snapshots-record ScreenSnapshotTests/testReflectionSheet
+   just ios-fmt-check && just ios-test
+   ```
+   Recording is delete-then-run-twice by design, so a first-run failure is
+   expected. Read the diff: the labels should get looser, not move.
+5. Ship. Tier 1 trivia may skip the review subagent but still runs the gates.
+
+Opener, after `omp` at the repo root:
+
+```text
+Claim #1426 and stop if a PR already exists, then fix it.
+
+Read skill://intrada-design-system first. ReflectionSheet.swift hand-rolls an
+eyebrow at line 174; use the Eyebrow primitive instead. There is a second
+hand-roll at line 87 on the badge font: that is a different primitive, so leave
+it and flag it rather than widening this change.
+
+Re-record the affected references with just ios-snapshots-record, then
+just ios-fmt-check and just ios-test. Tell me which snapshots moved and why
+before opening the PR.
+```
+
+### Larger: #1512, a bound the shell should not own
+
+`ClickSheet.swift` hard-codes `2...12` and `EntrySettingsSheet.swift` hard-codes
+`3...10`, both mirroring constants in `crates/intrada-core/src/validation.rs`.
+When the core's bound moves, the sheet keeps offering the old range and starts
+sending values the core rejects, and the write is refused with nothing on
+screen. That is the swallowed-update failure the offline-first rules exist to
+prevent.
+
+Tier 2 on file count, but projecting a bound through the `ViewModel` changes
+the bridge contract, so the domain-sensitivity override puts it up a tier.
+
+1. Contract before code, at the top of the ladder. Pin the `ViewModel` shape
+   first, in one session, and write it down before either side is wired.
+   ```bash
+   omp --model anthropic/claude-fable-5 --thinking xhigh
+   ```
+   `slow` in `.omp/config.yml` is the same model at `max`, which the guide
+   reserves for migrations; `xhigh` is the rung for a bridge change.
+2. This is a core plus iOS vertical slice, so **exactly one stream**. Do not
+   fan out, and do not run a second agent against this repo while it is in
+   flight.
+3. Core PR first. TDD is the default for `intrada-core`: write the failing
+   test, then project the bounds. Extend the Rust `assert_round_trips` helper
+   to the new view type before any screen reads it, because a stub-bridge test
+   cannot catch a bincode wire break (#846).
+4. Get the core PR reviewed before starting the screens. On a multi-surface
+   slice, one review at the end is too late to be cheap.
+5. Screens PR second. Read both bounds from the `ViewModel`, delete both
+   hard-coded ranges, and add the test the issue asks for: the offered range
+   matches the core's, so widening the core cannot silently leave a sheet
+   behind. A shell constant that merely repeats the number is not the fix.
+6. Verify on the running app, not just in CI. Bindings regenerate through
+   `_ios-sync`, but a core type change means iOS tests mean nothing until they
+   have:
+   ```bash
+   just ios-test-full
+   ```
+7. Ship as two PRs, core then screens, each independently reviewable.
+
+Opener for the first session, after `omp` at the repo root:
+
+```text
+Claim #1512 and stop if a PR already exists. Plan mode first, and do not
+write code this session beyond the contract.
+
+This changes the bridge contract, so switch to /model slow before you decide
+anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
+and the rep-target bound, and write it into the issue before either side is
+wired. Read skill://intrada-offline-first: a refused write with nothing on
+screen is the failure this exists to prevent.
+
+This is a core plus iOS slice, so exactly one stream. Do not fan out.
+Core PR only when we implement: TDD, and extend assert_round_trips for the new
+view type before any screen reads it. Screens are a second PR after this one
+is reviewed.
+```
+
+Opener for the screens session, once the core PR is reviewed:
+
+```text
+Screens half of #1512, core PR #<N> is merged. Read both bounds from the
+ViewModel and delete the hard-coded 2...12 in ClickSheet.swift and 3...10 in
+EntrySettingsSheet.swift. A shell constant repeating the number is not the fix.
+
+Add the test the issue asks for: the offered range matches the core's, so
+widening the core cannot silently leave a sheet behind. Then just ios-test-full,
+because the core type changed. Re-record any snapshots the control changes
+touch, and say which.
+```
+
 ## Troubleshooting
 
 | Symptom | Cause |
