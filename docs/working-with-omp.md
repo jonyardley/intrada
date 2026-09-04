@@ -146,9 +146,19 @@ agent back onto grep for navigation and rename:
   marker; `just lsp-setup` writes that file, which Zed's Swift support already
   expected (it has been in `.gitignore` since before the agent used it).
 
-Swift diagnostics work as soon as the build server exists. Full symbol
-resolution needs the index populated, so a module that has not been built reads
-as `No such module`; one build in Xcode (`just ios`) settles it.
+`just lsp-setup` does more than write the build server, and the extra work is
+the point. `xcode-build-server config` on its own aims the index at Xcode's
+*default* DerivedData, which this repo never writes to, so sourcekit-lsp
+reports `No such module` for UIKit and the generated packages: fabricated
+errors on code that compiles, handed to an agent after every Swift edit
+because `lsp.diagnosticsOnEdit` is on. The recipe therefore parses a real
+indexing build's log, which records per-file flags in `.compile` and an
+`indexStorePath` in `buildServer.json`.
+
+With that in place, diagnostics are honest, hover resolves, and
+jump-to-definition works across files. `references` still returns nothing,
+which is a sourcekit-lsp limitation here rather than a missing path, so
+finding the callers of a Swift symbol stays a grep job.
 
 ## Worked examples
 

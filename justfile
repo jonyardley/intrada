@@ -207,14 +207,40 @@ worktree-rm name:
 # is a rustup shim that fails unless the component is installed for the pinned
 # toolchain, and `sourcekit-lsp` never activated because its root markers live
 # under `ios/`, not at the repo root where a session starts. `buildServer.json`
-# fixes the second and is machine-local, so it is gitignored. Swift symbol
-# resolution also needs the index populated, which means one build in Xcode.
-# One-time per machine: make the agent's `lsp` tool work on Rust and Swift.
-lsp-setup:
+# fixes the second and is machine-local, so it is gitignored.
+#
+# `xcode-build-server config` alone is not enough, and its failure is worse
+# than silence: it points the index at Xcode's *default* DerivedData, which
+# this repo never writes to, so sourcekit-lsp reports `No such module` for
+# UIKit and the generated packages. Those are fabricated errors on code that
+# compiles, and with `lsp.diagnosticsOnEdit` on, an agent is handed them after
+# every Swift edit. Parsing a real indexing build's log instead records
+# per-file flags in `.compile` and an `indexStorePath` in `buildServer.json`,
+# which is what makes diagnostics honest and jump-to-definition work across
+# files. Builds into its own `dd-lsp` so it never disturbs the test products.
+#
+# `references` still finds nothing: a sourcekit-lsp limitation here, not a
+# missing path, so finding callers of a Swift symbol stays a grep job.
+# One-time per machine and per worktree that wants Swift.
+lsp-setup: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
     rustup component add rust-analyzer
-    xcode-build-server config -project ios/Intrada.xcodeproj -scheme Intrada
-    @echo "✓ rust-analyzer installed and buildServer.json written"
-    @echo "  Swift symbols need one Xcode build to populate the index: just ios"
+    cd ios
+    xcodegen generate
+    name="$(just _ios-test-sim-name)"
+    udid="$(just _ios-test-sim-udid)"
+    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    cd .. && xcode-build-server config -project ios/Intrada.xcodeproj -scheme Intrada
+    cd ios
+    rm -rf build/dd-lsp
+    # No `-quiet`: `parse` reads the compile commands out of the build log.
+    xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+        -destination "id=$udid" -derivedDataPath build/dd-lsp \
+        -clonedSourcePackagesDirPath build/spm \
+        COMPILER_INDEX_STORE_ENABLE=YES CODE_SIGNING_ALLOWED=NO \
+        | (cd .. && xcode-build-server parse)
+    echo "✓ rust-analyzer installed; Swift diagnostics, hover and cross-file definition wired"
 
 # Helps diagnose "Address already in use" errors when a previous dev session
 # didn't shut down cleanly. Pair with `dev` / `dev-api`, which already pkill
