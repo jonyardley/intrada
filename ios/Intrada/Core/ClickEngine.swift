@@ -29,6 +29,7 @@ final class ClickEngine {
   private let pollIntervalNanoseconds: UInt64 = 100_000_000  // 100ms
 
   private var pulse: Pulse?
+  private var pattern = BeatPattern.flat
   private var nextBeat = 0
   private var observers: [NSObjectProtocol] = []
 
@@ -38,6 +39,21 @@ final class ClickEngine {
     let outputLatencyTicks: UInt64
 
     var secondsPerBeat: Double { 60.0 / bpm }
+  }
+
+  /// Which beats of the bar sound. The grid never changes rate; the pattern
+  /// only gates `scheduleBuffer`, which is what keeps the tempo honest (T19).
+  struct BeatPattern: Equatable {
+    let beats: Int
+    /// Bitmask, LSB = beat 1.
+    let sounding: UInt16
+
+    static let flat = BeatPattern(beats: 1, sounding: 1)
+
+    func sounds(beat index: Int) -> Bool {
+      guard beats > 0 else { return true }
+      return sounding & (1 << UInt16(index % beats)) != 0
+    }
   }
 
   struct ScheduledBeat {
@@ -63,7 +79,7 @@ final class ClickEngine {
   }
 
   /// Safe to call repeatedly — each call restarts the grid at the new tempo.
-  func start(bpm: Double) throws {
+  func start(bpm: Double, pattern: BeatPattern = .flat) throws {
     // NaN `secondsPerBeat` trips `HostClock.ticks`' precondition, which is a
     // crash rather than something the caller can route around.
     guard bpm > 0 else { throw ClickEngineError.nonPositiveTempo }
@@ -93,6 +109,7 @@ final class ClickEngine {
       bpm: bpm,
       scheduledStart: HostClock.now() &+ HostClock.ticks(fromSeconds: leadInSeconds),
       outputLatencyTicks: HostClock.ticks(fromSeconds: session.outputLatency))
+    self.pattern = pattern
     nextBeat = 0
     pendingBeats = []
     scheduleWindow()
@@ -133,11 +150,30 @@ final class ClickEngine {
     guard let pulse else { return }
     let beats = nextBeat..<(nextBeat + windowBeats)
     let scheduled = Self.schedule(beats: beats, pulse: pulse)
-    for beat in scheduled {
+    for (offset, beat) in scheduled.enumerated()
+    where pattern.sounds(beat: beats.lowerBound + offset) {
       playerNode.scheduleBuffer(clickBuffer, at: AVAudioTime(hostTime: beat.hostTime), options: [])
     }
+    // Silent beats stay in the window: the grid, the top-up and the lag check
+    // all count every beat of the bar, sounding or not.
     pendingBeats.append(contentsOf: scheduled)
     nextBeat = beats.upperBound
+  }
+
+  /// The beat of the bar the listener is hearing now, or nil before the first
+  /// is audible. Derived from the same grid the audio uses, so a view driven by
+  /// it cannot drift against the click (T19).
+  func currentBeat(now: UInt64 = HostClock.now()) -> Int? {
+    guard let pulse else { return nil }
+    return Self.beatIndex(at: now, pulse: pulse, beats: pattern.beats)
+  }
+
+  static func beatIndex(at now: UInt64, pulse: Pulse, beats: Int) -> Int? {
+    guard beats > 0 else { return nil }
+    let audibleStart = pulse.scheduledStart &+ pulse.outputLatencyTicks
+    let elapsed = HostClock.secondsBetween(now, audibleStart)
+    guard elapsed >= 0 else { return nil }
+    return Int(elapsed / pulse.secondsPerBeat) % beats
   }
 
   private func startPolling() {

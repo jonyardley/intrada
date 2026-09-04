@@ -253,6 +253,35 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(states), as: config)
   }
 
+  func testClickBarLineStates() {
+    let states = ZStack {
+      IntradaColor.playerBgMid
+      VStack(spacing: 24) {
+        ClickBarLine(
+          metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111, currentBeat: 1,
+          onTap: {})
+        ClickBarLine(
+          metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1000, currentBeat: 3,
+          onTap: {})
+        ClickBarLine(
+          metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001,
+          currentBeat: 0, onTap: {})
+        ClickControl(
+          bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: true,
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(states), as: config)
+  }
+
+  func testClickSheetIrregularMetre() {
+    let click = ClickController()
+    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]))
+    click.apply(.groupStarts)
+    assertSnapshot(of: host(ClickSheet(click: click, bpm: 168)), as: config)
+  }
+
   /// The sounding row is the tight one, so it is the state that has to reflow.
   func testClickControlLargeText() {
     let sounding = ZStack {

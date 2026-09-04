@@ -8,11 +8,17 @@ import SwiftUI
 struct TrackedTempo {
   private(set) var bpm: Int
   private(set) var userSet = false
+  /// The beat value `bpm` counts in, so a quaver tempo is not clamped against
+  /// the crotchet band (#1499).
+  private let unit: UInt8
 
-  init(startingBpm: Int) { bpm = TempoScale.clamp(startingBpm) }
+  init(startingBpm: Int, unit: UInt8 = 4) {
+    self.unit = unit
+    bpm = TempoScale.clamp(startingBpm, unit: unit)
+  }
 
   mutating func set(_ next: Int) {
-    bpm = TempoScale.clamp(next)
+    bpm = TempoScale.clamp(next, unit: unit)
     userSet = true
   }
 }
@@ -33,6 +39,9 @@ struct ReflectionSheet: View {
   let elapsedDisplay: String
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
+  /// The beat value the click counted in, so the stepper reads `♪` when the
+  /// player did (#1499).
+  let tempoUnit: UInt8
   /// The item's step ladder, if any. Empty hides the step picker entirely.
   let variants: [VariantView]
   let currentVariantId: String?
@@ -46,7 +55,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
-    startingTempoBpm: Int = TempoScale.defaultBpm,
+    startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
     variants: [VariantView] = [], currentVariantId: String? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void
@@ -54,11 +63,13 @@ struct ReflectionSheet: View {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
+    self.tempoUnit = tempoUnit
     self.variants = variants
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
-    _achievedTempo = State(initialValue: TrackedTempo(startingBpm: startingTempoBpm))
+    _achievedTempo = State(
+      initialValue: TrackedTempo(startingBpm: startingTempoBpm, unit: tempoUnit))
     _selectedVariantId = State(
       initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
   }
@@ -96,7 +107,7 @@ struct ReflectionSheet: View {
 
       eyebrow(tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached")
         .padding(.top, IntradaSpacing.card)
-      TempoStepper(value: achievedTempoBinding)
+      TempoStepper(value: achievedTempoBinding, unit: tempoUnit)
         .padding(.top, IntradaSpacing.controlGap)
 
       eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
