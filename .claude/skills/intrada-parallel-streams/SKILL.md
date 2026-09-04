@@ -1,6 +1,6 @@
 ---
 name: intrada-parallel-streams
-description: "Rules for running more than one coding-agent session against this repo at once: British-English and plain-language conventions, the decoupled file set a second stream may use, the serialisation points that must never be edited in parallel, worktree-per-agent mechanics, one-agent-per-vertical-slice, when to fan out, and the definition of done before requesting review. MUST read before starting a second concurrent stream, fanning work out to subagents, or coordinating parallel worktrees."
+description: "Rules for running more than one coding-agent session against this repo at once: the decoupled file set a second stream may use, the serialisation points that must never be edited in parallel, worktree-per-agent mechanics, one-agent-per-vertical-slice, when to fan out, and the definition of done before requesting review. MUST read before starting a second concurrent stream, fanning work out to subagents, or coordinating parallel worktrees."
 ---
 
 ## Parallel work streams (agentic sessions)
@@ -10,26 +10,6 @@ Evidence base: coupling analysis of the last 400 commits (2026-08).
 
 The claim protocol in Always(1) is what stops two streams building the same
 issue; these rules stop two streams colliding in the same *files*. Both apply.
-
-### Conventions
-
-- British English in all UI copy, comments, commit messages and PR bodies. UI
-  copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
-- No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
-  One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
-  list item** in a structured doc (`docs/roadmap.md`,
-  `design/CLAUDE.md` and this file's own lists) is house style, so match the
-  siblings there. Sentences never take one, in a list item or anywhere else.
-- **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
-  features by the musician-visible outcome ("exercises from a chord chart",
-  "the Up next card"), with the codename in brackets once if git archaeology
-  needs it. Issue numbers are the only stable handles — never bare workstream
-  letters ("B1", "Phase B") across docs; three unrelated "Phase B"s existed
-  at once when this rule was made. Issue titles state the outcome. Sweep
-  test: would you say the sentence to a musician? Process terms (slice,
-  stream, tier…) live in the glossary in
-  [`docs/reference.md`](docs/reference.md); older docs are renamed as
-  touched, not swept.
 
 ### Stream rules
 
@@ -63,7 +43,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 agents working the same slice. In-session agent teams were tried on #1223 and
 retired: on a slice coupled by a bridge contract the split caused the worst bug
 in the PR, because the shell teammate couldn't see the core invariant it needed.
-The measured post-mortem is in [`docs/reference.md`](docs/reference.md).
+The measured post-mortem is in `docs/reference.md`.
 
 **Fan out to worktrees when the pieces are genuinely independent** — no shared
 contract in flight, no piece blocked on another's output. Good shapes: an audit

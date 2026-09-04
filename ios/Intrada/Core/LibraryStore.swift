@@ -896,7 +896,7 @@ final class LibraryStore: ItemStore {
 
 #if DEBUG
   extension LibraryStore {
-    /// Test seam for upgrade-path tests (skill://intrada-offline-first):
+    /// Test seam for upgrade-path tests (CLAUDE.md "Local data migrations"):
     /// migrate to `version`, seed raw rows at that schema, then finish to HEAD.
     static func upgradeTestStore(migratedTo version: String, seed: String) throws -> LibraryStore {
       let queue = try DatabaseQueue()

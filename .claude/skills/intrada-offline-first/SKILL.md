@@ -1,9 +1,9 @@
 ---
 name: intrada-offline-first
-description: "The eight non-negotiable offline-first invariants (no network on the local-first path, sync-ready entities with updated_at/deleted_at, client-owned ulids, reconciliation in the core, no silent failed writes, dual-mode handlers, no account gate, GRDB vs crux_kv), their PR checklist, and the append-only on-device SQLite migration rules. MUST read before any change touching persistence, sync, a new domain entity, or the local database schema."
+description: "The eight non-negotiable offline-first invariants (no network on the local-first path, sync-ready entities with updated_at/deleted_at, client-owned ulids, reconciliation in the core, no silent failed writes, dual-mode handlers, no account gate, no account gate on core functionality, GRDB vs crux_kv), their PR checklist, and the append-only DatabaseMigrator rules for the on-device SQLite schema in LibraryStore. Covers soft-delete tombstones, deleted_at, updated_at and registerMigration. MUST read before any change touching persistence, sync, a new domain entity, the local database schema, or putting an auth or sign-in gate in front of an existing feature."
 ---
 
-### Offline-first invariants (non-negotiable)
+## Offline-first invariants (non-negotiable)
 
 The native app is **offline-first**: on-device SQLite is the source of truth, the
 app works with no network and no account, and sync is a future paid tier. Break
@@ -29,7 +29,7 @@ one of these and the app silently stops being offline.
    both branches passing, since core tests still exercise the online path. New
    domain code targets local-first only: **the build-and-test-both-modes
    requirement is retired for new work** (see
-   [`docs/rebuild-review.md`](docs/rebuild-review.md) §3).
+   `docs/rebuild-review.md` §3).
 7. **No account gate on core functionality.** Only sync (the paid tier) may
    require auth. The free app works fully signed-out.
 8. **Relational data in the GRDB store; only small singletons in `crux_kv`**
@@ -49,7 +49,7 @@ one of these and the app silently stops being offline.
       additive where possible; core type + migration + codec updated together;
       ships an upgrade-path test (see below)
 
-### Local data migrations
+## Local data migrations
 
 The on-device SQLite schema (GRDB, in `LibraryStore`) evolves via
 `DatabaseMigrator`. Treat these with **more** care than the server migrations:

@@ -3,10 +3,10 @@ name: intrada-ios-quality
 description: "The per-screen quality bar for the native iOS app: the 2026-06 review principles (surface don't swallow, enforce stated invariants, sync-boundary discipline, consolidate before you template, bridge round-trip tests) and snapshot-test hygiene (one device+scale, what to snapshot, re-recording with just ios-snapshots-record, the size-ceiling allowlist, no orphans). MUST read before adding or changing a SwiftUI screen, or before touching anything under ios/IntradaTests/__Snapshots__."
 ---
 
-### Principles (from the 2026-06 review)
+## Principles (from the 2026-06 review)
 
 Hard-won lessons from the first full review of the native app. **Treat them like
-the non-negotiables above.**
+the non-negotiables under CLAUDE.md § Native iOS Shell (SwiftUI + Crux).**
 
 - **Surface, don't swallow — at every layer.** A core error state with no UI
   surface is the silent-no-op bug (#846) one level up. Every `ViewModel.error`
@@ -29,7 +29,7 @@ the non-negotiables above.**
   is wired to a screen — a stub-bridge test can't catch a bincode-wire break
   (#846).
 
-### Snapshot test hygiene
+## Snapshot test hygiene
 
 Snapshot references (`ios/IntradaTests/__Snapshots__/**/*.png`) are binaries
 committed to git and re-recorded on every intentional UI change, so each

@@ -8,9 +8,9 @@ description: "The Paper & Score design system rules for the native iOS app: the 
 The native app uses a "Paper & Score" light theme: warm paper backgrounds, serif
 titles (Source Serif 4), sans body text (Inter). All tokens live in `Theme.swift`
 (`ios/Intrada/DesignSystem/Theme.swift`); the shareable export is
-[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html).
+`design/intrada-design-system.dc.html`.
 
-**Consult [`docs/design-principles.md`](docs/design-principles.md) before making
+**Consult `docs/design-principles.md` before making
 any UI/UX design decision** — new surface, layout, flow, or interaction. It is
 the source of truth for how the app should feel: the "spend friction
 deliberately" model, one-primary-action-per-screen, content-over-chrome,
@@ -19,7 +19,7 @@ progressive disclosure, reversible-by-default. It carries a dated decisions log
 silently.
 
 **Every user-facing string is written against
-[`docs/tone-of-voice.md`](docs/tone-of-voice.md)** — titles, buttons, labels,
+`docs/tone-of-voice.md`** — titles, buttons, labels,
 empty states, errors, accessibility labels. Plain British English in a
 musician's words; no cheerleading, no AI-isms, no em dashes. Its sweep
 checklist is the review pass for any PR that adds or changes copy.
@@ -88,8 +88,8 @@ and primitives* in `Theme.swift`, not a hand-rolled clone in a single view.
 ## Design Workflow
 
 Design happens in **Claude Design**; full process in
-[`docs/design-workflow.md`](docs/design-workflow.md). The living reference is
-[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html),
+`docs/design-workflow.md`. The living reference is
+`design/intrada-design-system.dc.html`,
 **derived from `Theme.swift`**, which stays the canonical token source. Required
 for new views and significant UI changes: mock the screen against the existing
 kit first, reuse tokens and components, and if something new is needed update

@@ -45,6 +45,7 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Swift kept from the removed Tauri shell (not built)
+.claude/skills/          # Repo rules loaded on demand (see the pointers below)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Roadmap, status, and the operational reference
 specs/                   # Spec docs for major features (Tier 3 only)
@@ -199,7 +200,7 @@ you're tempted to write logic in Swift, it belongs in `intrada-core` as an
   swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
   built *with* the screen. Sentry is wired from the first build.
 - **Every colour, font, spacing and radius value is a named token** from
-  `Theme.swift` (full rules under Design System Rules). Genuine one-offs (a fixed
+  `Theme.swift` (full rules: `.claude/skills/intrada-design-system/SKILL.md`). Genuine one-offs (a fixed
   component height, a 2pt baseline nudge) stay literal — don't force those into
   the scale.
 - **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
@@ -213,7 +214,8 @@ you're tempted to write logic in Swift, it belongs in `intrada-core` as an
 
 Quality is per-screen, not deferred, and snapshot references are committed
 binaries that must stay lean. **Before adding or changing a screen, or touching
-`ios/IntradaTests/__Snapshots__`, you MUST read `skill://intrada-ios-quality`**
+`ios/IntradaTests/__Snapshots__`, you MUST read `skill://intrada-ios-quality`
+(`.claude/skills/intrada-ios-quality/SKILL.md`)**
 — it carries the 2026-06 review principles and the snapshot rules, and they
 bind whether or not you loaded it.
 
@@ -223,9 +225,12 @@ The native app is offline-first: on-device SQLite is the source of truth, the
 app works with no network and no account, and sync is a future paid tier. Break
 one of the invariants and the app silently stops being offline, and on the free
 tier the device is the only copy of the user's data. **Before any change
-touching persistence, sync, a new domain entity, or the local schema you MUST
-read `skill://intrada-offline-first`** — it carries the eight invariants, the PR
-checklist and the migration rules, and they bind whether or not you loaded it.
+touching persistence, sync, a new domain entity, the local schema, or gating a
+feature behind sign-in, you MUST
+read `skill://intrada-offline-first`
+(`.claude/skills/intrada-offline-first/SKILL.md`)**. It carries the eight
+numbered invariants, the PR checklist and the **Local data migrations** rules,
+and they bind whether or not you loaded it.
 
 ## Authentication
 
@@ -247,7 +252,8 @@ The native app uses a "Paper & Score" light theme. Every colour, font, spacing
 and radius value is a named token from `Theme.swift`
 (`ios/Intrada/DesignSystem/Theme.swift`); hand-rolled views that duplicate an
 existing primitive are the #1 source of visual drift here. **Before any UI or
-UX change you MUST read `skill://intrada-design-system`**, and consult
+UX change you MUST read `skill://intrada-design-system`
+(`.claude/skills/intrada-design-system/SKILL.md`)**, and consult
 [`docs/design-principles.md`](docs/design-principles.md) for how the app should
 feel and [`docs/tone-of-voice.md`](docs/tone-of-voice.md) for every
 user-facing string. These bind whether or not you loaded them.
@@ -462,9 +468,9 @@ override above applies to model choice too.
 These disciplines matter regardless of harness. In Claude Code sessions with
 the Superpowers plugin, four of its skills are kept as standalone globals and
 invoked **by name, deliberately** (the plugin's blanket "invoke a skill for
-anything" posture otherwise conflicts with the tier system); in OMP or any
-other harness, apply the same discipline directly — there is no skill
-catalogue to load, so state the practice inline instead.
+anything" posture otherwise conflicts with the tier system). OMP discovers the
+same `.claude/skills/` packs and resolves them as `skill://<name>`; in a harness
+with no skill catalogue, read the `SKILL.md` path directly.
 
 - **Test-first for non-UI Tier 2 work and all Tier 3 work**, and **the
   default for `intrada-core` changes** (`domain/*.rs`, `validation.rs`,
@@ -501,7 +507,8 @@ say exactly what needs user verification.
      every opener with "claim #N (stop if a PR already exists)".
 2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-4. Never push to main. Always a feature branch + PR.
+4. Never push to main. Always a feature branch + PR. **A human reviews and
+   merges. Agents never merge.**
 5. **Open/update any non-trivial PR through a single pre-push gate that runs
    the checks and the self-review together** — don't `gh pr create`/`git
    push` feature work directly with review as a separate, skippable step.
@@ -547,13 +554,36 @@ More than one agent session against this repo at once is allowed, but only
 under rules that stop two streams colliding in the same files — the claim
 protocol in Always(1) covers the same issue, these cover the same *code*.
 **Before starting a second concurrent stream, fanning out to subagents, or
-coordinating worktrees you MUST read `skill://intrada-parallel-streams`.** It
-also carries the British-English and plain-language conventions for all docs,
-commits and PR bodies, and the definition of done for every stream.
+coordinating worktrees you MUST read `skill://intrada-parallel-streams`
+(`.claude/skills/intrada-parallel-streams/SKILL.md`).** It
+also carries the stream rules, the serialisation points and the definition of
+done. The conventions below bind every change, concurrent or not.
+
+### Conventions
+
+- British English in all UI copy, comments, commit messages and PR bodies. UI
+  copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
+- No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
+  One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
+  list item** in a structured doc (`docs/roadmap.md`,
+  `CLAUDE.md` and `design/CLAUDE.md`) is house style, so match the
+  siblings there. Sentences never take one, in a list item or anywhere else.
+- **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
+  features by the musician-visible outcome ("exercises from a chord chart",
+  "the Up next card"), with the codename in brackets once if git archaeology
+  needs it. Issue numbers are the only stable handles — never bare workstream
+  letters ("B1", "Phase B") across docs; three unrelated "Phase B"s existed
+  at once when this rule was made. Issue titles state the outcome. Sweep
+  test: would you say the sentence to a musician? Process terms (slice,
+  stream, tier…) live in the glossary in
+  [`docs/reference.md`](docs/reference.md); older docs are renamed as
+  touched, not swept.
+
 
 ## Known Tech Debt
 
-- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1:
+- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1
+  (`.claude/skills/intrada-offline-first/SKILL.md`):
   no Swift screen sends a `SetEvent`, and its HTTP creates fire unconditionally
   with no `local_first` branch or persistence op. Tracked in #1348 — decide
   whether it's deleted (nothing unread stays in the tree) or converted to
