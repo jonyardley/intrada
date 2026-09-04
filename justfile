@@ -548,9 +548,28 @@ _ios-test-without-building filters retry:
         for f in {{filters}}; do flags+=("$f"); done
     fi
     [ "{{retry}}" != "1" ] || flags+=(-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES)
+    status=0
     xcodebuild test-without-building -xctestrun "${runs[0]}" \
         -destination "id=$udid" -derivedDataPath build/dd -quiet \
-        "${flags[@]}"
+        "${flags[@]}" || status=$?
+    # `-quiet` prints nothing on success, so a passing run is indistinguishable
+    # from one that never started, and a failing one never says how much of the
+    # suite got to run. Report the counts the result bundle holds either way:
+    # silence is not evidence, and reading it as "no tests ran" cost a session
+    # two bogus issues (#1536, #1537).
+    latest="$(ls -td build/dd/Logs/Test/*.xcresult 2>/dev/null | head -1 || true)"
+    if [ -z "$latest" ]; then
+        echo "✗ no .xcresult under ios/build/dd/Logs/Test: the run produced no result bundle." >&2
+        [ "$status" -ne 0 ] || status=1
+        exit "$status"
+    fi
+    # Zero passed is a failure even when xcodebuild is happy: that is the shape
+    # an empty run would take.
+    if ! xcrun xcresulttool get test-results summary --path "$latest" \
+        | python3 -c 'import json,sys; s=json.load(sys.stdin); print("{} passed, {} failed, {} skipped".format(s["passedTests"], s["failedTests"], s["skippedTests"])); sys.exit(1 if s["passedTests"] == 0 else 0)'; then
+        [ "$status" -ne 0 ] || status=1
+    fi
+    exit "$status"
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout

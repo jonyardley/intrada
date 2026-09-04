@@ -71,7 +71,11 @@ The two genuinely good things buried inside goals, re-pointed at the
 priority set:
 
 - **Least-ready-first ordering** (from "Practise this goal") → orders the
-  priority items for a session.
+  priority items for a session. **Not salvaged:** that code was already gone
+  when this was written (shipped #739, deleted with the goal rip-out in #769),
+  and two thirds of it bucketed on the per-item confidence and tempo targets
+  this spec deletes. Replaced in #981 by ranking on `Staleness::overdue_key`,
+  the same signal the Up next card uses.
 - **Per-item progress derivation** (`latest_score`, `latest_achieved_tempo`
   over session data) → shows how a priority item is going. Already a
   view-model computation; stays as-is.

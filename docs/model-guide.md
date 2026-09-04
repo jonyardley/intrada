@@ -169,6 +169,14 @@ same way a phase without a test plan is.
 - **Decisions go up the ladder, execution goes down it.** If a session will
   choose between hard-to-reverse options, go up; if it applies a choice
   already made, go down.
+- **A subagent's finding is a lead, not a fact.** A read-only scout reports
+  with the same confidence whether it observed something or inferred it. One
+  on 2026-09-04 blamed the wrong commit for a deletion, cited a line number
+  that pointed at a comment rather than the method it named, and said it could
+  not run `git show` when it could; every conclusion drawn from it was wrong.
+  Brief them to mark observed against inferred, and verify anything you will
+  act on before acting. Cheapest on archaeology, where the answer is one
+  `git log -S` you can run yourself.
 - **Prewalk hands work down; it does not think harder.** It switches the
   session to the `@smol` role after the first `edit` or `write` following a
   `todo` call, and the switch is sticky for the rest of that session. So it

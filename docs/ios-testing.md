@@ -105,6 +105,19 @@ gesture (e.g. pull-to-reveal) never fired.
   (see CLAUDE.md → Native iOS Shell, and the memory note on rebase+regen).
 - **Clean up** the throwaway sims you create: `xcrun simctl delete <udid>`
   (or `just ios-test-sim-clean` for the sim `just ios-test` made in this worktree).
+- **Silence is success on the `just` path.** `_ios-test-without-building` passes
+  `-quiet`, so a passing run prints a handful of lines and no test counts. The
+  recipe now prints `✓ N passed, M failed, K skipped` at the end, and fails if
+  the bundle reports zero passed, so trust that line rather than the length of
+  the log (#1536).
+- **`IDERunDestination: Supported platforms ... is empty` is noise.** It prints
+  on every run, green ones included. The recipes pin `-destination "id=$udid"`,
+  so it never means a destination failed to resolve.
+- **Counts live in the result bundle**, not the console:
+  `xcrun xcresulttool get test-results summary --path ios/build/dd/Logs/Test/Test-Intrada-*.xcresult`.
+- **Driving `xcodebuild test` yourself needs `CODE_SIGNING_ALLOWED=NO`.** The
+  test bundles carry no `Info.plist` settings, so without it both test targets
+  fail to sign before anything compiles. Both recipe steps pass it (#1537).
 
 ## Running alongside another checkout (worktrees)
 
