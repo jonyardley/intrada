@@ -429,6 +429,24 @@ _ios-test-run tier:
         printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
     fi
 
+# Content fingerprint of the ios/ sources the test products are built from:
+# the HEAD tree, plus any uncommitted diff, plus untracked filenames. Content
+# rather than mtimes, so a `git pull` or branch switch that restores identical
+# bytes is not mistaken for a stale build, and CI's separate build and test
+# jobs agree by construction (same commit, clean checkout) with no escape
+# hatch. `ios/build`, `ios/generated` and the generated project are gitignored
+# and so excluded: CI's test jobs deliberately run without the latter two, and
+# `_ios-sync` owns binding freshness in every recipe that builds (#1530).
+[private]
+_ios-inputs-fingerprint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {
+        git rev-parse "HEAD:ios" 2>/dev/null || echo no-head
+        git diff HEAD -- ios
+        git ls-files -o --exclude-standard ios
+    } | shasum -a 256 | cut -d' ' -f1
+
 # Regenerate the Xcode project and build the test products (app + .xctest
 # bundles) for THIS worktree's pinned iPhone 16 / iOS 26.5 sim, without
 # running anything. Shared by `_ios-test-run` (local) and CI's
@@ -454,6 +472,9 @@ _ios-build-for-testing:
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    # Written last, so it only exists for a build that actually succeeded, and
+    # inside Build/Products so it travels with CI's test-products artifact.
+    just _ios-inputs-fingerprint > build/dd/Build/Products/.ios-inputs
 
 # Run already-built tests against THIS worktree's sim, without rebuilding.
 # Driven by the `.xctestrun` the build wrote rather than `-project`/`-scheme`:
@@ -478,6 +499,16 @@ _ios-test-without-building filters retry:
     runs=(build/dd/Build/Products/*.xctestrun)
     if [ "${#runs[@]}" -ne 1 ]; then
         echo "✗ expected one .xctestrun in ios/build/dd/Build/Products, found ${#runs[@]} — run 'just _ios-build-for-testing' first" >&2
+        exit 1
+    fi
+    # Refuse a build that predates the current ios/ sources. Running the old
+    # products means a line you deliberately broke is still intact in the
+    # binary, so the test passes, which reads as "this test constrains
+    # nothing" and argues for deleting a good test (#1530).
+    stamp=build/dd/Build/Products/.ios-inputs
+    if [ "$(cat "$stamp" 2>/dev/null || true)" != "$(just _ios-inputs-fingerprint)" ]; then
+        echo "✗ ios/ has changed since these test products were built — run 'just _ios-build-for-testing' first." >&2
+        echo "  Running them anyway lets a deliberately broken line pass, which is how a good test gets deleted (#1530)." >&2
         exit 1
     fi
     # Parallelism is a CI job fan-out, never xcodebuild's cloned simulators:
