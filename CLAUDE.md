@@ -434,10 +434,15 @@ is the first commit on the Phase A branch; Phase A scaffold is the rest, and the
 PR title and body reflect both. Reviewers sanity-check the spec against working
 code rather than abstract diagrams. Phases B/C/D still ship as their own PRs.
 
-**A phase spanning core *and* screens ships as two PRs: core first, screens
-second.** The core PR carries the domain types, the events, the migration and
-the tests; the screens PR carries the SwiftUI and its snapshots. Only split when
-the phase really does span both — a core-only or screens-only phase stays one PR.
+**A phase that introduces a bridge shape, a migration, or a change inside the
+`ActiveSession` blob graph ships as two PRs: core first, screens second.** The
+core PR carries the domain types, the events, the migration and the tests; the
+screens PR carries the SwiftUI and its snapshots. Spanning core and screens is
+not itself the trigger: a phase that adds no silent-failure surface stays one
+PR, because a wrong layout fails visibly and does not need its own review
+cycle. The screens PR is expected in the same working session, or the core PR
+waits, since a merged core PR with no caller is shell-dead by construction,
+which is how #1348 and #1374 happened.
 
 **Review the core PR before starting the screens.** Review early and often; on
 a multi-surface phase, once at the end is too late to be cheap.

@@ -5,9 +5,9 @@ struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var adding = false
-  // Leading "priorities only" filter — prioritise is now a filter, not a
-  // section. Shell-side over the core-filtered list; #904-style debt, tracked
-  // until ListQuery carries a priority dimension.
+  // Leading "priorities only" filter: prioritise is a filter, not a section.
+  // Shell-side over the core-filtered list, until ListQuery carries a priority
+  // dimension (#1003).
   @State private var starFilter = false
   // iPad split mode: when set, rows select into the shared binding (detail pane)
   // instead of pushing a stack. nil on compact — the unchanged push navigation.
