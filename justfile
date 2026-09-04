@@ -474,7 +474,10 @@ _ios-build-for-testing:
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     # Written last, so it only exists for a build that actually succeeded, and
     # inside Build/Products so it travels with CI's test-products artifact.
-    just _ios-inputs-fingerprint > build/dd/Build/Products/.ios-inputs
+    # Not a dotfile: `actions/upload-artifact` defaults `include-hidden-files`
+    # to false, so a leading dot silently drops it from that artifact and every
+    # CI test job then sees an unstamped build and refuses (#1530).
+    just _ios-inputs-fingerprint > build/dd/Build/Products/ios-inputs.sha256
 
 # Run already-built tests against THIS worktree's sim, without rebuilding.
 # Driven by the `.xctestrun` the build wrote rather than `-project`/`-scheme`:
@@ -505,7 +508,7 @@ _ios-test-without-building filters retry:
     # products means a line you deliberately broke is still intact in the
     # binary, so the test passes, which reads as "this test constrains
     # nothing" and argues for deleting a good test (#1530).
-    stamp=build/dd/Build/Products/.ios-inputs
+    stamp=build/dd/Build/Products/ios-inputs.sha256
     if [ "$(cat "$stamp" 2>/dev/null || true)" != "$(just _ios-inputs-fingerprint)" ]; then
         echo "✗ ios/ has changed since these test products were built — run 'just _ios-build-for-testing' first." >&2
         echo "  Running them anyway lets a deliberately broken line pass, which is how a good test gets deleted (#1530)." >&2
