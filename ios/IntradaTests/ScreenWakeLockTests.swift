@@ -42,9 +42,7 @@ struct ScreenWakeLockTests {
     #expect(!lock.isHeld, "a session left open overnight must not hold the timer")
     lock.update(sessionActive: true, phase: .active)
     #expect(lock.isHeld)
-    // No repeats: the flag is process-global, and the player calls update on
-    // first appearance and on every scene-phase change after it.
-    #expect(flag.writes == [true, false, true])
+    #expect(flag.writes == [true, false, true], "and no repeat writes in between")
   }
 
   @Test("a glance at Control Centre keeps the hold")
@@ -63,8 +61,6 @@ struct ScreenWakeLockTests {
     #expect(flag.writes.isEmpty)
   }
 
-  /// Every test above injects a closure, so all of them would still pass with
-  /// the UIKit hop wired to nothing. This is the one that reads the real flag.
   @Test("the production applier drives UIApplication")
   func productionApplierDrivesUIApplication() {
     let lock = ScreenWakeLock.system()
@@ -75,16 +71,13 @@ struct ScreenWakeLockTests {
   }
 }
 
-/// The tests above all inject a closure and mount nothing, so every one of them
-/// would still pass with the player wired to no lock at all. This mounts the
-/// real screen instead, and is the gate on `onChange(of:initial:)`: without
-/// `initial: true` nothing was held for a session started in the foreground
-/// (#1513 review), which is the everyday path and invisible until it dimmed.
+/// Every test above injects a closure and mounts nothing, so all of them would
+/// pass with the player wired to no lock at all. These mount the real screen,
+/// and are the gate on `initial: true`, without which nothing was held for a
+/// session started in the foreground (#1513 review) — the everyday path.
 @MainActor
 struct ScreenWakeLockWiringTests {
-  /// The test host has no `UIWindowScene`, so `scenePhase` does not resolve to
-  /// `.active` on its own; the player's behaviour under each phase is the class
-  /// suite's job, and this only needs a foreground one to observe the mount.
+  /// The test host has no `UIWindowScene`, so `scenePhase` needs supplying.
   private func mount(_ lock: ScreenWakeLock) -> UIHostingController<AnyView> {
     IntradaFonts.register()
     let controller = UIHostingController(
@@ -100,8 +93,7 @@ struct ScreenWakeLockWiringTests {
     return controller
   }
 
-  /// Nilling the window's root does not fire `onDisappear`; taking the screen
-  /// out of the hierarchy it is actually in does.
+  /// Nilling the window's root does not fire `onDisappear`; this does.
   private func dismiss(_ controller: UIHostingController<AnyView>) {
     controller.rootView = AnyView(EmptyView())
     controller.view.layoutIfNeeded()
@@ -119,8 +111,6 @@ struct ScreenWakeLockWiringTests {
     #expect(writes == [true, false], "leaving the player must give the hold back")
   }
 
-  /// One end-to-end pass on the real flag, so the wiring above is not only
-  /// proven against a closure the test supplied.
   @Test("a mounted player holds the real idle timer")
   func mountedPlayerHoldsTheRealIdleTimer() {
     let controller = mount(.system())

@@ -10,8 +10,7 @@ struct RootView: View {
   }
 
   @State private var selectedTab: AppTab = .library
-  /// One lock for the app: `isIdleTimerDisabled` is process-global, so a second
-  /// instance would race the first over who last set it.
+  /// One per app: `isIdleTimerDisabled` is process-global, so two would race.
   @State private var wakeLock = ScreenWakeLock.system()
 
   private let apiBaseURL = "https://intrada-api.fly.dev"

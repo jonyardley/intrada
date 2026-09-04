@@ -1,10 +1,9 @@
 import SwiftUI
 
 private struct ScreenWakeLockKey: EnvironmentKey {
-  // Inert by default: previews and snapshot tests mount the player without a
-  // `PlayerHost`, and `isIdleTimerDisabled` is process-global, so a live
-  // default would let one snapshot leave the flag set for whatever runs next.
-  // Production injects `ScreenWakeLock.system()` from `PlayerHost`.
+  // Inert by default: previews and snapshot tests mount the player with no host
+  // to inject one, and a live default would leave a process-global flag set for
+  // whatever ran next. `RootView` injects `.system()`.
   static let defaultValue = ScreenWakeLock { _ in }
 }
 
