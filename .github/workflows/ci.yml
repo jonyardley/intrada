@@ -643,7 +643,11 @@ jobs:
           bash scripts/check-comment-density.sh
 
   security:
-    name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear, actionlint)
+    # The name is load-bearing: branch protection matches required checks on
+    # this exact string, so renaming it orphans the required check and the PR
+    # waits forever on a job that will never report again. actionlint runs here
+    # too, deliberately unnamed.
+    name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
