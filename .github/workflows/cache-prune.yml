@@ -77,6 +77,10 @@ jobs:
               return 0
             fi
 
+            delete_listed "$surplus"
+          }
+
+          delete_listed() {
             local id created size ref key
             while IFS="$tab" read -r id created size ref key; do
               if gh api -X DELETE "$api/$id" --silent 2>"$work/err"; then
@@ -90,7 +94,7 @@ jobs:
                 echo "::warning::could not delete cache $id ($key): $(tr '\n' ' ' < "$work/err")"
                 failed=$((failed + 1))
               fi
-            done < "$surplus"
+            done < "$1"
           }
 
           # A subfamily lives under its parent's prefix, so it is matched first and
@@ -109,8 +113,9 @@ jobs:
           prune_family "msrv-" 2
           prune_family "release-testflight-" 2
 
-          # The tool caches (cargo-swift-, xcodegen-, gitleaks-, setup-ruby-)
-          # are a few MB each and one entry per family, so they are left alone.
+          # Left alone: the tool caches (cargo-swift-, xcodegen-, gitleaks-,
+          # setup-ruby-) are a few MB each. Nothing writes buildkit- entries any
+          # more, since the API image build no longer exports a layer cache.
 
           fresh="$work/after.tsv"
           gh api --paginate "$api?per_page=100" \

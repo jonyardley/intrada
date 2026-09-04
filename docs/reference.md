@@ -317,11 +317,24 @@ What those numbers changed:
   entries against GitHub's 10 GB per-repo LRU limit, so entries were being
   evicted while runs still wanted them, which is the suspected cause of the
   unit + snapshot job's 225-509s spread. `ios-dd-*` accounted for 19 entries and
-  4.36 GB, `ios-spm-*` for 3 entries and 2.79 GB (928 MB each): caches are
-  written per ref, and the SwiftPM step had no `save-if`, so every pull-request
-  branch saved its own copy. SwiftPM now saves on main only, the rule
-  DerivedData already followed, and a scheduled **Cache Prune** workflow
-  (`.github/workflows/cache-prune.yml`) keeps the newest few entries per family.
+  4.36 GB, `ios-spm-*` for 3 entries and 2.79 GB (928 MB each), because caches
+  are written per ref and every pull-request branch was saving its own copy. A
+  scheduled **Cache Prune** workflow (`.github/workflows/cache-prune.yml`) now
+  keeps the newest few entries per key family, and the iOS build caches restore
+  on every ref but save only on main.
+- **`save-if` is not an `actions/cache` input.** The DerivedData step had
+  carried `save-if: ${{ github.ref == 'refs/heads/main' }}` and a comment
+  saying "only main writes the cache" for months; an unknown input is silently
+  ignored, so main-only writing never happened, which is how 19 `ios-dd-*`
+  entries against six different refs accumulated. Proof after the fact:
+  `refs/pull/1521/merge` wrote an `ios-dd-v2-*` entry on 2026-09-04 with that
+  line in place. The mechanism that does work is
+  `actions/cache/restore@v6` plus a separate `actions/cache/save@v6` step
+  gated by `if: github.ref == 'refs/heads/main'`. `save-if` **is** a real
+  rust-cache input, which is what made the mistake easy to keep: the same
+  spelling means something in one action and nothing in the other. Check a
+  cache rule by listing the refs that wrote its entries, never by reading the
+  workflow.
 - **Clippy had been asking for a cache nothing ever wrote.** rust-cache composes
   its key as `<prefix-key>-<job-name>-<arch>-…`, so `prefix-key: native` with
   `save-if: "false"` looked for `native-clippy-…` while the only entries in the
@@ -331,6 +344,27 @@ What those numbers changed:
   saving on main only, so pull requests restore main's copy. The general point:
   a rust-cache key carries the job name, so a `save-if: false` reader can only
   share with the *same* job on another ref, never with a different job.
+
+## The API image build stopped caching its layers (2026-09-04)
+
+**API Docker Build** exported a buildkit layer cache to GitHub Actions
+(`cache-to: type=gha,mode=max`). One run of it wrote 26 `buildkit-blob-*`
+entries and 1.96 GB, a fifth of the repo's 10 GB allowance, for a lane that
+only runs when the API changes and is on hold behind the iOS pivot. Neither
+mode was worth that:
+
+- `mode=max` caches every intermediate layer, which is what made it 1.96 GB.
+- `mode=min` caches only what the final image exports, and the `Dockerfile` is
+  a cargo-chef build whose expensive layer (`cargo chef cook --release`) lives
+  in the `builder` stage, so `mode=min` would export the runtime stage and
+  never the layer the file is designed around.
+
+So the lane builds with no layer cache at all. A cold build measured **139s**,
+which is cheaper than it looks because the allowance it frees is restored by
+every iOS pull request. If the API comes back into focus, `mode=max` plus a
+prune rule that treats the blobs and their index as one all-or-nothing set is
+the shape to add: deleting blobs while keeping the index that names them
+produces buildkit's `blob not found` import failure rather than a cold build.
 
 ## Mutate-response variants, in full
 
