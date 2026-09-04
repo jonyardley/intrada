@@ -28,5 +28,11 @@ docs/superpowers/
 # Font licence text: noise concepts, no repo knowledge
 ios/Intrada/Resources/Fonts/
 
+# Foreign worktree source code and build/test artifacts: not part of this
+# checkout's own graph, and wasteful to traverse/parse on every rebuild
+.claude/
+ios/build/
+*.xcresult
+
 # Stale generated typegen output (old layout, superseded by ios/generated)
 crates/shared_types/generated/

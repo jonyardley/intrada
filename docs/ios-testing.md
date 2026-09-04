@@ -114,9 +114,11 @@ trees, DerivedData (keyed by project *path*), `ios/generated` bindings, cargo
 other's files.
 
 **`just worktree-new <name>`** creates a worktree at
-`.claude/worktrees/<name>` (also `<name>`'s branch — no slashes, so
-`.claude/worktrees/` stays flat and the sim-name collision check below
-actually sees every worktree) off fresh `origin/main` and seeds it from the main
+`$INTRADA_WORKTREE_ROOT/<name>` (also `<name>`'s branch — no slashes, so
+the worktree root stays flat and the sim-name collision check below
+actually sees every worktree). `INTRADA_WORKTREE_ROOT` defaults to
+`../intrada-worktrees` (sibling to the main checkout) when unset. Runs
+off fresh `origin/main` and seeds it from the main
 checkout's warm caches (`target/`, `ios/build/spm`, `ios/build/dd`,
 `ios/generated`) via APFS clonefile (`cp -Rc`, copy-on-write — near-instant,
 no duplicated disk until the copies diverge). Cuts the first `just check` /

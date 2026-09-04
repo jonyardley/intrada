@@ -1,0 +1,39 @@
+# Project-local OMP settings. Read only from the cwd's .omp/, so start omp from
+# the repo root. Deep-merged over ~/.omp/agent/config.yml; arrays replace,
+# records merge key by key.
+#
+# This file is docs/model-guide.md made executable. That guide was 165 lines of
+# policy with nothing enforcing it, which is the failure mode CLAUDE.md names
+# elsewhere: a stated invariant must be an enforced invariant.
+
+# Prewalk hands the session to a cheaper model at the first edit after any todo
+# call. It cannot tell a migration from a typo, so in this repo it inverts the
+# sensitivity override in docs/model-guide.md: bridge, schema, auth and
+# migration work is exactly what must go UP a level, never down. 34 of the last
+# 120 commits touched crates/ and ios/ together, so that surface is the common
+# case here, not the exception. Arm it deliberately per session instead:
+#   omp --prewalk-into anthropic/claude-sonnet-5:xhigh
+# which is the implement tier docs/model-guide.md actually names.
+prewalk:
+  enabled: false
+
+# Each role below is the guide's own ladder. Only the roles that differed from
+# it are set; the rest (smol, tiny, commit, vision) inherit the global config.
+modelRoles:
+  # "xhigh — the default; leave it for coding and agentic sessions."
+  default: anthropic/claude-opus-5:xhigh
+  # "Planning: Opus 5, high." Plan turns are fewer and shorter than coding ones,
+  # so this is a net saving against the previous xhigh.
+  plan: anthropic/claude-opus-5:high
+  # The guide's top rung, for the silent-failure surfaces: the bincode bridge
+  # (#846), GRDB migrations, the ActiveSession blob (#1223, #1244, #1256), auth.
+  # It had no role at all before, so it was unreachable. `slow` is in the
+  # default cycleOrder, which puts it one keystroke from the model switcher.
+  slow: anthropic/claude-fable-5:max
+  # "Sonnet 5, xhigh — conventional Tier 2 on non-sensitive surfaces." Fan-out
+  # writers land here; medium sat a notch below the guide.
+  task: anthropic/claude-sonnet-5:xhigh
+  # "The reviewer is never weaker than the writer." Setting the role costs
+  # nothing until advisor.enabled or --advisor; pair it on bridge and migration
+  # work, where a wrong turn is a silent no-op rather than a crash.
+  advisor: anthropic/claude-opus-5:high

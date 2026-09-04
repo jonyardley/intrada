@@ -413,3 +413,34 @@ once.
   stored data.
 - **shell-dead** — core code no Swift screen calls any more; a deletion
   candidate (the #1348 pattern).
+
+## Why mutation-test by deletion, not inversion (#1423)
+
+Two derivations shipped in a PR whose own author had "mutation-tested" both by
+inverting them. The reviewer deleted each and the full 695-test suite stayed
+green. One of the two, replaced with its naive form, would have silently
+dropped a tempo the user had earned. Inverting is the weaker mutation because
+a reversed sort fails any assertion about order whether or not the test
+actually constrains anything — deleting the line (or substituting the naive
+version a future reader would plausibly write) is what surfaces a test that
+passes for the wrong reason. The resulting rule is in CLAUDE.md under
+*Testing*.
+
+## Why hand-picked test cases hid a real bug (#1256)
+
+The coach-era criterion parser shipped with fourteen green unit tests and
+still read "three clean passes **in a row**" as the key of A, which at two
+keys silently doubled the gate. Every one of those tests used a sentence
+written to match the scanner, so they agreed with the implementation by
+construction instead of constraining it. The fix is to write the test table
+as inputs a *user* would actually produce and assert the property the next
+stage needs. The resulting rule is in CLAUDE.md under *Testing*.
+
+## Why #1214 got two independent implementations (2026-08-07)
+
+#1214 got two complete independent implementations (#1243, #1247) fifteen
+hours apart. The merged one was the weaker, and #1250 had to port back what
+was lost. The issue carried no assignee, label or comment, and nothing
+required looking at the one live claim signal, which is an open PR.
+`just status` now puts both signals on one screen. The resulting claim
+protocol is in CLAUDE.md under *Always*(1).

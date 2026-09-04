@@ -500,9 +500,9 @@ function name? a type? a CLAUDE.md entry?". Usually yes.
 The `pre-push` hook (under `.githooks/`) flags branches pushing too many comment
 lines relative to code. Bypass genuinely-justified cases with
 `SKIP_COMMENT_CHECK=1 git push`.
-When invoking the code-reviewer subagent (via the `requesting-code-review`
-skill), include "comment-policy violations are Blockers, not Nits" so the review
-treats drift as a merge-blocker.
+When invoking any code-review agent for a PR, include "comment-policy
+violations are Blockers, not Nits" so the review treats drift as a
+merge-blocker.
 
 ## Testing
 
@@ -537,22 +537,12 @@ compile, substitute the naive version a future reader would plausibly write
 (`points.last()` for a `rev().find_map(...)` that skips gaps) — that is the
 regression you are actually guarding against.
 
-Why (2026-08-28, #1423): two derivations shipped in a PR whose own author had
-"mutation-tested" both by inverting them. The reviewer deleted each and the full
-695-test suite stayed green. One of the two, replaced with its naive form, would
-have silently dropped a tempo the user had earned.
-
 **A parser or validator gets a table test against its consumer, not cases you
 invented.** Hand-picked inputs are picked to match the implementation you just
 wrote, so they agree with it by construction. Write the table as a list of
 inputs a *user* would actually produce, and assert the property the next stage
 needs — `every_parse_is_a_<thing>_validation_will_accept` is the shape (the
 original instance shipped with the retired coach; the rule outlives it).
-
-Why (2026-08-07, #1256): the coach-era criterion parser shipped with fourteen
-green unit tests and still read "three clean passes **in a row**" as the key of
-A, which at two keys silently doubled the gate. Every one of those tests used a
-sentence written to match the scanner.
 
 **Test fixtures for a type with many fields live in one place.** Rust: a
 `fixture()` constructor composed with struct update
@@ -628,19 +618,12 @@ second.** The core PR carries the domain types, the events, the migration and
 the tests; the screens PR carries the SwiftUI and its snapshots. Only split when
 the phase really does span both — a core-only or screens-only phase stays one PR.
 
-Why (2026-08-07, #1256 Phase B): one PR of 4,300 insertions covering seven
-designed frames, a bridge change and a migration. Both blockers the self-review
-found were in core code written in the first third, and finding them at the end
-meant re-running every gate and rebasing. Two PRs would each have been ~45
-minutes, each independently reviewable, and the bridge risk would have landed
-away from the UI churn.
+**Review the core PR before starting the screens.** Review early and often; on
+a multi-surface phase, once at the end is too late to be cheap.
 
-**Review the core PR before starting the screens.** `requesting-code-review`
-says "review early, review often"; on a multi-surface phase, once at the end is
-too late to be cheap.
-
-Do not run `/speckit-*` slash commands. Historical SpecKit folders under
-`specs/` are reference only.
+`/speckit-*` slash commands are Claude-Code-only tooling and are deprecated;
+don't invoke them in any harness. Historical SpecKit folders under `specs/`
+are reference only.
 
 ### Domain sensitivity override
 Changes to auth, the FFI bridge contract (Event/Effect/ViewModel), DB schema, or
@@ -665,24 +648,32 @@ override above applies to model choice too.
 | New auth provider | 3 | Auth + multi-crate |
 | Migrate persistence layer | 3 | Architectural |
 
-### Skills worth invoking deliberately
+### Practices worth invoking deliberately
 
-The Superpowers plugin is **disabled** (its "invoke a skill for anything"
-posture conflicts with the tier system). Four of its skills were kept as
-standalone globals and are invoked **by name, deliberately**:
+These disciplines matter regardless of harness. In Claude Code sessions with
+the Superpowers plugin, four of its skills are kept as standalone globals and
+invoked **by name, deliberately** (the plugin's blanket "invoke a skill for
+anything" posture otherwise conflicts with the tier system); in OMP or any
+other harness, apply the same discipline directly — there is no skill
+catalogue to load, so state the practice inline instead.
 
-- `test-driven-development` — **non-UI Tier 2 work and all Tier 3 work**, and
-  **the default for `intrada-core` changes** (`domain/*.rs`, `validation.rs`,
-  `http.rs`, `model.rs`): write the failing test first. The #719 delete-404 bug
-  shipped because the test was retrofit to pass after the fix rather than
+- **Test-first for non-UI Tier 2 work and all Tier 3 work**, and **the
+  default for `intrada-core` changes** (`domain/*.rs`, `validation.rs`,
+  `http.rs`, `model.rs`): write the failing test first. The #719 delete-404
+  bug shipped because the test was retrofit to pass after the fix rather than
   written to constrain behaviour. Skip for visual/gesture work verified
-  on-device.
-- `requesting-code-review` — the standard channel for Tier 2+ PRs. Load the
-  skill rather than hand-rolling a prompt.
-- `receiving-code-review` — run on the findings before acting on them.
-- `using-git-worktrees` — when two or more PR branches are in flight.
+  on-device. (Claude Code: `test-driven-development` skill.)
+- **Request review as the standard channel for Tier 2+ PRs**, rather than
+  hand-rolling a prompt each time. (Claude Code: `requesting-code-review`
+  skill; OMP: the `reviewer` agent via `task`.)
+- **Read review findings before acting on them** — triage real blockers from
+  noise rather than mechanically applying every comment. (Claude Code:
+  `receiving-code-review` skill.)
+- **Isolate concurrent branches in separate worktrees** when two or more PR
+  branches are in flight. (Claude Code: `using-git-worktrees` skill; OMP: the
+  `isolated` worktree option on `task`/`agent`.)
 
-If unsure whether a skill applies, default to the tier system.
+If unsure whether a practice applies, default to the tier system.
 
 **UI verification means actually driving the app on the simulator**, not claiming
 "all green" when that means cargo test green. If you can't reach the running app,
@@ -699,27 +690,26 @@ say exactly what needs user verification.
    - The same check binds any session *recommending* the next task or writing a
      handover opener: never name an issue as next without running it, and start
      every opener with "claim #N (stop if a PR already exists)".
-   - Why (2026-08-07): #1214 got two complete independent implementations
-     (#1243, #1247) fifteen hours apart. The merged one was the weaker, and
-     #1250 had to port back what was lost. The issue carried no assignee, label
-     or comment, and nothing required looking at the one live claim signal,
-     which is an open PR. `just status` now puts both signals on one screen.
 2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
 4. Never push to main. Always a feature branch + PR.
-5. **Open/update any non-trivial PR through the `ship` skill** — don't
-   `gh pr create`/`git push` feature work directly. `ship` runs the pre-push
-   gates *and* the self-review in one funnel, so the review can't be skipped in a
-   fast build→push cadence (which is exactly how it gets skipped when left to
-   "remember to review"). `ship` uses the code-reviewer subagent via
-   `requesting-code-review`; post its summary as a `gh pr comment` (the reviewer
-   doesn't see in-conversation subagent output), apply blockers and important
-   findings inline, and defer the rest as tracked issues per (7).
-   - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the review
-     step but still run the gates.
-   - **Small Tier 2** — one file, no bridge / DB / auth / migration surface — may
-     use `/review` in place of the subagent. Anything on the domain-sensitivity
-     list, or spanning files, takes the full subagent.
+5. **Open/update any non-trivial PR through a single pre-push gate that runs
+   the checks and the self-review together** — don't `gh pr create`/`git
+   push` feature work directly with review as a separate, skippable step.
+   Whatever funnel the current harness provides (Claude Code: the `ship`
+   skill; OMP or others: an equivalent task/command chaining checks +
+   review), route through it so review can't be skipped in a fast
+   build→push cadence (which is exactly how it gets skipped when left to
+   "remember to review"). Use a code-review agent for the self-review; post
+   its summary as a `gh pr comment` (the reviewer doesn't see
+   in-conversation subagent output), apply blockers and important findings
+   inline, and defer the rest as tracked issues per (7).
+   - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the
+     review step but still run the gates.
+   - **Small Tier 2** — one file, no bridge / DB / auth / migration surface —
+     may use a lighter single-pass review in place of a full agent. Anything
+     on the domain-sensitivity list, or spanning files, takes the full
+     review agent.
 6. **Check Codecov after CI** (Tier 2+). Compare the patch-coverage comment
    against the **Coverage** line in the PR description. If there are unexpected
    gaps, push tests or explain in a PR comment before calling the PR ready.
@@ -816,8 +806,9 @@ agents would edit either side of one contract.
 - **The lead integrates.** Fan-out agents report; they do not merge into each
   other's work. Reconcile in one place.
 - **The simulator is machine-global.** Only one agent runs iOS tests at a time.
-- `using-git-worktrees` for the mechanics; the `Workflow` tool's
-  `isolation: 'worktree'` does the same per-agent when scripting a fan-out.
+- Mechanics for git worktrees: Claude Code's `using-git-worktrees` skill;
+  OMP's native `isolated` worktree option on `task`/`agent` does the same
+  per-agent when scripting a fan-out without a separate skill.
 
 **Contract before code applies to one agent as much as to several.** Pin the
 Event/Effect/ViewModel shape for a slice before wiring either side — that
@@ -827,7 +818,8 @@ discipline is what makes bridge changes reviewable, not a handoff protocol.
 
 - [ ] `just check` green locally; `just ios-fmt-check` too if `ios/` touched
 - [ ] Tests shipped with the new code (see Testing)
-- [ ] PR opened via the `ship` skill; self-review comment posted
+- [ ] PR opened via the pre-push gate (checks + self-review); self-review
+      comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
 - [ ] Roadmap updated if a phase changed; deferred items tracked as issues
       (there is no status file to update)
