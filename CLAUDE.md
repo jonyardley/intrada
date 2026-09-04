@@ -81,6 +81,12 @@ schemes: [`docs/reference.md`](docs/reference.md). The `xcrun simctl` /
 `xcodebuild` workflow, worktree sim-isolation, the green-stamp skip, and host
 gotchas: [`docs/ios-testing.md`](docs/ios-testing.md).
 
+**Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP
+build call.** The recipes carry the destination pin, `CODE_SIGNING_ALLOWED=NO`,
+the build-freshness fingerprint and the concurrency guard; an invocation missing
+any of them fails in ways that look like repo faults and are not (#1536, #1537).
+A passing run prints its own counts, so silence is never the evidence.
+
 **Run `just check` locally before pushing**, not just before committing. The
 recipes mirror CI's flags and crate exclusions exactly, so local green means CI
 green (cargo-deny and Gitleaks run in CI only); pushing then watching CI fail
