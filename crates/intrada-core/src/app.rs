@@ -867,6 +867,18 @@ pub(crate) fn derive_up_next(
     crate::suggestion::compute_up_next(&build_library_item_views(model, &item_index), clock)
 }
 
+/// The starred items in the order "Practise your priorities" seeds them
+/// (#981). Re-derived in the core for the same reason as `derive_up_next`.
+pub(crate) fn derive_priorities(model: &Model, now: chrono::DateTime<chrono::Utc>) -> Vec<String> {
+    let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+        model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+    let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
+    crate::priorities::order_priorities(&build_library_item_views(model, &item_index), clock)
+        .iter()
+        .map(|i| i.id.clone())
+        .collect()
+}
+
 /// Build practice summaries (keyed by item_id) in a single pass over sessions.
 /// Called once when sessions change, not per-render.
 pub(crate) fn build_practice_summaries(
