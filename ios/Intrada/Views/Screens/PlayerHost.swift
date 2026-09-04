@@ -6,11 +6,12 @@ import SwiftUI
 /// screen, Summary → review — and the core drives dismissal (Save/Discard → Idle).
 struct PlayerHost: View {
   @Environment(Store.self) private var store
+  @State private var wakeLock = ScreenWakeLock { UIApplication.shared.isIdleTimerDisabled = $0 }
 
   var body: some View {
     Group {
       if store.viewModel?.activeSession != nil {
-        FocusPlayerScreen()
+        FocusPlayerScreen().environment(\.screenWakeLock, wakeLock)
       } else if store.viewModel?.summary != nil {
         SessionSummaryScreen()
       }
@@ -23,5 +24,6 @@ struct PlayerHost: View {
         GlobalBanner(message: error) { store.send(.clearError) }
       }
     }
+    .onDisappear { wakeLock.release() }
   }
 }
