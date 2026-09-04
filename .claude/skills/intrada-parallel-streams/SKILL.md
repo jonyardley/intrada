@@ -57,9 +57,18 @@ agents would edit either side of one contract.
 - **The lead integrates.** Fan-out agents report; they do not merge into each
   other's work. Reconcile in one place.
 - **The simulator is machine-global.** Only one agent runs iOS tests at a time.
+- **Choosing between `isolated: true` and a real worktree** (measured 2026-09-04):
+  OMP's isolated workspace is an APFS clone with its own `.git`, not a git
+  worktree. It carries `target/` (2.6 GB, so cargo starts warm) but **not**
+  `ios/build`, so an iOS build there is cold, 5 to 10 minutes. Because
+  `git-dir` equals `git-common-dir` in a clone, the graphify hooks' worktree
+  guard does not fire, and every commit inside one kicks a full graph rebuild
+  that is thrown away with the workspace. So: `isolated: true` for the
+  decoupled set and core-only Rust; `just worktree-new` for anything touching
+  `ios/`, which also gets the seeded `ios/build` caches (#1205).
 - Mechanics for git worktrees: Claude Code's `using-git-worktrees` skill;
-  OMP's native `isolated` worktree option on `task`/`agent` does the same
-  per-agent when scripting a fan-out without a separate skill.
+  OMP's native `isolated` option on `task` makes the field available per task
+  item, it does not force isolation on a spawn that omits it.
 
 **Contract before code applies to one agent as much as to several.** Pin the
 Event/Effect/ViewModel shape for a slice before wiring either side — that
