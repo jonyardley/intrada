@@ -261,6 +261,111 @@ the scanner, which is why it shipped misreading the likeliest real one.
 fourteen minutes), driving the simulator rather than trusting green tests, TDD
 on the core, and reading the spec and mockups properly.
 
+## Why the native iOS CI is shaped the way it is (2026-09-03)
+
+The native iOS gate fans out (#1207): **Native iOS: build** compiles once and
+uploads the built test products, the test jobs run against that artifact, and the
+fan-in job **Native iOS (build + test)** stays the required status check. Timed
+across three pull-request runs that touched the app, the critical path was
+**Path Changes** (10s), then the build job (339-451s), then **Native iOS: UI**
+(702-739s): roughly 19 to 20 minutes of wall clock. Inside the build job,
+regenerating bindings cost 54s (only when the core changed),
+`build-for-testing` 86s, toolchain and cache setup about 90s, and the Release
+compile guard 155-197s.
+
+The run that landed the changes below came in at **11m26s** end to end: build
+162s, then the longer UI slice at 495s. One number to keep in mind before
+slicing the UI suite again: the two slices took 436s for three tests and 495s
+for four, so the cost is per test rather than per class, and a further split
+keeps paying until the per-test stall itself is fixed (#947).
+
+What those numbers changed:
+
+- **The Release guard runs beside the tests, not in front of them.** The
+  `#if DEBUG` divergence check (#1177) was 155-197s of that critical path and
+  nothing downstream reads what it produces, so it moved to a sibling job,
+  `native-ios-build-release`, which starts when the build job finishes and runs
+  concurrently with the two test jobs. It keeps its own DerivedData cache
+  (`ios-dd-release-v1-*`) and is listed in the fan-in gate, so a Release-only
+  break still fails the required check. This is the trade #1207 parked in
+  2026-08 until "the full tier's wall time grows past ~10 minutes", which 19
+  to 20 minutes clears: the price paid is more concurrent macOS jobs (four
+  rather than two, billed at 10x) and the artifact downloaded by each test
+  job, in exchange for the wall clock.
+- **The test jobs stopped generating the Xcode project.** Both now run
+  `xcodebuild test-without-building -xctestrun <path>` against the `.xctestrun`
+  inside the downloaded `native-ios-test-products` artifact. That file is
+  self-describing: it names the test bundles, the host app and the environment
+  to launch them in, so running the tests needs no `.xcodeproj` and no scheme.
+  Dropping project generation takes xcodegen, the `ios/generated` bindings
+  restore and the 928 MB SwiftPM cache out of both jobs, and with no project to
+  open there is no package graph to resolve, so nothing can re-clone the
+  dependencies over the network (the #813 flake that restore guarded against).
+- **The UI suite runs as two sliced jobs.** Seven XCUITests across four
+  classes were taking 653-692s serially, the longest single step in the
+  pipeline, and `SessionBuilderUITests` is over a third of that on its own
+  (#947). **Native iOS: UI** is now a two-entry matrix: one slice runs that
+  class, the other runs its complement, expressed as `-skip-testing:` so a UI
+  class added later joins the second slice rather than silently running
+  nowhere (the #1456 failure mode). xcodebuild's own parallel testing was
+  tried first and rejected: it clones the destination simulator, and the
+  clone's test runner failed to launch with "Application failed preflight
+  checks (Busy)" under memory pressure, which reds the gate for no test
+  reason. Slicing does not explain the idle stalls in the suite, which stay
+  open as #947.
+- **The Actions cache was over its ceiling.** The repo held 10.69 GB across 48
+  entries against GitHub's 10 GB per-repo LRU limit, so entries were being
+  evicted while runs still wanted them, which is the suspected cause of the
+  unit + snapshot job's 225-509s spread. `ios-dd-*` accounted for 19 entries and
+  4.36 GB, `ios-spm-*` for 3 entries and 2.79 GB (928 MB each), because caches
+  are written per ref and every pull-request branch was saving its own copy. A
+  scheduled **Cache Prune** workflow (`.github/workflows/cache-prune.yml`) now
+  keeps the newest few entries per key family, and the iOS build caches restore
+  on every ref but save only on main.
+- **`save-if` is not an `actions/cache` input.** The DerivedData step had
+  carried `save-if: ${{ github.ref == 'refs/heads/main' }}` and a comment
+  saying "only main writes the cache" for months; an unknown input is silently
+  ignored, so main-only writing never happened, which is how 19 `ios-dd-*`
+  entries against six different refs accumulated. Proof after the fact:
+  `refs/pull/1521/merge` wrote an `ios-dd-v2-*` entry on 2026-09-04 with that
+  line in place. The mechanism that does work is
+  `actions/cache/restore@v6` plus a separate `actions/cache/save@v6` step
+  gated by `if: github.ref == 'refs/heads/main'`. `save-if` **is** a real
+  rust-cache input, which is what made the mistake easy to keep: the same
+  spelling means something in one action and nothing in the other. Check a
+  cache rule by listing the refs that wrote its entries, never by reading the
+  workflow.
+- **Clippy had been asking for a cache nothing ever wrote.** rust-cache composes
+  its key as `<prefix-key>-<job-name>-<arch>-…`, so `prefix-key: native` with
+  `save-if: "false"` looked for `native-clippy-…` while the only entries in the
+  repo were `native-test-Linux-x64-…` from **Test** and
+  `native-ios-native-ios-build-Darwin-arm64-…` from the iOS build. It
+  cold-compiled the workspace on every run. It now uses `prefix-key: clippy`,
+  saving on main only, so pull requests restore main's copy. The general point:
+  a rust-cache key carries the job name, so a `save-if: false` reader can only
+  share with the *same* job on another ref, never with a different job.
+
+## The API image build stopped caching its layers (2026-09-04)
+
+**API Docker Build** exported a buildkit layer cache to GitHub Actions
+(`cache-to: type=gha,mode=max`). One run of it wrote 26 `buildkit-blob-*`
+entries and 1.96 GB, a fifth of the repo's 10 GB allowance, for a lane that
+only runs when the API changes and is on hold behind the iOS pivot. Neither
+mode was worth that:
+
+- `mode=max` caches every intermediate layer, which is what made it 1.96 GB.
+- `mode=min` caches only what the final image exports, and the `Dockerfile` is
+  a cargo-chef build whose expensive layer (`cargo chef cook --release`) lives
+  in the `builder` stage, so `mode=min` would export the runtime stage and
+  never the layer the file is designed around.
+
+So the lane builds with no layer cache at all. A cold build measured **139s**,
+which is cheaper than it looks because the allowance it frees is restored by
+every iOS pull request. If the API comes back into focus, `mode=max` plus a
+prune rule that treats the blobs and their index as one all-or-nothing set is
+the shape to add: deleting blobs while keeping the index that names them
+produces buildkit's `blob not found` import failure rather than a cold build.
+
 ## Mutate-response variants, in full
 
 Writes reconcile with the server response directly, with no full-list refetch.

@@ -14,4 +14,55 @@ extension XCUIApplication {
       build.waitForExistence(timeout: 10), "Start practising hero button", file: file, line: line)
     build.tap()
   }
+
+  /// The shortest route to the focus player: one seeded library item in a
+  /// session, started. Two suites drive it, so it lives here.
+  @MainActor
+  func startOneItemSession(file: StaticString = #filePath, line: UInt = #line) {
+    tabBars.buttons["Practice"].tap()
+    openEmptyBuilder(file: file, line: line)
+
+    let addRow = buttons["Add piece or exercise"]
+    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row", file: file, line: line)
+    addRow.tap()
+    let notAdded = buttons.matching(NSPredicate(format: "value == %@", "Not added"))
+    XCTAssertTrue(
+      notAdded.firstMatch.waitForExistence(timeout: 5), "Library cards in sheet", file: file,
+      line: line)
+    notAdded.firstMatch.tap()
+    buttons["Done"].tap()
+
+    let startSession = buttons["Start session"]
+    XCTAssertTrue(
+      startSession.waitForExistence(timeout: 5), "Start session bar", file: file, line: line)
+    startSession.tap()
+  }
+
+  /// Abandons the running session so the next test starts from a clean
+  /// container: an in-progress session outlives the app in UserDefaults.
+  @MainActor
+  func abandonSession() {
+    buttons["Session options"].tap()
+    let end = buttons["End session early"]
+    if end.waitForExistence(timeout: 3) {
+      end.tap()
+      let discard = buttons["Discard"]
+      if discard.waitForExistence(timeout: 5) { discard.tap() }
+    }
+  }
+
+  /// Same job for a session that reached the summary: only `SaveSession` and
+  /// `DiscardSession` clear the in-progress blob, and reaching the summary
+  /// clears nothing.
+  @MainActor
+  func discardSummary(file: StaticString = #filePath, line: UInt = #line) {
+    let discard = buttons["Discard"]
+    XCTAssertTrue(
+      discard.waitForExistence(timeout: 10), "the summary is up", file: file, line: line)
+    discard.tap()
+    let confirm = alerts.buttons["Discard"]
+    XCTAssertTrue(
+      confirm.waitForExistence(timeout: 5), "the discard confirmation", file: file, line: line)
+    confirm.tap()
+  }
 }

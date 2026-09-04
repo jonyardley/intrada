@@ -17,20 +17,7 @@ final class SessionRecoveryUITests: XCTestCase {
     app.launchArguments = ["--seed-sample-data", "--disable-animations"]
     app.launch()
 
-    app.tabBars.buttons["Practice"].tap()
-    app.openEmptyBuilder()
-
-    let addRow = app.buttons["Add piece or exercise"]
-    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
-    addRow.tap()
-    let notAdded = app.buttons.matching(NSPredicate(format: "value == %@", "Not added"))
-    XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "Library cards in sheet")
-    notAdded.firstMatch.tap()
-    app.buttons["Done"].tap()
-
-    let startSession = app.buttons["Start session"]
-    XCTAssertTrue(startSession.waitForExistence(timeout: 5), "Start session bar")
-    startSession.tap()
+    app.startOneItemSession()
 
     let skip = app.buttons["Skip this item"]
     XCTAssertTrue(skip.waitForExistence(timeout: 10), "the focus player is up")
@@ -52,13 +39,7 @@ final class SessionRecoveryUITests: XCTestCase {
       relaunch.buttons["Skip this item"].waitForExistence(timeout: 10),
       "Resume reopens the focus player on the interrupted session")
 
-    // Leave the container clean for the next test: abandon via Session options.
-    relaunch.buttons["Session options"].tap()
-    let end = relaunch.buttons["End session early"]
-    if end.waitForExistence(timeout: 3) {
-      end.tap()
-      let discard = relaunch.buttons["Discard"]
-      if discard.waitForExistence(timeout: 5) { discard.tap() }
-    }
+    // Leave the container clean for the next test.
+    relaunch.abandonSession()
   }
 }

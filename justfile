@@ -125,11 +125,11 @@ worktree-new name:
         fi
     done
 
-    echo "→ fetching origin and creating worktree at $target…"
+    echo "→ fetching origin and creating worktree at ${target}…"
     git fetch origin
     git worktree add "$target" -b "{{name}}" origin/main
 
-    echo "→ seeding warm caches from $main_root…"
+    echo "→ seeding warm caches from ${main_root}…"
     seeded=()
     for rel in target ios/build/spm ios/build/dd; do
         src="$main_root/$rel"
@@ -317,8 +317,8 @@ ios-snapshots-record filter: _ios-sync
     just _ios-build-for-testing
     # First run writes the references and fails by design; the second is the
     # one whose result means anything.
-    just _ios-test-without-building "IntradaTests/{{filter}}" 0 || true
-    just _ios-test-without-building "IntradaTests/{{filter}}" 0
+    just _ios-test-without-building "-only-testing:IntradaTests/{{filter}}" 0 || true
+    just _ios-test-without-building "-only-testing:IntradaTests/{{filter}}" 0
     # Re-find rather than reusing `$refs`: a first record has nothing to delete,
     # so optimising that list would skip the reference it just wrote and leave
     # `ios-snapshots-check` failing on an un-optimised PNG.
@@ -401,14 +401,14 @@ _ios-test-run tier:
     just _ios-test-guard
     just _ios-build-for-testing
     if [ "{{tier}}" = "fast" ]; then
-        just _ios-test-without-building IntradaTests 0
+        just _ios-test-without-building -only-testing:IntradaTests 0
     else
         # Relaunch-in-new-process, not in-process: the flake this recovers
         # from kills the runner process (#1203). Fast tier (unit/snapshot,
         # deterministic) stays strict. Full tier runs both targets in one
         # `xcodebuild` call locally, so retry applies to both; CI's fanned-out
-        # jobs (#1207) call `_ios-test-without-building` once per target and
-        # scope retry to the UI job only.
+        # jobs (#1207) call `_ios-test-without-building` once per slice (unit,
+        # then the two UI slices) and scope retry to the UI slices only.
         just _ios-test-without-building "" 1
     fi
     # Same exact-tree guard as `check` above (#1204).
@@ -429,6 +429,10 @@ _ios-build-for-testing:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
+    # A run file is named for its destination, so a pin bump would leave the
+    # old one beside the new one and the single-file lookup in
+    # `_ios-test-without-building` would have nothing to choose from.
+    rm -f build/dd/Build/Products/*.xctestrun
     xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
@@ -439,29 +443,41 @@ _ios-build-for-testing:
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
 
 # Run already-built tests against THIS worktree's sim, without rebuilding.
-# `only` is an xcodebuild target name (IntradaTests / IntradaUITests) or ""
-# to run everything the built products contain; `retry` is "1" to add the
-# relaunch-on-crash flags (#1203), else "0". Shared by `_ios-test-run` (local,
-# both targets in one call) and CI's fanned-out `native-ios-test-unit` /
-# `native-ios-test-ui` jobs (#1207), which call this once per target so a
-# UI-suite crash can't take the unit suite down with it.
+# Driven by the `.xctestrun` the build wrote rather than `-project`/`-scheme`:
+# it already names the bundles and their platform, so CI's test jobs need no
+# Xcode project, no generated bindings and no resolved SwiftPM checkout (~30s
+# and a 928MB cache restore each).
+# `filters` is a space-separated list of xcodebuild `-only-testing:` /
+# `-skip-testing:` flags, or "" to run everything the built products contain;
+# `retry` is "1" to add the relaunch-on-crash flags (#1203), else "0". Shared
+# by `_ios-test-run` (local, everything in one call) and CI's fanned-out
+# `native-ios-test-unit` / `native-ios-test-ui` jobs (#1207), which slice the
+# suite so a crash in one slice can't take the others down with it.
 [private]
-_ios-test-without-building only retry:
+_ios-test-without-building filters retry:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
-    onlyflag=""
-    [ -z "{{only}}" ] || onlyflag="-only-testing:{{only}}"
-    retryflags=""
-    [ "{{retry}}" != "1" ] || retryflags="-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES"
-    xcodebuild test-without-building -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-        -destination "id=$udid" -derivedDataPath build/dd \
-        -clonedSourcePackagesDirPath build/spm -quiet \
-        $onlyflag $retryflags \
-        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    shopt -s nullglob
+    runs=(build/dd/Build/Products/*.xctestrun)
+    if [ "${#runs[@]}" -ne 1 ]; then
+        echo "✗ expected one .xctestrun in ios/build/dd/Build/Products, found ${#runs[@]} — run 'just _ios-build-for-testing' first" >&2
+        exit 1
+    fi
+    # Parallelism is a CI job fan-out, never xcodebuild's cloned simulators:
+    # a clone's test runner hits "Application failed preflight checks (Busy)"
+    # under memory pressure, which reds the gate for no test reason.
+    flags=(-parallel-testing-enabled NO)
+    if [ -n "{{filters}}" ]; then
+        for f in {{filters}}; do flags+=("$f"); done
+    fi
+    [ "{{retry}}" != "1" ] || flags+=(-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES)
+    xcodebuild test-without-building -xctestrun "${runs[0]}" \
+        -destination "id=$udid" -derivedDataPath build/dd -quiet \
+        "${flags[@]}"
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout

@@ -183,10 +183,12 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
+      # rust-cache's key is `<prefix-key>-<job>-…`, so `native` here asked for
+      # `native-clippy-…`, which nothing writes: this job restored nothing.
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "native"
-          save-if: "false"
+          prefix-key: "clippy"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@v2.87.0
         with:
           tool: clippy-sarif,sarif-fmt
@@ -219,12 +221,10 @@ jobs:
     # Xcode/iOS.
     #
     # Fanned out (#1207): this job builds once and uploads the built test
-    # products (app + .xctest bundles, not all of DerivedData) as an
-    # artifact; `native-ios-test-unit` and `native-ios-test-ui` consume it in
-    # parallel instead of each rebuilding. Parked since 2026-08-05 (doubles
-    # macOS runner minutes to save ~2min wall time, plus artifact transfer
-    # cost) until merges regularly wait on this job or the full tier's wall
-    # time grows past ~10 minutes — see #1207 for the full trade-off writeup.
+    # products (app + .xctest bundles, not all of DerivedData) as an artifact;
+    # `native-ios-test-unit` and `native-ios-test-ui` consume it in parallel
+    # instead of each rebuilding, and `native-ios-build-release` compiles the
+    # Release configuration alongside them rather than ahead of them.
     name: "Native iOS: build"
     runs-on: macos-26
     timeout-minutes: 40
@@ -292,12 +292,11 @@ jobs:
       # formula to pin to, and current Homebrew rejects installing a loose
       # formula file outside a tap, so a version pin would need a full
       # homebrew-core git clone at a fixed commit — much heavier than the
-      # 4MB release zip. Since #1207's fan-out, all three native-ios jobs
-      # resolve xcodegen independently within one CI run; native-ios-build's
-      # prebuilt test products are matched against the .xcodeproj it
-      # generated, and a formula bump landing mid-run could drift that
-      # against the .xcodeproj a test job regenerates locally. Bump this WITH
-      # the two identical steps below, in lockstep.
+      # 4MB release zip. `native-ios-build` and `native-ios-build-release`
+      # both resolve xcodegen independently within one CI run, so a formula
+      # bump landing mid-run could generate the two projects from different
+      # versions. Bump this WITH the identical step in
+      # `native-ios-build-release`, in lockstep.
       - name: Install xcodegen
         if: steps.xcodegen-cache.outputs.cache-hit != 'true'
         run: |
@@ -335,10 +334,12 @@ jobs:
       # step below) so this cache and the DerivedData cache never overlap on the
       # same path. Stable sources also make Xcode's incremental check on the
       # restored DerivedData a no-op, so the compiled deps get reused instead of
-      # rebuilt. Saved on all events (key is content-addressed by project.yml;
-      # concurrent writers no-op once the key exists).
-      - name: Cache SwiftPM packages
-        uses: actions/cache@v6
+      # rebuilt. Restore-then-save-on-main, not `save-if`: that is not an
+      # `actions/cache` input at all and was being ignored, so every PR branch
+      # wrote its own 928MB copy that no other ref can read.
+      - name: Restore SwiftPM packages
+        id: spm-cache
+        uses: actions/cache/restore@v6
         with:
           path: ios/build/spm
           key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
@@ -355,18 +356,14 @@ jobs:
       # in the simulator, so a cache hit can't alter a snapshot result (a stale
       # incremental build fails loud, it can't silently pass). Bump the key prefix
       # to force-evict.
-      - name: Cache iOS DerivedData
-        uses: actions/cache@v6
+      - name: Restore iOS DerivedData
+        id: dd-cache
+        uses: actions/cache/restore@v6
         with:
           path: ios/build/dd
           key: ios-dd-v2-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
           restore-keys: |
             ios-dd-v2-${{ runner.os }}-
-          # Only main writes the cache (~66s). PRs restore main's DerivedData —
-          # which already holds the costly SwiftPM deps (Sentry, swift-syntax,
-          # swift-snapshot-testing) — and skip the write. The exact-key on main
-          # tracks `main`'s own source, so PR incremental builds stay warm.
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       # Build only, via the same `_ios-build-for-testing` recipe local dev's
       # `_ios-test-run` calls (#1198, split further in #1207) — the
       # xcodebuild invocation lives in exactly one place shared between CI and
@@ -376,12 +373,6 @@ jobs:
       # reference together when local dev moves to a newer Xcode/iOS.
       - name: Build for testing (just _ios-build-for-testing)
         run: just _ios-build-for-testing
-      # Debug and Release can diverge on `#if DEBUG`-gated code (#1177) — the
-      # Debug build above wouldn't catch a non-DEBUG-gated file referencing a
-      # DEBUG-only symbol. Compile-only, no signing, no tests; a separate
-      # derivedDataPath (ios-build-release) keeps it out of the artifact below.
-      - name: Build Release (just ios-build-release)
-        run: just ios-build-release
       # Not all of DerivedData — just the built app + .xctest bundles (and the
       # .xctestrun that points at them) the test-without-building jobs need.
       # ios/build/dd is a relative derivedDataPath under the same checkout
@@ -393,6 +384,96 @@ jobs:
           name: native-ios-test-products
           path: ios/build/dd/Build/Products
           retention-days: 1
+      # Below the artefact upload so several GB of compression can't delay the
+      # three jobs waiting on it, and keyed off the restore so an unchanged
+      # `project.yml` doesn't archive 928MB just to fail the reservation.
+      - name: Save SwiftPM packages
+        if: github.ref == 'refs/heads/main' && steps.spm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/spm
+          key: ${{ steps.spm-cache.outputs.cache-primary-key }}
+      - name: Save iOS DerivedData
+        if: github.ref == 'refs/heads/main' && steps.dd-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/dd
+          key: ${{ steps.dd-cache.outputs.cache-primary-key }}
+
+  native-ios-build-release:
+    # Debug and Release diverge on `#if DEBUG`-gated code (#1177): the Debug
+    # test build can't catch a non-DEBUG-gated file that references a
+    # DEBUG-only symbol. Compile-only, no signing, no tests. Runs beside the
+    # test jobs rather than ahead of them, since nothing downstream reads its
+    # output (timings in docs/reference.md). `needs: native-ios-build` only
+    # for the bindings cache that job guarantees, which is what keeps the Rust
+    # toolchain out of here.
+    name: "Native iOS: Release build"
+    runs-on: macos-26
+    timeout-minutes: 30
+    needs: [changes, native-ios-build]
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
+      - uses: taiki-e/install-action@v2.87.0
+        with:
+          tool: just
+      - name: Cache xcodegen
+        id: xcodegen-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            /usr/local/bin/xcodegen
+            /usr/local/share/xcodegen
+          key: xcodegen-2.46.0-${{ runner.os }}-${{ runner.arch }}
+      # See the identical step + comment in native-ios-build: pinned to
+      # 2.46.0 in lockstep across both jobs that generate the project.
+      - name: Install xcodegen
+        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q /tmp/xcodegen.zip -d /tmp
+          /tmp/xcodegen/install.sh
+      # xcodegen fails ("Invalid local package") without ios/generated, and
+      # `ios-build-release`'s `_ios-sync` reads the stamp inside it to decide
+      # whether to regenerate: on a hit it doesn't, so no cargo is needed.
+      # This job has no Rust toolchain, so a miss is fatal either way and had
+      # better say so here rather than inside cargo-swift.
+      - name: Restore generated Swift bindings
+        uses: actions/cache/restore@v6
+        with:
+          path: ios/generated
+          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
+          fail-on-cache-miss: true
+      - name: Restore SwiftPM packages
+        uses: actions/cache/restore@v6
+        with:
+          path: ios/build/spm
+          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ios-spm-v1-${{ runner.os }}-
+      # Release compiles into its own derivedDataPath, so it needs its own
+      # cache: without one this was a cold rebuild of the whole dependency
+      # tree every run. Restore here, save on main only, below.
+      - name: Restore Release DerivedData
+        id: dd-release-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ios/build/dd-release
+          key: ios-dd-release-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**') }}
+          restore-keys: |
+            ios-dd-release-v1-${{ runner.os }}-
+      - name: Build Release (just ios-build-release)
+        run: just ios-build-release
+      - name: Save Release DerivedData
+        if: github.ref == 'refs/heads/main' && steps.dd-release-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/dd-release
+          key: ${{ steps.dd-release-cache.outputs.cache-primary-key }}
 
   native-ios-test-unit:
     # Test half 1/2 (#1207): IntradaTests (unit + snapshot) against the
@@ -412,57 +493,17 @@ jobs:
       - uses: taiki-e/install-action@v2.87.0
         with:
           tool: just
-      - name: Cache xcodegen
-        id: xcodegen-cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            /usr/local/bin/xcodegen
-            /usr/local/share/xcodegen
-          key: xcodegen-2.46.0-${{ runner.os }}-${{ runner.arch }}
-      # See the identical step + comment in native-ios-build: pinned
-      # to 2.46.0 in lockstep across all three jobs.
-      - name: Install xcodegen
-        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
-          unzip -q /tmp/xcodegen.zip -d /tmp
-          /tmp/xcodegen/install.sh
-      # project.yml declares IntradaCoreFFI/SharedTypes as local Swift
-      # packages under ios/generated — xcodegen fails ("Invalid local
-      # package") if that directory is missing, even though this job runs no
-      # Rust toolchain and regenerates nothing. native-ios-build always
-      # populates this cache first (restore or regenerate-then-save), so
-      # restoring it here is a guaranteed hit.
-      - name: Restore generated Swift bindings
-        uses: actions/cache@v6
-        with:
-          path: ios/generated
-          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
-      - name: Generate Xcode project
-        working-directory: ios
-        run: xcodegen generate
-      # `_ios-test-without-building` still passes `-clonedSourcePackagesDirPath
-      # build/spm` (it resolves the package graph even without compiling) —
-      # without restoring this cache here too, a fresh runner re-clones Sentry
-      # + swift-syntax + swift-snapshot-testing + GRDB over the network, which
-      # is exactly the #813 flake this cache exists to prevent. `native-ios-
-      # build` always writes this key, and it always finishes first (`needs:`
-      # below), so this is a guaranteed hit — not an extra build.
-      - name: Cache SwiftPM packages
-        uses: actions/cache@v6
-        with:
-          path: ios/build/spm
-          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
-          restore-keys: |
-            ios-spm-v1-${{ runner.os }}-
+      # The `.xctestrun` in the downloaded products names its own test
+      # bundles, host app and platform, so this job needs no Xcode project,
+      # no `ios/generated`, and no 928MB SwiftPM restore to resolve a package
+      # graph it never compiles.
       - name: Download built test products
         uses: actions/download-artifact@v8
         with:
           name: native-ios-test-products
           path: ios/build/dd/Build/Products
-      - name: Test (just _ios-test-without-building IntradaTests)
-        run: just _ios-test-without-building IntradaTests 0
+      - name: Test (unit + snapshot)
+        run: just _ios-test-without-building -only-testing:IntradaTests 0
       - name: Upload snapshot failures
         if: failure()
         uses: actions/upload-artifact@v7
@@ -494,11 +535,27 @@ jobs:
     # `native-ios-build` already built — no rebuild here. Keeps the
     # relaunch-on-crash retry flags (#1203) scoped to this job only, so a UI
     # flake's retry can't also re-run (and re-cost) the unit/snapshot suite.
-    name: "Native iOS: UI"
+    #
+    # Sliced across two runners because `SessionBuilderUITests` is over a
+    # third of the suite on its own (#947; timings in docs/reference.md). The
+    # slices are a whole class and its complement, expressed as a skip, so a
+    # UI class added later joins the second slice instead of silently running
+    # nowhere (the #1456 failure mode). xcodebuild's own parallel testing
+    # would clone the simulator instead, which fails the runner launch under
+    # memory pressure ("Application failed preflight checks").
+    name: "Native iOS: UI (${{ matrix.slice }})"
     runs-on: macos-26
     timeout-minutes: 20
     needs: [changes, native-ios-build]
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slice: builder
+            filters: "-only-testing:IntradaUITests/SessionBuilderUITests"
+          - slice: rest
+            filters: "-skip-testing:IntradaTests -skip-testing:IntradaUITests/SessionBuilderUITests"
     steps:
       - uses: actions/checkout@v7
       - uses: maxim-lobanov/setup-xcode@v1
@@ -507,50 +564,15 @@ jobs:
       - uses: taiki-e/install-action@v2.87.0
         with:
           tool: just
-      - name: Cache xcodegen
-        id: xcodegen-cache
-        uses: actions/cache@v6
-        with:
-          path: |
-            /usr/local/bin/xcodegen
-            /usr/local/share/xcodegen
-          key: xcodegen-2.46.0-${{ runner.os }}-${{ runner.arch }}
-      # See the identical step + comment in native-ios-build: pinned
-      # to 2.46.0 in lockstep across all three jobs.
-      - name: Install xcodegen
-        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
-          unzip -q /tmp/xcodegen.zip -d /tmp
-          /tmp/xcodegen/install.sh
-      # See the identical step + comment in native-ios-test-unit: xcodegen
-      # fails without ios/generated present, even though this job regenerates
-      # nothing itself.
-      - name: Restore generated Swift bindings
-        uses: actions/cache@v6
-        with:
-          path: ios/generated
-          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
-      - name: Generate Xcode project
-        working-directory: ios
-        run: xcodegen generate
-      # See the identical step + comment in native-ios-test-unit: without
-      # restoring this, `test-without-building`'s package-graph resolution
-      # re-clones SwiftPM deps over the network here too (#813 flake class).
-      - name: Cache SwiftPM packages
-        uses: actions/cache@v6
-        with:
-          path: ios/build/spm
-          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
-          restore-keys: |
-            ios-spm-v1-${{ runner.os }}-
+      # See the identical comment in native-ios-test-unit: the artifact's
+      # `.xctestrun` is all this job needs to run the suite.
       - name: Download built test products
         uses: actions/download-artifact@v8
         with:
           name: native-ios-test-products
           path: ios/build/dd/Build/Products
-      - name: Test (just _ios-test-without-building IntradaUITests)
-        run: just _ios-test-without-building IntradaUITests 1
+      - name: Test (UI, ${{ matrix.slice }})
+        run: just _ios-test-without-building "${{ matrix.filters }}" 1
 
   # Fan-in gate (#1207): branch protection's required status check is this
   # job's `name:`, unchanged from before the fan-out, so splitting the build
@@ -560,13 +582,13 @@ jobs:
   native-ios:
     name: Native iOS (build + test)
     runs-on: ubuntu-latest
-    needs: [changes, native-ios-build, native-ios-test-unit, native-ios-test-ui]
+    needs: [changes, native-ios-build, native-ios-build-release, native-ios-test-unit, native-ios-test-ui]
     if: always() && (github.event_name == 'push' || needs.changes.outputs.native == 'true')
     steps:
       - name: Check fan-out results
         run: |
-          echo "build=${{ needs.native-ios-build.result }} unit=${{ needs.native-ios-test-unit.result }} ui=${{ needs.native-ios-test-ui.result }}"
-          for r in "${{ needs.native-ios-build.result }}" "${{ needs.native-ios-test-unit.result }}" "${{ needs.native-ios-test-ui.result }}"; do
+          echo "build=${{ needs.native-ios-build.result }} release=${{ needs.native-ios-build-release.result }} unit=${{ needs.native-ios-test-unit.result }} ui=${{ needs.native-ios-test-ui.result }}"
+          for r in "${{ needs.native-ios-build.result }}" "${{ needs.native-ios-build-release.result }}" "${{ needs.native-ios-test-unit.result }}" "${{ needs.native-ios-test-ui.result }}"; do
             if [ "$r" != "success" ]; then
               echo "✗ native-ios fan-out did not all succeed" >&2
               exit 1
@@ -664,8 +686,7 @@ jobs:
     #
     # On main pushes the resulting image is pushed to Fly's registry tagged
     # with the commit SHA, and `deploy-api` deploys that image instead of
-    # rebuilding from scratch on Fly's remote builder. PRs build with cache
-    # but don't push.
+    # rebuilding from scratch on Fly's remote builder. PRs don't push.
     name: API Docker Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -686,6 +707,11 @@ jobs:
           registry: registry.fly.io
           username: x
           password: ${{ secrets.FLY_API_TOKEN }}
+      # No `cache-to: type=gha`. `mode=max` cost 1.96GB, a fifth of the repo's
+      # 10GB cache allowance, and `mode=min` would export only the runtime
+      # stage, never the cargo-chef dependency layer this Dockerfile is built
+      # around. A cold build here measured 139s, so the allowance is worth more
+      # to the iOS caches every pull request restores.
       - name: Build intrada-api image
         uses: docker/build-push-action@v7
         with:
@@ -694,8 +720,6 @@ jobs:
           tags: registry.fly.io/intrada-api:${{ github.sha }}
           build-args: |
             GIT_SHA=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy-api:
     name: Deploy API to Fly.io

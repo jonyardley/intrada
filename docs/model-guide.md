@@ -8,6 +8,11 @@
 > Last reviewed: 2026-08-14, against the Claude 5 family (Fable 5, Opus 5,
 > Sonnet 5, Haiku 4.5). Re-review at the next model generation; pricing and
 > effort semantics below were validated against the API docs on that date.
+>
+> The ladder is no longer prose only: `.omp/config.yml` pins the `default`,
+> `plan`, `slow`, `task` and `advisor` roles to it, so an OMP session started in
+> this repo begins on the right rung instead of re-deriving one. Keep the two in
+> step when either changes.
 
 ## The organising rule
 
@@ -26,7 +31,7 @@ on the simulator, a wrong test fails in CI.
 |-------|---------------|---------|
 | Fable 5 | 10 / 50 | Unrecoverable-if-wrong work; direction-setting; the worst debugging |
 | Opus 5 | 5 / 25 | Default for judgement-dense feature work and reviews |
-| Sonnet 5 | 3 / 15 | Conventional coding on non-sensitive surfaces; near-Opus on coding |
+| Sonnet 5 | 2 / 10 | Conventional coding on non-sensitive surfaces; near-Opus on coding |
 | Haiku 4.5 | 1 / 5 | Search, explore, and report subagents (200K context) |
 
 Prices are API list rates; on a subscription they still approximate relative

@@ -4,6 +4,8 @@ import SwiftUI
 /// sounds, so configuration stays one layer down (design-principles T14, T2).
 struct ClickControl: View {
   let bpm: Int
+  /// The metre's beat value: the readout says `♪ = 168` in 7/8, never `♩`.
+  var unit: UInt8 = 4
   let isRunning: Bool
   let unavailable: Bool
   /// False once `bpm` is stepped off what the item seeded: the row then reads as
@@ -56,7 +58,7 @@ struct ClickControl: View {
 
   var readout: String {
     if unavailable { return "Click unavailable" }
-    if isRunning || !atSeededTempo { return "♩ = \(bpm)" }
+    if isRunning || !atSeededTempo { return TempoUnit.readout(bpm, unit: unit) }
     return targetDisplay ?? "Click"
   }
 
@@ -68,7 +70,7 @@ struct ClickControl: View {
   // VoiceOver never hears the ♩ glyph, so the bpm is spelled out.
   var spokenValue: String {
     if unavailable { return "unavailable" }
-    if isRunning || !atSeededTempo { return "\(bpm) beats per minute" }
+    if isRunning || !atSeededTempo { return TempoUnit.spoken(bpm, unit: unit) }
     return targetSpoken ?? "no tempo set"
   }
 }
