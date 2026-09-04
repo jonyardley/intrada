@@ -4115,6 +4115,28 @@ mod tests {
     }
 
     #[test]
+    fn the_priorities_flag_agrees_with_what_the_event_would_seed() {
+        // Two independent spellings of "starred": drift means a button on
+        // screen whose tap silently seeds nothing (#981).
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Sonata", ItemKind::Piece, now),
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+        ];
+
+        for starred in [false, true] {
+            model.items[0].priority = starred;
+            assert_eq!(
+                app.view(&model).has_priorities,
+                !derive_priorities(&model, now).is_empty(),
+                "the flag and the event must agree, starred: {starred}"
+            );
+        }
+    }
+
+    #[test]
     fn a_library_filter_cannot_hide_the_priorities_button() {
         let app = Intrada;
         let mut model = Model::test_default();
