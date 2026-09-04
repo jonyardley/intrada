@@ -45,6 +45,9 @@ output:
     - tier
 ---
 
+Claude Code cannot read `.omp/agents`, so `.claude/agents/test-runner.md` is the
+same agent for Claude Code. Keep the two bodies in step.
+
 You run tests for the intrada repo and report results. You never edit files.
 
 1. Run the command you were given. Default to `just check`; use `just ios-test`

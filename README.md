@@ -128,6 +128,7 @@ specs/                # Design specs for major features
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
 | [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |
 | [`SETUP.md`](SETUP.md) | Deployment & configuration (Fly.io, Turso, TestFlight) |
+| [`docs/working-with-omp.md`](docs/working-with-omp.md) | Driving this repo from OMP: what loads, the model ladder, delegation, build and token control |
 
 ## CI/CD
 
