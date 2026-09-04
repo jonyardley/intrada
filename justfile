@@ -40,15 +40,47 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
-# Spell check + unused deps (what CI's Security & hygiene job runs).
-# Both tools come from mise.toml (`mise install`) or brew.
+# Spell check + unused deps + workflow lint (what CI's Security & hygiene job
+# runs). All three tools come from mise.toml (`mise install`) or brew.
+# `actionlint` falls back to mise when it is absent from PATH: bare needs mise's
+# shims, and a plain shell without `mise activate` would fail the whole gate
+# with 127, which reads as broken rather than as a tool that is not installed.
 hygiene:
     typos
     cargo-shear
+    @if command -v actionlint >/dev/null 2>&1; then actionlint; else mise x -- actionlint; fi
 
 # Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
 status:
     ./scripts/generate-status.sh
+
+# Claim an issue before building it, and refuse if someone already has. The
+# check in CLAUDE.md Always(1) costs four `gh` commands by hand, which is how it
+# gets skipped; this makes it one, and exits non-zero rather than warning.
+claim number:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+    branch="$(git rev-parse --abbrev-ref HEAD)"
+    if [ "$branch" = "main" ]; then
+        echo "✗ on main: create the feature branch first, so the claim comment names it." >&2
+        exit 1
+    fi
+    open="$(gh pr list --repo "$repo" --state open --search "{{number}}" --json number,title,headRefName)"
+    if [ "$(printf '%s' "$open" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')" -ne 0 ]; then
+        echo "✗ an open PR already mentions #{{number}}:" >&2
+        printf '%s' "$open" | python3 -c 'import json,sys; [print("    #%s %s (%s)" % (p["number"], p["title"], p["headRefName"])) for p in json.load(sys.stdin)]' >&2
+        echo "  Stop and read it before implementing the same thing twice." >&2
+        exit 1
+    fi
+    closers="$(gh issue view {{number}} --repo "$repo" --json closedByPullRequestsReferences -q '.closedByPullRequestsReferences | length')"
+    if [ "$closers" != "0" ]; then
+        echo "✗ #{{number}} already has $closers closing PR reference(s): check whether it is done." >&2
+        exit 1
+    fi
+    gh issue edit {{number}} --repo "$repo" --add-label in-flight
+    gh issue comment {{number}} --repo "$repo" --body "Claimed. Working on branch \`$branch\`."
+    echo "✓ claimed #{{number}} on $branch"
 
 # Check everything (fmt → clippy → test → hygiene, cheapest first). Mirrors
 # the iOS test-tier green-stamp (#1200): skips on a clean, already-green HEAD

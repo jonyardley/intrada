@@ -643,7 +643,7 @@ jobs:
           bash scripts/check-comment-density.sh
 
   security:
-    name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
+    name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear, actionlint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -653,7 +653,7 @@ jobs:
       # words, failing unrelated PRs. Bump deliberately, with mise.toml.
       - uses: taiki-e/install-action@v2.87.0
         with:
-          tool: typos@1.48,cargo-shear@1.13
+          tool: typos@1.48,cargo-shear@1.13,actionlint@1.7.12
       # ── typos ──────────────────────────────────────────────────────────
       # Source-tree spell check (docs-heavy repo; also catches identifier
       # typos clippy/swift-format never will). Project words: _typos.toml.
@@ -665,6 +665,12 @@ jobs:
       # Unused workspace dependencies — catches dead deps that inflate CI builds.
       - name: Unused dependencies (cargo-shear)
         run: cargo-shear
+      # ── actionlint ─────────────────────────────────────────────────────
+      # A workflow's first real exercise is the event that triggers it, so a
+      # schema or expression error otherwise surfaces on the merge that needed
+      # it to work. Keep the pin in lockstep with mise.toml.
+      - name: Workflow lint (actionlint)
+        run: actionlint
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.

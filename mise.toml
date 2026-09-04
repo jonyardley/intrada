@@ -11,6 +11,9 @@ ruby = "3.4"
 # pin in lockstep with ci.yml: dictionary updates change what gets flagged.
 typos = "1.48"
 "cargo:cargo-shear" = "1.13"
+# Workflow linting (just hygiene). A workflow's first real exercise is the merge
+# that triggers it, so a schema or expression error otherwise surfaces there.
+actionlint = "1.7"
 # Pinned exactly: cargo-swift 0.9.0's bundled uniffi-bindgen matches our
 # uniffi 0.29.4 runtime contract (see justfile ios-package). Bump in lockstep.
 "cargo:cargo-swift" = "0.9.0"
