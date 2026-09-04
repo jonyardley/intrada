@@ -20,8 +20,6 @@ permissions:
   contents: read
   checks: write
   pull-requests: write
-  # `actions: write` is the cancel-run-on-failure step's only requirement.
-  actions: write
   security-events: write
 
 env:
@@ -206,7 +204,7 @@ jobs:
           cargo clippy --workspace --all-targets \
             --message-format=json -- -D warnings 2>&1 \
             | clippy-sarif | tee clippy-native.sarif | sarif-fmt
-          exit ${PIPESTATUS[0]}
+          exit "${PIPESTATUS[0]}"
       - name: Upload Clippy SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v4
@@ -214,8 +212,6 @@ jobs:
           sarif_file: clippy-native.sarif
           category: clippy-native
           wait-for-processing: true
-      - if: failure()
-        uses: ./.github/actions/cancel-run-on-failure
 
   native-ios-build:
     # Native SwiftUI app, build half — regenerate bindings (facet typegen +
@@ -263,7 +259,7 @@ jobs:
       # image; without this `cargo` resolves to Apple's stub. (See ios-build.)
       - name: Ensure cargo is on PATH
         run: |
-          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           cargo --version
       # iOS-only `#[cfg(target_os = "ios")]` branches in the FFI crate can't be
       # linted by the Linux `clippy` job (no Apple SDK); lint them here against
@@ -613,8 +609,6 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check snapshot references (orphans + size ceiling)
         run: bash scripts/check-snapshots.sh
-      - if: failure()
-        uses: ./.github/actions/cancel-run-on-failure
 
   fmt:
     name: Formatting
@@ -628,8 +622,6 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
       - run: cargo fmt --all -- --check
-      - if: failure()
-        uses: ./.github/actions/cancel-run-on-failure
 
   # The same comment-density gate as the local pre-push hook, enforced for
   # everyone — an opt-in hook is effectively off (.claude/skills/intrada-ios-quality/SKILL.md "stated invariant =
@@ -649,8 +641,6 @@ jobs:
         run: |
           git fetch --no-tags origin "$GITHUB_BASE_REF"
           bash scripts/check-comment-density.sh
-      - if: failure()
-        uses: ./.github/actions/cancel-run-on-failure
 
   security:
     name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear, actionlint)
@@ -704,8 +694,6 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: failure()
-        uses: ./.github/actions/cancel-run-on-failure
 
   api-docker-build:
     # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered
