@@ -53,6 +53,9 @@ fastlane/test_output/
 # tool: machine-local absolute paths, regenerated per checkout by
 # `just lsp-setup` (see .zed/settings.json, docs/working-with-omp.md)
 buildServer.json
+# Per-file compiler flags written by `xcode-build-server parse` in
+# `just lsp-setup`: 100KB+ of absolute machine paths, same reasoning as above.
+.compile
 # graphify knowledge-graph output: machine-local, never committed (a re-recorded
 # multi-MB graph.json compounds in history like snapshot PNGs). The canonical
 # graph lives in the main checkout; scope is controlled by the committed
