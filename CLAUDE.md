@@ -519,7 +519,13 @@ say exactly what needs user verification.
 2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
 4. Never push to main. Always a feature branch + PR. **A human reviews and
-   merges. Agents never merge.**
+   merges. Agents never merge.** Getting CI green, though, is the session's
+   job and not the reviewer's: after every push, watch the run to a
+   conclusion, react to what fails, push again, and only surface the PR once
+   it is green or genuinely stuck. Red is something to fix, not to report.
+   Check the PR's mergeability too, not just the job list: a renamed job
+   leaves its old required context "expected" for ever, so the PR hangs on a
+   check that will never report and no job ever fails (#1542).
 5. **Open/update any non-trivial PR through a single pre-push gate that runs
    the checks and the self-review together** — don't `gh pr create`/`git
    push` feature work directly with review as a separate, skippable step.
