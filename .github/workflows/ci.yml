@@ -334,16 +334,16 @@ jobs:
       # step below) so this cache and the DerivedData cache never overlap on the
       # same path. Stable sources also make Xcode's incremental check on the
       # restored DerivedData a no-op, so the compiled deps get reused instead of
-      # rebuilt. Saved on main only: caches are per-ref, so a PR branch saving
-      # its own 928MB copy shares nothing and evicts what main cached.
-      - name: Cache SwiftPM packages
-        uses: actions/cache@v6
+      # rebuilt. Restore-then-save-on-main, not `save-if`: that is not an
+      # `actions/cache` input at all and was being ignored, so every PR branch
+      # wrote its own 928MB copy that no other ref can read.
+      - name: Restore SwiftPM packages
+        uses: actions/cache/restore@v6
         with:
           path: ios/build/spm
           key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
           restore-keys: |
             ios-spm-v1-${{ runner.os }}-
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       # Cache DerivedData (compiled SwiftPM dep products + build intermediates;
       # the resolved package *sources* are cached separately above) so
       # `xcodebuild test` rebuilds incrementally instead of recompiling the whole
@@ -355,18 +355,13 @@ jobs:
       # in the simulator, so a cache hit can't alter a snapshot result (a stale
       # incremental build fails loud, it can't silently pass). Bump the key prefix
       # to force-evict.
-      - name: Cache iOS DerivedData
-        uses: actions/cache@v6
+      - name: Restore iOS DerivedData
+        uses: actions/cache/restore@v6
         with:
           path: ios/build/dd
           key: ios-dd-v2-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
           restore-keys: |
             ios-dd-v2-${{ runner.os }}-
-          # Only main writes the cache (~66s). PRs restore main's DerivedData —
-          # which already holds the costly SwiftPM deps (Sentry, swift-syntax,
-          # swift-snapshot-testing) — and skip the write. The exact-key on main
-          # tracks `main`'s own source, so PR incremental builds stay warm.
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       # Build only, via the same `_ios-build-for-testing` recipe local dev's
       # `_ios-test-run` calls (#1198, split further in #1207) — the
       # xcodebuild invocation lives in exactly one place shared between CI and
@@ -376,6 +371,21 @@ jobs:
       # reference together when local dev moves to a newer Xcode/iOS.
       - name: Build for testing (just _ios-build-for-testing)
         run: just _ios-build-for-testing
+      # Both saves are main-only and deliberately after the build: PRs restore
+      # main's copies (already holding the costly SwiftPM deps) and write
+      # nothing, so one warm entry per key serves every branch.
+      - name: Save SwiftPM packages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/spm
+          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+      - name: Save iOS DerivedData
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/dd
+          key: ios-dd-v2-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
       # Not all of DerivedData — just the built app + .xctest bundles (and the
       # .xctestrun that points at them) the test-without-building jobs need.
       # ios/build/dd is a relative derivedDataPath under the same checkout
@@ -445,17 +455,22 @@ jobs:
             ios-spm-v1-${{ runner.os }}-
       # Release compiles into its own derivedDataPath, so it needs its own
       # cache: without one this was a cold rebuild of the whole dependency
-      # tree every run. Main-only writes, as with the Debug cache above.
-      - name: Cache Release DerivedData
-        uses: actions/cache@v6
+      # tree every run. Restore here, save on main only, below.
+      - name: Restore Release DerivedData
+        uses: actions/cache/restore@v6
         with:
           path: ios/build/dd-release
           key: ios-dd-release-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**') }}
           restore-keys: |
             ios-dd-release-v1-${{ runner.os }}-
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build Release (just ios-build-release)
         run: just ios-build-release
+      - name: Save Release DerivedData
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v6
+        with:
+          path: ios/build/dd-release
+          key: ios-dd-release-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**') }}
 
   native-ios-test-unit:
     # Test half 1/2 (#1207): IntradaTests (unit + snapshot) against the
@@ -699,7 +714,10 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # mode=min, not max: one `mode=max` run wrote 26 buildkit entries and
+          # 1.96GB, a quarter of the repo's whole cache allowance for a lane
+          # that only runs when the API changes.
+          cache-to: type=gha,mode=min
 
   deploy-api:
     name: Deploy API to Fly.io
