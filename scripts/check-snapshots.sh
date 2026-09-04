@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Snapshot hygiene guard (see CLAUDE.md -> "Snapshot test hygiene").
+# Snapshot hygiene guard (see skill://intrada-ios-quality).
 #
 #  1. Orphans: every __Snapshots__/<Class>/<method>.N.png must map to a
 #     `func <method>` in ios/IntradaTests/<Class>.swift. A renamed or deleted

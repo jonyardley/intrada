@@ -212,7 +212,7 @@ contract, the split cost more than it bought. Measured on that PR:
   hook, and mutation-testing vacuous tests. All three work with one agent.
 
 The rule that came out of it — one agent per vertical slice, fan out only on
-genuinely independent work — is in CLAUDE.md under *Parallel work streams*.
+genuinely independent work — is in `skill://intrada-parallel-streams`.
 
 ## Where #1256 Phase B's time actually went (2026-08-07)
 

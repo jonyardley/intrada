@@ -56,7 +56,7 @@ just ios-test-sim-clean       # delete this worktree's ios-test sim
 
 References live in `ios/IntradaTests/__Snapshots__/**` and are recorded on
 **iPhone 16 / iOS 26.5** to match CI (renderer-specific — see
-`.github/workflows/ci.yml` and CLAUDE.md → "Snapshot test hygiene").
+`.github/workflows/ci.yml` and `skill://intrada-ios-quality`).
 
 ```bash
 # Create the CI-matching simulator

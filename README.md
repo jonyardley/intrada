@@ -120,7 +120,7 @@ specs/                # Design specs for major features
 
 | Document | Purpose |
 |----------|---------|
-| [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
+| [`CLAUDE.md`](CLAUDE.md) | Development guidelines and architecture; task-scoped rules live in `.claude/skills/` |
 | [`docs/where-we-are.md`](docs/where-we-are.md) | Which release and phase we are on — hand-written, changed when they change |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |

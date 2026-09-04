@@ -45,6 +45,7 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Swift kept from the removed Tauri shell (not built)
+.claude/skills/          # Repo rules loaded on demand (see the pointers below)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Roadmap, status, and the operational reference
 specs/                   # Spec docs for major features (Tier 3 only)
@@ -199,7 +200,7 @@ you're tempted to write logic in Swift, it belongs in `intrada-core` as an
   swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
   built *with* the screen. Sentry is wired from the first build.
 - **Every colour, font, spacing and radius value is a named token** from
-  `Theme.swift` (full rules under Design System Rules). Genuine one-offs (a fixed
+  `Theme.swift` (full rules: `.claude/skills/intrada-design-system/SKILL.md`). Genuine one-offs (a fixed
   component height, a 2pt baseline nudge) stay literal — don't force those into
   the scale.
 - **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
@@ -209,130 +210,27 @@ you're tempted to write logic in Swift, it belongs in `intrada-core` as an
 
 [uniffi-rs#2818]: https://github.com/mozilla/uniffi-rs/issues/2818
 
-### Principles (from the 2026-06 review)
+### Screen quality bar and snapshot hygiene
 
-Hard-won lessons from the first full review of the native app. **Treat them like
-the non-negotiables above.**
-
-- **Surface, don't swallow — at every layer.** A core error state with no UI
-  surface is the silent-no-op bug (#846) one level up. Every `ViewModel.error`
-  must have a UI surface, and optimistic UI must reconcile with the core's
-  confirmed outcome — never fire a success haptic or dismiss a sheet before the
-  core confirms (re-read `viewModel.error` after `store.send`; see
-  `LibraryAddScreen.add`).
-- **A stated invariant must be an enforced invariant.** Back each offline-first
-  invariant with a test *and* a CI gate. Prose plus an opt-in local hook is
-  effectively off — assume the hook isn't installed.
-- **Sync-boundary discipline now, not at Phase D.** Both writers (shell + core)
-  must agree on the timestamp format, and reconciliation/merge policy lives in
-  the core, even before the sync engine exists. Don't encode merge rules in
-  shell SQL.
-- **Consolidate before you template.** Extract a shared primitive or form the
-  moment a *second* screen would copy it. The Library screens are the template
-  the other pillars will clone — duplication here multiplies.
-- **Bridge-crossing types need a real round-trip test as a build precondition.**
-  Extend the Rust `assert_round_trips` helper to every write payload *before* it
-  is wired to a screen — a stub-bridge test can't catch a bincode-wire break
-  (#846).
-
-### Snapshot test hygiene
-
-Snapshot references (`ios/IntradaTests/__Snapshots__/**/*.png`) are binaries
-committed to git and re-recorded on every intentional UI change, so each
-re-record adds a full copy to history forever. On the free offline tier they are
-the only UI quality gate, so keep the suite but keep it lean:
-
-- **One device + scale, deterministic host.** Pin `.iPhone13` + `displayScale`,
-  force light mode at the controller, use the stub bridge. Do **not** multiply
-  references by device/theme/size-class — snapshot a variant only when it can
-  independently regress.
-- **Snapshot load-bearing states, not the cross-product.** Prefer
-  component-level (`sizeThatFits`) or structural/text snapshots where the
-  assertion isn't pixel-perfect.
-- **Re-record with `just ios-snapshots-record <filter>`**, not by hand. It
-  deletes the matching references, runs only those tests (recording is
-  fail-then-pass by design), optimises what it wrote and re-checks hygiene —
-  one command instead of five, and scoped, so it is seconds rather than the
-  whole suite.
-- **Optimize before committing.** `ios-snapshots-record` does it; if you record
-  another way, run `just ios-snapshots-optimize`. CI's **Snapshot Hygiene** job
-  enforces a per-file size ceiling and fails on un-optimized references.
-- **Over the ceiling? Read `scripts/check-snapshots.sh` before reacting.** It
-  carries an allowlist for references that stay large as lossless PNG — the
-  smooth gradients (practice hero, focus-player radial) and dense-control screens.
-  **Cropping does not help those**: flat paper costs almost nothing and the
-  gradient is the whole bill. Add to the allowlist with the reason, and keep the
-  list tight.
-- **No orphans.** Delete a test → delete its PNG. The same job fails any
-  reference with no matching `func test…`. Check locally with
-  `just ios-snapshots-check`.
+Quality is per-screen, not deferred, and snapshot references are committed
+binaries that must stay lean. **Before adding or changing a screen, or touching
+`ios/IntradaTests/__Snapshots__`, you MUST read `skill://intrada-ios-quality`
+(`.claude/skills/intrada-ios-quality/SKILL.md`)**
+— it carries the 2026-06 review principles and the snapshot rules, and they
+bind whether or not you loaded it.
 
 ### Offline-first invariants (non-negotiable)
 
-The native app is **offline-first**: on-device SQLite is the source of truth, the
+The native app is offline-first: on-device SQLite is the source of truth, the
 app works with no network and no account, and sync is a future paid tier. Break
-one of these and the app silently stops being offline.
-
-1. **No network on the local-first path.** A local-first feature must work in
-   airplane mode. New reads/writes go through the persistence `Effect`, never
-   HTTP. *(Test-enforced: local-first launch + mutations assert zero `Http`.)*
-2. **Every persisted entity is sync-ready from day one** — carries `updated_at`
-   and a soft-delete `deleted_at` tombstone; **no hard deletes**, so the deferred
-   sync engine never needs a migration. *(Test-enforced for the schema.)*
-3. **Client-owned ids.** New entities mint their ulid locally as the canonical
-   id — no server-assigned-id round-trip, and no temp-id dance, in local-first.
-   (The temp-id default under *Other patterns* governs server-backed writes.)
-4. **Reconciliation lives in the core**, not the Swift shell. Sync / LWW / merge
-   logic is Rust (shareable to Android); the shell only executes typed storage
-   ops. (The dumb-pipe rule, applied to persistence.)
-5. **A failed local write is never a silent success.** Storage ops resolve a real
-   failure output (`PersistenceOutput::Failed`) and the core surfaces it — never
-   fake an `Ack` (#816).
-6. **Existing dual-mode handlers stay intact; new code is local-first only.**
-   Legacy domain handlers still branch on `local_first` — when touching one, keep
-   both branches passing, since core tests still exercise the online path. New
-   domain code targets local-first only: **the build-and-test-both-modes
-   requirement is retired for new work** (see
-   [`docs/rebuild-review.md`](docs/rebuild-review.md) §3).
-7. **No account gate on core functionality.** Only sync (the paid tier) may
-   require auth. The free app works fully signed-out.
-8. **Relational data in the GRDB store; only small singletons in `crux_kv`**
-   (settings, `session-in-progress` crash-recovery).
-
-**PR checklist — any change touching persistence, sync, or a new domain entity:**
-
-- [ ] New reads/writes go through the persistence `Effect`, not HTTP (1)
-- [ ] New persisted table/columns have `updated_at` + `deleted_at`; no hard delete (2)
-- [ ] New entities use a client-minted ulid as the canonical id (3)
-- [ ] Any merge/reconciliation logic is in the core, not the shell (4)
-- [ ] Write handlers branch on `local_first` (or use `save_or_put`) and a local
-      failure resolves `Failed`, not `Ack` (5)
-- [ ] Changes to an existing dual-mode handler keep both `local_first` branches
-      tested; new code is local-first only (6)
-- [ ] Data-model change: new migration appended (never edits a shipped one),
-      additive where possible; core type + migration + codec updated together;
-      ships an upgrade-path test (see below)
-
-### Local data migrations
-
-The on-device SQLite schema (GRDB, in `LibraryStore`) evolves via
-`DatabaseMigrator`. Treat these with **more** care than the server migrations:
-**on the free offline tier the device is the only copy of the user's data** — no
-server backup, no DBA. A destructive or buggy migration that ships is
-**unrecoverable** data loss, and you can't un-ship it.
-
-- **Append-only, forward-only, ordered.** Add a new `registerMigration("vN_…")`;
-  **never edit or delete a shipped migration** — it has already run on real
-  devices, and users skip versions, so the chain must run cleanly from *any*
-  past version.
-- **Additive by default.** New nullable columns and new tables are safe.
-  Drop/rename/retype is dangerous — use a copy-table migration, and prefer to
-  **defer destructive changes until sync/backup exists**.
-- **Evolve the core type + schema + codec together.** A new `Item` field needs,
-  in one change: the Rust field (`Option` / `#[serde(default)]`), a migration
-  adding the column with a default for existing rows, and the row↔`Item` codec.
-- **Test the upgrade path, not just the end state.** Every migration ships with a
-  test that a DB *populated at the previous version* migrates with data intact.
+one of the invariants and the app silently stops being offline, and on the free
+tier the device is the only copy of the user's data. **Before any change
+touching persistence, sync, a new domain entity, the local schema, or gating a
+feature behind sign-in, you MUST
+read `skill://intrada-offline-first`
+(`.claude/skills/intrada-offline-first/SKILL.md`)**. It carries the eight
+numbered invariants, the PR checklist and the **Local data migrations** rules,
+and they bind whether or not you loaded it.
 
 ## Authentication
 
@@ -350,98 +248,15 @@ Environment variables for every crate and the iOS build:
 
 ## Design System Rules
 
-The native app uses a "Paper & Score" light theme: warm paper backgrounds, serif
-titles (Source Serif 4), sans body text (Inter). All tokens live in `Theme.swift`
-(`ios/Intrada/DesignSystem/Theme.swift`); the shareable export is
-[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html).
-
-**Consult [`docs/design-principles.md`](docs/design-principles.md) before making
-any UI/UX design decision** — new surface, layout, flow, or interaction. It is
-the source of truth for how the app should feel: the "spend friction
-deliberately" model, one-primary-action-per-screen, content-over-chrome,
-progressive disclosure, reversible-by-default. It carries a dated decisions log
-(T-numbered); when a new decision is made, append to that log rather than deciding
-silently.
-
-**Every user-facing string is written against
-[`docs/tone-of-voice.md`](docs/tone-of-voice.md)** — titles, buttons, labels,
-empty states, errors, accessibility labels. Plain British English in a
-musician's words; no cheerleading, no AI-isms, no em dashes. Its sweep
-checklist is the review pass for any PR that adds or changes copy.
-
-### Hierarchy: Tokens → Modifiers → Components → Screens
-
-1. **Tokens first**: every colour, font, spacing and radius value traces to a
-   named token (`IntradaColor`, `IntradaFont`, `IntradaSpacing`, `IntradaRadius`).
-   Never hard-code a hex, a raw `.padding(16)`, or `cornerRadius: 12`.
-2. **Reuse before creating**: check `ios/Intrada/DesignSystem/` and
-   `ios/Intrada/Views/Components/` before building new markup.
-3. **Known primitives to reach for**: `TagChip`, `TypeBadge`, `ScoreRing`,
-   `BottomSheet`, `SegmentedPills`, `CardSurface`/`CardShadow`, `GlobalBanner`,
-   `FormErrorBanner`, `PlaceholderContent`, `ScreenScaffold`, `SectionHeader`,
-   `HairlineDivider`, `SegmentedProgress`.
-4. **Every top-level screen** is built from `ScreenScaffold`
-   (`ios/Intrada/DesignSystem/ScreenScaffold.swift`) so navigation chrome, safe
-   areas, and background stay consistent.
-
-### Animated reveals need an opaque backing
-
-Anything that **slides or fades in/out over other content** — a search bar, an
-expanding row, a banner, a sheet-like panel — must paint an **opaque background
-token** (`paperTop` / `cardFill`, never `clear`), or the transition **ghosts**
-and you see both components overlap mid-animation.
-
-- The **moving** view gets an opaque background so it hides what it travels over.
-- When it should emerge from *behind* sibling chrome, that chrome must also be
-  opaque **and** sit on top (`.zIndex(1)`), or it can't occlude anything.
-
-It's the background that hides the motion, not the transition. Don't ship a
-reveal animation without checking what shows through behind it.
-
-### Don't deviate from the system unless you're explicitly redesigning
-
-Hand-rolled views that duplicate an existing primitive are the #1 source of
-visual drift in this codebase. Before writing UI code:
-
-- **Grep first.** About to hand-roll a chip, badge, sheet, or card that already
-  exists under `DesignSystem/` or `Views/Components/`? Use the existing one.
-- **Extend, don't clone.** If a primitive *almost* fits, add a parameter to the
-  shared component (as `SegmentedPills` and `LibraryItemCard` already do). Don't
-  ship a parallel one-off.
-- **Typography**: use `IntradaFont` tokens (`.pageTitle`, `.cardTitle`,
-  `.sectionTitle`, `.fieldLabel`), never a raw `.font(.system(...))`.
-- **Spacing**: use `IntradaSpacing` tokens (`controlGap`, `cardCompact`, `row`,
-  `card`), never a literal `.padding(16)`.
-
-Deviation is only acceptable when **explicitly redesigning** a surface, and that
-is a deliberate flagged conversation (Claude Design first, then Plan mode), not
-an accident inside an unrelated feature PR. A redesign produces *updated tokens
-and primitives* in `Theme.swift`, not a hand-rolled clone in a single view.
-
-### iOS native-feel rules
-
-- **Haptics**: use `UIImpactFeedbackGenerator` / `UISelectionFeedbackGenerator`
-  via the `Store+Feedback` helpers — `selection` for tabs, `light` for taps,
-  `success` for saves (only after the core confirms), `warning` for destructive
-  confirms.
-- **iPad**: list→detail screens use `LibrarySplitView`. Build it with the view,
-  not as a retrofit.
-- **Safe areas**: respect them by default (`ScreenScaffold` handles this); don't
-  fight SwiftUI's layout with manual insets unless genuinely edge-to-edge.
-- **Animations**: use the tokens in `Motion.swift`, not ad hoc `.spring(...)`.
-
-## Design Workflow
-
-Design happens in **Claude Design**; full process in
-[`docs/design-workflow.md`](docs/design-workflow.md). The living reference is
-[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html),
-**derived from `Theme.swift`**, which stays the canonical token source. Required
-for new views and significant UI changes: mock the screen against the existing
-kit first, reuse tokens and components, and if something new is needed update
-`Theme.swift` and the design reference (plus its `support.js`) together.
-
-Pencil (`design/intrada.pen`) is **retired** — do not use it or edit that file.
-`design/light-mode-exploration.md` remains as provenance.
+The native app uses a "Paper & Score" light theme. Every colour, font, spacing
+and radius value is a named token from `Theme.swift`
+(`ios/Intrada/DesignSystem/Theme.swift`); hand-rolled views that duplicate an
+existing primitive are the #1 source of visual drift here. **Before any UI or
+UX change you MUST read `skill://intrada-design-system`
+(`.claude/skills/intrada-design-system/SKILL.md`)**, and consult
+[`docs/design-principles.md`](docs/design-principles.md) for how the app should
+feel and [`docs/tone-of-voice.md`](docs/tone-of-voice.md) for every
+user-facing string. These bind whether or not you loaded them.
 
 ## Code Style
 
@@ -653,9 +468,9 @@ override above applies to model choice too.
 These disciplines matter regardless of harness. In Claude Code sessions with
 the Superpowers plugin, four of its skills are kept as standalone globals and
 invoked **by name, deliberately** (the plugin's blanket "invoke a skill for
-anything" posture otherwise conflicts with the tier system); in OMP or any
-other harness, apply the same discipline directly — there is no skill
-catalogue to load, so state the practice inline instead.
+anything" posture otherwise conflicts with the tier system). OMP discovers the
+same `.claude/skills/` packs and resolves them as `skill://<name>`; in a harness
+with no skill catalogue, read the `SKILL.md` path directly.
 
 - **Test-first for non-UI Tier 2 work and all Tier 3 work**, and **the
   default for `intrada-core` changes** (`domain/*.rs`, `validation.rs`,
@@ -692,7 +507,8 @@ say exactly what needs user verification.
      every opener with "claim #N (stop if a PR already exists)".
 2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-4. Never push to main. Always a feature branch + PR.
+4. Never push to main. Always a feature branch + PR. **A human reviews and
+   merges. Agents never merge.**
 5. **Open/update any non-trivial PR through a single pre-push gate that runs
    the checks and the self-review together** — don't `gh pr create`/`git
    push` feature work directly with review as a separate, skippable step.
@@ -734,11 +550,14 @@ say exactly what needs user verification.
 
 ## Parallel work streams (agentic sessions)
 
-Rules for running more than one Claude Code session against this repo at once.
-Evidence base: coupling analysis of the last 400 commits (2026-08).
-
-The claim protocol in Always(1) is what stops two streams building the same
-issue; these rules stop two streams colliding in the same *files*. Both apply.
+More than one agent session against this repo at once is allowed, but only
+under rules that stop two streams colliding in the same files — the claim
+protocol in Always(1) covers the same issue, these cover the same *code*.
+**Before starting a second concurrent stream, fanning out to subagents, or
+coordinating worktrees you MUST read `skill://intrada-parallel-streams`
+(`.claude/skills/intrada-parallel-streams/SKILL.md`).** It
+also carries the stream rules, the serialisation points and the definition of
+done. The conventions below bind every change, concurrent or not.
 
 ### Conventions
 
@@ -747,7 +566,7 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 - No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
   One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
   list item** in a structured doc (`docs/roadmap.md`,
-  `design/CLAUDE.md` and this file's own lists) is house style, so match the
+  `CLAUDE.md` and `design/CLAUDE.md`) is house style, so match the
   siblings there. Sentences never take one, in a list item or anywhere else.
 - **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
   features by the musician-visible outcome ("exercises from a chord chart",
@@ -760,74 +579,11 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
   [`docs/reference.md`](docs/reference.md); older docs are renamed as
   touched, not swept.
 
-### Stream rules
-
-- **Exactly one core+iOS vertical stream at a time.** 31% of core commits also
-  touch `ios/`; two concurrent vertical features will collide.
-- A **second stream** may run only in the decoupled set: `crates/intrada-api`,
-  `docs/`, `specs/`, `design/`, or CI/tooling (`justfile`,
-  `.github/workflows/`). An API task that needs a new domain field is a core
-  change: it joins the vertical stream.
-- **Serialisation points.** If your task and another live branch both touch one
-  of these, serialise rather than parallelise:
-  `crates/intrada-core/src/app.rs`, `crates/intrada-core/src/domain/session.rs`,
-  `ios/IntradaTests/ScreenSnapshotTests.swift`,
-  `ios/Intrada/DesignSystem/PreviewSupport.swift`, `ios/project.yml`, and
-  `Cargo.lock` (never pair anything with a dependency bump).
-- One git worktree per stream, branched from fresh `origin/main`. Follow the
-  simulator safety rule under Commands. Close the second session when its task
-  ships; do not keep it warm.
-- **Clear a "conflicting" PR by merging main in, never by rebasing.**
-  `git fetch origin main && git merge origin/main && git push`. Feature
-  No tracked file is written by every PR any more, so a conflict now means two
-  branches really did touch the same code.
-- **Dependent PRs stack natively, depth 2 max.** Open the child PR with base =
-  the parent's branch; GitHub retargets it to main when the parent merges.
-  After the parent squash-merges, rebase the child:
-  `git rebase --onto origin/main <parent-old-head>`. No stacking tooling.
-
-### One agent per slice; fan out only on independent work
-
-**A vertical slice is one agent's job.** Do not split core and iOS across two
-agents working the same slice. In-session agent teams were tried on #1223 and
-retired: on a slice coupled by a bridge contract the split caused the worst bug
-in the PR, because the shell teammate couldn't see the core invariant it needed.
-The measured post-mortem is in [`docs/reference.md`](docs/reference.md).
-
-**Fan out to worktrees when the pieces are genuinely independent** — no shared
-contract in flight, no piece blocked on another's output. Good shapes: an audit
-or migration sweep across many files, N independent approaches to one design
-question, or unrelated tasks in the decoupled set. Bad shape: anything where two
-agents would edit either side of one contract.
-
-- **One git worktree per agent**, branched from fresh `origin/main`. Separate
-  checkouts mean no shared-index hazard, so a bare `git commit` is safe — the
-  explicit-pathspec rule existed only for the retired shared-checkout teams.
-- **The lead integrates.** Fan-out agents report; they do not merge into each
-  other's work. Reconcile in one place.
-- **The simulator is machine-global.** Only one agent runs iOS tests at a time.
-- Mechanics for git worktrees: Claude Code's `using-git-worktrees` skill;
-  OMP's native `isolated` worktree option on `task`/`agent` does the same
-  per-agent when scripting a fan-out without a separate skill.
-
-**Contract before code applies to one agent as much as to several.** Pin the
-Event/Effect/ViewModel shape for a slice before wiring either side — that
-discipline is what makes bridge changes reviewable, not a handoff protocol.
-
-### Definition of done (every stream, before requesting review)
-
-- [ ] `just check` green locally; `just ios-fmt-check` too if `ios/` touched
-- [ ] Tests shipped with the new code (see Testing)
-- [ ] PR opened via the pre-push gate (checks + self-review); self-review
-      comment posted
-- [ ] Codecov compared against the PR's Coverage line (Tier 2+)
-- [ ] Roadmap updated if a phase changed; deferred items tracked as issues
-      (there is no status file to update)
-- [ ] A human reviews and merges. Agents never merge.
 
 ## Known Tech Debt
 
-- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1:
+- `Set` (`domain/set.rs`) is shell-dead and violates offline-first invariant 1
+  (`.claude/skills/intrada-offline-first/SKILL.md`):
   no Swift screen sends a `SetEvent`, and its HTTP creates fire unconditionally
   with no `local_first` branch or persistence op. Tracked in #1348 — decide
   whether it's deleted (nothing unread stays in the tree) or converted to
