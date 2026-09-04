@@ -8,6 +8,7 @@ import SwiftUI
 struct FocusPlayerScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.screenWakeLock) private var wakeLock
 
   // Snapshots inject a fixed instant so the timer is deterministic; production
   // passes nil and the timer ticks off the wall clock (mirrors PracticeScreen).
@@ -46,12 +47,18 @@ struct FocusPlayerScreen: View {
     .onChange(of: active?.currentPosition) { _, _ in
       click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre)
     }
+    // `initial: true` is what takes the hold for a session started in the
+    // foreground, where the phase never changes (#1513).
     // No `UIBackgroundModes: audio`, so the pulse cannot survive backgrounding
     // — stop it rather than leave the row claiming a click nobody can hear.
-    .onChange(of: scenePhase) { _, phase in
+    .onChange(of: scenePhase, initial: true) { _, phase in
+      wakeLock.update(sessionActive: active != nil, phase: phase)
       if phase == .background { click.stop() }
     }
-    .onDisappear { click.dispose() }
+    .onDisappear {
+      click.dispose()
+      wakeLock.release()
+    }
   }
 
   private func content(_ active: ActiveSessionView) -> some View {

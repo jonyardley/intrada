@@ -10,6 +10,8 @@ struct RootView: View {
   }
 
   @State private var selectedTab: AppTab = .library
+  /// One per app: `isIdleTimerDisabled` is process-global, so two would race.
+  @State private var wakeLock = ScreenWakeLock.system()
 
   private let apiBaseURL = "https://intrada-api.fly.dev"
 
@@ -47,7 +49,7 @@ struct RootView: View {
     // the core drives presentation and dismissal (Save/Discard → Idle), so there's
     // no interactive dismiss to honour.
     .fullScreenCover(isPresented: playerBinding) {
-      PlayerHost().environment(store)
+      PlayerHost().environment(store).environment(\.screenWakeLock, wakeLock)
     }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
