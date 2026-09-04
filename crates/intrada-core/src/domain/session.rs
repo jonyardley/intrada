@@ -2109,7 +2109,7 @@ mod tests {
         assert_eq!(
             ids(&m),
             ["piece-Q", "ex-D"],
-            "never practised, so alphabetical"
+            "both starred items reach the setlist; the ordering itself is pinned in priorities.rs"
         );
         assert_eq!(m.last_error, None);
     }

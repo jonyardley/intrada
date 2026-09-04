@@ -18,12 +18,12 @@ pub(crate) fn order_priorities(
     clock: LocalClock,
 ) -> Vec<&LibraryItemView> {
     let mut starred: Vec<&LibraryItemView> = items.iter().filter(|i| i.priority).collect();
-    starred.sort_by(|a, b| {
-        staleness_of(b, clock)
-            .overdue_key()
-            .cmp(&staleness_of(a, clock).overdue_key())
-            .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
-            .then_with(|| a.id.cmp(&b.id))
+    starred.sort_by_cached_key(|i| {
+        (
+            std::cmp::Reverse(staleness_of(i, clock).overdue_key()),
+            i.title.to_lowercase(),
+            i.id.clone(),
+        )
     });
     starred
 }
@@ -115,14 +115,17 @@ mod tests {
 
     #[test]
     fn an_equal_gap_falls_back_to_title() {
+        // Ids run opposite to titles, and the titles order differently with and
+        // without case folding, so neither tie-break clause can pass on the
+        // other's behalf.
         let library = vec![
-            starred("b", "Waltz", Some(30)),
-            starred("a", "Barcarolle", Some(30)),
+            starred("a", "Aubade", Some(30)),
+            starred("z", "aria", Some(30)),
         ];
         assert_eq!(
             ordered_ids(&library),
-            ["a", "b"],
-            "same gap, so the order is alphabetical rather than whatever the library happened to hold"
+            ["z", "a"],
+            "same gap, so case-insensitive title order decides, not library order or id"
         );
     }
 }
