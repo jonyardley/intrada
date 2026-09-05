@@ -556,11 +556,12 @@ done. The conventions below bind every change, concurrent or not.
 
 - British English in all UI copy, comments, commit messages and PR bodies. UI
   copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
-- No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
-  One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
-  list item** in a structured doc (`docs/roadmap.md`,
-  `CLAUDE.md` and `design/CLAUDE.md`) is house style, so match the
-  siblings there. Sentences never take one, in a list item or anywhere else.
+- No em dashes, en dashes or double dashes in prose, comments, commits or PR
+  bodies. `scripts/check-dashes.sh` enforces the em and en dash ban on changed
+  lines (CI and pre-push; bypass a justified case with `SKIP_DASH_CHECK=1`),
+  with the label-separator exception (#1231) for the structured docs encoded as
+  its exemptions. Double dashes, commit messages and PR bodies stay on the
+  author, since the gate cannot see them.
 - **Plain language in docs, issues and PR bodies** (Jon, 2026-08-14). Name
   features by the musician-visible outcome ("exercises from a chord chart",
   "the Up next card"), with the codename in brackets once if git archaeology
