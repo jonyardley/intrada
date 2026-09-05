@@ -1144,6 +1144,296 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertThrowsError(try bridge.resolveEmpty(appRequest.id))
   }
 
+  // ── Real bridge (full-field contract, #846 class) ──────────────────────
+
+  /// Real-bridge full-field round trip for `LibraryItemView` (#846): every
+  /// real-bridge test above drives one setter and spot-checks the field it
+  /// touches, so a wire break on a DIFFERENT field of this 24-field
+  /// projection would pass every one of them. This pins every field the
+  /// create/patch pair can reach in one pass, so a dropped field anywhere
+  /// fails here even if its own dedicated test above would stay green.
+  func testRealBridgeItemCreateAndPatchPreservesEveryField() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let photoId = Ulid.generate()
+
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Nocturne in E-flat", kind: .piece, composer: "Chopin", key: "E\u{266D}",
+            modality: .major, tempo: Tempo(marking: "Andante", bpm: 92),
+            notes: "Practise slowly, hands separately", tags: ["romantic", "chopin"],
+            photoId: photoId))))
+
+    let created = try XCTUnwrap(try bridge.view().items.first)
+    XCTAssertFalse(created.id.isEmpty, "the core must mint an id")
+    XCTAssertEqual(created.itemType, .piece)
+    XCTAssertEqual(created.title, "Nocturne in E-flat")
+    XCTAssertEqual(created.subtitle, "Chopin", "subtitle mirrors the composer")
+    XCTAssertEqual(created.key, "E\u{266D}")
+    XCTAssertEqual(created.modality, .major)
+    XCTAssertEqual(created.tempoMarking, "Andante")
+    XCTAssertEqual(created.tempoBpm, 92)
+    XCTAssertEqual(created.tempo, "Andante (92 BPM)")
+    XCTAssertEqual(created.notes, "Practise slowly, hands separately")
+    XCTAssertEqual(created.tags, ["romantic", "chopin"])
+    XCTAssertNotNil(
+      SessionClock.parseRFC3339(created.createdAt), "createdAt must be a real RFC3339 stamp")
+    XCTAssertNotNil(
+      SessionClock.parseRFC3339(created.updatedAt), "updatedAt must be a real RFC3339 stamp")
+    XCTAssertEqual(created.priority, false)
+    XCTAssertTrue(created.linkedExercises.isEmpty)
+    XCTAssertTrue(created.usedIn.isEmpty)
+    XCTAssertNil(created.scaffoldPreview)
+    XCTAssertNil(created.chordChart)
+    XCTAssertNil(created.metre)
+    XCTAssertTrue(created.variants.isEmpty)
+    XCTAssertEqual(created.ladderIsKeys, false)
+    XCTAssertEqual(created.photoId, photoId)
+    XCTAssertNil(created.practice)
+    XCTAssertNil(created.latestAchievedTempo)
+
+    // Every PATCH field flipped or cleared in one update (mirrors the shell's
+    // ItemFormModel.updateInput()). A field the wire drops silently would
+    // leave the OLD value here rather than throwing, so every one is checked.
+    _ = try bridge.update(
+      .item(
+        .update(
+          id: created.id,
+          input: UpdateItem(
+            title: "Nocturne in E-flat (revised)", kind: .piece,
+            composer: .some("Chopin (ed. Cortot)"), key: .some("D"), modality: .some(nil),
+            tempo: .some(nil), notes: .some(nil), tags: ["romantic", "edited"], priority: true))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "the full patch must decode cleanly (#846)")
+    let patched = try XCTUnwrap(view.items.first { $0.id == created.id })
+    XCTAssertEqual(patched.title, "Nocturne in E-flat (revised)")
+    XCTAssertEqual(patched.itemType, .piece, "kind unchanged, so it must still read piece")
+    XCTAssertEqual(patched.subtitle, "Chopin (ed. Cortot)")
+    XCTAssertEqual(patched.key, "D")
+    XCTAssertNil(patched.modality, "modality was cleared")
+    XCTAssertNil(patched.tempoMarking, "tempo was cleared")
+    XCTAssertNil(patched.tempoBpm, "tempo was cleared")
+    XCTAssertNil(patched.tempo, "tempo was cleared")
+    XCTAssertNil(patched.notes, "notes were cleared")
+    XCTAssertEqual(patched.tags, ["romantic", "edited"])
+    XCTAssertEqual(patched.priority, true)
+    XCTAssertEqual(patched.photoId, photoId, "a priority/tag patch must not clobber the photo")
+  }
+
+  /// Real-bridge full-field round trip for the item's nested shapes (#846,
+  /// #1499, #1106): `ChordChart`'s chord-by-chord structure, the derived
+  /// `ScaffoldPreviewView`, the piece's `Metre`, and the exercises
+  /// `CommitScaffold` links are four different bincode shapes layered on one
+  /// item. Existing real-bridge tests spot-check one field of each; this pins
+  /// every field so a wire break in any of them can't hide behind the others
+  /// looking fine.
+  func testRealBridgeItemNestedShapesPreserveEveryField() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
+            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    let metre = Metre(beats: 3, unit: 4, groups: [3])
+
+    _ = try bridge.update(.item(.setMetre(id: id, metre: metre)))
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: id, rawChart: "| Cm7 F7 | Bbmaj7 Ebmaj7 | Am7b5 D7 | Gm6 |")))
+    _ = try bridge.update(.item(.commitScaffold(pieceId: id, kinds: [.shells, .guideToneLines])))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "every nested write must decode cleanly (err=\(view.error ?? "nil"))")
+    let piece = try XCTUnwrap(view.items.first { $0.id == id })
+
+    XCTAssertEqual(piece.metre, metre)
+
+    let chart = try XCTUnwrap(piece.chordChart)
+    XCTAssertEqual(chart.key, "G")
+    XCTAssertEqual(chart.modality, .minor)
+    XCTAssertEqual(chart.sections.count, 1, "one line, no section labels")
+    let bars = chart.sections[0].bars
+    XCTAssertEqual(bars.count, 4)
+    func chord(_ bar: Int, _ index: Int) -> ChordSymbol { bars[bar].chords[index].symbol }
+    XCTAssertEqual(bars[0].chords.count, 2)
+    XCTAssertEqual(
+      chord(0, 0), ChordSymbol(root: 0, quality: .min7, extensions: [], bass: nil, raw: "Cm7"))
+    XCTAssertEqual(
+      chord(0, 1), ChordSymbol(root: 5, quality: .dom7, extensions: [], bass: nil, raw: "F7"))
+    XCTAssertEqual(
+      chord(1, 0), ChordSymbol(root: 10, quality: .maj7, extensions: [], bass: nil, raw: "Bbmaj7"))
+    XCTAssertEqual(
+      chord(1, 1), ChordSymbol(root: 3, quality: .maj7, extensions: [], bass: nil, raw: "Ebmaj7"))
+    XCTAssertEqual(
+      chord(2, 0), ChordSymbol(root: 9, quality: .min7b5, extensions: [], bass: nil, raw: "Am7b5"))
+    XCTAssertEqual(
+      chord(2, 1), ChordSymbol(root: 2, quality: .dom7, extensions: [], bass: nil, raw: "D7"))
+    XCTAssertEqual(
+      chord(3, 0), ChordSymbol(root: 7, quality: .min6, extensions: [], bass: nil, raw: "Gm6"))
+
+    let preview = try XCTUnwrap(piece.scaffoldPreview)
+    XCTAssertEqual(preview.key, "G")
+    XCTAssertEqual(preview.specs.count, 5, "five generators")
+    XCTAssertEqual(preview.fallbackTotal, 0, "every chord above is in the known vocabulary")
+
+    XCTAssertEqual(piece.linkedExercises.count, 2)
+    let byTitle = Dictionary(uniqueKeysWithValues: piece.linkedExercises.map { ($0.title, $0) })
+    for title in ["Shells", "Guide-tone lines"] {
+      let exercise = try XCTUnwrap(byTitle[title])
+      XCTAssertFalse(exercise.id.isEmpty)
+      XCTAssertEqual(exercise.key, "G", "a scaffold-derived exercise is generated in the piece's key")
+      XCTAssertNil(exercise.tempo)
+      XCTAssertNil(exercise.practice, "never practised yet")
+      XCTAssertNil(exercise.pieceContextScore, "never scored against this piece yet")
+    }
+  }
+
+  /// Real-bridge full-field round trip for `SetlistEntryView` (#846, #1083,
+  /// #1420, #1499): drives every setter that reaches a single entry
+  /// (intention, rep target, planned duration, ladder attribution, block
+  /// grouping, reps, tempo + click pattern, notes, score) and asserts every
+  /// field of the resulting projection, so a dropped field anywhere on this
+  /// 20-field struct fails here even though each setter's own dedicated
+  /// spot-check elsewhere would stay green.
+  func testRealBridgeSessionEntryFullFieldRoundTrip() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Prelude in C", kind: .piece, composer: "J.S. Bach", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let pieceId = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let exerciseId = try XCTUnwrap(try bridge.view().items.first { $0.id != pieceId }?.id)
+    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    _ = try bridge.update(.item(.addVariant(itemId: exerciseId, label: "Slow")))
+    let variantId = try XCTUnwrap(
+      try bridge.view().items.first { $0.id == exerciseId }?.variants.first?.id)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
+    let building = try bridge.view()
+    let entry = try XCTUnwrap(
+      building.buildingSetlist?.entries.first { $0.itemId == exerciseId },
+      "the linked exercise should form a block with the piece")
+    let entryId = entry.id
+    let groupId = try XCTUnwrap(entry.groupId, "the piece's related exercise forms a block")
+
+    _ = try bridge.update(
+      .session(.setEntryIntention(entryId: entryId, intention: "Warm up before the Prelude")))
+    _ = try bridge.update(.session(.setRepTarget(entryId: entryId, target: 3)))
+    _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 300)))
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: variantId)))
+
+    _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-04T09:01:00Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z")))
+    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:04:00Z")))
+
+    let click = ClickState(metre: Metre(beats: 4, unit: 8, groups: [2, 2]), sounding: 0b0101)
+    _ = try bridge.update(
+      .session(
+        .updateEntryTempo(
+          entryId: entryId, tempo: 176,
+          observed: TempoObservation(userSet: false, clickSounding: true), click: click)))
+    _ = try bridge.update(
+      .session(.updateEntryNotes(entryId: entryId, notes: "Fingers not fully relaxed yet")))
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: 6)))
+
+    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:10:00Z")))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "every setter must decode cleanly (#846)")
+    let summary = try XCTUnwrap(view.summary)
+    let final = try XCTUnwrap(summary.entries.first { $0.id == entryId })
+
+    XCTAssertEqual(final.itemId, exerciseId)
+    XCTAssertEqual(final.itemTitle, "Hanon No. 1")
+    XCTAssertEqual(final.itemType, .exercise)
+    XCTAssertEqual(final.position, 0, "the related exercise leads the block")
+    XCTAssertFalse(final.durationDisplay.isEmpty)
+    XCTAssertEqual(final.status, .completed)
+    XCTAssertEqual(final.notes, "Fingers not fully relaxed yet")
+    XCTAssertEqual(final.score, 6)
+    XCTAssertEqual(final.intention, "Warm up before the Prelude")
+    XCTAssertEqual(final.repTarget, 3)
+    XCTAssertEqual(final.repCount, 3, "missed then three got-its: 0, 1, 2, 3")
+    XCTAssertEqual(final.repTargetReached, true)
+    let history = try XCTUnwrap(final.repHistory)
+    XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
+    XCTAssertEqual(final.plannedDurationSecs, 300)
+    XCTAssertNotNil(final.plannedDurationDisplay)
+    XCTAssertEqual(final.achievedTempo, 88, "176 quavers halves to 88 crotchets")
+    XCTAssertEqual(final.groupId, groupId)
+    XCTAssertEqual(final.variantId, variantId)
+    XCTAssertEqual(final.clickPattern, click)
+  }
+
+  /// Real-bridge cross-domain round trip (#846, #1083): a session-side score,
+  /// attributed to a ladder step via `SetEntryVariant` + `UpdateEntryScore`,
+  /// must reappear as that step's `VariantView.latestScore` / `scoreHistory` /
+  /// `isSolid` once the session is saved — a derivation that crosses BOTH the
+  /// session and item domains, so a wire break in either side can hide behind
+  /// the other's fields looking fine.
+  func testRealBridgeVariantScoreAggregatesIntoLadderView() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "Slow")))
+    _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "Fast")))
+    let ladder = try XCTUnwrap(try bridge.view().items.first?.variants)
+    let slowId = try XCTUnwrap(ladder.first { $0.label == "Slow" }?.id)
+    let fastId = try XCTUnwrap(ladder.first { $0.label == "Fast" }?.id)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: slowId)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
+    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:05:00Z")))
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: 8)))
+    _ = try bridge.update(.session(.saveSession(now: "2026-09-04T09:06:00Z")))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "the score, attribution and save must all decode cleanly (#846)")
+    let item = try XCTUnwrap(view.items.first { $0.id == itemId })
+    let slow = try XCTUnwrap(item.variants.first { $0.id == slowId })
+    let fast = try XCTUnwrap(item.variants.first { $0.id == fastId })
+
+    XCTAssertEqual(slow.latestScore, 8, "the score attributed to Slow must land on Slow, not Fast")
+    let historyEntry = try XCTUnwrap(slow.scoreHistory.first)
+    XCTAssertEqual(historyEntry.score, 8)
+    XCTAssertFalse(historyEntry.sessionId.isEmpty)
+    XCTAssertNotNil(SessionClock.parseRFC3339(historyEntry.sessionDate))
+    XCTAssertTrue(slow.isSolid, "8 of 10 reaches SOLID_SCORE_MIN")
+    XCTAssertFalse(slow.isCurrent, "a solid step is never the one to work on")
+
+    XCTAssertNil(fast.latestScore, "Fast was never practised")
+    XCTAssertTrue(fast.scoreHistory.isEmpty)
+    XCTAssertFalse(fast.isSolid)
+    XCTAssertTrue(fast.isCurrent, "Fast is the first not-yet-solid step once Slow is solid")
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────
 
   private func httpBridge() -> FakeBridge {

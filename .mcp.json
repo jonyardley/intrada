@@ -1,11 +1,4 @@
 {
   "$schema": "https://json.schemastore.org/mcp.json",
-  "mcpServers": {
-    "xcodebuild": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "xcodebuildmcp@2", "mcp"],
-      "env": {}
-    }
-  }
+  "mcpServers": {}
 }

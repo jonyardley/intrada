@@ -79,6 +79,35 @@ jobs:
               exit 1
             fi
           done
+      # cargo-swift's bundled uniffi-bindgen must match our uniffi runtime
+      # contract exactly (native-ios-build's "Install cargo-swift" comment);
+      # xcodegen has two lockstep occurrences within this file alone
+      # (native-ios-build and native-ios-build-release must generate from the
+      # same release). A bump to one copy and not its siblings silently
+      # installs a different cargo-swift/uniffi-bindgen pair (the #846 class
+      # of failure CLAUDE.md warns about) or generates two Xcode projects
+      # from different XcodeGen releases in the same run. mise.toml pins
+      # xcodegen only to its major version ("2"), so it has no exact patch
+      # pin to compare here; cargo-swift IS pinned exactly there, so it's
+      # the source of truth for that check.
+      - name: Version pins agree (cargo-swift, xcodegen)
+        run: |
+          swift_pinned=$(grep -oE '"cargo:cargo-swift" = "[^"]+"' mise.toml | cut -d'"' -f4)
+          for wf in .github/workflows/ci.yml .github/workflows/release-testflight.yml; do
+            while read -r v; do
+              if [ "$v" != "$swift_pinned" ]; then
+                echo "$wf pins cargo-swift $v but mise.toml pins $swift_pinned"
+                exit 1
+              fi
+            done < <(grep -oE 'cargo-swift.*[0-9]+\.[0-9]+\.[0-9]+' "$wf" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          done
+          xcodegen_pins=$(grep -ohE 'xcodegen[-/][0-9]+\.[0-9]+\.[0-9]+|download/[0-9]+\.[0-9]+\.[0-9]+/xcodegen' \
+            .github/workflows/ci.yml .github/workflows/release-testflight.yml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+          if [ "$(printf '%s\n' "$xcodegen_pins" | wc -l)" -gt 1 ]; then
+            echo "xcodegen pins disagree across workflows: $xcodegen_pins"
+            exit 1
+          fi
 
   test:
     name: Test
