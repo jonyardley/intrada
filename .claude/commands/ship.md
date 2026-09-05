@@ -1,5 +1,5 @@
 ---
-description: Run the pre-push gates (fmt, clippy, tests, native-iOS) and the self-review checklist before opening/updating a PR.
+description: Run the pre-push gates (fmt, clippy, tests, native-iOS) and the self-review checklist before opening/updating a PR. Before starting, read skill://intrada-shipping for the complete gate mechanics, Codecov expectations, and PR/issue body templates.
 ---
 
 Prepare the current branch to ship. Do these in order and STOP at the first failure, reporting the actual output:

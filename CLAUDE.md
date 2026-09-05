@@ -526,34 +526,10 @@ say exactly what needs user verification.
    Check the PR's mergeability too, not just the job list: a renamed job
    leaves its old required context "expected" for ever, so the PR hangs on a
    check that will never report and no job ever fails (#1542).
-5. **Open/update any non-trivial PR through a single pre-push gate that runs
-   the checks and the self-review together** — don't `gh pr create`/`git
-   push` feature work directly with review as a separate, skippable step.
-   Whatever funnel the current harness provides (Claude Code: the `ship`
-   skill; OMP or others: an equivalent task/command chaining checks +
-   review), route through it so review can't be skipped in a fast
-   build→push cadence (which is exactly how it gets skipped when left to
-   "remember to review"). Use a code-review agent for the self-review; post
-   its summary as a `gh pr comment` (the reviewer doesn't see
-   in-conversation subagent output), apply blockers and important findings
-   inline, and defer the rest as tracked issues per (7).
-   - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the
-     review step but still run the gates.
-   - **Small Tier 2** — one file, no bridge / DB / auth / migration surface —
-     may use a lighter single-pass review in place of a full agent. Anything
-     on the domain-sensitivity list, or spanning files, takes the full
-     review agent.
-6. **Check Codecov after CI** (Tier 2+). Compare the patch-coverage comment
-   against the **Coverage** line in the PR description. If there are unexpected
-   gaps, push tests or explain in a PR comment before calling the PR ready.
-7. **Open a tracked issue for every deferred / out-of-scope item**, labelled
-   (`horizon:now|next|later`, kind: `ux` / `architecture` / `bug` /
-   `accessibility` / `ios` / `pillar:*`). PR descriptions are not tracking — they
-   get auto-collapsed after merge. Open the issues *before* posting the
-   self-review comment: "will open a follow-up if it bites" is not acceptable.
-   Every self-review comment must end with `Deferred items tracked: #N, #M` or
-   `none — all flagged items addressed inline`. Silent omission is the failure
-   mode.
+5. **Open/update any non-trivial PR through a single pre-push gate** — route through
+   the gate funnel (checks and self-review); do not skip review in a fast cadence.
+   Before pushing, read `skill://intrada-shipping` (`.claude/skills/intrada-shipping/SKILL.md`)
+   for the gate mechanics, Codecov expectations, and deferred-issue protocol.
 
 ### After completing work
 1. Close the GitHub issue and drop its `in-flight` label — that *is* the
