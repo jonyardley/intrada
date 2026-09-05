@@ -145,6 +145,7 @@ struct PracticeScreen: View {
     } label: {
       HStack(spacing: IntradaSpacing.controlGap) {
         Image(systemName: "star.fill")
+          .accessibilityHidden(true)
         Text("Practise your priorities")
       }
       .font(IntradaFont.subtitle)

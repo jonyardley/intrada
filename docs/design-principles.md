@@ -766,7 +766,7 @@ trap. The issue's own wording (an entry point on "the Priorities section header
 in the Library, and/or the Practice tab") predates both the star filter that
 replaced that section and the Up next card that took the hero.
 
-So the route is one line: a star glyph and four words, in secondary ink, under
+So the route is one line: a star glyph and three words, in secondary ink, under
 whichever hero is showing. One primary action per screen survives, and the
 starred set reads as an alternative rather than a rival.
 
