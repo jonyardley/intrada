@@ -752,3 +752,41 @@ at arm's length); the counter behind the options menu (rejected by Jon above).
 **What this does not settle:** an accent timbre on the downbeat, subdivisions,
 whether a dotted crotchet can be named as the felt beat in 6/8, and what unit
 the tempo trend labels its axis with. All held out in the spec's open questions.
+
+### T20 — The starred route is a text action under the hero, never a second button
+
+**Status:** DECIDED 2026-09-05 (jonyardley/intrada#981, the screens half; the
+core half in #1540 and #1544).
+
+**Reads T15 forward rather than reversing it.** T15 ruled that a card under the
+Practice hero puts two buttons a thumb apart which both begin a session, and
+asks the user to choose between them with no basis for choosing. "Practise your
+priorities" is a third way in, so drawn as a filled CTA it lands in exactly that
+trap. The issue's own wording (an entry point on "the Priorities section header
+in the Library, and/or the Practice tab") predates both the star filter that
+replaced that section and the Up next card that took the hero.
+
+So the route is one line: a star glyph and four words, in secondary ink, under
+whichever hero is showing. One primary action per screen survives, and the
+starred set reads as an alternative rather than a rival.
+
+Three rulings come with it:
+
+- **It shows only from Idle.** The core refuses the event outside Idle with "A
+  practice is already in progress", so a button surviving into building, playing
+  or the summary would raise an error the user never caused. The shell gate is
+  `PracticeScreen.showsPriorities`, and deleting any clause of it fails a test.
+- **Nothing starred, nothing offered.** The flag is derived before the library
+  filter (#1544), so filtering to exercises cannot make the route flicker out
+  from under a musician who just starred a piece.
+- **Two secondaries under one primary is fine; two primaries is not.** With a
+  suggestion on screen, "Build my own instead" and "Practise your priorities"
+  both sit under one Start. Both are text, neither competes with it, and that is
+  the layout a snapshot now pins, because it is the one that can drift.
+
+Options considered: a filled button under the hero (rejected, T15's exact case);
+making the starred set the hero when anything is starred (rejected, the
+suggestion already owns that slot, and a star is a standing preference rather
+than a statement about today); putting it on the Library star filter instead
+(not rejected, deliberately held: it is a different question about where a
+musician goes looking, tracked as #1538).

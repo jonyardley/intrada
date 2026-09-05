@@ -885,6 +885,39 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(vm.error)
   }
 
+  /// "Practise your priorities" (#981): the event carries a timestamp, which is
+  /// a different bincode shape than the itemId write above. A wire break would
+  /// open an empty builder rather than fail, which is the #846 shape.
+  func testRealBridgePrioritiesSeedTheBuilder() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    for title in ["Hanon No. 1", "Scales"] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .exercise, composer: nil, key: nil, modality: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil))))
+    }
+    for item in try bridge.view().items {
+      _ = try bridge.update(
+        .item(
+          .update(
+            id: item.id,
+            input: UpdateItem(
+              title: item.title, kind: item.itemType, composer: nil, key: nil, modality: nil,
+              tempo: nil, notes: nil, tags: nil, priority: true))))
+    }
+    XCTAssertTrue(try bridge.view().hasPriorities, "both items are starred")
+
+    _ = try bridge.update(.session(.startBuildingWithPriorities(now: SessionClock.nowRFC3339())))
+    let vm = try bridge.view()
+    XCTAssertEqual(
+      vm.buildingSetlist?.entries.count, 2, "every starred item should reach the builder")
+    XCTAssertNil(vm.error)
+  }
+
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
   /// bridge through Building → Active → Summary → Idle, mirroring the
   /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
