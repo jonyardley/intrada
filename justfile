@@ -40,6 +40,23 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
+# MSRV floor check: same as CI's `msrv` job. Reads the floor from Cargo.toml
+# rather than pinning it again here, installs that toolchain if it is absent
+# (CI does this via dtolnay/rust-toolchain), then checks against it.
+# Local green must mean CI green: keep this command in lockstep with ci.yml.
+msrv:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(grep -oE 'package.rust-version = "[^"]+"' Cargo.toml | cut -d'"' -f2)
+    rustup toolchain install "$version" --profile minimal
+    cargo +"$version" check --workspace --all-targets
+
+# Coverage report via nextest: same as CI's `coverage` job (minus the
+# Codecov upload, which needs a CI-only token).
+# Local green must mean CI green: keep these flags in lockstep with ci.yml.
+coverage:
+    cargo llvm-cov nextest --workspace --codecov --output-path codecov.json
+
 # Spell check + unused deps + workflow lint (what CI's Security & hygiene job
 # runs). All three tools come from mise.toml (`mise install`) or brew.
 # `actionlint` falls back to mise when it is absent from PATH: bare needs mise's

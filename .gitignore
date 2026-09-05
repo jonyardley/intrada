@@ -49,6 +49,8 @@ ios/build/
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/test_output/
+# Local coverage report written by `just coverage`; CI uploads its own copy.
+codecov.json
 # xcode-build-server config for sourcekit-lsp, in Zed and in the agent's lsp
 # tool: machine-local absolute paths, regenerated per checkout by
 # `just lsp-setup` (see .zed/settings.json, docs/working-with-omp.md)
