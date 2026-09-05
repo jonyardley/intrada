@@ -1050,4 +1050,31 @@ final class ScreenSnapshotTests: XCTestCase {
     }
     assertSnapshot(of: host(trend), as: axConfig)
   }
+
+  /// The three states a simulator can reach. There is no camera on one, so the
+  /// live preview and the capture itself are only checkable on a device
+  /// (#1460); what these pin is that the chrome over the backdrop stays legible
+  /// and laid out.
+  func testPageCameraStates() {
+    let states = ZStack {
+      IntradaColor.viewerBackdrop
+      VStack(spacing: 24) {
+        PageCameraShutter(disabled: false, onPress: {})
+        PageCameraFailure(message: "Couldn't take the photo. Try again.")
+        PageCameraBlocked(access: .denied, onOpenSettings: {})
+      }
+    }
+    assertSnapshot(of: host(states), as: config)
+  }
+
+  /// The confirm step, which is the fix: the page you approve is the page that
+  /// gets stored, where the scanner kept one shot of several without saying so.
+  func testPageCameraConfirm() {
+    let confirm = ZStack {
+      IntradaColor.viewerBackdrop
+      CapturedPageConfirm(page: Self.page, onKeep: {}, onRetake: {})
+        .padding(16)
+    }
+    assertSnapshot(of: host(confirm), as: config)
+  }
 }
