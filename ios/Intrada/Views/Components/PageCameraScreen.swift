@@ -1,83 +1,40 @@
 import AVFoundation
 import SwiftUI
 
-/// The camera we own, in place of `VNDocumentCameraViewController`: that one
-/// fired its own shutter while you were reaching for Save, and kept the first
-/// of however many shots it took without saying so (#1460). One press, then the
-/// flattened page to approve before it is stored.
-struct PageCameraScreen: View {
-  let onFinish: (PhotoCapture) -> Void
-
-  private let device: any PageCameraDevice
-  @State private var stage: Stage = .preparing
-  @State private var failure: String?
-  @State private var capturing = false
-
-  init(device: (any PageCameraDevice)? = nil, onFinish: @escaping (PhotoCapture) -> Void) {
-    self.device = device ?? AVPageCameraDevice()
-    self.onFinish = onFinish
-  }
-
-  private enum Stage {
+/// Where the camera has got to. Lives outside the view so the transitions the
+/// hardware drives can be tested with a stub device: none of them are reachable
+/// on a simulator (#1460).
+@MainActor
+@Observable
+final class PageCameraModel {
+  enum Stage {
     case preparing
     case live
     /// The cropped page, not the raw frame: what you approve is what is stored.
     case captured(UIImage)
     case blocked(PageCameraAccess)
+    /// The camera exists but would not start, usually because something else
+    /// holds it. Distinct from `blocked`, whose copy says there is no camera.
+    case unstartable
   }
 
-  var body: some View {
-    ZStack {
-      IntradaColor.viewerBackdrop.ignoresSafeArea()
-      stageContent
-      chrome
-    }
-    .task { await begin() }
-    .onDisappear { device.stop() }
+  private(set) var stage: Stage = .preparing
+  private(set) var failure: String?
+  private(set) var capturing = false
+  /// Set once the screen is on its way out. The shutter stays hit-testable
+  /// through the dismissal transition, and `capturePhoto` on a stopped session
+  /// raises an ObjC exception no `catch` here can intercept.
+  private(set) var finished = false
+
+  private let device: any PageCameraDevice
+
+  init(device: any PageCameraDevice) {
+    self.device = device
   }
 
-  @ViewBuilder private var stageContent: some View {
-    switch stage {
-    case .preparing:
-      EmptyView()
-    case .live:
-      if let session = device.session {
-        CameraPreview(session: session).ignoresSafeArea()
-      }
-    case .captured(let page):
-      CapturedPageConfirm(page: page, onKeep: keep, onRetake: { stage = .live })
-    case .blocked(let access):
-      PageCameraBlocked(access: access, onOpenSettings: openSettings)
-    }
-  }
+  var session: AVCaptureSession? { device.session }
 
-  private var chrome: some View {
-    VStack(spacing: 0) {
-      HStack {
-        Button("Cancel", action: cancel)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.onAccent)
-        Spacer()
-      }
-      .padding(IntradaSpacing.card)
-
-      Spacer()
-
-      if let failure {
-        PageCameraFailure(message: failure)
-          .padding(.bottom, IntradaSpacing.card)
-      }
-
-      if case .live = stage {
-        PageCameraShutter(disabled: capturing, onPress: takePhoto)
-          .padding(.bottom, IntradaSpacing.section)
-      }
-    }
-  }
-
-  // ── Actions ──
-
-  private func begin() async {
+  func begin() async {
     let access = await device.authorise()
     guard access == .allowed else {
       stage = .blocked(access)
@@ -88,39 +45,138 @@ struct PageCameraScreen: View {
       stage = .live
     } catch {
       report(error, "page camera start")
-      stage = .blocked(.unavailable)
+      stage = .unstartable
     }
   }
 
-  private func takePhoto() {
-    guard !capturing else { return }
+  func takePhoto() async {
+    guard !capturing, !finished else { return }
     capturing = true
     failure = nil
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    defer { capturing = false }
 
-    Task {
-      defer { capturing = false }
-      do {
-        let shot = try await device.capture()
-        // The system scanner cropped its own output; ours has to, and the work
-        // blocks long enough to drop frames.
-        let page = await Task.detached(priority: .userInitiated) { PageCrop.toPage(shot) }.value
-        stage = .captured(page)
-      } catch {
-        report(error, "page camera capture")
-        failure = "Couldn't take the photo. Try again."
+    do {
+      let shot = try await device.capture()
+      // The system scanner cropped its own output; ours has to, and the work
+      // blocks long enough to drop frames.
+      let page = await Task.detached(priority: .userInitiated) { PageCrop.toPage(shot) }.value
+      stage = .captured(page)
+    } catch {
+      report(error, "page camera capture")
+      failure = "Couldn't take the photo. Try again."
+    }
+  }
+
+  func retake() {
+    stage = .live
+  }
+
+  /// The page to keep, or `nil` if there is nothing captured to keep.
+  func keep() -> UIImage? {
+    guard case .captured(let page) = stage else { return nil }
+    finished = true
+    device.stop()
+    return page
+  }
+
+  func cancel() {
+    finished = true
+    device.stop()
+  }
+
+  func stopIfRunning() {
+    guard !finished else { return }
+    finished = true
+    device.stop()
+  }
+}
+
+/// The camera we own, in place of `VNDocumentCameraViewController`: that one
+/// fired its own shutter while you were reaching for Save, and kept the first
+/// of however many shots it took without saying so (#1460). One press, then the
+/// flattened page to approve before it is stored.
+struct PageCameraScreen: View {
+  let onFinish: (PhotoCapture) -> Void
+
+  /// `@State`, never a plain property: the presenting screens re-evaluate their
+  /// bodies on every core update, which re-runs this initialiser while the
+  /// cover is up and would otherwise swap in a fresh unconfigured camera.
+  @State private var model: PageCameraModel
+
+  init(device: (any PageCameraDevice)? = nil, onFinish: @escaping (PhotoCapture) -> Void) {
+    _model = State(initialValue: PageCameraModel(device: device ?? AVPageCameraDevice()))
+    self.onFinish = onFinish
+  }
+
+  var body: some View {
+    ZStack {
+      IntradaColor.viewerBackdrop.ignoresSafeArea()
+      stageContent
+      chrome
+    }
+    .task { await model.begin() }
+    .onDisappear { model.stopIfRunning() }
+  }
+
+  @ViewBuilder private var stageContent: some View {
+    switch model.stage {
+    case .preparing:
+      EmptyView()
+    case .live:
+      if let session = model.session {
+        CameraPreview(session: session).ignoresSafeArea()
+      }
+    case .captured(let page):
+      CapturedPageConfirm(page: page, onKeep: keep, onRetake: model.retake)
+    case .blocked(let access):
+      PageCameraBlocked(access: access, onOpenSettings: openSettings)
+    case .unstartable:
+      PageCameraUnstartable()
+    }
+  }
+
+  private var chrome: some View {
+    VStack(spacing: 0) {
+      HStack {
+        Button("Cancel", action: cancel)
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.onAccent)
+          .padding(.horizontal, IntradaSpacing.row)
+          .padding(.vertical, IntradaSpacing.controlGap)
+          // Over a bright page the label alone measures under the AA floor;
+          // the scrim is the one PhotoViewer's Done button already uses.
+          .background(IntradaColor.viewerBackdrop.opacity(0.8), in: Capsule())
+          .contentShape(Capsule())
+        Spacer()
+      }
+      .padding(IntradaSpacing.card)
+
+      Spacer()
+
+      if let failure = model.failure {
+        PageCameraFailure(message: failure)
+          .padding(.bottom, IntradaSpacing.card)
+      }
+
+      if case .live = model.stage {
+        PageCameraShutter(disabled: model.capturing, onPress: takePhoto)
+          .padding(.bottom, IntradaSpacing.section)
       }
     }
   }
 
+  private func takePhoto() {
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Task { await model.takePhoto() }
+  }
+
   private func keep() {
-    guard case .captured(let page) = stage else { return }
-    device.stop()
+    guard let page = model.keep() else { return }
     onFinish(.captured(page))
   }
 
   private func cancel() {
-    device.stop()
+    model.cancel()
     onFinish(.cancelled)
   }
 
@@ -206,6 +262,22 @@ struct PageCameraBlocked: View {
           .padding(.vertical, IntradaSpacing.cardCompact)
           .background(LinearGradient.brandBar, in: Capsule())
       }
+    }
+    .padding(IntradaSpacing.section)
+  }
+}
+
+struct PageCameraUnstartable: View {
+  var body: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      Text("Couldn't start the camera")
+        .font(IntradaFont.cardTitle())
+        .foregroundStyle(IntradaColor.onAccent)
+
+      Text("Something else may be using it. Close this and try again.")
+        .font(IntradaFont.body)
+        .foregroundStyle(IntradaColor.onAccent.opacity(0.75))
+        .multilineTextAlignment(.center)
     }
     .padding(IntradaSpacing.section)
   }

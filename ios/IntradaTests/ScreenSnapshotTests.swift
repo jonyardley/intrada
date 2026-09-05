@@ -1051,7 +1051,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(trend), as: axConfig)
   }
 
-  /// The three states a simulator can reach. There is no camera on one, so the
+  /// The four states a simulator can reach. There is no camera on one, so the
   /// live preview and the capture itself are only checkable on a device
   /// (#1460); what these pin is that the chrome over the backdrop stays legible
   /// and laid out.
@@ -1062,6 +1062,7 @@ final class ScreenSnapshotTests: XCTestCase {
         PageCameraShutter(disabled: false, onPress: {})
         PageCameraFailure(message: "Couldn't take the photo. Try again.")
         PageCameraBlocked(access: .denied, onOpenSettings: {})
+        PageCameraUnstartable()
       }
     }
     assertSnapshot(of: host(states), as: config)

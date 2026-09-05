@@ -12,6 +12,8 @@ Use a code-review agent for the self-review; post its summary as a `gh pr commen
 - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the review step but still run the gates.
 - **Small Tier 2** — one file, no bridge / DB / auth / migration surface — may use a lighter single-pass review in place of a full agent. Anything on the domain-sensitivity list, or spanning files, takes the full review agent.
 
+**Non-trivial PRs open as drafts.** `gh pr create --draft`, then `gh pr ready <n>` only once the self-review comment is posted, its blockers are fixed inline and the deferred issues exist. An open PR reads as ready to merge to the person merging it, and the difference between "reviewed and green" and "green while a reviewer is still running" lives only in the prose nobody should have to read carefully. #1550 merged during the fourteen minutes its reviewer was still thinking, taking a defect to main that the review then found. CI has no draft filter, so this costs nothing in signal.
+
 ## Codecov gate (Tier 2+)
 
 Check Codecov after CI finishes. Compare the patch-coverage comment against the **Coverage** line in the PR description. If there are unexpected gaps, push tests or explain in a PR comment before calling the PR ready.
