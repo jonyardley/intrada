@@ -1286,7 +1286,8 @@ final class StoreEffectLoopTests: XCTestCase {
     for title in ["Shells", "Guide-tone lines"] {
       let exercise = try XCTUnwrap(byTitle[title])
       XCTAssertFalse(exercise.id.isEmpty)
-      XCTAssertEqual(exercise.key, "G", "a scaffold-derived exercise is generated in the piece's key")
+      XCTAssertEqual(
+        exercise.key, "G", "a scaffold-derived exercise is generated in the piece's key")
       XCTAssertNil(exercise.tempo)
       XCTAssertNil(exercise.practice, "never practised yet")
       XCTAssertNil(exercise.pieceContextScore, "never scored against this piece yet")
