@@ -1150,8 +1150,11 @@ final class StoreEffectLoopTests: XCTestCase {
   /// real-bridge test above drives one setter and spot-checks the field it
   /// touches, so a wire break on a DIFFERENT field of this 24-field
   /// projection would pass every one of them. This pins every field the
-  /// create/patch pair can reach in one pass, so a dropped field anywhere
-  /// fails here even if its own dedicated test above would stay green.
+  /// create/patch pair populates, plus the empty/nil shape of the rest, so a
+  /// positional bincode break (which shifts later fields into garbage, the
+  /// dangerous #846 case) fails here even when its own dedicated test stays
+  /// green. The one case this cannot see is a trailing field dropping to its
+  /// own default; that field's dedicated setter test above covers it.
   func testRealBridgeItemCreateAndPatchPreservesEveryField() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
@@ -1220,7 +1223,10 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(patched.notes, "notes were cleared")
     XCTAssertEqual(patched.tags, ["romantic", "edited"])
     XCTAssertEqual(patched.priority, true)
-    XCTAssertEqual(patched.photoId, photoId, "a priority/tag patch must not clobber the photo")
+    XCTAssertEqual(
+      patched.photoId, photoId,
+      "a patch that never mentions the photo must preserve it: guards the update reconciliation, not just the wire"
+    )
   }
 
   /// Real-bridge full-field round trip for the item's nested shapes (#846,
@@ -1387,7 +1393,7 @@ final class StoreEffectLoopTests: XCTestCase {
   /// Real-bridge cross-domain round trip (#846, #1083): a session-side score,
   /// attributed to a ladder step via `SetEntryVariant` + `UpdateEntryScore`,
   /// must reappear as that step's `VariantView.latestScore` / `scoreHistory` /
-  /// `isSolid` once the session is saved — a derivation that crosses BOTH the
+  /// `isSolid` once the session is saved, a derivation that crosses BOTH the
   /// session and item domains, so a wire break in either side can hide behind
   /// the other's fields looking fine.
   func testRealBridgeVariantScoreAggregatesIntoLadderView() throws {

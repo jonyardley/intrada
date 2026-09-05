@@ -40,13 +40,15 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
-# MSRV floor check: same as CI's `msrv` job — reads the floor from Cargo.toml
-# rather than pinning it again here, then checks against it.
+# MSRV floor check: same as CI's `msrv` job. Reads the floor from Cargo.toml
+# rather than pinning it again here, installs that toolchain if it is absent
+# (CI does this via dtolnay/rust-toolchain), then checks against it.
 # Local green must mean CI green: keep this command in lockstep with ci.yml.
 msrv:
     #!/usr/bin/env bash
     set -euo pipefail
     version=$(grep -oE 'package.rust-version = "[^"]+"' Cargo.toml | cut -d'"' -f2)
+    rustup toolchain install "$version" --profile minimal
     cargo +"$version" check --workspace --all-targets
 
 # Coverage report via nextest: same as CI's `coverage` job (minus the

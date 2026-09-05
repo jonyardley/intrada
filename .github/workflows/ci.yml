@@ -80,32 +80,46 @@ jobs:
             fi
           done
       # cargo-swift's bundled uniffi-bindgen must match our uniffi runtime
-      # contract exactly (native-ios-build's "Install cargo-swift" comment);
-      # xcodegen has two lockstep occurrences within this file alone
-      # (native-ios-build and native-ios-build-release must generate from the
-      # same release). A bump to one copy and not its siblings silently
-      # installs a different cargo-swift/uniffi-bindgen pair (the #846 class
-      # of failure CLAUDE.md warns about) or generates two Xcode projects
-      # from different XcodeGen releases in the same run. mise.toml pins
-      # xcodegen only to its major version ("2"), so it has no exact patch
-      # pin to compare here; cargo-swift IS pinned exactly there, so it's
-      # the source of truth for that check.
-      - name: Version pins agree (cargo-swift, xcodegen)
+      # contract exactly (native-ios-build's "Install cargo-swift" comment), so
+      # its pin must agree across mise.toml and every workflow that installs it.
+      # xcodegen has two lockstep occurrences in THIS file (native-ios-build and
+      # native-ios-build-release must generate from the same release); the
+      # release-testflight lane installs xcodegen via brew with no version, so
+      # only ci.yml's own copies are compared here. A bump to one copy and not
+      # its siblings silently installs a mismatched cargo-swift/uniffi-bindgen
+      # pair (the #846 class CLAUDE.md warns about) or builds two Xcode projects
+      # from different XcodeGen releases in one run. Each half fails loudly when
+      # its pin is missing, so a reworded cache key cannot turn the guard into a
+      # green no-op.
+      - name: Version pins agree (cargo-swift across files; xcodegen within ci.yml)
         run: |
           swift_pinned=$(grep -oE '"cargo:cargo-swift" = "[^"]+"' mise.toml | cut -d'"' -f4)
+          if [ -z "$swift_pinned" ]; then
+            echo "no cargo-swift pin in mise.toml: the guard would be a no-op"
+            exit 1
+          fi
+          swift_seen=0
           for wf in .github/workflows/ci.yml .github/workflows/release-testflight.yml; do
             while read -r v; do
+              swift_seen=$((swift_seen + 1))
               if [ "$v" != "$swift_pinned" ]; then
                 echo "$wf pins cargo-swift $v but mise.toml pins $swift_pinned"
                 exit 1
               fi
             done < <(grep -oE 'cargo-swift.*[0-9]+\.[0-9]+\.[0-9]+' "$wf" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           done
+          if [ "$swift_seen" -eq 0 ]; then
+            echo "no cargo-swift version in any workflow: the guard would be a no-op"
+            exit 1
+          fi
           xcodegen_pins=$(grep -ohE 'xcodegen[-/][0-9]+\.[0-9]+\.[0-9]+|download/[0-9]+\.[0-9]+\.[0-9]+/xcodegen' \
-            .github/workflows/ci.yml .github/workflows/release-testflight.yml \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+            .github/workflows/ci.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+          if [ -z "$xcodegen_pins" ]; then
+            echo "no xcodegen pin in ci.yml: the guard would be a no-op"
+            exit 1
+          fi
           if [ "$(printf '%s\n' "$xcodegen_pins" | wc -l)" -gt 1 ]; then
-            echo "xcodegen pins disagree across workflows: $xcodegen_pins"
+            echo "xcodegen pins disagree within ci.yml: $xcodegen_pins"
             exit 1
           fi
 
