@@ -1,10 +1,15 @@
 import PhotosUI
 import SwiftUI
-import VisionKit
+
+/// What a capture route hands back.
+enum PhotoCapture {
+  case captured(UIImage)
+  case cancelled
+}
 
 /// Which capture route is on screen. Driven by `.photoCapture(...)`, which
-/// owns the dismissal `VNDocumentCameraViewController` does not do itself —
-/// forgetting that once left the scanner with no way out (#1436).
+/// owns the dismissal the camera does not do itself: forgetting that once
+/// left the scanner with no way out (#1436).
 struct PhotoCaptureState {
   fileprivate(set) var scanning = false
   fileprivate(set) var choosingFromLibrary = false
@@ -19,11 +24,10 @@ extension View {
     -> some View
   {
     fullScreenCover(isPresented: state.scanning) {
-      DocumentScanner { capture in
+      PageCameraScreen { capture in
         state.wrappedValue.scanning = false
         sources.finished(scanning: capture)
       }
-      .ignoresSafeArea()
     }
     .photosPicker(
       isPresented: state.choosingFromLibrary, selection: state.picked, matching: .images
@@ -45,15 +49,12 @@ struct PhotoCaptureSources {
   /// Takes a message written for the user, never a raw error.
   let onFailure: (String) -> Void
 
-  static var canScan: Bool { VNDocumentCameraViewController.isSupported }
+  static var canScan: Bool { AVPageCameraDevice.isAvailable }
 
   func finished(scanning capture: PhotoCapture) {
     switch capture {
     case .captured(let image): write(image)
     case .cancelled: break
-    case .failed(let error):
-      report(error, "document scan")
-      onFailure("Couldn't scan the page. Try again.")
     }
   }
 
