@@ -127,6 +127,9 @@
       // Type-filters items; callers pre-filter the list for text/tag queries.
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
+      // Derived from the whole library, never `visible`, so a fixture with a
+      // filter on still reports what the core would report (#981).
+      viewModel.hasPriorities = items.contains { $0.priority }
       viewModel.sessions = sessions
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
@@ -205,6 +208,26 @@
     static var previewPracticeSuggestion: Store {
       Store(
         bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly],
+          lastPractised: .previewYesterday, upNext: .previewStarred))
+    }
+
+    /// Practice home with something starred, so the priorities route shows
+    /// under the ordinary hero (#981).
+    static var previewPracticePriorities: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [starred(.previewPiece), .previewMinimal],
+          sessions: [.previewCompleted, .previewEndedEarly],
+          lastPractised: .previewYesterday))
+    }
+
+    /// A suggestion and a starred library together: the one layout where two
+    /// secondary actions stack under a single primary (#981).
+    static var previewPracticeSuggestionPriorities: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [starred(.previewPiece), .previewMinimal],
           sessions: [.previewCompleted, .previewEndedEarly],
           lastPractised: .previewYesterday, upNext: .previewStarred))
     }

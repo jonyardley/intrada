@@ -105,20 +105,56 @@ struct PracticeScreen: View {
   }
 
   @ViewBuilder private var heroSection: some View {
-    if let suggestion {
-      UpNextHero(
-        suggestion: suggestion,
-        onStart: {
-          store.send(
-            .session(.startBuildingFromSuggestion(now: SessionClock.nowRFC3339())),
-            onSuccess: .impact)
-        },
-        onBuildOwn: { withAnimation(IntradaMotion.standard) { suggestionDismissed = true } }
-      )
-      .transition(.opacity)
-    } else {
-      hero
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      if let suggestion {
+        UpNextHero(
+          suggestion: suggestion,
+          onStart: {
+            store.send(
+              .session(.startBuildingFromSuggestion(now: SessionClock.nowRFC3339())),
+              onSuccess: .impact)
+          },
+          onBuildOwn: { withAnimation(IntradaMotion.standard) { suggestionDismissed = true } }
+        )
+        .transition(.opacity)
+      } else {
+        hero
+      }
+
+      if showsPriorities { prioritiesButton }
     }
+  }
+
+  // Text, never a filled CTA: two buttons a thumb apart that both start a
+  // session is the ambiguity T15 rejected for the Up next card (T20).
+  private var showsPriorities: Bool { Self.showsPriorities(store.viewModel) }
+
+  /// Something is starred and nothing else is under way, so the tap cannot land
+  /// on the core's "a practice is already in progress" refusal (#981).
+  static func showsPriorities(_ viewModel: ViewModel?) -> Bool {
+    guard let viewModel else { return false }
+    return viewModel.hasPriorities && viewModel.buildingSetlist == nil
+      && viewModel.activeSession == nil && viewModel.summary == nil
+  }
+
+  private var prioritiesButton: some View {
+    Button {
+      store.send(
+        .session(.startBuildingWithPriorities(now: SessionClock.nowRFC3339())),
+        onSuccess: .impact)
+    } label: {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        Image(systemName: "star.fill")
+          .accessibilityHidden(true)
+        Text("Practise your priorities")
+      }
+      .font(IntradaFont.subtitle)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, IntradaSpacing.controlGap)
+    }
+    .buttonStyle(PressRebound())
+    .accessibilityHint("Builds a session from everything you have starred")
   }
 
   private var hero: some View {

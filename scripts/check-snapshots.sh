@@ -25,7 +25,8 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
-    testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
+    testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenPriorities | \
+      testPracticeScreenQuietDay | \
       testUpNextHeroNeverMarked | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection) return 0 ;;
@@ -40,7 +41,7 @@ is_large() {
 XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
 is_xl() {
   case "$1" in
-    testPracticeScreenSuggestion) return 0 ;;
+    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities) return 0 ;;
     *) return 1 ;;
   esac
 }

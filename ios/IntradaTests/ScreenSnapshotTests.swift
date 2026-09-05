@@ -159,6 +159,20 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPracticeSuggestion), as: config)
   }
 
+  func testPracticeScreenPriorities() {
+    assertSnapshot(
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPracticePriorities), as: config)
+  }
+
+  func testPracticeScreenSuggestionPriorities() {
+    assertSnapshot(
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPracticeSuggestionPriorities), as: config)
+  }
+
   /// No star, no ladder step, never-marked wording: conditionals that can
   /// regress without the full screen moving.
   func testUpNextHeroNeverMarked() {
