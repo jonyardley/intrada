@@ -12,7 +12,15 @@ Use a code-review agent for the self-review; post its summary as a `gh pr commen
 - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the review step but still run the gates.
 - **Small Tier 2** — one file, no bridge / DB / auth / migration surface — may use a lighter single-pass review in place of a full agent. Anything on the domain-sensitivity list, or spanning files, takes the full review agent.
 
+**Run the review before the push, not after.** The gate is: local gates, then the reviewer over the local diff, then triage and fix, then push and open the PR with the summary posted at creation. A PR that exists is a PR that has been reviewed. Reviewing after opening is what put four defects on main in #1550, where the PR sat open, green and mergeable for the fourteen minutes its reviewer was still thinking. The draft rule below is the safety net for when this ordering slips, not a substitute for it.
+
+**The review agent posts its own comment.** Brief it to run `gh pr comment` itself rather than handing the summary back to be relayed. The comment then evidences that a review ran, rather than evidencing that the lead session says one did.
+
 **Non-trivial PRs open as drafts.** `gh pr create --draft`, then `gh pr ready <n>` only once the self-review comment is posted, its blockers are fixed inline and the deferred issues exist. An open PR reads as ready to merge to the person merging it, and the difference between "reviewed and green" and "green while a reviewer is still running" lives only in the prose nobody should have to read carefully. #1550 merged during the fourteen minutes its reviewer was still thinking, taking a defect to main that the review then found. CI has no draft filter, so this costs nothing in signal.
+
+## Work a simulator cannot verify
+
+Anything whose behaviour lives outside the simulator (camera, haptics, gestures, background audio, Live Activities, anything hardware-bound) carries the `needs-device` label, and its **What I checked** section names exactly what is unverified and what a person has to do by hand. Green CI on those PRs proves nothing else broke; it says nothing about the change itself. The label is what makes that true at the moment of merging, rather than in the third section of a body nobody rereads.
 
 ## Codecov gate (Tier 2+)
 

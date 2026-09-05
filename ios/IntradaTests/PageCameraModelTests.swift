@@ -142,4 +142,18 @@ struct PageCameraModelTests {
 
     #expect(camera.stopCount == 1)
   }
+
+  /// Cancel then a stray tap on Use this photo, which stays hit-testable
+  /// through the dismissal transition, must not store a photo after all.
+  @Test func keepingAfterCancellingStoresNothing() async {
+    let camera = StubCamera()
+    let model = PageCameraModel(device: camera)
+    await model.begin()
+    await model.takePhoto()
+
+    model.cancel()
+
+    #expect(model.keep() == nil)
+    #expect(camera.stopCount == 1)
+  }
 }

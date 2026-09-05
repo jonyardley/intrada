@@ -33,16 +33,9 @@ struct PhotoViewer: View {
         .onTapGesture(count: 2) { toggleZoom() }
         .accessibilityLabel("Photo of the page")
     }
-    // On its own scrim because the page behind it is the user's photo. At 0.8
-    // the worst case (a white page) is 8:1; 0.55 was 3.4:1, under the AA floor.
     .overlay(alignment: .topLeading) {
       Button("Done") { dismiss() }
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent)
-        .padding(.horizontal, IntradaSpacing.row)
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .background(IntradaColor.viewerBackdrop.opacity(0.8), in: Capsule())
-        .contentShape(Capsule())
+        .scrimCapsule()
         .padding(IntradaSpacing.card)
     }
     .animation(IntradaMotion.standard, value: zoom)

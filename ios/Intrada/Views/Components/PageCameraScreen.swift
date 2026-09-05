@@ -42,6 +42,12 @@ final class PageCameraModel {
     }
     do {
       try await device.start()
+      // The cover can be torn down while the permission dialog is up, and the
+      // session would otherwise start onto a dismissed screen and run on.
+      guard !finished else {
+        device.stop()
+        return
+      }
       stage = .live
     } catch {
       report(error, "page camera start")
@@ -73,7 +79,7 @@ final class PageCameraModel {
 
   /// The page to keep, or `nil` if there is nothing captured to keep.
   func keep() -> UIImage? {
-    guard case .captured(let page) = stage else { return nil }
+    guard case .captured(let page) = stage, !finished else { return nil }
     finished = true
     device.stop()
     return page
@@ -139,14 +145,7 @@ struct PageCameraScreen: View {
     VStack(spacing: 0) {
       HStack {
         Button("Cancel", action: cancel)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.onAccent)
-          .padding(.horizontal, IntradaSpacing.row)
-          .padding(.vertical, IntradaSpacing.controlGap)
-          // Over a bright page the label alone measures under the AA floor;
-          // the scrim is the one PhotoViewer's Done button already uses.
-          .background(IntradaColor.viewerBackdrop.opacity(0.8), in: Capsule())
-          .contentShape(Capsule())
+          .scrimCapsule()
         Spacer()
       }
       .padding(IntradaSpacing.card)
