@@ -2,6 +2,7 @@
 //! (Clerk JWT attached by `core_bridge`) and surfaces the redirect URL
 //! through the model for the view to navigate to.
 
+use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +31,12 @@ pub enum OAuthEvent {
     ConsentFinalized {
         redirect_url: String,
     },
-    ConsentFailed(String),
+    ConsentFailed {
+        message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
+    },
     /// Resets state on leaving the consent page so a stale redirect_url
     /// doesn't trigger a navigate next time.
     ResetConsent,
@@ -39,6 +45,11 @@ pub enum OAuthEvent {
 pub fn handle_oauth_event(event: OAuthEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         OAuthEvent::FinalizeConsent(params) => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             model.oauth_in_flight = true;
             model.oauth_redirect_url = None;
             Command::all([
@@ -52,8 +63,12 @@ pub fn handle_oauth_event(event: OAuthEvent, model: &mut Model) -> Command<Effec
             model.record_success();
             crux_core::render::render()
         }
-        OAuthEvent::ConsentFailed(message) => {
+        OAuthEvent::ConsentFailed {
+            message,
+            retry_after,
+        } => {
             model.oauth_in_flight = false;
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
@@ -111,5 +126,40 @@ mod tests {
         model.oauth_redirect_url = Some("stale".into());
         let _ = handle_oauth_event(OAuthEvent::ResetConsent, &mut model);
         assert!(model.oauth_redirect_url.is_none());
+    }
+
+    #[test]
+    fn consent_failed_notes_retry_after() {
+        let mut model = Model::test_default();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        let _ = handle_oauth_event(
+            OAuthEvent::ConsentFailed {
+                message: "rate limited".to_string(),
+                retry_after: Some(until),
+            },
+            &mut model,
+        );
+        assert_eq!(model.rate_limited_until, Some(until));
+    }
+
+    #[test]
+    fn finalize_consent_declines_to_fire_while_rate_limited() {
+        let mut model = Model::test_default();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_oauth_event(
+            OAuthEvent::FinalizeConsent(OAuthFinalizeParams {
+                response_type: "code".into(),
+                client_id: "x".into(),
+                redirect_uri: "https://example.com/cb".into(),
+                state: None,
+                scope: None,
+                code_challenge: "x".into(),
+                code_challenge_method: "S256".into(),
+            }),
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(!model.oauth_in_flight);
+        assert!(model.last_error.is_some());
     }
 }

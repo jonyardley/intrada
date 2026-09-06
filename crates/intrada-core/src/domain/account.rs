@@ -1,5 +1,6 @@
 //! Account preferences and account-deletion events.
 
+use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
@@ -36,11 +37,19 @@ pub enum AccountEvent {
     SavePreferencesFailed {
         previous: Option<AccountPreferences>,
         message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
     },
     DeleteAccount,
     /// The shell watches `account_deleted` to sign out + route home.
     AccountDeleted,
-    DeleteAccountFailed(String),
+    DeleteAccountFailed {
+        message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
+    },
 }
 
 pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -54,6 +63,11 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
         }
 
         AccountEvent::SavePreferences(prefs) => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             // Optimistic update; carry the prior value so a failure can roll back.
             let previous = model.account_preferences.clone();
             model.account_preferences = Some(prefs.clone());
@@ -69,13 +83,23 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
-        AccountEvent::SavePreferencesFailed { previous, message } => {
+        AccountEvent::SavePreferencesFailed {
+            previous,
+            message,
+            retry_after,
+        } => {
             model.account_preferences = previous;
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
 
         AccountEvent::DeleteAccount => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             model.delete_in_flight = true;
             Command::all([
                 crate::http::delete_account(&model.api_base_url),
@@ -90,9 +114,13 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
-        AccountEvent::DeleteAccountFailed(msg) => {
+        AccountEvent::DeleteAccountFailed {
+            message,
+            retry_after,
+        } => {
             model.delete_in_flight = false;
-            model.surface_error(msg);
+            model.note_retry_after(retry_after);
+            model.surface_error(message);
             crux_core::render::render()
         }
     }
@@ -150,6 +178,7 @@ mod tests {
             AccountEvent::SavePreferencesFailed {
                 previous: Some(original.clone()),
                 message: "oops".to_string(),
+                retry_after: None,
             },
             &mut model,
         );
@@ -179,11 +208,69 @@ mod tests {
         let mut model = fresh_model();
         model.delete_in_flight = true;
         let _cmd = handle_account_event(
-            AccountEvent::DeleteAccountFailed("network".to_string()),
+            AccountEvent::DeleteAccountFailed {
+                message: "network".to_string(),
+                retry_after: None,
+            },
             &mut model,
         );
         assert!(!model.delete_in_flight);
         assert!(!model.account_deleted);
         assert_eq!(model.last_error.as_deref(), Some("network"));
+    }
+
+    #[test]
+    fn save_preferences_failed_notes_retry_after() {
+        let mut model = fresh_model();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        let _cmd = handle_account_event(
+            AccountEvent::SavePreferencesFailed {
+                previous: None,
+                message: "rate limited".to_string(),
+                retry_after: Some(until),
+            },
+            &mut model,
+        );
+        assert_eq!(model.rate_limited_until, Some(until));
+    }
+
+    #[test]
+    fn delete_account_failed_notes_retry_after() {
+        let mut model = fresh_model();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        let _cmd = handle_account_event(
+            AccountEvent::DeleteAccountFailed {
+                message: "rate limited".to_string(),
+                retry_after: Some(until),
+            },
+            &mut model,
+        );
+        assert_eq!(model.rate_limited_until, Some(until));
+    }
+
+    #[test]
+    fn delete_account_declines_to_fire_while_rate_limited() {
+        let mut model = fresh_model();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_account_event(AccountEvent::DeleteAccount, &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(!model.delete_in_flight);
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn save_preferences_declines_to_fire_while_rate_limited() {
+        let mut model = fresh_model();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let original = model.account_preferences.clone();
+        let mut cmd = handle_account_event(
+            AccountEvent::SavePreferences(AccountPreferences {
+                default_focus_minutes: 10,
+                default_rep_count: 3,
+            }),
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert_eq!(model.account_preferences, original);
     }
 }

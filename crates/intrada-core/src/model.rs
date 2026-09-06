@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
+
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::{AnalyticsView, LastPractisedView};
@@ -90,6 +92,12 @@ pub struct Model {
     /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
     /// to an item without that confirmation (spec non-goal "no silent write").
     pub photo_recognition: PhotoRecognition,
+    /// Set from a 429 rejection's `Retry-After` header, resolved to an
+    /// absolute instant (#1273). Only ever raised by
+    /// [`Model::note_retry_after`] and cleared by
+    /// [`Model::record_success`]. A failure that names no `Retry-After`
+    /// leaves an earlier deadline exactly as it was.
+    pub rate_limited_until: Option<DateTime<Utc>>,
 }
 
 /// Model-side recognition state. The view projection is
@@ -140,6 +148,28 @@ impl Model {
     pub fn record_success(&mut self) {
         self.last_error = None;
         self.error_muted = false;
+        self.rate_limited_until = None;
+    }
+
+    /// Record a 429's resolved `Retry-After` deadline (#1273). `None` (not a
+    /// 429, no header, or a header neither delay-seconds nor an HTTP-date
+    /// resolves) leaves any earlier deadline untouched rather than reading
+    /// as "safe now".
+    pub fn note_retry_after(&mut self, until: Option<DateTime<Utc>>) {
+        if let Some(until) = until {
+            self.rate_limited_until = Some(until);
+        }
+    }
+
+    /// A "try again in Ns" message while `now` is still inside a recorded
+    /// `Retry-After` deadline, so a handler can decline to re-issue the
+    /// request instead of hammering a server that just said to wait (#1273).
+    pub fn rate_limit_message(&self, now: DateTime<Utc>) -> Option<String> {
+        let until = self.rate_limited_until?;
+        (now < until).then(|| {
+            let wait = (until - now).num_seconds().max(1);
+            format!("Rate limited by the server; try again in {wait}s.")
+        })
     }
 
     /// User explicitly dismissed the error banner. Clears the active error
@@ -1048,6 +1078,56 @@ mod tests {
         assert!(!model.error_muted);
         model.surface_error("new error");
         assert_eq!(model.last_error.as_deref(), Some("new error"));
+    }
+
+    #[test]
+    fn note_retry_after_sets_the_deadline() {
+        let mut model = Model::default();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        model.note_retry_after(Some(until));
+        assert_eq!(model.rate_limited_until, Some(until));
+    }
+
+    #[test]
+    fn note_retry_after_none_leaves_an_earlier_deadline_untouched() {
+        let mut model = Model::default();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        model.note_retry_after(Some(until));
+        model.note_retry_after(None);
+        assert_eq!(model.rate_limited_until, Some(until));
+    }
+
+    #[test]
+    fn rate_limit_message_is_none_before_a_retry_after_is_recorded() {
+        let model = Model::default();
+        assert_eq!(model.rate_limit_message(Utc::now()), None);
+    }
+
+    #[test]
+    fn rate_limit_message_counts_down_while_still_limited() {
+        let mut model = Model::default();
+        let now = Utc::now();
+        model.note_retry_after(Some(now + chrono::Duration::seconds(30)));
+        let message = model
+            .rate_limit_message(now)
+            .expect("still inside the window");
+        assert!(message.contains("30s"), "message was: {message}");
+    }
+
+    #[test]
+    fn rate_limit_message_is_none_once_the_deadline_has_passed() {
+        let mut model = Model::default();
+        let now = Utc::now();
+        model.note_retry_after(Some(now - chrono::Duration::seconds(1)));
+        assert_eq!(model.rate_limit_message(now), None);
+    }
+
+    #[test]
+    fn record_success_clears_a_recorded_retry_after() {
+        let mut model = Model::default();
+        model.note_retry_after(Some(Utc::now() + chrono::Duration::seconds(30)));
+        model.record_success();
+        assert_eq!(model.rate_limited_until, None);
     }
 
     #[test]

@@ -2,6 +2,7 @@
 //!
 //! Auth headers are added by the shell when processing `Effect::Http`.
 
+use chrono::{DateTime, Duration, Utc};
 use crux_core::Command;
 
 use crate::app::{Effect, Event};
@@ -77,6 +78,24 @@ fn rejection_reason(error: &crux_http::HttpError) -> Option<String> {
     let envelope = error.body_json::<Envelope>().ok()?;
     let reason = envelope.error.trim();
     (!reason.is_empty()).then(|| reason.to_string())
+}
+
+/// When a 429 rejection may be retried, resolved from its `Retry-After`
+/// header (RFC 9110 §10.2.3) against `now`. Delay-seconds ("30") resolves to
+/// `now + 30s`; an HTTP-date is itself absolute, so `now` only decides
+/// whether it has already passed. `None` for anything else: not a 429, no
+/// header, or a header neither form parses (#1273).
+fn retry_not_before(error: &crux_http::HttpError, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+    if error.code() != Some(429) {
+        return None;
+    }
+    let value = error.header("retry-after")?.to_str().ok()?.trim();
+    if let Ok(secs) = value.parse::<i64>() {
+        return (secs >= 0).then(|| now + Duration::seconds(secs));
+    }
+    DateTime::parse_from_rfc2822(value)
+        .ok()
+        .map(|d| d.with_timezone(&Utc))
 }
 
 // ── Fetch operations ────────────────────────────────────────────────────
@@ -342,11 +361,13 @@ pub fn save_account_preferences(
                 None => Event::Account(AccountEvent::SavePreferencesFailed {
                     previous: previous.clone(),
                     message: "save_preferences: server returned no body".into(),
+                    retry_after: None,
                 }),
             },
             Err(e) => Event::Account(AccountEvent::SavePreferencesFailed {
                 previous: previous.clone(),
                 message: format!("Failed to save preferences: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
             }),
         })
 }
@@ -359,10 +380,10 @@ pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::Account(AccountEvent::AccountDeleted),
-            Err(e) => Event::Account(AccountEvent::DeleteAccountFailed(format!(
-                "Failed to delete account: {}",
-                rejection_detail(&e)
-            ))),
+            Err(e) => Event::Account(AccountEvent::DeleteAccountFailed {
+                message: format!("Failed to delete account: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
+            }),
         })
 }
 
@@ -378,14 +399,15 @@ pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
                 Some(tokens) => Event::McpToken(McpTokenEvent::TokensLoaded(tokens)),
-                None => Event::McpToken(McpTokenEvent::LoadTokensFailed(
-                    "list_mcp_tokens: empty body".into(),
-                )),
+                None => Event::McpToken(McpTokenEvent::LoadTokensFailed {
+                    message: "list_mcp_tokens: empty body".into(),
+                    retry_after: None,
+                }),
             },
-            Err(e) => Event::McpToken(McpTokenEvent::LoadTokensFailed(format!(
-                "Failed to load tokens: {}",
-                rejection_detail(&e)
-            ))),
+            Err(e) => Event::McpToken(McpTokenEvent::LoadTokensFailed {
+                message: format!("Failed to load tokens: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
+            }),
         })
 }
 
@@ -406,14 +428,15 @@ pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
                 Some(created) => Event::McpToken(McpTokenEvent::TokenCreated(created)),
-                None => Event::McpToken(McpTokenEvent::CreateTokenFailed(
-                    "create_mcp_token: empty body".into(),
-                )),
+                None => Event::McpToken(McpTokenEvent::CreateTokenFailed {
+                    message: "create_mcp_token: empty body".into(),
+                    retry_after: None,
+                }),
             },
-            Err(e) => Event::McpToken(McpTokenEvent::CreateTokenFailed(format!(
-                "Failed to create token: {}",
-                rejection_detail(&e)
-            ))),
+            Err(e) => Event::McpToken(McpTokenEvent::CreateTokenFailed {
+                message: format!("Failed to create token: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
+            }),
         })
 }
 
@@ -432,6 +455,7 @@ pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> 
             Err(e) => Event::McpToken(McpTokenEvent::RevokeTokenFailed {
                 id: id_for_callback.clone(),
                 message: format!("Failed to revoke token: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
             }),
         })
 }
@@ -448,14 +472,15 @@ pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
                 Some(entries) => Event::McpAudit(McpAuditEvent::AuditLoaded(entries)),
-                None => Event::McpAudit(McpAuditEvent::LoadAuditFailed(
-                    "list_mcp_audit: empty body".into(),
-                )),
+                None => Event::McpAudit(McpAuditEvent::LoadAuditFailed {
+                    message: "list_mcp_audit: empty body".into(),
+                    retry_after: None,
+                }),
             },
-            Err(e) => Event::McpAudit(McpAuditEvent::LoadAuditFailed(format!(
-                "Failed to load audit log: {}",
-                rejection_detail(&e)
-            ))),
+            Err(e) => Event::McpAudit(McpAuditEvent::LoadAuditFailed {
+                message: format!("Failed to load audit log: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
+            }),
         })
 }
 
@@ -480,14 +505,15 @@ pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Comma
                 Some(body) => Event::OAuth(OAuthEvent::ConsentFinalized {
                     redirect_url: body.redirect_url,
                 }),
-                None => Event::OAuth(OAuthEvent::ConsentFailed(
-                    "oauth_finalize: empty body".into(),
-                )),
+                None => Event::OAuth(OAuthEvent::ConsentFailed {
+                    message: "oauth_finalize: empty body".into(),
+                    retry_after: None,
+                }),
             },
-            Err(e) => Event::OAuth(OAuthEvent::ConsentFailed(format!(
-                "Failed to finalize OAuth consent: {}",
-                rejection_detail(&e)
-            ))),
+            Err(e) => Event::OAuth(OAuthEvent::ConsentFailed {
+                message: format!("Failed to finalize OAuth consent: {}", rejection_detail(&e)),
+                retry_after: retry_not_before(&e, Utc::now()),
+            }),
         })
 }
 
@@ -499,7 +525,7 @@ mod tests {
     use crate::domain::set::{Set, SetEntry};
     use crate::domain::types::Tempo;
     use chrono::TimeZone;
-    use crux_http::protocol::HttpRequest;
+    use crux_http::protocol::{HttpRequest, HttpResponse};
     use serde_json::{json, Value};
 
     const BASE: &str = "https://api.example.com";
@@ -910,5 +936,60 @@ mod tests {
         );
         assert!(matches!(event, Event::LoadFailed(m)
                 if m == "Failed to update set: Already exists"));
+    }
+
+    // ── retry_not_before ────────────────────────────────────────────────
+
+    fn rejection_with(status: u16, retry_after: &str) -> crux_http::HttpError {
+        crux_http::testing::rejection_from::<Vec<u8>>(
+            HttpResponse::status(status)
+                .header("retry-after", retry_after)
+                .build(),
+        )
+        .expect_err("a 4xx/5xx is never Ok")
+    }
+
+    #[test]
+    fn retry_not_before_resolves_delay_seconds_against_now() {
+        let now = fixed_time();
+        let error = rejection_with(429, "30");
+        assert_eq!(
+            retry_not_before(&error, now),
+            Some(now + Duration::seconds(30))
+        );
+    }
+
+    #[test]
+    fn retry_not_before_resolves_an_http_date() {
+        let error = rejection_with(429, "Wed, 21 Oct 2015 07:28:00 GMT");
+        let expected = chrono::Utc
+            .with_ymd_and_hms(2015, 10, 21, 7, 28, 0)
+            .unwrap();
+        assert_eq!(retry_not_before(&error, fixed_time()), Some(expected));
+    }
+
+    #[test]
+    fn retry_not_before_is_none_without_the_header() {
+        let error =
+            crux_http::testing::rejection::<Vec<u8>>(429, "").expect_err("a 429 is never Ok");
+        assert_eq!(retry_not_before(&error, fixed_time()), None);
+    }
+
+    #[test]
+    fn retry_not_before_ignores_a_rejection_that_is_not_a_429() {
+        let error = rejection_with(503, "30");
+        assert_eq!(retry_not_before(&error, fixed_time()), None);
+    }
+
+    #[test]
+    fn retry_not_before_is_none_for_an_unparsable_value() {
+        let error = rejection_with(429, "banana");
+        assert_eq!(retry_not_before(&error, fixed_time()), None);
+    }
+
+    #[test]
+    fn retry_not_before_ignores_a_negative_delay() {
+        let error = rejection_with(429, "-5");
+        assert_eq!(retry_not_before(&error, fixed_time()), None);
     }
 }

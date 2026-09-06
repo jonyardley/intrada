@@ -39,14 +39,24 @@ pub struct CreatedMcpToken {
 pub enum McpTokenEvent {
     LoadTokens,
     TokensLoaded(Vec<McpToken>),
-    LoadTokensFailed(String),
+    LoadTokensFailed {
+        message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
+    },
 
     CreateToken {
         name: String,
     },
     /// UI must show the full token once, then dismiss.
     TokenCreated(CreatedMcpToken),
-    CreateTokenFailed(String),
+    CreateTokenFailed {
+        message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
+    },
 
     /// Clears the just-created token from the model so it can't be
     /// re-displayed or kept in memory longer than necessary.
@@ -64,12 +74,20 @@ pub enum McpTokenEvent {
     RevokeTokenFailed {
         id: String,
         message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
     },
 }
 
 pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         McpTokenEvent::LoadTokens => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             model.mcp_tokens_loading = true;
             Command::all([
                 crate::http::list_mcp_tokens(&model.api_base_url),
@@ -85,13 +103,22 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
             crux_core::render::render()
         }
 
-        McpTokenEvent::LoadTokensFailed(message) => {
+        McpTokenEvent::LoadTokensFailed {
+            message,
+            retry_after,
+        } => {
             model.mcp_tokens_loading = false;
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
 
         McpTokenEvent::CreateToken { name } => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             crate::http::create_mcp_token(&model.api_base_url, &name)
         }
 
@@ -112,7 +139,11 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
             crux_core::render::render()
         }
 
-        McpTokenEvent::CreateTokenFailed(message) => {
+        McpTokenEvent::CreateTokenFailed {
+            message,
+            retry_after,
+        } => {
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
@@ -123,6 +154,11 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
         }
 
         McpTokenEvent::RevokeToken { id } => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             crate::http::revoke_mcp_token(&model.api_base_url, &id)
         }
 
@@ -134,7 +170,12 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
             crux_core::render::render()
         }
 
-        McpTokenEvent::RevokeTokenFailed { id: _, message } => {
+        McpTokenEvent::RevokeTokenFailed {
+            id: _,
+            message,
+            retry_after,
+        } => {
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
@@ -237,5 +278,57 @@ mod tests {
             .unwrap()
             .revoked_at
             .is_none());
+    }
+
+    #[test]
+    fn load_tokens_declines_to_fire_while_rate_limited() {
+        let mut model = fresh_model();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_mcp_token_event(McpTokenEvent::LoadTokens, &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(!model.mcp_tokens_loading);
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn create_token_declines_to_fire_while_rate_limited() {
+        let mut model = fresh_model();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_mcp_token_event(
+            McpTokenEvent::CreateToken {
+                name: "claude-cli".to_string(),
+            },
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn revoke_token_declines_to_fire_while_rate_limited() {
+        let mut model = fresh_model();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_mcp_token_event(
+            McpTokenEvent::RevokeToken {
+                id: "target".to_string(),
+            },
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn create_token_failed_notes_retry_after() {
+        let mut model = fresh_model();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        let _cmd = handle_mcp_token_event(
+            McpTokenEvent::CreateTokenFailed {
+                message: "rate limited".to_string(),
+                retry_after: Some(until),
+            },
+            &mut model,
+        );
+        assert_eq!(model.rate_limited_until, Some(until));
     }
 }

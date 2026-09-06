@@ -30,12 +30,22 @@ pub struct McpAuditEntry {
 pub enum McpAuditEvent {
     LoadAudit,
     AuditLoaded(Vec<McpAuditEntry>),
-    LoadAuditFailed(String),
+    LoadAuditFailed {
+        message: String,
+        /// Resolved from a 429's `Retry-After` header, if the rejection was
+        /// one and named a resolvable wait (#1273).
+        retry_after: Option<DateTime<Utc>>,
+    },
 }
 
 pub fn handle_mcp_audit_event(event: McpAuditEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         McpAuditEvent::LoadAudit => {
+            let now = chrono::Utc::now();
+            if let Some(msg) = model.rate_limit_message(now) {
+                model.surface_error(msg);
+                return crux_core::render::render();
+            }
             model.mcp_audit_loading = true;
             Command::all([
                 crate::http::list_mcp_audit(&model.api_base_url),
@@ -49,8 +59,12 @@ pub fn handle_mcp_audit_event(event: McpAuditEvent, model: &mut Model) -> Comman
             model.record_success();
             crux_core::render::render()
         }
-        McpAuditEvent::LoadAuditFailed(message) => {
+        McpAuditEvent::LoadAuditFailed {
+            message,
+            retry_after,
+        } => {
             model.mcp_audit_loading = false;
+            model.note_retry_after(retry_after);
             model.surface_error(message);
             crux_core::render::render()
         }
@@ -86,5 +100,29 @@ mod tests {
         assert_eq!(model.mcp_audit, vec![entry]);
         assert!(model.mcp_audit_loaded);
         assert!(!model.mcp_audit_loading);
+    }
+
+    #[test]
+    fn load_audit_declines_to_fire_while_rate_limited() {
+        let mut model = Model::test_default();
+        model.rate_limited_until = Some(Utc::now() + chrono::Duration::seconds(30));
+        let mut cmd = handle_mcp_audit_event(McpAuditEvent::LoadAudit, &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(!model.mcp_audit_loading);
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn load_audit_failed_notes_retry_after() {
+        let mut model = Model::test_default();
+        let until = Utc::now() + chrono::Duration::seconds(30);
+        let _ = handle_mcp_audit_event(
+            McpAuditEvent::LoadAuditFailed {
+                message: "rate limited".to_string(),
+                retry_after: Some(until),
+            },
+            &mut model,
+        );
+        assert_eq!(model.rate_limited_until, Some(until));
     }
 }
