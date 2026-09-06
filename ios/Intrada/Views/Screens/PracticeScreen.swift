@@ -299,14 +299,10 @@ struct PracticeScreen: View {
       Image(systemName: isFutureSelection ? "sunrise" : "moon")
         .font(.system(size: 28))
         .foregroundStyle(IntradaColor.inkSecondary)
-      Text(
-        isFutureSelection
-          ? "Nothing logged yet · the week's still young."
-          : "A rest day. No pressure · the schedule has adapted."
-      )
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .multilineTextAlignment(.center)
+      Text(isFutureSelection ? "Nothing logged yet" : "No practice logged")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .multilineTextAlignment(.center)
     }
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.card)

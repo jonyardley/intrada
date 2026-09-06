@@ -1,6 +1,6 @@
 ---
 name: intrada-design-principles
-description: "How the app should feel: the 'spend friction deliberately' model (bad friction in admin, setup and navigation removed ruthlessly; good friction kept at the intention and reflection moments), one-primary-action-per-screen, content-over-chrome, progressive disclosure, and reversible-by-default. Carries the visual principles (the glassmorphism palette, type-colour coding, warmth-biased semantics) and the dated Open tensions & decisions log, addressable by T-number, that a new UX decision gets appended to rather than decided silently. MUST read before any new surface, layout, flow or interaction, and before recording a new design decision."
+description: "How the app should feel: the 'spend friction deliberately' model (bad friction in admin, setup and navigation removed ruthlessly; good friction kept at the intention and reflection moments), one-primary-action-per-screen, content-over-chrome, progressive disclosure, and reversible-by-default. Carries the visual principles as intent behind Theme.swift's settled tokens (type-colour coding, warmth-biased semantics; the values themselves and their enforcement live in Theme.swift and skill://intrada-design-system) and the dated Open tensions & decisions log, addressable by T-number, that a new UX decision gets appended to rather than decided silently. MUST read before any new surface, layout, flow or interaction, and before recording a new design decision."
 ---
 
 ## Design principles

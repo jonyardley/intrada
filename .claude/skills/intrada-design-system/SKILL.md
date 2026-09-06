@@ -11,15 +11,13 @@ titles (Source Serif 4), sans body text (Inter). All tokens live in `Theme.swift
 `design/intrada-design-system.dc.html`.
 
 **Design principles and tone of voice are sibling skills, not raw doc
-paths.** How the app should feel: the "spend friction deliberately" model,
-one-primary-action-per-screen, content-over-chrome, progressive disclosure,
-reversible-by-default, and the dated T-numbered decisions log, is
-`skill://intrada-design-principles`
-(`.claude/skills/intrada-design-principles/SKILL.md`). Every user-facing
-string is written against `skill://intrada-tone-of-voice`
-(`.claude/skills/intrada-tone-of-voice/SKILL.md`): titles, buttons, labels,
-empty states, errors, accessibility labels; its sweep checklist is the review
-pass for any PR that adds or changes copy.
+paths.** How the app should feel is `skill://intrada-design-principles`
+(`.claude/skills/intrada-design-principles/SKILL.md`): the "spend friction
+deliberately" model, one-primary-action-per-screen, content-over-chrome,
+progressive disclosure, reversible-by-default, and the dated T-numbered
+decisions log. Every user-facing string is written against
+`skill://intrada-tone-of-voice`
+(`.claude/skills/intrada-tone-of-voice/SKILL.md`).
 
 ### Hierarchy: Tokens → Modifiers → Components → Screens
 
