@@ -505,21 +505,27 @@ _ios-test-run tier:
     fi
 
 # Content fingerprint of the ios/ sources the test products are built from:
-# the HEAD tree, plus any uncommitted diff, plus untracked filenames. Content
-# rather than mtimes, so a `git pull` or branch switch that restores identical
-# bytes is not mistaken for a stale build, and CI's separate build and test
-# jobs agree by construction (same commit, clean checkout) with no escape
+# tracked blob hashes, plus any uncommitted diff, plus untracked filenames.
+# Content rather than mtimes, so a `git pull` or branch switch that restores
+# identical bytes is not mistaken for a stale build, and CI's separate build and
+# test jobs agree by construction (same commit, clean checkout) with no escape
 # hatch. `ios/build`, `ios/generated` and the generated project are gitignored
 # and so excluded: CI's test jobs deliberately run without the latter two, and
 # `_ios-sync` owns binding freshness in every recipe that builds (#1530).
+# Snapshot references are excluded too: a test reads them at run time rather
+# than the build compiling them in, so counting them made `ios-snapshots-record`
+# fail the guard on the very reference it had just written (#1546).
 [private]
 _ios-inputs-fingerprint:
     #!/usr/bin/env bash
     set -euo pipefail
+    # `ls-tree` rejects an exclude pathspec, so the tracked side is listed as
+    # blobs rather than one tree object.
+    refs=':(exclude)ios/IntradaTests/__Snapshots__'
     {
-        git rev-parse "HEAD:ios" 2>/dev/null || echo no-head
-        git diff HEAD -- ios
-        git ls-files -o --exclude-standard ios
+        git ls-files -s -- ios "$refs"
+        git diff HEAD -- ios "$refs"
+        git ls-files -o --exclude-standard ios "$refs"
     } | shasum -a 256 | cut -d' ' -f1
 
 # Regenerate the Xcode project and build the test products (app + .xctest
