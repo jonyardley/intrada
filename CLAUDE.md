@@ -505,6 +505,29 @@ If unsure whether a practice applies, default to the tier system.
 "all green" when that means cargo test green. If you can't reach the running app,
 say exactly what needs user verification.
 
+### Picking up a work item
+
+The order when I am handed an issue. Steps 1 to 4 all happen before any code
+gets written, and step 3 before any code gets read.
+
+1. **Claim it** per Always(1) below: search for an open PR, stop and say so if
+   there is one, otherwise add `in-flight` and comment the branch name.
+2. **Work in a worktree** for Tier 2 and above: `just worktree-new <name>`
+   branches from fresh `origin/main` and seeds the warm `target/` and
+   `ios/build` caches, so the first `just check` or `just ios-test` costs what
+   the main checkout pays warm instead of 5 to 10 minutes cold. Tier 1 (typo,
+   lint fix, dep bump) stays in the main checkout, which is also the only place
+   `graphify-out/` exists.
+3. **Read the issue and what it points at**: the body, its linked issues and
+   PRs, and the roadmap item. An issue citing a spec or an earlier PR is naming
+   the constraints; a plan written without them gets rewritten in review.
+4. **Plan, and state the resourcing in one line** before writing code: the
+   model and effort this session runs at (`docs/model-guide.md`), and what goes
+   to a subagent. Routing means choosing the model for the session doing the
+   slice. One vertical slice stays with one agent
+   (`skill://intrada-parallel-streams`); only genuinely independent pieces
+   (audits, sweeps, docs, API-only work) fan out.
+
 ### Always
 1. **Claim the issue before building it, and check nobody else has.** First
    action on picking up issue N, before reading code:
@@ -540,6 +563,10 @@ say exactly what needs user verification.
 3. Update the Claude Design system
    (`design/intrada-design-system.dc.html`) if UI diverged from design, and
    re-export the shareable `.html`.
+4. Remove the worktree once the PR merges: `just worktree-rm <name>`, which
+   also deletes that worktree's throwaway simulator. A left-behind worktree
+   holds a branch and a sim that the next session has to work out the status
+   of before it can trust the machine is clean.
 
 ## Parallel work streams (agentic sessions)
 
