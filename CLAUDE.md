@@ -575,31 +575,10 @@ done. The conventions below bind every change, concurrent or not.
 
 ### Writing PRs and issues
 
-Both are read cold, months later, by someone deciding **whether to merge** and
-working out **what changed**, in the same read (Jon, 2026-09-04). Serve both,
-in this order.
-
-PR body:
-
-1. **What this fixes** — the situation a musician would notice. No file paths,
-   no symbol names and no code in this block.
-2. **Where this could bite** — residual risk in the merged code, and what is
-   deliberately not covered. Present tense, about what ships: never the history
-   of the branch, and never a wrong turn already corrected. When a review found
-   something, name the fault class (which line is load-bearing), not the
-   fumble. **Never spell out an exploitable gap** in auth, tokens or user data
-   on a public repo: say a gap exists and route the detail to Jon.
-3. **What I checked** — evidence, not reassurance. "Gates green" is one line,
-   because it is true of every PR worth showing; what earns space is the check
-   that could have failed.
-4. **What changed where** — one line per file. Identifiers welcome.
-
-Issue body: what a person would notice, then why it matters, then what to do
-about it, then the technical reproduction last.
-
-Any term not in the glossary ([`docs/reference.md`](docs/reference.md)) is
-said plainly or added to it. That binds invented shorthand ("seam", "applier")
-as well as unglossed house terms. No tick marks, symbols or emoji in either.
+The PR and issue body templates, the ones that serve both the merge decision
+and the "what changed" read in a single cold read months later, live in
+`skill://intrada-shipping` (`.claude/skills/intrada-shipping/SKILL.md`), with
+the glossary and plain-language rule. They bind whether or not you loaded it.
 
 
 ## Known Tech Debt
