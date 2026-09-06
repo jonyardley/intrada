@@ -59,7 +59,7 @@ if [ "$added_code" -le 0 ]; then
   exit 0
 fi
 
-# Below this floor the ratio carries no signal — a small, deletion-heavy diff
+# Below this floor the ratio carries no signal: a small, deletion-heavy diff
 # can score high on just two or three surviving comment edits, as #1430 did
 # on ten added code lines (#1433).
 floor=25

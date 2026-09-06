@@ -28,6 +28,14 @@ issue; these rules stop two streams colliding in the same *files*. Both apply.
 - One git worktree per stream, branched from fresh `origin/main`. Follow the
   simulator safety rule under Commands. Close the second session when its task
   ships; do not keep it warm.
+- **Once you have a worktree, edit only inside it.** The main checkout belongs
+  to whoever is working on `main`, and a stray write there is invisible to you
+  and undiagnosable to them: on 2026-09-06 a session working #1556 in its own
+  `release-pins` worktree also wrote the same change into the main checkout,
+  where another session found it mid-`git status` and nearly committed it into
+  an unrelated copy-fix PR. Note what that near miss says about gates: a full
+  green run, 374 tests, proves nothing about *whose* work is in the tree, so
+  read the diff before `git add`, and never `git add -A` on a shared checkout.
 - **Clear a "conflicting" PR by merging main in, never by rebasing.**
   `git fetch origin main && git merge origin/main && git push`. Feature
   No tracked file is written by every PR any more, so a conflict now means two

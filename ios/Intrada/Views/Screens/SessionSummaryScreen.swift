@@ -171,7 +171,7 @@ struct SessionSummaryScreen: View {
   }
 
   private func metaLine(_ entry: SetlistEntryView, unfinished: Bool) -> String {
-    if unfinished { return "Saved for next time · no pressure" }
+    if unfinished { return "Saved for next time" }
     var parts = [entry.itemType.label]
     if let tempo = entry.achievedTempo { parts.append("\(tempo) bpm") }
     return parts.joined(separator: " · ")

@@ -8,6 +8,11 @@ on:
   # the workflow only triggers when the target is `main`, leaving stacked
   # PRs with "no checks reported" until they're rebased onto main.
   pull_request:
+    # Explicit types, adding labeled/unlabeled to the default set (opened,
+    # synchronize, reopened): the comments-justified bypass (#1433) needs a
+    # label change to start a fresh run, since re-running an old one replays
+    # the pre-label payload and fails again.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 # Cancel in-flight runs when a new commit lands on the same PR. Don't cancel
 # main-branch runs — those gate deploys, so we want every commit's build to
@@ -144,7 +149,7 @@ jobs:
           prefix-key: "native"
           cache-on-failure: true
       # nextest runs the same assertions as `cargo test` but with a smarter
-      # scheduler — typically 40–50% faster.
+      # scheduler: typically 40 to 50% faster.
       - uses: taiki-e/install-action@v2.87.4
         with:
           tool: cargo-llvm-cov,cargo-nextest
@@ -822,7 +827,7 @@ jobs:
 
   # Only signal for a red run on main: PR failures are already visible on the
   # PR, so this is scoped to push events on main (#1554). gh + GITHUB_TOKEN is
-  # the zero-dependency option here — no webhook secret to provision. Comments
+  # the zero-dependency option here: no webhook secret to provision. Comments
   # on an existing open ci-red-main issue instead of opening a second so a run
   # of back-to-back red pushes doesn't spam the tracker.
   alert-on-red-main:
