@@ -59,8 +59,23 @@ jobs:
       - name: Install cargo-swift
         if: steps.cargo-swift-cache.outputs.cache-hit != 'true'
         run: cargo install cargo-swift --version "=0.9.0" --locked
+      - name: Cache xcodegen
+        id: xcodegen-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            /usr/local/bin/xcodegen
+            /usr/local/share/xcodegen
+          key: xcodegen-2.46.0-${{ runner.os }}-${{ runner.arch }}
+      # Pinned 2.46.0 in lockstep with ci.yml's native-ios-build and
+      # native-ios-build-release (see the comment there for why brew is not
+      # used). The "Version pins agree" guard in ci.yml checks this pin too.
       - name: Install xcodegen
-        run: brew install xcodegen
+        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o /tmp/xcodegen.zip https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          unzip -q /tmp/xcodegen.zip -d /tmp
+          /tmp/xcodegen/install.sh
       # RELEASE core (debug cores are 10-100× slower in hot paths). cargo-swift
       # --platforms ios emits the aarch64-apple-ios device slice the archive needs.
       - name: Regenerate Swift bindings (release core)
