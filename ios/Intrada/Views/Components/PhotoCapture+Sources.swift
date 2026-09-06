@@ -26,7 +26,7 @@ extension View {
     fullScreenCover(isPresented: state.scanning) {
       PageCameraScreen { capture in
         state.wrappedValue.scanning = false
-        sources.finished(scanning: capture)
+        Task { await sources.finished(scanning: capture) }
       }
     }
     .photosPicker(
@@ -51,9 +51,9 @@ struct PhotoCaptureSources {
 
   static var canScan: Bool { AVPageCameraDevice.isAvailable }
 
-  func finished(scanning capture: PhotoCapture) {
+  func finished(scanning capture: PhotoCapture) async {
     switch capture {
-    case .captured(let image): write(image)
+    case .captured(let image): await write(image)
     case .cancelled: break
     }
   }
@@ -69,7 +69,7 @@ struct PhotoCaptureSources {
       // The scanner route arrives cropped; a library photo does not, and the
       // work blocks long enough to drop frames.
       let page = await Task.detached(priority: .userInitiated) { PageCrop.toPage(image) }.value
-      write(page)
+      await write(page)
     } catch {
       report(error, "photo library load")
       onFailure("Couldn't read that photo. Try another.")
@@ -78,10 +78,15 @@ struct PhotoCaptureSources {
 
   /// Bytes first, then whoever names them. The order is the whole point: an
   /// item can never end up naming a file that was never written.
-  private func write(_ image: UIImage) {
+  ///
+  /// Off the main actor: the downscale and JPEG encode of a 12MP library photo
+  /// hitched the picker's dismissal (#1450).
+  private func write(_ image: UIImage) async {
     let photoId = Ulid.generate()
     do {
-      try PhotoFileStore.write(image, id: photoId)
+      try await Task.detached(priority: .userInitiated) {
+        _ = try PhotoFileStore.write(image, id: photoId)
+      }.value
     } catch {
       report(error, "photo write")
       onFailure("Couldn't save the photo. Try again.")
