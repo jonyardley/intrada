@@ -85,4 +85,9 @@ if [ -x "$density_check" ]; then
   "$density_check" || exit $?
 fi
 
+dash_check="$repo_root/scripts/check-dashes.sh"
+if [ -x "$dash_check" ]; then
+  "$dash_check" || exit $?
+fi
+
 exit 0

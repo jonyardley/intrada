@@ -685,6 +685,24 @@ jobs:
           git fetch --no-tags origin "$GITHUB_BASE_REF"
           bash scripts/check-comment-density.sh
 
+  # The same diff-scoped enforcement as the local pre-push hook, on for
+  # everyone, since an opt-in hook is effectively off. HEAD is detached on a PR
+  # checkout, so the base is passed explicitly via DASH_CHECK_BASE.
+  dash-check:
+    name: No em or en dashes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check for added em or en dashes
+        env:
+          DASH_CHECK_BASE: origin/${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          bash scripts/check-dashes.sh
+
   security:
     # The name is load-bearing: branch protection matches required checks on
     # this exact string, so renaming it orphans the required check and the PR
