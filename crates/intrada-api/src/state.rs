@@ -8,7 +8,6 @@ use crate::clerk::ClerkClient;
 use crate::db::is_transient_db_error;
 use crate::error::ApiError;
 use crate::rate_limit::{IpRateLimiter, McpRateLimiter};
-use crate::storage::R2Client;
 
 /// Heartbeat interval for the background liveness probe.
 ///
@@ -147,7 +146,6 @@ pub struct AppState {
     db: Db,
     pub allowed_origin: String,
     pub auth_config: Option<AuthConfig>,
-    pub r2: Option<R2Client>,
     pub clerk: Option<ClerkClient>,
     /// Per-token rate limiter for `/api/mcp/*`. Defaults to production
     /// limits (60 req/min/token); tests can swap in a tighter bucket
@@ -168,14 +166,12 @@ impl AppState {
         db: Db,
         allowed_origin: String,
         auth_config: Option<AuthConfig>,
-        r2: Option<R2Client>,
         clerk: Option<ClerkClient>,
     ) -> Self {
         Self {
             db,
             allowed_origin,
             auth_config,
-            r2,
             clerk,
             rate_limiter: Arc::new(McpRateLimiter::production()),
             mcp_ip_limiter: Arc::new(IpRateLimiter::production_mcp()),
@@ -200,13 +196,6 @@ impl AppState {
     pub fn with_oauth_ip_limiter(mut self, limiter: Arc<IpRateLimiter>) -> Self {
         self.oauth_ip_limiter = limiter;
         self
-    }
-
-    /// Get the R2 client, or return an error if not configured.
-    pub fn r2(&self) -> Result<&R2Client, ApiError> {
-        self.r2
-            .as_ref()
-            .ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))
     }
 
     /// The web app's base URL — used by the OAuth `/authorize` redirect

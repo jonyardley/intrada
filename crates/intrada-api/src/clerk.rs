@@ -20,7 +20,7 @@ pub struct ClerkClient {
 
 impl ClerkClient {
     /// Build a client from `CLERK_SECRET_KEY`. Returns `None` if unset
-    /// (matches the R2 / auth-config pattern — local dev runs without it).
+    /// (matches the auth-config pattern: local dev runs without it).
     pub fn from_env() -> Option<Self> {
         let secret_key = std::env::var("CLERK_SECRET_KEY").ok()?;
         if secret_key.trim().is_empty() {

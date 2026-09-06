@@ -243,5 +243,6 @@ These are unresolved product questions. Each one likely produces issues
    the lessons vertical was superseded by Goals in #711 (migrations
    0067–0068 dropped the lesson tables); Goals were then removed in #769
    (migrations 0081–0083). Nothing dormant remains, so #570 closes as
-   part of the vision/journey audit. R2 photo storage hardening (#281)
-   survives independently as a security item.
+   part of the vision/journey audit. R2 photo storage hardening (#281) was
+   closed as stale on 2026-09-06 and the R2 module deleted: the bucket was
+   empty and photos are on-device files now.

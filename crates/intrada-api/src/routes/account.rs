@@ -71,7 +71,6 @@ async fn delete_account(
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();
-    services::account::delete_account(&conn, state.r2.as_ref(), state.clerk.as_ref(), &user_id)
-        .await?;
+    services::account::delete_account(&conn, state.clerk.as_ref(), &user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

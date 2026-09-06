@@ -256,7 +256,6 @@ mod tests {
             "http://localhost".to_string(),
             None,
             None,
-            None,
         )
     }
 

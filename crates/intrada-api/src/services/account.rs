@@ -4,7 +4,6 @@ use crate::clerk::ClerkClient;
 use crate::db;
 use crate::db::account::AccountPreferences;
 use crate::error::ApiError;
-use crate::storage::R2Client;
 
 pub async fn get_preferences(
     conn: &Connection,
@@ -33,14 +32,12 @@ pub async fn put_preferences(
 
 pub async fn delete_account(
     conn: &Connection,
-    r2: Option<&R2Client>,
     clerk: Option<&ClerkClient>,
     user_id: &str,
 ) -> Result<(), ApiError> {
-    // Refuse empty user_id outright — auth-disabled mode (no
-    // CLERK_ISSUER_URL) yields `user_id == ""` (with `AuthSource::Disabled`),
-    // which would otherwise turn into an R2 prefix `/` and a Clerk
-    // DELETE /v1/users/ — both blast-radius hazards.
+    // Refuse empty user_id outright: auth-disabled mode (no CLERK_ISSUER_URL)
+    // yields `user_id == ""`, which would otherwise reach Clerk as a malformed
+    // cross-user DELETE. Defence in depth, not a proven fan-out.
     if user_id.is_empty() {
         return Err(ApiError::Unauthorized("Unauthorized".to_string()));
     }
@@ -49,16 +46,7 @@ pub async fn delete_account(
     //    can re-run.
     db::account::delete_all_user_data(conn, user_id).await?;
 
-    // 2. R2 photo blobs. Best-effort: log but don't fail. Keys are
-    //    prefixed by user_id and the bucket has no public listing, so any
-    //    residual blobs are orphaned-but-private.
-    if let Some(r2) = r2 {
-        if let Err(err) = r2.delete_user_photos(user_id).await {
-            tracing::warn!(?err, %user_id, "R2 photo cleanup failed during account delete");
-        }
-    }
-
-    // 3. Clerk user record. Best-effort: log but don't fail. 404 from
+    // 2. Clerk user record. Best-effort: log but don't fail. 404 from
     //    Clerk is treated as success (idempotent retry).
     if let Some(clerk) = clerk {
         if let Err(err) = clerk.delete_user(user_id).await {

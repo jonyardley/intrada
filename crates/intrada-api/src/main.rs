@@ -3,7 +3,6 @@ use intrada_api::clerk::ClerkClient;
 use intrada_api::migrations;
 use intrada_api::routes;
 use intrada_api::state::{AppState, Db};
-use intrada_api::storage::R2Client;
 use tracing_subscriber::prelude::*;
 
 #[tokio::main]
@@ -113,17 +112,6 @@ async fn main() {
         });
     }
 
-    let r2 = match R2Client::from_env() {
-        Ok(client) => {
-            tracing::info!("R2 photo storage configured");
-            Some(client)
-        }
-        Err(msg) => {
-            tracing::warn!("R2 not configured — photo upload disabled ({msg})");
-            None
-        }
-    };
-
     let clerk = match ClerkClient::from_env() {
         Some(client) => {
             tracing::info!("Clerk Backend client configured");
@@ -148,7 +136,7 @@ async fn main() {
     // heartbeat ticks.
     shared_db.spawn_heartbeat();
 
-    let state = AppState::new(shared_db, allowed_origin, auth_config, r2, clerk);
+    let state = AppState::new(shared_db, allowed_origin, auth_config, clerk);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

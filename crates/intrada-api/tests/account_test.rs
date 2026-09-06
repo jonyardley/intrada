@@ -194,9 +194,9 @@ async fn delete_account_requires_auth_when_enabled() {
 
 #[tokio::test]
 async fn delete_account_refuses_empty_user_id_in_auth_disabled_mode() {
-    // Auth disabled (no AuthConfig) → AuthUser yields "". The handler
-    // must refuse to proceed; otherwise destructive cleanup (R2 prefix
-    // list, Clerk delete) could fan out across all users.
+    // Auth disabled (no AuthConfig) yields an empty AuthUser id. The handler
+    // must refuse before the destructive Clerk call, rather than sending it a
+    // malformed cross-user request.
     let app = common::setup_test_app().await;
     let (status, _) = common::delete(app, "/api/account").await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
