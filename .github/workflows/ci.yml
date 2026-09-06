@@ -8,6 +8,11 @@ on:
   # the workflow only triggers when the target is `main`, leaving stacked
   # PRs with "no checks reported" until they're rebased onto main.
   pull_request:
+    # Explicit types, adding labeled/unlabeled to the default set (opened,
+    # synchronize, reopened): the comments-justified bypass (#1433) needs a
+    # label change to start a fresh run, since re-running an old one replays
+    # the pre-label payload and fails again.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 # Cancel in-flight runs when a new commit lands on the same PR. Don't cancel
 # main-branch runs — those gate deploys, so we want every commit's build to
@@ -142,36 +147,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "native"
-          cache-on-failure: true
-      # nextest runs the same assertions as `cargo test` but with a smarter
-      # scheduler — typically 40–50% faster.
-      - uses: taiki-e/install-action@v2.87.4
-        with:
-          tool: cargo-nextest
-      - run: cargo nextest run --workspace --profile ci
-      - name: Publish test results
-        if: always()
-        uses: dorny/test-reporter@v3
-        with:
-          name: Unit Test Results
-          path: target/nextest/ci/junit.xml
-          reporter: java-junit
-          fail-on-error: false
-
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
     # Runs on push to main as well as on PRs, and it has to: a PR comment is a
@@ -187,17 +162,32 @@ jobs:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "coverage"
+          prefix-key: "native"
           cache-on-failure: true
+      # nextest runs the same assertions as `cargo test` but with a smarter
+      # scheduler: typically 40 to 50% faster.
       - uses: taiki-e/install-action@v2.87.4
         with:
           tool: cargo-llvm-cov,cargo-nextest
+      # One instrumented run emits both the junit XML dorny/test-reporter
+      # reads and the Codecov upload, so the workspace builds once per run
+      # instead of twice (#1517: measured 1.64x instrumented-vs-plain
+      # locally, under the 2x this was worth folding at).
       - name: Generate coverage
         run: >
           cargo llvm-cov nextest
           --workspace
+          --profile ci
           --codecov
           --output-path codecov.json
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Unit Test Results
+          path: target/nextest/ci/junit.xml
+          reporter: java-junit
+          fail-on-error: false
       - name: Upload to Codecov
         uses: codecov/codecov-action@v7
         with:
@@ -685,11 +675,13 @@ jobs:
   # The same comment-density gate as the local pre-push hook, enforced for
   # everyone — an opt-in hook is effectively off (.claude/skills/intrada-ios-quality/SKILL.md "stated invariant =
   # enforced invariant"). HEAD is detached on a PR checkout, so the base branch
-  # is passed explicitly via COMMENT_CHECK_BASE.
+  # is passed explicitly via COMMENT_CHECK_BASE. CI can't see the local
+  # SKIP_COMMENT_CHECK env var, so a genuinely justified case bypasses here
+  # via the comments-justified PR label instead (#1433).
   comment-density:
     name: Comment density
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'comments-justified')
     steps:
       - uses: actions/checkout@v7
         with:
@@ -848,3 +840,33 @@ jobs:
           version: ${{ github.sha }}
           set_commits: auto
           finalize: true
+
+  # Only signal for a red run on main: PR failures are already visible on the
+  # PR, so this is scoped to push events on main (#1554). gh + GITHUB_TOKEN is
+  # the zero-dependency option here: no webhook secret to provision. Comments
+  # on an existing open ci-red-main issue instead of opening a second so a run
+  # of back-to-back red pushes doesn't spam the tracker.
+  alert-on-red-main:
+    name: Alert on red main
+    runs-on: ubuntu-latest
+    needs: [changes, test, msrv, clippy, native-ios, snapshot-hygiene, fmt, security, api-docker-build, deploy-api]
+    if: failure() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      issues: write
+    steps:
+      - name: File or update failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" \
+              --body "Another push to main failed CI: $RUN_URL"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "CI failed on main" \
+              --body "A push to main failed CI: $RUN_URL" \
+              --label ci-red-main \
+              --assignee jonyardley
+          fi

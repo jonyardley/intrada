@@ -321,8 +321,9 @@ Two-line cap as a smell test: if a comment runs longer, ask "can this be a
 function name? a type? a CLAUDE.md entry?". Usually yes.
 
 The `pre-push` hook (under `.githooks/`) flags branches pushing too many comment
-lines relative to code. Bypass genuinely-justified cases with
-`SKIP_COMMENT_CHECK=1 git push`.
+lines relative to code, exempting diffs under 25 added code lines. Bypass
+genuinely-justified cases locally with `SKIP_COMMENT_CHECK=1 git push`; in CI,
+add the `comments-justified` label to the PR instead.
 When invoking any code-review agent for a PR, include "comment-policy
 violations are Blockers, not Nits" so the review treats drift as a
 merge-blocker.

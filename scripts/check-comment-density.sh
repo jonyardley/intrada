@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Flag pushes that add too many comments relative to code.
 # See CLAUDE.md "Comments" — code should be self-explanatory; comments are
-# for non-obvious WHY, not narration. Bypass with `SKIP_COMMENT_CHECK=1`.
+# for non-obvious WHY, not narration. Bypass locally with
+# `SKIP_COMMENT_CHECK=1`; in CI, bypass with the `comments-justified` PR
+# label (#1433).
 
 set -euo pipefail
 
@@ -57,6 +59,14 @@ if [ "$added_code" -le 0 ]; then
   exit 0
 fi
 
+# Below this floor the ratio carries no signal: a small, deletion-heavy diff
+# can score high on just two or three surviving comment edits, as #1430 did
+# on ten added code lines (#1433).
+floor=25
+if [ "$added_code" -lt "$floor" ]; then
+  exit 0
+fi
+
 threshold="0.15"
 ratio=$(awk -v c="$added_comments" -v k="$added_code" \
   'BEGIN { printf "%.2f", c / k }')
@@ -80,9 +90,11 @@ if [ "$over" = "1" ]; then
        | grep -E '^\+[[:space:]]*(//|/\*|\*)'
 
    If the comments are genuinely justified (incident write-up, vendored
-   notice, etc.), bypass with:
+   notice, etc.), bypass locally with:
 
      SKIP_COMMENT_CHECK=1 git push
+
+   In CI, add the comments-justified label to the PR instead.
 
 EOF
   exit 1
