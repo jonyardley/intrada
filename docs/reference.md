@@ -71,7 +71,7 @@ runs on `workflow_dispatch` or a `v*` tag, never per-PR). Signing is fastlane
 **match**, and it needs Ruby >= 3 — system Ruby 2.6 is too old, use `rbenv` —
 plus a one-time App Store Connect and match bootstrap. Full setup and decisions:
 [`../specs/ios-testflight-cicd.md`](../specs/ios-testflight-cicd.md) and
-SETUP.md §6a.
+SETUP.md §4a.
 
 ### Git hooks
 
@@ -124,12 +124,6 @@ it costs a small fraction of a full build.
 
 `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (required), `CLERK_ISSUER_URL` (required
 in prod), `ALLOWED_ORIGIN` (see SETUP.md §2), `PORT` (default 3001).
-
-### R2 photo storage (optional)
-
-The API starts without these; photo endpoints return 500 until they are set.
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`,
-`R2_PUBLIC_URL`. See SETUP.md §3 for provisioning.
 
 ### Native iOS build (compile-time)
 

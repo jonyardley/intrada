@@ -1,4 +1,4 @@
-# Dev toolchain, pinned in one place. Run `mise install` after cloning (SETUP.md §7).
+# Dev toolchain, pinned in one place. Run `mise install` after cloning (SETUP.md §5).
 # Rust itself stays with rustup.
 [tools]
 just = "1"
@@ -22,5 +22,5 @@ shellcheck = "0.11"
 "cargo:cargo-swift" = "0.9.0"
 # Cross-checkout Rust build cache — measured ~30% faster `just check` in a
 # fresh worktree with a warm cache (#1206). Provisioned for everyone, but
-# only active if you opt in with RUSTC_WRAPPER=sccache — see SETUP.md §6.
+# only active if you opt in with RUSTC_WRAPPER=sccache — see SETUP.md §5.
 sccache = "0.17"

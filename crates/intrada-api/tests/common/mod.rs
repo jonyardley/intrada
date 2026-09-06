@@ -55,7 +55,6 @@ pub async fn setup_test_app_with_rate_limit(limit: u32, window: Duration) -> Rou
         "http://localhost:3000".to_string(),
         None,
         None,
-        None,
     )
     .with_rate_limiter(limiter);
     routes::api_router(state)
@@ -83,7 +82,6 @@ pub async fn setup_test_app_with_oauth_ip_limit(limit: u32, window: Duration) ->
         "http://localhost:3000".to_string(),
         None,
         None,
-        None,
     )
     .with_oauth_ip_limiter(limiter);
     routes::api_router(state)
@@ -109,7 +107,6 @@ pub async fn setup_test_app_with_mcp_ip_limit(limit: u32, window: Duration) -> R
     let state = AppState::new(
         Db::new(db, conn),
         "http://localhost:3000".to_string(),
-        None,
         None,
         None,
     )
@@ -152,7 +149,6 @@ pub async fn setup_test_app_with_conn(
         Db::new(db, conn.clone()),
         allowed_origin.to_string(),
         auth_config,
-        None,
         None,
     );
     (routes::api_router(state), conn)

@@ -1,6 +1,6 @@
 # Account settings & GDPR account deletion
 
-> Tier 3 — touches auth, multi-table DB delete, R2 storage, Clerk Backend API,
+> Tier 3: touches auth, multi-table DB delete, Clerk Backend API,
 > and a new top-level UI surface.
 
 ## Problem
@@ -90,7 +90,7 @@ Handler responsibilities, in order:
 1. Resolve `user_id` from `AuthUser` extractor. Reject if empty (no auth).
 2. **Delete user data.** Single libsql transaction (Turso supports
    transactions on a single connection):
-   - `DELETE FROM lesson_photos WHERE user_id = ?` (rows; R2 blobs handled below)
+   - `DELETE FROM lesson_photos WHERE user_id = ?`
    - `DELETE FROM lessons WHERE user_id = ?`
    - `DELETE FROM sessions WHERE user_id = ?` (cascade-cleans `setlist_entries` via app-level delete inside the same txn)
    - `DELETE FROM items WHERE user_id = ?`
@@ -101,20 +101,19 @@ Note: `setlist_entries` and `routine_entries` are not directly user-scoped
 (they reference parent `session_id` / `routine_id`) — child rows are deleted
 by joining through the parent's `user_id`, e.g.
 `DELETE FROM setlist_entries WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?)`.
-3. **Delete R2 photos.** New `R2Client::delete_user_photos(user_id)` —
-   list-and-delete with prefix `{user_id}/`. Best-effort: log on failure
-   but don't fail the whole flow (DB is the source of truth). If R2 is not
-   configured, skip silently.
-4. **Delete Clerk user.** New `ClerkClient::delete_user(user_id)` calling
+3. **Delete Clerk user.** New `ClerkClient::delete_user(user_id)` calling
    `DELETE https://api.clerk.com/v1/users/{user_id}` with
    `Authorization: Bearer $CLERK_SECRET_KEY`. If `CLERK_SECRET_KEY` is unset
    (local dev): skip with a warn log.
-5. Return `204`.
+4. Return `204`.
 
-**Failure ordering.** DB delete first, then R2, then Clerk. If DB succeeds
-but R2 or Clerk fails, the user can re-run delete from the UI (idempotent —
-DELETE WHERE user_id finds zero rows, R2 prefix-list finds zero objects,
-Clerk returns 404 which we treat as success).
+Photo cleanup was step 3 here until the R2 module was deleted (#281 closed as
+stale, bucket empty): photos are on-device files now, so account deletion has
+no server-side blobs to reap.
+
+**Failure ordering.** DB delete first, then Clerk. If DB succeeds but Clerk
+fails, the user can re-run delete from the UI (idempotent: DELETE WHERE
+user_id finds zero rows, Clerk returns 404 which we treat as success).
 
 ### New tables / migrations
 
@@ -201,7 +200,7 @@ skips the Clerk call.
 ## Plan of attack (rough; full plan in Plan mode)
 
 1. Migration `0029_create_user_preferences`.
-2. API: `clerk.rs`, `routes/account.rs`, R2 `delete_user_photos`, wire into state.
+2. API: `clerk.rs`, `routes/account.rs`, wire into state.
 3. Core: events + model + viewmodel for preferences and delete.
 4. Web: `profile_button.rs`, `views/settings.rs`, `views/account_delete.rs`,
    wire into `app.rs` + `app_header.rs`.

@@ -63,7 +63,7 @@ buildServer.json
 # graph lives in the main checkout; scope is controlled by the committed
 # .graphifyignore. See CLAUDE.md "Knowledge graph (graphify)".
 graphify-out/
-# Per-developer mise overlay (e.g. RUSTC_WRAPPER=sccache) — see SETUP.md §6.
+# Per-developer mise overlay (e.g. RUSTC_WRAPPER=sccache) — see SETUP.md §5.
 # Never committed: mise.toml itself must stay identical for everyone.
 mise.local.toml
 docs/status.md
