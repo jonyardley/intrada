@@ -275,7 +275,13 @@ jobs:
     # instead of each rebuilding, and `native-ios-build-release` compiles the
     # Release configuration alongside them rather than ahead of them.
     name: "Native iOS: build"
-    runs-on: macos-26
+    # Self-hosted runs are opt-in through the IOS_RUNNER repo variable, so the
+    # Mac can be pulled out of CI in one click when it is asleep, busy or
+    # mid-update, without a workflow edit. Deleting the variable falls back to
+    # macos-26 rather than leaving an empty `runs-on`, which queues the job
+    # until it times out instead of failing. A fork PR always goes to macos-26:
+    # untrusted code must never execute on a self-hosted runner.
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'macos-26' || vars.IOS_RUNNER || 'macos-26' }}
     timeout-minutes: 40
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
@@ -458,7 +464,7 @@ jobs:
     # for the bindings cache that job guarantees, which is what keeps the Rust
     # toolchain out of here.
     name: "Native iOS: Release build"
-    runs-on: macos-26
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'macos-26' || vars.IOS_RUNNER || 'macos-26' }}
     timeout-minutes: 30
     needs: [changes, native-ios-build]
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
@@ -530,7 +536,7 @@ jobs:
     # the main-only launch+screenshot smoke, since it already has the built
     # app on disk via the downloaded artifact.
     name: "Native iOS: unit + snapshot"
-    runs-on: macos-26
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'macos-26' || vars.IOS_RUNNER || 'macos-26' }}
     timeout-minutes: 20
     needs: [changes, native-ios-build]
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
@@ -593,7 +599,7 @@ jobs:
     # would clone the simulator instead, which fails the runner launch under
     # memory pressure ("Application failed preflight checks").
     name: "Native iOS: UI (${{ matrix.slice }})"
-    runs-on: macos-26
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'macos-26' || vars.IOS_RUNNER || 'macos-26' }}
     timeout-minutes: 20
     needs: [changes, native-ios-build]
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
