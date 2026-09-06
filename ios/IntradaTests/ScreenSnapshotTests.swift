@@ -536,6 +536,18 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(bars), as: config)
   }
 
+  /// Recorded at the size #1471 reports, which is also where the ring's clamp
+  /// binds hardest: stacked layout and dial inset are both load-bearing here.
+  func testMasteryHeroCardAccessibilitySize() {
+    let hero = ZStack {
+      PaperBackground()
+      MasteryHeroCard(mastery: 6.4, monthDelta: 1.2, itemsCovered: 5)
+        .padding(16)
+    }
+    .dynamicTypeSize(.accessibility5)
+    assertSnapshot(of: host(hero), as: config)
+  }
+
   func testRepCounter() {
     let counters = ZStack {
       PaperBackground()

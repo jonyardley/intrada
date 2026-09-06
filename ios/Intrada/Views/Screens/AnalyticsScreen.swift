@@ -46,30 +46,10 @@ struct AnalyticsScreen: View {
   // ── Hero mastery ──
 
   private func heroCard(_ analytics: AnalyticsView) -> some View {
-    HStack(spacing: 18) {
-      MasteryDial(value: overallMastery(analytics))
-      VStack(alignment: .leading, spacing: 6) {
-        Eyebrow("Overall mastery")
-        HStack(spacing: 5) {
-          Image(systemName: "chart.line.uptrend.xyaxis")
-          Text("+\(avgDelta(analytics), specifier: "%.1f") this month")
-        }
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(IntradaColor.successTeal)
-        Text(
-          "Climbing steadily across \(analytics.weeklySummary.itemsCovered) pieces."
-        )
-        .font(IntradaFont.meta)
-        .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      Spacer(minLength: 0)
-    }
-    .padding(18)
-    .background(IntradaColor.cardFill)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.panel))
-    .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.panel)
-        .stroke(IntradaColor.hairline, lineWidth: 1))
+    MasteryHeroCard(
+      mastery: overallMastery(analytics),
+      monthDelta: avgDelta(analytics),
+      itemsCovered: Int(analytics.weeklySummary.itemsCovered))
   }
 
   // ── Consistency ──
