@@ -33,7 +33,7 @@ final class AVPageCameraDevice: PageCameraDevice {
     AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) != nil
   }
 
-  private let hardware = CaptureSessionBox()
+  private lazy var hardware = CaptureSessionBox()
   private var configured = false
   /// `AVCapturePhotoOutput` does not retain its delegate, so the capture in
   /// flight is held here or it deallocates before the photo arrives.
@@ -59,6 +59,7 @@ final class AVPageCameraDevice: PageCameraDevice {
   }
 
   func stop() {
+    guard configured else { return }
     hardware.stopRunning()
   }
 
