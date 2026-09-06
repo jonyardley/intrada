@@ -9,6 +9,12 @@ struct MasteryDial: View {
   var size: CGFloat = 128
   private let ringWidth: CGFloat = 9
 
+  // Numeral and caption scale with Dynamic Type, a fixed ring does not, so they
+  // crossed its stroke (#1471). Floored at 1, clamped so it still fits a phone.
+  @ScaledMetric(relativeTo: .largeTitle) private var typeScale: CGFloat = 1
+  private var resolvedSize: CGFloat { size * min(max(typeScale, 1), 1.6) }
+
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.intradaMotionDisabled) private var motionDisabled
   @State private var shown = false
@@ -30,6 +36,8 @@ struct MasteryDial: View {
           style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
+      // Past the clamp the caption still grows, so inset it to the inscribed
+      // square and let it shrink. Accessibility sizes only: below them, no change.
       VStack(spacing: 2) {
         CountingNumber(value: settled ? value : 0) { String(format: "%.1f", $0) }
           .font(IntradaFont.pageTitle(size * 0.297))
@@ -39,9 +47,12 @@ struct MasteryDial: View {
           .tracking(1.5)
           .foregroundStyle(IntradaColor.inkFaint)
       }
+      .lineLimit(dynamicTypeSize.isAccessibilitySize ? 1 : nil)
+      .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.5 : 1)
+      .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? resolvedSize * 0.16 : 0)
     }
     .padding(ringWidth / 2)
-    .frame(width: size, height: size)
+    .frame(width: resolvedSize, height: resolvedSize)
     .onAppear {
       guard animates, !shown else { return }
       withAnimation(.easeOut(duration: IntradaMotion.countUpDuration)) { shown = true }
