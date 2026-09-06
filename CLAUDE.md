@@ -259,10 +259,12 @@ and radius value is a named token from `Theme.swift`
 (`ios/Intrada/DesignSystem/Theme.swift`); hand-rolled views that duplicate an
 existing primitive are the #1 source of visual drift here. **Before any UI or
 UX change you MUST read `skill://intrada-design-system`
-(`.claude/skills/intrada-design-system/SKILL.md`)**, and consult
-[`docs/design-principles.md`](docs/design-principles.md) for how the app should
-feel and [`docs/tone-of-voice.md`](docs/tone-of-voice.md) for every
-user-facing string. These bind whether or not you loaded them.
+(`.claude/skills/intrada-design-system/SKILL.md`)** for enforcement,
+`skill://intrada-design-principles`
+(`.claude/skills/intrada-design-principles/SKILL.md`) for how the app should
+feel, and `skill://intrada-tone-of-voice`
+(`.claude/skills/intrada-tone-of-voice/SKILL.md`) for every user-facing
+string. These bind whether or not you loaded them.
 
 ## Code Style
 
@@ -582,7 +584,8 @@ done. The conventions below bind every change, concurrent or not.
 ### Conventions
 
 - British English in all UI copy, comments, commit messages and PR bodies. UI
-  copy has its own rules on top: [`docs/tone-of-voice.md`](docs/tone-of-voice.md).
+  copy has its own rules on top: `skill://intrada-tone-of-voice`
+  (`.claude/skills/intrada-tone-of-voice/SKILL.md`).
 - No em dashes, en dashes or double dashes in prose, comments, commits or PR
   bodies. `scripts/check-dashes.sh` enforces the em and en dash ban on changed
   lines (CI and pre-push; bypass a justified case with `SKIP_DASH_CHECK=1`),
