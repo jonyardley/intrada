@@ -623,9 +623,10 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let current = piece.linked_exercise_ids.clone();
             let current_set: std::collections::HashSet<&String> = current.iter().collect();
             let requested_set: std::collections::HashSet<&String> = ordered_ids.iter().collect();
+            let mut seen: std::collections::HashSet<&String> = std::collections::HashSet::new();
             let mut next: Vec<String> = ordered_ids
                 .iter()
-                .filter(|id| current_set.contains(id))
+                .filter(|id| current_set.contains(id) && seen.insert(id))
                 .cloned()
                 .collect();
             for id in &current {
@@ -2791,6 +2792,37 @@ mod tests {
 
         let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
         assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn reorder_linked_exercises_dedupes_repeated_ids() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.push(make_exercise("ex-2"));
+
+        for ex in ["ex-1", "ex-2"] {
+            send(
+                &mut model,
+                ItemEvent::LinkExercise {
+                    piece_id: "piece-1".to_string(),
+                    exercise_id: ex.to_string(),
+                },
+            );
+        }
+
+        send(
+            &mut model,
+            ItemEvent::ReorderLinkedExercises {
+                piece_id: "piece-1".to_string(),
+                ordered_ids: vec!["ex-2".to_string(), "ex-1".to_string(), "ex-2".to_string()],
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(
+            piece.linked_exercise_ids,
+            vec!["ex-2".to_string(), "ex-1".to_string()]
+        );
         assert!(model.last_error.is_none());
     }
 
