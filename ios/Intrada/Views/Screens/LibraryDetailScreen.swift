@@ -495,7 +495,7 @@ struct LibraryDetailScreen: View {
           }
         }
         .cardSurface()
-      } else {
+      } else if item.ladderIsKeys {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: IntradaSpacing.card) {
             ForEach(item.variants, id: \.id) { variation in
@@ -505,6 +505,16 @@ struct LibraryDetailScreen: View {
           .padding(IntradaSpacing.cardCompact)
         }
         .cardSurface(cornerRadius: IntradaRadius.card)
+      } else {
+        VStack(spacing: 0) {
+          ForEach(Array(item.variants.enumerated()), id: \.element.id) { index, variation in
+            if index > 0 {
+              HairlineDivider()
+            }
+            VariationListRow(variation: variation)
+          }
+        }
+        .cardSurface()
       }
     }
     .onChange(of: item.variants.isEmpty) { _, isEmpty in
@@ -904,6 +914,48 @@ private struct VariationRingItem: View {
   private var captionColor: Color {
     // Ink, not accent: a per-row "Solid" caption on a list of variations is
     // not one of the accent's allowed jobs (#1723).
+    variation.isSolid ? IntradaColor.ink : IntradaColor.inkFaint
+  }
+
+  private var accessibilityLabel: String {
+    guard let score = variation.latestScore else { return "\(variation.label), not yet attempted" }
+    return variation.isSolid
+      ? "\(variation.label), solid, \(score) of 10" : "\(variation.label), \(score) of 10"
+  }
+}
+
+/// Non-key variations row (#1786): a ring's label shrinks to fit, which a
+/// free-text name like "Hands together, two octaves" can't survive, so this
+/// lays out like `VariationPickerSheet.row` instead: full-width label above
+/// the caption, never sharing a line with it, so a long name always keeps
+/// the whole row rather than giving up width to the caption.
+private struct VariationListRow: View {
+  let variation: VariantView
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(variation.label)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.ink)
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+      Text(captionText)
+        .font(IntradaFont.meta)
+        .foregroundStyle(captionColor)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.vertical, IntradaSpacing.row)
+    .padding(.horizontal, IntradaSpacing.card)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var captionText: String {
+    if variation.isSolid { return "Solid" }
+    return "-"
+  }
+
+  private var captionColor: Color {
     variation.isSolid ? IntradaColor.ink : IntradaColor.inkFaint
   }
 

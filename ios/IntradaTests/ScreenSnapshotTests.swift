@@ -923,6 +923,25 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  // #1786: the list-row layout for non-key variations, replacing the ring.
+  func testExerciseDetailWithLongVariationName() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLongVariationName]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithLongVariationName.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  /// Largest accessibility text size: the label wraps within its own line
+  /// rather than clipping or breaking mid-word (#1786).
+  func testExerciseDetailWithLongVariationNameAccessibilitySize() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLongVariationName]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithLongVariationName.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: axConfig)
+  }
+
   // #1083 C2: minimal variation-list creation sheet, opened from the "+ Add variations" link.
   func testAddVariationsSheet() {
     assertSnapshot(of: host(AddVariationsSheet(itemId: "exercise-1")), as: config)
