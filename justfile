@@ -54,18 +54,48 @@ coverage:
 # mise's shims, and a plain shell without `mise activate` would fail the whole
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
+# All eleven checks are independent: each test script sandboxes its own
+# `mktemp -d`, and none touches the cargo target dir, so they run concurrently
+# instead of one after another. Same checks, less wall-clock.
 hygiene:
-    typos
-    cargo-shear
-    @if command -v actionlint >/dev/null 2>&1; then actionlint; else mise x -- actionlint; fi
-    bash scripts/check-links.sh
-    bash scripts/check-release-name.sh
-    bash scripts/tests/hygiene-checks-test.sh
-    bash scripts/tests/pr-visuals-test.sh
-    bash scripts/tests/status-release-test.sh
-    bash scripts/tests/claim-issue-test.sh
-    bash scripts/tests/pr-open-test.sh
-    bash scripts/tests/session-claims-test.sh
+    #!/usr/bin/env bash
+    set -uo pipefail
+    actionlint_cmd="actionlint"
+    command -v actionlint >/dev/null 2>&1 || actionlint_cmd="mise x -- actionlint"
+    checks=(
+        "typos:typos"
+        "cargo-shear:cargo-shear"
+        "actionlint:$actionlint_cmd"
+        "check-links:bash scripts/check-links.sh"
+        "check-release-name:bash scripts/check-release-name.sh"
+        "hygiene-checks-test:bash scripts/tests/hygiene-checks-test.sh"
+        "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
+        "status-release-test:bash scripts/tests/status-release-test.sh"
+        "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
+        "pr-open-test:bash scripts/tests/pr-open-test.sh"
+        "session-claims-test:bash scripts/tests/session-claims-test.sh"
+    )
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' EXIT
+    names=()
+    pids=()
+    for entry in "${checks[@]}"; do
+        name="${entry%%:*}"
+        cmd="${entry#*:}"
+        names+=("$name")
+        bash -c "$cmd" >"$tmpdir/$name.log" 2>&1 &
+        pids+=($!)
+    done
+    fail=0
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            fail=1
+            echo "✗ ${names[$i]} failed:" >&2
+            sed 's/^/    /' "$tmpdir/${names[$i]}.log" >&2
+        fi
+    done
+    [ "$fail" -eq 0 ] && echo "✓ hygiene (11 checks, parallel)"
+    exit "$fail"
 
 # Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
 status:
@@ -94,9 +124,9 @@ claim number:
 pr-open title body *flags:
     bash scripts/pr-open.sh --title {{quote(title)}} --body {{quote(body)}} {{flags}}
 
-# Check everything (fmt → clippy → test → hygiene, cheapest first). Mirrors
-# the iOS test-tier green-stamp (#1200): skips on a clean, already-green HEAD
-# (#1204). Delete `target/.check-stamp` to force a re-run.
+# Check everything (fmt, clippy, test, hygiene). Mirrors the iOS test-tier
+# green-stamp (#1200): skips on a clean, already-green HEAD (#1204). Delete
+# `target/.check-stamp` to force a re-run.
 check:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -106,7 +136,20 @@ check:
         echo "✓ HEAD $sha already green — skipping. Delete $stamp to force a re-run."
         exit 0
     fi
-    just fmt-check lint test hygiene
+    just fmt-check
+    # hygiene touches no cargo build state, so it overlaps lint+test instead
+    # of tailing them: same checks, less wall-clock.
+    just hygiene &
+    hygiene_pid=$!
+    lint_status=0
+    just lint || lint_status=$?
+    test_status=0
+    just test || test_status=$?
+    hygiene_status=0
+    wait "$hygiene_pid" || hygiene_status=$?
+    if [ "$lint_status" -ne 0 ] || [ "$test_status" -ne 0 ] || [ "$hygiene_status" -ne 0 ]; then
+        exit 1
+    fi
     # Stamp only the exact tree we tested: a green run over uncommitted edits,
     # or one HEAD moved under, says nothing about $sha (#1204).
     if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
