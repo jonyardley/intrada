@@ -268,6 +268,24 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
+  /// The card's "what was played" line: pieces named plainly, an exercise's
+  /// keys spelled out when there are few (#1785).
+  func testSessionCardsPlayedSummary() {
+    let cards = VStack(spacing: IntradaSpacing.row) {
+      SessionCard(session: .previewCompleted)
+      SessionCard(session: .previewWithVariations)
+      SessionCard(session: .previewEndedEarly)
+    }
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    .frame(width: 390)
+    assertSnapshot(
+      of: host(cards),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 460),
+        traits: .init(displayScale: 2)))
+  }
+
   /// The real `PracticeScreen`/`TabView` path, not a bare component (#1730).
   func testPracticeScreenWeekStripAccessibilitySize() {
     assertSnapshot(
@@ -313,6 +331,16 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(
         NavigationStack {
           PracticeSessionDetailScreen(session: .previewWithVariations)
+        }, store: .previewPractice), as: config)
+  }
+
+  /// A single variation still gets named, highlighted rather than folded
+  /// into the "type and time" line (#1785).
+  func testPracticeSessionDetailWithOneVariation() {
+    assertSnapshot(
+      of: host(
+        NavigationStack {
+          PracticeSessionDetailScreen(session: .previewWithOneVariation)
         }, store: .previewPractice), as: config)
   }
 
