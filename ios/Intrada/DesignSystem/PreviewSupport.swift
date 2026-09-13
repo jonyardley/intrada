@@ -1037,7 +1037,8 @@
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil)
+        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
+        currentVariations: [])
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -1057,7 +1058,8 @@
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
-        currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil)
+        currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
+        currentVariations: [])
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -1079,7 +1081,16 @@
         nextItemTitle: "Clair de Lune",
         currentItemIntention: "Even tone through the turn",
         currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil)
+        currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil,
+        currentVariations: [
+          PickerVariationView(
+            id: "variation-c", label: "C", caption: "Played this session · 3m 10s",
+            isSolid: true),
+          PickerVariationView(
+            id: "variation-f", label: "F", caption: "Playing now", isSolid: false),
+          PickerVariationView(
+            id: "variation-bb", label: "B♭", caption: "Not yet played", isSolid: false),
+        ])
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -1122,7 +1133,8 @@
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
         currentRelatedPieceTitle: "Moonlight Sonata",
-        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil)
+        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
+        currentVariations: [])
     }
   }
 

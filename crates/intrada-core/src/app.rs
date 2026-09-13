@@ -400,11 +400,25 @@ impl Intrada {
                     None,
                 )
             }
-            SessionStatus::Active(active) => (
-                Some(build_active_session_view(active, &item_index, &labels)),
-                None,
-                None,
-            ),
+            SessionStatus::Active(active) => {
+                let current_entry = active.current_entry();
+                // Looks up in all_items, not the filtered items: a Library
+                // search must not empty the variation picker (#1484).
+                let current_variations = all_items
+                    .iter()
+                    .find(|i| i.id == current_entry.item_id)
+                    .map_or(&[][..], |i| i.variants.as_slice());
+                (
+                    Some(build_active_session_view(
+                        active,
+                        &item_index,
+                        &labels,
+                        current_variations,
+                    )),
+                    None,
+                    None,
+                )
+            }
             SessionStatus::Summary(summary_session) => (
                 None,
                 None,
@@ -4630,6 +4644,51 @@ mod tests {
             photo_id: None,
             metre: None,
         }
+    }
+
+    /// The picker's captions come from the unfiltered library: a Library
+    /// search that hides the current exercise must not empty them (#1784).
+    #[test]
+    fn a_library_filter_cannot_empty_the_players_variation_picker() {
+        let app = Intrada;
+        let mut entry = variant_entry("ex-1", "ex-1-v0", None);
+        entry.plays[0].seconds = 250;
+        entry.plays.push(VariationPlay {
+            id: "play-2".to_string(),
+            variation_id: Some("ex-1-v1".to_string()),
+            seconds: 0,
+            ..VariationPlay::fixture()
+        });
+        let model = Model {
+            items: vec![exercise_with_variants("ex-1", &["C", "G"])],
+            session_status: SessionStatus::Active(crate::domain::session::ActiveSession {
+                id: "as1".to_string(),
+                entries: vec![entry],
+                current_index: 0,
+                current_item_started_at: chrono::Utc::now(),
+                session_started_at: chrono::Utc::now(),
+            }),
+            active_query: Some(ListQuery {
+                item_type: Some(ItemKind::Piece),
+                ..Default::default()
+            }),
+            ..Model::default()
+        };
+
+        let vm = app.view(&model);
+        assert!(
+            vm.items.is_empty(),
+            "the filter really does hide the exercise"
+        );
+        let captions: Vec<&str> = vm
+            .active_session
+            .as_ref()
+            .expect("an active session")
+            .current_variations
+            .iter()
+            .map(|v| v.caption.as_str())
+            .collect();
+        assert_eq!(captions, ["Played this session · 4m 10s", "Playing now"]);
     }
 
     // ── Variation derivation (#1083 C1) ──
