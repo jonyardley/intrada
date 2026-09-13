@@ -114,7 +114,9 @@ final class VariationPlayBridgeTests: XCTestCase {
     // The same `now` PrepareReflection used, or the prediction goes stale.
     // `NextItem` on the setlist's only entry is the shell's real terminal
     // transition (it never sends `FinishSession`).
-    _ = try bridge.update(.session(.nextItem(now: "2026-09-01T10:05:00Z")))
+    _ = try bridge.update(
+      .session(
+        .nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
     let survivors = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
     XCTAssertEqual(survivors.map(\.id), [opened], "the prediction matched the drop")
   }
