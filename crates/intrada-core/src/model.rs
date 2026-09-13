@@ -780,6 +780,7 @@ pub fn build_active_session_view(
     labels: &VariationLabels,
     current_variations: &[VariantView],
 ) -> ActiveSessionView {
+    let safe_index = active.current_index.min(active.entries.len() - 1);
     let current = active.current_entry();
     let open = current.open_play();
 
@@ -830,7 +831,7 @@ pub fn build_active_session_view(
         current_planned_duration_secs: current.planned_duration_secs,
         next_item_title: active
             .entries
-            .get(active.current_index.min(active.entries.len() - 1) + 1)
+            .get(safe_index + 1)
             .map(|e| e.item_title.clone()),
         current_item_intention: current.intention.clone(),
         current_related_piece_title,

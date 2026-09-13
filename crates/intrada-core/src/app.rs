@@ -401,9 +401,12 @@ impl Intrada {
                 )
             }
             SessionStatus::Active(active) => {
+                let current_entry = active.current_entry();
+                // Looks up in all_items, not the filtered items: a Library
+                // search must not empty the variation picker (#1484).
                 let current_variations = all_items
                     .iter()
-                    .find(|i| i.id == active.current_entry().item_id)
+                    .find(|i| i.id == current_entry.item_id)
                     .map_or(&[][..], |i| i.variants.as_slice());
                 (
                     Some(build_active_session_view(
