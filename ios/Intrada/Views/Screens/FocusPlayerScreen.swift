@@ -47,7 +47,7 @@ struct FocusPlayerScreen: View {
       if let active {
         VariationPickerSheet(
           itemTitle: active.currentItemTitle,
-          variations: currentVariations(active),
+          currentVariations: active.currentVariations,
           currentVariationId: active.currentVariationId,
           onPick: { switchVariation(active, to: $0) })
       }
@@ -166,7 +166,7 @@ struct FocusPlayerScreen: View {
   // ── The variation being practised right now (#1739 decision 6) ──
 
   @ViewBuilder private func variationChip(_ active: ActiveSessionView) -> some View {
-    if !currentVariations(active).isEmpty {
+    if !active.currentVariations.isEmpty {
       Button {
         switchingVariation = true
       } label: {
@@ -196,15 +196,6 @@ struct FocusPlayerScreen: View {
       .accessibilityValue(active.currentVariationLabel ?? "none picked")
       .accessibilityHint("Switches to another variation of this exercise")
     }
-  }
-
-  /// The current item's live variations, read unfiltered so the Library's own
-  /// search cannot empty the picker (#1484).
-  private func currentVariations(_ active: ActiveSessionView) -> [VariantView] {
-    let pos = Int(active.currentPosition)
-    guard active.entries.indices.contains(pos) else { return [] }
-    let itemId = active.entries[pos].itemId
-    return store.viewModel?.allItems.first(where: { $0.id == itemId })?.variants ?? []
   }
 
   /// False when the core refused the switch (the per-entry cap, or a variation

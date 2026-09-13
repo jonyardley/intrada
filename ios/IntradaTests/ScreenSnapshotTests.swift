@@ -674,22 +674,35 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  /// A variation played earlier this item, not just scored in a past session,
+  /// reads "Played this session" rather than falling back to its score (#1784).
   func testVariationPickerSheet() {
+    let active = ActiveSessionView.previewActiveVariations
     let sheet = VariationPickerSheet(
       itemTitle: LibraryItemView.previewExerciseWithVariations.title,
-      variations: LibraryItemView.previewExerciseWithVariations.variants,
-      currentVariationId: "variation-f",
+      currentVariations: active.currentVariations,
+      currentVariationId: active.currentVariationId,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: config)
   }
 
   /// Variations named in words rather than key letters, at the largest text
-  /// size: the rows wrap rather than truncating what the musician called them.
+  /// size: the rows wrap rather than truncating what the musician called them,
+  /// including the "Played this session" caption at its longest (#1784).
   func testVariationPickerSheetLongLabels() {
+    let currentVariations = [
+      PickerVariationView(
+        id: "rung-0", label: "Root position", caption: "Playing now", isSolid: false),
+      PickerVariationView(
+        id: "rung-1", label: "1st inversion", caption: "Played this session · 12m 34s",
+        isSolid: true),
+      PickerVariationView(
+        id: "rung-2", label: "2nd inversion", caption: "Not yet played", isSolid: false),
+    ]
     let sheet = VariationPickerSheet(
       itemTitle: "Triad inversions",
-      variations: LibraryItemView.previewExerciseWithNamedVariations.variants,
-      currentVariationId: LibraryItemView.previewExerciseWithNamedVariations.variants.first?.id,
+      currentVariations: currentVariations,
+      currentVariationId: currentVariations.first?.id,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: axConfig)
   }

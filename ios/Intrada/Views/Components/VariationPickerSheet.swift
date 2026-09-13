@@ -6,7 +6,7 @@ import SwiftUI
 /// stray tap cannot clear the repetition dots.
 struct VariationPickerSheet: View {
   let itemTitle: String
-  let variations: [VariantView]
+  let currentVariations: [PickerVariationView]
   let currentVariationId: String?
   /// Returns false when the core refused the switch, which keeps the sheet up
   /// rather than closing over a chip that still names the old variation.
@@ -18,7 +18,7 @@ struct VariationPickerSheet: View {
     BottomSheet(title: "Switch variation", detents: [.medium, .large]) {
       ScrollView {
         VStack(alignment: .leading, spacing: 0) {
-          ForEach(Array(variations.enumerated()), id: \.element.id) { index, variation in
+          ForEach(Array(currentVariations.enumerated()), id: \.element.id) { index, variation in
             if index > 0 {
               HairlineDivider().padding(.horizontal, IntradaSpacing.card)
             }
@@ -34,7 +34,7 @@ struct VariationPickerSheet: View {
     }
   }
 
-  private func row(_ variation: VariantView) -> some View {
+  private func row(_ variation: PickerVariationView) -> some View {
     let isCurrent = variation.id == currentVariationId
     return Button {
       if onPick(variation.id) { dismiss() }
@@ -45,7 +45,7 @@ struct VariationPickerSheet: View {
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.ink)
             .multilineTextAlignment(.leading)
-          Text(caption(variation, isCurrent: isCurrent))
+          Text(variation.caption)
             .font(IntradaFont.meta)
             .foregroundStyle(variation.isSolid ? IntradaColor.ink : IntradaColor.inkFaint)
             .multilineTextAlignment(.leading)
@@ -62,15 +62,9 @@ struct VariationPickerSheet: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .accessibilityLabel("\(variation.label), \(caption(variation, isCurrent: isCurrent))")
+    .accessibilityLabel("\(variation.label), \(variation.caption)")
     .accessibilityHint(isCurrent ? "" : "Switches \(itemTitle) to this variation")
     .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
-  }
-
-  private func caption(_ variation: VariantView, isCurrent: Bool) -> String {
-    if isCurrent { return "Playing now" }
-    guard let score = variation.latestScore else { return "Not yet played" }
-    return variation.isSolid ? "Solid · \(score) of 10" : "\(score) of 10"
   }
 }
 
@@ -80,8 +74,8 @@ struct VariationPickerSheet: View {
       .sheet(isPresented: .constant(true)) {
         VariationPickerSheet(
           itemTitle: "Major Scales",
-          variations: LibraryItemView.previewExerciseWithVariations.variants,
-          currentVariationId: LibraryItemView.previewExerciseWithVariations.variants.first?.id,
+          currentVariations: ActiveSessionView.previewActiveVariations.currentVariations,
+          currentVariationId: ActiveSessionView.previewActiveVariations.currentVariationId,
           onPick: { _ in true })
       }
   }
