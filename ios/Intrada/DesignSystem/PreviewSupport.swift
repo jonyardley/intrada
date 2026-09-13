@@ -789,6 +789,24 @@
         }, ladderIsKeys: false, photoId: nil)
     }
 
+    /// Free-text variation names, matching the issue's own example (#1786).
+    static var previewExerciseWithLongVariationName: LibraryItemView {
+      let names = [
+        "Hands together, two octaves", "Hands separately", "Slow, with the metronome",
+      ]
+      return LibraryItemView(
+        id: "exercise-5", itemType: .exercise, title: "Arpeggios, four octaves", subtitle: "",
+        key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
+        variants: names.enumerated().map { index, label in
+          VariantView(
+            id: "long-variation-\(index)", label: label, position: UInt64(index),
+            latestScore: index == 0 ? 8 : nil, scoreHistory: [], isSolid: index == 0)
+        }, ladderIsKeys: false, photoId: nil)
+    }
+
     /// A piece with no linked exercises — for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(
