@@ -37,7 +37,7 @@ struct FormSectionRow: View {
     case .edit:
       Text("Edit")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
+        .foregroundStyle(IntradaColor.accentText)
     case .opensSheet, .collapsed, .expanded:
       Image(systemName: chevron)
         .font(IntradaFont.bodyMedium)

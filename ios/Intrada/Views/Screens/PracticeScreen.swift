@@ -188,7 +188,7 @@ struct PracticeScreen: View {
         Text("Practise your priorities")
       }
       .font(IntradaFont.button)
-      .foregroundStyle(IntradaColor.accent)
+      .foregroundStyle(IntradaColor.accentText)
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.controlGap)
     }

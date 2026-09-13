@@ -116,7 +116,7 @@ struct EntrySettingsSheet: View {
   private var repsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Toggle(isOn: $tracksReps) { Eyebrow("Track reps") }
-        .tint(IntradaColor.accent)
+        .tint(IntradaColor.accentText)
         .onChange(of: tracksReps) { _, on in
           store.send(
             .session(.setRepTarget(entryId: entry.id, target: on ? UInt8(repTarget) : nil)))
@@ -139,7 +139,7 @@ struct EntrySettingsSheet: View {
   private var durationSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Toggle(isOn: $hasPlannedDuration) { Eyebrow("Planned duration") }
-        .tint(IntradaColor.accent)
+        .tint(IntradaColor.accentText)
         .onChange(of: hasPlannedDuration) { _, on in
           store.send(
             .session(

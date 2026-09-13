@@ -45,7 +45,7 @@ struct ScoreSelector: View {
         .frame(height: 32)
         .background(
           RoundedRectangle(cornerRadius: IntradaRadius.badge)
-            .fill(filled ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(Color.clear))
+            .fill(filled ? AnyShapeStyle(IntradaColor.accentText) : AnyShapeStyle(Color.clear))
         )
         .overlay(
           RoundedRectangle(cornerRadius: IntradaRadius.badge)

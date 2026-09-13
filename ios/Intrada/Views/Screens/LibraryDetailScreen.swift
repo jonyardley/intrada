@@ -107,7 +107,7 @@ struct LibraryDetailScreen: View {
           toggleStar()
         } label: {
           Image(systemName: item.priority ? "star.fill" : "star")
-            .foregroundStyle(item.priority ? IntradaColor.accent : IntradaColor.inkSecondary)
+            .foregroundStyle(item.priority ? IntradaColor.accentText : IntradaColor.inkSecondary)
         }
         .accessibilityLabel(
           item.priority ? "Remove from priorities" : "Add to priorities")
@@ -175,7 +175,7 @@ struct LibraryDetailScreen: View {
         Spacer()
         Button(item.chordChart == nil ? "Add" : "Edit") { editingChart = true }
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
+          .foregroundStyle(IntradaColor.accentText)
           .accessibilityLabel(item.chordChart == nil ? "Add a chord chart" : "Edit chord chart")
       }
       .padding(.horizontal, IntradaSpacing.card)
@@ -290,7 +290,7 @@ struct LibraryDetailScreen: View {
     } label: {
       Label("Add exercise", systemImage: "plus")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
+        .foregroundStyle(IntradaColor.accentText)
         .frame(maxWidth: .infinity)
         .padding(.vertical, IntradaSpacing.cardCompact)
         .contentShape(Rectangle())
@@ -400,7 +400,7 @@ struct LibraryDetailScreen: View {
         editingLinks.toggle()
       }
       .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.accent)
+      .foregroundStyle(IntradaColor.accentText)
       .disabled(item.linkedExercises.isEmpty)
       .opacity(item.linkedExercises.isEmpty ? 0 : 1)
       .accessibilityLabel(
@@ -530,7 +530,7 @@ struct LibraryDetailScreen: View {
           editingVariations.toggle()
         }
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
+        .foregroundStyle(IntradaColor.accentText)
         .accessibilityLabel(
           editingVariations ? "Done editing \(ladderNounPlural)" : "Edit \(ladderNounPlural)")
       }
@@ -902,7 +902,9 @@ private struct VariationRingItem: View {
   }
 
   private var captionColor: Color {
-    variation.isSolid ? IntradaColor.accent : IntradaColor.inkFaint
+    // Ink, not accent: a per-row "Solid" caption on a list of variations is
+    // not one of the accent's allowed jobs (#1723).
+    variation.isSolid ? IntradaColor.ink : IntradaColor.inkFaint
   }
 
   private var accessibilityLabel: String {

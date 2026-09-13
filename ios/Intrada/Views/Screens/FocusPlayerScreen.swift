@@ -150,7 +150,7 @@ struct FocusPlayerScreen: View {
       if let pieceTitle = active.currentRelatedPieceTitle {
         Label("Related to \(pieceTitle)", systemImage: "arrow.turn.down.right")
           .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.accent)
+          .foregroundStyle(IntradaColor.ink)
       }
       if let aim = active.currentItemIntention, !aim.isEmpty {
         Text("Aim: \(aim)")

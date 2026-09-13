@@ -201,7 +201,7 @@ struct ClickSheet: View {
               .foregroundStyle(on ? IntradaColor.onAccent : IntradaColor.inkSecondary)
               .frame(width: 44, height: 44)
               .background(
-                on ? IntradaColor.accent : IntradaColor.cardFill,
+                on ? IntradaColor.accentText : IntradaColor.cardFill,
                 in: RoundedRectangle(cornerRadius: IntradaRadius.control)
               )
               .overlay(

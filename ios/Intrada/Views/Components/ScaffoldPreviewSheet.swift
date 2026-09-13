@@ -154,14 +154,14 @@ private struct SpecRow: View {
   private func membershipControl(isOn: Bool) -> some View {
     ZStack {
       Circle()
-        .fill(isOn ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(Color.clear))
+        .fill(isOn ? AnyShapeStyle(IntradaColor.accentText) : AnyShapeStyle(Color.clear))
         .overlay(
           Circle()
-            .strokeBorder(IntradaColor.accent, lineWidth: 2)
+            .strokeBorder(IntradaColor.accentText, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
         .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(isOn ? IntradaColor.onAccent : IntradaColor.accent)
+        .foregroundStyle(isOn ? IntradaColor.onAccent : IntradaColor.accentText)
     }
     .frame(width: 28, height: 28)
   }

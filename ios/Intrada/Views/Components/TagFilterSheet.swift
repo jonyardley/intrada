@@ -37,7 +37,7 @@ struct TagFilterSheet: View {
                     if isOn {
                       Image(systemName: "checkmark")
                         .font(IntradaFont.bodyMedium)
-                        .foregroundStyle(IntradaColor.accent)
+                        .foregroundStyle(IntradaColor.accentText)
                     }
                   }
                   .padding(.vertical, IntradaSpacing.row)

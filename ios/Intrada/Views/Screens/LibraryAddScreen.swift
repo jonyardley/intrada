@@ -152,7 +152,7 @@ struct LibraryAddScreen: View {
         Text("Add exercise")
       }
       .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.accent)
+      .foregroundStyle(IntradaColor.accentText)
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.cardCompact)
       .contentShape(Rectangle())
