@@ -325,13 +325,7 @@ struct PracticeScreen: View {
 
   private var selectedDaySection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      HStack(alignment: .firstTextBaseline) {
-        Eyebrow(dayLabel)
-        Spacer(minLength: IntradaSpacing.controlGap)
-        Text(dayCountLabel)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
+      SectionHeader(title: dayLabel, trailing: dayCountLabel)
       dayContent
     }
   }
