@@ -405,7 +405,7 @@ pub enum SessionEvent {
     /// the terminal transition, so the sheet's mark control can tell a play
     /// that will survive from one about to be dropped (#1758). The shell
     /// must send this `now` again as the closing instant on whichever
-    /// terminal event follows, `NextItem` or `FinishSession` — see
+    /// terminal event follows, `NextItem` or `FinishSession`: see
     /// `NextItem`'s own doc for what a fresher instant there invalidates.
     PrepareReflection {
         now: DateTime<Utc>,
