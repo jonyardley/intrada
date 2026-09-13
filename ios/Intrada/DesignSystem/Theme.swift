@@ -11,8 +11,8 @@ enum IntradaColor {
   static let hairline = Color(hex: 0xECE6DA)
   static let divider = Color(hex: 0xDDD7CA)
 
-  static let ink = Color(hex: 0x3B2A1E)
-  static let inkSecondary = Color(hex: 0x7A6A5A)
+  static let ink = Color(hex: 0x2A2725)
+  static let inkSecondary = Color(hex: 0x6E6A66)
   /// Eyebrow labels only: fails WCAG AA (2.45:1 on paper); metadata/body use inkSecondary.
   static let inkFaint = Color(hex: 0xA99C8C)
   /// A dimmed glyph with no text of its own to fall back on (#1458): 3.49:1 on
@@ -86,7 +86,7 @@ enum IntradaColor {
   static let playerBgMid = Color(hex: 0xF7F4EF)
   static let playerBgBottom = Color(hex: 0xEFEAE1)
   static let heroGradientTop = ink
-  static let heroGradientBottom = Color(hex: 0x56412C)
+  static let heroGradientBottom = Color(hex: 0x4F3B28)
   /// Read `ItemKind.onHeroAccent`, not these directly.
   static let onHeroExercise = exerciseBadgeBg
   static let onHeroPiece = pieceBadgeBg
