@@ -401,13 +401,9 @@ impl Intrada {
                 )
             }
             SessionStatus::Active(active) => {
-                // The picker reads the unfiltered library, or a Library search
-                // would empty it (#1484).
-                let current_variations = active
-                    .entries
-                    .get(active.current_index)
-                    .or_else(|| active.entries.last())
-                    .and_then(|e| all_items.iter().find(|i| i.id == e.item_id))
+                let current_variations = all_items
+                    .iter()
+                    .find(|i| i.id == active.current_entry().item_id)
                     .map_or(&[][..], |i| i.variants.as_slice());
                 (
                     Some(build_active_session_view(

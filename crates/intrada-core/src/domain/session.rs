@@ -283,6 +283,15 @@ pub struct ActiveSession {
     pub session_started_at: DateTime<Utc>,
 }
 
+impl ActiveSession {
+    /// `entries` is never empty during an active session, so this indexes
+    /// unconditionally rather than returning an `Option`.
+    pub fn current_entry(&self) -> &SetlistEntry {
+        let idx = self.current_index.min(self.entries.len() - 1);
+        &self.entries[idx]
+    }
+}
+
 /// State during post-session review (Summary phase).
 #[derive(Debug, Clone)]
 pub struct SummarySession {

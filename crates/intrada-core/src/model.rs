@@ -780,10 +780,7 @@ pub fn build_active_session_view(
     labels: &VariationLabels,
     current_variations: &[VariantView],
 ) -> ActiveSessionView {
-    let safe_index = active
-        .current_index
-        .min(active.entries.len().saturating_sub(1));
-    let current = &active.entries[safe_index];
+    let current = active.current_entry();
     let open = current.open_play();
 
     // Breadcrumb only applies to a related exercise practiced inside a block —
@@ -833,7 +830,7 @@ pub fn build_active_session_view(
         current_planned_duration_secs: current.planned_duration_secs,
         next_item_title: active
             .entries
-            .get(safe_index + 1)
+            .get(active.current_index.min(active.entries.len() - 1) + 1)
             .map(|e| e.item_title.clone()),
         current_item_intention: current.intention.clone(),
         current_related_piece_title,
@@ -851,15 +848,15 @@ fn picker_variations(entry: &SetlistEntry, variants: &[VariantView]) -> Vec<Pick
     variants
         .iter()
         .map(|v| {
-            let played_secs: u64 = entry
+            let played: Vec<&VariationPlay> = entry
                 .plays
                 .iter()
                 .filter(|p| p.variation_id.as_deref() == Some(v.id.as_str()) && !p.is_incidental())
-                .map(|p| p.seconds)
-                .sum();
+                .collect();
             let caption = if playing_now == Some(v.id.as_str()) {
                 "Playing now".to_string()
-            } else if played_secs > 0 {
+            } else if !played.is_empty() {
+                let played_secs: u64 = played.iter().map(|p| p.seconds).sum();
                 format!(
                     "Played this session · {}",
                     crate::domain::session::format_duration_display(played_secs)
@@ -1489,6 +1486,29 @@ mod tests {
         );
         let solid: Vec<bool> = view.current_variations.iter().map(|v| v.is_solid).collect();
         assert_eq!(solid, vec![true, false, false]);
+    }
+
+    /// A mark taken the instant a switch opens the next play stamps at 0
+    /// seconds. Summing seconds before checking for a play must not send that
+    /// past this session's record and onto the saved mark (#1784).
+    #[test]
+    fn picker_caption_reads_a_zero_second_scored_play_as_played_this_session() {
+        let scored_at_switch = VariationPlay {
+            score: Some(7),
+            ..play_on("p1", "c", 0)
+        };
+        let active = session_on(vec![scored_at_switch, play_on("p2", "g", 0)]);
+        let variants = [
+            VariantView {
+                latest_score: Some(9),
+                is_solid: true,
+                ..VariantView::fixture("c", "C", 0)
+            },
+            VariantView::fixture("g", "G", 1),
+        ];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(captions(&view)[0], ("c", "Played this session · 0s"));
     }
 
     /// `ActiveSessionView` crosses the bincode wire; `current_variations` is
