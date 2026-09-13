@@ -102,7 +102,8 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
-    _ = try bridge.update(.session(.nextItem(now: "2026-09-01T10:05:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
     _ = try bridge.update(.session(.finishSession(now: "2026-09-01T10:10:00Z")))
 
     let entries = try XCTUnwrap(try bridge.view().summary?.entries)
