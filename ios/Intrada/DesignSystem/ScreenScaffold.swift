@@ -95,7 +95,9 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(IntradaColor.onAccent)
             .frame(width: 30, height: 30)
-            .background(IntradaColor.accent, in: Circle())
+            // Reads as a solid dark button in the mock, not one of the
+            // accent's allowed jobs (#1723).
+            .background(IntradaColor.ink, in: Circle())
             .frame(width: 44, height: 44)
             .contentShape(Circle())
         }

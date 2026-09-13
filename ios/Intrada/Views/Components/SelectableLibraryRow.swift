@@ -17,13 +17,13 @@ struct SelectableLibraryRow: View {
         .overlay(alignment: .trailing) {
           Image(systemName: added ? "checkmark.circle.fill" : "plus.circle")
             .font(.title2)
-            .foregroundStyle(added ? IntradaColor.accent : IntradaColor.inkFaint)
+            .foregroundStyle(added ? IntradaColor.accentText : IntradaColor.inkFaint)
             .padding(.trailing, IntradaSpacing.card)
             .accessibilityHidden(true)
         }
         .overlay(
           RoundedRectangle(cornerRadius: IntradaRadius.card)
-            .stroke(IntradaColor.accent, lineWidth: 2).opacity(added ? 1 : 0))
+            .stroke(IntradaColor.accentText, lineWidth: 2).opacity(added ? 1 : 0))
     }
     .buttonStyle(.plain)
     .accessibilityValue(added ? "Added" : "Not added")

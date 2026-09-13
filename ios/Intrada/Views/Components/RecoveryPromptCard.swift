@@ -33,7 +33,7 @@ struct RecoveryPromptCard: View {
             .padding(.vertical, IntradaSpacing.cardCompact)
         }
         .buttonStyle(.borderedProminent)
-        .tint(IntradaColor.accent)
+        .tint(IntradaColor.accentText)
         .accessibilityLabel("Resume the interrupted session")
 
         Button("Discard", action: onDiscard)

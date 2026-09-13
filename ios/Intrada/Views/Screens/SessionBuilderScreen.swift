@@ -401,7 +401,7 @@ struct SessionBuilderScreen: View {
         addingExerciseTarget = block.groupId.map(AddExerciseTarget.init)
       } label: {
         Label("Add a related exercise", systemImage: "plus")
-          .font(IntradaFont.meta).foregroundStyle(IntradaColor.accent)
+          .font(IntradaFont.meta).foregroundStyle(IntradaColor.accentText)
           .frame(maxWidth: .infinity, minHeight: 44)
       }
       .buttonStyle(.plain)

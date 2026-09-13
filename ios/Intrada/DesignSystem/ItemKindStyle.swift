@@ -6,9 +6,9 @@ import SwiftUI
 /// sync. Piece = blue-grey + note; Exercise = sand + dumbbell.
 extension ItemKind {
   /// Ink for both kinds: a pastel border on white misses 3:1 (WCAG 1.4.11).
-  var accent: Color { IntradaColor.accent }
-
-  var onAccent: Color { IntradaColor.onAccent }
+  /// Not the terracotta accent (#1723): a per-row type dot is not one of its
+  /// allowed jobs (meters, headline numerals, text actions, control outlines).
+  var accent: Color { IntradaColor.ink }
 
   var onHeroAccent: Color {
     switch self {

@@ -114,7 +114,7 @@ struct LinkedItemPickerSheet: View {
       } label: {
         Image(systemName: priorityOnly ? "star.fill" : "star")
           .font(IntradaFont.tab)
-          .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaint)
+          .foregroundStyle(priorityOnly ? IntradaColor.accentText : IntradaColor.inkFaint)
           .padding(.vertical, 6)
           .padding(.horizontal, 10)
           .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
@@ -133,7 +133,7 @@ struct LinkedItemPickerSheet: View {
             : "line.3.horizontal.decrease.circle.fill"
         )
         .font(IntradaFont.tab)
-        .foregroundStyle(selectedTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
+        .foregroundStyle(selectedTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accentText)
         .padding(IntradaSpacing.controlGap)
       }
       .buttonStyle(.plain)
@@ -142,7 +142,7 @@ struct LinkedItemPickerSheet: View {
       Button(action: toggleSearch) {
         Image(systemName: "magnifyingglass")
           .font(IntradaFont.tab)
-          .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
+          .foregroundStyle(searchRevealed ? IntradaColor.accentText : IntradaColor.inkFaint)
           .padding(IntradaSpacing.controlGap)
       }
       .buttonStyle(.plain)
@@ -314,14 +314,14 @@ struct LinkedItemPickerSheet: View {
   private func membershipControl(isOn: Bool) -> some View {
     ZStack {
       Circle()
-        .fill(isOn ? AnyShapeStyle(kind.accent) : AnyShapeStyle(Color.clear))
+        .fill(isOn ? AnyShapeStyle(IntradaColor.accentText) : AnyShapeStyle(Color.clear))
         .overlay(
           Circle()
-            .strokeBorder(kind.accent, lineWidth: 2)
+            .strokeBorder(IntradaColor.accentText, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
         .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(isOn ? kind.onAccent : kind.accent)
+        .foregroundStyle(isOn ? IntradaColor.onAccent : IntradaColor.accentText)
     }
     .frame(width: 28, height: 28)
   }

@@ -47,11 +47,11 @@ struct ScanPageEntry: View {
       HStack(spacing: 10) {
         Image(systemName: "doc.viewfinder")
           .font(.system(size: 20, weight: .regular))
-          .foregroundStyle(IntradaColor.accent)
+          .foregroundStyle(IntradaColor.accentText)
         VStack(alignment: .leading, spacing: 2) {
           Text("Scan a page")
             .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.accent)
+            .foregroundStyle(IntradaColor.accentText)
           Text("Title, composer and tempo, read off the page")
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -100,7 +100,7 @@ struct ScanPageEntry: View {
         sourceMenu {
           Text("Change")
             .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.accent)
+            .foregroundStyle(IntradaColor.accentText)
         }
         .accessibilityLabel("Use a different page")
       }

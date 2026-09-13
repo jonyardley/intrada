@@ -994,3 +994,53 @@ The terracotta accent (`IntradaColor.accent`, resolving to `ink` everywhere it
 is used today) is untouched: which of its roughly twenty call sites become
 terracotta and which stay ink is a per-site decision still open as the third
 piece of #1723.
+
+### T28: A terracotta accent, deliberately not the highlighter
+
+**Status:** DECIDED 2026-09-13 (jonyardley/intrada#1723). Before this there was
+no accent colour: `IntradaColor.accent` resolved straight to `ink`, so a ring,
+a link and a paragraph all read as the same brown, everywhere, including the
+Focus player's metronome. That was T2's own reasoning: the interactive colour
+is the text colour, so there is no second hue to keep in step with the
+highlighter the musician picks. This entry reverses that reasoning rather
+than quietly amending it, because the new accent deliberately does not
+follow the highlighter: the highlighter sits at the lightest part of its
+range by design (T3), and any version of it dark enough to carry text lands
+in olive, which is why three highlighter-linked accent options were mocked
+and rejected before this one. The highlighter keeps every job it already
+has: the swipe under a page title, primary buttons, the hero's start button,
+the profile badge.
+
+Two terracotta values, not one, because a ring and a line of text need
+different floors. `accentGraphic` (`#D06B38`) is for graphics only, rings,
+arcs, meters, dots and progress fills, and only has to clear the 3:1 floor
+non-text graphics need (WCAG 1.4.11): 3.28:1 on paper, 3.59:1 on white cards
+(the Focus player's radial backdrop runs slightly darker at its outer stop,
+3.00:1, still on the floor). `accentText` (`#A44A22`) is for text actions,
+control outlines, selected-state fills under white, and headline numerals,
+clearing the 4.5:1 AA floor text needs: 5.35:1 on paper, 5.86:1 on white
+cards, 5.86:1 under white again where it is a fill rather than a foreground.
+The first mock used `#D97642` for the graphics value; measured against paper
+it comes to 2.89:1, under the floor, so it was darkened to `#D06B38` before
+either value shipped.
+
+Placement is the rule most worth writing down, because the accent is easy to
+overuse now that it exists: outside a meter or a control, at most one
+headline number per surface may carry it. A screen with two accent numbers
+on it has one too many; where a meter and a would-be second numeral compete,
+the meter keeps the light graphics value and the numeral falls back to ink.
+That ruled several existing `accent` call sites back to plain ink on this
+pass: the Library header's add button reads as a solid dark button in the
+mock, so it stays ink rather than picking up either terracotta; a per-row
+"Solid" caption on a list of variations would repeat the accent once per
+row, so it matches `VariationPickerSheet`'s existing ink treatment instead;
+the same goes for the per-row priority star badge on a library card and the
+type-coded dot next to a session-summary entry, both left on ink so a list
+of many rows does not turn into a field of terracotta.
+
+The Focus player's click moves off the shared ink alias onto the two
+dedicated tokens: the beat dots on the bar line are `accentGraphic`, and the
+readout text is `onMarker` while the metronome runs (it sits on whichever
+highlighter capsule the musician chose, and `accentText` only clears 4.5:1
+against paper and cards, not against seven of the eight highlighters) and
+`inkSecondary` at rest. This closes #1723.
