@@ -9,56 +9,46 @@ struct VariationScreenTests {
 
   private func play(
     _ id: String, _ label: String?, seconds: UInt64, tempo: UInt16? = nil,
-    repCount: UInt8? = nil, repTarget: UInt8? = nil
+    repCount: UInt8? = nil, repTarget: UInt8? = nil, isMarkable: Bool = true
   ) -> VariationPlayView {
     VariationPlayView(
       id: id, variationId: label.map { "v-\($0)" }, variationLabel: label, seconds: seconds,
       durationDisplay: "4m 10s", repTarget: repTarget, repCount: repCount,
       repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,
-      score: nil, isMarkable: true)
+      score: nil, isMarkable: isMarkable)
   }
 
   // ── The sheet's rows ──
 
-  @Test("the open play takes the elapsed time the closed plays have not claimed")
-  func openPlayTakesTheRemainder() {
+  @Test("a row's duration is the play's own stamped seconds, open play included")
+  func rowsReadEachPlaysOwnSeconds() {
     let rows = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 250), play("p2", "G", seconds: 0)], elapsed: 760)
+      [play("p1", "C", seconds: 250), play("p2", "G", seconds: 510)])
 
     #expect(rows.map(\.durationDisplay) == ["04:10", "08:30"])
   }
 
-  @Test("a closed play keeps its own seconds rather than sharing the remainder")
-  func closedPlaysKeepTheirOwnSeconds() {
-    let rows = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 250), play("p2", "G", seconds: 200), play("p3", "D", seconds: 0)],
-      elapsed: 760)
-
-    #expect(rows.map(\.durationDisplay) == ["04:10", "03:20", "05:10"])
-  }
-
-  @Test("one play takes the whole of the item's elapsed time")
-  func aSinglePlayTakesTheWholeElapsed() {
-    let rows = ReflectionPlay.rows([play("p1", nil, seconds: 0)], elapsed: 420)
+  @Test("one play takes its own stamped seconds")
+  func aSinglePlayTakesItsOwnSeconds() {
+    let rows = ReflectionPlay.rows([play("p1", nil, seconds: 420)])
 
     #expect(rows.map(\.durationDisplay) == ["07:00"])
   }
 
-  /// The clock and the stamped seconds come from different instants, so the
-  /// arithmetic can go negative on a fast switch. A row reading minus four
-  /// minutes would be worse than one reading zero.
-  @Test("an elapsed shorter than what the closed plays claim floors at zero")
-  func theRemainderNeverGoesNegative() {
-    let rows = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 250), play("p2", "G", seconds: 0)], elapsed: 10)
+  @Test("a row carries whether the core predicts it survives the drop")
+  func rowsCarryWhetherTheyAreMarkable() {
+    let rows = ReflectionPlay.rows([
+      play("p1", "C", seconds: 250, isMarkable: true),
+      play("p2", "G", seconds: 2, isMarkable: false),
+    ])
 
-    #expect(rows.last?.durationDisplay == "00:00")
+    #expect(rows.map(\.isMarkable) == [true, false])
   }
 
   @Test("a row names its variation, and an unattributed play says so")
   func rowsCarryTheirLabel() {
     let rows = ReflectionPlay.rows(
-      [play("p1", "C major", seconds: 0), play("p2", nil, seconds: 0)], elapsed: 0)
+      [play("p1", "C major", seconds: 0), play("p2", nil, seconds: 0)])
 
     #expect(rows.map(\.title) == ["C major", "No variation"])
   }
@@ -66,9 +56,9 @@ struct VariationScreenTests {
   @Test("a row shows repetitions only when the entry set a target")
   func rowMetaShowsRepetitionsOnlyAgainstATarget() {
     let withTarget = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 0, repCount: 8, repTarget: 10)], elapsed: 250)
+      [play("p1", "C", seconds: 250, repCount: 8, repTarget: 10)])
     let without = ReflectionPlay.rows(
-      [play("p1", "C", seconds: 0, repCount: 8)], elapsed: 250)
+      [play("p1", "C", seconds: 250, repCount: 8)])
 
     #expect(withTarget.first?.meta == "04:10 · 8 of 10")
     #expect(without.first?.meta == "04:10")
@@ -76,7 +66,7 @@ struct VariationScreenTests {
 
   @Test("a target with no repetitions banked reads as none of the target, not blank")
   func rowMetaCountsZeroAgainstTheTarget() {
-    let rows = ReflectionPlay.rows([play("p1", "C", seconds: 0, repTarget: 10)], elapsed: 250)
+    let rows = ReflectionPlay.rows([play("p1", "C", seconds: 250, repTarget: 10)])
 
     #expect(rows.first?.meta == "04:10 · 0 of 10")
   }

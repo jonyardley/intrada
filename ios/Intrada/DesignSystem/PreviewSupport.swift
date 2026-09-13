@@ -1189,11 +1189,11 @@
   extension ReflectionPlay {
     static func preview(
       _ id: String, _ label: String?, _ duration: String, _ repCount: UInt8? = nil,
-      _ repTarget: UInt8? = nil
+      _ repTarget: UInt8? = nil, isMarkable: Bool = true
     ) -> ReflectionPlay {
       ReflectionPlay(
         id: id, variationLabel: label, durationDisplay: duration, repCount: repCount,
-        repTarget: repTarget)
+        repTarget: repTarget, isMarkable: isMarkable)
     }
   }
 

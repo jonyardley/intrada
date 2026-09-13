@@ -33,6 +33,10 @@ struct ReflectionPlay: Identifiable, Equatable {
   let durationDisplay: String
   let repCount: UInt8?
   let repTarget: UInt8?
+  /// Whether the core predicts this play survives the terminal transition's
+  /// drop of incidental plays (#1758). `PrepareReflection` must have stamped
+  /// the open play's real seconds first, or this reads stale.
+  let isMarkable: Bool
 
   var title: String { variationLabel ?? "No variation" }
 
@@ -42,18 +46,15 @@ struct ReflectionPlay: Identifiable, Equatable {
     return parts.joined(separator: " · ")
   }
 
-  /// The sheet's rows for one entry. The open play's own seconds are only
-  /// stamped when the core closes it, so its share of the item's elapsed time
-  /// is what the closed plays have not already claimed.
-  static func rows(_ plays: [VariationPlayView], elapsed: Int) -> [ReflectionPlay] {
-    let closed = plays.dropLast().reduce(0) { $0 + Int($1.seconds) }
-    return plays.enumerated().map { index, play in
-      let isOpen = index == plays.count - 1
-      let seconds = isOpen ? max(elapsed - closed, 0) : Int(play.seconds)
-      return ReflectionPlay(
+  /// The sheet's rows for one entry, read straight off each play's own
+  /// stamped seconds: `PrepareReflection` has already given the still-open
+  /// play its real duration by the time this runs.
+  static func rows(_ plays: [VariationPlayView]) -> [ReflectionPlay] {
+    plays.map { play in
+      ReflectionPlay(
         id: play.id, variationLabel: play.variationLabel,
-        durationDisplay: SessionClock.clockDisplay(seconds),
-        repCount: play.repCount, repTarget: play.repTarget)
+        durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
+        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable)
     }
   }
 }
@@ -127,10 +128,13 @@ struct ReflectionSheet: View {
         if plays.count > 1 {
           eyebrow("What you played").padding(.top, IntradaSpacing.section)
           playRows.padding(.top, IntradaSpacing.controlGap)
-        } else if let only = plays.first {
+        } else if let only = plays.first, only.isMarkable {
           // No mark control without a play to write it to: the core gives every
           // practised entry at least one, so an empty list means something is
           // wrong, and ten tappable buttons that record nothing would hide it.
+          // A play the core is about to discard gets no control either
+          // (#1758): a mark that vanishes without a word is worse than one
+          // never offered.
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
             score: mark(for: only.id), accessibilityLabel: "Mark for \(itemTitle)"
@@ -191,10 +195,13 @@ struct ReflectionSheet: View {
               .font(IntradaFont.meta)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
-          ScoreSelector(
-            score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"
-          ) { next in
-            setMark(next, for: play.id)
+          // A play the core is about to discard offers no control (#1758).
+          if play.isMarkable {
+            ScoreSelector(
+              score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"
+            ) { next in
+              setMark(next, for: play.id)
+            }
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)
