@@ -937,7 +937,8 @@
           previewEntry(
             2, "Nocturne Op. 9 No. 2", .piece, score: 6, tempo: 54, repTarget: 5, repCount: 5),
         ],
-        sessionScore: 7)
+        sessionScore: 7,
+        playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2")
     }
 
     /// One exercise practised across three keys, so the detail screen lists a
@@ -947,7 +948,19 @@
         id: "session-3", startedAt: "2026-05-29T10:00:00Z", finishedAt: "2026-05-29T10:20:00Z",
         totalDurationDisplay: "20m 30s", totalDurationSummary: "20m",
         completionStatus: .completed, notes: nil,
-        entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8)
+        entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
+        playedSummary: "Major Scales in C major, G major and D major")
+    }
+
+    /// One exercise practised in a single key, so the detail screen still
+    /// names it rather than leaving it unattributed (#1785).
+    static var previewWithOneVariation: PracticeSessionView {
+      PracticeSessionView(
+        id: "session-4", startedAt: "2026-05-27T09:00:00Z", finishedAt: "2026-05-27T09:06:00Z",
+        totalDurationDisplay: "6m 0s", totalDurationSummary: "6m",
+        completionStatus: .completed, notes: nil,
+        entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
+        playedSummary: "Arpeggios in E\u{266d} major")
     }
 
     /// No session mark, and the two statuses a detail view must state plainly
@@ -960,7 +973,7 @@
         entries: [
           previewEntry(0, "Hanon No. 1", .exercise, score: 5, repTarget: 10, repCount: 4),
           previewEntry(1, "Major Scales", .exercise, status: .notAttempted),
-        ], sessionScore: nil)
+        ], sessionScore: nil, playedSummary: "Hanon No. 1")
     }
 
     private static func previewEntry(
@@ -1243,6 +1256,21 @@
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, plannedVariationId: "v-C major",
         plannedRepTarget: 10, plays: plays, scoreSummary: 8)
+    }
+
+    /// One exercise practised in a single key: the detail screen names it
+    /// rather than folding it silently into "type and time" (#1785).
+    static var previewOneVariation: SetlistEntryView {
+      let plays = [
+        VariationPlayView.preview(
+          "p1", "E\u{266d} major", seconds: 360, duration: "6m 0s", tempo: 96)
+      ]
+      return SetlistEntryView(
+        id: "entry-one-variation", itemId: "exercise-3", itemTitle: "Arpeggios",
+        itemType: .exercise, position: 0, durationDisplay: "6m 0s", status: .completed,
+        notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
+        groupId: nil, plannedVariationId: "v-E\u{266d} major", plannedRepTarget: nil,
+        plays: plays, scoreSummary: nil)
     }
   }
 #endif

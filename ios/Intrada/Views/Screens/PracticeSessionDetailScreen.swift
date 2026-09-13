@@ -145,6 +145,13 @@ struct PracticeSessionDetailScreen: View {
           }
         }
         .padding(.top, 2)
+      } else if let play = entry.plays.first, play.variationLabel != nil {
+        // A single variation still gets named (#1785), in the same style as
+        // the multi-variation lines above rather than a one-off treatment.
+        Text(singleVariationLine(play))
+          .font(IntradaFont.micro)
+          .foregroundStyle(IntradaColor.inkFaint)
+          .padding(.top, 2)
       }
       if let notes = entry.notes, !notes.isEmpty {
         Text(notes)
@@ -156,7 +163,9 @@ struct PracticeSessionDetailScreen: View {
   }
 
   /// Facts only, and only the ones this session actually recorded: a tempo
-  /// appears when it was measured, reps when there was a target.
+  /// appears when it was measured, reps when there was a target. A named
+  /// variation gets its own highlighted line instead (#1785), so its tempo
+  /// and reps move there rather than doubling up on this one.
   private func entryMeta(_ entry: SetlistEntryView) -> String {
     switch entry.status {
     case .notAttempted: return "Not played"
@@ -165,7 +174,7 @@ struct PracticeSessionDetailScreen: View {
       // With several variations each gets its own line below, so the entry
       // line stays what the item was and how long it took (#1739).
       var parts = [entry.itemType.label, entry.durationDisplay]
-      if entry.plays.count == 1 {
+      if entry.plays.count == 1, entry.plays[0].variationLabel == nil {
         parts.append(contentsOf: entry.plays[0].metaParts.dropFirst())
       }
       return parts.joined(separator: " · ")
@@ -179,10 +188,20 @@ struct PracticeSessionDetailScreen: View {
     return parts.joined(separator: " · ")
   }
 
+  /// The single-variation line's copy (#1785): the key plus its facts, minus
+  /// the score, which the ring beside it already shows.
+  private func singleVariationLine(_ play: VariationPlayView) -> String {
+    var parts = [play.displayLabel]
+    parts.append(contentsOf: play.metaParts.dropFirst())
+    return parts.joined(separator: " · ")
+  }
+
   private func entryAccessibilityLabel(_ entry: SetlistEntryView) -> String {
     var parts = [entry.itemTitle, entryMeta(entry)]
     if entry.plays.count > 1 {
       parts.append(contentsOf: entry.plays.map(playLine))
+    } else if let play = entry.plays.first, play.variationLabel != nil {
+      parts.append(singleVariationLine(play))
     }
     if entry.status == .completed, let score = entry.scoreSummary {
       parts.append("marked \(score) out of 10")
@@ -212,6 +231,14 @@ struct PracticeSessionDetailScreen: View {
   #Preview("Three variations") {
     NavigationStack {
       PracticeSessionDetailScreen(session: .previewWithVariations)
+        .environment(Store.previewPractice)
+        .environment(\.calendar, PreviewCalendar.utc)
+    }
+  }
+
+  #Preview("One variation") {
+    NavigationStack {
+      PracticeSessionDetailScreen(session: .previewWithOneVariation)
         .environment(Store.previewPractice)
         .environment(\.calendar, PreviewCalendar.utc)
     }

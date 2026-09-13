@@ -16,6 +16,14 @@ struct SessionCard: View {
       Text(metaLine)
         .font(IntradaFont.meta)
         .foregroundStyle(IntradaColor.inkSecondary)
+      if !session.playedSummary.isEmpty {
+        // No `lineLimit`: the core's character budget is copy honesty, not a
+        // one-line guarantee, so a long summary wraps rather than clips.
+        Text(session.playedSummary)
+          .font(IntradaFont.body)
+          .foregroundStyle(IntradaColor.ink)
+          .padding(.top, 2)
+      }
       if session.completionStatus == .endedEarly {
         Text("Ended early")
           .font(IntradaFont.micro)
@@ -46,6 +54,7 @@ struct SessionCard: View {
 
   private var accessibilityLabel: String {
     var parts = [dateDisplay, session.totalDurationSummary, session.itemCountDisplay]
+    if !session.playedSummary.isEmpty { parts.append(session.playedSummary) }
     if session.completionStatus == .endedEarly { parts.append("ended early") }
     return parts.joined(separator: ", ")
   }
@@ -57,6 +66,7 @@ struct SessionCard: View {
       PaperBackground()
       VStack(spacing: IntradaSpacing.row) {
         SessionCard(session: .previewCompleted)
+        SessionCard(session: .previewWithVariations)
         SessionCard(session: .previewEndedEarly)
       }
       .padding(IntradaSpacing.card)

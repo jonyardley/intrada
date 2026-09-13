@@ -10,6 +10,7 @@ use crate::domain::session::{
     ActiveSession, ClickState, CompletionStatus, EntryStatus, PracticeSession, RepEvent,
     SessionStatus, SetlistEntry, SummarySession, VariationPlay,
 };
+use crate::domain::variant::ladder_is_all_keys;
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::recognition::PhotoDraft;
@@ -471,6 +472,11 @@ pub struct PracticeSessionView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_score: Option<u8>,
+    /// The card's line of what was played, e.g. "Major scales in C, G and
+    /// D · Arpeggios in E♭ major" (#1785). Built here rather than the shell
+    /// so a long session is cut off honestly, at a fragment boundary with
+    /// "and N more", instead of a mid-word ellipsis.
+    pub played_summary: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -907,12 +913,118 @@ pub fn session_to_view(session: &PracticeSession, labels: &VariationLabels) -> P
         ),
         completion_status: session.completion_status.clone(),
         notes: session.session_notes.clone(),
+        played_summary: format_played_summary(&session.entries, labels),
+        session_score: session.session_score,
         entries: session
             .entries
             .iter()
             .map(|e| entry_to_view(e, labels))
             .collect(),
-        session_score: session.session_score,
+    }
+}
+
+/// The line's character budget before it falls back to "and N more" (#1785):
+/// the length of the mocked cut-off example, "Major scales in 7 keys · Hanon
+/// No. 1 · Nocturne in E♭ and 2 more". A character count, not a measured
+/// width, so it is a proxy for what fits on the card rather than a guarantee.
+const PLAYED_SUMMARY_MAX_CHARS: usize = 64;
+
+/// The most variation labels an entry names in full before collapsing to a
+/// count ("Major scales in 7 keys"), as mocked for #1785.
+const PLAYED_SUMMARY_SPELL_OUT_LIMIT: usize = 3;
+
+/// The card's "what was played" line (#1785): every completed entry with
+/// something genuinely practised on it, pieces named plainly and an
+/// exercise's variations named when there are few, cut off with "and N more"
+/// rather than a mid-word ellipsis when the whole line still will not fit.
+fn format_played_summary(entries: &[SetlistEntry], labels: &VariationLabels) -> String {
+    let fragments: Vec<String> = entries
+        .iter()
+        .filter(|entry| entry.status == EntryStatus::Completed)
+        .filter_map(|entry| entry_played_fragment(entry, labels))
+        .collect();
+    join_played_fragments(&fragments, PLAYED_SUMMARY_MAX_CHARS)
+}
+
+/// `None` when every play on the entry is incidental (#1758): a stray tap
+/// that survived only because an entry always keeps at least one play must
+/// not read as something the musician set out to practise.
+fn entry_played_fragment(entry: &SetlistEntry, labels: &VariationLabels) -> Option<String> {
+    let played: Vec<&VariationPlay> = entry.plays.iter().filter(|p| !p.is_incidental()).collect();
+    if played.is_empty() {
+        return None;
+    }
+    let variation_labels = ordered_distinct_variation_labels(&played, labels);
+    Some(match variation_labels.len() {
+        0 => entry.item_title.clone(),
+        n if n <= PLAYED_SUMMARY_SPELL_OUT_LIMIT => {
+            format!(
+                "{} in {}",
+                entry.item_title,
+                join_with_and(&variation_labels)
+            )
+        }
+        n => {
+            let noun = if ladder_is_all_keys(variation_labels.iter().map(String::as_str)) {
+                "keys"
+            } else {
+                "variations"
+            };
+            format!("{} in {n} {noun}", entry.item_title)
+        }
+    })
+}
+
+/// A play's variation, first-seen order, deduplicated: switching back to a
+/// key already played (rare, but possible) must not repeat it in the line.
+fn ordered_distinct_variation_labels(
+    plays: &[&VariationPlay],
+    labels: &VariationLabels,
+) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    plays
+        .iter()
+        .filter_map(|play| play.variation_id.as_deref().and_then(|id| labels.get(id)))
+        .filter(|label| seen.insert(*label))
+        .map(|label| (*label).to_string())
+        .collect()
+}
+
+/// Plain English list join: "C", "C and G", "C, G and D", no Oxford comma,
+/// matching how a musician would say the list aloud.
+fn join_with_and(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [only] => only.clone(),
+        [first, second] => format!("{first} and {second}"),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+    }
+}
+
+/// Joins fragments with " · ", dropping trailing ones and appending
+/// "· and N more" until what remains fits `max_chars`: never a mid-word
+/// ellipsis, and never a silently dropped count, so the line never implies
+/// less was played than the truth.
+fn join_played_fragments(fragments: &[String], max_chars: usize) -> String {
+    let Some(first) = fragments.first() else {
+        return String::new();
+    };
+    let full = fragments.join(" · ");
+    if full.chars().count() <= max_chars {
+        return full;
+    }
+    for shown in (1..fragments.len()).rev() {
+        let candidate = fragments[..shown].join(" · ");
+        let more = fragments.len() - shown;
+        let with_suffix = format!("{candidate} · and {more} more");
+        if with_suffix.chars().count() <= max_chars {
+            return with_suffix;
+        }
+    }
+    if fragments.len() > 1 {
+        format!("{first} · and {} more", fragments.len() - 1)
+    } else {
+        first.clone()
     }
 }
 
@@ -1774,5 +1886,393 @@ mod tests {
 
         assert_eq!(view.plays.len(), 2);
         assert_eq!(view.score_summary, Some(7));
+    }
+
+    // ── Played summary (#1785) ─────────────────────────────────────────
+
+    /// A play on a named variation, otherwise identical to the fixture: long
+    /// enough (#1785 uses the fixture's default 60 seconds) not to read as
+    /// incidental.
+    fn labelled_play(id: &str, variation_id: &str) -> VariationPlay {
+        VariationPlay {
+            id: id.to_string(),
+            variation_id: Some(variation_id.to_string()),
+            ..VariationPlay::fixture()
+        }
+    }
+
+    #[test]
+    fn played_summary_names_a_piece_plainly() {
+        let entries = vec![SetlistEntry {
+            item_title: "Nocturne in E\u{266d}".to_string(),
+            item_type: ItemKind::Piece,
+            status: EntryStatus::Completed,
+            plays: vec![VariationPlay::fixture()],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &VariationLabels::new()),
+            "Nocturne in E\u{266d}"
+        );
+    }
+
+    #[test]
+    fn played_summary_names_the_only_variation_played() {
+        let labels: VariationLabels = [("v-eb", "E\u{266d} major")].into_iter().collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Arpeggios".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays: vec![labelled_play("p1", "v-eb")],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Arpeggios in E\u{266d} major"
+        );
+    }
+
+    #[test]
+    fn played_summary_spells_out_a_few_variations() {
+        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
+            .into_iter()
+            .collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Major scales".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays: vec![
+                labelled_play("p1", "v-c"),
+                labelled_play("p2", "v-g"),
+                labelled_play("p3", "v-d"),
+            ],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Major scales in C, G and D"
+        );
+    }
+
+    #[test]
+    fn played_summary_collapses_many_keys_to_a_count() {
+        let keys = ["C", "D", "E", "F", "G", "A", "B"];
+        let labels: VariationLabels = keys.iter().map(|k| (*k, *k)).collect();
+        let plays = keys
+            .iter()
+            .enumerate()
+            .map(|(i, k)| labelled_play(&format!("p{i}"), k))
+            .collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Major scales".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays,
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Major scales in 7 keys"
+        );
+    }
+
+    #[test]
+    fn played_summary_collapses_many_non_key_variations_to_a_count() {
+        let ids = ["v1", "v2", "v3", "v4"];
+        let names = [
+            "Root position",
+            "1st inversion",
+            "2nd inversion",
+            "3rd inversion",
+        ];
+        let labels: VariationLabels = ids.into_iter().zip(names).collect();
+        let plays = ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| labelled_play(&format!("p{i}"), id))
+            .collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Arpeggios".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays,
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Arpeggios in 4 variations"
+        );
+    }
+
+    #[test]
+    fn played_summary_ignores_an_entry_that_was_never_attempted() {
+        let entries = vec![
+            SetlistEntry {
+                item_title: "Skipped exercise".to_string(),
+                item_type: ItemKind::Exercise,
+                status: EntryStatus::NotAttempted,
+                plays: vec![],
+                ..SetlistEntry::fixture()
+            },
+            SetlistEntry {
+                item_title: "Nocturne in E\u{266d}".to_string(),
+                item_type: ItemKind::Piece,
+                status: EntryStatus::Completed,
+                plays: vec![VariationPlay::fixture()],
+                ..SetlistEntry::fixture()
+            },
+        ];
+
+        assert_eq!(
+            format_played_summary(&entries, &VariationLabels::new()),
+            "Nocturne in E\u{266d}"
+        );
+    }
+
+    /// `SkipItem` can leave a play behind that banked a mark or reps before
+    /// the skip (`domain::session`); the card still says "Skipped", not that
+    /// it was played (#1785).
+    #[test]
+    fn played_summary_ignores_a_skipped_entry_even_with_a_surviving_play() {
+        let entries = vec![SetlistEntry {
+            item_title: "Hanon No. 1".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Skipped,
+            plays: vec![VariationPlay {
+                score: Some(6),
+                ..VariationPlay::fixture()
+            }],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(format_played_summary(&entries, &VariationLabels::new()), "");
+    }
+
+    /// A stray tap on the picker leaves a play behind because an entry always
+    /// keeps at least one (#1739 decision 3), but it recorded nothing and ran
+    /// under `MIN_PLAY_SECONDS`: the same incidental test #1758 already uses
+    /// to keep it off the mark sheet keeps it off this line too.
+    #[test]
+    fn played_summary_ignores_a_stray_tap_with_nothing_recorded() {
+        let entries = vec![SetlistEntry {
+            item_title: "Major scales".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays: vec![VariationPlay {
+                seconds: 2,
+                score: None,
+                rep_count: None,
+                ..VariationPlay::fixture()
+            }],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(format_played_summary(&entries, &VariationLabels::new()), "");
+    }
+
+    /// A play with no resolvable label (no variation, or one the label map
+    /// does not carry) does not count toward "how many variations": the line
+    /// names only what it can actually name (#1785).
+    #[test]
+    fn played_summary_counts_only_plays_with_a_resolvable_label() {
+        let labels: VariationLabels = [("v-c", "C")].into_iter().collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Major scales".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays: vec![
+                labelled_play("p1", "v-c"),
+                VariationPlay {
+                    id: "p2".to_string(),
+                    variation_id: None,
+                    ..VariationPlay::fixture()
+                },
+            ],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Major scales in C"
+        );
+    }
+
+    /// A stray tap can reopen a key already played this session; the line
+    /// says "C and G", not "C, C and G" (#1785).
+    #[test]
+    fn played_summary_deduplicates_a_repeated_variation() {
+        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G")].into_iter().collect();
+        let entries = vec![SetlistEntry {
+            item_title: "Major scales".to_string(),
+            item_type: ItemKind::Exercise,
+            status: EntryStatus::Completed,
+            plays: vec![
+                labelled_play("p1", "v-c"),
+                labelled_play("p2", "v-g"),
+                labelled_play("p3", "v-c"),
+            ],
+            ..SetlistEntry::fixture()
+        }];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Major scales in C and G"
+        );
+    }
+
+    fn piece_entry(title: &str) -> SetlistEntry {
+        SetlistEntry {
+            item_title: title.to_string(),
+            item_type: ItemKind::Piece,
+            status: EntryStatus::Completed,
+            plays: vec![VariationPlay::fixture()],
+            ..SetlistEntry::fixture()
+        }
+    }
+
+    #[test]
+    fn played_summary_cuts_off_with_and_n_more_never_an_ellipsis() {
+        let entries: Vec<SetlistEntry> = [
+            "Nocturne in E flat major",
+            "Prelude in C sharp minor",
+            "Waltz in A flat major",
+            "Impromptu in F minor",
+            "Ballade in G minor",
+        ]
+        .into_iter()
+        .map(piece_entry)
+        .collect();
+
+        let summary = format_played_summary(&entries, &VariationLabels::new());
+
+        assert!(!summary.contains('\u{2026}'), "no ellipsis: {summary:?}");
+        assert!(
+            summary.contains("Nocturne in E flat major"),
+            "keeps whole fragments: {summary:?}"
+        );
+        assert!(
+            summary.ends_with("more"),
+            "names how many were cut: {summary:?}"
+        );
+    }
+
+    /// Regression for a blocker in review: when even the first fragment plus
+    /// a plain count would not fit, the count must still appear rather than
+    /// silently disappearing (#1785). A truncated line that looks complete
+    /// is worse than one that runs long.
+    #[test]
+    fn played_summary_still_names_the_count_when_the_first_fragment_alone_is_too_long() {
+        let entries = vec![
+            piece_entry("Piano Sonata No. 14 in C\u{266f} minor, Op. 27 No. 2 \"Moonlight\""),
+            piece_entry("Nocturne in E\u{266d}"),
+        ];
+
+        let summary = format_played_summary(&entries, &VariationLabels::new());
+
+        assert!(
+            summary.ends_with("and 1 more"),
+            "names the count: {summary:?}"
+        );
+    }
+
+    /// A fragment that already ends in "...and D" must not run into the
+    /// overflow's own "and", or "C, G and D and 2 more" reads as more scales
+    /// (#1785 review).
+    #[test]
+    fn played_summary_separates_the_overflow_from_a_fragments_own_and() {
+        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
+            .into_iter()
+            .collect();
+        let entries = vec![
+            SetlistEntry {
+                item_title: "Major scales".to_string(),
+                item_type: ItemKind::Exercise,
+                status: EntryStatus::Completed,
+                plays: vec![
+                    labelled_play("p1", "v-c"),
+                    labelled_play("p2", "v-g"),
+                    labelled_play("p3", "v-d"),
+                ],
+                ..SetlistEntry::fixture()
+            },
+            piece_entry("Nocturne in E flat major, Op. 9 No. 2"),
+            piece_entry("Waltz"),
+        ];
+
+        assert_eq!(
+            format_played_summary(&entries, &labels),
+            "Major scales in C, G and D · and 2 more"
+        );
+    }
+
+    #[test]
+    fn played_summary_is_empty_when_nothing_was_played() {
+        assert_eq!(format_played_summary(&[], &VariationLabels::new()), "");
+    }
+
+    #[test]
+    fn join_with_and_reads_as_a_musician_would_say_it() {
+        assert_eq!(join_with_and(&[]), "");
+        assert_eq!(join_with_and(&["C".to_string()]), "C");
+        assert_eq!(
+            join_with_and(&["C".to_string(), "G".to_string()]),
+            "C and G"
+        );
+        assert_eq!(
+            join_with_and(&["C".to_string(), "G".to_string(), "D".to_string()]),
+            "C, G and D"
+        );
+    }
+
+    #[test]
+    fn join_played_fragments_keeps_a_single_long_fragment_whole() {
+        let fragments = vec!["A very long single fragment that will not fit".to_string()];
+
+        assert_eq!(join_played_fragments(&fragments, 10), fragments[0]);
+    }
+
+    /// Companion to the `format_played_summary`-level regression above, pinned
+    /// directly on the join so the fallback's shape stays covered even if the
+    /// caller changes.
+    #[test]
+    fn join_played_fragments_names_the_count_when_the_first_fragment_alone_is_too_long() {
+        let fragments = vec![
+            "A very long first fragment that alone exceeds the budget".to_string(),
+            "Short".to_string(),
+        ];
+
+        assert_eq!(
+            join_played_fragments(&fragments, 10),
+            "A very long first fragment that alone exceeds the budget · and 1 more"
+        );
+    }
+
+    #[test]
+    fn session_to_view_builds_the_played_summary_from_its_entries() {
+        let session = crate::domain::session::PracticeSession {
+            id: "s1".to_string(),
+            entries: vec![SetlistEntry {
+                item_title: "Nocturne in E\u{266d}".to_string(),
+                item_type: ItemKind::Piece,
+                status: EntryStatus::Completed,
+                plays: vec![VariationPlay::fixture()],
+                ..SetlistEntry::fixture()
+            }],
+            session_notes: None,
+            started_at: Utc::now(),
+            completed_at: Utc::now(),
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_score: None,
+        };
+
+        let view = session_to_view(&session, &VariationLabels::new());
+
+        assert_eq!(view.played_summary, "Nocturne in E\u{266d}");
     }
 }
