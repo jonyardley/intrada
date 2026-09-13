@@ -404,9 +404,9 @@ pub enum SessionEvent {
     /// Stamp the current entry's open play with its real duration ahead of
     /// the terminal transition, so the sheet's mark control can tell a play
     /// that will survive from one about to be dropped (#1758). The shell
-    /// must send this `now` again as `NextItem`'s own `now`: a later,
-    /// fresher instant there charges the sheet's own dwell time to this play
-    /// and can silently invalidate the prediction.
+    /// must send this `now` again as the closing instant on whichever
+    /// terminal event follows, `NextItem` or `FinishSession` — see
+    /// `NextItem`'s own doc for what a fresher instant there invalidates.
     PrepareReflection {
         now: DateTime<Utc>,
     },
@@ -3093,16 +3093,12 @@ mod tests {
         }
     }
 
-    /// `now` and `next_item_started_at` land on different fields (#1758): a
-    /// reflection sheet can sit between the two instants a real Next tap
-    /// sends, and the dwell on it must not read as practice on the item
-    /// that follows.
+    /// A reflection sheet's dwell must not read as practice on the item that
+    /// follows (#1758).
     #[test]
     fn next_item_started_at_not_now_opens_the_next_item_clock() {
         let (mut model, start) = model_with_active_session(3);
         let closed_at = start + chrono::Duration::seconds(30);
-        // A 45 second dwell on the reflection sheet between the tap that
-        // closed item one and the tap that actually advances.
         let opened_at = closed_at + chrono::Duration::seconds(45);
 
         update(
@@ -3139,6 +3135,10 @@ mod tests {
         assert_eq!(
             active.entries[1].duration_secs, 10,
             "item two's own duration excludes the dwell on item one's sheet"
+        );
+        assert_eq!(
+            active.entries[1].plays[0].seconds, 10,
+            "item two's first play is stamped from the advance, not from item one's close"
         );
     }
 
