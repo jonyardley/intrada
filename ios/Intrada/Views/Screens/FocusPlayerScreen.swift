@@ -412,8 +412,7 @@ struct FocusPlayerScreen: View {
     // and skipping the write there would lose a reading the click evidenced
     // over the whole item. Which variation a mid-item tempo change belongs to
     // is #1761.
-    let tempoPlayId = target.plays.last(where: \.isMarkable)?.id ?? target.plays.last?.id
-    if let openPlayId = tempoPlayId {
+    if let openPlayId = target.plays.last(where: \.isMarkable)?.id {
       store.send(
         .session(
           .updateEntryTempo(

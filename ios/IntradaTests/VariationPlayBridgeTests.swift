@@ -112,7 +112,9 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(stamped.plays.first(where: { $0.id == strayTap })?.isMarkable, false)
 
     // The same `now` PrepareReflection used, or the prediction goes stale.
-    _ = try bridge.update(.session(.finishSession(now: "2026-09-01T10:05:00Z")))
+    // `NextItem` on the setlist's only entry is the shell's real terminal
+    // transition (it never sends `FinishSession`).
+    _ = try bridge.update(.session(.nextItem(now: "2026-09-01T10:05:00Z")))
     let survivors = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
     XCTAssertEqual(survivors.map(\.id), [opened], "the prediction matched the drop")
   }

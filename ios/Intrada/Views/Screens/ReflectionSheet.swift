@@ -132,9 +132,6 @@ struct ReflectionSheet: View {
           // No mark control without a play to write it to: the core gives every
           // practised entry at least one, so an empty list means something is
           // wrong, and ten tappable buttons that record nothing would hide it.
-          // A play the core is about to discard gets no control either
-          // (#1758): a mark that vanishes without a word is worse than one
-          // never offered.
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
             score: mark(for: only.id), accessibilityLabel: "Mark for \(itemTitle)"
@@ -209,11 +206,11 @@ struct ReflectionSheet: View {
     }
   }
 
-  // Named with the variation it lands on once there is more than one row: the
-  // click was sounding for the last stretch, so that is the only play its
-  // reading is evidence for (T16).
+  // Named with the variation the write actually lands on (#1758): the last
+  // markable play, not simply the last, or a stray tap at the end names one
+  // variation while the reading lands on another.
   private var tempoEyebrow: String {
-    if plays.count > 1, let label = plays.last?.variationLabel {
+    if plays.count > 1, let label = plays.last(where: \.isMarkable)?.variationLabel {
       return "Tempo reached · \(label)"
     }
     return tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached"
