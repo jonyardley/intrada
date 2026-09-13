@@ -373,6 +373,17 @@ pub struct VariantView {
     pub is_solid: bool,
 }
 
+/// One row of the player's variation picker, captioned by the core so a
+/// variation played earlier in this item never reads as not yet played (#1784).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PickerVariationView {
+    pub id: String,
+    pub label: String,
+    pub caption: String,
+    pub is_solid: bool,
+}
+
 /// One stretch of an item spent on one variation, as the sheet and the
 /// Progress screen read it (#1739). `variation_label` is resolved here,
 /// tombstones included, because a session practised on a variation that has
@@ -531,6 +542,8 @@ pub struct ActiveSessionView {
     pub current_item_tempo_bpm: Option<u16>,
     /// The piece's metre, the answer the click sheet opens with (T19).
     pub current_item_metre: Option<Metre>,
+    /// The current item's variations with the picker's caption for each (#1784).
+    pub current_variations: Vec<PickerVariationView>,
 }
 
 /// A unit in the builder queue: a block (a piece with its related exercises) or
@@ -765,6 +778,7 @@ pub fn build_active_session_view(
     active: &ActiveSession,
     item_index: &HashMap<&str, &Item>,
     labels: &VariationLabels,
+    current_variations: &[VariantView],
 ) -> ActiveSessionView {
     let safe_index = active
         .current_index
@@ -828,7 +842,43 @@ pub fn build_active_session_view(
         current_item_metre: item_index
             .get(current.item_id.as_str())
             .and_then(|i| i.metre.clone()),
+        current_variations: picker_variations(current, current_variations),
     }
+}
+
+fn picker_variations(entry: &SetlistEntry, variants: &[VariantView]) -> Vec<PickerVariationView> {
+    let playing_now = entry.open_play().and_then(|p| p.variation_id.as_deref());
+    variants
+        .iter()
+        .map(|v| {
+            let played_secs: u64 = entry
+                .plays
+                .iter()
+                .filter(|p| p.variation_id.as_deref() == Some(v.id.as_str()) && !p.is_incidental())
+                .map(|p| p.seconds)
+                .sum();
+            let caption = if playing_now == Some(v.id.as_str()) {
+                "Playing now".to_string()
+            } else if played_secs > 0 {
+                format!(
+                    "Played this session · {}",
+                    crate::domain::session::format_duration_display(played_secs)
+                )
+            } else {
+                match v.latest_score {
+                    Some(score) if v.is_solid => format!("Solid · {score} of 10"),
+                    Some(score) => format!("{score} of 10"),
+                    None => "Not yet played".to_string(),
+                }
+            };
+            PickerVariationView {
+                id: v.id.clone(),
+                label: v.label.clone(),
+                caption,
+                is_solid: v.is_solid,
+            }
+        })
+        .collect()
 }
 
 pub fn build_summary_view(summary: &SummarySession, labels: &VariationLabels) -> SummaryView {
@@ -1105,7 +1155,8 @@ mod tests {
             current_item_started_at: Utc::now(),
         };
         assert_eq!(
-            build_active_session_view(&active, &items, &VariationLabels::new()).current_item_metre,
+            build_active_session_view(&active, &items, &VariationLabels::new(), &[])
+                .current_item_metre,
             Some(metre)
         );
         let second = ActiveSession {
@@ -1113,7 +1164,8 @@ mod tests {
             ..active
         };
         assert_eq!(
-            build_active_session_view(&second, &items, &VariationLabels::new()).current_item_metre,
+            build_active_session_view(&second, &items, &VariationLabels::new(), &[])
+                .current_item_metre,
             None
         );
     }
@@ -1136,7 +1188,7 @@ mod tests {
             current_item_started_at: Utc::now(),
         };
         assert_eq!(
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new())
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[])
                 .current_rep_slots,
             7
         );
@@ -1145,7 +1197,8 @@ mod tests {
             current_index: 1,
             ..active
         };
-        let view = build_active_session_view(&untouched, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&untouched, &HashMap::new(), &VariationLabels::new(), &[]);
         assert_eq!(view.current_rep_target, None);
         assert_eq!(
             view.current_rep_slots,
@@ -1165,7 +1218,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert_eq!(view.next_item_title.as_deref(), Some("Etude"));
     }
 
@@ -1181,7 +1235,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert!(view.next_item_title.is_none());
     }
 
@@ -1196,7 +1251,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert_eq!(view.current_item_intention.as_deref(), Some("evenness"));
     }
 
@@ -1215,7 +1271,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert_eq!(
             view.current_related_piece_title.as_deref(),
             Some("Clair de Lune")
@@ -1238,7 +1295,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert!(view.current_related_piece_title.is_none());
     }
 
@@ -1257,7 +1315,8 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert!(
             view.current_related_piece_title.is_none(),
             "breadcrumb is for exercises related to a piece, not the piece itself"
@@ -1296,7 +1355,7 @@ mod tests {
             metre: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
-        let view = build_active_session_view(&active, &item_index, &VariationLabels::new());
+        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
         assert_eq!(view.current_item_tempo_marking.as_deref(), Some("Allegro"));
         assert_eq!(view.current_item_tempo_bpm, Some(132));
     }
@@ -1310,9 +1369,138 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
         };
-        let view = build_active_session_view(&active, &HashMap::new(), &VariationLabels::new());
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
         assert!(view.current_item_tempo_marking.is_none());
         assert!(view.current_item_tempo_bpm.is_none());
+    }
+
+    // ── picker captions (#1784) ────────────────────────────────────────
+
+    fn session_on(plays: Vec<VariationPlay>) -> ActiveSession {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.plays = plays;
+        ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+        }
+    }
+
+    fn play_on(id: &str, variation: &str, seconds: u64) -> VariationPlay {
+        VariationPlay {
+            id: id.to_string(),
+            variation_id: Some(variation.to_string()),
+            seconds,
+            ..VariationPlay::fixture()
+        }
+    }
+
+    fn captions(view: &ActiveSessionView) -> Vec<(&str, &str)> {
+        view.current_variations
+            .iter()
+            .map(|v| (v.id.as_str(), v.caption.as_str()))
+            .collect()
+    }
+
+    /// Practise C, switch to G, open the picker: C must say it was played
+    /// this session, not "Not yet played" off the saved mark (#1784).
+    #[test]
+    fn picker_caption_reads_a_variation_played_earlier_in_the_item() {
+        let active = session_on(vec![play_on("p1", "c", 250), play_on("p2", "g", 0)]);
+        let variants = [
+            VariantView::fixture("c", "C", 0),
+            VariantView::fixture("g", "G", 1),
+        ];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(
+            captions(&view),
+            vec![("c", "Played this session · 4m 10s"), ("g", "Playing now")]
+        );
+    }
+
+    /// Time on a variation adds up across every visit to it, not the latest.
+    #[test]
+    fn picker_caption_adds_up_every_play_on_a_variation() {
+        let active = session_on(vec![
+            play_on("p1", "c", 100),
+            play_on("p2", "g", 30),
+            play_on("p3", "c", 200),
+            play_on("p4", "d", 0),
+        ]);
+        let variants = [
+            VariantView::fixture("c", "C", 0),
+            VariantView::fixture("g", "G", 1),
+            VariantView::fixture("d", "D", 2),
+        ];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(
+            captions(&view),
+            vec![
+                ("c", "Played this session · 5m 0s"),
+                ("g", "Played this session · 30s"),
+                ("d", "Playing now")
+            ]
+        );
+    }
+
+    /// A stray tap on the picker is dropped at the terminal transition, so the
+    /// caption must not count it either.
+    #[test]
+    fn picker_caption_ignores_a_stray_tap() {
+        let active = session_on(vec![play_on("p1", "c", 3), play_on("p2", "g", 0)]);
+        let variants = [
+            VariantView::fixture("c", "C", 0),
+            VariantView::fixture("g", "G", 1),
+        ];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(captions(&view)[0], ("c", "Not yet played"));
+    }
+
+    #[test]
+    fn picker_caption_falls_back_to_the_saved_mark_or_not_yet_played() {
+        let active = session_on(vec![VariationPlay::fixture()]);
+        let variants = [
+            VariantView {
+                latest_score: Some(8),
+                is_solid: true,
+                ..VariantView::fixture("c", "C", 0)
+            },
+            VariantView {
+                latest_score: Some(5),
+                ..VariantView::fixture("d", "D", 1)
+            },
+            VariantView::fixture("e", "E", 2),
+        ];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(
+            captions(&view),
+            vec![
+                ("c", "Solid · 8 of 10"),
+                ("d", "5 of 10"),
+                ("e", "Not yet played")
+            ]
+        );
+        let solid: Vec<bool> = view.current_variations.iter().map(|v| v.is_solid).collect();
+        assert_eq!(solid, vec![true, false, false]);
+    }
+
+    /// `ActiveSessionView` crosses the bincode wire; `current_variations` is
+    /// its trailing field (#1784), so guard it against the #846 drop class.
+    #[test]
+    fn active_session_view_round_trips_on_ffi_bincode_wire() {
+        let active = session_on(vec![play_on("p1", "c", 250), play_on("p2", "g", 0)]);
+        let variants = [VariantView::fixture("c", "C", 0)];
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        assert_eq!(view.current_variations.len(), 1);
+        crate::domain::types::assert_round_trips(view);
     }
 
     // ── build_summary_view ─────────────────────────────────────────────
