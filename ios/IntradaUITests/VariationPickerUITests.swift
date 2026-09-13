@@ -61,11 +61,8 @@ final class VariationPickerUITests: XCTestCase {
     let chip = app.buttons["Variation"]
     XCTAssertTrue(chip.waitForExistence(timeout: 10), "an exercise with variations shows the chip")
     XCTAssertEqual(
-      chip.value as? String, "none picked",
-      "nothing was planned in the builder, so the chip invites a pick")
-
-    pick(app, "C")
-    XCTAssertEqual(chip.value as? String, "C", "the chip names the variation now being practised")
+      chip.value as? String, "C",
+      "nothing was planned in the builder, so the session opens on the first variation (#1758)")
 
     let repetitions = app.otherElements["Repetitions"]
     XCTAssertTrue(repetitions.waitForExistence(timeout: 5), "the repetition counter")
