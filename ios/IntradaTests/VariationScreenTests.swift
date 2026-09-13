@@ -15,7 +15,7 @@ struct VariationScreenTests {
       id: id, variationId: label.map { "v-\($0)" }, variationLabel: label, seconds: seconds,
       durationDisplay: "4m 10s", repTarget: repTarget, repCount: repCount,
       repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,
-      score: nil)
+      score: nil, isMarkable: true)
   }
 
   // ── The sheet's rows ──

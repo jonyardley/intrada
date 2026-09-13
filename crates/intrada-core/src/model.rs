@@ -392,6 +392,12 @@ pub struct VariationPlayView {
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
     pub score: Option<u8>,
+    /// Whether marking this play now would stick: `false` means the pending
+    /// terminal transition will drop it as a stray tap on the picker before a
+    /// mark could ever be attached (#1758). Only accurate on the reflection
+    /// sheet, after `PrepareReflection`; mid-item it reads the open play as
+    /// incidental regardless of how long it has actually run.
+    pub is_markable: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -658,7 +664,11 @@ pub fn variation_labels(items: &[Item]) -> VariationLabels<'_> {
         .collect()
 }
 
-pub fn play_to_view(play: &VariationPlay, labels: &VariationLabels) -> VariationPlayView {
+pub fn play_to_view(
+    play: &VariationPlay,
+    entry: &SetlistEntry,
+    labels: &VariationLabels,
+) -> VariationPlayView {
     VariationPlayView {
         id: play.id.clone(),
         variation_id: play.variation_id.clone(),
@@ -675,6 +685,7 @@ pub fn play_to_view(play: &VariationPlay, labels: &VariationLabels) -> Variation
         achieved_tempo: play.achieved_tempo,
         click_pattern: play.click_pattern.clone(),
         score: play.score,
+        is_markable: crate::domain::session::play_would_survive_drop(entry, play),
     }
 }
 
@@ -699,7 +710,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &VariationLabels) -> SetlistE
         plays: entry
             .plays
             .iter()
-            .map(|p| play_to_view(p, labels))
+            .map(|p| play_to_view(p, entry, labels))
             .collect(),
         score_summary: entry.score_summary(),
     }
@@ -1472,6 +1483,7 @@ mod tests {
             achieved_tempo: Some(120),
             click_pattern: None,
             score: Some(6),
+            is_markable: true,
         });
     }
 
@@ -1484,8 +1496,12 @@ mod tests {
             variation_id: Some("v-gone".to_string()),
             ..VariationPlay::fixture()
         };
+        let entry = SetlistEntry {
+            plays: vec![play.clone()],
+            ..SetlistEntry::fixture()
+        };
 
-        let view = play_to_view(&play, &labels);
+        let view = play_to_view(&play, &entry, &labels);
 
         assert_eq!(view.variation_label.as_deref(), Some("E flat"));
     }
@@ -1493,10 +1509,37 @@ mod tests {
     #[test]
     fn an_unattributed_play_has_no_label() {
         let labels = VariationLabels::new();
-        let view = play_to_view(&VariationPlay::fixture(), &labels);
+        let play = VariationPlay::fixture();
+        let entry = SetlistEntry {
+            plays: vec![play.clone()],
+            ..SetlistEntry::fixture()
+        };
+        let view = play_to_view(&play, &entry, &labels);
 
         assert_eq!(view.variation_id, None);
         assert_eq!(view.variation_label, None);
+    }
+
+    #[test]
+    fn a_stray_tap_views_as_not_markable() {
+        let labels = VariationLabels::new();
+        let opened = VariationPlay {
+            id: "play-1".to_string(),
+            seconds: 60,
+            ..VariationPlay::fixture()
+        };
+        let stray_tap = VariationPlay {
+            id: "play-2".to_string(),
+            seconds: 2,
+            ..VariationPlay::fixture()
+        };
+        let entry = SetlistEntry {
+            plays: vec![opened.clone(), stray_tap.clone()],
+            ..SetlistEntry::fixture()
+        };
+
+        assert!(play_to_view(&opened, &entry, &labels).is_markable);
+        assert!(!play_to_view(&stray_tap, &entry, &labels).is_markable);
     }
 
     #[test]

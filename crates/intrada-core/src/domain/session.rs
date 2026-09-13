@@ -401,6 +401,15 @@ pub enum SessionEvent {
     CancelBuilding,
 
     // === Active Phase ===
+    /// Stamp the current entry's open play with its real duration ahead of
+    /// the terminal transition, so the sheet's mark control can tell a play
+    /// that will survive from one about to be dropped (#1758). The shell
+    /// must send this `now` again on the `NextItem`/`FinishSession` that
+    /// follows: a later, fresher `now` there charges the sheet's own dwell
+    /// time to this play and can silently invalidate the prediction.
+    PrepareReflection {
+        now: DateTime<Utc>,
+    },
     NextItem {
         now: DateTime<Utc>,
     },
@@ -677,6 +686,19 @@ fn drop_incidental_plays(entries: &mut [SetlistEntry]) {
     for entry in entries.iter_mut() {
         drop_incidental_play(entry);
     }
+}
+
+/// Whether `play` would still be in `entry.plays` after `drop_incidental_play`
+/// runs (#1758). `play` must be one of `entry.plays`. Relies on
+/// `PrepareReflection` having stamped the open play's real seconds with the
+/// same `now` the terminal transition will use; otherwise an open play
+/// always reads as incidental regardless of how long it ran.
+pub(crate) fn play_would_survive_drop(entry: &SetlistEntry, play: &VariationPlay) -> bool {
+    if !play.is_incidental() {
+        return true;
+    }
+    entry.plays.iter().all(VariationPlay::is_incidental)
+        && entry.plays.first().is_some_and(|first| first.id == play.id)
 }
 
 /// The first tap is what switches the counter on: it writes the target along
@@ -1302,6 +1324,20 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         // ── Active Phase ───────────────────────────────────────────
+        SessionEvent::PrepareReflection { now } => {
+            // An internal step, not a user action: last_error is left alone
+            // in both branches, not raised or cleared for it (#944).
+            let SessionStatus::Active(ref mut active) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            if let Some(entry) = active.entries.get_mut(active.current_index) {
+                close_open_play(entry, now);
+            }
+
+            crux_core::render::render()
+        }
+
         SessionEvent::NextItem { now } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
                 model.last_error = Some("Not in active state".to_string());
@@ -2044,6 +2080,13 @@ mod tests {
         crate::domain::types::assert_round_trips(Event::Session(
             SessionEvent::StartBuildingFromSuggestion { now: Utc::now() },
         ));
+    }
+
+    #[test]
+    fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(Event::Session(SessionEvent::PrepareReflection {
+            now: Utc::now(),
+        }));
     }
 
     // ── "Practise your priorities" (#981) ────────────────────────────
@@ -6350,6 +6393,203 @@ mod tests {
         assert_eq!(entry.status, EntryStatus::Completed);
         assert_eq!(entry.plays.len(), 1);
         assert_eq!(entry.plays[0].id, opened);
+    }
+
+    // --- PrepareReflection and play_would_survive_drop (#1758) -------------
+
+    fn play_by_id<'a>(entry: &'a SetlistEntry, id: &str) -> &'a VariationPlay {
+        entry
+            .plays
+            .iter()
+            .find(|p| p.id == id)
+            .expect("the play is still in the entry")
+    }
+
+    #[test]
+    fn a_stray_tap_predicts_as_unmarkable_and_is_dropped() {
+        let (mut model, start) = model_with_variations();
+        let entry_id = only_entry(&model).id.clone();
+        let opened = only_entry(&model).plays[0].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id: entry_id.clone(),
+                variation_id: Some("v-d".to_string()),
+                now: start + chrono::Duration::seconds(298),
+            }),
+        );
+        let stray_tap = only_entry(&model).plays[1].id.clone();
+
+        // The picker tap two seconds before the end: still the open play, so
+        // its true duration is unknown until this stamps it.
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: start + chrono::Duration::seconds(300),
+            }),
+        );
+        let entry = only_entry(&model);
+        assert_eq!(
+            play_by_id(entry, &stray_tap).seconds,
+            2,
+            "PrepareReflection stamped the real duration, not the open play's 0"
+        );
+        assert!(!play_would_survive_drop(
+            entry,
+            play_by_id(entry, &stray_tap)
+        ));
+        assert!(play_would_survive_drop(entry, play_by_id(entry, &opened)));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession {
+                now: start + chrono::Duration::seconds(300),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1);
+        assert_eq!(entry.plays[0].id, opened, "the prediction matched the drop");
+    }
+
+    #[test]
+    fn the_sole_play_predicts_as_markable_however_short() {
+        let entry = SetlistEntry {
+            plays: vec![VariationPlay {
+                seconds: 2,
+                ..VariationPlay::fixture()
+            }],
+            ..SetlistEntry::fixture()
+        };
+
+        assert!(play_would_survive_drop(&entry, &entry.plays[0]));
+    }
+
+    #[test]
+    fn when_every_play_is_incidental_only_the_first_predicts_as_markable() {
+        let (mut model, start) = model_with_variations();
+        let entry_id = only_entry(&model).id.clone();
+        let opened = only_entry(&model).plays[0].id.clone();
+        // A switch two seconds in, then PrepareReflection a second later:
+        // both plays run under the five second threshold with no mark or
+        // repetitions, so both are incidental and only the fallback survivor
+        // should predict markable.
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id,
+                variation_id: Some("v-d".to_string()),
+                now: start + chrono::Duration::seconds(2),
+            }),
+        );
+        let second = only_entry(&model).plays[1].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: start + chrono::Duration::seconds(3),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert!(play_would_survive_drop(entry, play_by_id(entry, &opened)));
+        assert!(!play_would_survive_drop(entry, play_by_id(entry, &second)));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession {
+                now: start + chrono::Duration::seconds(3),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1);
+        assert_eq!(entry.plays[0].id, opened, "the prediction matched the drop");
+    }
+
+    /// Mutation coverage for the fallback's `all(is_incidental)` conjunct: a
+    /// later play that genuinely ran must survive even though the first,
+    /// incidental play sits at `entry.plays[0]`, the fallback's own slot.
+    #[test]
+    fn a_later_real_play_predicts_as_markable_even_when_the_first_was_incidental() {
+        let (mut model, start) = model_with_variations();
+        let entry_id = only_entry(&model).id.clone();
+        let opened = only_entry(&model).plays[0].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id,
+                variation_id: Some("v-d".to_string()),
+                now: start + chrono::Duration::seconds(2),
+            }),
+        );
+        let real_play = only_entry(&model).plays[1].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: start + chrono::Duration::seconds(302),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert!(!play_would_survive_drop(entry, play_by_id(entry, &opened)));
+        assert!(play_would_survive_drop(
+            entry,
+            play_by_id(entry, &real_play)
+        ));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession {
+                now: start + chrono::Duration::seconds(302),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1);
+        assert_eq!(
+            entry.plays[0].id, real_play,
+            "the prediction matched the drop"
+        );
+    }
+
+    #[test]
+    fn prepare_reflection_does_not_advance_or_drop() {
+        let (mut model, start) = model_with_variations();
+        let entry_id = only_entry(&model).id.clone();
+        // A stray tap, so drop_incidental_play would have something to drop
+        // if PrepareReflection called it: proves the non-drop, not just an
+        // entry too short to exercise it.
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id: entry_id.clone(),
+                variation_id: Some("v-d".to_string()),
+                now: start + chrono::Duration::seconds(1),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: start + chrono::Duration::seconds(2),
+            }),
+        );
+
+        let SessionStatus::Active(active) = &model.session_status else {
+            panic!("still active: PrepareReflection is not terminal");
+        };
+        assert_eq!(active.current_index, 0);
+        let entry = session_entries(&model)
+            .iter()
+            .find(|e| e.id == entry_id)
+            .expect("the entry is unchanged");
+        assert_eq!(entry.status, EntryStatus::NotAttempted);
+        assert_eq!(
+            entry.plays.len(),
+            2,
+            "nothing was dropped early, though the open play is incidental"
+        );
+        assert_eq!(entry.plays[1].seconds, 1, "the open play's real duration");
     }
 
     #[test]
