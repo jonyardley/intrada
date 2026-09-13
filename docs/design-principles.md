@@ -961,3 +961,36 @@ Two tokens now render identically at the default size: `subtitle` and `meta` are
 both DM Mono at 14, separated only by their Dynamic Type curve. That is a fold
 waiting to happen, and until it does, reach for `meta` unless the text is a
 screen subtitle.
+
+### T27: Text ink drops most of its brown; the hero gradient keeps its warmth
+
+**Status:** DECIDED 2026-09-13 (jonyardley/intrada#1723). T24 set the main
+text colour to brown ink `#3B2A1E`, chosen alongside the paper and marker
+colours rather than measured on its own terms. Read on its own, it and the
+secondary text colour carried more colour than a neutral needs: the gap
+between a hex value's red and blue channels is a proxy for how "brown" a
+supposedly neutral reads, and both were in the high twenties to low thirties on
+that measure.
+
+`ink` moves to `#2A2725` (R-B spread 5, was 29) and `inkSecondary` to
+`#6E6A66` (R-B spread 8, was 32), both landing in single figures. Contrast
+improves rather than trades away: `ink` on paper goes 12.46:1 to 13.52:1, on
+white cards 13.67:1 to 14.84:1; `inkSecondary` on paper 4.74:1 to 4.89:1, on
+white cards 5.20:1 to 5.36:1, both still clear of the 4.5:1 AA floor text
+needs. `inkFaint` and `inkFainter` are untouched: the eyebrow label already
+trades contrast for restraint on purpose (T23), and that trade is not
+reopened here.
+
+The Practice hero card's gradient (`heroGradientTop` is `ink`,
+`heroGradientBottom` was `#56412C`) does not follow the same desaturation.
+`heroGradientBottom` moves to `#4F3B28`, keeping close to its old hue and
+saturation rather than scaling down with the now near-neutral top stop: the
+card reads as a warm brown deepening into the calmer ink at the top corner,
+not as one flat neutral wash. That is a deliberate two-tone read, not an
+oversight; a pure lightness ramp at the new ink's saturation was the rejected
+alternative.
+
+The terracotta accent (`IntradaColor.accent`, resolving to `ink` everywhere it
+is used today) is untouched: which of its roughly twenty call sites become
+terracotta and which stay ink is a per-site decision still open as the third
+piece of #1723.
