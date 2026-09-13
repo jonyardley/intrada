@@ -585,7 +585,8 @@ final class StoreEffectLoopTests: XCTestCase {
     for id in ids { _ = try bridge.update(.session(.addToSetlist(itemId: id))) }
     _ = try bridge.update(.session(.startSession(now: "2026-08-28T09:00:00Z")))
     // Advancing completes the first entry; tempo only lands on a completed one.
-    _ = try bridge.update(.session(.nextItem(now: "2026-08-28T09:10:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-08-28T09:10:00Z", nextItemStartedAt: "2026-08-28T09:10:00Z")))
 
     let entries = try XCTUnwrap(try bridge.view().activeSession?.entries)
     XCTAssertEqual(
@@ -1050,7 +1051,8 @@ final class StoreEffectLoopTests: XCTestCase {
     // The FocusPlayer reaches the summary by advancing past the last item (its
     // Done/Finish path), not finishSession — round-trip the event the screen
     // actually sends.
-    _ = try bridge.update(.session(.nextItem(now: "2026-06-16T10:20:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-06-16T10:20:00Z", nextItemStartedAt: "2026-06-16T10:20:00Z")))
     let summary = try bridge.view()
     XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
     XCTAssertNil(summary.activeSession)
@@ -1392,7 +1394,8 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z")))
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z")))
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z")))
-    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:04:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-09-04T09:04:00Z", nextItemStartedAt: "2026-09-04T09:04:00Z")))
 
     let playId = try XCTUnwrap(
       try bridge.view().activeSession?.entries.first { $0.id == entryId }?.plays.last?.id,
@@ -1409,7 +1412,8 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: playId, score: 6)))
 
-    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:10:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-09-04T09:10:00Z", nextItemStartedAt: "2026-09-04T09:10:00Z")))
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "every setter must decode cleanly (#846)")
@@ -1473,7 +1477,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: slowId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
-    _ = try bridge.update(.session(.nextItem(now: "2026-09-04T09:05:00Z")))
+    _ = try bridge.update(
+      .session(.nextItem(now: "2026-09-04T09:05:00Z", nextItemStartedAt: "2026-09-04T09:05:00Z")))
     let playId = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays.last?.id)
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: playId, score: 8)))

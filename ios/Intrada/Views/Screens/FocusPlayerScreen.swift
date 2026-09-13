@@ -352,7 +352,8 @@ struct FocusPlayerScreen: View {
   private func presentReflection(_ active: ActiveSessionView) {
     let pos = Int(active.currentPosition)
     guard active.entries.indices.contains(pos) else {
-      store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+      let now = SessionClock.nowRFC3339()
+      store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
       return
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
@@ -383,7 +384,8 @@ struct FocusPlayerScreen: View {
       store.send(.session(.updateEntryNotes(entryId: target.id, notes: result.note)))
       if store.viewModel?.errorSeq != before { return }
     }
-    store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+    let now = SessionClock.nowRFC3339()
+    store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
     // NextItem is the terminal transition that drops a stretch nobody
     // practised, so a mark is only sent for a play the core still holds:
     // marking a row and then watching an error banner say that row is gone
@@ -426,7 +428,8 @@ struct FocusPlayerScreen: View {
   }
 
   private func handleSkipRating() {
-    store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+    let now = SessionClock.nowRFC3339()
+    store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
     reflecting = nil
   }
 }

@@ -404,14 +404,21 @@ pub enum SessionEvent {
     /// Stamp the current entry's open play with its real duration ahead of
     /// the terminal transition, so the sheet's mark control can tell a play
     /// that will survive from one about to be dropped (#1758). The shell
-    /// must send this `now` again on the `NextItem`/`FinishSession` that
-    /// follows: a later, fresher `now` there charges the sheet's own dwell
-    /// time to this play and can silently invalidate the prediction.
+    /// must send this `now` again as the closing instant on whichever
+    /// terminal event follows, `NextItem` or `FinishSession`: see
+    /// `NextItem`'s own doc for what a fresher instant there invalidates.
     PrepareReflection {
         now: DateTime<Utc>,
     },
+    /// `now` closes the finished entry and must be `PrepareReflection`'s own
+    /// instant when a reflection sheet came first, or its prediction goes
+    /// stale (#1758). `next_item_started_at` starts the next entry's clock
+    /// and first play; it should be a fresh instant taken when the shell
+    /// actually advances, or the sheet's own dwell time reads as practice on
+    /// the item that follows.
     NextItem {
         now: DateTime<Utc>,
+        next_item_started_at: DateTime<Utc>,
     },
     SkipItem {
         now: DateTime<Utc>,
@@ -1338,7 +1345,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
-        SessionEvent::NextItem { now } => {
+        SessionEvent::NextItem {
+            now,
+            next_item_started_at,
+        } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
                 model.last_error = Some("Not in active state".to_string());
                 return crux_core::render::render();
@@ -1364,9 +1374,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             active.current_index += 1;
-            active.current_item_started_at = now;
+            active.current_item_started_at = next_item_started_at;
             if let Some(entry) = active.entries.get_mut(active.current_index) {
-                open_first_play(entry, &model.items, now);
+                open_first_play(entry, &model.items, next_item_started_at);
             }
             model.last_error = None;
 
@@ -2987,6 +2997,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::NextItem {
                 now: now + chrono::Duration::seconds(30),
+                next_item_started_at: now + chrono::Duration::seconds(30),
             }),
         );
 
@@ -3064,7 +3075,13 @@ mod tests {
         let (mut model, start) = model_with_active_session(3);
         let now = start + chrono::Duration::seconds(30);
 
-        update(&mut model, Event::Session(SessionEvent::NextItem { now }));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+            }),
+        );
 
         assert!(model.last_error.is_none());
         if let SessionStatus::Active(ref active) = model.session_status {
@@ -3076,12 +3093,67 @@ mod tests {
         }
     }
 
+    /// A reflection sheet's dwell must not read as practice on the item that
+    /// follows (#1758).
+    #[test]
+    fn next_item_started_at_not_now_opens_the_next_item_clock() {
+        let (mut model, start) = model_with_active_session(3);
+        let closed_at = start + chrono::Duration::seconds(30);
+        let opened_at = closed_at + chrono::Duration::seconds(45);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: closed_at,
+                next_item_started_at: opened_at,
+            }),
+        );
+
+        {
+            let SessionStatus::Active(ref active) = model.session_status else {
+                panic!("Expected Active state");
+            };
+            assert_eq!(
+                active.entries[0].duration_secs, 30,
+                "the finished item's duration uses the closing instant, not the dwell"
+            );
+        }
+
+        // Ten real seconds on item two, no reflection sheet in between this
+        // time: if item two's clock had started at `closed_at` (the bug),
+        // this would read 55, the 45 second dwell included.
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: opened_at + chrono::Duration::seconds(10),
+                next_item_started_at: opened_at + chrono::Duration::seconds(10),
+            }),
+        );
+        let SessionStatus::Active(ref active) = model.session_status else {
+            panic!("Expected Active state");
+        };
+        assert_eq!(
+            active.entries[1].duration_secs, 10,
+            "item two's own duration excludes the dwell on item one's sheet"
+        );
+        assert_eq!(
+            active.entries[1].plays[0].seconds, 10,
+            "item two's first play is stamped from the advance, not from item one's close"
+        );
+    }
+
     #[test]
     fn test_next_item_on_last_transitions_to_summary() {
         let (mut model, start) = model_with_active_session(1);
         let now = start + chrono::Duration::seconds(60);
 
-        update(&mut model, Event::Session(SessionEvent::NextItem { now }));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+            }),
+        );
 
         assert!(model.last_error.is_none());
         assert!(matches!(model.session_status, SessionStatus::Summary(_)));
@@ -3095,7 +3167,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
         update(
             &mut model,
@@ -3120,7 +3195,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
         update(
             &mut model,
@@ -3183,7 +3261,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
         update(
             &mut model,
@@ -3557,7 +3638,10 @@ mod tests {
         let t1 = t0 + chrono::Duration::seconds(30);
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
 
         // 5. Skip second item
@@ -3823,7 +3907,10 @@ mod tests {
         // Advance — entry[0] becomes Completed, current_index moves to 1
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
 
         // Capture the just-completed entry id (still in Active phase)
@@ -3866,7 +3953,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
         let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
             a.entries[0].id.clone()
@@ -3902,7 +3992,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
 
         let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
@@ -3939,7 +4032,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
 
         let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
@@ -3977,7 +4073,10 @@ mod tests {
         // Advance to the last item, then finish the session
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+            }),
         );
         update(
             &mut model,
@@ -5365,7 +5464,13 @@ mod tests {
         update(&mut model, got_it());
 
         let now = start + chrono::Duration::seconds(30);
-        update(&mut model, Event::Session(SessionEvent::NextItem { now }));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+            }),
+        );
 
         if let SessionStatus::Active(ref a) = model.session_status {
             // First entry frozen: 3/5, target not reached
@@ -5755,7 +5860,10 @@ mod tests {
         let next_time = start + chrono::Duration::seconds(60);
         update(
             &mut model,
-            Event::Session(SessionEvent::NextItem { now: next_time }),
+            Event::Session(SessionEvent::NextItem {
+                now: next_time,
+                next_item_started_at: next_time,
+            }),
         );
 
         if let SessionStatus::Active(ref a) = model.session_status {
@@ -6272,6 +6380,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(300),
+                next_item_started_at: start + chrono::Duration::seconds(300),
             }),
         );
         update(
@@ -6602,6 +6711,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(2),
+                next_item_started_at: start + chrono::Duration::seconds(2),
             }),
         );
 
