@@ -33,9 +33,7 @@ struct ReflectionPlay: Identifiable, Equatable {
   let durationDisplay: String
   let repCount: UInt8?
   let repTarget: UInt8?
-  /// Whether the core predicts this play survives the terminal transition's
-  /// drop of incidental plays (#1758). `PrepareReflection` must have stamped
-  /// the open play's real seconds first, or this reads stale.
+  /// Whether the core predicts this play survives the terminal drop (#1758).
   let isMarkable: Bool
 
   var title: String { variationLabel ?? "No variation" }
@@ -46,9 +44,7 @@ struct ReflectionPlay: Identifiable, Equatable {
     return parts.joined(separator: " · ")
   }
 
-  /// The sheet's rows for one entry, read straight off each play's own
-  /// stamped seconds: `PrepareReflection` has already given the still-open
-  /// play its real duration by the time this runs.
+  /// Reads each play's own stamped seconds: `PrepareReflection` gives the still-open play its real duration first.
   static func rows(_ plays: [VariationPlayView]) -> [ReflectionPlay] {
     plays.map { play in
       ReflectionPlay(
@@ -128,10 +124,8 @@ struct ReflectionSheet: View {
         if plays.count > 1 {
           eyebrow("What you played").padding(.top, IntradaSpacing.section)
           playRows.padding(.top, IntradaSpacing.controlGap)
-        } else if let only = plays.first, only.isMarkable {
-          // No mark control without a play to write it to: the core gives every
-          // practised entry at least one, so an empty list means something is
-          // wrong, and ten tappable buttons that record nothing would hide it.
+        } else if let only = plays.first {
+          // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
             score: mark(for: only.id), accessibilityLabel: "Mark for \(itemTitle)"
@@ -192,7 +186,6 @@ struct ReflectionSheet: View {
               .font(IntradaFont.meta)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
-          // A play the core is about to discard offers no control (#1758).
           if play.isMarkable {
             ScoreSelector(
               score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"

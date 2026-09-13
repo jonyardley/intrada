@@ -645,6 +645,20 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  func testReflectionSheetWithADroppedPlay() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Major Scales", elapsedDisplay: "4:12", tempoTarget: nil,
+        plays: [
+          .preview("p1", "C major", "4:10", 8, 10),
+          .preview("p2", "G major", "0:02", isMarkable: false),
+        ],
+        onSave: { _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   func testReflectionSheetWithThreeVariationsAccessibilitySize() {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()

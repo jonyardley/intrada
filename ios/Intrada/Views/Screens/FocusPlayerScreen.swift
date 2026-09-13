@@ -347,9 +347,7 @@ struct FocusPlayerScreen: View {
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
     let plays: [ReflectionPlay]
-    /// The instant sent with `PrepareReflection`. The `NextItem` that follows
-    /// must reuse it rather than take a fresh timestamp, or the sheet's
-    /// `isMarkable` rows stop predicting what the core actually drops (#1758).
+    /// `PrepareReflection`'s instant: `NextItem`'s own `now` must reuse it, or the rows above stop predicting the drop (#1758).
     let now: String
   }
 
@@ -395,10 +393,7 @@ struct FocusPlayerScreen: View {
       store.send(.session(.updateEntryNotes(entryId: target.id, notes: result.note)))
       if store.viewModel?.errorSeq != before { return }
     }
-    // `now` must be PrepareReflection's own instant or the prediction below
-    // goes stale (#1758); `nextItemStartedAt` is a fresh one taken here, so
-    // the sheet's own dwell doesn't read as practice on the item that
-    // follows.
+    // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
     store.send(
       .session(.nextItem(now: target.now, nextItemStartedAt: SessionClock.nowRFC3339())))
     for play in target.plays {

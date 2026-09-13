@@ -83,9 +83,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(entry.scoreSummary, 7, "13 over 2 rounds to 7")
   }
 
-  /// `PrepareReflection` stamps the open play's real seconds and predicts
-  /// whether each play survives the terminal drop, over the real bincode
-  /// bridge rather than a stub (#1758).
+  /// `PrepareReflection` predicts a play's markability over the real bincode bridge (#1758).
   func testPrepareReflectionPredictsWhichPlaySurvivesOverTheRealBridge() throws {
     let bridge = LiveBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
@@ -97,8 +95,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
     let opened = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.first?.id)
 
-    // A stray tap two seconds before the item ends: still the open play, so
-    // its true duration is unknown until PrepareReflection stamps it.
+    // A stray tap two seconds before the item ends.
     _ = try bridge.update(
       .session(
         .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:04:58Z")))
@@ -112,8 +109,6 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(stamped.plays.first(where: { $0.id == strayTap })?.isMarkable, false)
 
     // The same `now` PrepareReflection used, or the prediction goes stale.
-    // `NextItem` on the setlist's only entry is the shell's real terminal
-    // transition (it never sends `FinishSession`).
     _ = try bridge.update(
       .session(
         .nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
