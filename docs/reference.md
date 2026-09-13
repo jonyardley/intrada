@@ -9,7 +9,7 @@
 ## Commands
 
 ```bash
-just check                 # fmt-check → lint → test → hygiene; mirrors CI
+just check                 # fmt-check, then lint+test+hygiene overlapped; mirrors CI
 just test                  # nextest, same as CI's `test` job
 just lint                  # clippy -D warnings, same targets as CI's `clippy` job
 just hygiene               # typos, cargo-shear, actionlint, links, release name, self-tests
