@@ -54,9 +54,7 @@ coverage:
 # mise's shims, and a plain shell without `mise activate` would fail the whole
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
-# All eleven checks are independent: each test script sandboxes its own
-# `mktemp -d`, and none touches the cargo target dir, so they run concurrently
-# instead of one after another. Same checks, less wall-clock.
+# The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -75,7 +73,7 @@ hygiene:
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
     )
-    tmpdir=$(mktemp -d)
+    tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
     names=()
     pids=()
@@ -94,7 +92,7 @@ hygiene:
             sed 's/^/    /' "$tmpdir/${names[$i]}.log" >&2
         fi
     done
-    [ "$fail" -eq 0 ] && echo "✓ hygiene (11 checks, parallel)"
+    [ "$fail" -eq 0 ] && echo "✓ hygiene (${#checks[@]} checks, parallel)"
     exit "$fail"
 
 # Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
@@ -124,9 +122,9 @@ claim number:
 pr-open title body *flags:
     bash scripts/pr-open.sh --title {{quote(title)}} --body {{quote(body)}} {{flags}}
 
-# Check everything (fmt, clippy, test, hygiene). Mirrors the iOS test-tier
-# green-stamp (#1200): skips on a clean, already-green HEAD (#1204). Delete
-# `target/.check-stamp` to force a re-run.
+# Check everything (fmt, then lint+test+hygiene overlapped). Mirrors the iOS
+# test-tier green-stamp (#1200): skips on a clean, already-green HEAD (#1204).
+# Delete `target/.check-stamp` to force a re-run.
 check:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -137,19 +135,26 @@ check:
         exit 0
     fi
     just fmt-check
-    # hygiene touches no cargo build state, so it overlaps lint+test instead
-    # of tailing them: same checks, less wall-clock.
-    just hygiene &
+    # hygiene needs nothing lint/test produce, so it runs alongside them
+    # instead of tailing them. Captured rather than left to print live: it
+    # often finishes first, and clippy/test output would otherwise bury it.
+    hygiene_log=$(mktemp)
+    trap 'rm -f "$hygiene_log"' EXIT
+    just hygiene >"$hygiene_log" 2>&1 &
     hygiene_pid=$!
     lint_status=0
     just lint || lint_status=$?
+    # Skip test on a lint failure, same fail-fast as the old sequential order.
     test_status=0
-    just test || test_status=$?
+    if [ "$lint_status" -eq 0 ]; then
+        just test || test_status=$?
+    fi
     hygiene_status=0
     wait "$hygiene_pid" || hygiene_status=$?
-    if [ "$lint_status" -ne 0 ] || [ "$test_status" -ne 0 ] || [ "$hygiene_status" -ne 0 ]; then
-        exit 1
-    fi
+    cat "$hygiene_log"
+    if [ "$lint_status" -ne 0 ]; then exit "$lint_status"; fi
+    if [ "$test_status" -ne 0 ]; then exit "$test_status"; fi
+    if [ "$hygiene_status" -ne 0 ]; then exit "$hygiene_status"; fi
     # Stamp only the exact tree we tested: a green run over uncommitted edits,
     # or one HEAD moved under, says nothing about $sha (#1204).
     if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
