@@ -56,6 +56,42 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(afterSwitch.currentVariationLabel, "D")
   }
 
+  /// The picker's captions come from the core (#1784): the next read after a
+  /// switch must show the new variation as playing and the old one as played
+  /// this session, not stale "not yet played" text from a stub bridge.
+  func testSwitchingVariationUpdatesCurrentVariationsOverTheRealBridge() throws {
+    let bridge = LiveBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let inC = try variationId(bridge, label: "C")
+    let inD = try variationId(bridge, label: "D")
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+
+    let atStart = try XCTUnwrap(try bridge.view().activeSession)
+    let captionsAtStart = Dictionary(
+      uniqueKeysWithValues: atStart.currentVariations.map { ($0.id, $0.caption) })
+    XCTAssertEqual(captionsAtStart[inC], "Playing now")
+    XCTAssertEqual(captionsAtStart[inD], "Not yet played")
+
+    _ = try bridge.update(
+      .session(
+        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z")))
+
+    let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    let captionsAfterSwitch = Dictionary(
+      uniqueKeysWithValues: afterSwitch.currentVariations.map { ($0.id, $0.caption) })
+    XCTAssertEqual(
+      captionsAfterSwitch[inD], "Playing now",
+      "the picker's next read shows the new current variation")
+    XCTAssertEqual(
+      captionsAfterSwitch[inC], "Played this session · 5m 0s",
+      "the closed play still shows as played this session, not not-yet-played")
+  }
+
   func testScoringEachPlayLandsOnItsOwnRowOverTheRealBridge() throws {
     let bridge = LiveBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
