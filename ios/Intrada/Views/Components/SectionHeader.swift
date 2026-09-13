@@ -4,6 +4,8 @@ import SwiftUI
 /// section on the refreshed screens. `inkFaint` is the one place that token is
 /// allowed — eyebrows only (it fails AA for body text).
 struct Eyebrow: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   let text: String
   // Defaults to inkFaint; override for an eyebrow on a dark/coloured surface
   // (the Practice hero, the dark summary headline); a trailing `.foregroundStyle`
@@ -15,9 +17,11 @@ struct Eyebrow: View {
   }
 
   var body: some View {
+    // A spaced-out word wraps sooner, so accessibility sizes get tighter
+    // tracking to keep it on one line (#1781).
     Text(text.uppercased())
       .font(IntradaFont.eyebrow)
-      .tracking(1.5)
+      .tracking(dynamicTypeSize.isAccessibilitySize ? 0.5 : 1.5)
       .foregroundStyle(tint)
       .accessibilityLabel(text)
   }
@@ -28,25 +32,36 @@ struct Eyebrow: View {
 /// `caption` sits against the eyebrow instead, for a count that qualifies the
 /// title rather than commenting on the section ("USED IN · 3 pieces").
 struct SectionHeader: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   let title: String
   var caption: String?
   var trailing: String?
 
   var body: some View {
-    HStack(alignment: .firstTextBaseline) {
-      Eyebrow(title)
-      if let caption {
-        Text("· \(caption)")
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
+    // The eyebrow breaks mid-word when it shares a line with trailing text (#1781).
+    if dynamicTypeSize.isAccessibilitySize {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        Eyebrow(title)
+        if let caption { meta(caption) }
+        if let trailing { meta(trailing) }
       }
-      if let trailing {
-        Spacer(minLength: IntradaSpacing.controlGap)
-        Text(trailing)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
+    } else {
+      HStack(alignment: .firstTextBaseline) {
+        Eyebrow(title)
+        if let caption { meta("· \(caption)") }
+        if let trailing {
+          Spacer(minLength: IntradaSpacing.controlGap)
+          meta(trailing)
+        }
       }
     }
+  }
+
+  private func meta(_ text: String) -> some View {
+    Text(text)
+      .font(IntradaFont.meta)
+      .foregroundStyle(IntradaColor.inkSecondary)
   }
 }
 
@@ -61,5 +76,18 @@ struct SectionHeader: View {
       }
       .padding(IntradaSpacing.card)
     }
+  }
+
+  #Preview("Accessibility size") {
+    ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+        Eyebrow("Recent mastery")
+        SectionHeader(title: "Variations", trailing: "5 of 15 solid")
+        SectionHeader(title: "Used in", caption: "3 pieces")
+      }
+      .padding(IntradaSpacing.card)
+    }
+    .dynamicTypeSize(.accessibility5)
   }
 #endif
