@@ -33,6 +33,8 @@ struct ReflectionPlay: Identifiable, Equatable {
   let durationDisplay: String
   let repCount: UInt8?
   let repTarget: UInt8?
+  /// Whether the core predicts this play survives the terminal drop (#1758).
+  let isMarkable: Bool
 
   var title: String { variationLabel ?? "No variation" }
 
@@ -42,18 +44,13 @@ struct ReflectionPlay: Identifiable, Equatable {
     return parts.joined(separator: " · ")
   }
 
-  /// The sheet's rows for one entry. The open play's own seconds are only
-  /// stamped when the core closes it, so its share of the item's elapsed time
-  /// is what the closed plays have not already claimed.
-  static func rows(_ plays: [VariationPlayView], elapsed: Int) -> [ReflectionPlay] {
-    let closed = plays.dropLast().reduce(0) { $0 + Int($1.seconds) }
-    return plays.enumerated().map { index, play in
-      let isOpen = index == plays.count - 1
-      let seconds = isOpen ? max(elapsed - closed, 0) : Int(play.seconds)
-      return ReflectionPlay(
+  /// Reads each play's own stamped seconds: `PrepareReflection` gives the still-open play its real duration first.
+  static func rows(_ plays: [VariationPlayView]) -> [ReflectionPlay] {
+    plays.map { play in
+      ReflectionPlay(
         id: play.id, variationLabel: play.variationLabel,
-        durationDisplay: SessionClock.clockDisplay(seconds),
-        repCount: play.repCount, repTarget: play.repTarget)
+        durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
+        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable)
     }
   }
 }
@@ -128,9 +125,7 @@ struct ReflectionSheet: View {
           eyebrow("What you played").padding(.top, IntradaSpacing.section)
           playRows.padding(.top, IntradaSpacing.controlGap)
         } else if let only = plays.first {
-          // No mark control without a play to write it to: the core gives every
-          // practised entry at least one, so an empty list means something is
-          // wrong, and ten tappable buttons that record nothing would hide it.
+          // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
             score: mark(for: only.id), accessibilityLabel: "Mark for \(itemTitle)"
@@ -191,10 +186,12 @@ struct ReflectionSheet: View {
               .font(IntradaFont.meta)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
-          ScoreSelector(
-            score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"
-          ) { next in
-            setMark(next, for: play.id)
+          if play.isMarkable {
+            ScoreSelector(
+              score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"
+            ) { next in
+              setMark(next, for: play.id)
+            }
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)
@@ -202,11 +199,11 @@ struct ReflectionSheet: View {
     }
   }
 
-  // Named with the variation it lands on once there is more than one row: the
-  // click was sounding for the last stretch, so that is the only play its
-  // reading is evidence for (T16).
+  // Named with the variation the write actually lands on (#1758): the last
+  // markable play, not simply the last, or a stray tap at the end names one
+  // variation while the reading lands on another.
   private var tempoEyebrow: String {
-    if plays.count > 1, let label = plays.last?.variationLabel {
+    if plays.count > 1, let label = plays.last(where: \.isMarkable)?.variationLabel {
       return "Tempo reached · \(label)"
     }
     return tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached"

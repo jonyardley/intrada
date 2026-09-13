@@ -83,6 +83,39 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(entry.scoreSummary, 7, "13 over 2 rounds to 7")
   }
 
+  /// `PrepareReflection` predicts a play's markability over the real bincode bridge (#1758).
+  func testPrepareReflectionPredictsWhichPlaySurvivesOverTheRealBridge() throws {
+    let bridge = LiveBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let inD = try variationId(bridge, label: "D")
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+    let opened = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.first?.id)
+
+    // A stray tap two seconds before the item ends.
+    _ = try bridge.update(
+      .session(
+        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:04:58Z")))
+    let strayTap = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.last?.id)
+
+    _ = try bridge.update(.session(.prepareReflection(now: "2026-09-01T10:05:00Z")))
+    let stamped = try XCTUnwrap(try bridge.view().activeSession?.entries.first)
+    XCTAssertEqual(
+      stamped.plays.last?.seconds, 2, "PrepareReflection stamped the real duration")
+    XCTAssertEqual(stamped.plays.first(where: { $0.id == opened })?.isMarkable, true)
+    XCTAssertEqual(stamped.plays.first(where: { $0.id == strayTap })?.isMarkable, false)
+
+    // The same `now` PrepareReflection used, or the prediction goes stale.
+    _ = try bridge.update(
+      .session(
+        .nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
+    let survivors = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
+    XCTAssertEqual(survivors.map(\.id), [opened], "the prediction matched the drop")
+  }
+
   /// A `playId` that belongs to another entry must be refused, or one row of
   /// the item-complete sheet could write another's mark.
   func testAForeignPlayIdIsRefusedOverTheRealBridge() throws {

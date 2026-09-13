@@ -36,7 +36,7 @@ struct FocusPlayerScreen: View {
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
         tempoUnit: target.tempoUnit, plays: target.plays,
         onSave: { result in handleReflection(target, result) },
-        onSkip: { handleSkipRating() }
+        onSkip: { handleSkipRating(target) }
       )
       .presentationDetents([.medium, .large])
     }
@@ -347,6 +347,8 @@ struct FocusPlayerScreen: View {
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
     let plays: [ReflectionPlay]
+    /// `PrepareReflection`'s instant: `NextItem`'s own `now` must reuse it, or the rows above stop predicting the drop (#1758).
+    let now: String
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -366,12 +368,19 @@ struct FocusPlayerScreen: View {
     // nothing.
     click.stop()
     let entry = active.entries[pos]
+    let now = SessionClock.nowRFC3339()
+    // Stamps the open play's real seconds ahead of the terminal transition, so
+    // the rows below can tell which ones the core is about to discard (#1758).
+    store.send(.session(.prepareReflection(now: now)))
+    let stamped =
+      store.viewModel?.activeSession?.entries.first(where: { $0.id == entry.id })?.plays
+      ?? entry.plays
     reflecting = ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
       tempoTargetBpm: active.currentItemTempoBpm, startingTempoBpm: startingTempoBpm,
       clickSounding: clickSounding, clickState: clickState,
-      plays: ReflectionPlay.rows(entry.plays, elapsed: elapsed))
+      plays: ReflectionPlay.rows(stamped), now: now)
   }
 
   // Notes first (no status guard — surfaces a validation error before advancing);
@@ -384,17 +393,11 @@ struct FocusPlayerScreen: View {
       store.send(.session(.updateEntryNotes(entryId: target.id, notes: result.note)))
       if store.viewModel?.errorSeq != before { return }
     }
-    let now = SessionClock.nowRFC3339()
-    store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
-    // NextItem is the terminal transition that drops a stretch nobody
-    // practised, so a mark is only sent for a play the core still holds:
-    // marking a row and then watching an error banner say that row is gone
-    // is worse than losing a mark on a stray tap of the picker (#1739).
-    let surviving = survivingPlayIds(target.id)
+    // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
+    store.send(
+      .session(.nextItem(now: target.now, nextItemStartedAt: SessionClock.nowRFC3339())))
     for play in target.plays {
-      guard let score = result.marks[play.id], surviving?.contains(play.id) ?? true else {
-        continue
-      }
+      guard let score = result.marks[play.id] else { continue }
       store.send(.session(.updateEntryScore(entryId: target.id, playId: play.id, score: score)))
     }
     // The two facts go over as observed and the core rules on whether they
@@ -404,8 +407,7 @@ struct FocusPlayerScreen: View {
     // and skipping the write there would lose a reading the click evidenced
     // over the whole item. Which variation a mid-item tempo change belongs to
     // is #1761.
-    let tempoPlayId = target.plays.last(where: { surviving?.contains($0.id) ?? true })?.id
-    if let openPlayId = tempoPlayId {
+    if let openPlayId = target.plays.last(where: \.isMarkable)?.id {
       store.send(
         .session(
           .updateEntryTempo(
@@ -417,19 +419,9 @@ struct FocusPlayerScreen: View {
     reflecting = nil
   }
 
-  /// The entry after `NextItem` closed it: still in the setlist mid-session,
-  /// and in the summary once that was the last item. `nil` when the shell
-  /// cannot find it, which sends every mark rather than swallowing them all.
-  private func survivingPlayIds(_ entryId: String) -> Swift.Set<String>? {
-    let model = store.viewModel
-    let entries = (model?.activeSession?.entries ?? []) + (model?.summary?.entries ?? [])
-    guard let entry = entries.first(where: { $0.id == entryId }) else { return nil }
-    return Swift.Set(entry.plays.map(\.id))
-  }
-
-  private func handleSkipRating() {
-    let now = SessionClock.nowRFC3339()
-    store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
+  private func handleSkipRating(_ target: ReflectionTarget) {
+    store.send(
+      .session(.nextItem(now: target.now, nextItemStartedAt: SessionClock.nowRFC3339())))
     reflecting = nil
   }
 }
