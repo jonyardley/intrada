@@ -78,7 +78,7 @@ merged.
 | "What's next" and "what can run in parallel" are answered from `just status` and the session-start claims list, with no further reads | #1839 | Seven such sessions, each a fresh 80k to 200k context, all picking Tier 1 work |
 | A correction edits the rule that failed; it never adds one. A rule a hook can enforce loses its prose in the same change | This section, "The layers" above | Three worktree rules that disagreed, six memories, and the mistake back the next morning |
 | One harness slot a day; the rest is the app | Jon's call at planning | Nine of the 44 weekend PRs were harness work |
-| Read a file once. A second look is a grep and a range, never the whole file again; a screenshot is read once and described | #1844 for the guard; `rtk read` and the turn reminder until then | 981 of 1,930 text reads over the weekend repeated a file already in the session; one core file was read 225 times |
+| Read a file once. A second look is a grep and a range, never the whole file again; a screenshot is read once and described | `read-guard.sh` denies a repeat and an unranged file over 400 lines (#1844); `rtk read` for the rest | 981 of 1,930 text reads over the weekend repeated a file already in the session; one core file was read 225 times |
 
 A PR body says what the reviewer needs and stops. The weekend's median was 430
 words with three over 1,000, against merges ten minutes after opening. Whether
@@ -363,7 +363,10 @@ These run whether or not an agent read the rules.
   hands the rest of the unit to a `task`/`smol` subagent at 200k and at 400k
   says to `/compact` now (`CONTEXT_WARN` and `CONTEXT_FIRM` stay overridable
   env vars), and `usage-daily.sh` opens the first session of each day with one
-  line from `usage-report.py`.
+  line from `usage-report.py`. `read-guard.sh` denies a `Read` with no offset,
+  limit or `pages` when this session's transcript already holds that exact
+  path unchanged since, and denies one on a text file over 400 lines either
+  way; images are exempt from both (#1844).
 
 ## Session controls
 
