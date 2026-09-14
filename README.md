@@ -111,7 +111,7 @@ specs/                # Design specs for major features
 | [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |
 | [`SETUP.md`](SETUP.md) | Configuration (Sentry, TestFlight) |
 | [`docs/working-with-agents.md`](docs/working-with-agents.md) | Driving this repo from Claude Code: what loads, the layers, model and effort, delegation, isolation, guardrails, worked examples |
-| [`docs/agentic-primer.md`](docs/agentic-primer.md) | General essay on agentic coding, with the criticisms left in. No intrada specifics; written to be read outside this repo |
+| [`docs/agentic-primer.md`](docs/agentic-primer.md) | The from-scratch guide to Claude Code on any repo: layers, session lifecycle, model and effort, delegation, worktrees, the hooks worth building, the gotchas, and how to turn it into a starter kit. No intrada specifics; written to be read outside this repo |
 
 ## CI/CD
 
