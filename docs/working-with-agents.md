@@ -270,6 +270,15 @@ Four rules on top:
 - **Gates run through `test-runner`, never in the lead.** A failing suite
   prints thousands of lines that are re-sent on every later turn. Tell every
   fan-out task to skip `just check` and the suites; run them once, at the end.
+- **The lead verifies a task's result through `reviewer` and the gate
+  counts, never by re-reading its files.** The report shape in
+  `.claude/agents/task.md` is what the lead checks the work against. It opens
+  a file the task touched only to act on a specific `reviewer` finding, and
+  then by range, not the whole file.
+- **Brief a task by file and line, not by area.** Naming the exact lines to
+  change lets the task edit in place instead of opening a full read to
+  relocate its own work; a `git grep` for a sentinel value beats reading a
+  file end to end when the brief cannot cite a line number directly.
 
 ## Isolating concurrent work
 
@@ -524,14 +533,19 @@ after this one is reviewed.
 Opener for the screens session, once the core PR is reviewed:
 
 ```text
-Screens half of #1512, core PR #<N> is merged. Read both bounds from the
-ViewModel and delete the hard-coded 2...12 in ClickSheet.swift and 3...10 in
-EntrySettingsSheet.swift. A shell constant repeating the number is not the fix.
+Screens half of #1512, core PR #<N> is merged. Grep each file for its
+hard-coded range (2...12 in ClickSheet.swift, 3...10 in
+EntrySettingsSheet.swift) and replace both with the bounds read from the
+ViewModel; no need to open either file in full. A shell constant repeating
+the number is not the fix.
 
 Add the test the issue asks for: the offered range matches the core's, so
 widening the core cannot silently leave a sheet behind. Then just ios-test-full,
 because the core type changed. Re-record any snapshots the control changes
 touch, and say which.
+
+Report back per .claude/agents/task.md: diff --stat and changed symbols, the
+gate and its counts, what you left out, what you could not verify.
 ```
 
 ## What slows us down
