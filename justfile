@@ -571,14 +571,24 @@ _ios-test-run tier:
     source scripts/ios-sim-lock.sh
     ios_sim_lock_acquire
     _ios_test_run_cleanup() {
-        # Shut down THIS worktree's sim rather than leaving it idle, which was
-        # what actually blocked the next run under the old check-sim-free.sh
-        # heuristic (#1622). Runs on every exit path, pass or fail.
+        # Release the lock immediately (runs on every exit path, pass or
+        # fail), but leave THIS worktree's sim booted rather than shutting it
+        # down here: the machine-wide lock (above) now serialises runs, so an
+        # idle-but-booted sim no longer blocks anyone the way it did under the
+        # old check-sim-free.sh heuristic (#1622), and staying booted skips
+        # the boot wait on the next run in this worktree (#1885). Shut down
+        # on an idle timer instead, backgrounded so it outlives this script;
+        # skipped if another run in this worktree has re-acquired the lock by
+        # then. `worktree-rm` and `ios-test-sim-clean` are the hard stops
+        # that always shut it down.
+        ios_sim_lock_release
         udid="$(just _ios-test-sim-udid 2>/dev/null || true)"
         if [ -n "$udid" ]; then
-            xcrun simctl shutdown "$udid" 2>/dev/null || true
+            (
+                sleep "${IOS_SIM_IDLE_SHUTDOWN_SECONDS:-600}"
+                [ -d "$IOS_SIM_LOCK_DIR" ] || xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+            ) >/dev/null 2>&1 &
         fi
-        ios_sim_lock_release
     }
     trap _ios_test_run_cleanup EXIT
     just _ios-test-guard
