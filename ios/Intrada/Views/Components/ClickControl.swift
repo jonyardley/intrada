@@ -102,9 +102,6 @@ struct ClickControl: View {
 
   private var readoutRow: some View {
     HStack(spacing: IntradaSpacing.controlGap / 2) {
-      if isDragging, showsBpmNumeral {
-        neighbourNumeral(displayedBpm - TempoScale.step)
-      }
       Label(readout, systemImage: "metronome")
         .font(isDragging ? IntradaFont.cardTitle(20) : IntradaFont.bodyMedium)
         .monospacedDigit()
@@ -113,33 +110,18 @@ struct ClickControl: View {
         .lineLimit(1)
         .minimumScaleFactor(0.6)
         .foregroundStyle(isDragging ? IntradaColor.accent : tint)
-      if isDragging, showsBpmNumeral {
-        neighbourNumeral(displayedBpm + TempoScale.step)
-      } else if !isDragging {
+      if !isDragging {
         gripGlyph
       }
     }
   }
 
-  /// Three faint bars beside the number: the passive hint that this is a drag
-  /// target, not just a toggle, with no first-use tooltip to dismiss (#1823).
+  /// The passive hint that this is a drag target, not just a toggle, with no
+  /// first-use tooltip to dismiss (#1823).
   private var gripGlyph: some View {
-    VStack(spacing: 2) {
-      ForEach(0..<3, id: \.self) { _ in
-        RoundedRectangle(cornerRadius: 1)
-          .fill(IntradaColor.inkFaintIcon)
-          .frame(width: 10, height: 1.5)
-      }
-    }
-    .accessibilityHidden(true)
-  }
-
-  private func neighbourNumeral(_ value: Int) -> some View {
-    Text("\(TempoScale.clamp(value, unit: unit))")
-      .font(IntradaFont.meta)
-      .monospacedDigit()
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .transition(.opacity)
+    Image(systemName: "arrow.up.and.down")
+      .font(.system(size: 11, weight: .semibold))
+      .foregroundStyle(IntradaColor.inkFaintIcon)
       .accessibilityHidden(true)
   }
 

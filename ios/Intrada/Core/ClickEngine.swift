@@ -104,10 +104,14 @@ final class ClickEngine {
 
     let session = AVAudioSession.sharedInstance()
     do {
-      // .mixWithOthers so a backing track or tuner keeps playing, and only
-      // system events (calls, Siri, alarms) count as an interruption.
-      try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-      try session.setActive(true)
+      // Off the main thread (AVFoundation warns on activation there while
+      // this thread blocks on the result, same ordering as before the hop).
+      try DispatchQueue.global(qos: .userInitiated).sync {
+        // .mixWithOthers so a backing track or tuner keeps playing, and only
+        // system events (calls, Siri, alarms) count as an interruption.
+        try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try session.setActive(true)
+      }
       // A configuration change (headphones in or out) tears the graph's
       // connections down; without this the engine starts clean and plays nothing.
       engine.connect(playerNode, to: engine.mainMixerNode, format: clickBuffer.format)
@@ -147,7 +151,9 @@ final class ClickEngine {
     // Lets a ducked backing-track app resume. Guarded because the session is
     // app-wide: a stop with nothing sounding must not deactivate it.
     guard wasSounding else { return }
-    try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+    try? DispatchQueue.global(qos: .userInitiated).sync {
+      try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+    }
   }
 
   /// Pure beat layout: touches no audio state, so the grid can be exercised
