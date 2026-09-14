@@ -28,6 +28,13 @@ most of it again. Everything in the first column below is in that bill.
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
 | Xcode tools | `.mcp.json` | xcodebuildmcp and the simulator workflow |
 
+The `~/.claude/` rows above (user rules, auto memory, user hooks) move whole
+if `CLAUDE_CONFIG_DIR` is set: a session on such a machine reads
+`$CLAUDE_CONFIG_DIR/CLAUDE.md`, `$CLAUDE_CONFIG_DIR/settings.json` and
+`$CLAUDE_CONFIG_DIR/projects/<project>/memory/` instead, and adding a hook to
+`~/.claude/settings.json` there does nothing: caught during the #1849 epic
+cross-check, where a hook shipped registered in the undocumented path only.
+
 Run `/context` in a session to see exactly which files loaded.
 
 ## The layers, and which one a rule belongs in
