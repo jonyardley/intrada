@@ -37,12 +37,26 @@ struct SectionHeader: View {
   let title: String
   var caption: String?
   var trailing: String?
+  // Trailing action button (e.g. "Edit"/"Done"), matching the disabled/
+  // hidden-when-empty pattern used across the header buttons on this screen.
+  var actionTitle: String?
+  var action: (() -> Void)?
+  var actionAccessibilityLabel: String?
+  var actionDisabled = false
 
   var body: some View {
     // The eyebrow breaks mid-word when it shares a line with trailing text (#1781).
     if dynamicTypeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow(title)
+        if actionTitle != nil {
+          HStack(alignment: .firstTextBaseline) {
+            Eyebrow(title)
+            Spacer(minLength: IntradaSpacing.controlGap)
+            actionButton
+          }
+        } else {
+          Eyebrow(title)
+        }
         if let caption { meta(caption) }
         if let trailing { meta(trailing) }
       }
@@ -53,8 +67,22 @@ struct SectionHeader: View {
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
           meta(trailing)
+        } else if actionTitle != nil {
+          Spacer(minLength: IntradaSpacing.controlGap)
         }
+        actionButton
       }
+    }
+  }
+
+  @ViewBuilder private var actionButton: some View {
+    if let actionTitle, let action {
+      Button(actionTitle, action: action)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .disabled(actionDisabled)
+        .opacity(actionDisabled ? 0 : 1)
+        .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
     }
   }
 

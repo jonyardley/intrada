@@ -93,16 +93,12 @@ struct LibraryDetailScreen: View {
 
   private var chordChartSection: some View {
     VStack(spacing: 0) {
-      HStack {
-        Text("Chord chart")
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-        Spacer()
-        Button(item.chordChart == nil ? "Add" : "Edit") { editingChart = true }
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-          .accessibilityLabel(item.chordChart == nil ? "Add a chord chart" : "Edit chord chart")
-      }
+      SectionHeader(
+        title: "Chord chart",
+        actionTitle: item.chordChart == nil ? "Add" : "Edit",
+        action: { editingChart = true },
+        actionAccessibilityLabel: item.chordChart == nil ? "Add a chord chart" : "Edit chord chart"
+      )
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.top, IntradaSpacing.card)
       .padding(.bottom, item.chordChart == nil ? IntradaSpacing.card : IntradaSpacing.cardCompact)
@@ -306,31 +302,15 @@ struct LibraryDetailScreen: View {
   }
 
   private var linkedExercisesHeader: some View {
-    HStack {
-      Text("Related exercises")
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-      if !item.linkedExercises.isEmpty {
-        Text("\(item.linkedExercises.count)")
-          .font(IntradaFont.badge)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          // Badge insets: 7/3 are capsule-specific — smaller than controlGap(8).
-          .padding(.horizontal, 7)
-          .padding(.vertical, 3)
-          .background(IntradaColor.surfaceSunken, in: Capsule())
-          .accessibilityHidden(true)
-      }
-      Spacer()
-      Button(editingLinks ? "Done" : "Edit") {
-        editingLinks.toggle()
-      }
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.accent)
-      .disabled(item.linkedExercises.isEmpty)
-      .opacity(item.linkedExercises.isEmpty ? 0 : 1)
-      .accessibilityLabel(
-        editingLinks ? "Done editing related exercises" : "Edit related exercises")
-    }
+    SectionHeader(
+      title: "Related exercises",
+      caption: item.linkedExercises.isEmpty ? nil : "\(item.linkedExercises.count)",
+      actionTitle: editingLinks ? "Done" : "Edit",
+      action: { editingLinks.toggle() },
+      actionAccessibilityLabel: editingLinks
+        ? "Done editing related exercises" : "Edit related exercises",
+      actionDisabled: item.linkedExercises.isEmpty
+    )
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
     .padding(.bottom, item.linkedExercises.isEmpty ? 0 : IntradaSpacing.cardCompact)
@@ -405,9 +385,9 @@ struct LibraryDetailScreen: View {
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkSecondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(IntradaSpacing.card)
-        .cardSurface()
     }
+    .padding(IntradaSpacing.card)
+    .cardSurface()
   }
 
   // ── Variations (#1733) ──
@@ -715,12 +695,11 @@ struct LibraryDetailScreen: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.card) {
         if item.itemType == .exercise {
           exerciseHero
+          if !item.tags.isEmpty {
+            tags
+          }
         } else {
-          TypeBadge(kind: item.itemType)
-        }
-
-        if !item.tags.isEmpty {
-          tags
+          pieceBadgeRow
         }
 
         if let notes = item.notes, !notes.isEmpty {
@@ -835,6 +814,17 @@ struct LibraryDetailScreen: View {
       }
     }
   }
+
+  private var pieceBadgeRow: some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        TypeBadge(kind: item.itemType)
+        ForEach(item.tags, id: \.self) { tag in
+          TagChip(tag, style: .outlined)
+        }
+      }
+    }
+  }
 }
 
 private struct DetailRow: View {
@@ -844,7 +834,7 @@ private struct DetailRow: View {
   var body: some View {
     HStack {
       Text(label)
-        .font(IntradaFont.body)
+        .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer(minLength: 16)
       Text(value)
