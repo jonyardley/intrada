@@ -23,7 +23,7 @@ struct SessionOrientationBand<Menu: View>: View {
           .frame(minWidth: Self.slot, alignment: .leading)
         Text(positionLabel)
           .font(IntradaFont.badge)
-          .tracking(1.5)
+          .tracking(IntradaFont.eyebrowTracking)
           .foregroundStyle(IntradaColor.inkFaint)
           // Scales rather than truncating: "FOCUS · 3 OF 5" losing its tail to an
           // ellipsis costs the item number, which is the half that carries the fact.

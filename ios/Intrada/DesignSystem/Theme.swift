@@ -169,6 +169,8 @@ enum IntradaFont {
   /// Uppercase section label (letter-spaced, `inkFaint`) — the eyebrow above
   /// every section on the refreshed screens.
   static let eyebrow = Font.custom(Hanken.semibold, size: 12, relativeTo: .caption2)
+  /// The `.tracking()` every eyebrow label uses.
+  static let eyebrowTracking: CGFloat = 1.5
   static let tab = Font.custom(Hanken.medium, size: 13, relativeTo: .footnote)
   static let segment = Font.custom(Hanken.medium, size: 15, relativeTo: .subheadline)
   static let field = Font.custom(Hanken.regular, size: 17, relativeTo: .callout)

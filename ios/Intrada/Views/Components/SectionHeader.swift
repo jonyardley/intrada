@@ -21,7 +21,7 @@ struct Eyebrow: View {
     // tracking to keep it on one line (#1781).
     Text(text.uppercased())
       .font(IntradaFont.eyebrow)
-      .tracking(dynamicTypeSize.isAccessibilitySize ? 0.5 : 1.5)
+      .tracking(dynamicTypeSize.isAccessibilitySize ? 0.5 : IntradaFont.eyebrowTracking)
       .foregroundStyle(tint)
       .accessibilityLabel(text)
   }
