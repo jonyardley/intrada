@@ -663,15 +663,16 @@ _ios-test-without-building filters retry parallel="0":
     # Cloned simulators are opt-in per caller, defaulting off: a clone's test
     # runner hits "Application failed preflight checks (Busy)" under memory
     # pressure, which reds the gate for no test reason, and a rented 7GB
-    # runner has too little to hold more than one. A 48GB dev machine holds
-    # five, which takes the UI tier from 339s to 86s, so the local full tier
-    # and the self-hosted CI gate both opt in. The rented `native-ios-test-ui`
+    # runner has too little to hold more than one. Six measured on the
+    # self-hosted M4 over ten runs (#1824): UI step 175s median against 280s
+    # at four, no preflight failures, so the local full tier and the
+    # self-hosted CI gate both opt in at six. The rented `native-ios-test-ui`
     # job stays sequential at 7GB. #1642 fixed the rename test that used to
     # silently skip its own field-clearing under clone load and reddened
     # main; both CI paths still keep the job fan-out.
     flags=()
     if [ "{{parallel}}" = "1" ]; then
-        flags+=(-parallel-testing-enabled YES -maximum-concurrent-test-simulator-destinations 4)
+        flags+=(-parallel-testing-enabled YES -maximum-concurrent-test-simulator-destinations 6)
     else
         flags+=(-parallel-testing-enabled NO)
     fi
