@@ -1071,7 +1071,8 @@
         currentVariationId: nil, currentVariationLabel: nil,
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
-        currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
+        currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
+        currentRelatedPieceTitle: nil,
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
         currentVariations: [])
     }
@@ -1091,6 +1092,7 @@
         currentVariationLabel: base.currentVariationLabel,
         currentPlannedDurationSecs: base.currentPlannedDurationSecs,
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
+        currentItemNotes: base.currentItemNotes,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
         currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
@@ -1115,6 +1117,7 @@
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Clair de Lune",
         currentItemIntention: "Even tone through the turn",
+        currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
         currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil,
         currentVariations: [
@@ -1169,6 +1172,7 @@
         currentPlannedDurationSecs: nil,
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
+        currentItemNotes: nil,
         currentRelatedPieceTitle: "Moonlight Sonata",
         currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
         currentVariations: [])

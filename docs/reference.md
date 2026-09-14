@@ -446,10 +446,11 @@ scene while it's application is being updated".
 
 **Cloned simulators are on in the self-hosted CI gate**, same as the local full
 tier; the rented `native-ios-test-ui` job stays sequential on its 7GB runner.
-They took the UI tier from 339 seconds to 86 in measurement, but five at once
-had been saturating the machine enough that a UI test which silently skipped
-its own field-clearing under load started reddening main. #1642 fixed that
-test and turned clones back on in the self-hosted gate.
+Five at once had been saturating the machine enough that a UI test which
+silently skipped its own field-clearing under load started reddening main;
+#1642 fixed that test and turned clones back on in the self-hosted gate.
+Raised to six on 2026-09-14 (#1824): ten runs on the M4 gave a 175s UI-step
+median against 280s at four, no preflight failures across the run.
 
 ## Mutate-response variants, in full
 

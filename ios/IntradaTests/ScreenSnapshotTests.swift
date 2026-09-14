@@ -171,6 +171,14 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewLibrarySearching), as: config)
   }
 
+  /// The search field just after reveal, before any text lands (#1825, moved from `LibrarySearchUITests`).
+  func testLibraryScreenSearchRevealedEmpty() {
+    assertSnapshot(
+      of: host(
+        NavigationStack { LibraryScreen(previewSearch: "") },
+        store: .previewLibrary), as: config)
+  }
+
   /// The browse controls have to give way at accessibility sizes, or the screen
   /// lays out wider than the device and shifts off its leading edge (#1470).
   func testLibraryScreenAccessibilityText() {
