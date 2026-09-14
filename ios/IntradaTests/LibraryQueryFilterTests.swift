@@ -3,9 +3,7 @@ import Testing
 
 @testable import Intrada
 
-/// The text side of `setQuery` over the real bridge (#1825, moved from
-/// `LibrarySearchUITests`): matching narrows the list, and clearing the
-/// query restores it. Pure store state, so no simulator keyboard is needed.
+/// `setQuery` filtering, moved from `LibrarySearchUITests` (#1825): pure store state.
 struct LibraryQueryFilterTests {
   private func seededBridge() throws -> LiveBridge {
     let bridge = LiveBridge()
@@ -15,13 +13,13 @@ struct LibraryQueryFilterTests {
         .add(
           CreateItem(
             title: "Clair de Lune", kind: .piece, composer: "Debussy", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
             title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     return bridge
   }
 

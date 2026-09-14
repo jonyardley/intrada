@@ -171,9 +171,7 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewLibrarySearching), as: config)
   }
 
-  /// The button-revealed field just after the tap, before any text lands
-  /// (#1825): the two states the field toggles between are hidden
-  /// (`testLibraryScreenPopulated`) and this one.
+  /// The search field just after reveal, before any text lands (#1825, moved from `LibrarySearchUITests`).
   func testLibraryScreenSearchRevealedEmpty() {
     assertSnapshot(
       of: host(

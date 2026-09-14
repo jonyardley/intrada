@@ -57,9 +57,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(afterSwitch.currentVariationLabel, "D")
   }
 
-  /// Switching resets the repetition count rather than carrying the old
-  /// variation's total (#1825, moved from `VariationPickerUITests`): the count
-  /// belongs to the open play, and a switch opens a fresh one.
+  /// Moved from `VariationPickerUITests` (#1825): switching variation restarts the rep count.
   func testSwitchingVariationRestartsTheRepetitionCountOverTheRealBridge() throws {
     let bridge = LiveBridge()
     let itemId = try exerciseWithTwoVariations(bridge)

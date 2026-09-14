@@ -405,12 +405,7 @@ final class StoreEffectLoopTests: XCTestCase {
       "one non-key rung and the whole ladder is steps")
   }
 
-  /// Removing a variation over the real bridge (#1825, moved from
-  /// `VariationManagementUITests`): the dropped label is gone from the view
-  /// and the rest of the ladder is untouched. The core archives it rather
-  /// than hard-deleting it (see
-  /// `set_variants_removing_a_label_tombstones_never_hard_deletes`), but a
-  /// tombstoned rung stays out of the view.
+  /// Moved from `VariationManagementUITests` (#1825): a removed variation is archived, not hard-deleted, but drops from the view.
   func testRealBridgeRemovingAVariationDropsItFromTheLadder() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp)
@@ -666,11 +661,7 @@ final class StoreEffectLoopTests: XCTestCase {
       ], "each tap keeps the time the shell gave it")
   }
 
-  /// The floor-at-zero counting rule over the real bridge (#1825, moved from
-  /// `RepetitionCounterUITests`): a miss at zero stays at zero rather than
-  /// going negative, and stays tappable there. Banks one first so the floor
-  /// is proved against a counter that demonstrably moves, not one that was
-  /// never wired up to move at all.
+  /// Moved from `RepetitionCounterUITests` (#1825): a miss at zero floors rather than going negative.
   func testRealBridgeAMissAtZeroHoldsTheFloor() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp)

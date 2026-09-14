@@ -3,10 +3,11 @@ import XCTest
 /// Drives the player's variation picker against the real bridge (#1739): the
 /// item-complete sheet offers a mark per variation, proved through
 /// `ScoreSelector`'s coordinate-based pill taps, which only a real rendered
-/// view can exercise (#1825 moved the chip/rep-count switch assertion to
-/// `VariationPlayBridgeTests`). "Major Scales" is the seeded exercise whose
+/// view can exercise. "Major Scales" is the seeded exercise whose
 /// variations are deterministic (`C`, `G`, `D`, `A`, `E`; see `app.rs`'s
 /// `LoadSampleData` seed).
+///
+/// #1825 moved the chip/rep-count switch assertion to `VariationPlayBridgeTests`.
 @MainActor
 final class VariationPickerUITests: XCTestCase {
   override func setUp() {

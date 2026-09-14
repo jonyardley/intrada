@@ -3,8 +3,9 @@ import XCTest
 /// Real-device UITest for variation management (#1083, renamed in #1733):
 /// renaming a live-queried field, driven against "Major Scales", the seeded
 /// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
-/// in that order; see `app.rs`'s `LoadSampleData` seed). Removing a variation
-/// moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
+/// in that order; see `app.rs`'s `LoadSampleData` seed).
+///
+/// Removing a variation moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
 ///
 /// Drag reorder is deliberately not covered here: `.draggable`/
 /// `.dropDestination` ride the system Drag & Drop API, which XCUITest can't
