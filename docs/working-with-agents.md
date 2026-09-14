@@ -60,6 +60,29 @@ if this is set wrong, who does it hurt? Only the author, and it is personal
 (`.claude/settings.local.json`, `~/.claude`). Anyone else, and it is project,
 checked in, and enforced somewhere the personal layer cannot weaken it.
 
+## Usage guidelines
+
+Eight rules that balance speed, cost and quality, each with what holds it and
+the number it was set from. Set on 2026-09-14 from the review in #1836: three
+days, $1,225, 76 sessions, 44 PRs opened from Friday evening and 40 of them
+merged.
+
+| Guideline | What holds it | Set from |
+|---|---|---|
+| Open on Sonnet 5 medium. Go up by activity, not by task size, and name the rung and effort at every boundary | `.claude/settings.json`, the turn reminder | Monday at 65% Sonnet cost a quarter of Saturday for the same PR count |
+| One unit per session: finish, `/clear`. Before a break over an hour, `/clear` | `context-watch.sh` on the next turn; #1842 for the nudge before it | Seven sessions over four hours, every one Fable or Opus left open across a break; 194 cold turns cost $233 in the week before |
+| Two streams by default; a third only shell-only, and say so when starting it | `intrada-parallel-streams` (#1839) | 34 simulator-busy hits across 20 sessions |
+| The session makes and drives its worktree. Jon never runs a worktree command, and a handover is an opener pasted into a new chat in main | Always step 3; `guard-worktree.sh` denies the write in main, and #1840 makes the prefix automatic | Eleven corrections in three days, 51 denied writes in main |
+| Settled work goes to subagents from one lead; a new chat is for freeing the session or going up a rung, never for work the lead could dispatch | `guard-spawn.sh`, the agent pins, #1838 | Twelve of 76 sessions were status or handover only |
+| "What's next" and "what can run in parallel" are answered from `just status` and the session-start claims list, with no further reads | #1839 | Seven such sessions, each a fresh 80k to 200k context, all picking Tier 1 work |
+| A correction edits the rule that failed; it never adds one. A rule a hook can enforce loses its prose in the same change | This section, "The layers" above | Three worktree rules that disagreed, six memories, and the mistake back the next morning |
+| One harness slot a day; the rest is the app | Jon's call at planning | Nine of the 44 weekend PRs were harness work |
+
+A PR body says what the reviewer needs and stops. The weekend's median was 430
+words with three over 1,000, against merges ten minutes after opening. Whether
+that becomes a gate is decided by measuring the PRs after #1634 against its
+586-word baseline, an experiment Jon set on 2026-09-10 with no gate on purpose.
+
 ## Model and effort
 
 Match the **model** to how silently wrong the work can go, and the **effort** to
@@ -194,9 +217,9 @@ Every plan (slice plan, spec phase breakdown, handover) names, per task:
    default upward.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
    session per task unless stated.
-4. **Parallel streams**: one stream touching `crates/intrada-core` or
-   `crates/intrada-ffi`, plus any number of shell-only streams that touch only
-   `ios/` and no crate and have named the screens they own; serialisation
+4. **Parallel streams**: two by default, at most one of them touching
+   `crates/intrada-core` or `crates/intrada-ffi`; a third only if it touches
+   `ios/` and no crate and has named the screens it owns (#1839); serialisation
    points named explicitly ("B after A"); one stream running iOS tests at a
    time, which costs little to queue behind (a fast-tier run is well under a
    minute either way, #1621).
@@ -240,9 +263,11 @@ Four rules on top:
 
 ## Isolating concurrent work
 
-Every session that edits starts in its own worktree, whether or not another is
-running (CLAUDE.md, Always step 3). Before a second stream, read `.claude/skills/intrada-parallel-streams/SKILL.md` for the
-decoupled file set and the serialisation points.
+Every session that edits works in its own worktree, whether or not another is
+running, and makes it itself from the main checkout Jon started it in
+(CLAUDE.md, Always step 3). Before a second stream, read
+`.claude/skills/intrada-parallel-streams/SKILL.md` for the decoupled file set
+and the serialisation points.
 
 `just worktree-new <name>` branches from fresh `origin/main` and seeds the warm
 `target/` and `ios/build` caches (#1205). Worktrees live at
@@ -266,18 +291,20 @@ directory a session started in. It never starts a session itself (#1720): which
 client you work in is your choice, not the recipe's.
 `INTRADA_WORKTREE_CMUX=0` silences the suggestion.
 
-**A session in the main checkout can drive a worktree without restarting**, from
-2026-09-12. Starting in the worktree stays the default, because the path-scoped
-rules in `.claude/rules/` load only under the directory a session started in. A
-session already running does not get them by cd-ing: it reads the rules for the
-files it is about to touch by hand, or it is working blind.
+**A session in the main checkout drives its worktree without restarting**, from
+2026-09-12, and that is the only shape in use: Jon starts every session in
+main, and a session never hands him a worktree command or a new chat to open
+in a worktree (#1837; over 12 to 14 September the three rules that said
+otherwise cost eleven corrections). The path-scoped rules in `.claude/rules/`
+load only under the directory a session started in, so the session reads the
+rules for the files it is about to touch by hand, or it is working blind.
 
 The mechanism is the `cd` prefix, and the `EnterWorktree` tool is still banned
 here: it marks the session isolated and the bash guard then refuses every
 version control command, so that session can never commit. Create the worktree
 and prefix each shell command instead. The exact shape the prefix must take, and
 what happens on a machine whose hooks predate all this, are in
-[`docs/worktrees.md`](worktrees.md).
+[`docs/worktrees.md`](worktrees.md). Making the prefix automatic is #1840.
 
 ## Build and test control
 
