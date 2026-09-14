@@ -13,8 +13,10 @@ drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
 Jon. Before editing:
 
-1. **Be on the strongest rung.** Fable at `xhigh` for the bridge, `max` for a
-   migration or anything inside the `ActiveSession` blob graph.
+1. **Match the rung to the decision.** Fable at `xhigh` to decide a bridge
+   shape; Opus at `high` to build one that a reviewed spec already fixes
+   field by field, stopping to escalate any choice the spec leaves open.
+   `max` for a migration or anything inside the `ActiveSession` blob graph.
    Check with `/model` and `/effort`, and switch before the first edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
    starts**, not only at the end. It is pinned never weaker than the writer.

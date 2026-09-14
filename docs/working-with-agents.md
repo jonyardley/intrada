@@ -92,9 +92,12 @@ economy measure, and for sensitive work Fable at normal speed is better value.
 
 **Coding**
 
-1. **Fable 5.1, xhigh** (`max` for migrations): anything on the silent-failure
-   list, and the worst debugging (bincode wire breaks, silent no-ops, "green
-   but wrong" tests). This bug class got past Opus-era sessions three times.
+1. **Fable 5.1, xhigh** to decide a bridge shape, for auth, and for the worst
+   debugging (bincode wire breaks, silent no-ops, "green but wrong" tests,
+   which got past Opus-era sessions three times); **Opus 5, high** to build a
+   bridge shape a reviewed spec already fixes field by field, stopping to
+   escalate any choice the spec leaves open; `max` for migrations or anything
+   inside the `ActiveSession` blob graph.
 2. **Opus 5, xhigh**: Tier 2 core work with real judgement (new events and
    handlers in `intrada-core`, TDD-first) and judgement-dense screens.
 3. **Sonnet 5, high**: conventional Tier 2 on non-sensitive surfaces: a screen
