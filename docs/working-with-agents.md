@@ -24,7 +24,7 @@ most of it again. Everything in the first column below is in that bill.
 | Repo settings | `.claude/settings.json` | The model and effort a session opens on (Sonnet 5 medium, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
-| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch past 250k), after a push (the CI-watch note) and in the day's first session (one usage line); the bash guard runs before every command, the spawn guard before every subagent |
+| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch nudges, thresholds below), after a push (the CI-watch note) and in the day's first session (one usage line); the bash guard runs before every command, the spawn guard before every subagent |
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
 | Xcode tools | `.mcp.json` | xcodebuildmcp and the simulator workflow |
 
@@ -350,9 +350,11 @@ These run whether or not an agent read the rules.
   re-attaches the style rules on every prompt, and the post-push hook restates
   the CI-watch rule after every push. `guard-spawn.sh` refuses a spawn that
   lifts a subagent above the model in its definition (`reviewer` excepted, per
-  the Review row of the activity ladder), `context-watch.sh` says to `/clear` or `/compact` once a
-  session passes 250k and again at 400k, and `usage-daily.sh` opens the first
-  session of each day with one line from `usage-report.py`.
+  the Review row of the activity ladder), `context-watch.sh` warns at 150k,
+  hands the rest of the unit to a `task`/`smol` subagent at 200k and at 400k
+  says to `/compact` now (`CONTEXT_WARN` and `CONTEXT_FIRM` stay overridable
+  env vars), and `usage-daily.sh` opens the first session of each day with one
+  line from `usage-report.py`.
 
 ## Session controls
 
@@ -363,6 +365,7 @@ These run whether or not an agent read the rules.
 | Change rung mid-session | `/model`, `/effort`. Both persist unless chosen as session-only |
 | See what loaded | `/context` lists the memory files and rules in this session |
 | See what sessions cost | `just usage` (last 7 days by agent, model and effort, plus the biggest sessions); `just usage 14` for a fortnight |
+| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: `/clear`, then hand the unit to a `task`/`smol` subagent (this session checks and ships), then `/compact`; thresholds above |
 | Edit the rules files | `/memory` |
 | Tidy up permission prompts | `/fewer-permission-prompts` |
 
