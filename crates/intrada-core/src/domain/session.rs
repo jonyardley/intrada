@@ -232,29 +232,31 @@ pub struct PracticeSession {
     pub session_score: Option<u8>,
 }
 
-/// What the shell saw about where an end-of-item tempo came from. Facts only:
-/// whether they amount to evidence is the core's ruling (#1420, roadmap Q3).
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+/// What the click was doing at the instant a play closed. Facts only: the
+/// core rules on what they evidence (design-principles T16, #1761).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct TempoObservation {
-    /// The user set the number themselves rather than accepting the pre-fill.
-    pub user_set: bool,
-    /// The click was sounding when the item ended, so the pre-filled number
-    /// measures what they actually played to.
+pub struct TempoReading {
+    /// As displayed, in `click.metre.unit`; crotchets when `click` is `None`.
+    pub bpm: u16,
     pub click_sounding: bool,
+    pub click: Option<ClickState>,
 }
 
-impl TempoObservation {
-    /// A tempo is worth recording when there is evidence behind it, and never
-    /// otherwise (design-principles T16, #1420).
-    pub fn is_evidenced(&self) -> bool {
-        self.user_set || self.click_sounding
+#[cfg(test)]
+impl TempoReading {
+    pub(crate) fn silent() -> Self {
+        Self {
+            bpm: 120,
+            click_sounding: false,
+            click: None,
+        }
     }
 }
 
-/// What the click was set to when the item ended. Facts only, like
-/// `TempoObservation`: the core decides what they mean. The pattern never
-/// divides the tempo; the pulse keeps its rate and `sounding` gates the beats.
+/// What the click was set to. Facts only, like `TempoReading`: the core
+/// decides what they mean. The pattern never divides the tempo; the pulse
+/// keeps its rate and `sounding` gates the beats.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ClickState {
@@ -410,33 +412,34 @@ pub enum SessionEvent {
     CancelBuilding,
 
     // === Active Phase ===
-    /// Stamp the current entry's open play with its real duration ahead of
-    /// the terminal transition, so the sheet's mark control can tell a play
-    /// that will survive from one about to be dropped (#1758). The shell
-    /// must send this `now` again as the closing instant on whichever
-    /// terminal event follows, `NextItem` or `FinishSession`: see
-    /// `NextItem`'s own doc for what a fresher instant there invalidates.
+    /// Stamp the current entry's open play with its real duration and tempo
+    /// ahead of the terminal transition, so the sheet's mark control can tell
+    /// a play that will survive from one about to be dropped (#1758) and its
+    /// rows can prefill from the stamp (#1761). The shell must send this `now`
+    /// and `reading` again on the `NextItem` that follows: see `NextItem`'s
+    /// own doc for what a fresher instant there invalidates.
     PrepareReflection {
         now: DateTime<Utc>,
+        reading: TempoReading,
     },
     /// `now` closes the finished entry and must be `PrepareReflection`'s own
     /// instant when a reflection sheet came first, or its prediction goes
     /// stale (#1758). `next_item_started_at` starts the next entry's clock
     /// and first play; it should be a fresh instant taken when the shell
     /// actually advances, or the sheet's own dwell time reads as practice on
-    /// the item that follows.
+    /// the item that follows. On the last item this finishes the session.
     NextItem {
         now: DateTime<Utc>,
         next_item_started_at: DateTime<Utc>,
+        reading: TempoReading,
     },
+    /// Carries no reading: a skipped entry keeps no tempo (#1761 rule 7).
     SkipItem {
-        now: DateTime<Utc>,
-    },
-    FinishSession {
         now: DateTime<Utc>,
     },
     EndSessionEarly {
         now: DateTime<Utc>,
+        reading: TempoReading,
     },
     /// Bank a pass on the current entry (capped at target). The first tap on
     /// an untouched entry writes the target too; see `record_rep`.
@@ -454,6 +457,7 @@ pub enum SessionEvent {
         entry_id: String,
         variation_id: Option<String>,
         now: DateTime<Utc>,
+        reading: TempoReading,
     },
 
     // === Summary Phase ===
@@ -468,14 +472,17 @@ pub enum SessionEvent {
         play_id: String,
         score: Option<u8>,
     },
-    /// `tempo` is as displayed, in `click.metre.unit` beats per minute; the
-    /// core normalises it to crotchets before it is stored (#1499). `play_id`
+    /// The manual path for a tempo: the click's evidence lands as a play
+    /// closes (#1761 rule 5). `tempo` is as displayed, in `click.metre.unit`
+    /// beats per minute, and normalised to crotchets before it is stored
+    /// (#1499); `click` is never stored. A number the musician did not set
+    /// writes nothing, and `None` clears the tempo and its pattern. `play_id`
     /// names the row, as `UpdateEntryScore`.
     UpdateEntryTempo {
         entry_id: String,
         play_id: String,
         tempo: Option<u16>,
-        observed: TempoObservation,
+        user_set: bool,
         click: Option<ClickState>,
     },
     UpdateSessionNotes {
@@ -675,11 +682,40 @@ fn open_first_play(entry: &mut SetlistEntry, items: &[Item], now: DateTime<Utc>)
 }
 
 /// Stamp the open play's seconds from its own start, so a switch mid item
-/// splits the time rather than double-counting it.
-fn close_open_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
+/// splits the time rather than double-counting it, and its tempo from what
+/// the click was doing at that instant (#1761). `None` is a close with no
+/// reading, which only a skip makes.
+fn close_open_play(entry: &mut SetlistEntry, now: DateTime<Utc>, reading: Option<&TempoReading>) {
     if let Some(play) = entry.open_play_mut() {
         play.seconds = (now - play.started_at).num_seconds().max(0) as u64;
+        if let Some(reading) = reading {
+            stamp_tempo(play, reading);
+        }
     }
+}
+
+/// A silent reading writes nothing and clears nothing, so a later close never
+/// erases an earlier stamp, and a sounding one overwrites it: the later instant
+/// wins. An invalid reading stamps nothing and raises nothing, since a close is
+/// not a user action (#944).
+fn stamp_tempo(play: &mut VariationPlay, reading: &TempoReading) {
+    if !reading.click_sounding {
+        return;
+    }
+    if let Some(click) = &reading.click {
+        if validation::validate_click_state(click).is_err() {
+            return;
+        }
+    }
+    let crotchets = reading
+        .click
+        .as_ref()
+        .map_or(reading.bpm, |c| c.metre.crotchet_bpm(reading.bpm));
+    if validation::validate_achieved_tempo(&Some(crotchets)).is_err() {
+        return;
+    }
+    play.achieved_tempo = Some(crotchets);
+    play.click_pattern = reading.click.clone();
 }
 
 /// A stray tap on the picker is not practice: every terminal transition drops
@@ -795,6 +831,7 @@ fn transition_to_summary(
     active: &mut ActiveSession,
     items: &[Item],
     now: DateTime<Utc>,
+    reading: &TempoReading,
     completion_status: CompletionStatus,
 ) -> SummarySession {
     let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
@@ -802,7 +839,7 @@ fn transition_to_summary(
         entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
         open_first_play(entry, items, active.current_item_started_at);
-        close_open_play(entry, now);
+        close_open_play(entry, now, Some(reading));
         freeze_rep_state(entry);
     }
 
@@ -1340,7 +1377,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         // ── Active Phase ───────────────────────────────────────────
-        SessionEvent::PrepareReflection { now } => {
+        SessionEvent::PrepareReflection { now, reading } => {
             // An internal step, not a user action: last_error is left alone
             // in both branches, not raised or cleared for it (#944).
             let SessionStatus::Active(ref mut active) = model.session_status else {
@@ -1348,7 +1385,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if let Some(entry) = active.entries.get_mut(active.current_index) {
-                close_open_play(entry, now);
+                close_open_play(entry, now, Some(&reading));
             }
 
             crux_core::render::render()
@@ -1357,6 +1394,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::NextItem {
             now,
             next_item_started_at,
+            reading,
         } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
                 model.last_error = Some("Not in active state".to_string());
@@ -1364,8 +1402,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if active.current_index >= active.entries.len() - 1 {
-                let summary =
-                    transition_to_summary(active, &model.items, now, CompletionStatus::Completed);
+                let summary = transition_to_summary(
+                    active,
+                    &model.items,
+                    now,
+                    &reading,
+                    CompletionStatus::Completed,
+                );
                 model.session_status = SessionStatus::Summary(summary);
                 model.last_error = None;
                 return crux_core::render::render();
@@ -1377,7 +1420,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entry.duration_secs = elapsed;
                 entry.status = EntryStatus::Completed;
                 open_first_play(entry, &model.items, active.current_item_started_at);
-                close_open_play(entry, now);
+                close_open_play(entry, now, Some(&reading));
                 freeze_rep_state(entry);
                 drop_incidental_play(entry);
             }
@@ -1410,9 +1453,15 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 // repetitions or a mark first is not that play and survives,
                 // exactly as rep state did before plays existed. Time alone
                 // does not count here: the clock ran while they decided to skip.
-                close_open_play(entry, now);
+                close_open_play(entry, now, None);
                 freeze_rep_state(entry);
                 entry.plays.retain(VariationPlay::recorded_something);
+                // Only a completed entry carries a tempo, and the tempo history
+                // reads plays without the entry's status (#1761 rule 7).
+                for play in &mut entry.plays {
+                    play.achieved_tempo = None;
+                    play.click_pattern = None;
+                }
             }
 
             if active.current_index >= active.entries.len() - 1 {
@@ -1445,27 +1494,19 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             ])
         }
 
-        SessionEvent::FinishSession { now } => {
+        SessionEvent::EndSessionEarly { now, reading } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
                 model.last_error = Some("Not in active state".to_string());
                 return crux_core::render::render();
             };
 
-            let summary =
-                transition_to_summary(active, &model.items, now, CompletionStatus::Completed);
-            model.session_status = SessionStatus::Summary(summary);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::EndSessionEarly { now } => {
-            let SessionStatus::Active(ref mut active) = model.session_status else {
-                model.last_error = Some("Not in active state".to_string());
-                return crux_core::render::render();
-            };
-
-            let summary =
-                transition_to_summary(active, &model.items, now, CompletionStatus::EndedEarly);
+            let summary = transition_to_summary(
+                active,
+                &model.items,
+                now,
+                &reading,
+                CompletionStatus::EndedEarly,
+            );
             model.session_status = SessionStatus::Summary(summary);
             model.last_error = None;
             crux_core::render::render()
@@ -1479,6 +1520,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             variation_id,
             now,
+            reading,
         } => {
             if !matches!(model.session_status, SessionStatus::Active(_)) {
                 model.last_error = Some("Not in active state".to_string());
@@ -1516,7 +1558,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            close_open_play(entry, now);
+            close_open_play(entry, now, Some(&reading));
             freeze_rep_state(entry);
             let rep_target = entry.planned_rep_target;
             entry
@@ -1568,7 +1610,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             play_id,
             tempo,
-            observed,
+            user_set,
             click,
         } => {
             if let Some(ref state) = click {
@@ -1586,10 +1628,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            // An unevidenced number is a pre-fill nobody looked at: record
+            // A number nobody set is a pre-fill nobody looked at: record
             // nothing, and clear nothing, so it cannot destroy a real
             // measurement. Clearing is always honoured.
-            if tempo.is_some() && !observed.is_evidenced() {
+            if tempo.is_some() && !user_set {
                 return crux_core::render::render();
             }
 
@@ -1608,12 +1650,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             if let Some(play) = entry.plays.iter_mut().find(|p| p.id == play_id) {
                 play.achieved_tempo = crotchets;
-                // The pattern is evidence only if the click was actually heard.
-                play.click_pattern = if crotchets.is_some() && observed.click_sounding {
-                    click
-                } else {
-                    None
-                };
+                // A close is the only writer of the pattern; a set by hand
+                // keeps it, and only clearing the tempo takes it away.
+                if crotchets.is_none() {
+                    play.click_pattern = None;
+                }
             }
             model.last_error = None;
             crux_core::render::render()
@@ -2105,6 +2146,7 @@ mod tests {
     fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(Event::Session(SessionEvent::PrepareReflection {
             now: Utc::now(),
+            reading: TempoReading::silent(),
         }));
     }
 
@@ -2970,6 +3012,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 variation_id: Some("v-c".to_string()),
                 now: now + chrono::Duration::seconds(10),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3007,6 +3050,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: now + chrono::Duration::seconds(30),
                 next_item_started_at: now + chrono::Duration::seconds(30),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3089,6 +3133,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now,
                 next_item_started_at: now,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3115,6 +3160,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: closed_at,
                 next_item_started_at: opened_at,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3136,6 +3182,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: opened_at + chrono::Duration::seconds(10),
                 next_item_started_at: opened_at + chrono::Duration::seconds(10),
+                reading: TempoReading::silent(),
             }),
         );
         let SessionStatus::Active(ref active) = model.session_status else {
@@ -3161,6 +3208,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now,
                 next_item_started_at: now,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3169,7 +3217,7 @@ mod tests {
     }
 
     #[test]
-    fn test_finish_session() {
+    fn test_next_item_on_the_last_item_records_both_durations() {
         let (mut model, start) = model_with_active_session(2);
         let t1 = start + chrono::Duration::seconds(30);
         let t2 = t1 + chrono::Duration::seconds(45);
@@ -3179,11 +3227,16 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         assert!(model.last_error.is_none());
@@ -3207,11 +3260,15 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::EndSessionEarly { now: t2 }),
+            Event::Session(SessionEvent::EndSessionEarly {
+                now: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         assert!(model.last_error.is_none());
@@ -3273,11 +3330,16 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
         model
     }
@@ -3597,7 +3659,11 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now }),
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+                reading: TempoReading::silent(),
+            }),
         );
 
         assert!(model.last_error.is_none());
@@ -3650,6 +3716,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3664,7 +3731,11 @@ mod tests {
         let t3 = t2 + chrono::Duration::seconds(60);
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t3 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t3,
+                next_item_started_at: t3,
+                reading: TempoReading::silent(),
+            }),
         );
 
         // 7. Add notes
@@ -3799,7 +3870,11 @@ mod tests {
         // Finish the second item
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         let (skipped_entry_id, practised_entry_id) =
@@ -3919,6 +3994,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -3965,6 +4041,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
         let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
@@ -3984,7 +4061,11 @@ mod tests {
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         if let SessionStatus::Summary(ref summary) = model.session_status {
@@ -4004,6 +4085,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -4020,10 +4102,7 @@ mod tests {
                 entry_id,
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4044,6 +4123,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -4068,9 +4148,9 @@ mod tests {
     }
 
     #[test]
-    fn test_update_entry_score_works_on_last_item_after_finish_session() {
+    fn test_update_entry_score_works_on_last_item_after_finishing() {
         // The last-item path through the reflection sheet: NextItem to the
-        // final item, FinishSession → transitions to Summary, then the sheet
+        // final item, NextItem again → transitions to Summary, then the sheet
         // dispatches UpdateEntryScore. `transition_to_summary` clones entries
         // into `summary.entries`, so the entry id must still resolve via
         // `entry_for_update_mut`. Pinning this so a future refactor of the
@@ -4085,11 +4165,16 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: t1,
                 next_item_started_at: t1,
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         // Should be in Summary phase now
@@ -4097,7 +4182,7 @@ mod tests {
             assert_eq!(s.entries[1].status, EntryStatus::Completed);
             s.entries[1].id.clone()
         } else {
-            panic!("Expected Summary state after FinishSession");
+            panic!("Expected Summary state after finishing on the last item");
         };
 
         // Score the last item — same code path the reflection sheet takes
@@ -4148,10 +4233,7 @@ mod tests {
                 entry_id: "no-such-entry".to_string(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4297,8 +4379,10 @@ mod tests {
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: now + chrono::Duration::seconds(60),
+                next_item_started_at: now + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
         let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
@@ -4441,8 +4525,10 @@ mod tests {
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: now + chrono::Duration::seconds(60),
+                next_item_started_at: now + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -4483,8 +4569,10 @@ mod tests {
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: now + chrono::Duration::seconds(60),
+                next_item_started_at: now + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
         update(
@@ -4568,65 +4656,528 @@ mod tests {
         }
     }
 
-    /// The row read `♪ = 168` in 7/8; the trend must see 84 crotchets, and the
-    /// pattern that earned it rides alongside (#1499, spec questions 2 and 3).
-    #[test]
-    fn a_quaver_tempo_is_stored_as_crotchets_with_its_click_pattern() {
-        let mut model = model_with_summary();
-        let entry_id = tempo_entry_id(&model);
+    // --- A tempo is stamped as its play closes (#1761) ---
 
-        let play_id = first_play_id(&model, &entry_id);
+    fn sounding(bpm: u16, click: Option<ClickState>) -> TempoReading {
+        TempoReading {
+            bpm,
+            click_sounding: true,
+            click,
+        }
+    }
+
+    fn every_beat_in_common_time() -> ClickState {
+        ClickState {
+            metre: Metre::default(),
+            sounding: 0b1111,
+        }
+    }
+
+    /// Two pieces, the first closed with `reading` and the second finished
+    /// silently: the summary the item-complete sheet writes to.
+    fn summary_closed_with(reading: TempoReading) -> Model {
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(30);
+        let t2 = t1 + chrono::Duration::seconds(45);
         update(
             &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                play_id,
-                tempo: Some(168),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: true,
-                },
-                click: Some(seven_eight_on_group_starts()),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+                reading,
             }),
         );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
+        );
+        model
+    }
+
+    fn switch_to_d(model: &mut Model, at: DateTime<Utc>, reading: TempoReading) {
+        let entry_id = only_entry(model).id.clone();
+        update(
+            model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id,
+                variation_id: Some("v-d".to_string()),
+                now: at,
+                reading,
+            }),
+        );
+    }
+
+    fn hand_off(model: &mut Model, at: DateTime<Utc>, reading: TempoReading) {
+        update(
+            model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: at,
+                reading: reading.clone(),
+            }),
+        );
+        update(
+            model,
+            Event::Session(SessionEvent::NextItem {
+                now: at,
+                next_item_started_at: at,
+                reading,
+            }),
+        );
+    }
+
+    fn set_tempo(model: &mut Model, tempo: Option<u16>, user_set: bool, click: Option<ClickState>) {
+        let entry_id = tempo_entry_id(model);
+        let play_id = first_play_id(model, &entry_id);
+        update(
+            model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id,
+                play_id,
+                tempo,
+                user_set,
+                click,
+            }),
+        );
+    }
+
+    fn tempos(entry: &SetlistEntry) -> Vec<(Option<&str>, u64, Option<u16>)> {
+        entry
+            .plays
+            .iter()
+            .map(|p| (p.variation_id.as_deref(), p.seconds, p.achieved_tempo))
+            .collect()
+    }
+
+    #[test]
+    fn a_switch_with_the_click_sounding_stamps_the_play_it_closes_not_the_one_it_opens() {
+        let (mut model, start) = model_with_variations();
+
+        switch_to_d(
+            &mut model,
+            start + chrono::Duration::seconds(180),
+            sounding(108, Some(every_beat_in_common_time())),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays[0].achieved_tempo, Some(108));
+        assert_eq!(
+            entry.plays[0].click_pattern,
+            Some(every_beat_in_common_time())
+        );
+        assert_eq!(
+            entry.plays[1].achieved_tempo, None,
+            "the play the switch opened has not closed yet"
+        );
+        assert_eq!(entry.plays[1].click_pattern, None);
+    }
+
+    #[test]
+    fn re_tapping_the_open_variation_with_the_click_sounding_stamps_nothing() {
+        let (mut model, start) = model_with_variations();
+        let entry_id = only_entry(&model).id.clone();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SwitchVariation {
+                entry_id,
+                variation_id: Some("v-c".to_string()),
+                now: start + chrono::Duration::seconds(180),
+                reading: sounding(108, Some(every_beat_in_common_time())),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1);
+        assert_eq!(play_of(entry).achieved_tempo, None);
+        assert_eq!(play_of(entry).seconds, 0, "nothing closed");
+    }
+
+    /// The issue's case: six minutes of C at 108, then thirty seconds of D.
+    /// D reads 108 only because the click was still sounding at the hand-off.
+    #[test]
+    fn each_play_is_credited_with_the_click_that_sounded_as_it_closed() {
+        let (mut model, start) = model_with_variations();
+        let click = Some(every_beat_in_common_time());
+
+        switch_to_d(
+            &mut model,
+            start + chrono::Duration::seconds(360),
+            sounding(108, click.clone()),
+        );
+        hand_off(
+            &mut model,
+            start + chrono::Duration::seconds(390),
+            sounding(108, click),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.status, EntryStatus::Completed);
+        assert_eq!(
+            tempos(entry),
+            vec![(Some("v-c"), 360, Some(108)), (Some("v-d"), 30, Some(108))]
+        );
+    }
+
+    #[test]
+    fn a_click_stopped_before_the_hand_off_leaves_the_last_play_unstamped() {
+        let (mut model, start) = model_with_variations();
+
+        switch_to_d(
+            &mut model,
+            start + chrono::Duration::seconds(360),
+            sounding(108, Some(every_beat_in_common_time())),
+        );
+        hand_off(
+            &mut model,
+            start + chrono::Duration::seconds(390),
+            TempoReading::silent(),
+        );
+
+        assert_eq!(
+            tempos(only_entry(&model)),
+            vec![(Some("v-c"), 360, Some(108)), (Some("v-d"), 30, None)]
+        );
+    }
+
+    #[test]
+    fn a_silent_close_after_a_stamp_leaves_the_stamp() {
+        let (mut model, start) = model_with_active_session(1);
+        let ended = start + chrono::Duration::seconds(60);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: ended,
+                reading: sounding(96, Some(every_beat_in_common_time())),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: ended,
+                next_item_started_at: ended,
+                reading: TempoReading::silent(),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.status, EntryStatus::Completed);
+        assert_eq!(play_of(entry).achieved_tempo, Some(96));
+        assert_eq!(
+            play_of(entry).click_pattern,
+            Some(every_beat_in_common_time())
+        );
+    }
+
+    #[test]
+    fn a_later_sounding_close_overwrites_an_earlier_stamp() {
+        let (mut model, start) = model_with_active_session(1);
+        let ended = start + chrono::Duration::seconds(60);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: ended,
+                reading: sounding(96, Some(every_beat_in_common_time())),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: ended,
+                next_item_started_at: ended,
+                reading: sounding(100, None),
+            }),
+        );
+
+        let play = play_of(only_entry(&model));
+        assert_eq!(play.achieved_tempo, Some(100));
+        assert_eq!(play.click_pattern, None, "the later instant wins whole");
+    }
+
+    #[test]
+    fn prepare_reflection_then_next_item_with_the_same_reading_stamps_once() {
+        let (mut model, start) = model_with_active_session(1);
+        let ended = start + chrono::Duration::seconds(60);
+        let reading = sounding(168, Some(seven_eight_on_group_starts()));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: ended,
+                reading: reading.clone(),
+            }),
+        );
+        let prefilled = play_of(only_entry(&model)).clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: ended,
+                next_item_started_at: ended,
+                reading,
+            }),
+        );
+
+        assert_eq!(
+            prefilled.achieved_tempo,
+            Some(84),
+            "the sheet's rows read the stamp before the terminal event"
+        );
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1);
+        assert_eq!(play_of(entry).achieved_tempo, prefilled.achieved_tempo);
+        assert_eq!(play_of(entry).click_pattern, prefilled.click_pattern);
+    }
+
+    /// The row read `♪ = 168` in 7/8; the trend must see 84 crotchets, the
+    /// pattern that earned it rides alongside (#1499), and the sheet reads it
+    /// back in quavers (#1761).
+    #[test]
+    fn a_quaver_reading_is_stamped_as_crotchets_and_displayed_in_quavers() {
+        let model = summary_closed_with(sounding(168, Some(seven_eight_on_group_starts())));
+        let entry_id = tempo_entry_id(&model);
 
         assert_eq!(achieved_tempo(&model, &entry_id), Some(84));
         assert_eq!(
             click_pattern(&model, &entry_id),
             Some(seven_eight_on_group_starts())
         );
+        let summary = Intrada.view(&model).summary.expect("in Summary");
+        assert_eq!(summary.entries[0].plays[0].tempo_display, Some(168));
     }
 
     /// A sparse pattern never divides the bpm: the click on beat 4 at 120 is
     /// still 120 (T19).
     #[test]
     fn a_sparse_pattern_leaves_a_crotchet_tempo_alone() {
-        let mut model = model_with_summary();
+        let model = summary_closed_with(sounding(
+            120,
+            Some(ClickState {
+                metre: Metre::default(),
+                sounding: 0b1000,
+            }),
+        ));
+
+        assert_eq!(achieved_tempo(&model, &tempo_entry_id(&model)), Some(120));
+    }
+
+    #[test]
+    fn a_sounding_reading_with_no_click_state_is_stamped_in_crotchets() {
+        let model = summary_closed_with(sounding(120, None));
         let entry_id = tempo_entry_id(&model);
 
-        let play_id = first_play_id(&model, &entry_id);
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
+        assert_eq!(click_pattern(&model, &entry_id), None);
+    }
+
+    #[test]
+    fn ending_early_stamps_the_play_it_closes() {
+        let (mut model, start) = model_with_active_session(2);
+
         update(
             &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                play_id,
-                tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: true,
-                },
-                click: Some(ClickState {
-                    metre: Metre::default(),
-                    sounding: 0b1000,
-                }),
+            Event::Session(SessionEvent::EndSessionEarly {
+                now: start + chrono::Duration::seconds(60),
+                reading: sounding(92, None),
             }),
         );
 
-        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
+        let entry = &session_entries(&model)[0];
+        assert_eq!(entry.status, EntryStatus::Completed);
+        assert_eq!(play_of(entry).achieved_tempo, Some(92));
     }
 
-    /// A silent click is not evidence of a pattern, even when the user set the
-    /// number themselves; the unit still names what the row displayed.
+    /// A close is not a user action (#944): a reading that fails validation
+    /// stamps nothing and raises nothing, and the play still closes.
+    #[test]
+    fn an_invalid_reading_stamps_nothing_and_the_play_still_closes() {
+        let minims = ClickState {
+            metre: Metre {
+                beats: 2,
+                unit: 2,
+                groups: None,
+            },
+            sounding: 0b11,
+        };
+        let no_beat = ClickState {
+            metre: Metre::default(),
+            sounding: 0,
+        };
+        let readings = [
+            ("a click sounding no beat", sounding(108, Some(no_beat))),
+            ("no tempo at all", sounding(0, None)),
+            (
+                "a tempo past the ceiling",
+                sounding(validation::MAX_ACHIEVED_TEMPO + 1, None),
+            ),
+            (
+                "a minim tempo past the ceiling once in crotchets",
+                sounding(260, Some(minims)),
+            ),
+        ];
+        for (case, reading) in readings {
+            let (mut model, start) = model_with_variations();
+
+            switch_to_d(&mut model, start + chrono::Duration::seconds(180), reading);
+
+            let entry = only_entry(&model);
+            assert_eq!(entry.plays.len(), 2, "{case}: the switch still happened");
+            assert_eq!(entry.plays[0].seconds, 180, "{case}");
+            assert_eq!(entry.plays[0].achieved_tempo, None, "{case}");
+            assert_eq!(entry.plays[0].click_pattern, None, "{case}");
+            assert!(model.last_error.is_none(), "{case}: a close raises nothing");
+        }
+    }
+
+    #[test]
+    fn a_stamped_stray_tap_is_still_dropped() {
+        let (mut model, start) = model_with_variations();
+        let opened = only_entry(&model).plays[0].id.clone();
+        switch_to_d(
+            &mut model,
+            start + chrono::Duration::seconds(298),
+            TempoReading::silent(),
+        );
+
+        let ended = start + chrono::Duration::seconds(300);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: ended,
+                next_item_started_at: ended,
+                reading: sounding(108, None),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.plays.len(), 1, "a stamp is not a record");
+        assert_eq!(entry.plays[0].id, opened);
+    }
+
+    /// Only a completed entry carries a tempo, so a skip clears the stamp a
+    /// switch made on a play it keeps, and keeps that play's repetitions.
+    #[test]
+    fn a_skip_clears_the_stamp_on_a_play_it_keeps_and_keeps_its_repetitions() {
+        let (mut model, start) = model_with_variations();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RepGotIt {
+                now: start + chrono::Duration::seconds(10),
+            }),
+        );
+        switch_to_d(
+            &mut model,
+            start + chrono::Duration::seconds(60),
+            sounding(108, Some(every_beat_in_common_time())),
+        );
+        assert_eq!(
+            only_entry(&model).plays[0].achieved_tempo,
+            Some(108),
+            "fixture: the switch stamped C"
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem {
+                now: start + chrono::Duration::seconds(90),
+            }),
+        );
+
+        let entry = only_entry(&model);
+        assert_eq!(entry.status, EntryStatus::Skipped);
+        assert_eq!(
+            entry.plays.len(),
+            1,
+            "C banked a repetition, D recorded nothing"
+        );
+        assert_eq!(entry.plays[0].rep_count, Some(1));
+        assert_eq!(entry.plays[0].achieved_tempo, None);
+        assert_eq!(entry.plays[0].click_pattern, None);
+    }
+
+    #[test]
+    fn a_tempo_nobody_set_leaves_a_stamp_alone() {
+        let mut model = summary_closed_with(sounding(108, Some(every_beat_in_common_time())));
+
+        set_tempo(&mut model, Some(96), false, None);
+
+        let entry_id = tempo_entry_id(&model);
+        assert_eq!(achieved_tempo(&model, &entry_id), Some(108));
+        assert_eq!(
+            click_pattern(&model, &entry_id),
+            Some(every_beat_in_common_time())
+        );
+    }
+
+    #[test]
+    fn a_tempo_the_musician_set_overwrites_a_stamp_and_keeps_its_pattern() {
+        let mut model = summary_closed_with(sounding(168, Some(seven_eight_on_group_starts())));
+
+        set_tempo(
+            &mut model,
+            Some(176),
+            true,
+            Some(every_beat_in_common_time()),
+        );
+
+        let entry_id = tempo_entry_id(&model);
+        assert_eq!(
+            achieved_tempo(&model, &entry_id),
+            Some(176),
+            "counted in the crotchets the row sent, the stamp's pattern kept"
+        );
+        assert_eq!(
+            click_pattern(&model, &entry_id),
+            Some(seven_eight_on_group_starts())
+        );
+    }
+
+    #[test]
+    fn clearing_the_tempo_clears_a_stamped_pattern_with_it() {
+        let mut model = summary_closed_with(sounding(168, Some(seven_eight_on_group_starts())));
+
+        set_tempo(&mut model, None, false, Some(seven_eight_on_group_starts()));
+
+        let entry_id = tempo_entry_id(&model);
+        assert_eq!(achieved_tempo(&model, &entry_id), None);
+        assert_eq!(click_pattern(&model, &entry_id), None);
+    }
+
+    #[test]
+    fn the_four_closing_events_round_trip_a_reading_on_the_bincode_wire() {
+        let reading = sounding(168, Some(seven_eight_on_group_starts()));
+        let events = [
+            SessionEvent::SwitchVariation {
+                entry_id: "e1".to_string(),
+                variation_id: Some("v-d".to_string()),
+                now: tap_at(),
+                reading: reading.clone(),
+            },
+            SessionEvent::NextItem {
+                now: tap_at(),
+                next_item_started_at: tap_at(),
+                reading: reading.clone(),
+            },
+            SessionEvent::EndSessionEarly {
+                now: tap_at(),
+                reading: reading.clone(),
+            },
+            SessionEvent::PrepareReflection {
+                now: tap_at(),
+                reading,
+            },
+        ];
+        for event in events {
+            crate::domain::types::assert_round_trips(Event::Session(event));
+        }
+    }
+
+    /// A tempo set by hand records no pattern, since only a close stamps one
+    /// (#1761); the unit still names what the row displayed.
     #[test]
     fn a_silent_click_normalises_the_unit_but_records_no_pattern() {
         let mut model = model_with_summary();
@@ -4639,50 +5190,12 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(169),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: Some(seven_eight_on_group_starts()),
             }),
         );
 
         assert_eq!(achieved_tempo(&model, &entry_id), Some(85));
-        assert_eq!(click_pattern(&model, &entry_id), None);
-    }
-
-    #[test]
-    fn clearing_the_tempo_clears_the_pattern_with_it() {
-        let mut model = model_with_summary();
-        let entry_id = tempo_entry_id(&model);
-        let sounding = TempoObservation {
-            user_set: false,
-            click_sounding: true,
-        };
-        let play_id = first_play_id(&model, &entry_id);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                play_id,
-                tempo: Some(168),
-                observed: sounding,
-                click: Some(seven_eight_on_group_starts()),
-            }),
-        );
-        let play_id = first_play_id(&model, &entry_id);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                play_id,
-                tempo: None,
-                observed: sounding,
-                click: Some(seven_eight_on_group_starts()),
-            }),
-        );
-
-        assert_eq!(achieved_tempo(&model, &entry_id), None);
         assert_eq!(click_pattern(&model, &entry_id), None);
     }
 
@@ -4698,10 +5211,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: true,
-                },
+                user_set: true,
                 click: Some(ClickState {
                     metre: Metre::default(),
                     sounding: 0,
@@ -4725,33 +5235,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
-                click: None,
-            }),
-        );
-
-        assert_eq!(achieved_tempo(&model, &entry_id), Some(120));
-    }
-
-    #[test]
-    fn tempo_played_to_a_sounding_click_is_recorded() {
-        let mut model = model_with_summary();
-        let entry_id = tempo_entry_id(&model);
-
-        let play_id = first_play_id(&model, &entry_id);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::UpdateEntryTempo {
-                entry_id: entry_id.clone(),
-                play_id,
-                tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: true,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4771,10 +5255,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(96),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: false,
-                },
+                user_set: false,
                 click: None,
             }),
         );
@@ -4798,10 +5279,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4812,10 +5290,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(96),
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: false,
-                },
+                user_set: false,
                 click: None,
             }),
         );
@@ -4839,10 +5314,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4853,10 +5325,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: None,
-                observed: TempoObservation {
-                    user_set: false,
-                    click_sounding: false,
-                },
+                user_set: false,
                 click: None,
             }),
         );
@@ -4870,10 +5339,7 @@ mod tests {
             entry_id: "entry-1".to_string(),
             play_id: "play-1".to_string(),
             tempo: Some(132),
-            observed: TempoObservation {
-                user_set: true,
-                click_sounding: true,
-            },
+            user_set: true,
             click: None,
         }));
     }
@@ -4896,10 +5362,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4912,10 +5375,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: None,
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -4942,7 +5402,11 @@ mod tests {
         // Finish session (completes second item, transitions to summary)
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t2 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t2,
+                next_item_started_at: t2,
+                reading: TempoReading::silent(),
+            }),
         );
 
         // Find the skipped entry
@@ -4972,10 +5436,7 @@ mod tests {
                 entry_id: skipped_entry_id.clone(),
                 play_id,
                 tempo: Some(100),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -5004,10 +5465,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(0),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -5024,10 +5482,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 play_id,
                 tempo: Some(501),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             }),
         );
@@ -5478,6 +5933,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now,
                 next_item_started_at: now,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -5525,11 +5981,23 @@ mod tests {
         for _ in 0..3 {
             update(&mut model, got_it());
         }
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: start,
+                next_item_started_at: start,
+                reading: TempoReading::silent(),
+            }),
+        );
 
         let now = start + chrono::Duration::seconds(60);
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now }),
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+                reading: TempoReading::silent(),
+            }),
         );
 
         if let SessionStatus::Summary(ref s) = model.session_status {
@@ -5549,11 +6017,23 @@ mod tests {
         for _ in 0..3 {
             update(&mut model, got_it());
         }
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: start,
+                next_item_started_at: start,
+                reading: TempoReading::silent(),
+            }),
+        );
 
         let t1 = start + chrono::Duration::seconds(60);
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+                reading: TempoReading::silent(),
+            }),
         );
 
         let t2 = t1 + chrono::Duration::seconds(5);
@@ -5613,7 +6093,10 @@ mod tests {
         let t1 = now + chrono::Duration::seconds(30);
         update(
             &mut model,
-            Event::Session(SessionEvent::EndSessionEarly { now: t1 }),
+            Event::Session(SessionEvent::EndSessionEarly {
+                now: t1,
+                reading: TempoReading::silent(),
+            }),
         );
 
         if let SessionStatus::Summary(ref s) = model.session_status {
@@ -5872,6 +6355,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: next_time,
                 next_item_started_at: next_time,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -5924,12 +6408,24 @@ mod tests {
         update(&mut model, got_it());
         update(&mut model, got_it());
         update(&mut model, got_it());
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: start,
+                next_item_started_at: start,
+                reading: TempoReading::silent(),
+            }),
+        );
 
         // Finish session
         let end_time = start + chrono::Duration::seconds(120);
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: end_time }),
+            Event::Session(SessionEvent::NextItem {
+                now: end_time,
+                next_item_started_at: end_time,
+                reading: TempoReading::silent(),
+            }),
         );
 
         if let SessionStatus::Summary(ref s) = model.session_status {
@@ -6096,20 +6592,14 @@ mod tests {
             entry_id: "e1".to_string(),
             play_id: "play-1".to_string(),
             tempo: Some(168),
-            observed: TempoObservation {
-                user_set: false,
-                click_sounding: true,
-            },
+            user_set: false,
             click: Some(seven_eight_on_group_starts()),
         }));
         crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateEntryTempo {
             entry_id: "e1".to_string(),
             play_id: "play-1".to_string(),
             tempo: None,
-            observed: TempoObservation {
-                user_set: true,
-                click_sounding: false,
-            },
+            user_set: true,
             click: None,
         }));
     }
@@ -6260,6 +6750,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: switched_at,
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6284,6 +6775,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
         update(
@@ -6299,6 +6791,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(80),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6336,6 +6829,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(30),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6358,12 +6852,15 @@ mod tests {
                 entry_id: entry_id.clone(),
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(600),
+                next_item_started_at: start + chrono::Duration::seconds(600),
+                reading: TempoReading::silent(),
             }),
         );
         let first = only_entry(&model).plays[0].id.clone();
@@ -6390,12 +6887,15 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(300),
                 next_item_started_at: start + chrono::Duration::seconds(300),
+                reading: TempoReading::silent(),
             }),
         );
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(600),
+                next_item_started_at: start + chrono::Duration::seconds(600),
+                reading: TempoReading::silent(),
             }),
         );
         let first_entry = session_entries(&model)[0].id.clone();
@@ -6430,6 +6930,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-gone".to_string()),
                 now: start + chrono::Duration::seconds(60),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6451,6 +6952,7 @@ mod tests {
                     entry_id: entry_id.clone(),
                     variation_id: Some(variation.to_string()),
                     now: start + chrono::Duration::seconds(60 * (i as i64 + 1)),
+                    reading: TempoReading::silent(),
                 }),
             );
         }
@@ -6474,13 +6976,16 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(298),
+                reading: TempoReading::silent(),
             }),
         );
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(300),
+                next_item_started_at: start + chrono::Duration::seconds(300),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6502,8 +7007,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(2),
+                next_item_started_at: start + chrono::Duration::seconds(2),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6534,6 +7041,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(298),
+                reading: TempoReading::silent(),
             }),
         );
         let stray_tap = only_entry(&model).plays[1].id.clone();
@@ -6544,6 +7052,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::PrepareReflection {
                 now: start + chrono::Duration::seconds(300),
+                reading: TempoReading::silent(),
             }),
         );
         let entry = only_entry(&model);
@@ -6560,8 +7069,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(300),
+                next_item_started_at: start + chrono::Duration::seconds(300),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6598,6 +7109,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(2),
+                reading: TempoReading::silent(),
             }),
         );
         let second = only_entry(&model).plays[1].id.clone();
@@ -6605,6 +7117,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::PrepareReflection {
                 now: start + chrono::Duration::seconds(3),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6614,8 +7127,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(3),
+                next_item_started_at: start + chrono::Duration::seconds(3),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6638,6 +7153,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(2),
+                reading: TempoReading::silent(),
             }),
         );
         let real_play = only_entry(&model).plays[1].id.clone();
@@ -6645,6 +7161,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::PrepareReflection {
                 now: start + chrono::Duration::seconds(302),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6657,8 +7174,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(302),
+                next_item_started_at: start + chrono::Duration::seconds(302),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6683,6 +7202,7 @@ mod tests {
                 entry_id: entry_id.clone(),
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(1),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6690,6 +7210,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::PrepareReflection {
                 now: start + chrono::Duration::seconds(2),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6721,6 +7242,7 @@ mod tests {
             Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(2),
                 next_item_started_at: start + chrono::Duration::seconds(2),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6742,6 +7264,7 @@ mod tests {
                 entry_id,
                 variation_id: Some("v-d".to_string()),
                 now: start + chrono::Duration::seconds(298),
+                reading: TempoReading::silent(),
             }),
         );
         update(
@@ -6753,8 +7276,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::FinishSession {
+            Event::Session(SessionEvent::NextItem {
                 now: start + chrono::Duration::seconds(300),
+                next_item_started_at: start + chrono::Duration::seconds(300),
+                reading: TempoReading::silent(),
             }),
         );
 
@@ -6836,6 +7361,7 @@ mod tests {
                 entry_id: "e1".to_string(),
                 variation_id: Some("v-d".to_string()),
                 now: tap_at(),
+                reading: TempoReading::silent(),
             },
         ));
         crate::domain::types::assert_round_trips(crate::app::Event::Session(
@@ -6850,10 +7376,7 @@ mod tests {
                 entry_id: "e1".to_string(),
                 play_id: "e1-play".to_string(),
                 tempo: Some(120),
-                observed: TempoObservation {
-                    user_set: true,
-                    click_sounding: false,
-                },
+                user_set: true,
                 click: None,
             },
         ));

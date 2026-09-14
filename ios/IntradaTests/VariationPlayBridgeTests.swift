@@ -45,7 +45,8 @@ final class VariationPlayBridgeTests: XCTestCase {
 
     _ = try bridge.update(
       .session(
-        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z")))
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
 
     let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
     let entry = try XCTUnwrap(afterSwitch.entries.first)
@@ -54,6 +55,47 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(entry.plays.first?.seconds, 300)
     XCTAssertEqual(entry.plays.last?.variationId, inD)
     XCTAssertEqual(afterSwitch.currentVariationLabel, "D")
+  }
+
+  /// A tempo lands on the play it was played on (#1761): the switch stamps C
+  /// from the click sounding then and the hand-off stamps D, through real
+  /// bincode with a quaver click on both events.
+  func testEachPlayKeepsTheTempoItsClickSoundedAtOverTheRealBridge() throws {
+    let bridge = LiveBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let inC = try variationId(bridge, label: "C")
+    let inD = try variationId(bridge, label: "D")
+    let quavers = ClickState(
+      metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+
+    _ = try bridge.update(
+      .session(
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:06:00Z",
+          reading: TempoReading(bpm: 216, clickSounding: true, click: quavers))))
+    let handOff = TempoReading(bpm: 200, clickSounding: true, click: quavers)
+    _ = try bridge.update(
+      .session(.prepareReflection(now: "2026-09-01T10:06:30Z", reading: handOff)))
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-09-01T10:06:30Z", nextItemStartedAt: "2026-09-01T10:06:30Z",
+          reading: handOff)))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "every reading must decode on the wire (#846)")
+    let plays = try XCTUnwrap(view.summary?.entries.first?.plays)
+    XCTAssertEqual(plays.map(\.variationId), [inC, inD])
+    XCTAssertEqual(plays.map(\.achievedTempo), [108, 100], "stamped in crotchets")
+    XCTAssertEqual(
+      plays.map(\.tempoDisplay), [216, 200], "and read back in the click's quavers")
+    XCTAssertEqual(plays.map(\.clickPattern), [quavers, quavers])
   }
 
   /// The picker's captions come from the core (#1784): the next read after a
@@ -79,7 +121,8 @@ final class VariationPlayBridgeTests: XCTestCase {
 
     _ = try bridge.update(
       .session(
-        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z")))
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
 
     let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
     let captionsAfterSwitch = Dictionary(
@@ -103,8 +146,13 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
     _ = try bridge.update(
       .session(
-        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z")))
-    _ = try bridge.update(.session(.finishSession(now: "2026-09-01T10:10:00Z")))
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-09-01T10:10:00Z", nextItemStartedAt: "2026-09-01T10:10:00Z", reading: .silent))
+    )
 
     let plays = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
     XCTAssertEqual(plays.count, 2)
@@ -134,10 +182,12 @@ final class VariationPlayBridgeTests: XCTestCase {
     // A stray tap two seconds before the item ends.
     _ = try bridge.update(
       .session(
-        .switchVariation(entryId: entryId, variationId: inD, now: "2026-09-01T10:04:58Z")))
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:04:58Z", reading: .silent)))
     let strayTap = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.last?.id)
 
-    _ = try bridge.update(.session(.prepareReflection(now: "2026-09-01T10:05:00Z")))
+    _ = try bridge.update(
+      .session(.prepareReflection(now: "2026-09-01T10:05:00Z", reading: .silent)))
     let stamped = try XCTUnwrap(try bridge.view().activeSession?.entries.first)
     XCTAssertEqual(
       stamped.plays.last?.seconds, 2, "PrepareReflection stamped the real duration")
@@ -147,7 +197,9 @@ final class VariationPlayBridgeTests: XCTestCase {
     // The same `now` PrepareReflection used, or the prediction goes stale.
     _ = try bridge.update(
       .session(
-        .nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
+        .nextItem(
+          now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z", reading: .silent))
+    )
     let survivors = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
     XCTAssertEqual(survivors.map(\.id), [opened], "the prediction matched the drop")
   }
@@ -172,8 +224,15 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z")))
-    _ = try bridge.update(.session(.finishSession(now: "2026-09-01T10:10:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z", reading: .silent))
+    )
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-09-01T10:10:00Z", nextItemStartedAt: "2026-09-01T10:10:00Z", reading: .silent))
+    )
 
     let entries = try XCTUnwrap(try bridge.view().summary?.entries)
     let first = try XCTUnwrap(entries.first)
@@ -186,4 +245,9 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertNil(after.plays.first?.score, "the foreign play id wrote nothing")
     XCTAssertNotNil(try bridge.view().error, "and the refusal is surfaced")
   }
+}
+
+extension TempoReading {
+  /// A click that was not sounding: closes a play and stamps nothing (#1761).
+  static var silent: TempoReading { TempoReading(bpm: 120, clickSounding: false, click: nil) }
 }
