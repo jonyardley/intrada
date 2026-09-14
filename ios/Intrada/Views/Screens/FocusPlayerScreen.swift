@@ -23,6 +23,13 @@ struct FocusPlayerScreen: View {
 
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
+  /// What the click is doing right now, sent with every event that closes a
+  /// play so the core stamps the tempo on the play it was played on (#1761).
+  private var tempoReading: TempoReading {
+    TempoReading(
+      bpm: UInt16(clamping: click.bpm), clickSounding: click.isRunning, click: click.clickState)
+  }
+
   var body: some View {
     ZStack {
       RadialGradient.playerPaper.ignoresSafeArea()
@@ -125,7 +132,8 @@ struct FocusPlayerScreen: View {
         Label("Skip this item", systemImage: "forward.end")
       }
       Button(role: .destructive) {
-        store.send(.session(.endSessionEarly(now: SessionClock.nowRFC3339())))
+        store.send(
+          .session(.endSessionEarly(now: SessionClock.nowRFC3339(), reading: tempoReading)))
       } label: {
         Label("End session early", systemImage: "stop.circle")
       }
@@ -208,7 +216,7 @@ struct FocusPlayerScreen: View {
       .session(
         .switchVariation(
           entryId: active.entries[pos].id, variationId: variationId,
-          now: SessionClock.nowRFC3339())))
+          now: SessionClock.nowRFC3339(), reading: tempoReading)))
     return store.viewModel?.errorSeq == before
   }
 
@@ -323,17 +331,14 @@ struct FocusPlayerScreen: View {
     let title: String
     let elapsedDisplay: String
     let tempoTargetBpm: UInt16?
-    let startingTempoBpm: Int
-    /// The click was sounding when the item ended, so `startingTempoBpm`
-    /// measures what they played to rather than being an untouched default.
-    let clickSounding: Bool
-    /// The bar and pattern the click was set to, or `nil` when the click was
-    /// never touched for this item: the core rules on whether the tempo is in
-    /// quavers and whether the pattern was evidenced (#1499).
-    let clickState: ClickState?
+    /// The click at the moment the item ended, read before it was stopped:
+    /// `PrepareReflection` stamps from it and `NextItem` must send it again
+    /// (#1761).
+    let reading: TempoReading
+    var startingTempoBpm: Int { Int(reading.bpm) }
     /// The unit the stepper counts in, which is the click's when the player
     /// chose one and crotchets when they did not.
-    var tempoUnit: UInt8 { clickState?.metre.unit ?? 4 }
+    var tempoUnit: UInt8 { reading.click?.metre.unit ?? 4 }
     /// What was played, oldest first, one row per variation (#1739). The last
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
@@ -344,33 +349,31 @@ struct FocusPlayerScreen: View {
 
   private func presentReflection(_ active: ActiveSessionView) {
     let pos = Int(active.currentPosition)
+    // Read before stop() below, or every hand-off would read as silent.
+    let reading = tempoReading
     guard active.entries.indices.contains(pos) else {
       let now = SessionClock.nowRFC3339()
-      store.send(.session(.nextItem(now: now, nextItemStartedAt: now)))
+      store.send(.session(.nextItem(now: now, nextItemStartedAt: now, reading: reading)))
       return
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
-    // Both read before stop() below.
-    let startingTempoBpm = click.bpm
-    let clickSounding = click.isRunning
-    let clickState = click.clickState
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
     let entry = active.entries[pos]
     let now = SessionClock.nowRFC3339()
-    // Stamps the open play's real seconds ahead of the terminal transition, so
-    // the rows below can tell which ones the core is about to discard (#1758).
-    store.send(.session(.prepareReflection(now: now)))
+    // Stamps the open play's real seconds and tempo ahead of the terminal
+    // transition, so the rows below can tell which ones the core is about to
+    // discard (#1758).
+    store.send(.session(.prepareReflection(now: now, reading: reading)))
     let stamped =
       store.viewModel?.activeSession?.entries.first(where: { $0.id == entry.id })?.plays
       ?? entry.plays
     reflecting = ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
-      tempoTargetBpm: active.currentItemTempoBpm, startingTempoBpm: startingTempoBpm,
-      clickSounding: clickSounding, clickState: clickState,
+      tempoTargetBpm: active.currentItemTempoBpm, reading: reading,
       plays: ReflectionPlay.rows(stamped), now: now)
   }
 
@@ -386,33 +389,33 @@ struct FocusPlayerScreen: View {
     }
     // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
     store.send(
-      .session(.nextItem(now: target.now, nextItemStartedAt: SessionClock.nowRFC3339())))
+      .session(
+        .nextItem(
+          now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
     for play in target.plays {
       guard let score = result.marks[play.id] else { continue }
       store.send(.session(.updateEntryScore(entryId: target.id, playId: play.id, score: score)))
     }
-    // The two facts go over as observed and the core rules on whether they
-    // amount to evidence (#1420); deciding here would be domain logic in the
-    // shell. It lands on the last stretch the core kept, not simply the last:
-    // a switch seconds before the item ended leaves a play the core discards,
-    // and skipping the write there would lose a reading the click evidenced
-    // over the whole item. Which variation a mid-item tempo change belongs to
-    // is #1761.
+    // The click's tempo already landed on each play as it closed; this is the
+    // manual path, and the core ignores a number nobody set (#1761). It lands
+    // on the last stretch the core kept, not simply the last: a switch seconds
+    // before the item ended leaves a play the core discards. FIXME(#1761): a
+    // tempo per row replaces this single write.
     if let openPlayId = target.plays.last(where: \.isMarkable)?.id {
       store.send(
         .session(
           .updateEntryTempo(
             entryId: target.id, playId: openPlayId, tempo: result.achievedTempo,
-            observed: TempoObservation(
-              userSet: result.tempoUserSet, clickSounding: target.clickSounding),
-            click: target.clickState)))
+            userSet: result.tempoUserSet, click: target.reading.click)))
     }
     reflecting = nil
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
     store.send(
-      .session(.nextItem(now: target.now, nextItemStartedAt: SessionClock.nowRFC3339())))
+      .session(
+        .nextItem(
+          now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
     reflecting = nil
   }
 }

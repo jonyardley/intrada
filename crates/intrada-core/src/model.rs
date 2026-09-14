@@ -403,6 +403,9 @@ pub struct VariationPlayView {
     pub rep_history: Option<Vec<RepEvent>>,
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
+    /// `achieved_tempo` in the unit of the click that stamped it, crotchets
+    /// when no click did, so the shell never converts a tempo (#1761).
+    pub tempo_display: Option<u16>,
     pub score: Option<u8>,
     /// Whether marking this play now would stick: `false` means the pending
     /// terminal transition will drop it as a stray tap on the picker before a
@@ -703,6 +706,11 @@ pub fn play_to_view(
         rep_history: play.rep_history.clone(),
         achieved_tempo: play.achieved_tempo,
         click_pattern: play.click_pattern.clone(),
+        tempo_display: play.achieved_tempo.map(|crotchets| {
+            play.click_pattern
+                .as_ref()
+                .map_or(crotchets, |c| c.metre.displayed_bpm(crotchets))
+        }),
         score: play.score,
         is_markable: crate::domain::session::play_would_survive_drop(entry, play),
     }
@@ -1758,7 +1766,11 @@ mod tests {
         let t1 = now + chrono::Duration::seconds(60);
         update_model(
             &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t1 }),
+            Event::Session(SessionEvent::NextItem {
+                now: t1,
+                next_item_started_at: t1,
+                reading: crate::domain::session::TempoReading::silent(),
+            }),
         );
         model
     }
@@ -1801,11 +1813,75 @@ mod tests {
                 action: crate::domain::session::RepAction::Success,
                 at: Utc::now(),
             }]),
-            achieved_tempo: Some(120),
-            click_pattern: None,
+            achieved_tempo: Some(84),
+            click_pattern: Some(ClickState {
+                metre: crate::domain::Metre {
+                    beats: 7,
+                    unit: 8,
+                    groups: Some(vec![3, 2, 2]),
+                },
+                sounding: 0b0101001,
+            }),
+            tempo_display: Some(168),
             score: Some(6),
             is_markable: true,
         });
+    }
+
+    /// The sheet's stepper prefills from the stamp in the unit it was played
+    /// in: a quaver click at 168 stores 84 and reads back as 168 (#1761).
+    #[test]
+    fn a_play_stamped_by_a_quaver_click_displays_its_tempo_in_quavers() {
+        let play = VariationPlay {
+            achieved_tempo: Some(84),
+            click_pattern: Some(ClickState {
+                metre: crate::domain::Metre {
+                    beats: 6,
+                    unit: 8,
+                    groups: None,
+                },
+                sounding: 0b001001,
+            }),
+            ..VariationPlay::fixture()
+        };
+        let entry = SetlistEntry {
+            plays: vec![play.clone()],
+            ..SetlistEntry::fixture()
+        };
+
+        let view = play_to_view(&play, &entry, &VariationLabels::new());
+
+        assert_eq!(view.achieved_tempo, Some(84));
+        assert_eq!(view.tempo_display, Some(168));
+    }
+
+    #[test]
+    fn a_tempo_with_no_click_displays_in_crotchets() {
+        let play = VariationPlay {
+            achieved_tempo: Some(96),
+            ..VariationPlay::fixture()
+        };
+        let entry = SetlistEntry {
+            plays: vec![play.clone()],
+            ..SetlistEntry::fixture()
+        };
+
+        let view = play_to_view(&play, &entry, &VariationLabels::new());
+
+        assert_eq!(view.tempo_display, Some(96));
+    }
+
+    #[test]
+    fn an_unmeasured_play_has_no_tempo_to_display() {
+        let play = VariationPlay::fixture();
+        let entry = SetlistEntry {
+            plays: vec![play.clone()],
+            ..SetlistEntry::fixture()
+        };
+
+        let view = play_to_view(&play, &entry, &VariationLabels::new());
+
+        assert_eq!(view.tempo_display, None);
     }
 
     /// A variation deleted since the session was practised still has to say

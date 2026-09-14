@@ -586,7 +586,10 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.startSession(now: "2026-08-28T09:00:00Z")))
     // Advancing completes the first entry; tempo only lands on a completed one.
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-08-28T09:10:00Z", nextItemStartedAt: "2026-08-28T09:10:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-08-28T09:10:00Z", nextItemStartedAt: "2026-08-28T09:10:00Z", reading: .silent))
+    )
 
     let entries = try XCTUnwrap(try bridge.view().activeSession?.entries)
     XCTAssertEqual(
@@ -639,10 +642,10 @@ final class StoreEffectLoopTests: XCTestCase {
       ], "each tap keeps the time the shell gave it")
   }
 
-  /// Real-bridge wire pin for the honest click (#1499): the row read `♪ = 168`
-  /// in 7/8 with the click on group starts; the core must store 84 crotchets
-  /// and the pattern that earned it, and both must come back across the wire.
-  func testRealBridgeStoresAQuaverTempoAsCrotchetsWithItsPattern() throws {
+  /// Real-bridge wire pin for the manual path (#1499, #1761): a row set by hand
+  /// to `♪ = 168` in 7/8 stores 84 crotchets, and never the pattern, which only
+  /// a close writes.
+  func testRealBridgeStoresAHandSetQuaverTempoAsCrotchets() throws {
     let (bridge, entryId, playId) = try bridgeWithCompletedEntry()
     let pattern = ClickState(
       metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001)
@@ -650,14 +653,13 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(
       .session(
         .updateEntryTempo(
-          entryId: entryId, playId: playId, tempo: 168,
-          observed: TempoObservation(userSet: false, clickSounding: true), click: pattern)))
+          entryId: entryId, playId: playId, tempo: 168, userSet: true, click: pattern)))
 
     let entry = try XCTUnwrap(
       try bridge.view().activeSession?.entries.first { $0.id == entryId })
     let play = try XCTUnwrap(entry.plays.last)
     XCTAssertEqual(play.achievedTempo, 84, "stored in crotchets, not quavers")
-    XCTAssertEqual(play.clickPattern, pattern)
+    XCTAssertNil(play.clickPattern, "a tempo set by hand never stores a pattern")
   }
 
   /// Real-bridge round trip for the item's metre (#1499): `SetMetre` carries an
@@ -682,8 +684,8 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().items.first?.metre)
   }
 
-  /// Real-bridge wire pin for the tempo evidence contract (#1420): the new
-  /// `TempoObservation` payload has to cross the bincode wire intact and the
+  /// Real-bridge wire pin for the tempo evidence contract (#1420, #1761): the
+  /// `userSet` flag has to cross the bincode wire intact and the
   /// core's ruling has to hold end to end. A wire break would let an
   /// unevidenced default through, and the trend would draw it as a measurement.
   func testRealBridgeRecordsATempoTheUserSetThemselves() throws {
@@ -693,10 +695,10 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, playId: playId, tempo: 132,
-          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
+          userSet: true, click: nil)))
 
     let view = try bridge.view()
-    XCTAssertNil(view.error, "the observation must decode on the wire (#846)")
+    XCTAssertNil(view.error, "the flag must decode on the wire (#846)")
     XCTAssertEqual(
       view.activeSession?.entries.first?.plays.last?.achievedTempo, 132,
       "a tempo the user set themselves is a measurement")
@@ -709,7 +711,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, playId: playId, tempo: 96,
-          observed: TempoObservation(userSet: false, clickSounding: false), click: nil)))
+          userSet: false, click: nil)))
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "declining to record is a silent success, not an error")
@@ -1048,11 +1050,12 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(active.buildingSetlist, "the builder should close on start")
     XCTAssertNil(active.summary)
 
-    // The FocusPlayer reaches the summary by advancing past the last item (its
-    // Done/Finish path), not finishSession — round-trip the event the screen
-    // actually sends.
+    // Advancing past the last item is the only way a session finishes (#1761).
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-06-16T10:20:00Z", nextItemStartedAt: "2026-06-16T10:20:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-06-16T10:20:00Z", nextItemStartedAt: "2026-06-16T10:20:00Z", reading: .silent))
+    )
     let summary = try bridge.view()
     XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
     XCTAssertNil(summary.activeSession)
@@ -1087,7 +1090,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, playId: playId, tempo: 96,
-          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
+          userSet: true, click: nil)))
     XCTAssertEqual(
       try bridge.view().summary?.entries.first?.plays.last?.achievedTempo, 96,
       "the tempo stepper's achieved tempo should round-trip")
@@ -1095,7 +1098,7 @@ final class StoreEffectLoopTests: XCTestCase {
       .session(
         .updateEntryTempo(
           entryId: entryId, playId: playId, tempo: nil,
-          observed: TempoObservation(userSet: true, clickSounding: false), click: nil)))
+          userSet: true, click: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.plays.last?.achievedTempo,
       "clearing an achieved tempo round-trips")
@@ -1394,26 +1397,26 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z")))
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z")))
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z")))
+    let click = ClickState(metre: Metre(beats: 4, unit: 8, groups: [2, 2]), sounding: 0b0101)
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-09-04T09:04:00Z", nextItemStartedAt: "2026-09-04T09:04:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-09-04T09:04:00Z", nextItemStartedAt: "2026-09-04T09:04:00Z",
+          reading: TempoReading(bpm: 176, clickSounding: true, click: click))))
 
     let playId = try XCTUnwrap(
       try bridge.view().activeSession?.entries.first { $0.id == entryId }?.plays.last?.id,
       "the completed entry records the stretch it was practised as")
-
-    let click = ClickState(metre: Metre(beats: 4, unit: 8, groups: [2, 2]), sounding: 0b0101)
-    _ = try bridge.update(
-      .session(
-        .updateEntryTempo(
-          entryId: entryId, playId: playId, tempo: 176,
-          observed: TempoObservation(userSet: false, clickSounding: true), click: click)))
     _ = try bridge.update(
       .session(.updateEntryNotes(entryId: entryId, notes: "Fingers not fully relaxed yet")))
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: playId, score: 6)))
 
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-09-04T09:10:00Z", nextItemStartedAt: "2026-09-04T09:10:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-09-04T09:10:00Z", nextItemStartedAt: "2026-09-04T09:10:00Z", reading: .silent))
+    )
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "every setter must decode cleanly (#846)")
@@ -1448,6 +1451,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let history = try XCTUnwrap(play.repHistory)
     XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
     XCTAssertEqual(play.achievedTempo, 88, "176 quavers halves to 88 crotchets")
+    XCTAssertEqual(play.tempoDisplay, 176, "and reads back in the click's quavers")
     XCTAssertEqual(play.clickPattern, click)
   }
 
@@ -1478,7 +1482,10 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: slowId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
     _ = try bridge.update(
-      .session(.nextItem(now: "2026-09-04T09:05:00Z", nextItemStartedAt: "2026-09-04T09:05:00Z")))
+      .session(
+        .nextItem(
+          now: "2026-09-04T09:05:00Z", nextItemStartedAt: "2026-09-04T09:05:00Z", reading: .silent))
+    )
     let playId = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays.last?.id)
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: playId, score: 8)))

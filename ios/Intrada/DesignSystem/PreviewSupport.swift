@@ -269,7 +269,8 @@
               VariationPlay(
                 id: "re1-p1", variationId: nil, startedAt: "2026-06-16T08:59:00Z",
                 seconds: 180, repTarget: nil, repCount: nil, repTargetReached: nil,
-                repHistory: nil, achievedTempo: nil, clickPattern: nil, score: nil)
+                repHistory: nil, achievedTempo: nil, clickPattern: nil,
+                score: nil)
             ]),
           SetlistEntry(
             id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
@@ -1006,7 +1007,8 @@
             id: "entry-\(position)-p1", variationId: nil, variationLabel: nil, seconds: 600,
             durationDisplay: "10 min", repTarget: repTarget, repCount: repCount,
             repTargetReached: repTarget.map { repCount ?? 0 >= $0 }, repHistory: nil,
-            achievedTempo: tempo, clickPattern: nil, score: score, isMarkable: true)
+            achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score,
+            isMarkable: true)
         ] : []
       return SetlistEntryView(
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
@@ -1046,7 +1048,8 @@
           VariationPlayView(
             id: "entry-\(position)-p1", variationId: nil, variationLabel: nil, seconds: 600,
             durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, score: nil, isMarkable: true)
+            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            isMarkable: true)
         ], scoreSummary: nil)
     }
 
@@ -1137,11 +1140,13 @@
           VariationPlayView(
             id: "entry-0-p1", variationId: "variation-c", variationLabel: "C", seconds: 190,
             durationDisplay: "3m 10s", repTarget: 10, repCount: 10, repTargetReached: true,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, score: nil, isMarkable: true),
+            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            isMarkable: true),
           VariationPlayView(
             id: "entry-0-p2", variationId: "variation-f", variationLabel: "F", seconds: 0,
             durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
-            repHistory: nil, achievedTempo: nil, clickPattern: nil, score: nil, isMarkable: true),
+            repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
+            isMarkable: true),
         ], scoreSummary: nil)
     }
 
@@ -1217,7 +1222,8 @@
           VariationPlayView(
             id: "\(id)-p1", variationId: nil, variationLabel: nil, seconds: seconds,
             durationDisplay: duration, repTarget: nil, repCount: nil, repTargetReached: nil,
-            repHistory: nil, achievedTempo: tempo, clickPattern: nil, score: score, isMarkable: true
+            repHistory: nil, achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
+            score: score, isMarkable: true
           )
         ] : []
       return SetlistEntryView(
@@ -1252,7 +1258,8 @@
         id: id, variationId: variationLabel.map { "v-\($0)" }, variationLabel: variationLabel,
         seconds: seconds, durationDisplay: duration, repTarget: repTarget, repCount: repCount,
         repTargetReached: repTarget.map { (repCount ?? 0) >= $0 }, repHistory: nil,
-        achievedTempo: tempo, clickPattern: nil, score: score, isMarkable: true)
+        achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score, isMarkable: true
+      )
     }
   }
 

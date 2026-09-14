@@ -25,7 +25,7 @@ pub const MAX_VARIANT_LABEL: usize = 100;
 pub const MAX_VARIANTS: usize = 24;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
 /// Under this, a play with no mark and no repetitions is a stray tap on the
-/// picker rather than practice, and `FinishSession` drops it (#1739).
+/// picker rather than practice, and the terminal transition drops it (#1739).
 pub const MIN_PLAY_SECONDS: u64 = 5;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;

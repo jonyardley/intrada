@@ -31,6 +31,13 @@ impl Metre {
         let crotchets = (u32::from(displayed) * 4 + unit / 2) / unit;
         u16::try_from(crotchets).unwrap_or(u16::MAX)
     }
+
+    /// A stored crotchet tempo shown back in this metre's unit, at the same
+    /// rounding, so the shell never converts a tempo (#1761).
+    pub fn displayed_bpm(&self, crotchets: u16) -> u16 {
+        let displayed = (u32::from(crotchets) * u32::from(self.unit) + 2) / 4;
+        u16::try_from(displayed).unwrap_or(u16::MAX)
+    }
 }
 
 #[cfg(test)]
@@ -66,6 +73,29 @@ mod tests {
                 metre.crotchet_bpm(displayed),
                 expected,
                 "{displayed} in {}/{}",
+                metre.beats,
+                metre.unit
+            );
+        }
+    }
+
+    /// A stamp read back on the item-complete sheet counts in the unit of the
+    /// click that made it (#1761 rule 6).
+    #[test]
+    fn a_stored_crotchet_tempo_reads_back_in_the_clicks_own_unit() {
+        let table: [(Metre, u16, u16); 6] = [
+            (metre(4, 4), 108, 108),
+            (metre(7, 8), 84, 168),
+            (metre(7, 8), 85, 170),
+            (metre(2, 2), 120, 60),
+            (metre(2, 2), 85, 43),
+            (metre(2, 2), 416, 208),
+        ];
+        for (metre, crotchets, expected) in table {
+            assert_eq!(
+                metre.displayed_bpm(crotchets),
+                expected,
+                "{crotchets} crotchets in {}/{}",
                 metre.beats,
                 metre.unit
             );
