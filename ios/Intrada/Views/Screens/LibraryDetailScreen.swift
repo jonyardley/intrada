@@ -396,6 +396,20 @@ struct LibraryDetailScreen: View {
     .padding(.vertical, IntradaSpacing.controlGap)
   }
 
+  // ── Notes ──
+
+  private func notesSection(_ notes: String) -> some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      Eyebrow("Notes")
+      Text(notes)
+        .font(IntradaFont.body)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(IntradaSpacing.card)
+        .cardSurface()
+    }
+  }
+
   // ── Variations (#1733) ──
 
   private var variationsSection: some View {
@@ -705,6 +719,14 @@ struct LibraryDetailScreen: View {
           TypeBadge(kind: item.itemType)
         }
 
+        if !item.tags.isEmpty {
+          tags
+        }
+
+        if let notes = item.notes, !notes.isEmpty {
+          notesSection(notes)
+        }
+
         if item.itemType == .exercise {
           variationsSection
         }
@@ -727,17 +749,9 @@ struct LibraryDetailScreen: View {
           TempoTrend(display: tempoTrend)
         }
 
-        if let notes = item.notes, !notes.isEmpty {
-          Text(notes)
-            .font(IntradaFont.body)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(IntradaSpacing.card)
-            .cardSurface()
-        }
-
-        if !item.tags.isEmpty {
-          tags
+        if item.itemType == .exercise {
+          practiseButton
+            .padding(.top, IntradaSpacing.controlGap)
         }
 
         PhotoCard(itemId: item.id, photoId: item.photoId)
@@ -756,11 +770,6 @@ struct LibraryDetailScreen: View {
 
         if hasRecentSessions {
           recentSessionsSection
-        }
-
-        if item.itemType == .exercise {
-          practiseButton
-            .padding(.top, IntradaSpacing.controlGap)
         }
 
         deleteButton
