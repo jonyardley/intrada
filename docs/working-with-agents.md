@@ -71,7 +71,7 @@ merged.
 | Guideline | What holds it | Set from |
 |---|---|---|
 | Open on Sonnet 5 medium. Go up by activity, not by task size, and name the rung and effort at every boundary | `.claude/settings.json`, the turn reminder | Monday at 65% Sonnet cost a quarter of Saturday for the same PR count |
-| One unit per session: finish, `/clear`. Before a break over an hour, `/clear` | `context-watch.sh` on the next turn; #1842 for the nudge before it | Seven sessions over four hours, every one Fable or Opus left open across a break; 194 cold turns cost $233 in the week before |
+| One unit per session: finish, `/clear`. Before a break over an hour, `/clear` | `context-watch.sh` on the next turn; a launchd timer (`cold-nudge.sh`, machine-local, #1842) nudges before that turn arrives | Seven sessions over four hours, every one Fable or Opus left open across a break; 194 cold turns cost $233 in the week before |
 | Two streams by default; a third only shell-only, and say so when starting it | `intrada-parallel-streams` (#1839) | 34 simulator-busy hits across 20 sessions |
 | The session makes and drives its worktree. Jon never runs a worktree command, and a handover is an opener pasted into a new chat in main | Always step 3; `guard-worktree.sh` denies the write in main, and #1840 makes the prefix automatic | Eleven corrections in three days, 51 denied writes in main |
 | Settled work goes to subagents from one lead; a new chat is for freeing the session or going up a rung, never for work the lead could dispatch | `guard-spawn.sh`, the agent pins, #1838 | Twelve of 76 sessions were status or handover only |
