@@ -7,7 +7,7 @@
 > file replaced the OMP-era guides and `model-guide.md` on 2026-09-08; why OMP
 > was retired is in [`reference.md`](reference.md).
 >
-> Last reviewed: 2026-09-13, against the Claude 5 family (Fable 5.1, Opus 5,
+> Last reviewed: 2026-09-14, against the Claude 5 family (Fable 5.1, Opus 5,
 > Sonnet 5, Haiku 4.5). Re-review at the next model generation.
 
 ## What loads, and what it costs
@@ -90,49 +90,62 @@ to settings unless chosen as session-only. Fast mode (Opus only) is priced at
 Fable's rate: use it when interactive latency genuinely matters, never as an
 economy measure, and for sensitive work Fable at normal speed is better value.
 
-**Coding**
+**The activity ladder.** A piece of work passes through up to six
+activities, and the rung follows the activity, not the file count. Read the
+row for what you are doing now; a task that spans rows changes rung at the
+boundary, saying so.
 
-1. **Fable 5.1, xhigh** to decide a bridge shape, for auth, and for the worst
-   debugging (bincode wire breaks, silent no-ops, "green but wrong" tests,
-   which got past Opus-era sessions three times); **Opus 5, high** to build a
-   bridge shape a reviewed spec already fixes field by field, stopping to
-   escalate any choice the spec leaves open; `max` for migrations or anything
-   inside the `ActiveSession` blob graph.
-2. **Opus 5, xhigh**: Tier 2 core work with real judgement (new events and
-   handlers in `intrada-core`, TDD-first) and judgement-dense screens.
-3. **Sonnet 5, high**: conventional Tier 2 on non-sensitive surfaces: a screen
-   from existing primitives, an endpoint on established conventions, iOS
-   polish, docs and PR bodies.
-4. **Sonnet 5 low, or Haiku 4.5**: Tier 1 trivia and fan-out subagents that
-   report facts back.
+| Activity | Decide | Build or run | Runs in | Why this shape |
+|---|---|---|---|---|
+| Technical design: the `Event`/`Effect`/`ViewModel` shape, anything crossing the bridge, schema strategy, auth | Fable 5.1 `xhigh`; `max` for a migration or the `ActiveSession` blob graph | Opus 5 `high` against a reviewed spec that fixes the shape field by field, escalating any choice it leaves open | The lead, one session; the shape is written into the spec or issue before either side is wired | Fails silently (#846, #1223, #1345): the strongest rung decides, and no Sonnet tier |
+| Visual design: a new flow against `design-principles.md`, a screen mocked in Claude Design | Opus 5 `high`; Fable 5.1 `high` only for a T-numbered decision or a flow with no precedent in the app | Opus 5 `high` for the mocks; Sonnet 5 `medium` for bookkeeping (`DesignSync`, tokens, filing the decision) | The lead, or a short session of its own | Fails visibly on the simulator, so a wrong call is cheap to see and cheap to redo |
+| Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; on a model no weaker than the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
+| Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Tier 1 trivia at Sonnet 5 `low` in the lead, or Haiku 4.5 via `smol` when fully specified | The judgement-dense half in the lead, since `task` is pinned to Sonnet and the spawn guard refuses a lift; the patterned half as a subagent from the session that planned it, once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
+| Review | The reviewer is never weaker than the writer: `reviewer` (Opus 5 `high`) for Tier 2; Fable for Fable-written bridge or migration work, in the Fable session or by spawning `reviewer` with `model` set to Fable, the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Judgement-dense, but short: no `reviewer` turn passed 200k context in the fortnight's `just usage 14` |
+| Gates and research | | `test-runner` (Haiku 4.5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
 
-**Planning.** Fable 5.1 high for direction (roadmap pivots, reversals, "should
-we build this at all", Tier 3 specs). Opus 5 high for slice planning inside a
-settled direction. Sonnet 5 medium for plan mechanics: issues from an agreed
-plan, handover openers. Plan on a stronger model than you implement on.
+The worst debugging (bincode wire breaks, silent no-ops, "green but wrong"
+tests, which got past Opus-era sessions three times) is technical design
+wearing a different hat: Fable 5.1 `xhigh`. A task with both design halves
+splits, contract first at the top of the ladder: the two-PR rule again.
 
-**Design.** Technical design fails silently, visual design fails visibly.
-Contracts, data model and boundaries: Fable 5.1 high for the
-Event/Effect/ViewModel shape, anything crossing the bridge, and schema
-strategy; Opus 5 high within a settled contract; no Sonnet tier. Visual and UX:
-Fable or Opus at high for a new flow judged against `design-principles.md` or
-a T-numbered decision; Opus 5 high for mocking screens in Claude Design; Sonnet
-5 medium for design bookkeeping. A task with both halves splits, contract first
-at the top of the ladder: the two-PR rule wearing a different hat.
+**What the rungs cost in money and time.** Measured over the fortnight to
+2026-09-14 from the session transcripts on Jon's machine, main sessions only.
+Latency is the gap between the previous transcript line and the model's reply,
+so it includes thinking; medians are per request, not per task.
 
-**Reviewing.** The reviewer is never weaker than the writer. Fable-written
-bridge or migration work gets a Fable review: keep the review in the Fable
-session, or spawn `reviewer` with the Agent tool's `model` parameter set to
-Fable, which is the one lever that beats a definition's pin. Ordinary Tier 2
-gets `reviewer`; a small Tier 2 on one file with no sensitive surface can take
-`/code-review` inline (the code-review plugin skill, not a repo command).
+| Rung | Turns | $ per turn | Median s | p90 s |
+|---|---|---|---|---|
+| Fable 5.1 xhigh | 442 | 0.31 | 12.0 | 40.6 |
+| Fable 5.1 high | 666 | 0.20 | 9.3 | 23.4 |
+| Opus 5 xhigh | 918 | 0.16 | 5.7 | 18.9 |
+| Opus 5 high | 1401 | 0.15 | 5.9 | 17.8 |
+| Opus 5 medium | 1335 | 0.15 | 5.2 | 15.0 |
+| Sonnet 5 high | 70 | 0.06 | 4.8 | 29.4 |
+| Sonnet 5 medium | 483 | 0.05 | 3.4 | 8.2 |
+
+Three things follow, and the ladder above is shaped by them:
+
+- **On Opus, effort is close to free.** `medium`, `high` and `xhigh` cost
+  within the noise of each other per turn, which is what context length
+  dominating the bill predicts, and the median reply time is flat; p90 rises
+  about a quarter from `medium` to `xhigh`. An Opus session sits at `high` by
+  default and goes to `xhigh` for judgement-dense work without a cost case
+  against it.
+- **On Fable, effort is the lever.** `xhigh` costs half as much again per turn
+  as `high` and lengthens the slow tail by three quarters, so it buys the
+  deciding half of a task and hands the building half down. Fable at every
+  measured effort is slower than Opus at every measured effort: use it where
+  deliberation pays, not on interactive back-and-forth.
+- **Sonnet is where the saving is.** A third of Opus per turn and the fastest
+  reply. Sonnet `high` has a slow tail from a small sample, so treat its p90
+  as unknown until the turn count is in the hundreds.
 
 **Rules of thumb.** The sensitivity override applies to models: auth, bridge,
 schema and migration work jumps a model-and-effort level whatever the file
-count. Drop effort before dropping model. Fable turns run long, so use it where
-deliberation pays, not on interactive back-and-forth. Decisions go up the
-ladder, execution goes down it. A subagent's finding is a lead, not a fact: one
-on 2026-09-04 blamed the wrong commit, cited a line that pointed at a comment,
+count. Drop effort before dropping model. Decisions go up the ladder,
+execution goes down it. A subagent's finding is a lead, not a fact: one on
+2026-09-04 blamed the wrong commit, cited a line that pointed at a comment,
 and said it could not run `git show` when it could. Brief research agents to
 mark observed against inferred, and verify before acting.
 
@@ -155,35 +168,40 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   Read 31%, then git, sed, grep, just and cat at 5 to 10% each; `just usage`
   prints the table. Read once, keep ranges tight, and run gates in
   `test-runner`.
-- **Per main-session turn**: Fable 5.1 high $0.20 (xhigh $0.32), Opus 5 high
-  or medium $0.15, Sonnet 5 medium $0.05. Fable's cache reads cost $0.25 per
-  MTok against Opus's $0.50, which keeps the gap to Opus small at long context;
-  dropping to Sonnet is what saves. This repo's `.claude/settings.json` opens
-  sessions on Sonnet 5 medium with the 1M window, so name the rung the ladders
-  above give the task and switch with `/model` and `/effort` before the work
-  starts, saying so, not after.
+- **Per-turn prices are in the rung table above.** Fable's cache reads cost
+  $0.25 per MTok against Opus's $0.50, which keeps the gap to Opus small at
+  long context; dropping to Sonnet is what saves. This repo's
+  `.claude/settings.json` opens sessions on Sonnet 5 medium with the 1M
+  window, so name the rung the ladder gives the task and switch with `/model`
+  and `/effort` before the work starts, saying so, not after.
 - **Subagents were 26% of the fortnight's usage.** Their largest line was
-  `task` spawned with `model: opus` over its Sonnet pin: keep the judgement in the lead and hand
-  down settled work instead of lifting the agent. `task` runs grow as long as
+  `task` spawned with `model: opus` over its Sonnet pin: keep the judgement
+  in the lead and hand down settled work instead of lifting the agent. In the
+  fortnight to 2026-09-14 (`just usage 14`, all projects) `task` runs at
+  Sonnet `xhigh` and Opus `xhigh` were $353, all from spawns lifting the pin
+  before the spawn guard existed; the guard refuses a model lift, not an
+  effort lift, so the lead sets neither at the spawn. `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
 ## Plans ship their own resourcing
 
 Every plan (slice plan, spec phase breakdown, handover) names, per task:
 
-1. **Model and effort**, from the ladders above. "Then build the screen" without
+1. **Which activity it is** (technical design, visual design, planning,
+   tasks, review, gates and research), because the rung follows from the row.
+2. **Model and effort**, from the ladder above. "Then build the screen" without
    "Sonnet 5, high" forces the next session to re-derive the routing, or
    default upward.
-2. **Where it runs**: this session, a new session, or a subagent; one fresh
+3. **Where it runs**: this session, a new session, or a subagent; one fresh
    session per task unless stated.
-3. **Parallel streams**: one stream touching `crates/intrada-core` or
+4. **Parallel streams**: one stream touching `crates/intrada-core` or
    `crates/intrada-ffi`, plus any number of shell-only streams that touch only
    `ios/` and no crate and have named the screens they own; serialisation
    points named explicitly ("B after A"); one stream running iOS tests at a
    time, which costs little to queue behind (a fast-tier run is well under a
    minute either way, #1621).
 
-A plan without model, effort and stream annotations is incomplete, the same way
+A plan without activity, model, effort and stream annotations is incomplete, the same way
 a phase without a test plan is.
 
 ## Delegating
@@ -192,7 +210,7 @@ a phase without a test plan is.
 |---|---|---|---|
 | Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, and the spawn carries no effort setting | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
-| Run a gate and filter its log | `test-runner` | Sonnet 5, low | No judgement; the gate itself is the check |
+| Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
 | Review a diff or a plan | `reviewer` | Opus 5, high | Judgement-dense; never weaker than the writer |
 | Conventional Tier 2 slice | `task` | Sonnet 5, high | Non-sensitive surface, patterns already in the repo |
 
@@ -304,7 +322,7 @@ These run whether or not an agent read the rules.
   re-attaches the style rules on every prompt, and the post-push hook restates
   the CI-watch rule after every push. `guard-spawn.sh` refuses a spawn that
   lifts a subagent above the model in its definition (`reviewer` excepted, per
-  Reviewing above), `context-watch.sh` says to `/clear` or `/compact` once a
+  the Review row of the activity ladder), `context-watch.sh` says to `/clear` or `/compact` once a
   session passes 250k and again at 400k, and `usage-daily.sh` opens the first
   session of each day with one line from `usage-report.py`.
 
