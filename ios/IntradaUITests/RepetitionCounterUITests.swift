@@ -49,12 +49,6 @@ final class RepetitionCounterUITests: XCTestCase {
       repetitions.value as? String, "0 of 10, 10 to go", "and the count stays on the floor")
 
     // Leave the container clean for the next test: abandon via Session options.
-    app.buttons["Session options"].tap()
-    let end = app.buttons["End session early"]
-    if end.waitForExistence(timeout: 3) {
-      end.tap()
-      let discard = app.buttons["Discard"]
-      if discard.waitForExistence(timeout: 5) { discard.tap() }
-    }
+    app.abandonSession()
   }
 }
