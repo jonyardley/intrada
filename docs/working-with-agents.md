@@ -262,7 +262,9 @@ Every plan (slice plan, spec phase breakdown, handover) names, per task:
    tasks, review, gates and research), because the rung follows from the row.
 2. **Model and effort**, from the ladder above. "Then build the screen" without
    "Sonnet 5, high" forces the next session to re-derive the routing, or
-   default upward.
+   default upward. An opener to a new session starts with the two commands
+   themselves, `/model` and `/effort`, on their own lines above the pasted
+   text, so the new chat never opens on the default by accident.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
    session per task unless stated.
 4. **Parallel streams**: two by default, at most one of them touching
@@ -309,9 +311,14 @@ Four rules on top:
   true at the moment of checking.
 - **The sensitivity override applies to subagents.** One touching the bridge, a
   migration, the blob or auth goes up a rung, or the lead keeps that slice.
-- **Gates run through `test-runner`, never in the lead.** A failing suite
-  prints thousands of lines that are re-sent on every later turn. Tell every
-  fan-out task to skip `just check` and the suites; run them once, at the end.
+- **Gates run through `test-runner`, never in the lead, and never inside
+  `task`.** A failing suite prints thousands of lines that are re-sent on
+  every later turn. `task` never runs `just check`, `just ios-test`,
+  `just ios-test-full` or `cargo test` (`guard-bash.sh` denies them inside a
+  `task` transcript); it confirms the build compiles and hands back a diff,
+  and the lead runs `test-runner` once, at the end. `task` also stops and
+  reports after 60 turns or its second failed build, and refuses a brief
+  naming more than ten files as too large for one spawn (`.claude/agents/task.md`).
 - **The lead verifies a task's result through `reviewer` and the gate
   counts, never by re-reading its files.** The report shape in
   `.claude/agents/task.md` is what the lead checks the work against. It opens

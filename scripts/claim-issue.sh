@@ -7,17 +7,23 @@
 # on top of another session's: two sessions built the same greeting on
 # 2026-09-11 (#1694) because nothing caught either.
 #
-# Called via `just claim <number>`.
+# Two or more merged PRs already referencing the issue is a fix loop, the
+# strongest signal the framing is wrong (#1890: the page-crop bug took three
+# fix PRs and eleven sessions before a decision ended it). A third claim is
+# refused unless the decision taken is named.
+#
+# Called via `just claim <number> [decision]`.
 
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 <issue-number>" >&2
+  echo "Usage: $0 <issue-number> [decision]" >&2
   exit 1
 }
 
-[ $# -eq 1 ] || usage
+[ $# -eq 1 ] || [ $# -eq 2 ] || usage
 number="$1"
+decision="${2:-}"
 case "$number" in
   '' | *[!0-9]*) usage ;;
 esac
@@ -88,11 +94,22 @@ if [ "$has_label" = "true" ]; then
   exit 1
 fi
 
+merged_count="$(gh pr list --repo "$repo" --state merged --search "$number in:title,body" --json number -q 'length')"
+if [ "$merged_count" -ge 2 ] && [ -z "$decision" ]; then
+  echo "✗ third fix on #$number: decide before fixing." >&2
+  echo "  $merged_count merged PRs already reference #$number. Name the decision taken:" >&2
+  echo "  just claim $number \"the approach is wrong because X\" (or: the feature is dropped;" >&2
+  echo "  or: a known step of a planned sequence)." >&2
+  exit 1
+fi
+
 # Comment before label: if the comment lands and the label add then fails
 # (network blip, permissions), a retry sees claim_branch == branch above and
 # recovers by adding the label alone, rather than wedging with a label and no
 # comment to identify the owner.
-gh issue comment "$number" --repo "$repo" --body "Claimed: branch \`$branch\`."
+claim_comment="Claimed: branch \`$branch\`."
+[ -n "$decision" ] && claim_comment="$claim_comment Decision: $decision"
+gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
 
 item="$(gh project item-add "$project_number" --owner "$project_owner" \

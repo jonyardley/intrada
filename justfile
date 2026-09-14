@@ -110,9 +110,11 @@ pr-visuals:
 
 # Claim an issue before building it, and refuse if someone already has: the
 # in-flight label is set, the newest "Claimed" comment names another branch,
-# or an open PR already references it (#1702).
-claim number:
-    bash scripts/claim-issue.sh "{{number}}"
+# or an open PR already references it (#1702). Two or more merged PRs already
+# referencing the issue refuses a third fix without a named decision:
+# just claim 1650 "the approach is wrong because X" (#1890).
+claim number decision="":
+    bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
 
 # Wrap `gh pr create`, refusing when an issue number in the title has no
 # claim naming this branch (#1702): `just pr-open "Title (#42)" "Body text"`.

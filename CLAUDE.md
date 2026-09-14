@@ -150,6 +150,9 @@ migration, or a change inside the `ActiveSession` blob graph ships as two PRs, c
 screens in the same working session**, or the core PR waits (#1348, #1374); spanning core
 and screens is not itself the trigger. Review the core PR before the screens.
 
+**Two strikes, then a decision** (#1890): two corrections on one point stop the change and ask
+if the approach is wrong before a third; `just claim` refuses the same at two merged PRs.
+
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). Review through the
 `reviewer` agent for Tier 2+ and triage its findings. The usage guidelines, model, effort
