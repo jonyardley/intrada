@@ -86,6 +86,16 @@ pub fn reconcile_variants(
     next
 }
 
+/// An exercise in several keys has no single key (#1783 decision 1), so the
+/// Key field hides on Add and Edit once the ladder has a live rung. A plain
+/// call rather than an `Event`, like `sort_and_filter_picker_candidates`
+/// (`ffi.rs`): the form re-derives this on every add/remove of an unsaved
+/// variation row, before anything is sent to the core.
+#[must_use]
+pub fn shows_key_field(live_variant_count: usize) -> bool {
+    live_variant_count == 0
+}
+
 // ── Keys or variations ────────────────────────────────────────────────
 
 /// True when the ladder has rungs and every one of them names a key, so the
@@ -231,5 +241,12 @@ mod tests {
     #[test]
     fn an_empty_ladder_is_not_keys() {
         assert!(!ladder_is_all_keys(std::iter::empty::<&str>()));
+    }
+
+    #[test]
+    fn key_shows_with_no_variations_and_hides_from_the_first() {
+        assert!(shows_key_field(0));
+        assert!(!shows_key_field(1));
+        assert!(!shows_key_field(2));
     }
 }
