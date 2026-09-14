@@ -99,10 +99,10 @@ boundary, saying so.
 |---|---|---|---|---|
 | Technical design: the `Event`/`Effect`/`ViewModel` shape, anything crossing the bridge, schema strategy, auth | Fable 5.1 `xhigh`; `max` for a migration or the `ActiveSession` blob graph | Opus 5 `high` against a reviewed spec that fixes the shape field by field, escalating any choice it leaves open | The lead, one session; the shape is written into the spec or issue before either side is wired | Fails silently (#846, #1223, #1345): the strongest rung decides, and no Sonnet tier |
 | Visual design: a new flow against `design-principles.md`, a screen mocked in Claude Design | Opus 5 `high`; Fable 5.1 `high` only for a T-numbered decision or a flow with no precedent in the app | Opus 5 `high` for the mocks; Sonnet 5 `medium` for bookkeeping (`DesignSync`, tokens, filing the decision) | The lead, or a short session of its own | Fails visibly on the simulator, so a wrong call is cheap to see and cheap to redo |
-| Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; one rung above the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
-| Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Sonnet 5 `low` or Haiku 4.5 via `smol` for Tier 1 trivia | A subagent from the session that planned it once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
-| Review | The reviewer is never weaker than the writer: `reviewer` (Opus 5 `high`) for Tier 2; Fable for Fable-written bridge or migration work, in the Fable session or by spawning `reviewer` with `model` set to Fable, the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | A subagent; on a multi-surface slice, the core half before the screens half starts | Judgement-dense, but never past 200k context, so it stays cheap |
-| Gates and research | | `test-runner` (Sonnet 5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
+| Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; on a model no weaker than the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
+| Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Tier 1 trivia at Sonnet 5 `low` in the lead, or Haiku 4.5 via `smol` when fully specified | The judgement-dense half in the lead, since `task` is pinned to Sonnet and the spawn guard refuses a lift; the patterned half as a subagent from the session that planned it, once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
+| Review | The reviewer is never weaker than the writer: `reviewer` (Opus 5 `high`) for Tier 2; Fable for Fable-written bridge or migration work, in the Fable session or by spawning `reviewer` with `model` set to Fable, the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Judgement-dense, but short: no `reviewer` turn passed 200k context in the fortnight's `just usage 14` |
+| Gates and research | | `test-runner` (Haiku 4.5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
 
 The worst debugging (bincode wire breaks, silent no-ops, "green but wrong"
 tests, which got past Opus-era sessions three times) is technical design
@@ -114,33 +114,32 @@ splits, contract first at the top of the ladder: the two-PR rule again.
 Latency is the gap between the previous transcript line and the model's reply,
 so it includes thinking; medians are per request, not per task.
 
-| Rung | $ per turn | Median s | p90 s |
-|---|---|---|---|
-| Fable 5.1 xhigh | 0.31 | 12.0 | 40.6 |
-| Fable 5.1 high | 0.20 | 9.3 | 23.4 |
-| Opus 5 xhigh | 0.16 | 5.7 | 18.9 |
-| Opus 5 high | 0.15 | 5.9 | 17.8 |
-| Opus 5 medium | 0.15 | 5.2 | 15.0 |
-| Sonnet 5 high | 0.06 | 4.8 | 29.4 |
-| Sonnet 5 medium | 0.05 | 3.4 | 8.2 |
+| Rung | Turns | $ per turn | Median s | p90 s |
+|---|---|---|---|---|
+| Fable 5.1 xhigh | 442 | 0.31 | 12.0 | 40.6 |
+| Fable 5.1 high | 666 | 0.20 | 9.3 | 23.4 |
+| Opus 5 xhigh | 918 | 0.16 | 5.7 | 18.9 |
+| Opus 5 high | 1401 | 0.15 | 5.9 | 17.8 |
+| Opus 5 medium | 1335 | 0.15 | 5.2 | 15.0 |
+| Sonnet 5 high | 70 | 0.06 | 4.8 | 29.4 |
+| Sonnet 5 medium | 483 | 0.05 | 3.4 | 8.2 |
 
 Three things follow, and the ladder above is shaped by them:
 
-- **On Opus, effort is close to free.** `medium`, `high` and `xhigh` cost the
-  same per turn and answer in the same time, so an Opus session sits at `high`
-  by default and goes to `xhigh` for judgement-dense work without a cost case
+- **On Opus, effort is close to free.** `medium`, `high` and `xhigh` cost
+  within the noise of each other per turn, which is what context length
+  dominating the bill predicts, and the median reply time is flat; p90 rises
+  about a quarter from `medium` to `xhigh`. An Opus session sits at `high` by
+  default and goes to `xhigh` for judgement-dense work without a cost case
   against it.
 - **On Fable, effort is the lever.** `xhigh` costs half as much again per turn
-  as `high` and doubles the slow tail, so it buys the deciding half of a task
-  and hands the building half down. Fable at any effort is slower than Opus
-  at any effort: use it where deliberation pays, not on interactive
-  back-and-forth.
+  as `high` and lengthens the slow tail by three quarters, so it buys the
+  deciding half of a task and hands the building half down. Fable at every
+  measured effort is slower than Opus at every measured effort: use it where
+  deliberation pays, not on interactive back-and-forth.
 - **Sonnet is where the saving is.** A third of Opus per turn and the fastest
-  reply. Sonnet `high` has a slow tail from a small sample (70 turns), so
-  treat its p90 as unknown. `task` runs at Sonnet `xhigh` and Opus `xhigh`
-  were $353 of the fortnight, all from spawns lifting the pin; the spawn guard
-  refuses a model lift, not an effort lift, so the lead sets neither at the
-  spawn.
+  reply. Sonnet `high` has a slow tail from a small sample, so treat its p90
+  as unknown until the turn count is in the hundreds.
 
 **Rules of thumb.** The sensitivity override applies to models: auth, bridge,
 schema and migration work jumps a model-and-effort level whatever the file
@@ -176,16 +175,20 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   window, so name the rung the ladder gives the task and switch with `/model`
   and `/effort` before the work starts, saying so, not after.
 - **Subagents were 26% of the fortnight's usage.** Their largest line was
-  `task` spawned with `model: opus` over its Sonnet pin: keep the judgement in the lead and hand
-  down settled work instead of lifting the agent. `task` runs grow as long as
+  `task` spawned with `model: opus` over its Sonnet pin: keep the judgement
+  in the lead and hand down settled work instead of lifting the agent. In the
+  fortnight to 2026-09-14 (`just usage 14`, all projects) `task` runs at
+  Sonnet `xhigh` and Opus `xhigh` were $353, all from spawns lifting the pin
+  before the spawn guard existed; the guard refuses a model lift, not an
+  effort lift, so the lead sets neither at the spawn. `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
 ## Plans ship their own resourcing
 
 Every plan (slice plan, spec phase breakdown, handover) names, per task:
 
-1. **Which activity it is** (technical design, visual design, planning, build,
-   review), because the rung follows from the row.
+1. **Which activity it is** (technical design, visual design, planning,
+   tasks, review, gates and research), because the rung follows from the row.
 2. **Model and effort**, from the ladder above. "Then build the screen" without
    "Sonnet 5, high" forces the next session to re-derive the routing, or
    default upward.
@@ -207,7 +210,7 @@ a phase without a test plan is.
 |---|---|---|---|
 | Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, and the spawn carries no effort setting | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
-| Run a gate and filter its log | `test-runner` | Sonnet 5, low | No judgement; the gate itself is the check |
+| Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
 | Review a diff or a plan | `reviewer` | Opus 5, high | Judgement-dense; never weaker than the writer |
 | Conventional Tier 2 slice | `task` | Sonnet 5, high | Non-sensitive surface, patterns already in the repo |
 
