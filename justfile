@@ -495,6 +495,13 @@ ios-test: _ios-sync (_ios-test-run "fast")
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
 
+# Rebuild and run one IntradaUITests class, for verifying a review fix without
+# repeating the full UI tier (#1884) — pair with `ios-test` (the fast tier).
+[group('iOS')]
+ios-test-ui-class class: _ios-sync
+    just _ios-build-for-testing
+    just _ios-test-without-building "-only-testing:IntradaUITests/{{class}}" 0
+
 # Compile-only Release build (no signing, no tests) — catches `#if DEBUG`-only
 # code referenced from a file that itself compiles in Release, which passes
 # every Debug-only PR gate and then fails `just testflight` / the release lane
