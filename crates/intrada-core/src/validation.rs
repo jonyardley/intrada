@@ -72,6 +72,7 @@ pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
     input.notes = trimmed_nonempty(input.notes);
     input.tempo = normalize_tempo(input.tempo);
     input.tags = normalize_tags(input.tags);
+    input.variant_labels = normalize_variant_labels(input.variant_labels);
     input
 }
 
@@ -121,6 +122,15 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     validate_tags(&input.tags)?;
     if let Some(ref tempo) = input.tempo {
         validate_tempo(tempo)?;
+    }
+    // Shape (cap, duplicates, length) is checked separately against the
+    // final label set once the caller has folded in a migrated key (#1783
+    // decision, `migrate_key_into_labels`); this only guards the host.
+    if !input.variant_labels.is_empty() && input.kind != ItemKind::Exercise {
+        return Err(LibraryError::Validation {
+            field: "variant_labels".to_string(),
+            message: "Only an exercise can have variations".to_string(),
+        });
     }
     Ok(())
 }
@@ -587,6 +597,7 @@ mod tests {
                 "scales".to_string(),
             ],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
 
         let out = normalize_create_item(input);
@@ -619,6 +630,7 @@ mod tests {
                 "blues".to_string(),
             ],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert_eq!(
             normalize_create_item(input).tags,
@@ -652,6 +664,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert_eq!(
             normalize_create_item(input).tempo,
@@ -674,6 +687,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert_eq!(
             normalize_create_item(input).composer,
@@ -736,6 +750,7 @@ mod tests {
             notes: Some("First movement".to_string()),
             tags: vec!["classical".to_string(), "piano".to_string()],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -752,6 +767,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -775,6 +791,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -798,6 +815,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -814,6 +832,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -837,6 +856,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -860,6 +880,7 @@ mod tests {
             notes: Some("x".repeat(5001)),
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -883,6 +904,7 @@ mod tests {
             notes: Some("x".repeat(5000)),
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -899,6 +921,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -920,8 +943,47 @@ mod tests {
             notes: Some("Practice daily".to_string()),
             tags: vec!["technique".to_string()],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
+    }
+
+    #[test]
+    fn test_create_exercise_with_inline_variations_is_valid() {
+        let input = CreateItem {
+            title: "Scale Practice".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            photo_id: None,
+            variant_labels: vec!["C".to_string(), "F".to_string()],
+        };
+        assert!(validate_create_item(&input).is_ok());
+    }
+
+    #[test]
+    fn test_create_piece_with_inline_variations_is_rejected() {
+        let input = CreateItem {
+            title: "Clair de Lune".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            photo_id: None,
+            variant_labels: vec!["Slow".to_string()],
+        };
+        let err = validate_create_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => assert_eq!(field, "variant_labels"),
+            _ => panic!("expected a validation error"),
+        }
     }
 
     #[test]
@@ -936,6 +998,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -959,6 +1022,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -982,6 +1046,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1005,6 +1070,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1028,6 +1094,7 @@ mod tests {
             notes: Some("x".repeat(5001)),
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1051,6 +1118,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1367,6 +1435,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1390,6 +1459,7 @@ mod tests {
             notes: None,
             tags: vec!["good".to_string(), "".to_string()],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1416,6 +1486,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {

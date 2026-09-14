@@ -324,6 +324,37 @@ fn read_photo(model: &mut Model, photo_id: String) -> Command<Effect, Event> {
     ])
 }
 
+/// Folds an exercise's own `key` into `labels` as its first rung when it is
+/// gaining its first variation: an exercise in several keys has no single
+/// key (#1783 decision 1), and dropping the value outright would lose what
+/// the musician already recorded. A no-op, key kept and returned unchanged,
+/// whenever `labels` is empty (no variation is being added, so the key stays
+/// meaningful) or already names the key case-insensitively (matching
+/// `validate_variant_labels`'s own duplicate rule). Returns the label set to
+/// reconcile against and the key the item should keep afterwards.
+fn migrate_key_into_labels(
+    key: Option<String>,
+    labels: Vec<String>,
+    eligible: bool,
+) -> (Vec<String>, Option<String>) {
+    if !eligible || labels.is_empty() {
+        return (labels, key);
+    }
+    let Some(key) = key else {
+        return (labels, None);
+    };
+    if labels
+        .iter()
+        .any(|l| l.to_lowercase() == key.to_lowercase())
+    {
+        return (labels, Some(key));
+    }
+    let mut next = Vec::with_capacity(labels.len() + 1);
+    next.push(key);
+    next.extend(labels);
+    (next, None)
+}
+
 fn persist_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
     model.record_success();
     Command::all([
@@ -357,13 +388,21 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 return crux_core::render::render();
             }
 
+            let (variant_labels, key) =
+                migrate_key_into_labels(input.key, input.variant_labels, true);
+            if let Err(e) = validation::validate_variant_labels(&variant_labels) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
             let now = chrono::Utc::now();
+            let variants = super::variant::reconcile_variants(vec![], &variant_labels, now);
             let item = Item {
                 id: ulid::Ulid::generate().to_string(),
                 title: input.title,
                 kind: input.kind,
                 composer: input.composer,
-                key: input.key,
+                key,
                 modality: input.modality,
                 tempo: input.tempo,
                 notes: input.notes,
@@ -373,7 +412,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 updated_at: now,
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variants,
                 photo_id: input.photo_id,
                 metre: None,
             };
@@ -768,9 +807,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         }
         ItemEvent::SetVariants { id, labels } => {
             let labels = validation::normalize_variant_labels(labels);
-            if let Err(e) = validation::validate_variant_host(&id, model)
-                .and_then(|()| validation::validate_variant_labels(&labels))
-            {
+            if let Err(e) = validation::validate_variant_host(&id, model) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
@@ -779,6 +816,20 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
+
+            // The exercise's own key migrates into the ladder as its first
+            // rung when this call gives it its first live variation (#1783
+            // decision), never on a later call: an exercise that already had
+            // variations alongside a key predates that decision and is left
+            // alone here.
+            let had_live_variant = item.variants.iter().any(|v| v.deleted_at.is_none());
+            let (labels, key) =
+                migrate_key_into_labels(item.key.clone(), labels, !had_live_variant);
+
+            if let Err(e) = validation::validate_variant_labels(&labels) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
 
             let now = chrono::Utc::now();
             let existing = std::mem::take(&mut item.variants);
@@ -790,7 +841,8 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 v.sort_by(|a, b| a.id.cmp(&b.id));
                 v
             };
-            if sorted_by_id(existing.clone()) == sorted_by_id(reconciled.clone()) {
+            if sorted_by_id(existing.clone()) == sorted_by_id(reconciled.clone()) && key == item.key
+            {
                 // No-op: don't bump the parent LWW stamp or write (it could
                 // spuriously win a future sync merge).
                 item.variants = existing;
@@ -799,6 +851,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
 
             item.variants = reconciled;
+            item.key = key;
             item.updated_at = now;
             model.last_error = None;
 
@@ -2174,6 +2227,106 @@ mod tests {
     }
 
     #[test]
+    fn set_variants_migrates_an_existing_key_into_the_first_variation() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["F".to_string(), "Bb".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.key, None, "the key moved into the ladder");
+        assert_eq!(
+            ex.variants
+                .iter()
+                .map(|v| v.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["C", "F", "Bb"],
+            "the old key leads the ladder it is folded into"
+        );
+    }
+
+    #[test]
+    fn set_variants_does_not_migrate_a_key_already_named_among_the_labels() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("c".to_string());
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.key,
+            Some("c".to_string()),
+            "left alone: the ladder already covers it, case-insensitively, so there is \
+             nothing to fold in"
+        );
+        assert_eq!(ex.variants.len(), 2, "no duplicate C variation was added");
+    }
+
+    #[test]
+    fn set_variants_leaves_a_key_alone_when_the_exercise_already_had_variations() {
+        let mut model = model_with_piece_and_exercise();
+        let ex = model.items.iter_mut().find(|i| i.id == "ex-1").unwrap();
+        ex.key = Some("C".to_string());
+        ex.variants = vec![Variant {
+            id: "v-existing".to_string(),
+            label: "G".to_string(),
+            position: 0,
+            updated_at: chrono::Utc::now(),
+            deleted_at: None,
+        }];
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["G".to_string(), "D".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.key,
+            Some("C".to_string()),
+            "the transition already happened before this call; migration is not repeated"
+        );
+        assert_eq!(ex.variants.len(), 2);
+    }
+
+    #[test]
+    fn set_variants_clearing_the_ladder_does_not_migrate_a_key() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec![],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.key,
+            Some("C".to_string()),
+            "clearing an empty ladder to empty is a no-op, the key is untouched"
+        );
+        assert!(ex.variants.is_empty());
+    }
+
+    #[test]
     fn set_variants_event_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetVariants {
             id: "ex-1".to_string(),
@@ -2511,6 +2664,129 @@ mod tests {
         assert!(model.last_error.is_none());
     }
 
+    // ── Add: variations added inline (#1783) ──
+
+    #[test]
+    fn add_creates_the_exercise_with_its_inline_variations() {
+        let mut model = model_with_piece_and_exercise();
+        let mut input = new_exercise_input("Shell voicings");
+        input.key = None;
+        input.variant_labels = vec!["C".to_string(), "F".to_string()];
+
+        send(&mut model, ItemEvent::Add(input));
+
+        let created = model
+            .items
+            .iter()
+            .find(|i| i.title == "Shell voicings")
+            .expect("the exercise is created");
+        assert_eq!(
+            created
+                .variants
+                .iter()
+                .map(|v| v.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["C", "F"]
+        );
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn add_migrates_the_typed_key_into_the_first_inline_variation() {
+        let mut model = model_with_piece_and_exercise();
+        let mut input = new_exercise_input("Shell voicings");
+        input.key = Some("G".to_string());
+        input.variant_labels = vec!["C".to_string(), "F".to_string()];
+
+        send(&mut model, ItemEvent::Add(input));
+
+        let created = model
+            .items
+            .iter()
+            .find(|i| i.title == "Shell voicings")
+            .expect("the exercise is created");
+        assert_eq!(created.key, None, "the typed key moved into the ladder");
+        assert_eq!(
+            created
+                .variants
+                .iter()
+                .map(|v| v.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["G", "C", "F"],
+            "the typed key leads the ladder it is folded into"
+        );
+    }
+
+    #[test]
+    fn add_with_no_inline_variations_keeps_the_key_as_a_key() {
+        let mut model = model_with_piece_and_exercise();
+        let mut input = new_exercise_input("Shell voicings");
+        input.key = Some("G".to_string());
+
+        send(&mut model, ItemEvent::Add(input));
+
+        let created = model
+            .items
+            .iter()
+            .find(|i| i.title == "Shell voicings")
+            .expect("the exercise is created");
+        assert_eq!(created.key.as_deref(), Some("G"));
+        assert!(created.variants.is_empty());
+    }
+
+    #[test]
+    fn add_rejects_inline_variations_on_a_piece() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model.items.len();
+        let input = CreateItem {
+            title: "Clair de Lune".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            photo_id: None,
+            variant_labels: vec!["Slow".to_string()],
+        };
+
+        send(&mut model, ItemEvent::Add(input));
+
+        assert!(model.last_error.is_some());
+        assert_eq!(
+            model.items.len(),
+            before,
+            "a rejected create writes nothing"
+        );
+    }
+
+    #[test]
+    fn add_rejects_inline_variations_over_the_cap_once_the_key_is_folded_in() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model.items.len();
+        let mut input = new_exercise_input("Shell voicings");
+        input.key = Some("G".to_string());
+        input.variant_labels = (0..crate::validation::MAX_VARIANTS)
+            .map(|i| format!("Variation {i}"))
+            .collect();
+
+        send(&mut model, ItemEvent::Add(input));
+
+        assert!(
+            model.last_error.is_some(),
+            "the migrated key pushes the ladder one over the cap"
+        );
+        assert_eq!(model.items.len(), before);
+    }
+
+    #[test]
+    fn add_event_with_variant_labels_round_trips_on_ffi_bincode_wire() {
+        let mut input = new_exercise_input("Shell voicings");
+        input.variant_labels = vec!["C".to_string(), "F\u{266F}".to_string()];
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::Add(input)));
+    }
+
     // ── AddLinkedExercise ──
 
     fn new_exercise_input(title: &str) -> CreateItem {
@@ -2524,6 +2800,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         }
     }
 
@@ -2665,6 +2942,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: Some(PHOTO.to_string()),
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2690,6 +2968,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: Some("../../etc/passwd".to_string()),
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2923,6 +3202,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         }
     }
 
