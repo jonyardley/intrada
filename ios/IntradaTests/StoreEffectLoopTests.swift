@@ -419,7 +419,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "G", "D", "A", "E"])))
 
@@ -679,7 +679,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
