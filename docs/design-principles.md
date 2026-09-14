@@ -519,6 +519,15 @@ Two rulings come with it:
   what counts as evidence. Deciding in the shell would be domain logic in the
   dumb pipe, and it would put the rule somewhere no core test could reach it.
 
+**Amended 2026-09-14 (#1761): per play.** Since #1739 an item's record is a
+list of plays, one per variation, so "the click was sounding when the item
+ended" now reads "when the play closed". A switch, the hand-off and ending
+early each stamp the closing play from what the click was doing at that
+instant, and a skipped item keeps no tempo. Moving the stepper stays the other
+kind of evidence, now per row. The first ruling narrows with it: the sheet
+shows a tempo on each row, prefilled from that play's own stamp, rather than
+one for the item. Contract: `specs/exercise-variations.md`, Phase C.
+
 Why it matters beyond tidiness: the tempo trend draws this history as a chart,
 and a chart looks like measurement. Drawing a line through numbers the user
 never considered is the borrowed authority the getting-cold signal (**#1416**)
