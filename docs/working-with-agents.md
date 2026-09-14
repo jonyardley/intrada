@@ -9,6 +9,38 @@
 >
 > Last reviewed: 2026-09-14, against the Claude 5 family (Fable 5.1, Opus 5,
 > Sonnet 5, Haiku 4.5). Re-review at the next model generation.
+>
+> The generic version of this file, with the intrada names taken out, is
+> [`agentic-primer.md`](agentic-primer.md): read that to set up a new repo,
+> this to drive this one.
+
+## When to do what
+
+The rest of this file explains each row; this table is the one to read
+mid-session when you need the next move. Every rule here is held by a hook or
+a recipe named under "Guardrails already in place", and the number it was set
+from is under "Usage guidelines".
+
+| You are | Do | Explained under |
+|---|---|---|
+| Starting a unit of work | `just claim N`, `just worktree-new <name>`, prefix every shell command with `cd <worktree> && `, read the `.claude/rules/` files for the surfaces you will touch, and name the model and effort before the first edit | CLAUDE.md Always; Isolating concurrent work; Model and effort |
+| Choosing a rung | Read the activity ladder row for what you are doing now, not the file count. Decisions go up the ladder, execution goes down it; `/model` and `/effort` switch in place | Model and effort |
+| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Sonnet 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files | Delegating |
+| Holding a fully specified mechanical edit | `smol` (Haiku 4.5 `low`) | Delegating |
+| About to run a gate | `test-runner`, never in the lead; a fan-out task skips the suites and the lead runs them once at the end | Delegating |
+| Needing facts from many files | `Explore` with `model: haiku`, spawned from a session at `high` or below; its findings are leads, not facts | Delegating |
+| About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff (Opus on a sensitive surface), then `just pr-open`; watch CI to a conclusion in the same turn and read mergeability | Shipping; Verification, the standard held |
+| Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that | Usage guidelines; Troubleshooting |
+| Warned at 150k context | Finish the slice in hand; everything after it goes to `task` or `smol`, and this session checks and ships | Session controls |
+| At 200k | The rest of the unit goes to a subagent now | Session controls |
+| At 400k | `/compact` now, then carry on to the end of the unit | Session controls |
+| Mid-task and the thread matters | `/compact`, not `/clear`: compact keeps the decisions and drops the tool output, and the path-scoped rules reload on the next Read | Session controls |
+| The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting | Usage guidelines |
+| About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so | Usage guidelines |
+| Needing a stronger rung for one decision | `/model` and `/effort` in this session, saying so, and back down at the boundary. A new chat frees the lead; it is never how a rung changes | Model and effort |
+| Handing work to another session | An opener the new session pastes into a chat opened in the main checkout, naming the issue, activity, model, effort and stream; that session claims the issue and makes its own worktree. Never a worktree command for Jon to run | Plans ship their own resourcing |
+| Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/`, a third only shell-only and announced | Isolating concurrent work |
+| Asked "what's next" | Answer from `just status` and the session-start claims list, with no further reads | Usage guidelines |
 
 ## What loads, and what it costs
 
@@ -24,7 +56,7 @@ most of it again. Everything in the first column below is in that bill.
 | Repo settings | `.claude/settings.json` | The model and effort a session opens on (Sonnet 5 medium, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
-| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch nudges, thresholds below), after a push (the CI-watch note) and in the day's first session (one usage line); the bash guard runs before every command, the spawn guard before every subagent |
+| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch nudges, thresholds below), after a push (the CI-watch note) and in the day's first session (one usage line); before a tool runs, the worktree guard on every edit and command, the bash guard on every command, the read guard on every Read, the spawn guard on every subagent. Each is listed under "Guardrails already in place" |
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
 | Xcode tools | `.mcp.json` | xcodebuildmcp and the simulator workflow |
 
@@ -55,9 +87,12 @@ A rule lives in exactly one of these, chosen by who reads it and when.
 5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, with model and effort
    pinned in the definition. `Explore`, `fork` and `general-purpose` are
    built-in with no definition to pin ("Delegating" below).
-6. **Hooks.** Repo: format on edit, install the git hooks. User: the bash
-   guard, the spawn guard, the per-prompt reminder and context watch, the
-   post-push CI note, the daily usage line.
+6. **Hooks.** Repo: format on edit, install the git hooks, the session-start
+   claims list. User: the worktree guard and its lease, the bash guard, the
+   read guard, the spawn guard, the per-prompt reminder and context watch, the
+   post-push CI note, the daily usage line, and the cold nudge on a launchd
+   timer. Every user hook fails open and ships with a test battery that is
+   mutation-tested, not trusted green.
 7. **Auto memory.** What neither CLAUDE.md records: preferences, corrections,
    project state the code cannot show.
 8. **Docs on demand.** `reference.md` for the why behind every rule, the specs,
@@ -327,10 +362,15 @@ rules for the files it is about to touch by hand, or it is working blind.
 
 The mechanism is the `cd` prefix, and the `EnterWorktree` tool is still banned
 here: it marks the session isolated and the bash guard then refuses every
-version control command, so that session can never commit. Create the worktree
-and prefix each shell command instead. The exact shape the prefix must take, and
-what happens on a machine whose hooks predate all this, are in
-[`docs/worktrees.md`](worktrees.md). Making the prefix automatic is #1840.
+version control command, so that session can never commit. The shape the
+prefix must take, the self-heal that adds it when the session holds exactly
+one worktree lease (#1840), and what happens on a machine whose hooks predate
+all this, are in [`docs/worktrees.md`](worktrees.md) and not repeated here.
+
+A subagent inherits none of this. Its brief names the worktree by absolute
+path, or its first edit lands in main and is denied, and `reviewer` diffs the
+wrong tree (#1861). The four definitions in `.claude/agents/` say so, and the
+brief still has to supply the path.
 
 ## Build and test control
 
@@ -393,7 +433,10 @@ These run whether or not an agent read the rules.
 | Change rung mid-session | `/model`, `/effort`. Both persist unless chosen as session-only |
 | See what loaded | `/context` lists the memory files and rules in this session |
 | See what sessions cost | `just usage` (last 7 days by agent, model and effort, plus the biggest sessions); `just usage 14` for a fortnight |
-| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: `/clear`, then hand the unit to a `task`/`smol` subagent (this session checks and ships), then `/compact`; thresholds above |
+| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: at 150k finish the slice and hand the rest to a `task`/`smol` subagent (this session checks and ships), at 200k hand it over now, at 400k `/compact` |
+| Keep the thread, drop the bulk | `/compact`. Decisions survive, tool output goes, the path-scoped rules reload on the next Read. Mid-task only |
+| End the unit | `/clear`, once the PR is green, the issue closed and the worktree removed. The transcript file survives it, which is why the read guard can deny the next unit's first read (#1866) |
+| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, activity, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
 | Edit the rules files | `/memory` |
 | Tidy up permission prompts | `/fewer-permission-prompts` |
 
@@ -575,4 +618,14 @@ gate and its counts, what you left out, what you could not verify.
 | `just check` says already green | Stamp matches HEAD and the tree is clean; delete the stamp |
 | Unformatted Swift or Rust reaching CI | The format hook loads at session start; run `just fmt` and `just ios-fmt` |
 | PR hangs on a check that never reports | A renamed job left its old required context "expected" (#1542) |
-| A subagent ran on the wrong model | Its definition has no `model:` or `effort:` pin, so it inherited the session's |
+| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's; spawn those from `high` or below (#1838) |
+| The spawn guard refused a subagent | The spawn lifted `model` or `effort` above the definition's pin. Only `reviewer` may go up, on a sensitive surface. Drop the override; keep the judgement in the lead instead |
+| Read denied as "already in context" on the first read after `/clear` | The guard reads the transcript, which `/clear` does not restart (#1866). Range-read (`offset`, `limit`) until it is fixed |
+| Read denied on a file over 400 lines | Grep for the symbol, then read the range. The guard never allows the whole file (#1844) |
+| Edit or command denied in the main checkout | No worktree yet, or the `cd <worktree> && ` prefix is missing and the session holds more than one lease so it cannot be added for you. Make the worktree, prefix the command; the shapes the guard reads are in `worktrees.md` |
+| Session start says another session holds this worktree | The lease is live; read `just worktrees` and pick another. A clean tree at main is not evidence it is free |
+| A subagent edited the wrong tree, or `reviewer` reviewed main | The brief did not name the worktree by absolute path (#1861) |
+| XCUITests refuse to launch, `SBMainWorkspace` busy | A simulator booted outside the `just` recipes. Ask before shutting it down; CI proves the UI tests meanwhile |
+| A PR's first CI run shows cancelled or a stale failed context | `gh pr create --label` fires several events that cancel each other. Label after the first run starts, or hand Jon `gh run rerun --failed` |
+| The session was interrupted mid-tool | Retry in a different form and keep working. An interrupted call is not a decision point to hand back |
+| A gate looks like it ran nothing | Terse output is a pass. Break one assertion and watch it go red before reporting a gate broken (2026-09-04) |
