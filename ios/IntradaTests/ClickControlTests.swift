@@ -66,6 +66,12 @@ struct ClickControlTests {
   @Test func spokenTempoCarriesTheFailure() {
     #expect(control(unavailable: true).spokenValue == "unavailable")
   }
+
+  /// A drag commit inside the click engine's own lead-in cancels the pulse
+  /// it just scheduled, so the click never sounds for the whole drag (#1823).
+  @Test func theDragThrottleNeverCommitsFasterThanTheEngineCanSound() {
+    #expect(ClickControl.commitInterval >= .milliseconds(Int(ClickEngine.leadInSeconds * 1000)))
+  }
 }
 
 @MainActor

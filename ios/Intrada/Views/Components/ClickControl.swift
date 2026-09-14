@@ -30,7 +30,12 @@ struct ClickControl: View {
   @State private var liveBpm: Int?
   @State private var lastCommittedBpm: Int?
   @State private var lastCommitAt: ContinuousClock.Instant?
-  private static let commitInterval: Duration = .milliseconds(120)
+  /// Must stay at or above `ClickEngine.leadInSeconds`, or a commit inside
+  /// the previous restart's lead-in cancels it before it ever sounds, and
+  /// the click goes silent for the whole drag (#1823). Not `private`, so
+  /// `ClickControlTests` can assert the invariant directly.
+  static let commitInterval: Duration = .milliseconds(
+    Int(ClickEngine.leadInSeconds * 1000) + 20)
 
   private var isDragging: Bool { dragAnchor != nil }
   private var displayedBpm: Int { liveBpm ?? bpm }
