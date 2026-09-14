@@ -122,6 +122,9 @@ struct RootView: View {
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
     appearance.configureWithTransparentBackground()
+    // A transparent bar leaves iOS 26 bar button items without the shared glass
+    // surface their pill renders into, so the back chevron goes flat (#1829).
+    appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
     let ink = UIColor(IntradaColor.ink)
     if let large = UIFont(name: IntradaFont.Hanken.semibold, size: 28) {
       appearance.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
