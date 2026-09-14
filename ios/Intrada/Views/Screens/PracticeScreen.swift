@@ -61,7 +61,7 @@ struct PracticeScreen: View {
   }
 
   var body: some View {
-    ScreenScaffold(title: "Practice", subtitle: subtitle) {
+    ScreenScaffold(title: "Practice", subtitle: subtitle, trailingPlacement: .header) {
       Button {
         showingProfile = true
       } label: {

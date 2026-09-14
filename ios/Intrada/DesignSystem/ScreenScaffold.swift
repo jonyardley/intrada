@@ -14,15 +14,21 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   var subtitle: String?
   var trailing: TrailingAction?
   let leadingContent: Leading
-  /// A trailing view of the screen's own (the Practice profile badge, #1692);
-  /// it sits in the native toolbar, while `trailing` stays beside the title.
+  /// A trailing view of the screen's own: a native toolbar item by default
+  /// (#1868), or beside the title like `trailing` (the Practice profile badge).
   let trailingContent: Trailing
+  var trailingPlacement: TrailingPlacement = .toolbar
   @ViewBuilder var content: Content
 
   struct TrailingAction {
     let label: String
     var systemImage: String = "plus"
     let action: () -> Void
+  }
+
+  enum TrailingPlacement {
+    case toolbar
+    case header
   }
 
   init(
@@ -42,6 +48,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   init(
     title: String,
     subtitle: String? = nil,
+    trailingPlacement: TrailingPlacement = .toolbar,
     @ViewBuilder trailingContent: () -> Trailing,
     @ViewBuilder content: () -> Content
   ) where Leading == EmptyView {
@@ -50,6 +57,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = nil
     self.leadingContent = EmptyView()
     self.trailingContent = trailingContent()
+    self.trailingPlacement = trailingPlacement
     self.content = content()
   }
 
@@ -111,7 +119,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         if Leading.self != EmptyView.self {
           ToolbarItem(placement: .topBarLeading) { leadingContent }
         }
-        if Trailing.self != EmptyView.self {
+        if Trailing.self != EmptyView.self, trailingPlacement == .toolbar {
           ToolbarItemGroup(placement: .topBarTrailing) { trailingContent }
         }
       }
@@ -155,6 +163,10 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         // Centre the circular button on the title's baseline rather than
         // letting it hang below it.
         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
+      }
+      if Trailing.self != EmptyView.self, trailingPlacement == .header {
+        trailingContent
+          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
       }
     }
     .padding(.horizontal, IntradaSpacing.card)
