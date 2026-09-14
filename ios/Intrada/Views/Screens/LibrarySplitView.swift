@@ -59,10 +59,11 @@ struct LibrarySplitView: View {
           systemImage: "sidebar.left", message: "Select an item to see its details.",
           glyphTint: IntradaColor.inkFainter)
       }
-      // LibraryDetailScreen forces the same blank inline bar (#1724, #1822);
-      // match that here so nothing jumps when a selection lands.
+      // LibraryDetailScreen forces the same blank inline bar (#1724, #1822,
+      // #1868); match that here so nothing jumps when a selection lands.
       .navigationBarTitleDisplayMode(.inline)
       .navigationTitle("")
+      .toolbar(.visible, for: .navigationBar)
     }
   }
 }

@@ -786,16 +786,11 @@ struct LibraryDetailScreen: View {
         toggleStar()
       } label: {
         Image(systemName: item.priority ? "star.fill" : "star")
-          .foregroundStyle(item.priority ? IntradaColor.accent : IntradaColor.inkSecondary)
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
       }
-      .buttonStyle(.plain)
+      .tint(item.priority ? IntradaColor.accent : IntradaColor.inkSecondary)
       .accessibilityLabel(item.priority ? "Remove from priorities" : "Add to priorities")
 
       Button("Edit") { editing = true }
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
     }
   }
 

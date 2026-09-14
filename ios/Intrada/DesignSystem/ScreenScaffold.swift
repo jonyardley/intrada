@@ -15,7 +15,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   var trailing: TrailingAction?
   let leadingContent: Leading
   /// A trailing view of the screen's own (the Practice profile badge, #1692);
-  /// it sits where `trailing`'s circular button would.
+  /// it sits in the native toolbar, while `trailing` stays beside the title.
   let trailingContent: Trailing
   @ViewBuilder var content: Content
 
@@ -105,6 +105,20 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
+      // Secondary header actions are native toolbar items so they pick up the
+      // system's glass material (#1868); the primary add stays beside the title.
+      .toolbar {
+        if Leading.self != EmptyView.self {
+          ToolbarItem(placement: .topBarLeading) { leadingContent }
+        }
+        if Trailing.self != EmptyView.self {
+          ToolbarItemGroup(placement: .topBarTrailing) { trailingContent }
+        }
+      }
+      // Forced visible even with no items: an item-less inline bar goes
+      // isHidden internally, which broke the split view's symmetric-chrome
+      // invariant against the column that does carry toolbar items (#1868, #1682).
+      .toolbar(.visible, for: .navigationBar)
   }
 
   private var titleText: some View {
@@ -115,13 +129,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
 
   private var header: some View {
     HStack(alignment: .firstTextBaseline) {
-      // A child view, even an empty one, still claims the HStack's default
-      // inter-item spacing, so a screen with no leading action must omit
-      // the subview entirely rather than render an empty one (#1724).
-      if Leading.self != EmptyView.self {
-        leadingContent
-          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
-      }
       VStack(alignment: .leading, spacing: 3) {
         // A swipe behind a wrapped title would land under its last line only.
         ViewThatFits(in: .horizontal) {
@@ -150,8 +157,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         // letting it hang below it.
         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
       }
-      trailingContent
-        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.controlGap)
