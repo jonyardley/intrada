@@ -5339,7 +5339,6 @@ mod tests {
         assert!(!piece.ladder_is_keys, "no rungs is not a ladder of keys");
     }
 
-    /// An exercise in several keys has no single key (#1783 decision 1).
     #[test]
     fn view_an_exercise_with_live_variations_hides_the_key_field() {
         let app = Intrada;

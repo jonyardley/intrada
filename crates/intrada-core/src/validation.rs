@@ -135,6 +135,20 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     Ok(())
 }
 
+/// `ItemEvent::Add` is the only event that honours `CreateItem.variant_labels`
+/// (#1783): `AddLinkedExercise` and `AddPieceInFull` create exercises too, and
+/// silently dropping a caller's labels there would be the #846 shape, a field
+/// that validates but never lands. Both reject instead.
+pub fn validate_no_variant_labels(input: &CreateItem) -> Result<(), LibraryError> {
+    if input.variant_labels.is_empty() {
+        return Ok(());
+    }
+    Err(LibraryError::Validation {
+        field: "variant_labels".to_string(),
+        message: "Variations can only be added when creating an exercise directly".to_string(),
+    })
+}
+
 pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
     if let Some(ref title) = input.title {
         validate_title(title)?;

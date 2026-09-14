@@ -1309,7 +1309,7 @@ final class ScreenSnapshotTests: XCTestCase {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
@@ -1317,7 +1317,7 @@ final class ScreenSnapshotTests: XCTestCase {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _, _ in })
@@ -1372,7 +1372,7 @@ final class ScreenSnapshotTests: XCTestCase {
       updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
       linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
       variants: [],
-      ladderIsKeys: false, photoId: nil)
+      ladderIsKeys: false, photoId: nil, showsKey: true)
   }
 
   private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {

@@ -221,7 +221,8 @@ final class ItemFormModel {
       tempo: buildTempo(),
       notes: emptyToNil(notes),
       tags: tags,
-      photoId: photoId)
+      photoId: photoId,
+      variantLabels: [])
   }
 
   var hasStagedExtras: Bool {
@@ -313,7 +314,8 @@ enum StagedExercise: Identifiable, Hashable {
           },
           notes: nil,
           tags: [],
-          photoId: nil))
+          photoId: nil,
+          variantLabels: []))
     case .existing(let id, _, _):
       .existing(id: id)
     }
