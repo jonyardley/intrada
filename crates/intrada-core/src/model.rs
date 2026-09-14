@@ -540,6 +540,9 @@ pub struct ActiveSessionView {
     pub next_item_title: Option<String>,
     /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
     pub current_item_intention: Option<String>,
+    /// The current item's library notes (`Item.notes`), distinct from
+    /// `current_item_intention`, which is the session-level "Aim".
+    pub current_item_notes: Option<String>,
     /// The anchor piece's title, when the current entry is a related exercise
     /// grouped into that piece's block; `None` for a standalone entry or when
     /// the current entry *is* the anchor piece itself.
@@ -848,6 +851,9 @@ pub fn build_active_session_view(
             .get(safe_index + 1)
             .map(|e| e.item_title.clone()),
         current_item_intention: current.intention.clone(),
+        current_item_notes: item_index
+            .get(current.item_id.as_str())
+            .and_then(|i| i.notes.clone()),
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
@@ -1493,6 +1499,49 @@ mod tests {
         assert!(view.current_item_tempo_bpm.is_none());
     }
 
+    #[test]
+    fn active_session_view_current_item_notes_from_item_library() {
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Scale", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 1,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+        };
+        let item1 = Item {
+            notes: Some("Watch the thumb crossing".to_string()),
+            ..make_item("i1", "Scale", ItemKind::Exercise)
+        };
+        let item2 = Item {
+            notes: Some("Keep the bow arm relaxed".to_string()),
+            ..make_item("i2", "Etude", ItemKind::Exercise)
+        };
+        let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item1), ("i2", &item2)]);
+        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
+        assert_eq!(
+            view.current_item_notes.as_deref(),
+            Some("Keep the bow arm relaxed")
+        );
+    }
+
+    #[test]
+    fn active_session_view_current_item_notes_none_when_item_has_no_notes() {
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![make_entry("e1", "i1", "Scale", 0)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+        };
+        let item = make_item("i1", "Scale", ItemKind::Exercise);
+        let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
+        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
+        assert!(view.current_item_notes.is_none());
+    }
+
     // ── picker captions (#1784) ────────────────────────────────────────
 
     fn session_on(plays: Vec<VariationPlay>) -> ActiveSession {
@@ -1638,9 +1687,18 @@ mod tests {
     fn active_session_view_round_trips_on_ffi_bincode_wire() {
         let active = session_on(vec![play_on("p1", "c", 250), play_on("p2", "g", 0)]);
         let variants = [VariantView::fixture("c", "C", 0)];
+        let item = Item {
+            notes: Some("Watch the thumb crossing".to_string()),
+            ..make_item("i1", "Scale", ItemKind::Exercise)
+        };
+        let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+            build_active_session_view(&active, &item_index, &VariationLabels::new(), &variants);
         assert_eq!(view.current_variations.len(), 1);
+        assert_eq!(
+            view.current_item_notes.as_deref(),
+            Some("Watch the thumb crossing")
+        );
         crate::domain::types::assert_round_trips(view);
     }
 

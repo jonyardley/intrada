@@ -1034,7 +1034,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .add(
           CreateItem(
             title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: "Watch the thumb crossing", tags: [], photoId: nil))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
@@ -1049,6 +1049,7 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNotNil(active.activeSession, "startSession should enter the player")
     XCTAssertNil(active.buildingSetlist, "the builder should close on start")
     XCTAssertNil(active.summary)
+    XCTAssertEqual(active.activeSession?.currentItemNotes, "Watch the thumb crossing")
 
     // Advancing past the last item is the only way a session finishes (#1761).
     _ = try bridge.update(

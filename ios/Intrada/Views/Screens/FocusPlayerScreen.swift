@@ -166,6 +166,14 @@ struct FocusPlayerScreen: View {
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
       }
+      if let notes = active.currentItemNotes, !notes.isEmpty {
+        Text("Notes: \(notes)")
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .multilineTextAlignment(.center)
+          .lineLimit(3)
+          .truncationMode(.tail)
+      }
       variationChip(active)
     }
     .padding(.horizontal, IntradaSpacing.card)
