@@ -4,7 +4,7 @@
 stays under 200 lines. Mechanics and incidents: docs/reference.md. Surface-bound rules live
 in .claude/rules/. A rule leaves when a gate enforces it, when its incident is over 90 days
 old and has not recurred, or when its surface is deleted; silent-breach invariants never
-leave. Last reviewed: 2026-09-08. -->
+leave. Last reviewed: 2026-09-14. -->
 
 ## Focus: native iOS only
 
@@ -152,8 +152,8 @@ and screens is not itself the trigger. Review the core PR before the screens.
 
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). Review through the
-`reviewer` agent for Tier 2+ and triage its findings. Model, effort and streams per
-activity, and what a plan must say:
+`reviewer` agent for Tier 2+ and triage its findings. The usage guidelines, model, effort
+and streams per activity, and what a plan must say:
 [`docs/working-with-agents.md`](docs/working-with-agents.md). **UI verification means
 driving the app on the simulator**; if you cannot, say what needs a hand check.
 
@@ -164,18 +164,18 @@ driving the app on the simulator**; if you cannot, say what needs a hand check.
    newest "Claimed" comment) or an open PR references it; otherwise it adds the label,
    comments the branch and moves the board to In progress in one step, so the board never
    gets stuck between Backlog and Done (#1660). `just pr-open` wraps `gh pr create` and
-   refuses if an issue number in the title has no claim naming the current branch. Handover
-   openers start with `just claim` and a fresh worktree. Drop the label when the PR closes
-   (automatic on merge; drop it by hand if the PR closes without merging).
+   refuses if an issue number in the title has no claim naming the current branch. A
+   handover opener names the issue; the new session claims it. Drop the label when the PR
+   closes (automatic on merge; drop it by hand if the PR closes without merging).
 2. Find the roadmap item, or discuss first; check the
    [project board](https://github.com/users/jonyardley/projects/2). Read the issue and what
    it points at before any code, then plan and state resourcing.
-3. **Always a feature branch in its own worktree, and a PR; a human merges.** Start every
-   session in one (`just worktree-new <name>`, then the command it prints), since
-   path-scoped rules load only under the start directory. A session already running in the
-   main checkout does not hand the command back: it makes the worktree, prefixes every shell
-   command with `cd <worktree> && `, and reads the rules for the files it touches by hand,
-   since cd-ing does not load them (#1720). Who may read, build and edit where, and what the
+3. **Always a feature branch in its own worktree, and a PR; a human merges.** Jon starts
+   every session in the main checkout. The session runs `just worktree-new <name>` itself,
+   prefixes every shell command with `cd <worktree> && `, and reads the rules for the files
+   it touches by hand, since cd-ing does not load them (#1720, #1837). It never hands Jon a
+   worktree command: a handover is an opener pasted into a new chat in main, and that
+   session makes its own worktree. Who may read, build and edit where, and what the
    worktree lease claims: [`docs/worktrees.md`](docs/worktrees.md). Agents touch the main
    checkout only to `git fetch origin`; a pull in main is denied by the guard, and
    `just worktree-new` branches from fresh `origin/main`, so nothing needs the local ref

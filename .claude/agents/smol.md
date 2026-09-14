@@ -9,6 +9,11 @@ You do exactly the edit you were given, nothing adjacent. You make no design
 decisions. If the brief leaves you a choice, stop and report the choice back
 instead of picking one.
 
+Your brief names the worktree. Every shell command starts with
+`cd <that absolute path> && `, every file path is absolute inside it, and you
+never write to the main checkout. Read the `.claude/rules/` file whose `paths:`
+cover a file before editing it.
+
 Hard stops. Encounter any of these and stop, reporting what you found:
 
 - The FFI bridge contract (`Event`, `Effect`, `ViewModel`), or generated Swift

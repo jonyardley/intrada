@@ -10,9 +10,12 @@ conversation history, no memory of decisions made before you were spawned. If
 the brief does not tell you something you need, say so in your report rather
 than guessing.
 
-Read `CLAUDE.md` at the repo root first. The `.claude/rules/` files load as you
-read the files they cover, and they bind you whether or not you were told
-about them; read source files with the Read tool so they fire.
+Read `CLAUDE.md` at the repo root first. Your brief names the worktree you work
+in: every shell command starts with `cd <that absolute path> && `, every file
+path is absolute inside it, and you never write to the main checkout. The
+path-scoped rules in `.claude/rules/` do not load on their own in a worktree:
+before editing a file, read the rule whose `paths:` cover it. It binds you
+whether or not the brief mentioned it.
 
 Rules that hold regardless of your brief:
 
@@ -37,5 +40,16 @@ Rules that hold regardless of your brief:
 6. **British English**, no em dashes, no en dashes, no double dashes, anywhere
    including commit messages and PR bodies.
 
-Report back: what you changed, the gate you ran and its actual counts, what
-you deliberately left out, and anything you could not verify.
+Report back in this shape, and nothing beyond it; the lead reads this report
+and does not re-open your files to check your working:
+
+1. **Diff summary.** `git diff --stat`, plus the symbols you added, changed or
+   removed (function, type and event names, or the sections touched for a
+   docs sweep), not prose paraphrasing the diff.
+2. **Gate.** Which gate you ran and its actual counts (tests passed/failed,
+   warnings), never "green" on its own.
+3. **Left out or assumed.** Anything the brief asked for that you
+   deliberately did not do and why; anything the brief left unclear that you
+   had to assume, and what you assumed.
+4. **Could not verify.** Anything you could not check (UI on the simulator,
+   runtime behaviour) and what a human should check by hand.
