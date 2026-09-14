@@ -63,6 +63,7 @@ struct LibrarySplitView: View {
       // match that here so nothing jumps when a selection lands.
       .navigationBarTitleDisplayMode(.inline)
       .navigationTitle("")
+      .toolbar(.visible, for: .navigationBar)
     }
   }
 }

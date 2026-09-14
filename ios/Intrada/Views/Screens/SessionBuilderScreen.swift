@@ -113,10 +113,6 @@ struct SessionBuilderScreen: View {
       subtitle: isEditing ? "Editing" : summary,
       leadingContent: {
         Button("Cancel") { cancel() }
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-          .frame(minHeight: 44)
-          .contentShape(Rectangle())
       },
       trailingContent: { headerActions },
       content: {
@@ -156,10 +152,6 @@ struct SessionBuilderScreen: View {
           editMode = isEditing ? .inactive : .active
         }
       }
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.accent)
-      .frame(minHeight: 44)
-      .contentShape(Rectangle())
     }
   }
 

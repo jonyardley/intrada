@@ -121,10 +121,12 @@ struct RootView: View {
 
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
-    appearance.configureWithTransparentBackground()
-    // A transparent bar leaves iOS 26 bar button items without the shared glass
-    // surface their pill renders into, so the back chevron goes flat (#1829).
+    appearance.configureWithOpaqueBackground()
+    // The fill hides the blur, but without a blur iOS 26 bar button items lose
+    // their glass pill on any bar, transparent (#1829) or opaque (#1868).
     appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
+    appearance.backgroundColor = UIColor(IntradaColor.paperTop)
+    appearance.shadowColor = .clear
     let ink = UIColor(IntradaColor.ink)
     if let large = UIFont(name: IntradaFont.Hanken.semibold, size: 28) {
       appearance.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]

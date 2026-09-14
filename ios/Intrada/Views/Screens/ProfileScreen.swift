@@ -15,10 +15,6 @@ struct ProfileScreen: View {
       title: "Profile",
       trailingContent: {
         Button("Edit") { editing = true }
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-          .frame(minHeight: 44)
-          .contentShape(Rectangle())
       },
       content: {
         ScrollView {

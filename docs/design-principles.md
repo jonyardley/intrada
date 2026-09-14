@@ -1003,3 +1003,20 @@ The terracotta accent (`IntradaColor.accent`, resolving to `ink` everywhere it
 is used today) is untouched: which of its roughly twenty call sites become
 terracotta and which stay ink is a per-site decision still open as the third
 piece of #1723.
+
+### T28: Header actions are native toolbar items; the page's own add and identity stay by the title
+
+**Status:** DECIDED 2026-09-14 (jonyardley/intrada#1868). Cancel, Edit and the
+priority star sit in the native navigation bar as system toolbar items, with
+system typography and tint rather than `IntradaFont.bodyMedium` and the accent.
+That is what gives them the iOS 26 glass pill the back chevron already has, and
+restyling them would bring back the custom look this decision removes.
+
+Two things stay beside the page title as our own drawing: the round "+" that
+adds to a page, and the Practice profile badge. The "+" is the page's primary
+action and the badge is who you are, not a page action; both read as part of
+the heading, and in the toolbar the badge floated free of it.
+
+The bar itself is an opaque `paperTop` fill with no hairline, so it is the
+same colour as the page with no seam. A system blur stays configured under the
+fill although it never shows: without one, the toolbar items render flat.

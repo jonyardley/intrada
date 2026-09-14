@@ -883,8 +883,7 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryDetailScreen() {
-    // Preset path so the snapshot covers the real navigation chrome (back
-    // chevron + transparent bar over the serif title), not just the body.
+    // Preset path so the snapshot covers the pushed detail, not just the body.
     let store = Store(bridge: PreviewBridge(items: [.previewDetail]))
     let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail.id])) {
       LibraryScreen()

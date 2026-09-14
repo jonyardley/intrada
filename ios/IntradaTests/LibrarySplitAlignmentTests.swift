@@ -57,7 +57,7 @@ struct LibrarySplitAlignmentTests {
     assertSymmetricChrome(renderedSplit(selecting: nil))
   }
 
-  // Both columns hide their native bar entirely now (#1724), so finding none
+  // Both columns force a visible bar now (#1868), and finding two or none
   // is symmetric and fine; finding exactly one is the asymmetry this guards
   // against. Zero nav bars is only meaningful alongside a real render: the
   // view-count floor is the positive anchor that keeps a broken hierarchy

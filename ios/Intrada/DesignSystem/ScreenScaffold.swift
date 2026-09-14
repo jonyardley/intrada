@@ -14,15 +14,19 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   var subtitle: String?
   var trailing: TrailingAction?
   let leadingContent: Leading
-  /// A trailing view of the screen's own (the Practice profile badge, #1692);
-  /// it sits where `trailing`'s circular button would.
   let trailingContent: Trailing
+  let trailingPlacement: TrailingPlacement
   @ViewBuilder var content: Content
 
   struct TrailingAction {
     let label: String
     var systemImage: String = "plus"
     let action: () -> Void
+  }
+
+  enum TrailingPlacement {
+    case toolbar
+    case header
   }
 
   init(
@@ -36,12 +40,14 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = trailing
     self.leadingContent = EmptyView()
     self.trailingContent = EmptyView()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
   init(
     title: String,
     subtitle: String? = nil,
+    trailingPlacement: TrailingPlacement = .toolbar,
     @ViewBuilder trailingContent: () -> Trailing,
     @ViewBuilder content: () -> Content
   ) where Leading == EmptyView {
@@ -50,6 +56,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = nil
     self.leadingContent = EmptyView()
     self.trailingContent = trailingContent()
+    self.trailingPlacement = trailingPlacement
     self.content = content()
   }
 
@@ -65,6 +72,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = trailing
     self.leadingContent = leadingContent()
     self.trailingContent = EmptyView()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
@@ -80,6 +88,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = nil
     self.leadingContent = leadingContent()
     self.trailingContent = trailingContent()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
@@ -105,6 +114,17 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        if Leading.self != EmptyView.self {
+          ToolbarItem(placement: .topBarLeading) { leadingContent }
+        }
+        if Trailing.self != EmptyView.self, trailingPlacement == .toolbar {
+          ToolbarItemGroup(placement: .topBarTrailing) { trailingContent }
+        }
+      }
+      // An item-less bar goes isHidden internally, breaking the split view's
+      // symmetric-chrome invariant against a column that does carry items (#1868, #1682).
+      .toolbar(.visible, for: .navigationBar)
   }
 
   private var titleText: some View {
@@ -115,13 +135,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
 
   private var header: some View {
     HStack(alignment: .firstTextBaseline) {
-      // A child view, even an empty one, still claims the HStack's default
-      // inter-item spacing, so a screen with no leading action must omit
-      // the subview entirely rather than render an empty one (#1724).
-      if Leading.self != EmptyView.self {
-        leadingContent
-          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
-      }
       VStack(alignment: .leading, spacing: 3) {
         // A swipe behind a wrapped title would land under its last line only.
         ViewThatFits(in: .horizontal) {
@@ -150,8 +163,10 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         // letting it hang below it.
         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
       }
-      trailingContent
-        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
+      if Trailing.self != EmptyView.self, trailingPlacement == .header {
+        trailingContent
+          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
+      }
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.controlGap)
@@ -185,20 +200,20 @@ enum ScreenScaffoldIconButton {
   }
 
   #Preview("With a leading action") {
-    ScreenScaffold(
-      title: "Build session",
-      subtitle: "3 items",
-      leadingContent: {
-        Button("Cancel") {}
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-      },
-      trailing: .init(label: "Add", action: {}),
-      content: {
-        PlaceholderContent(
-          systemImage: "music.note",
-          message: "Detail content goes here.")
-      }
-    )
+    NavigationStack {
+      ScreenScaffold(
+        title: "Build session",
+        subtitle: "3 items",
+        leadingContent: {
+          Button("Cancel") {}
+        },
+        trailing: .init(label: "Add", action: {}),
+        content: {
+          PlaceholderContent(
+            systemImage: "music.note",
+            message: "Detail content goes here.")
+        }
+      )
+    }
   }
 #endif
