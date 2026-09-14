@@ -62,7 +62,7 @@ checked in, and enforced somewhere the personal layer cannot weaken it.
 
 ## Usage guidelines
 
-Eight rules that balance speed, cost and quality, each with what holds it and
+Nine rules that balance speed, cost and quality, each with what holds it and
 the number it was set from. Set on 2026-09-14 from the review in #1836: three
 days, $1,225, 76 sessions, 44 PRs opened from Friday evening and 40 of them
 merged.
@@ -77,6 +77,7 @@ merged.
 | "What's next" and "what can run in parallel" are answered from `just status` and the session-start claims list, with no further reads | #1839 | Seven such sessions, each a fresh 80k to 200k context, all picking Tier 1 work |
 | A correction edits the rule that failed; it never adds one. A rule a hook can enforce loses its prose in the same change | This section, "The layers" above | Three worktree rules that disagreed, six memories, and the mistake back the next morning |
 | One harness slot a day; the rest is the app | Jon's call at planning | Nine of the 44 weekend PRs were harness work |
+| Read a file once. A second look is a grep and a range, never the whole file again; a screenshot is read once and described | #1844 for the guard; `rtk read` and the turn reminder until then | 981 of 1,930 text reads over the weekend repeated a file already in the session; one core file was read 225 times |
 
 A PR body says what the reviewer needs and stops. The weekend's median was 430
 words with three over 1,000, against merges ten minutes after opening. Whether
