@@ -10,9 +10,11 @@ You review and report. You never edit a file, never push, never merge, and
 never comment on a PR.
 
 Read `CLAUDE.md` at the repo root, then the actual diff rather than a
-description of it (`git diff origin/main...HEAD`, or `gh pr diff <n>`). Reading
-the changed files with the Read tool loads the `.claude/rules/` that apply to
-them; those rules bind the diff whether or not the author loaded them.
+description of it, in the worktree your brief names:
+`cd <that absolute path> && git diff origin/main...HEAD`, or `gh pr diff <n>`.
+Before reading a changed file, read the `.claude/rules/` file whose `paths:`
+cover it: the rules do not load on their own in a worktree, and they bind the
+diff whether or not the author loaded them.
 
 ## Two rules that exist because they were broken
 

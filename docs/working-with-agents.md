@@ -18,7 +18,7 @@ most of it again. Everything in the first column below is in that bill.
 | Input | Path | When it loads |
 |---|---|---|
 | Project rules | `CLAUDE.md` | Every session and every subagent, in full. Under 200 lines by rule |
-| Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count. They reload the same way after compaction |
+| Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
 | Repo settings | `.claude/settings.json` | The model and effort a session opens on (Sonnet 5 medium, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
@@ -84,7 +84,7 @@ merged.
 | Settled work goes to subagents from one lead; a new chat is for freeing the session or going up a rung, never for work the lead could dispatch | `guard-spawn.sh`, the agent pins, #1838 | Twelve of 76 sessions were status or handover only |
 | "What's next" and "what can run in parallel" are answered from `just status` and the session-start claims list, with no further reads | #1839 | Seven such sessions, each a fresh 80k to 200k context, all picking Tier 1 work |
 | A correction edits the rule that failed; it never adds one. A rule a hook can enforce loses its prose in the same change | This section, "The layers" above | Three worktree rules that disagreed, six memories, and the mistake back the next morning |
-| One harness slot a day; the rest is the app | Jon's call at planning | Nine of the 44 weekend PRs were harness work |
+| One harness slot a day; the rest is the app. Frozen until the #1849 re-measure on 2026-09-27, so the measurement is clean | Jon's call at planning | Nine of the 44 weekend PRs were harness work, and nine harness PRs merged on 2026-09-14 alone |
 | Read a file once. A second look is a grep and a range, never the whole file again; a screenshot is read once and described | `read-guard.sh` denies a repeat and an unranged file over 400 lines (#1844); `rtk read` for the rest | 981 of 1,930 text reads over the weekend repeated a file already in the session; one core file was read 225 times |
 
 A PR body says what the reviewer needs and stops. The weekend's median was 430
@@ -189,7 +189,7 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
 - **Context length drives usage more than the rung.** 52 of 154 main sessions
   passed 200k tokens, and the eight biggest sessions were 36% of the fortnight.
   `/compact` when mid-task. The status line shows the context in thousands,
-  amber from 200k and red from 250k.
+  amber from 200k and red from 400k.
 - **A parked session pays again.** The prompt cache lasts an hour; the first
   turn after a longer gap re-sends a context past 50k at write price. In the
   week to 2026-09-13 that was 194 turns and $233, and cache writes were 29% of
