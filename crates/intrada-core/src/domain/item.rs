@@ -663,11 +663,18 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             // An exercise with a live variation has no single key (#1783
             // decision 1): checked here, ahead of every other field, so a
             // rejection never leaves the item partly updated. Clearing the
-            // key is always allowed; only setting one is blocked, matching
-            // the same invariant `migrate_key_into_labels` establishes going
-            // the other way.
-            if let Some(Some(_)) = input.key {
-                if item.variants.iter().any(|v| v.deleted_at.is_none()) {
+            // key is always allowed; resending the key an edit form already
+            // loaded is a no-op, not a new key, so only an actual change is
+            // blocked, matching the same invariant `migrate_key_into_labels`
+            // establishes going the other way. Kind-scoped: an item converted
+            // away from Exercise no longer carries this invariant.
+            if let Some(Some(new_key)) = &input.key {
+                let stays_exercise =
+                    input.kind.as_ref().unwrap_or(&item.kind) == &ItemKind::Exercise;
+                let changed =
+                    item.key.as_deref().map(str::to_lowercase) != Some(new_key.to_lowercase());
+                if stays_exercise && changed && item.variants.iter().any(|v| v.deleted_at.is_none())
+                {
                     model.last_error = Some(
                         LibraryError::Validation {
                             field: "key".to_string(),
@@ -1885,6 +1892,54 @@ mod tests {
         let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex.key, None, "the set was refused");
         assert!(model.last_error.is_some());
+    }
+
+    /// A pre-this-change exercise can carry both a key and a live variation
+    /// (#1783 self-review). Its edit form loads that key and resends it
+    /// unchanged on every save (`ItemFormModel.updateInput()`), so an
+    /// unchanged key must not be treated as a new one, or every other field
+    /// on the same edit becomes unreachable until the key is cleared by
+    /// hand.
+    #[test]
+    fn update_resending_an_unchanged_key_on_an_exercise_with_a_live_variation_still_updates_other_fields(
+    ) {
+        let mut model = model_with_piece_and_exercise();
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["F".to_string()],
+            },
+        );
+        // The migration above already cleared it; set it back by hand so
+        // this test exercises resending a key still on the exercise, not
+        // one only just cleared.
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("stale".to_string());
+
+        send(
+            &mut model,
+            ItemEvent::Update {
+                id: "ex-1".to_string(),
+                input: crate::domain::types::UpdateItem {
+                    title: Some("Renamed".to_string()),
+                    key: Some(Some("stale".to_string())),
+                    ..Default::default()
+                },
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.title, "Renamed",
+            "the unrelated field update was refused"
+        );
+        assert_eq!(
+            ex.key,
+            Some("stale".to_string()),
+            "the unchanged key was kept"
+        );
+        assert!(model.last_error.is_none());
     }
 
     #[test]

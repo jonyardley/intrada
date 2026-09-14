@@ -183,20 +183,6 @@ pub fn sort_and_filter_picker_candidates(
     crate::app::sort_and_filter_candidates(&candidates, &sort.into(), &search)
 }
 
-// ── Add/Edit exercise form: Key field visibility ──
-
-/// Whether the Add/Edit exercise form should show its Key input, given how
-/// many live variation rows the form currently holds. A plain call, not an
-/// `Event` round trip, since the form re-derives this on every add/remove of
-/// an unsaved row, before anything reaches the core (#1783 decision 1). See
-/// `intrada_core::domain::variant::shows_key_field`, which also decides
-/// `LibraryItemView.shows_key` for an already-saved exercise.
-#[cfg_attr(feature = "uniffi", uniffi::export)]
-#[must_use]
-pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
-    crate::domain::variant::shows_key_field(live_variant_count as usize)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,12 +325,5 @@ mod tests {
                 "field {field:?} direction {direction:?} should order {expected:?}"
             );
         }
-    }
-
-    #[test]
-    fn exercise_form_shows_key_only_with_no_variation_rows() {
-        assert!(exercise_form_shows_key(0));
-        assert!(!exercise_form_shows_key(1));
-        assert!(!exercise_form_shows_key(3));
     }
 }
