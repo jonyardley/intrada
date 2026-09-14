@@ -1,9 +1,10 @@
 import XCTest
 
 /// Real-device UITest for variation management (#1083, renamed in #1733):
-/// rename and remove a variation, driven against "Major Scales", the seeded
+/// renaming a live-queried field, driven against "Major Scales", the seeded
 /// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
-/// in that order; see `app.rs`'s `LoadSampleData` seed).
+/// in that order; see `app.rs`'s `LoadSampleData` seed). Removing a variation
+/// moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
 ///
 /// Drag reorder is deliberately not covered here: `.draggable`/
 /// `.dropDestination` ride the system Drag & Drop API, which XCUITest can't
@@ -62,21 +63,5 @@ final class VariationManagementUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["E"].exists, "old label gone")
     XCTAssertTrue(app.staticTexts["C"].exists, "untouched variation still present")
     XCTAssertTrue(app.staticTexts["G"].exists, "untouched variation still present")
-  }
-
-  func testRemoveVariationArchivesIt() {
-    let app = openScalesVariations()
-
-    let removeA = app.buttons["Remove A from keys"]
-    XCTAssertTrue(removeA.waitForExistence(timeout: 5), "remove control for A")
-    removeA.tap()
-
-    XCTAssertFalse(
-      app.buttons["Remove A from keys"].waitForExistence(timeout: 3),
-      "A row gone from edit list")
-
-    app.buttons["Done editing keys"].tap()
-    XCTAssertFalse(app.staticTexts["A"].exists, "removed variation no longer shown")
-    XCTAssertTrue(app.staticTexts["C"].exists, "other variations still present")
   }
 }

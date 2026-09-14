@@ -57,6 +57,37 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertEqual(afterSwitch.currentVariationLabel, "D")
   }
 
+  /// Switching resets the repetition count rather than carrying the old
+  /// variation's total (#1825, moved from `VariationPickerUITests`): the count
+  /// belongs to the open play, and a switch opens a fresh one.
+  func testSwitchingVariationRestartsTheRepetitionCountOverTheRealBridge() throws {
+    let bridge = LiveBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let inC = try variationId(bridge, label: "C")
+    let inD = try variationId(bridge, label: "D")
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:30Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:40Z")))
+    let beforeSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    XCTAssertEqual(beforeSwitch.currentRepCount, 2, "two repetitions banked against C")
+
+    _ = try bridge.update(
+      .session(
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
+
+    let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    XCTAssertEqual(afterSwitch.currentVariationLabel, "D", "the chip follows the switch")
+    XCTAssertNil(
+      afterSwitch.currentRepCount, "D's fresh play starts untouched rather than carrying C's 2")
+  }
+
   /// A tempo lands on the play it was played on (#1761): the switch stamps C
   /// from the click sounding then and the hand-off stamps D, through real
   /// bincode with a quaver click on both events.

@@ -171,6 +171,16 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewLibrarySearching), as: config)
   }
 
+  /// The button-revealed field just after the tap, before any text lands
+  /// (#1825): the two states the field toggles between are hidden
+  /// (`testLibraryScreenPopulated`) and this one.
+  func testLibraryScreenSearchRevealedEmpty() {
+    assertSnapshot(
+      of: host(
+        NavigationStack { LibraryScreen(previewSearch: "") },
+        store: .previewLibrary), as: config)
+  }
+
   /// The browse controls have to give way at accessibility sizes, or the screen
   /// lays out wider than the device and shifts off its leading edge (#1470).
   func testLibraryScreenAccessibilityText() {
