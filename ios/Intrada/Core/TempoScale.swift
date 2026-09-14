@@ -1,3 +1,5 @@
+import CoreGraphics
+
 /// Not `Tempo`: the generated `SharedTypes.Tempo` already takes that name in the app module.
 enum TempoScale {
   /// Narrower than the core's validation; a target outside it arrives clamped
@@ -22,5 +24,17 @@ enum TempoScale {
 
   static func stepped(from value: Int, by delta: Int, unit: UInt8 = 4) -> Int {
     clamp(value + delta, unit: unit)
+  }
+
+  /// Points of vertical drag per one `step` of tempo, tuned by feel on the
+  /// simulator (#1823): fine enough that a step reads as deliberate, loose
+  /// enough that a thumb's-length drag crosses most of the usable range.
+  static let dragPointsPerStep: CGFloat = 8
+
+  /// Anchored to the tempo the gesture began at, not the last frame's value,
+  /// so drift never compounds across steps (#1823).
+  static func bpm(fromDragTranslation translation: CGFloat, anchor: Int, unit: UInt8 = 4) -> Int {
+    let steps = Int(-translation / dragPointsPerStep)
+    return clamp(anchor + steps * step, unit: unit)
   }
 }

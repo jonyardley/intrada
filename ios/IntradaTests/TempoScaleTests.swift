@@ -1,7 +1,52 @@
 import SharedTypes
+import Testing
 import XCTest
 
 @testable import Intrada
+
+/// The drag-to-BPM maths (#1823): a Swift Testing suite alongside the
+/// existing XCTest one rather than migrating it wholesale.
+@MainActor
+struct TempoScaleDragTests {
+  @Test func aSubStepDragEitherWayLeavesTheAnchorUnchanged() {
+    #expect(TempoScale.bpm(fromDragTranslation: -3, anchor: 96) == 96)
+    #expect(TempoScale.bpm(fromDragTranslation: 3, anchor: 96) == 96)
+  }
+
+  @Test func draggingUpByOneStepsWorthRaisesTempoByTheSharedStep() {
+    #expect(
+      TempoScale.bpm(fromDragTranslation: -TempoScale.dragPointsPerStep, anchor: 96) == 98)
+  }
+
+  @Test func draggingDownByOneStepsWorthLowersTempoByTheSharedStep() {
+    #expect(
+      TempoScale.bpm(fromDragTranslation: TempoScale.dragPointsPerStep, anchor: 96) == 94)
+  }
+
+  @Test func aLargeUpwardDragSaturatesAtTheUpperBound() {
+    #expect(
+      TempoScale.bpm(fromDragTranslation: -2000, anchor: 96) == TempoScale.range.upperBound)
+  }
+
+  @Test func aLargeDownwardDragSaturatesAtTheLowerBound() {
+    #expect(
+      TempoScale.bpm(fromDragTranslation: 2000, anchor: 96) == TempoScale.range.lowerBound)
+  }
+
+  @Test func anAnchorAlreadyAtTheUpperBoundStaysThereOnFurtherUpwardDrag() {
+    #expect(
+      TempoScale.bpm(
+        fromDragTranslation: -TempoScale.dragPointsPerStep, anchor: TempoScale.range.upperBound)
+        == TempoScale.range.upperBound)
+  }
+
+  @Test func anAnchorAlreadyAtTheLowerBoundStaysThereOnFurtherDownwardDrag() {
+    #expect(
+      TempoScale.bpm(
+        fromDragTranslation: TempoScale.dragPointsPerStep, anchor: TempoScale.range.lowerBound)
+        == TempoScale.range.lowerBound)
+  }
+}
 
 @MainActor
 final class TempoScaleTests: XCTestCase {

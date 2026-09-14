@@ -393,17 +393,40 @@ final class ScreenSnapshotTests: XCTestCase {
         ClickControl(
           bpm: 66, isRunning: false, unavailable: false, atSeededTempo: true,
           targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
-          onToggle: {}, onStep: { _ in })
+          onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
         ClickControl(
           bpm: 72, isRunning: true, unavailable: false, atSeededTempo: false,
           targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
-          onToggle: {}, onStep: { _ in })
+          onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
         ClickControl(
           bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
-          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+          onDragChange: { _ in })
         ClickControl(
           bpm: 96, isRunning: false, unavailable: true, atSeededTempo: true,
-          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+          onDragChange: { _ in })
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(states), as: config)
+  }
+
+  /// The lifted, tinted, neighbour-flanked state a finger drag on the BPM
+  /// capsule produces (#1823). `initiallyDragging` stands in for the gesture,
+  /// which a snapshot host can't drive.
+  func testClickControlDraggingStates() {
+    let states = ZStack {
+      IntradaColor.playerBgMid
+      VStack(spacing: 32) {
+        ClickControl(
+          bpm: 96, isRunning: false, unavailable: false, atSeededTempo: false,
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+          onDragChange: { _ in }, initiallyDragging: true)
+        ClickControl(
+          bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: false,
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+          onDragChange: { _ in }, initiallyDragging: true)
       }
       .padding(.horizontal, IntradaSpacing.card)
     }
@@ -425,7 +448,8 @@ final class ScreenSnapshotTests: XCTestCase {
           currentBeat: 0, onTap: {})
         ClickControl(
           bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: true,
-          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+          targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+          onDragChange: { _ in })
       }
       .padding(.horizontal, IntradaSpacing.card)
     }
@@ -446,7 +470,7 @@ final class ScreenSnapshotTests: XCTestCase {
       ClickControl(
         bpm: 208, isRunning: true, unavailable: false, atSeededTempo: false,
         targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
-        onToggle: {}, onStep: { _ in }
+        onToggle: {}, onStep: { _ in }, onDragChange: { _ in }
       )
       .padding(.horizontal, IntradaSpacing.card)
     }

@@ -61,6 +61,14 @@ final class ClickController {
     if isRunning { start() }
   }
 
+  /// The drag gesture's absolute counterpart to `step(by:)` (#1823).
+  func setBpm(_ newValue: Int) {
+    let clamped = TempoScale.clamp(newValue, unit: metre.unit)
+    guard clamped != bpm else { return }
+    bpm = clamped
+    if isRunning { start() }
+  }
+
   /// A session-local override; the item keeps its own metre. The tempo keeps
   /// its number in the new unit where the band allows it: the pulse the player
   /// is hearing does not change because they named the beat differently.
