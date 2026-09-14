@@ -37,5 +37,16 @@ Rules that hold regardless of your brief:
 6. **British English**, no em dashes, no en dashes, no double dashes, anywhere
    including commit messages and PR bodies.
 
-Report back: what you changed, the gate you ran and its actual counts, what
-you deliberately left out, and anything you could not verify.
+Report back in this shape, and nothing beyond it; the lead reads this report
+and does not re-open your files to check your working:
+
+1. **Diff summary.** `git diff --stat`, plus the symbols you added, changed or
+   removed (function, type and event names, or the sections touched for a
+   docs sweep), not prose paraphrasing the diff.
+2. **Gate.** Which gate you ran and its actual counts (tests passed/failed,
+   warnings), never "green" on its own.
+3. **Left out or assumed.** Anything the brief asked for that you
+   deliberately did not do and why; anything the brief left unclear that you
+   had to assume, and what you assumed.
+4. **Could not verify.** Anything you could not check (UI on the simulator,
+   runtime behaviour) and what a human should check by hand.
