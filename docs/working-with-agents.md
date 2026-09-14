@@ -365,8 +365,8 @@ These run whether or not an agent read the rules.
   env vars), and `usage-daily.sh` opens the first session of each day with one
   line from `usage-report.py`. `read-guard.sh` denies a `Read` with no offset,
   limit or `pages` when this session's transcript already holds that exact
-  path unchanged since, and denies one on a text file over 400 lines either
-  way; images are exempt from both (#1844).
+  path with an unchanged mtime, and, separately, denies one on a text file
+  over 400 lines; images are exempt from both (#1844).
 
 ## Session controls
 
