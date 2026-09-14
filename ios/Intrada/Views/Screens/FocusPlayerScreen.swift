@@ -41,7 +41,7 @@ struct FocusPlayerScreen: View {
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
-        tempoUnit: target.tempoUnit, plays: target.plays,
+        tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
         onSave: { result in handleReflection(target, result) },
         onSkip: { handleSkipRating(target) }
       )
@@ -397,16 +397,13 @@ struct FocusPlayerScreen: View {
       store.send(.session(.updateEntryScore(entryId: target.id, playId: play.id, score: score)))
     }
     // The click's tempo already landed on each play as it closed; this is the
-    // manual path, and the core ignores a number nobody set (#1761). It lands
-    // on the last stretch the core kept, not simply the last: a switch seconds
-    // before the item ended leaves a play the core discards. FIXME(#1761): a
-    // tempo per row replaces this single write.
-    if let openPlayId = target.plays.last(where: \.isMarkable)?.id {
+    // manual path, and the core ignores a row nobody moved (#1761).
+    for row in result.tempos {
       store.send(
         .session(
           .updateEntryTempo(
-            entryId: target.id, playId: openPlayId, tempo: result.achievedTempo,
-            userSet: result.tempoUserSet, click: target.reading.click)))
+            entryId: target.id, playId: row.playId, tempo: row.tempo, userSet: row.userSet,
+            click: row.click)))
     }
     reflecting = nil
   }
