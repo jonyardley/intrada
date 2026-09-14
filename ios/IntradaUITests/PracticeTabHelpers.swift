@@ -39,14 +39,9 @@ extension XCUIApplication {
   /// Abandons the running session so the next test starts from a clean
   /// container: an in-progress session outlives the app in UserDefaults.
   @MainActor
-  func abandonSession() {
-    buttons["Session options"].tap()
-    let end = buttons["End session early"]
-    if end.waitForExistence(timeout: 3) {
-      end.tap()
-      let discard = buttons["Discard"]
-      if discard.waitForExistence(timeout: 5) { discard.tap() }
-    }
+  func abandonSession(file: StaticString = #filePath, line: UInt = #line) {
+    endSessionEarly(file: file, line: line)
+    discardSummary(file: file, line: line)
   }
 
   /// Same job for a session that reached the summary: only `SaveSession` and
@@ -76,7 +71,10 @@ extension XCUIApplication {
   /// Ends a running session early, which lands on the summary.
   @MainActor
   func endSessionEarly(file: StaticString = #filePath, line: UInt = #line) {
-    buttons["Session options"].tap()
+    let options = buttons["Session options"]
+    XCTAssertTrue(
+      options.waitForExistence(timeout: 5), "the session options menu", file: file, line: line)
+    options.tap()
     let end = buttons["End session early"]
     XCTAssertTrue(
       end.waitForExistence(timeout: 5), "End session early", file: file, line: line)
