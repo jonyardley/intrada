@@ -5,6 +5,7 @@ import SwiftUI
 struct TempoStepper: View {
   @Binding var value: Int
   var unit: UInt8 = 4
+  var accessibilityLabel: String = "Achieved tempo"
 
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
@@ -21,7 +22,7 @@ struct TempoStepper: View {
       }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Achieved tempo")
+    .accessibilityLabel(accessibilityLabel)
     .accessibilityValue(TempoUnit.spoken(value, unit: unit))
     .accessibilityAdjustableAction { direction in
       switch direction {

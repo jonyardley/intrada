@@ -1238,11 +1238,13 @@
   extension ReflectionPlay {
     static func preview(
       _ id: String, _ label: String?, _ duration: String, _ repCount: UInt8? = nil,
-      _ repTarget: UInt8? = nil, isMarkable: Bool = true
+      _ repTarget: UInt8? = nil, isMarkable: Bool = true, tempoDisplay: UInt16? = nil,
+      clickPattern: ClickState? = nil
     ) -> ReflectionPlay {
       ReflectionPlay(
         id: id, variationLabel: label, durationDisplay: duration, repCount: repCount,
-        repTarget: repTarget, isMarkable: isMarkable)
+        repTarget: repTarget, isMarkable: isMarkable, tempoDisplay: tempoDisplay,
+        clickPattern: clickPattern)
     }
   }
 
