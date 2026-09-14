@@ -107,7 +107,7 @@ struct ClickControl: View {
         // between the glyph and the number, which reads as two facts.
         .lineLimit(1)
         .minimumScaleFactor(0.6)
-        .foregroundStyle(isDragging ? IntradaColor.accentText : tint)
+        .foregroundStyle(isDragging ? IntradaColor.accent : tint)
       if isDragging, showsBpmNumeral {
         neighbourNumeral(displayedBpm + TempoScale.step)
       } else if !isDragging {
@@ -195,7 +195,7 @@ struct ClickControl: View {
   }
 
   private var capsuleFill: Color {
-    if isDragging { return IntradaColor.accentGraphic.opacity(0.14) }
+    if isDragging { return IntradaColor.accent.opacity(0.14) }
     return isRunning ? marker : .clear
   }
 
