@@ -44,7 +44,7 @@ struct MasteryDial: View {
           .foregroundStyle(IntradaColor.ink)
         Text("of \(String(format: "%.1f", maxValue))".uppercased())
           .font(IntradaFont.eyebrow)
-          .tracking(1.5)
+          .tracking(IntradaFont.eyebrowTracking)
           .foregroundStyle(IntradaColor.inkFaint)
       }
       .lineLimit(dynamicTypeSize.isAccessibilitySize ? 1 : nil)
