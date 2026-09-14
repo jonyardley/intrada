@@ -1001,6 +1001,30 @@ mod tests {
     }
 
     #[test]
+    fn validate_no_variant_labels_passes_an_empty_list_and_rejects_a_populated_one() {
+        let mut input = CreateItem {
+            title: "Shell voicings".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            photo_id: None,
+            variant_labels: Vec::new(),
+        };
+        assert!(validate_no_variant_labels(&input).is_ok());
+
+        input.variant_labels = vec!["C".to_string()];
+        let err = validate_no_variant_labels(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => assert_eq!(field, "variant_labels"),
+            _ => panic!("expected a validation error"),
+        }
+    }
+
+    #[test]
     fn test_create_exercise_empty_title() {
         let input = CreateItem {
             title: "".to_string(),
