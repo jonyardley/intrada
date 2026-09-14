@@ -20,7 +20,8 @@ Jon. Before editing:
    `max` for a migration or anything inside the `ActiveSession` blob graph.
    Check with `/model` and `/effort`, and switch before the first edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
-   starts**, not only at the end. It is pinned never weaker than the writer.
+   starts**, not only at the end, spawned with `model: opus` (Fable for
+   Fable-written work); its definition pins Sonnet.
 3. **Domain-sensitivity override.** This work goes up at least one tier in
    ceremony, and a change to a bridge shape, a migration or the blob graph
    ships as two PRs: core first, screens in the same working session, or the
