@@ -1,6 +1,6 @@
 ---
 name: intrada-parallel-streams
-description: Running more than one Claude Code session or subagent against this repo at once: the decoupled file set a second stream may use, any number of shell-only streams once each names its screens, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
+description: Running more than one Claude Code session or subagent against this repo at once: two streams by default and a third only when it is shell-only, the decoupled file set a second stream may use, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
 ---
 
 ## Stream rules
@@ -13,17 +13,19 @@ core; it says nothing about two changes that touch only Swift screens and no
 crate, which is what most UX issues are (for example #1616, #1617, #1618 and
 #1620).
 
-- **One stream that touches `crates/intrada-core` or `crates/intrada-ffi`,
-  plus any number of streams that touch only `ios/` and no crate.**
-  Screen-only work carries none of the coupling the 31% figure measures, so
-  two or more shell-only streams can run at once. Each shell-only stream
-  names the screens it owns before it starts, so two streams cannot silently
-  pick up the same file. This unlocks concurrent editing, not concurrent
-  testing: every shell-only stream still queues at the test gate, one at a
-  time, because test runs serialise on app launch whatever device they name
-  (#1621; the mechanism and the recovery are in `docs/ios-testing.md`,
-  "Running alongside another checkout"). A fast-tier run is well under a
-  minute either way, so queuing costs little.
+- **Two streams by default; a third only when it touches `ios/` and no
+  crate, and the session says so when it starts one** (#1839). Over 12 to 14
+  September three or four streams at once hit the simulator busy 34 times
+  across 20 sessions, and the extra streams picked Tier 1 work. Of the two, at
+  most one touches `crates/intrada-core` or `crates/intrada-ffi`. Screen-only
+  work carries none of the coupling the 31% figure measures, which is why a
+  shell-only third is allowed. Each shell-only stream names the screens it
+  owns before it starts, so two streams cannot silently pick up the same
+  file. This unlocks concurrent editing, not concurrent testing: every
+  shell-only stream still queues at the test gate, one at a time, because
+  test runs serialise on app launch whatever device they name (#1621; the
+  mechanism and the recovery are in `docs/ios-testing.md`, "Running alongside
+  another checkout").
 - A **stream that touches neither the core crates nor `ios/`** keeps to the
   decoupled set: `docs/`, `specs/`, `design/`, or CI and tooling (`justfile`,
   `.github/workflows/`).
@@ -42,12 +44,13 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   `ios/Intrada/DesignSystem/Theme.swift`. Check the four files above before
   assuming two shell-only streams are independent: about half the time they
   are not.
-- **One worktree per session, started in it** (CLAUDE.md, Always step 3):
-  `just worktree-new <name>` branches from fresh `origin/main` and seeds the
+- **One worktree per session, made by that session** (CLAUDE.md, Always step
+  3): `just worktree-new <name>` branches from fresh `origin/main` and seeds the
   warm `target/` and `ios/build` caches (#1205). Close the session when its
-  task ships. A session already in the main checkout does not restart: it makes
-  the worktree and prefixes every shell command with `cd <worktree> && `
-  (#1720, `docs/working-with-agents.md`).
+  task ships. Every session starts in the main checkout and does not restart
+  in the worktree: it makes the worktree and prefixes every shell command with
+  `cd <worktree> && `
+  (#1720, #1837, `docs/working-with-agents.md`).
 - **Once you have a worktree, edit only inside it.** On 2026-09-06 a session
   working in its own worktree also wrote the change into the main checkout,
   where another session nearly committed it into an unrelated PR. A green run

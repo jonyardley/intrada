@@ -606,6 +606,7 @@ fn build_library_item_views(
         };
         let ladder_is_keys =
             crate::domain::variant::ladder_is_all_keys(variants.iter().map(|v| v.label.as_str()));
+        let shows_key = crate::domain::variant::shows_key_field(variants.len());
 
         items.push(LibraryItemView {
             id: item.id.clone(),
@@ -643,6 +644,7 @@ fn build_library_item_views(
             variants,
             ladder_is_keys,
             photo_id: item.photo_id.clone(),
+            shows_key,
         });
     }
 
@@ -2127,6 +2129,7 @@ mod tests {
                 notes: None,
                 tags: vec!["  warm-up ".to_string()],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2147,6 +2150,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2169,6 +2173,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2195,6 +2200,7 @@ mod tests {
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
                 tags: vec!["日本語タグ".to_string()],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -2391,6 +2397,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -3941,6 +3948,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -4011,6 +4019,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -5330,6 +5339,77 @@ mod tests {
         assert!(!piece.ladder_is_keys, "no rungs is not a ladder of keys");
     }
 
+    #[test]
+    fn view_an_exercise_with_live_variations_hides_the_key_field() {
+        let app = Intrada;
+        let model = Model {
+            items: vec![laddered_exercise("ex-1")],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(
+            !ex.shows_key,
+            "two live rungs, one tombstoned, still hides Key"
+        );
+    }
+
+    #[test]
+    fn view_an_un_laddered_exercise_shows_the_key_field() {
+        let app = Intrada;
+        let model = Model {
+            items: vec![make_item(
+                "ex-1",
+                "Shells",
+                ItemKind::Exercise,
+                chrono::Utc::now(),
+            )],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.shows_key, "no rungs, nothing to hide the field for");
+    }
+
+    #[test]
+    fn view_a_piece_shows_the_key_field() {
+        let app = Intrada;
+        let model = Model {
+            items: vec![make_item(
+                "p-1",
+                "Clair de Lune",
+                ItemKind::Piece,
+                chrono::Utc::now(),
+            )],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
+        assert!(piece.shows_key, "a piece never has a ladder to hide it for");
+    }
+
+    /// A tombstoned rung left alone once the last live one goes: the field
+    /// comes back, mirroring `ladder_is_all_keys`'s own tombstone handling.
+    #[test]
+    fn view_an_exercise_with_only_tombstoned_variations_shows_the_key_field() {
+        let app = Intrada;
+        let mut exercise = laddered_exercise("ex-1");
+        for v in &mut exercise.variants {
+            v.deleted_at = Some(chrono::Utc::now());
+        }
+        let model = Model {
+            items: vec![exercise],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.shows_key, "nothing live on the ladder");
+    }
+
     /// Positional bincode has no "absent": a new `LibraryItemView` field that
     /// does not survive the wire is a silent no-op, not a crash (#846).
     #[test]
@@ -5337,6 +5417,7 @@ mod tests {
         let mut view = LibraryItemView::fixture("ex-1", "Shells", ItemKind::Exercise);
         view.variants = vec![crate::model::VariantView::fixture("v-c", "C", 0)];
         view.ladder_is_keys = true;
+        view.shows_key = false;
         crate::domain::types::assert_round_trips(view);
     }
 

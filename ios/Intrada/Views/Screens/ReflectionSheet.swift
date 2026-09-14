@@ -35,6 +35,9 @@ struct ReflectionPlay: Identifiable, Equatable {
   let repTarget: UInt8?
   /// Whether the core predicts this play survives the terminal drop (#1758).
   let isMarkable: Bool
+  /// The stamp in its own unit, and the metre it counted in; both `nil` unstamped (#1761).
+  let tempoDisplay: UInt16?
+  let clickPattern: ClickState?
 
   var title: String { variationLabel ?? "No variation" }
 
@@ -50,20 +53,28 @@ struct ReflectionPlay: Identifiable, Equatable {
       ReflectionPlay(
         id: play.id, variationLabel: play.variationLabel,
         durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
-        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable)
+        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable,
+        tempoDisplay: play.tempoDisplay, clickPattern: play.clickPattern)
     }
   }
 }
 
-/// What the sheet collected. `tempoUserSet` is an observation, not a
-/// judgement: whether it amounts to evidence is the core's ruling (#1420).
+/// One row's own tempo write, since each row can be stamped in a different metre or not at all (#1761).
+struct ReflectionRowTempo {
+  let playId: String
+  let tempo: UInt16
+  /// Moved the stepper, rather than accepting the pre-fill.
+  let userSet: Bool
+  let click: ClickState?
+}
+
+/// What the sheet collected. `tempos` holds one entry per play, sent whether or
+/// not it was touched; the core ignores the ones nobody moved (#1420, #1761).
 struct ReflectionResult {
   /// Play id to mark, holding only the rows the musician actually marked.
   let marks: [String: UInt8]
   let note: String
-  let achievedTempo: UInt16
-  /// The user moved the stepper rather than accepting the pre-fill.
-  let tempoUserSet: Bool
+  let tempos: [ReflectionRowTempo]
 }
 
 struct ReflectionSheet: View {
@@ -71,9 +82,10 @@ struct ReflectionSheet: View {
   let elapsedDisplay: String
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
-  /// The beat value the click counted in, so the stepper reads `♪` when the
-  /// player did (#1499).
+  /// The beat value an unstamped row's stepper counts in, and reads `♪` for (#1499).
   let tempoUnit: UInt8
+  /// The metre an unstamped row counts in, sent as that row's `click` (#1761).
+  let currentClick: ClickState?
   /// What was played, in order. One row is the sheet that shipped before
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
@@ -83,11 +95,13 @@ struct ReflectionSheet: View {
 
   @State private var marks: [String: Int] = [:]
   @State private var note: String = ""
-  @State private var achievedTempo: TrackedTempo
+  /// One per play, seeded from its stamp or the current click (#1761 rule 6).
+  @State private var tempos: [String: TrackedTempo]
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
     startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
+    currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void
@@ -96,11 +110,20 @@ struct ReflectionSheet: View {
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
     self.tempoUnit = tempoUnit
+    self.currentClick = currentClick
     self.plays = plays
     self.onSave = onSave
     self.onSkip = onSkip
-    _achievedTempo = State(
-      initialValue: TrackedTempo(startingBpm: startingTempoBpm, unit: tempoUnit))
+    _tempos = State(
+      initialValue: Dictionary(
+        plays.filter(\.isMarkable).map { play in
+          (
+            play.id,
+            TrackedTempo(
+              startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm,
+              unit: play.clickPattern?.metre.unit ?? tempoUnit)
+          )
+        }, uniquingKeysWith: { first, _ in first }))
   }
 
   var body: some View {
@@ -133,11 +156,11 @@ struct ReflectionSheet: View {
             setMark(next, for: only.id)
           }
           .padding(.top, IntradaSpacing.controlGap)
-        }
 
-        eyebrow(tempoEyebrow).padding(.top, IntradaSpacing.card)
-        TempoStepper(value: achievedTempoBinding, unit: tempoUnit)
-          .padding(.top, IntradaSpacing.controlGap)
+          eyebrow(singlePlayTempoEyebrow).padding(.top, IntradaSpacing.card)
+          TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
+            .padding(.top, IntradaSpacing.controlGap)
+        }
 
         eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
         TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
@@ -153,8 +176,13 @@ struct ReflectionSheet: View {
             ReflectionResult(
               marks: marks.compactMapValues { $0 == 0 ? nil : UInt8($0) },
               note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-              achievedTempo: UInt16(achievedTempo.bpm),
-              tempoUserSet: achievedTempo.userSet))
+              tempos: plays.compactMap { play in
+                tempos[play.id].map { tracked in
+                  ReflectionRowTempo(
+                    playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
+                    click: play.clickPattern ?? currentClick)
+                }
+              }))
         } label: {
           Text("Save & continue")
           Image(systemName: "arrow.right")
@@ -192,6 +220,9 @@ struct ReflectionSheet: View {
             ) { next in
               setMark(next, for: play.id)
             }
+            TempoStepper(
+              value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
+              accessibilityLabel: "Tempo for \(play.title)")
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)
@@ -199,14 +230,8 @@ struct ReflectionSheet: View {
     }
   }
 
-  // Named with the variation the write actually lands on (#1758): the last
-  // markable play, not simply the last, or a stray tap at the end names one
-  // variation while the reading lands on another.
-  private var tempoEyebrow: String {
-    if plays.count > 1, let label = plays.last(where: \.isMarkable)?.variationLabel {
-      return "Tempo reached · \(label)"
-    }
-    return tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached"
+  private var singlePlayTempoEyebrow: String {
+    tempoTarget.map { "Tempo reached · target ♩ = \($0)" } ?? "Tempo reached"
   }
 
   private func mark(for playId: String) -> Int { marks[playId] ?? 0 }
@@ -215,10 +240,14 @@ struct ReflectionSheet: View {
     marks[playId] = next.map(Int.init) ?? 0
   }
 
+  private func stepperUnit(for play: ReflectionPlay) -> UInt8 {
+    play.clickPattern?.metre.unit ?? tempoUnit
+  }
+
   // TempoStepper only writes on an explicit tap or accessibility adjustment,
   // never on appear, so a write here is the user considering the number (#1420).
-  private var achievedTempoBinding: Binding<Int> {
-    Binding(get: { achievedTempo.bpm }, set: { achievedTempo.set($0) })
+  private func tempoBinding(for playId: String) -> Binding<Int> {
+    Binding(get: { tempos[playId]?.bpm ?? 0 }, set: { tempos[playId]?.set($0) })
   }
 
   private func eyebrow(_ text: String) -> some View {

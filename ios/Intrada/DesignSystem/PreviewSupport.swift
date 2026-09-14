@@ -533,7 +533,7 @@
             pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variants: [], ladderIsKeys: false, photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil, showsKey: true)
     }
 
     static var previewExercise: LibraryItemView {
@@ -545,7 +545,7 @@
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -558,7 +558,7 @@
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     static var previewDetail: LibraryItemView {
@@ -570,7 +570,7 @@
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variants: [], ladderIsKeys: false, photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil, showsKey: true)
     }
 
     /// A charted piece — exercises the chord-chart card (parsed grid + preview).
@@ -599,7 +599,7 @@
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variants: [],
         ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     static var previewMinimal: LibraryItemView {
@@ -610,7 +610,7 @@
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -653,7 +653,7 @@
             practice: nil, pieceContextScore: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
-        variants: [], ladderIsKeys: false, photoId: nil)
+        variants: [], ladderIsKeys: false, photoId: nil, showsKey: true)
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
@@ -683,7 +683,7 @@
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -724,7 +724,7 @@
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
-        photoId: nil)
+        photoId: nil, showsKey: true)
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,
@@ -747,7 +747,7 @@
           VariantView(
             id: "variation-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
             isSolid: false),
-        ], ladderIsKeys: true, photoId: nil)
+        ], ladderIsKeys: true, photoId: nil, showsKey: false)
     }
 
     /// Twelve chromatic variations, stress-testing the horizontal scroller
@@ -770,7 +770,7 @@
             id: "variation-\(index)", label: label, position: UInt64(index),
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
             isSolid: solid)
-        }, ladderIsKeys: true, photoId: nil)
+        }, ladderIsKeys: true, photoId: nil, showsKey: false)
     }
 
     /// Variations that are inversions, not keys: pins the "variations" word and the stairs
@@ -787,7 +787,7 @@
           VariantView(
             id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
             scoreHistory: [], isSolid: false)
-        }, ladderIsKeys: false, photoId: nil)
+        }, ladderIsKeys: false, photoId: nil, showsKey: false)
     }
 
     /// Free-text variation names, matching the issue's own example (#1786).
@@ -805,7 +805,7 @@
           VariantView(
             id: "long-variation-\(index)", label: label, position: UInt64(index),
             latestScore: index == 0 ? 8 : nil, scoreHistory: [], isSolid: index == 0)
-        }, ladderIsKeys: false, photoId: nil)
+        }, ladderIsKeys: false, photoId: nil, showsKey: false)
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -817,7 +817,8 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
-        chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil)
+        chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil, showsKey: true
+      )
     }
   }
 
@@ -1238,11 +1239,13 @@
   extension ReflectionPlay {
     static func preview(
       _ id: String, _ label: String?, _ duration: String, _ repCount: UInt8? = nil,
-      _ repTarget: UInt8? = nil, isMarkable: Bool = true
+      _ repTarget: UInt8? = nil, isMarkable: Bool = true, tempoDisplay: UInt16? = nil,
+      clickPattern: ClickState? = nil
     ) -> ReflectionPlay {
       ReflectionPlay(
         id: id, variationLabel: label, durationDisplay: duration, repCount: repCount,
-        repTarget: repTarget, isMarkable: isMarkable)
+        repTarget: repTarget, isMarkable: isMarkable, tempoDisplay: tempoDisplay,
+        clickPattern: clickPattern)
     }
   }
 

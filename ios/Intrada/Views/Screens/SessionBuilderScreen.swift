@@ -108,34 +108,27 @@ struct SessionBuilderScreen: View {
   }
 
   var body: some View {
-    ZStack(alignment: .bottom) {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: 0) {
-        header
-        content
+    ScreenScaffold(
+      title: "Build session",
+      subtitle: isEditing ? "Editing" : summary,
+      leadingContent: {
+        Button("Cancel") { cancel() }
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accentText)
+          .frame(minHeight: 44)
+          .contentShape(Rectangle())
+      },
+      trailingContent: { headerActions },
+      content: {
+        ZStack(alignment: .bottom) {
+          content
+          if !entries.isEmpty { startBar }
+        }
       }
-      if !entries.isEmpty { startBar }
-    }
-    .navigationBarTitleDisplayMode(.inline)
+    )
+    // A native back button (or its edge-swipe) would pop past `cancel()`'s
+    // unsaved-plan confirmation; Cancel is the only way out (#1822).
     .navigationBarBackButtonHidden(true)
-    .toolbar {
-      ToolbarItem(placement: .topBarLeading) { Button("Cancel") { cancel() } }
-      if hasGroups && !isEditing {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
-            .font(IntradaFont.meta)
-        }
-      }
-      if !blocks.isEmpty {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button(isEditing ? "Done" : "Edit") {
-            withAnimation(IntradaMotion.standard) {
-              editMode = isEditing ? .inactive : .active
-            }
-          }
-        }
-      }
-    }
     .sheet(isPresented: $addingItems) { AddToSessionSheet().environment(store) }
     .sheet(item: $configuringEntry) { target in
       EntrySettingsSheet(entry: target.entry).environment(store)
@@ -156,19 +149,32 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  private var header: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text("Build session")
-        .font(IntradaFont.pageTitle(28))
-        .foregroundStyle(IntradaColor.ink)
-      Text(isEditing ? "Editing" : summary)
-        .font(IntradaFont.subtitle)
-        .foregroundStyle(IntradaColor.inkSecondary)
+  @ViewBuilder private var headerActions: some View {
+    if !blocks.isEmpty {
+      Button(isEditing ? "Done" : "Edit") {
+        withAnimation(IntradaMotion.standard) {
+          editMode = isEditing ? .inactive : .active
+        }
+      }
+      .font(IntradaFont.bodyMedium)
+      .foregroundStyle(IntradaColor.accentText)
+      .frame(minHeight: 44)
+      .contentShape(Rectangle())
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.horizontal, IntradaSpacing.card)
-    .padding(.top, IntradaSpacing.controlGap)
-    .padding(.bottom, IntradaSpacing.cardCompact)
+  }
+
+  // Its own row rather than a header action (#1724): crowding the header
+  // with three text buttons wrapped the title onto two lines and lost the
+  // swipe.
+  private var ungroupAllRow: some View {
+    HStack {
+      Spacer()
+      Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
+        .font(IntradaFont.meta)
+        .foregroundStyle(IntradaColor.accentText)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
   }
 
   @ViewBuilder private var content: some View {
@@ -187,6 +193,15 @@ struct SessionBuilderScreen: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else {
       List {
+        if hasGroups && !isEditing {
+          ungroupAllRow
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(
+              EdgeInsets(
+                top: 0, leading: IntradaSpacing.card, bottom: IntradaSpacing.controlGap,
+                trailing: IntradaSpacing.card))
+        }
         ForEach(rows) { row in
           rowView(row)
             .listRowBackground(Color.clear)

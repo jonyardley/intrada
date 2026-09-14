@@ -712,6 +712,42 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  /// A stamped row counts in its own metre (7/8, quavers); an unstamped one counts in crotchets (#1761 rule 6).
+  func testReflectionSheetWithTempoPerRow() {
+    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        plays: [
+          .preview(
+            "p1", "C major", "4:10", 8, 10,
+            tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p2", "G major", "3:20", 10, 10),
+        ],
+        onSave: { _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testReflectionSheetWithTempoPerRowAccessibilitySize() {
+    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        plays: [
+          .preview(
+            "p1", "C major", "4:10", 8, 10,
+            tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p2", "G major", "3:20", 10, 10),
+        ],
+        onSave: { _ in }, onSkip: {})
+    }
+    .dynamicTypeSize(.accessibility1)
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   /// A variation played earlier this item, not just scored in a past session,
   /// reads "Played this session" rather than falling back to its score (#1784).
   func testVariationPickerSheet() {
@@ -1319,7 +1355,7 @@ final class ScreenSnapshotTests: XCTestCase {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
@@ -1327,7 +1363,7 @@ final class ScreenSnapshotTests: XCTestCase {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _, _ in })
@@ -1382,7 +1418,7 @@ final class ScreenSnapshotTests: XCTestCase {
       updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
       linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
       variants: [],
-      ladderIsKeys: false, photoId: nil)
+      ladderIsKeys: false, photoId: nil, showsKey: true)
   }
 
   private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {

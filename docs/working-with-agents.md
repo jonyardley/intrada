@@ -9,6 +9,38 @@
 >
 > Last reviewed: 2026-09-14, against the Claude 5 family (Fable 5.1, Opus 5,
 > Sonnet 5, Haiku 4.5). Re-review at the next model generation.
+>
+> The generic version of this file, with the intrada names taken out, is
+> [`agentic-primer.md`](agentic-primer.md): read that to set up a new repo,
+> this to drive this one.
+
+## When to do what
+
+The rest of this file explains each row; this table is the one to read
+mid-session when you need the next move. Every rule here is held by a hook or
+a recipe named under "Guardrails already in place", and the number it was set
+from is under "Usage guidelines".
+
+| You are | Do | Explained under |
+|---|---|---|
+| Starting a unit of work | `just claim N`, `just worktree-new <name>`, prefix every shell command with `cd <worktree> && `, read the `.claude/rules/` files for the surfaces you will touch, and name the model and effort before the first edit | CLAUDE.md Always; Isolating concurrent work; Model and effort |
+| Choosing a rung | Read the activity ladder row for what you are doing now, not the file count. Decisions go up the ladder, execution goes down it; `/model` and `/effort` switch in place | Model and effort |
+| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Sonnet 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files | Delegating |
+| Holding a fully specified mechanical edit | `smol` (Haiku 4.5 `low`) | Delegating |
+| About to run a gate | `test-runner`, never in the lead; a fan-out task skips the suites and the lead runs them once at the end | Delegating |
+| Needing facts from many files | `Explore` with `model: haiku`, spawned from a session at `high` or below; its findings are leads, not facts | Delegating |
+| About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff (Opus on a sensitive surface), then `just pr-open`; watch CI to a conclusion in the same turn and read mergeability | Shipping; Verification, the standard held |
+| Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that | Usage guidelines; Troubleshooting |
+| Warned at 150k context | Finish the slice in hand; everything after it goes to `task` or `smol`, and this session checks and ships | Session controls |
+| At 200k | The rest of the unit goes to a subagent now | Session controls |
+| At 400k | `/compact` now, then carry on to the end of the unit | Session controls |
+| Mid-task and the thread matters | `/compact`, not `/clear`: compact keeps the decisions and drops the tool output, and the path-scoped rules reload on the next Read | Session controls |
+| The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting | Usage guidelines |
+| About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so | Usage guidelines |
+| Needing a stronger rung for one decision | `/model` and `/effort` in this session, saying so, and back down at the boundary. A new chat frees the lead; it is never how a rung changes | Model and effort |
+| Handing work to another session | An opener the new session pastes into a chat opened in the main checkout, naming the issue, activity, model, effort and stream; that session claims the issue and makes its own worktree. Never a worktree command for Jon to run | Plans ship their own resourcing |
+| Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/`, a third only shell-only and announced | Isolating concurrent work |
+| Asked "what's next" | Answer from `just status` and the session-start claims list, with no further reads | Usage guidelines |
 
 ## What loads, and what it costs
 
@@ -18,15 +50,22 @@ most of it again. Everything in the first column below is in that bill.
 | Input | Path | When it loads |
 |---|---|---|
 | Project rules | `CLAUDE.md` | Every session and every subagent, in full. Under 200 lines by rule |
-| Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count. They reload the same way after compaction |
+| Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
 | Repo settings | `.claude/settings.json` | The model and effort a session opens on (Sonnet 5 medium, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
-| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch past 250k), after a push (the CI-watch note) and in the day's first session (one usage line); the bash guard runs before every command, the spawn guard before every subagent |
+| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch nudges, thresholds below), after a push (the CI-watch note) and in the day's first session (one usage line); before a tool runs, the worktree guard on every edit and command, the bash guard on every command, the read guard on every Read, the spawn guard on every subagent. Each is listed under "Guardrails already in place" |
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
 | Xcode tools | `.mcp.json` | xcodebuildmcp and the simulator workflow |
+
+The `~/.claude/` rows above (user rules, auto memory, user hooks) move whole
+if `CLAUDE_CONFIG_DIR` is set: a session on such a machine reads
+`$CLAUDE_CONFIG_DIR/CLAUDE.md`, `$CLAUDE_CONFIG_DIR/settings.json` and
+`$CLAUDE_CONFIG_DIR/projects/<project>/memory/` instead, and adding a hook to
+`~/.claude/settings.json` there does nothing: caught during the #1849 epic
+cross-check, where a hook shipped registered in the undocumented path only.
 
 Run `/context` in a session to see exactly which files loaded.
 
@@ -45,11 +84,15 @@ A rule lives in exactly one of these, chosen by who reads it and when.
    read, then in context for the rest of the session.
 4. **Skills, by name.** Workflows rather than surfaces: shipping and parallel
    streams. `/ship` is the pre-push funnel.
-5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, plus the built-in
-   `Explore`. Model and effort pinned in the definition.
-6. **Hooks.** Repo: format on edit, install the git hooks. User: the bash
-   guard, the spawn guard, the per-prompt reminder and context watch, the
-   post-push CI note, the daily usage line.
+5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, with model and effort
+   pinned in the definition. `Explore`, `fork` and `general-purpose` are
+   built-in with no definition to pin ("Delegating" below).
+6. **Hooks.** Repo: format on edit, install the git hooks, the session-start
+   claims list. User: the worktree guard and its lease, the bash guard, the
+   read guard, the spawn guard, the per-prompt reminder and context watch, the
+   post-push CI note, the daily usage line, and the cold nudge on a launchd
+   timer. Every user hook fails open and ships with a test battery that is
+   mutation-tested, not trusted green.
 7. **Auto memory.** What neither CLAUDE.md records: preferences, corrections,
    project state the code cannot show.
 8. **Docs on demand.** `reference.md` for the why behind every rule, the specs,
@@ -59,6 +102,30 @@ The test for the personal versus project split, from the RIBA template review:
 if this is set wrong, who does it hurt? Only the author, and it is personal
 (`.claude/settings.local.json`, `~/.claude`). Anyone else, and it is project,
 checked in, and enforced somewhere the personal layer cannot weaken it.
+
+## Usage guidelines
+
+Nine rules that balance speed, cost and quality, each with what holds it and
+the number it was set from. Set on 2026-09-14 from the review in #1836: three
+days, $1,225, 76 sessions, 44 PRs opened from Friday evening and 40 of them
+merged.
+
+| Guideline | What holds it | Set from |
+|---|---|---|
+| Open on Sonnet 5 medium. Go up by activity, not by task size, and name the rung and effort at every boundary | `.claude/settings.json`, the turn reminder | Monday at 65% Sonnet cost a quarter of Saturday for the same PR count |
+| One unit per session: finish, `/clear`. Before a break over an hour, `/clear` | `context-watch.sh` on the next turn; a launchd timer (`cold-nudge.sh`, machine-local, #1842) nudges before that turn arrives | Seven sessions over four hours, every one Fable or Opus left open across a break; 194 cold turns cost $233 in the week before |
+| Two streams by default; a third only shell-only, and say so when starting it | `intrada-parallel-streams` (#1839) | 34 simulator-busy hits across 20 sessions |
+| The session makes and drives its worktree. Jon never runs a worktree command, and a handover is an opener pasted into a new chat in main | Always step 3; `guard-worktree.sh` denies the write in main, and #1840 makes the prefix automatic | Eleven corrections in three days, 51 denied writes in main |
+| Settled work goes to subagents from one lead; a new chat is for freeing the session or going up a rung, never for work the lead could dispatch | `guard-spawn.sh`, the agent pins, #1838 | Twelve of 76 sessions were status or handover only |
+| "What's next" and "what can run in parallel" are answered from `just status` and the session-start claims list, with no further reads | #1839 | Seven such sessions, each a fresh 80k to 200k context, all picking Tier 1 work |
+| A correction edits the rule that failed; it never adds one. A rule a hook can enforce loses its prose in the same change | This section, "The layers" above | Three worktree rules that disagreed, six memories, and the mistake back the next morning |
+| One harness slot a day; the rest is the app. Frozen until the #1849 re-measure on 2026-09-27, so the measurement is clean | Jon's call at planning | Nine of the 44 weekend PRs were harness work, and nine harness PRs merged on 2026-09-14 alone |
+| Read a file once. A second look is a grep and a range, never the whole file again; a screenshot is read once and described | `read-guard.sh` denies a repeat and an unranged file over 400 lines (#1844); `rtk read` for the rest | 981 of 1,930 text reads over the weekend repeated a file already in the session; one core file was read 225 times |
+
+A PR body says what the reviewer needs and stops. The weekend's median was 430
+words with three over 1,000, against merges ten minutes after opening. Whether
+that becomes a gate is decided by measuring the PRs after #1634 against its
+586-word baseline, an experiment Jon set on 2026-09-10 with no gate on purpose.
 
 ## Model and effort
 
@@ -101,7 +168,7 @@ boundary, saying so.
 | Visual design: a new flow against `design-principles.md`, a screen mocked in Claude Design | Opus 5 `high`; Fable 5.1 `high` only for a T-numbered decision or a flow with no precedent in the app | Opus 5 `high` for the mocks; Sonnet 5 `medium` for bookkeeping (`DesignSync`, tokens, filing the decision) | The lead, or a short session of its own | Fails visibly on the simulator, so a wrong call is cheap to see and cheap to redo |
 | Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; on a model no weaker than the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
 | Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Tier 1 trivia at Sonnet 5 `low` in the lead, or Haiku 4.5 via `smol` when fully specified | The judgement-dense half in the lead, since `task` is pinned to Sonnet and the spawn guard refuses a lift; the patterned half as a subagent from the session that planned it, once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
-| Review | The reviewer is never weaker than the writer: `reviewer` (Opus 5 `high`) for Tier 2; Fable for Fable-written bridge or migration work, in the Fable session or by spawning `reviewer` with `model` set to Fable, the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Judgement-dense, but short: no `reviewer` turn passed 200k context in the fortnight's `just usage 14` |
+| Review | `reviewer` is pinned to Sonnet 5 `high`, which covers Tier 1 and screens-only diffs; a diff touching `crates/intrada-ffi`, a migration, `ActiveSession` or auth spawns `reviewer` with `model` set to Opus instead (Fable for Fable-written bridge or migration work), the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Opus or Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Sonnet covers the non-sensitive majority (52 runs, 12 to 14 September, $77 on mostly Tier 1); the strongest rung stays reserved for the silent-failure surfaces |
 | Gates and research | | `test-runner` (Haiku 4.5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
 
 The worst debugging (bincode wire breaks, silent no-ops, "green but wrong"
@@ -157,7 +224,7 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
 - **Context length drives usage more than the rung.** 52 of 154 main sessions
   passed 200k tokens, and the eight biggest sessions were 36% of the fortnight.
   `/compact` when mid-task. The status line shows the context in thousands,
-  amber from 200k and red from 250k.
+  amber from 200k and red from 400k.
 - **A parked session pays again.** The prompt cache lasts an hour; the first
   turn after a longer gap re-sends a context past 50k at write price. In the
   week to 2026-09-13 that was 194 turns and $233, and cache writes were 29% of
@@ -179,8 +246,12 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   in the lead and hand down settled work instead of lifting the agent. In the
   fortnight to 2026-09-14 (`just usage 14`, all projects) `task` runs at
   Sonnet `xhigh` and Opus `xhigh` were $353, all from spawns lifting the pin
-  before the spawn guard existed; the guard refuses a model lift, not an
-  effort lift, so the lead sets neither at the spawn. `task` runs grow as long as
+  before the spawn guard existed; the guard now refuses both a model lift and
+  an effort lift above a pinned definition, so the lead sets neither at the
+  spawn for a pinned agent. It cannot see a built-in with no definition file
+  at all (`Explore`, `fork`, `general-purpose`), so that cap is on the
+  spawning session, not the guard: keep it at `high` or below there too.
+  `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
 ## Plans ship their own resourcing
@@ -194,9 +265,9 @@ Every plan (slice plan, spec phase breakdown, handover) names, per task:
    default upward.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
    session per task unless stated.
-4. **Parallel streams**: one stream touching `crates/intrada-core` or
-   `crates/intrada-ffi`, plus any number of shell-only streams that touch only
-   `ios/` and no crate and have named the screens they own; serialisation
+4. **Parallel streams**: two by default, at most one of them touching
+   `crates/intrada-core` or `crates/intrada-ffi`; a third only if it touches
+   `ios/` and no crate and has named the screens it owns (#1839); serialisation
    points named explicitly ("B after A"); one stream running iOS tests at a
    time, which costs little to queue behind (a fast-tier run is well under a
    minute either way, #1621).
@@ -208,16 +279,20 @@ a phase without a test plan is.
 
 | Job | Agent | Pinned | Because |
 |---|---|---|---|
-| Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, and the spawn carries no effort setting | Reports facts back; a wrong answer is caught by the lead verifying it |
+| Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, so it inherits the spawning session's effort (below) | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
 | Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
-| Review a diff or a plan | `reviewer` | Opus 5, high | Judgement-dense; never weaker than the writer |
+| Review a diff or a plan | `reviewer` | Sonnet 5, high; lifted to Opus (Fable for Fable-written work) on `crates/intrada-ffi`, a migration, `ActiveSession` or auth | Sonnet covers the non-sensitive majority; the strongest rung stays reserved for the silent-failure surfaces |
 | Conventional Tier 2 slice | `task` | Sonnet 5, high | Non-sensitive surface, patterns already in the repo |
 
 All four definitions live in `.claude/agents/`, so they are reviewed like code
 and travel with the checkout. Pin model and effort in the definition rather than
-at the spawn; the two exceptions are `Explore`, which has no definition, and
-lifting `reviewer` to Fable for Fable-written work.
+at the spawn; the exceptions are `Explore`, `fork` and `general-purpose`, which
+have no definition to pin, and lifting `reviewer` to Opus on the sensitive
+surfaces, or to Fable for Fable-written work. Because a subagent with no
+`effort:` in its definition inherits the parent session's effort, `Explore`,
+`fork` and `general-purpose` should only be spawned from a session at `high`
+or below (#1838).
 
 `task` sits at high, not xhigh: the effort premium buys little on work that
 follows a pattern already in the repo, and over the fortnight to 2026-09-13
@@ -237,12 +312,23 @@ Four rules on top:
 - **Gates run through `test-runner`, never in the lead.** A failing suite
   prints thousands of lines that are re-sent on every later turn. Tell every
   fan-out task to skip `just check` and the suites; run them once, at the end.
+- **The lead verifies a task's result through `reviewer` and the gate
+  counts, never by re-reading its files.** The report shape in
+  `.claude/agents/task.md` is what the lead checks the work against. It opens
+  a file the task touched only to act on a specific `reviewer` finding, and
+  then by range, not the whole file.
+- **Brief a task by file and line, not by area.** Naming the exact lines to
+  change lets the task edit in place instead of opening a full read to
+  relocate its own work; a `git grep` for a sentinel value beats reading a
+  file end to end when the brief cannot cite a line number directly.
 
 ## Isolating concurrent work
 
-Every session that edits starts in its own worktree, whether or not another is
-running (CLAUDE.md, Always step 3). Before a second stream, read `.claude/skills/intrada-parallel-streams/SKILL.md` for the
-decoupled file set and the serialisation points.
+Every session that edits works in its own worktree, whether or not another is
+running, and makes it itself from the main checkout Jon started it in
+(CLAUDE.md, Always step 3). Before a second stream, read
+`.claude/skills/intrada-parallel-streams/SKILL.md` for the decoupled file set
+and the serialisation points.
 
 `just worktree-new <name>` branches from fresh `origin/main` and seeds the warm
 `target/` and `ios/build` caches (#1205). Worktrees live at
@@ -266,18 +352,25 @@ directory a session started in. It never starts a session itself (#1720): which
 client you work in is your choice, not the recipe's.
 `INTRADA_WORKTREE_CMUX=0` silences the suggestion.
 
-**A session in the main checkout can drive a worktree without restarting**, from
-2026-09-12. Starting in the worktree stays the default, because the path-scoped
-rules in `.claude/rules/` load only under the directory a session started in. A
-session already running does not get them by cd-ing: it reads the rules for the
-files it is about to touch by hand, or it is working blind.
+**A session in the main checkout drives its worktree without restarting**, from
+2026-09-12, and that is the only shape in use: Jon starts every session in
+main, and a session never hands him a worktree command or a new chat to open
+in a worktree (#1837; over 12 to 14 September the three rules that said
+otherwise cost eleven corrections). The path-scoped rules in `.claude/rules/`
+load only under the directory a session started in, so the session reads the
+rules for the files it is about to touch by hand, or it is working blind.
 
 The mechanism is the `cd` prefix, and the `EnterWorktree` tool is still banned
 here: it marks the session isolated and the bash guard then refuses every
-version control command, so that session can never commit. Create the worktree
-and prefix each shell command instead. The exact shape the prefix must take, and
-what happens on a machine whose hooks predate all this, are in
-[`docs/worktrees.md`](worktrees.md).
+version control command, so that session can never commit. The shape the
+prefix must take, the self-heal that adds it when the session holds exactly
+one worktree lease (#1840), and what happens on a machine whose hooks predate
+all this, are in [`docs/worktrees.md`](worktrees.md) and not repeated here.
+
+A subagent inherits none of this. Its brief names the worktree by absolute
+path, or its first edit lands in main and is denied, and `reviewer` diffs the
+wrong tree (#1861). The four definitions in `.claude/agents/` say so, and the
+brief still has to supply the path.
 
 ## Build and test control
 
@@ -322,9 +415,14 @@ These run whether or not an agent read the rules.
   re-attaches the style rules on every prompt, and the post-push hook restates
   the CI-watch rule after every push. `guard-spawn.sh` refuses a spawn that
   lifts a subagent above the model in its definition (`reviewer` excepted, per
-  the Review row of the activity ladder), `context-watch.sh` says to `/clear` or `/compact` once a
-  session passes 250k and again at 400k, and `usage-daily.sh` opens the first
-  session of each day with one line from `usage-report.py`.
+  the Review row of the activity ladder), `context-watch.sh` warns at 150k,
+  hands the rest of the unit to a `task`/`smol` subagent at 200k and at 400k
+  says to `/compact` now (`CONTEXT_WARN` and `CONTEXT_FIRM` stay overridable
+  env vars), and `usage-daily.sh` opens the first session of each day with one
+  line from `usage-report.py`. `read-guard.sh` denies a `Read` with no offset,
+  limit or `pages` when this session's transcript already holds that exact
+  path with an unchanged mtime, and, separately, denies one on a text file
+  over 400 lines; images are exempt from both (#1844).
 
 ## Session controls
 
@@ -335,6 +433,10 @@ These run whether or not an agent read the rules.
 | Change rung mid-session | `/model`, `/effort`. Both persist unless chosen as session-only |
 | See what loaded | `/context` lists the memory files and rules in this session |
 | See what sessions cost | `just usage` (last 7 days by agent, model and effort, plus the biggest sessions); `just usage 14` for a fortnight |
+| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: at 150k finish the slice and hand the rest to a `task`/`smol` subagent (this session checks and ships), at 200k hand it over now, at 400k `/compact` |
+| Keep the thread, drop the bulk | `/compact`. Decisions survive, tool output goes, the path-scoped rules reload on the next Read. Mid-task only |
+| End the unit | `/clear`, once the PR is green, the issue closed and the worktree removed. The transcript file survives it, which is why the read guard can deny the next unit's first read (#1866) |
+| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, activity, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
 | Edit the rules files | `/memory` |
 | Tidy up permission prompts | `/fewer-permission-prompts` |
 
@@ -484,14 +586,19 @@ after this one is reviewed.
 Opener for the screens session, once the core PR is reviewed:
 
 ```text
-Screens half of #1512, core PR #<N> is merged. Read both bounds from the
-ViewModel and delete the hard-coded 2...12 in ClickSheet.swift and 3...10 in
-EntrySettingsSheet.swift. A shell constant repeating the number is not the fix.
+Screens half of #1512, core PR #<N> is merged. Grep each file for its
+hard-coded range (2...12 in ClickSheet.swift, 3...10 in
+EntrySettingsSheet.swift) and replace both with the bounds read from the
+ViewModel; no need to open either file in full. A shell constant repeating
+the number is not the fix.
 
 Add the test the issue asks for: the offered range matches the core's, so
 widening the core cannot silently leave a sheet behind. Then just ios-test-full,
 because the core type changed. Re-record any snapshots the control changes
 touch, and say which.
+
+Report back per .claude/agents/task.md: diff --stat and changed symbols, the
+gate and its counts, what you left out, what you could not verify.
 ```
 
 ## What slows us down
@@ -511,4 +618,14 @@ touch, and say which.
 | `just check` says already green | Stamp matches HEAD and the tree is clean; delete the stamp |
 | Unformatted Swift or Rust reaching CI | The format hook loads at session start; run `just fmt` and `just ios-fmt` |
 | PR hangs on a check that never reports | A renamed job left its old required context "expected" (#1542) |
-| A subagent ran on the wrong model | Its definition has no `model:` or `effort:` pin, so it inherited the session's |
+| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's; spawn those from `high` or below (#1838) |
+| The spawn guard refused a subagent | The spawn lifted `model` or `effort` above the definition's pin. Only `reviewer` may go up, on a sensitive surface. Drop the override; keep the judgement in the lead instead |
+| Read denied as "already in context" on the first read after `/clear` | The guard reads the transcript, which `/clear` does not restart (#1866). Range-read (`offset`, `limit`) until it is fixed |
+| Read denied on a file over 400 lines | Grep for the symbol, then read the range. The guard never allows the whole file (#1844) |
+| Edit or command denied in the main checkout | No worktree yet, or the `cd <worktree> && ` prefix is missing and the session holds more than one lease so it cannot be added for you. Make the worktree, prefix the command; the shapes the guard reads are in `worktrees.md` |
+| Session start says another session holds this worktree | The lease is live; read `just worktrees` and pick another. A clean tree at main is not evidence it is free |
+| A subagent edited the wrong tree, or `reviewer` reviewed main | The brief did not name the worktree by absolute path (#1861) |
+| XCUITests refuse to launch, `SBMainWorkspace` busy | A simulator booted outside the `just` recipes. Ask before shutting it down; CI proves the UI tests meanwhile |
+| A PR's first CI run shows cancelled or a stale failed context | `gh pr create --label` fires several events that cancel each other. Label after the first run starts, or hand Jon `gh run rerun --failed` |
+| The session was interrupted mid-tool | Retry in a different form and keep working. An interrupted call is not a decision point to hand back |
+| A gate looks like it ran nothing | Terse output is a pass. Break one assertion and watch it go red before reporting a gate broken (2026-09-04) |

@@ -357,6 +357,12 @@ pub struct LibraryItemView {
     pub ladder_is_keys: bool,
     #[serde(default)]
     pub photo_id: Option<String>,
+    /// An exercise in several keys has no single key (#1783 decision 1): the
+    /// Add and Edit forms hide the Key field once the ladder has a live
+    /// rung. `true` for a piece and for an un-laddered exercise. No
+    /// `serde(default)`, matching `ladder_is_keys`: the bridge is positional
+    /// bincode, where a default is never read (#846).
+    pub shows_key: bool,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -624,6 +630,7 @@ impl LibraryItemView {
             variants: Vec::new(),
             ladder_is_keys: false,
             photo_id: None,
+            shows_key: true,
         }
     }
 }

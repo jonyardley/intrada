@@ -15,7 +15,7 @@ final class VariationPlayBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     let id = try XCTUnwrap(try bridge.view().items.first?.id)
     _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "D"])))
     return id
@@ -246,7 +246,7 @@ final class VariationPlayBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     let pieceId = try XCTUnwrap(
       try bridge.view().items.first(where: { $0.itemType == .piece })?.id)
 

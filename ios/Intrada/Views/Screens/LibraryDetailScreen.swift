@@ -4,6 +4,11 @@ import SwiftUI
 /// Detail for a library item: type badge, key/tempo, notes, tags, and delete.
 struct LibraryDetailScreen: View {
   let item: LibraryItemView
+  /// False only for the iPad split view's own detail pane (#1724): selection
+  /// there replaces the pane in place rather than pushing, so there is
+  /// nothing to pop back from. A related item pushed within that same pane
+  /// (`LibrarySplitView`'s own `navigationDestination`) still gets one.
+  var showsBackButton: Bool
 
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
@@ -19,103 +24,23 @@ struct LibraryDetailScreen: View {
   @State private var showingScaffold = false
   @State private var showingAddVariations = false
 
-  init(item: LibraryItemView, startEditingLinks: Bool = false, startEditingSteps: Bool = false) {
+  init(
+    item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false,
+    startEditingSteps: Bool = false
+  ) {
     self.item = item
+    self.showsBackButton = showsBackButton
     _editingLinks = State(initialValue: startEditingLinks)
     _editingVariations = State(initialValue: startEditingSteps)
   }
 
   var body: some View {
-    ScreenScaffold(title: item.title, subtitle: subtitle) {
-      ScrollView {
-        VStack(alignment: .leading, spacing: IntradaSpacing.card) {
-          if item.itemType == .exercise {
-            exerciseHero
-          } else {
-            TypeBadge(kind: item.itemType)
-          }
-
-          if item.itemType == .exercise {
-            variationsSection
-          }
-
-          if !detailRows.isEmpty {
-            VStack(spacing: 0) {
-              ForEach(Array(detailRows.enumerated()), id: \.offset) { index, row in
-                if index > 0 {
-                  HairlineDivider()
-                }
-                DetailRow(label: row.label, value: row.value)
-              }
-            }
-            .cardSurface()
-          }
-
-          if let tempoTrend = item.practice?.tempoTrendDisplay(
-            locale: locale, calendar: calendar)
-          {
-            TempoTrend(display: tempoTrend)
-          }
-
-          if let notes = item.notes, !notes.isEmpty {
-            Text(notes)
-              .font(IntradaFont.body)
-              .foregroundStyle(IntradaColor.inkSecondary)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(IntradaSpacing.card)
-              .cardSurface()
-          }
-
-          if !item.tags.isEmpty {
-            tags
-          }
-
-          PhotoCard(itemId: item.id, photoId: item.photoId)
-
-          if item.itemType == .piece {
-            chordChartSection
-          }
-
-          if item.itemType == .piece {
-            linkedExercisesSection
-          }
-
-          if item.itemType == .exercise {
-            usedInSection
-          }
-
-          if hasRecentSessions {
-            recentSessionsSection
-          }
-
-          if item.itemType == .exercise {
-            practiseButton
-              .padding(.top, IntradaSpacing.controlGap)
-          }
-
-          deleteButton
-            .padding(.top, IntradaSpacing.controlGap)
-        }
-        .padding(IntradaSpacing.card)
-      }
-      .scrollEdgeShadow()
-    }
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          toggleStar()
-        } label: {
-          Image(systemName: item.priority ? "star.fill" : "star")
-            .foregroundStyle(item.priority ? IntradaColor.accentText : IntradaColor.inkSecondary)
-        }
-        .accessibilityLabel(
-          item.priority ? "Remove from priorities" : "Add to priorities")
-      }
-      ToolbarItem(placement: .topBarTrailing) {
-        Button("Edit") { editing = true }
-      }
-    }
+    ScreenScaffold(
+      title: item.title, subtitle: subtitle,
+      trailingContent: { starAndEditActions },
+      content: { detailContent }
+    )
+    .navigationBarBackButtonHidden(!showsBackButton)
     .sheet(isPresented: $editing) {
       LibraryEditScreen(item: item)
         .environment(store)
@@ -768,6 +693,100 @@ struct LibraryDetailScreen: View {
   private var deleteButton: some View {
     DeleteButton(title: "Delete \(item.itemType.label.lowercased())") {
       confirmingDelete = true
+    }
+  }
+
+  private var detailContent: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: IntradaSpacing.card) {
+        if item.itemType == .exercise {
+          exerciseHero
+        } else {
+          TypeBadge(kind: item.itemType)
+        }
+
+        if item.itemType == .exercise {
+          variationsSection
+        }
+
+        if !detailRows.isEmpty {
+          VStack(spacing: 0) {
+            ForEach(Array(detailRows.enumerated()), id: \.offset) { index, row in
+              if index > 0 {
+                HairlineDivider()
+              }
+              DetailRow(label: row.label, value: row.value)
+            }
+          }
+          .cardSurface()
+        }
+
+        if let tempoTrend = item.practice?.tempoTrendDisplay(
+          locale: locale, calendar: calendar)
+        {
+          TempoTrend(display: tempoTrend)
+        }
+
+        if let notes = item.notes, !notes.isEmpty {
+          Text(notes)
+            .font(IntradaFont.body)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(IntradaSpacing.card)
+            .cardSurface()
+        }
+
+        if !item.tags.isEmpty {
+          tags
+        }
+
+        PhotoCard(itemId: item.id, photoId: item.photoId)
+
+        if item.itemType == .piece {
+          chordChartSection
+        }
+
+        if item.itemType == .piece {
+          linkedExercisesSection
+        }
+
+        if item.itemType == .exercise {
+          usedInSection
+        }
+
+        if hasRecentSessions {
+          recentSessionsSection
+        }
+
+        if item.itemType == .exercise {
+          practiseButton
+            .padding(.top, IntradaSpacing.controlGap)
+        }
+
+        deleteButton
+          .padding(.top, IntradaSpacing.controlGap)
+      }
+      .padding(IntradaSpacing.card)
+    }
+    .scrollEdgeShadow()
+  }
+
+  private var starAndEditActions: some View {
+    HStack(spacing: IntradaSpacing.card) {
+      Button {
+        toggleStar()
+      } label: {
+        Image(systemName: item.priority ? "star.fill" : "star")
+          .foregroundStyle(item.priority ? IntradaColor.accentText : IntradaColor.inkSecondary)
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(item.priority ? "Remove from priorities" : "Add to priorities")
+
+      Button("Edit") { editing = true }
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accentText)
     }
   }
 
