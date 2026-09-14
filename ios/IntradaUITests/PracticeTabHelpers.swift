@@ -38,9 +38,6 @@ extension XCUIApplication {
 
   /// Abandons the running session so the next test starts from a clean
   /// container: an in-progress session outlives the app in UserDefaults.
-  /// A silent skip here (a bare `if waitForExistence`) used to leave that
-  /// state behind for the next test to trip over (#1742), so this now
-  /// reuses the two asserting steps below rather than duplicating them.
   @MainActor
   func abandonSession(file: StaticString = #filePath, line: UInt = #line) {
     endSessionEarly(file: file, line: line)
@@ -74,7 +71,10 @@ extension XCUIApplication {
   /// Ends a running session early, which lands on the summary.
   @MainActor
   func endSessionEarly(file: StaticString = #filePath, line: UInt = #line) {
-    buttons["Session options"].tap()
+    let options = buttons["Session options"]
+    XCTAssertTrue(
+      options.waitForExistence(timeout: 5), "the session options menu", file: file, line: line)
+    options.tap()
     let end = buttons["End session early"]
     XCTAssertTrue(
       end.waitForExistence(timeout: 5), "End session early", file: file, line: line)

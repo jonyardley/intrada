@@ -48,7 +48,7 @@ final class RepetitionCounterUITests: XCTestCase {
     XCTAssertEqual(
       repetitions.value as? String, "0 of 10, 10 to go", "and the count stays on the floor")
 
-    // Leave the container clean for the next test: abandon via Session options.
+    // Leave the container clean for the next test.
     app.abandonSession()
   }
 }
