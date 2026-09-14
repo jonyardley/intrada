@@ -11,7 +11,7 @@ struct ClickControlTests {
     ClickControl(
       bpm: bpm, isRunning: running, unavailable: unavailable, atSeededTempo: atSeed,
       targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
-      onToggle: {}, onStep: { _ in })
+      onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
   }
 
   private func withoutTarget(bpm: Int = 96, running: Bool = false, atSeed: Bool = true)
@@ -19,7 +19,8 @@ struct ClickControlTests {
   {
     ClickControl(
       bpm: bpm, isRunning: running, unavailable: false, atSeededTempo: atSeed,
-      targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in })
+      targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
+      onDragChange: { _ in })
   }
 
   @Test func atRestTheRowIsStillTheItemsDeclaredTempo() {
@@ -64,6 +65,12 @@ struct ClickControlTests {
 
   @Test func spokenTempoCarriesTheFailure() {
     #expect(control(unavailable: true).spokenValue == "unavailable")
+  }
+
+  /// A drag commit inside the click engine's own lead-in cancels the pulse
+  /// it just scheduled, so the click never sounds for the whole drag (#1823).
+  @Test func theDragThrottleNeverCommitsFasterThanTheEngineCanSound() {
+    #expect(ClickControl.commitInterval >= .milliseconds(Int(ClickEngine.leadInSeconds * 1000)))
   }
 }
 

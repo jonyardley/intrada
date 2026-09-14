@@ -259,7 +259,8 @@ struct FocusPlayerScreen: View {
       targetDisplay: declared ? active.currentItemTempoDisplay : nil,
       targetSpoken: declared ? active.currentItemTempoSpoken : nil,
       onToggle: { click.toggle() },
-      onStep: { click.step(by: $0) })
+      onStep: { click.step(by: $0) },
+      onDragChange: { click.setBpm($0) })
   }
 
   // The indicator reads the audio's clock through the engine on every frame,

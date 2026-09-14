@@ -11,7 +11,10 @@ final class ClickEngine {
 
   /// Headroom for the first `scheduleBuffer` to land. Short because a tempo
   /// change restarts the pulse, and a long gap per stepper tap reads as a stall.
-  private let leadInSeconds: Double = 0.2
+  /// `internal` and `static` so `ClickControl`'s drag-commit throttle can stay
+  /// at or above it (#1823): a commit inside this window cancels the previous
+  /// restart before it ever sounds.
+  static let leadInSeconds: Double = 0.2
   // Queue oscillates 24-88 beats, 12s to 44s at 120bpm: too long for a
   // coalesced wakeup to run it dry, short enough that `stop()` isn't fighting it.
   // Polled rather than a sleep per beat, since iOS coalesces long timer wakeups
@@ -121,7 +124,7 @@ final class ClickEngine {
 
     pulse = Pulse(
       tempo: tempo,
-      scheduledStart: HostClock.now() &+ HostClock.ticks(fromSeconds: leadInSeconds),
+      scheduledStart: HostClock.now() &+ HostClock.ticks(fromSeconds: Self.leadInSeconds),
       outputLatencyTicks: HostClock.ticks(fromSeconds: session.outputLatency))
     self.pattern = pattern
     nextBeat = 0
