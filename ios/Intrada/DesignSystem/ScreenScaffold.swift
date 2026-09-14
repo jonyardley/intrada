@@ -197,8 +197,6 @@ enum ScreenScaffoldIconButton {
         subtitle: "3 items",
         leadingContent: {
           Button("Cancel") {}
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.accent)
         },
         trailing: .init(label: "Add", action: {}),
         content: {

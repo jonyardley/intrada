@@ -121,11 +121,12 @@ struct RootView: View {
 
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
-    // Opaque paper, not a material: the bar reads as part of the page (#1868),
-    // and a transparent bar strips the glass pill iOS 26 bar items render into (#1829).
-    appearance.configureWithOpaqueBackground()
-    appearance.backgroundColor = UIColor(IntradaColor.paperTop)
-    appearance.shadowColor = .clear
+    appearance.configureWithTransparentBackground()
+    // A transparent bar leaves iOS 26 bar button items without the shared glass
+    // surface their pill renders into, so a bar button goes flat rather than
+    // native (#1829); this also covers the star/Cancel/Edit toolbar items #1868
+    // moved into the bar, which went flat for the same reason on an opaque bar.
+    appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
     let ink = UIColor(IntradaColor.ink)
     if let large = UIFont(name: IntradaFont.Hanken.semibold, size: 28) {
       appearance.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
