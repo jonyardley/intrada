@@ -115,9 +115,8 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
           ToolbarItemGroup(placement: .topBarTrailing) { trailingContent }
         }
       }
-      // Forced visible even with no items: an item-less inline bar goes
-      // isHidden internally, which broke the split view's symmetric-chrome
-      // invariant against the column that does carry toolbar items (#1868, #1682).
+      // An item-less bar goes isHidden internally, breaking the split view's
+      // symmetric-chrome invariant against a column that does carry items (#1868, #1682).
       .toolbar(.visible, for: .navigationBar)
   }
 
@@ -190,20 +189,24 @@ enum ScreenScaffoldIconButton {
   }
 
   #Preview("With a leading action") {
-    ScreenScaffold(
-      title: "Build session",
-      subtitle: "3 items",
-      leadingContent: {
-        Button("Cancel") {}
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-      },
-      trailing: .init(label: "Add", action: {}),
-      content: {
-        PlaceholderContent(
-          systemImage: "music.note",
-          message: "Detail content goes here.")
-      }
-    )
+    // The Cancel button is a native toolbar item (#1868): only a real
+    // navigation container hosts one.
+    NavigationStack {
+      ScreenScaffold(
+        title: "Build session",
+        subtitle: "3 items",
+        leadingContent: {
+          Button("Cancel") {}
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.accent)
+        },
+        trailing: .init(label: "Add", action: {}),
+        content: {
+          PlaceholderContent(
+            systemImage: "music.note",
+            message: "Detail content goes here.")
+        }
+      )
+    }
   }
 #endif
