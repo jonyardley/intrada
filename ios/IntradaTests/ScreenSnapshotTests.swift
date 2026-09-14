@@ -859,8 +859,8 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryDetailScreen() {
-    // Preset path so the snapshot covers the real navigation chrome (back
-    // chevron + transparent bar over the serif title), not just the body.
+    // Preset path so the snapshot covers the pushed detail layout, not just the
+    // body; the windowless host draws no nav bar or toolbar items (#1880).
     let store = Store(bridge: PreviewBridge(items: [.previewDetail]))
     let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail.id])) {
       LibraryScreen()

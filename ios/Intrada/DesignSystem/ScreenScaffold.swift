@@ -14,10 +14,10 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   var subtitle: String?
   var trailing: TrailingAction?
   let leadingContent: Leading
-  /// A trailing view of the screen's own: a native toolbar item by default
-  /// (#1868), or beside the title like `trailing` (the Practice profile badge).
+  /// A trailing view of the screen's own: a native toolbar item (#1868), or
+  /// beside the title where `trailing` sits when placed `.header`.
   let trailingContent: Trailing
-  var trailingPlacement: TrailingPlacement = .toolbar
+  let trailingPlacement: TrailingPlacement
   @ViewBuilder var content: Content
 
   struct TrailingAction {
@@ -42,6 +42,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = trailing
     self.leadingContent = EmptyView()
     self.trailingContent = EmptyView()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
@@ -73,6 +74,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = trailing
     self.leadingContent = leadingContent()
     self.trailingContent = EmptyView()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
@@ -88,6 +90,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     self.trailing = nil
     self.leadingContent = leadingContent()
     self.trailingContent = trailingContent()
+    self.trailingPlacement = .toolbar
     self.content = content()
   }
 
@@ -113,8 +116,8 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
-      // Secondary header actions are native toolbar items so they pick up the
-      // system's glass material (#1868); the primary add stays beside the title.
+      // Leading and trailing views are native toolbar items for the glass pill
+      // (#1868), unless trailing content is placed `.header`.
       .toolbar {
         if Leading.self != EmptyView.self {
           ToolbarItem(placement: .topBarLeading) { leadingContent }
