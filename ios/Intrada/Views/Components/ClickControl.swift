@@ -65,10 +65,7 @@ struct ClickControl: View {
 
   private var tint: Color {
     if unavailable { return IntradaColor.danger }
-    // Sits on whichever highlighter the musician chose (the `marker` capsule
-    // below): `accentText` clears 4.5:1 only against paper and cards, and
-    // fails on all but the lightest highlighters, so this stays `onMarker`.
-    return isRunning ? IntradaColor.onMarker : IntradaColor.inkSecondary
+    return isRunning ? IntradaColor.accent : IntradaColor.inkSecondary
   }
 
   // VoiceOver never hears the ♩ glyph, so the bpm is spelled out.

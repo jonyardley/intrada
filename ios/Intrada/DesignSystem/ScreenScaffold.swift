@@ -193,7 +193,7 @@ enum ScreenScaffoldIconButton {
       leadingContent: {
         Button("Cancel") {}
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
       },
       trailing: .init(label: "Add", action: {}),
       content: {

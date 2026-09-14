@@ -69,7 +69,7 @@ struct UsedInCard: View {
     Button(action: onLinkAPiece) {
       Label("Link a piece", systemImage: "plus")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accentText)
+        .foregroundStyle(IntradaColor.accent)
         .frame(maxWidth: .infinity)
         .padding(.vertical, IntradaSpacing.cardCompact + IntradaSpacing.controlGap)
         .contentShape(Rectangle())
@@ -160,7 +160,7 @@ struct UsedInRow: View {
     Button(action: action) {
       Text("Link")
         .font(IntradaFont.badge)
-        .foregroundStyle(IntradaColor.accentText)
+        .foregroundStyle(IntradaColor.accent)
         // 10/5 are capsule-specific insets, below the token scale floor.
         .padding(.horizontal, 10)
         .padding(.vertical, 5)

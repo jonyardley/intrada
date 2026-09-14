@@ -68,7 +68,7 @@ struct KeyPicker: View {
         if let display = KeyHelper.display(key: key, modality: modality) {
           Text(display)
             .font(IntradaFont.field)
-            .foregroundStyle(IntradaColor.accentText)
+            .foregroundStyle(IntradaColor.accent)
         } else {
           Text("Select a key")
             .font(IntradaFont.field)
@@ -152,7 +152,7 @@ struct KeyPicker: View {
     let restFill = isMajor ? IntradaColor.cardFill : IntradaColor.surfaceSunken
     return
       shape
-      .fill(selected ? IntradaColor.accentText : restFill)
+      .fill(selected ? IntradaColor.accent : restFill)
       .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
       .contentShape(shape)
       .onTapGesture { tap(ring: ring, mode: mode) }

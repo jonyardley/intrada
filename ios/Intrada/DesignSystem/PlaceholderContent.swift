@@ -4,7 +4,7 @@ import SwiftUI
 struct PlaceholderContent: View {
   let systemImage: String
   let message: String
-  var glyphTint: Color = IntradaColor.ink.opacity(0.55)
+  var glyphTint: Color = IntradaColor.accent.opacity(0.55)
   @ScaledMetric(relativeTo: .largeTitle) private var glyphSize: CGFloat = 40
 
   var body: some View {

@@ -35,7 +35,7 @@ struct RootView: View {
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
         .tag(AppTab.progress)
     }
-    .tint(IntradaColor.accentText)
+    .tint(IntradaColor.accent)
     // State-driven: building can now start outside the Practice tab (the
     // exercise detail's "Practise this"), and the builder only presents from
     // PracticeScreen's navigationDestination — so follow the core there.
@@ -112,8 +112,8 @@ struct RootView: View {
     normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkSecondary)]
 
     let selected = appearance.stackedLayoutAppearance.selected
-    selected.iconColor = UIColor(IntradaColor.accentText)
-    selected.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.accentText)]
+    selected.iconColor = UIColor(IntradaColor.accent)
+    selected.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.accent)]
 
     UITabBar.appearance().standardAppearance = appearance
     UITabBar.appearance().scrollEdgeAppearance = appearance

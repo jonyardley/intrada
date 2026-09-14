@@ -36,14 +36,14 @@ struct ConsistencyBars: View {
             .frame(maxWidth: .infinity)
             .frame(height: barHeight(for: week))
             .shadow(
-              color: week.isCurrent ? IntradaColor.accentGraphic.opacity(0.4) : .clear,
+              color: week.isCurrent ? IntradaColor.accent.opacity(0.4) : .clear,
               radius: 6, x: 0, y: 4
             )
             .scaleEffect(y: scale, anchor: .bottom)
             .animation(animation(index: index), value: grown)
           Text(week.label)
             .font(IntradaFont.micro)
-            .foregroundStyle(week.isCurrent ? IntradaColor.accentText : IntradaColor.inkFaint)
+            .foregroundStyle(week.isCurrent ? IntradaColor.accent : IntradaColor.inkFaint)
             .fontWeight(week.isCurrent ? .semibold : .regular)
         }
         .frame(maxWidth: .infinity)

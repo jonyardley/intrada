@@ -150,7 +150,7 @@ struct SessionSummaryScreen: View {
       } else if written.isEmpty {
         Button("Add a note") { expand(entry) }
           .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
           .frame(minHeight: 44, alignment: .leading)
           .contentShape(Rectangle())
           .accessibilityLabel("Add a note for \(entry.itemTitle)")
