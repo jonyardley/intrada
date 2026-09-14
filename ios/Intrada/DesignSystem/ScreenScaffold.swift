@@ -2,10 +2,14 @@ import SwiftUI
 
 /// The shared shell every top-level screen is built from. The page title lives
 /// in the content, not a UIKit nav bar (the locked *Library — Light* header).
-struct ScreenScaffold<Content: View, Trailing: View>: View {
+/// A pushed or presented screen hides the native nav bar entirely (#1724) and
+/// carries its own back/cancel action as `leadingContent`, so the title sits
+/// at the same height everywhere rather than dropping below a second bar.
+struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   let title: String
   var subtitle: String?
   var trailing: TrailingAction?
+  let leadingContent: Leading
   /// A trailing view of the screen's own (the Practice profile badge, #1692);
   /// it sits where `trailing`'s circular button would.
   let trailingContent: Trailing
@@ -22,10 +26,11 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
     subtitle: String? = nil,
     trailing: TrailingAction? = nil,
     @ViewBuilder content: () -> Content
-  ) where Trailing == EmptyView {
+  ) where Leading == EmptyView, Trailing == EmptyView {
     self.title = title
     self.subtitle = subtitle
     self.trailing = trailing
+    self.leadingContent = EmptyView()
     self.trailingContent = EmptyView()
     self.content = content()
   }
@@ -35,10 +40,41 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
     subtitle: String? = nil,
     @ViewBuilder trailingContent: () -> Trailing,
     @ViewBuilder content: () -> Content
+  ) where Leading == EmptyView {
+    self.title = title
+    self.subtitle = subtitle
+    self.trailing = nil
+    self.leadingContent = EmptyView()
+    self.trailingContent = trailingContent()
+    self.content = content()
+  }
+
+  init(
+    title: String,
+    subtitle: String? = nil,
+    @ViewBuilder leadingContent: () -> Leading,
+    trailing: TrailingAction? = nil,
+    @ViewBuilder content: () -> Content
+  ) where Trailing == EmptyView {
+    self.title = title
+    self.subtitle = subtitle
+    self.trailing = trailing
+    self.leadingContent = leadingContent()
+    self.trailingContent = EmptyView()
+    self.content = content()
+  }
+
+  init(
+    title: String,
+    subtitle: String? = nil,
+    @ViewBuilder leadingContent: () -> Leading,
+    @ViewBuilder trailingContent: () -> Trailing,
+    @ViewBuilder content: () -> Content
   ) {
     self.title = title
     self.subtitle = subtitle
     self.trailing = nil
+    self.leadingContent = leadingContent()
     self.trailingContent = trailingContent()
     self.content = content()
   }
@@ -71,6 +107,13 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
 
   private var header: some View {
     HStack(alignment: .firstTextBaseline) {
+      // A child view, even an empty one, still claims the HStack's default
+      // inter-item spacing, so a screen with no leading action must omit
+      // the subview entirely rather than render an empty one (#1724).
+      if Leading.self != EmptyView.self {
+        leadingContent
+          .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
+      }
       VStack(alignment: .leading, spacing: 3) {
         // A swipe behind a wrapped title would land under its last line only.
         ViewThatFits(in: .horizontal) {
@@ -91,15 +134,7 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
       Spacer(minLength: 12)
       if let trailing {
         Button(action: trailing.action) {
-          Image(systemName: trailing.systemImage)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(IntradaColor.onAccent)
-            .frame(width: 30, height: 30)
-            // Reads as a solid dark button in the mock, not one of the
-            // accent's allowed jobs (#1723).
-            .background(IntradaColor.ink, in: Circle())
-            .frame(width: 44, height: 44)
-            .contentShape(Circle())
+          ScreenScaffoldIconButton.icon(trailing.systemImage)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(trailing.label)
@@ -115,6 +150,39 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
   }
 }
 
+/// The solid circular icon button `ScreenScaffold`'s `trailing` renders,
+/// shared with `ScreenBackButton` so a header's leading and trailing actions
+/// read as the same control (#1724).
+enum ScreenScaffoldIconButton {
+  static func icon(_ systemImage: String) -> some View {
+    Image(systemName: systemImage)
+      .font(.system(size: 16, weight: .semibold))
+      .foregroundStyle(IntradaColor.onAccent)
+      .frame(width: 30, height: 30)
+      // Reads as a solid dark button in the mock, not one of the accent's
+      // allowed jobs (#1723).
+      .background(IntradaColor.ink, in: Circle())
+      .frame(width: 44, height: 44)
+      .contentShape(Circle())
+  }
+}
+
+/// A pushed or presented screen's back action, styled as `ScreenScaffold`'s
+/// `trailing` button so leading and trailing read as one language (#1724).
+/// Dismisses itself via `\.dismiss`: only fits a screen actually reached by a
+/// push or a `navigationDestination`.
+struct ScreenBackButton: View {
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    Button(action: { dismiss() }) {
+      ScreenScaffoldIconButton.icon("chevron.left")
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Back")
+  }
+}
+
 #if DEBUG
   #Preview {
     ScreenScaffold(
@@ -126,5 +194,19 @@ struct ScreenScaffold<Content: View, Trailing: View>: View {
         systemImage: "books.vertical",
         message: "Pieces and exercises will live here.")
     }
+  }
+
+  #Preview("With a back button") {
+    ScreenScaffold(
+      title: "Clair de Lune",
+      subtitle: "Claude Debussy",
+      leadingContent: { ScreenBackButton() },
+      trailing: .init(label: "Add", action: {}),
+      content: {
+        PlaceholderContent(
+          systemImage: "music.note",
+          message: "Detail content goes here.")
+      }
+    )
   }
 #endif

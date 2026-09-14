@@ -49,7 +49,9 @@ struct LibrarySplitView: View {
 
   @ViewBuilder private var detailColumn: some View {
     if let selectedItem {
-      LibraryDetailScreen(item: selectedItem)
+      // Selection replaces this pane in place rather than pushing, so there is
+      // nothing to pop back from (#1724).
+      LibraryDetailScreen(item: selectedItem, showsBackButton: false)
     } else {
       ZStack {
         PaperBackground()
@@ -57,8 +59,9 @@ struct LibrarySplitView: View {
           systemImage: "sidebar.left", message: "Select an item to see its details.",
           glyphTint: IntradaColor.inkFainter)
       }
-      // No title or toolbar here means no nav bar; force one for chrome parity (#1682).
-      .toolbar(.visible, for: .navigationBar)
+      // LibraryDetailScreen hides the native bar and draws its own chrome
+      // (#1724); match that here so nothing jumps when a selection lands.
+      .toolbar(.hidden, for: .navigationBar)
     }
   }
 }

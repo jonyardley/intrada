@@ -19,8 +19,9 @@ struct SessionSummaryScreen: View {
   private var summary: SummaryView? { store.viewModel?.summary }
 
   var body: some View {
-    ZStack {
-      PaperBackground()
+    // No NavigationStack here (a fullScreenCover), so the title sits at the
+    // same height and weight as every tab root's (#1724, closes #1635).
+    ScreenScaffold(title: "Session complete") {
       if let summary {
         ScrollView {
           VStack(alignment: .leading, spacing: IntradaSpacing.section) {
@@ -45,8 +46,6 @@ struct SessionSummaryScreen: View {
         }
       }
     }
-    // The recap otherwise scrolls under the status bar with nothing behind it (#1620).
-    .safeAreaInset(edge: .top, spacing: 0) { header }
     .onAppear {
       note = summary?.notes ?? ""
     }
@@ -56,23 +55,6 @@ struct SessionSummaryScreen: View {
     } message: {
       Text("This practice won't be saved.")
     }
-  }
-
-  // ── Header ──
-
-  private var header: some View {
-    VStack(spacing: 0) {
-      Text("Session complete")
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.vertical, IntradaSpacing.controlGap)
-      Rectangle().fill(IntradaColor.divider).frame(height: 1)
-    }
-    .background(IntradaColor.paperTop)
   }
 
   // ── Headline ──
