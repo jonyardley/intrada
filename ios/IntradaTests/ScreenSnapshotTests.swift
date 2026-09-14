@@ -1219,6 +1219,28 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(badges), as: config)
   }
 
+  /// Largest accessibility text size: the SectionHeader Eyebrow + Edit button
+  /// reflow onto their own row rather than clipping or wrapping mid-word
+  /// (#1781, #1876). Component-level rather than a whole screen: the header
+  /// row is what changes, so it's the only thing that can independently
+  /// regress.
+  func testSectionHeaderWithActionAccessibilitySize() {
+    let headers = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+        SectionHeader(
+          title: "Chord chart", actionTitle: "Edit", action: {},
+          actionAccessibilityLabel: "Edit chord chart")
+        SectionHeader(
+          title: "Related exercises", caption: "3", captionAccessibilityHidden: true,
+          actionTitle: "Edit", action: {}, actionAccessibilityLabel: "Edit related exercises")
+      }
+      .padding(IntradaSpacing.card)
+    }
+    .dynamicTypeSize(.accessibility5)
+    assertSnapshot(of: host(headers), as: config)
+  }
+
   func testKeyPickerCollapsed() {
     let pickers = ZStack {
       PaperBackground()

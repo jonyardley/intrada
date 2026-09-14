@@ -36,6 +36,10 @@ struct SectionHeader: View {
 
   let title: String
   var caption: String?
+  // A bare count (e.g. "3") reads ambiguously to VoiceOver against the "· "
+  // prefix; hide it there when the count adds nothing a list of that length
+  // doesn't already convey (matches the old capsule badge's accessibilityHidden).
+  var captionAccessibilityHidden = false
   var trailing: String?
   // Trailing action button (e.g. "Edit"/"Done"), matching the disabled/
   // hidden-when-empty pattern used across the header buttons on this screen.
@@ -57,21 +61,30 @@ struct SectionHeader: View {
         } else {
           Eyebrow(title)
         }
-        if let caption { meta(caption) }
+        if let caption { captionView(caption) }
         if let trailing { meta(trailing) }
       }
     } else {
       HStack(alignment: .firstTextBaseline) {
         Eyebrow(title)
-        if let caption { meta("· \(caption)") }
+        if let caption { captionView("· \(caption)") }
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
           meta(trailing)
-        } else if actionTitle != nil {
+        }
+        if actionTitle != nil {
           Spacer(minLength: IntradaSpacing.controlGap)
         }
         actionButton
       }
+    }
+  }
+
+  @ViewBuilder private func captionView(_ text: String) -> some View {
+    if captionAccessibilityHidden {
+      meta(text).accessibilityHidden(true)
+    } else {
+      meta(text)
     }
   }
 

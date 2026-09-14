@@ -305,6 +305,7 @@ struct LibraryDetailScreen: View {
     SectionHeader(
       title: "Related exercises",
       caption: item.linkedExercises.isEmpty ? nil : "\(item.linkedExercises.count)",
+      captionAccessibilityHidden: true,
       actionTitle: editingLinks ? "Done" : "Edit",
       action: { editingLinks.toggle() },
       actionAccessibilityLabel: editingLinks
