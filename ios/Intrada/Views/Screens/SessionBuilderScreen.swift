@@ -114,7 +114,7 @@ struct SessionBuilderScreen: View {
       leadingContent: {
         Button("Cancel") { cancel() }
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
           .frame(minHeight: 44)
           .contentShape(Rectangle())
       },
@@ -157,7 +157,7 @@ struct SessionBuilderScreen: View {
         }
       }
       .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.accentText)
+      .foregroundStyle(IntradaColor.accent)
       .frame(minHeight: 44)
       .contentShape(Rectangle())
     }
@@ -171,7 +171,7 @@ struct SessionBuilderScreen: View {
       Spacer()
       Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
         .font(IntradaFont.meta)
-        .foregroundStyle(IntradaColor.accentText)
+        .foregroundStyle(IntradaColor.accent)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
@@ -416,7 +416,7 @@ struct SessionBuilderScreen: View {
         addingExerciseTarget = block.groupId.map(AddExerciseTarget.init)
       } label: {
         Label("Add a related exercise", systemImage: "plus")
-          .font(IntradaFont.meta).foregroundStyle(IntradaColor.accentText)
+          .font(IntradaFont.meta).foregroundStyle(IntradaColor.accent)
           .frame(maxWidth: .infinity, minHeight: 44)
       }
       .buttonStyle(.plain)

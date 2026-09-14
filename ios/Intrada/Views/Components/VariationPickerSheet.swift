@@ -54,7 +54,7 @@ struct VariationPickerSheet: View {
         if isCurrent {
           Image(systemName: "checkmark")
             .font(IntradaFont.segment.weight(.semibold))
-            .foregroundStyle(IntradaColor.accentText)
+            .foregroundStyle(IntradaColor.accent)
         }
       }
       .padding(.horizontal, IntradaSpacing.card)

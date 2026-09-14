@@ -40,7 +40,7 @@ struct LibraryItemCard: View {
             if item.priority {
               Image(systemName: "star.fill")
                 .font(.system(size: 11))
-                .foregroundStyle(IntradaColor.ink)
+                .foregroundStyle(IntradaColor.accent)
                 .accessibilityHidden(true)
             }
             if hasLinkedExercises {

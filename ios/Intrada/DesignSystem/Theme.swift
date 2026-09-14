@@ -20,15 +20,8 @@ enum IntradaColor {
   /// (WCAG 1.4.11). Never for text; `inkFaint` already fails that.
   static let inkFaintIcon = Color(hex: 0x8F8070)
 
-  /// Terracotta, graphics only: rings, arcs, meters, dots, progress fills.
-  /// 3.28:1 on paper, 3.59:1 on white cards, clearing the 3:1 floor for
-  /// non-text graphical objects (WCAG 1.4.11). Never for text at this value;
-  /// use `accentText` (T28).
-  static let accentGraphic = Color(hex: 0xD06B38)
-  /// Terracotta, for text actions, headline numerals, and control outlines.
-  /// 5.35:1 on paper, 5.86:1 on white cards, clearing the 4.5:1 AA floor
-  /// text needs (T28).
-  static let accentText = Color(hex: 0xA44A22)
+  /// No brand hue: the interactive colour on paper is ink (#1676).
+  static let accent = ink
   static let onAccent = Color(hex: 0xFFFFFF)
   /// The one bright colour. Butter is the default; views read the chosen one
   /// from `@Environment(\.marker)` (#1677), never this token directly.

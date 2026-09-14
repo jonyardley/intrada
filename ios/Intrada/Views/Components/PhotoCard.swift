@@ -90,7 +90,7 @@ struct PhotoCard: View {
       } label: {
         Text(photoId == nil ? "Add" : "Change")
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
       }
       .accessibilityLabel(photoId == nil ? "Add a photo" : "Change the photo")
     }

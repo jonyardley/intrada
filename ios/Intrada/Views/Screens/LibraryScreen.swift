@@ -101,7 +101,7 @@ struct LibraryScreen: View {
         LibraryItemCard(item: item, showsMastery: true, showsMissingDetailsPrompt: true)
           .overlay(
             RoundedRectangle(cornerRadius: IntradaRadius.card)
-              .stroke(IntradaColor.accentText, lineWidth: 2)
+              .stroke(IntradaColor.accent, lineWidth: 2)
               .opacity(selection.wrappedValue == item.id ? 1 : 0))
       }
       .buttonStyle(.plain)

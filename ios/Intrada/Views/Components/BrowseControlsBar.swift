@@ -109,9 +109,7 @@ struct BrowseControlsBar: View {
       } label: {
         Image(systemName: starFilter.wrappedValue ? "star.fill" : "star")
           .font(IntradaFont.tab)
-          .foregroundStyle(
-            starFilter.wrappedValue ? IntradaColor.accentText : IntradaColor.inkFaint
-          )
+          .foregroundStyle(starFilter.wrappedValue ? IntradaColor.accent : IntradaColor.inkFaint)
           .padding(.vertical, 6)
           .padding(.horizontal, 10)
           .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
@@ -145,7 +143,7 @@ struct BrowseControlsBar: View {
           : "line.3.horizontal.decrease.circle.fill"
       )
       .font(IntradaFont.tab)
-      .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accentText)
+      .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
       .padding(IntradaSpacing.controlGap)
     }
     .buttonStyle(.plain)
@@ -154,7 +152,7 @@ struct BrowseControlsBar: View {
     Button(action: toggleSearch) {
       Image(systemName: "magnifyingglass")
         .font(IntradaFont.tab)
-        .foregroundStyle(searchRevealed ? IntradaColor.accentText : IntradaColor.inkFaint)
+        .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
         .padding(IntradaSpacing.controlGap)
     }
     .buttonStyle(.plain)

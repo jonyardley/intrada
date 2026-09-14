@@ -181,7 +181,7 @@ struct TempoTrend: View {
             }
           }
           .stroke(
-            IntradaColor.accentGraphic,
+            IntradaColor.accent,
             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         }
 
@@ -189,7 +189,7 @@ struct TempoTrend: View {
           let isLatest = index == series.measuredIndices.last
           let radius = isLatest ? latestDotRadius : dotRadius
           Circle()
-            .fill(IntradaColor.accentGraphic)
+            .fill(IntradaColor.accent)
             .frame(width: radius * 2, height: radius * 2)
             .overlay(
               Circle()

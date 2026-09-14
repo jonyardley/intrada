@@ -5,7 +5,7 @@ struct ScoreRing: View {
   var size: CGFloat = 46
   /// Hero variant: an "OF 10" caption under the numeral (piece/exercise detail).
   var showsScale: Bool = false
-  /// Mastered variant: fills with `accentGraphic` instead of the usual `masteryFill`.
+  /// Mastered variant: fills with `accent` instead of the usual `masteryFill`.
   var solid: Bool = false
   /// Variation variant: renders this text (e.g. a key letter) instead of the
   /// numeral/rest glyph. Scales down and truncates for labels too long to fit.
@@ -33,7 +33,7 @@ struct ScoreRing: View {
         Circle()
           .trim(from: 0, to: settled ? fraction : 0)
           .stroke(
-            solid ? IntradaColor.accentGraphic : IntradaColor.masteryFill,
+            solid ? IntradaColor.accent : IntradaColor.masteryFill,
             style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
           )
           .rotationEffect(.degrees(-90))

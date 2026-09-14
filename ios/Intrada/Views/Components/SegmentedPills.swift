@@ -57,7 +57,7 @@ struct SegmentedPills<Option: Hashable>: View {
         .background {
           if isSelected {
             Capsule()
-              .fill(IntradaColor.accentText)
+              .fill(IntradaColor.accent)
               .matchedGeometryEffect(id: "selectedPill", in: pill)
           }
         }

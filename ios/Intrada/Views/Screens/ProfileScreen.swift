@@ -16,7 +16,7 @@ struct ProfileScreen: View {
       trailingContent: {
         Button("Edit") { editing = true }
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
           .frame(minHeight: 44)
           .contentShape(Rectangle())
       },

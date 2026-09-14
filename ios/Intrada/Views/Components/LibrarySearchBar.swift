@@ -41,7 +41,7 @@ struct LibrarySearchBar: View {
 
       Button("Cancel", action: onCancel)
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accentText)
+        .foregroundStyle(IntradaColor.accent)
         .buttonStyle(.plain)
     }
   }

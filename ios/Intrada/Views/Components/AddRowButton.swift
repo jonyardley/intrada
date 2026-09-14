@@ -14,7 +14,7 @@ struct AddRowButton: View {
     Button(action: action) {
       Label(title, systemImage: "plus")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accentText)
+        .foregroundStyle(IntradaColor.accent)
         .frame(maxWidth: .infinity)
         .padding(.vertical, verticalPadding)
         .background(background)

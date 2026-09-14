@@ -77,7 +77,7 @@ private struct BeatDot: View {
 
   var body: some View {
     Circle()
-      .fill(sounding ? IntradaColor.accentGraphic : Color.clear)
+      .fill(sounding ? IntradaColor.accent : Color.clear)
       .frame(width: 10, height: 10)
       .overlay(
         Circle().strokeBorder(

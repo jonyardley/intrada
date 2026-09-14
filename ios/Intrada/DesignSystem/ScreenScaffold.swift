@@ -165,9 +165,7 @@ enum ScreenScaffoldIconButton {
       .font(.system(size: 16, weight: .semibold))
       .foregroundStyle(IntradaColor.onAccent)
       .frame(width: 30, height: 30)
-      // Reads as a solid dark button in the mock, not one of the accent's
-      // allowed jobs (#1723).
-      .background(IntradaColor.ink, in: Circle())
+      .background(IntradaColor.accent, in: Circle())
       .frame(width: 44, height: 44)
       .contentShape(Circle())
   }
@@ -193,7 +191,7 @@ enum ScreenScaffoldIconButton {
       leadingContent: {
         Button("Cancel") {}
           .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accentText)
+          .foregroundStyle(IntradaColor.accent)
       },
       trailing: .init(label: "Add", action: {}),
       content: {
