@@ -45,8 +45,9 @@ A rule lives in exactly one of these, chosen by who reads it and when.
    read, then in context for the rest of the session.
 4. **Skills, by name.** Workflows rather than surfaces: shipping and parallel
    streams. `/ship` is the pre-push funnel.
-5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, plus the built-in
-   `Explore`. Model and effort pinned in the definition.
+5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, with model and effort
+   pinned in the definition. `Explore`, `fork` and `general-purpose` are
+   built-in with no definition to pin ("Delegating" below).
 6. **Hooks.** Repo: format on edit, install the git hooks. User: the bash
    guard, the spawn guard, the per-prompt reminder and context watch, the
    post-push CI note, the daily usage line.
@@ -203,8 +204,12 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   in the lead and hand down settled work instead of lifting the agent. In the
   fortnight to 2026-09-14 (`just usage 14`, all projects) `task` runs at
   Sonnet `xhigh` and Opus `xhigh` were $353, all from spawns lifting the pin
-  before the spawn guard existed; the guard refuses a model lift, not an
-  effort lift, so the lead sets neither at the spawn. `task` runs grow as long as
+  before the spawn guard existed; the guard now refuses both a model lift and
+  an effort lift above a pinned definition, so the lead sets neither at the
+  spawn for a pinned agent. It cannot see a built-in with no definition file
+  at all (`Explore`, `fork`, `general-purpose`), so that cap is on the
+  spawning session, not the guard: keep it at `high` or below there too.
+  `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
 ## Plans ship their own resourcing
@@ -232,7 +237,7 @@ a phase without a test plan is.
 
 | Job | Agent | Pinned | Because |
 |---|---|---|---|
-| Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, and the spawn carries no effort setting | Reports facts back; a wrong answer is caught by the lead verifying it |
+| Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, so it inherits the spawning session's effort (below) | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
 | Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
 | Review a diff or a plan | `reviewer` | Opus 5, high | Judgement-dense; never weaker than the writer |
@@ -240,8 +245,11 @@ a phase without a test plan is.
 
 All four definitions live in `.claude/agents/`, so they are reviewed like code
 and travel with the checkout. Pin model and effort in the definition rather than
-at the spawn; the two exceptions are `Explore`, which has no definition, and
-lifting `reviewer` to Fable for Fable-written work.
+at the spawn; the exceptions are `Explore`, `fork` and `general-purpose`, which
+have no definition to pin, and lifting `reviewer` to Fable for Fable-written
+work. Because a subagent with no `effort:` in its definition inherits the
+parent session's effort, `Explore`, `fork` and `general-purpose` should only be
+spawned from a session at `high` or below (#1838).
 
 `task` sits at high, not xhigh: the effort premium buys little on work that
 follows a pattern already in the repo, and over the fortnight to 2026-09-13
