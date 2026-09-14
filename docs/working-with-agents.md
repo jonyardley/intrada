@@ -125,7 +125,7 @@ boundary, saying so.
 | Visual design: a new flow against `design-principles.md`, a screen mocked in Claude Design | Opus 5 `high`; Fable 5.1 `high` only for a T-numbered decision or a flow with no precedent in the app | Opus 5 `high` for the mocks; Sonnet 5 `medium` for bookkeeping (`DesignSync`, tokens, filing the decision) | The lead, or a short session of its own | Fails visibly on the simulator, so a wrong call is cheap to see and cheap to redo |
 | Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; on a model no weaker than the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
 | Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Tier 1 trivia at Sonnet 5 `low` in the lead, or Haiku 4.5 via `smol` when fully specified | The judgement-dense half in the lead, since `task` is pinned to Sonnet and the spawn guard refuses a lift; the patterned half as a subagent from the session that planned it, once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
-| Review | The reviewer is never weaker than the writer: `reviewer` (Opus 5 `high`) for Tier 2; Fable for Fable-written bridge or migration work, in the Fable session or by spawning `reviewer` with `model` set to Fable, the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Judgement-dense, but short: no `reviewer` turn passed 200k context in the fortnight's `just usage 14` |
+| Review | `reviewer` is pinned to Sonnet 5 `high`, which covers Tier 1 and screens-only diffs; a diff touching `crates/intrada-ffi`, a migration, `ActiveSession` or auth spawns `reviewer` with `model` set to Opus instead (Fable for Fable-written bridge or migration work), the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Opus or Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Sonnet covers the non-sensitive majority (52 runs, 12 to 14 September, $77 on mostly Tier 1); the strongest rung stays reserved for the silent-failure surfaces |
 | Gates and research | | `test-runner` (Haiku 4.5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
 
 The worst debugging (bincode wire breaks, silent no-ops, "green but wrong"
@@ -235,13 +235,14 @@ a phase without a test plan is.
 | Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, and the spawn carries no effort setting | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
 | Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
-| Review a diff or a plan | `reviewer` | Opus 5, high | Judgement-dense; never weaker than the writer |
+| Review a diff or a plan | `reviewer` | Sonnet 5, high; lifted to Opus (Fable for Fable-written work) on `crates/intrada-ffi`, a migration, `ActiveSession` or auth | Sonnet covers the non-sensitive majority; the strongest rung stays reserved for the silent-failure surfaces |
 | Conventional Tier 2 slice | `task` | Sonnet 5, high | Non-sensitive surface, patterns already in the repo |
 
 All four definitions live in `.claude/agents/`, so they are reviewed like code
 and travel with the checkout. Pin model and effort in the definition rather than
 at the spawn; the two exceptions are `Explore`, which has no definition, and
-lifting `reviewer` to Fable for Fable-written work.
+lifting `reviewer` to Opus on the sensitive surfaces, or to Fable for
+Fable-written work.
 
 `task` sits at high, not xhigh: the effort premium buys little on work that
 follows a pattern already in the repo, and over the fortnight to 2026-09-13

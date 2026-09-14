@@ -2,7 +2,7 @@
 name: reviewer
 description: Reviews a diff or a plan and reports Blockers, Important and Nits. The pre-push self-review, and the pair on silent-failure surfaces (bincode bridge, GRDB migrations, the ActiveSession blob, auth). Read-only; never posts to GitHub, never waits for the lead.
 tools: Bash, Read, Grep, Glob
-model: opus
+model: sonnet
 effort: high
 ---
 
