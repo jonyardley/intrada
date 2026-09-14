@@ -405,6 +405,25 @@ final class StoreEffectLoopTests: XCTestCase {
       "one non-key rung and the whole ladder is steps")
   }
 
+  /// Moved from `VariationManagementUITests` (#1825): a removed variation is archived, not hard-deleted, but drops from the view.
+  func testRealBridgeRemovingAVariationDropsItFromTheLadder() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "G", "D", "A", "E"])))
+
+    _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "G", "D", "E"])))
+
+    let labels = try bridge.view().items.first { $0.id == id }?.variants.map(\.label)
+    XCTAssertEqual(labels, ["C", "G", "D", "E"], "A is gone, the others keep their order")
+  }
+
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
   /// the Rust deserializer and the `ViewModel` projection must all agree on the
   /// new `Item` field and the two new `ItemEvent` variants. A stub bridge
@@ -640,6 +659,35 @@ final class StoreEffectLoopTests: XCTestCase {
         SessionClock.parseRFC3339("2026-09-03T09:01:00Z"),
         SessionClock.parseRFC3339("2026-09-03T09:01:40Z"),
       ], "each tap keeps the time the shell gave it")
+  }
+
+  /// Moved from `RepetitionCounterUITests` (#1825): a miss at zero floors rather than going negative.
+  func testRealBridgeAMissAtZeroHoldsTheFloor() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-14T09:00:00Z")))
+
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-14T09:00:05Z")))
+    XCTAssertEqual(
+      try bridge.view().activeSession?.currentRepCount, 1, "a bank moves the counter up")
+
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:10Z")))
+    XCTAssertEqual(
+      try bridge.view().activeSession?.currentRepCount, 0, "a miss steps the banked count back")
+
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:20Z")))
+    XCTAssertEqual(
+      try bridge.view().activeSession?.currentRepCount, 0,
+      "a second miss at zero stays on the floor, never negative")
   }
 
   /// Real-bridge wire pin for the manual path (#1499, #1761): a row set by hand

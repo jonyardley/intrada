@@ -1,10 +1,13 @@
 import XCTest
 
 /// Drives the player's variation picker against the real bridge (#1739): the
-/// chip says what is being practised, switching resets the repetition count,
-/// and the item-complete sheet then offers a mark per variation. "Major
-/// Scales" is the seeded exercise whose variations are deterministic (`C`,
-/// `G`, `D`, `A`, `E`; see `app.rs`'s `LoadSampleData` seed).
+/// item-complete sheet offers a mark per variation, proved through
+/// `ScoreSelector`'s coordinate-based pill taps, which only a real rendered
+/// view can exercise. "Major Scales" is the seeded exercise whose
+/// variations are deterministic (`C`, `G`, `D`, `A`, `E`; see `app.rs`'s
+/// `LoadSampleData` seed).
+///
+/// #1825 moved the chip/rep-count switch assertion to `VariationPlayBridgeTests`.
 @MainActor
 final class VariationPickerUITests: XCTestCase {
   override func setUp() {
@@ -53,31 +56,6 @@ final class VariationPickerUITests: XCTestCase {
     selector.coordinate(
       withNormalizedOffset: CGVector(dx: (Double(value) - 0.5) / 10, dy: 0.5)
     ).tap()
-  }
-
-  func testSwitchingVariationRenamesTheChipAndRestartsTheCount() {
-    let app = startScalesSession()
-
-    let chip = app.buttons["Variation"]
-    XCTAssertTrue(chip.waitForExistence(timeout: 10), "an exercise with variations shows the chip")
-    XCTAssertEqual(
-      chip.value as? String, "C",
-      "nothing was planned in the builder, so the session opens on the first variation (#1758)")
-
-    let repetitions = app.otherElements["Repetitions"]
-    XCTAssertTrue(repetitions.waitForExistence(timeout: 5), "the repetition counter")
-    app.buttons["Got it"].tap()
-    app.buttons["Got it"].tap()
-    XCTAssertEqual(
-      repetitions.value as? String, "2 of 10, 8 to go", "two repetitions banked against C")
-
-    pick(app, "G")
-    XCTAssertEqual(chip.value as? String, "G", "the chip follows the switch")
-    XCTAssertEqual(
-      repetitions.value as? String, "0 of 10",
-      "the count starts again for G rather than carrying C's total")
-
-    app.abandonSession()
   }
 
   func testTheItemCompleteSheetOffersAMarkPerVariation() {
