@@ -79,6 +79,15 @@ pub struct CreateItem {
     /// the form is the one they practise from.
     #[serde(default)]
     pub photo_id: Option<String>,
+    /// Variations added inline while creating an exercise (#1783), reconciled
+    /// through the same `reconcile_variants` as `SetVariants`. Only
+    /// `ItemEvent::Add` honours this: a `CreateItem` reaching
+    /// `AddLinkedExercise` or `AddPieceInFull` never carries any (#1436's
+    /// `photo_id` sets the precedent for a shared field meaning one thing by
+    /// event). Empty for a piece; validated non-empty only against
+    /// `ItemKind::Exercise`.
+    #[serde(default)]
+    pub variant_labels: Vec<String>,
 }
 
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
@@ -343,6 +352,7 @@ mod tests {
             notes: None,
             tags: vec!["impressionist".to_string()],
             photo_id: None,
+            variant_labels: Vec::new(),
         });
     }
 
@@ -381,6 +391,7 @@ mod tests {
                 notes: Some("3rds and 7ths".to_string()),
                 tags: vec!["voicings".to_string()],
                 photo_id: None,
+                variant_labels: Vec::new(),
             },
         });
         assert_round_trips(ItemEvent::AddLinkedExercise {
@@ -395,6 +406,7 @@ mod tests {
                 notes: None,
                 tags: vec![],
                 photo_id: None,
+                variant_labels: Vec::new(),
             },
         });
     }

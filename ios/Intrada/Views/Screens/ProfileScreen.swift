@@ -11,24 +11,26 @@ struct ProfileScreen: View {
   private var profile: ProfileView? { store.viewModel?.profile }
 
   var body: some View {
-    ZStack {
-      PaperBackground()
-      ScrollView {
-        VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-          hero
-          highlighter
-        }
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.bottom, IntradaSpacing.section)
-      }
-    }
-    .navigationTitle("Profile")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
+    ScreenScaffold(
+      title: "Profile",
+      trailingContent: {
         Button("Edit") { editing = true }
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accentText)
+          .frame(minHeight: 44)
+          .contentShape(Rectangle())
+      },
+      content: {
+        ScrollView {
+          VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+            hero
+            highlighter
+          }
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.bottom, IntradaSpacing.section)
+        }
       }
-    }
+    )
     .sheet(isPresented: $editing) {
       ProfileEditSheet()
         .environment(store)
@@ -46,7 +48,6 @@ struct ProfileScreen: View {
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .padding(.horizontal, 4)
-            .markerSwipe()
         } else {
           Text("Add a name")
             .font(IntradaFont.pageTitle())

@@ -397,7 +397,7 @@ private struct PickerCopy {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
@@ -405,7 +405,7 @@ private struct PickerCopy {
           latestAchievedTempo: nil, priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
-          photoId: nil),
+          photoId: nil, showsKey: true),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _, _ in })

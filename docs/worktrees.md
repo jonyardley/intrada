@@ -65,7 +65,7 @@ the file path for a file tool, the working directory for a shell command.
 | `just worktrees`, `gh pr view` | yes   | yes           | yes            |
 | `just worktree-new`    | yes           | yes           | yes            |
 | Build, test, `just check` | yes        | yes           | no             |
-| Edit, commit, push     | no            | yes           | no             |
+| Edit, commit, push     | no (unless it self-heals, below) | yes | no    |
 
 A pull in the main checkout is denied along with the rest of the mutating git
 subcommands, by design: agents fetch instead (#1740). `git fetch` is allowed,
@@ -115,6 +115,37 @@ than guesses:
 
 File tools take absolute paths inside the worktree as they always did.
 
+### Forgetting the prefix self-heals when it is unambiguous
+
+A session that forgot the `cd <worktree> && ` prefix, or wrote a relative file
+path against the main checkout instead of the worktree, gets it added for it
+rather than denied, when the session's own lease makes the answer unambiguous
+(#1840, using a PreToolUse hook's `updatedInput` to rewrite the call before it
+runs). A Bash command with no `cd` of its own is given the prefix; a file
+tool's path is re-rooted at the same relative path under the worktree. An
+absolute path already inside the worktree is unaffected either way, per the
+row above.
+
+This only fires when the session holds a lease on exactly one **non-main**
+worktree. Main's own lease (taken at session start, see above) always exists
+and never blocks, so it is never part of this count: zero means nothing has
+been written to any worktree yet, so there is no candidate, and more than one
+means the guard cannot tell which worktree the write was meant for. Both still
+deny, same as before.
+
+Left alone too, still denied outright rather than rewritten: a command that
+already tries to move somewhere with its own `cd` (prepending a second one in
+front of it would relocate the escape, not close it), a command that names a
+directory explicitly (`git -C`, which ignores any `cd` regardless), and a
+command or path that already reaches back into the main checkout by absolute
+path or `..`, the same reach-back a manually typed prefix is checked against
+above. Adding a prefix only changes where a *relative* path lands; one of
+these would still write into main regardless of what came in front of it.
+
+If a machine's Claude Code build does not honour a PreToolUse hook's
+`updatedInput`, this simply never fires and every case above denies exactly as
+it did before #1840.
+
 ## Escape hatches
 
 Jon's, not an agent's. When the guard fires, the session says so and stops.
@@ -128,7 +159,7 @@ Jon's, not an agent's. When the guard fires, the session says so and stops.
 
 The hooks are machine-local and in no repository: `guard-worktree.sh`,
 `worktree-lease.sh` and `worktree-session.sh` in `~/.claude/hooks/`, with a
-battery of 90 cases in `guard-worktree.test.sh`. Run the battery after any edit
+battery of 100 cases in `guard-worktree.test.sh`. Run the battery after any edit
 to either script, and mutation-test rather than trusting a green: set `GUARD=`
 and `LEASE=` to doctored copies so a mutation run never breaks the hooks other
 live sessions are relying on.

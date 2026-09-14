@@ -283,6 +283,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
+            variant_labels: Vec::new(),
         }
     }
 
