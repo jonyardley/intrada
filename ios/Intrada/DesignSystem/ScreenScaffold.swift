@@ -1,10 +1,14 @@
 import SwiftUI
 
 /// The shared shell every top-level screen is built from. The page title lives
-/// in the content, not a UIKit nav bar (the locked *Library — Light* header).
-/// A pushed or presented screen hides the native nav bar entirely (#1724) and
-/// carries its own back/cancel action as `leadingContent`, so the title sits
-/// at the same height everywhere rather than dropping below a second bar.
+/// in the content, not the native nav bar's title (the locked *Library, Light*
+/// header). Every screen forces `.inline` display with an empty native
+/// title (#1724, #1822), so the bar is the same fixed ~44pt height everywhere
+/// rather than a large title on some screens and none on others; on a pushed
+/// screen this also keeps the real native back chevron and its edge-swipe
+/// gesture, which a custom leading view could never reproduce. `leadingContent`
+/// stays for a screen whose leading action is not "back" (Build session's
+/// Cancel, which must intercept an unsaved plan rather than pop silently).
 struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   let title: String
   var subtitle: String?
@@ -97,6 +101,10 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       // Clamp the floor (avoid sub-readable text) but allow the full accessibility
       // range now that the filter tabs scroll instead of wrapping (#810).
       .dynamicTypeSize(.xSmall ... .accessibility5)
+      // Blank inline title: a fixed small bar on every screen, native back
+      // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
+      .navigationTitle("")
+      .navigationBarTitleDisplayMode(.inline)
   }
 
   private var titleText: some View {
@@ -150,9 +158,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   }
 }
 
-/// The solid circular icon button `ScreenScaffold`'s `trailing` renders,
-/// shared with `ScreenBackButton` so a header's leading and trailing actions
-/// read as the same control (#1724).
+/// The solid circular icon button `ScreenScaffold`'s `trailing` renders.
 enum ScreenScaffoldIconButton {
   static func icon(_ systemImage: String) -> some View {
     Image(systemName: systemImage)
@@ -164,22 +170,6 @@ enum ScreenScaffoldIconButton {
       .background(IntradaColor.ink, in: Circle())
       .frame(width: 44, height: 44)
       .contentShape(Circle())
-  }
-}
-
-/// A pushed or presented screen's back action, styled as `ScreenScaffold`'s
-/// `trailing` button so leading and trailing read as one language (#1724).
-/// Dismisses itself via `\.dismiss`: only fits a screen actually reached by a
-/// push or a `navigationDestination`.
-struct ScreenBackButton: View {
-  @Environment(\.dismiss) private var dismiss
-
-  var body: some View {
-    Button(action: { dismiss() }) {
-      ScreenScaffoldIconButton.icon("chevron.left")
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Back")
   }
 }
 
@@ -196,11 +186,15 @@ struct ScreenBackButton: View {
     }
   }
 
-  #Preview("With a back button") {
+  #Preview("With a leading action") {
     ScreenScaffold(
-      title: "Clair de Lune",
-      subtitle: "Claude Debussy",
-      leadingContent: { ScreenBackButton() },
+      title: "Build session",
+      subtitle: "3 items",
+      leadingContent: {
+        Button("Cancel") {}
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accentText)
+      },
       trailing: .init(label: "Add", action: {}),
       content: {
         PlaceholderContent(

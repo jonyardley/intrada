@@ -13,7 +13,6 @@ struct ProfileScreen: View {
   var body: some View {
     ScreenScaffold(
       title: "Profile",
-      leadingContent: { ScreenBackButton() },
       trailingContent: {
         Button("Edit") { editing = true }
           .font(IntradaFont.bodyMedium)
@@ -32,7 +31,6 @@ struct ProfileScreen: View {
         }
       }
     )
-    .toolbar(.hidden, for: .navigationBar)
     .sheet(isPresented: $editing) {
       ProfileEditSheet()
         .environment(store)

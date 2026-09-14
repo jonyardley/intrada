@@ -41,10 +41,6 @@ struct LibraryScreen: View {
         content
       }
     }
-    // The list draws its own header; the detail pane now does too (#1724),
-    // so both sides of a split stay chrome-free rather than matching a
-    // visible bar (#1682).
-    .toolbar(.hidden, for: .navigationBar)
     // The read belongs to the sheet. `onDismiss`, not the add screen's own
     // `onDisappear`, which the scanner's full-screen cover also triggers.
     .sheet(isPresented: $adding, onDismiss: { store.send(.discardPhotoDraft) }) {

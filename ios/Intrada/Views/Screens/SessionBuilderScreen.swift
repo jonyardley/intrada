@@ -126,7 +126,9 @@ struct SessionBuilderScreen: View {
         }
       }
     )
-    .toolbar(.hidden, for: .navigationBar)
+    // A native back button (or its edge-swipe) would pop past `cancel()`'s
+    // unsaved-plan confirmation; Cancel is the only way out (#1822).
+    .navigationBarBackButtonHidden(true)
     .sheet(isPresented: $addingItems) { AddToSessionSheet().environment(store) }
     .sheet(item: $configuringEntry) { target in
       EntrySettingsSheet(entry: target.entry).environment(store)

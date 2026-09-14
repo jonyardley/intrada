@@ -35,23 +35,12 @@ struct LibraryDetailScreen: View {
   }
 
   var body: some View {
-    Group {
-      if showsBackButton {
-        ScreenScaffold(
-          title: item.title, subtitle: subtitle,
-          leadingContent: { ScreenBackButton() },
-          trailingContent: { starAndEditActions },
-          content: { detailContent }
-        )
-      } else {
-        ScreenScaffold(
-          title: item.title, subtitle: subtitle,
-          trailingContent: { starAndEditActions },
-          content: { detailContent }
-        )
-      }
-    }
-    .toolbar(.hidden, for: .navigationBar)
+    ScreenScaffold(
+      title: item.title, subtitle: subtitle,
+      trailingContent: { starAndEditActions },
+      content: { detailContent }
+    )
+    .navigationBarBackButtonHidden(!showsBackButton)
     .sheet(isPresented: $editing) {
       LibraryEditScreen(item: item)
         .environment(store)

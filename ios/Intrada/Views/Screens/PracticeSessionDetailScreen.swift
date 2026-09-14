@@ -13,8 +13,7 @@ struct PracticeSessionDetailScreen: View {
 
   var body: some View {
     ScreenScaffold(
-      title: session.dateDisplay(locale: locale, calendar: calendar), subtitle: subtitle,
-      leadingContent: { ScreenBackButton() }
+      title: session.dateDisplay(locale: locale, calendar: calendar), subtitle: subtitle
     ) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
@@ -32,7 +31,6 @@ struct PracticeSessionDetailScreen: View {
       }
       .scrollEdgeShadow()
     }
-    .toolbar(.hidden, for: .navigationBar)
   }
 
   private var subtitle: String {
