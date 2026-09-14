@@ -317,13 +317,26 @@ worktrees:
 # Diagnostics & cleanup
 # ─────────────────────────────────────────────
 
-# Claude Code usage from this machine's transcripts, at API prices
-usage days="7":
+# Claude Code usage from this machine's transcripts, at API prices. Any
+# all-digit argument is the day count (default 7); anything else (e.g.
+# --quality, --brief) passes straight through to usage-report.py, in either
+# order: `just usage 14 --quality` and `just usage --quality 14` both work.
+usage *args:
     #!/usr/bin/env bash
     set -euo pipefail
     report="$HOME/.claude/hooks/usage-report.py"
+    days=7
+    flags=()
+    for a in {{args}}; do
+        case "$a" in
+            ''|*[!0-9]*) flags+=("$a") ;;
+            *) days="$a" ;;
+        esac
+    done
     if [ -f "$report" ]; then
-        python3 "$report" --days "{{days}}"
+        # bash 3.2 (macOS's default) treats "${flags[@]}" as unbound under
+        # `set -u` when the array is empty; this expansion is the workaround.
+        python3 "$report" --days "$days" ${flags[@]+"${flags[@]}"}
     else
         echo "no usage-report.py in ~/.claude/hooks on this machine, so nothing to read"
     fi
