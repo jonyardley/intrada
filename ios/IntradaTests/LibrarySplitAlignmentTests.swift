@@ -57,9 +57,9 @@ struct LibrarySplitAlignmentTests {
     assertSymmetricChrome(renderedSplit(selecting: nil))
   }
 
-  // Both columns force a visible bar (#1868), so two bars is the live case and
-  // finding exactly one is the asymmetry this guards against. Zero nav bars
-  // (the windowless host) is only meaningful alongside a real render: the
+  // Both columns force a visible bar now (#1868), and finding two or none
+  // is symmetric and fine; finding exactly one is the asymmetry this guards
+  // against. Zero nav bars is only meaningful alongside a real render: the
   // view-count floor is the positive anchor that keeps a broken hierarchy
   // (which would also find zero) from passing in silence.
   private func assertSymmetricChrome(_ rendered: (edges: [CGFloat], viewCount: Int)) {

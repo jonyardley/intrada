@@ -14,8 +14,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   var subtitle: String?
   var trailing: TrailingAction?
   let leadingContent: Leading
-  /// A trailing view of the screen's own: a native toolbar item (#1868), or
-  /// beside the title where `trailing` sits when placed `.header`.
   let trailingContent: Trailing
   let trailingPlacement: TrailingPlacement
   @ViewBuilder var content: Content
@@ -116,8 +114,6 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       // chevron and edge-swipe intact on a pushed one, nothing to look at (#1822).
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
-      // Leading and trailing views are native toolbar items for the glass pill
-      // (#1868), unless trailing content is placed `.header`.
       .toolbar {
         if Leading.self != EmptyView.self {
           ToolbarItem(placement: .topBarLeading) { leadingContent }
@@ -204,8 +200,6 @@ enum ScreenScaffoldIconButton {
   }
 
   #Preview("With a leading action") {
-    // The Cancel button is a native toolbar item (#1868): only a real
-    // navigation container hosts one.
     NavigationStack {
       ScreenScaffold(
         title: "Build session",

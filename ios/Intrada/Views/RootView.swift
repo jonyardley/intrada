@@ -122,9 +122,8 @@ struct RootView: View {
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
     appearance.configureWithOpaqueBackground()
-    // Opaque paperTop so the bar matches the page with no seam (#1868). The blur
-    // stays even though the fill hides it: without one, iOS 26 bar button items
-    // lose their glass pill, on a transparent bar (#1829) and an opaque one (#1868).
+    // The fill hides the blur, but without a blur iOS 26 bar button items lose
+    // their glass pill on any bar, transparent (#1829) or opaque (#1868).
     appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
     appearance.backgroundColor = UIColor(IntradaColor.paperTop)
     appearance.shadowColor = .clear

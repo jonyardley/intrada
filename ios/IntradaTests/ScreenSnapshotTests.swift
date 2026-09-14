@@ -859,8 +859,7 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryDetailScreen() {
-    // Preset path so the snapshot covers the pushed detail layout, not just the
-    // body; the windowless host draws no nav bar or toolbar items (#1880).
+    // Preset path so the snapshot covers the pushed detail, not just the body.
     let store = Store(bridge: PreviewBridge(items: [.previewDetail]))
     let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail.id])) {
       LibraryScreen()
