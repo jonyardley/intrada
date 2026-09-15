@@ -1,4 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/mcp.json",
-  "mcpServers": {}
+  "mcpServers": {
+    "xcode": {
+      "command": "xcrun",
+      "args": [
+        "mcpbridge"
+      ]
+    }
+  }
 }

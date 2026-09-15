@@ -224,7 +224,7 @@ column below is in that bill.
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
 | User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text on every prompt (the turn reminder and the context watch), after a push (the CI-watch note) and in the day's first session (one usage line); before a tool runs, the worktree guard, the bash guard, the read guard and the spawn guard |
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
-| Xcode tools | `.mcp.json` | xcodebuildmcp and the simulator workflow |
+| Xcode tools | `.mcp.json` | Xcode's tool server (`xcrun mcpbridge`) for driving the running app on an iOS 27 simulator, rendering previews and Apple docs search; builds, tests and project edits are denied in `.claude/settings.json` |
 
 The `~/.claude/` rows above move whole if `CLAUDE_CONFIG_DIR` is set: a session
 on such a machine reads `$CLAUDE_CONFIG_DIR/CLAUDE.md`,

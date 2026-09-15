@@ -64,7 +64,17 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:crates.io)",
       "mcp__context7__resolve-library-id",
-      "mcp__context7__query-docs"
+      "mcp__context7__query-docs",
+      "mcp__xcode__DeviceInteractionStartSession",
+      "mcp__xcode__DeviceInteractionSynthesize",
+      "mcp__xcode__DeviceInteractionEndSession",
+      "mcp__xcode__RenderPreview",
+      "mcp__xcode__DocumentationSearch",
+      "mcp__xcode__XcodeOpenWorkspace",
+      "mcp__xcode__XcodeCloseWorkspace",
+      "mcp__xcode__XcodeListWorkspaces",
+      "mcp__xcode__XcodeListRunDestinations",
+      "mcp__xcode__XcodeSwitchRunDestination"
     ],
     "ask": [
       "Bash(gh run rerun:*)",
@@ -88,7 +98,31 @@
       "Bash(xcrun simctl erase:*)",
       "Bash(simctl erase:*)",
       "Bash(killall CoreSimulatorService)",
-      "Bash(killall -9 CoreSimulatorService)"
+      "Bash(killall -9 CoreSimulatorService)",
+      "mcp__xcode__BuildProject",
+      "mcp__xcode__RunProject",
+      "mcp__xcode__StopProject",
+      "mcp__xcode__RunAllTests",
+      "mcp__xcode__RunSomeTests",
+      "mcp__xcode__RunCodeSnippet",
+      "mcp__xcode__InvokeDebuggerCommand",
+      "mcp__xcode__DeviceInteractionInstallAndRun",
+      "mcp__xcode__DeviceInteractionStartWorkspaceSession",
+      "mcp__xcode__XcodeWrite",
+      "mcp__xcode__XcodeUpdate",
+      "mcp__xcode__XcodeRM",
+      "mcp__xcode__XcodeMV",
+      "mcp__xcode__XcodeMakeDir",
+      "mcp__xcode__XcodeNewProject",
+      "mcp__xcode__XcodeNewTarget",
+      "mcp__xcode__UpdateTargetBuildSetting",
+      "mcp__xcode__UpdateFileCompilerFlags",
+      "mcp__xcode__AddEntitlement",
+      "mcp__xcode__AddInfoPlist",
+      "mcp__xcode__StringCatalogEdit",
+      "mcp__xcode__LocalizationPlanner",
+      "mcp__xcode__XcodeSwitchScheme",
+      "mcp__xcode__XcodeSwitchTestPlan"
     ]
   },
   "hooks": {
@@ -123,5 +157,8 @@
     "atlassian@claude-plugins-official": false,
     "visual-explainer@visual-explainer-marketplace": false,
     "frontend-design@claude-plugins-official": false
-  }
+  },
+  "enabledMcpjsonServers": [
+    "xcode"
+  ]
 }

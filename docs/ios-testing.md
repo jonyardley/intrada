@@ -8,8 +8,8 @@ do it, and the host gotchas that waste the most time.
 
 **The reliable, primary path is the Xcode CLI: `just` + `xcodebuild` + `xcrun
 simctl`.** That's what builds, runs the simulator, takes screenshots, and runs
-the tests below. Two MCP servers are *available* as conveniences, but neither is
-required and the CLI is what you should reach for first.
+the tests below. Xcode's own tool server adds what the CLI cannot do: tapping and
+typing in the running app, rendering a preview, and searching Apple's docs.
 
 ### Xcode CLI (what to use)
 
@@ -25,18 +25,65 @@ xcrun simctl launch "$UDID" com.intrada.native --seed-sample-data
 xcrun simctl io "$UDID" screenshot shot.png      # ← how to screenshot the sim
 ```
 
-### MCP servers (optional)
+### Xcode's tool server (driving the running app)
 
-- **XcodeBuildMCP** — registered in `.mcp.json` (`npx xcodebuildmcp@latest`, runs
-  on demand, no install beyond Node). It exposes MCP tools that wrap the same
-  build/simulator/test/screenshot actions for an MCP client. Upstream:
-  <https://github.com/cameroncooke/XcodeBuildMCP>. Available, but the CLI above
-  is the path of record.
-- **Xcode-app driver** (`mcp__xcode__*`: `XcodeListWindows`, `GetTestList`,
-  `RunSomeTests`, `GetBuildLog`, …) automates an *open* Xcode window. Configured
-  per-developer (not in this repo). Fallback only — GUI builds hit
-  unresolved-SwiftPM-package and code-signing errors that the CLI's
-  `CODE_SIGNING_ALLOWED=NO` avoids.
+Xcode 27 serves its tools over MCP with `xcrun mcpbridge`, headless, with no
+Xcode window. `.mcp.json` registers it as `xcode`. Agents use it for three
+things:
+
+- **Driving the running app**: `DeviceInteractionStartSession`,
+  `DeviceInteractionSynthesize` and `DeviceInteractionEndSession` tap, swipe and
+  type on the simulator, and capture a screenshot plus a UI hierarchy after
+  every step.
+- **Rendering a preview**: `RenderPreview` builds and snapshots one `#Preview`.
+- **Apple docs**: `DocumentationSearch`.
+
+Building, running, testing, the debugger, and every tool that edits files,
+targets, schemes or build settings are denied in `.claude/settings.json`. The
+`just` recipes own builds and tests (destination pin, signing off, the
+simulator lock) and `ios/project.yml` owns the project through xcodegen, so an
+edit made through Xcode would be lost on the next regenerate. `XcodeOpenWorkspace`,
+`XcodeCloseWorkspace`, `XcodeListWorkspaces`, `XcodeListRunDestinations` and
+`XcodeSwitchRunDestination` are allowed for the flow below, and every tool on
+neither list asks first.
+
+The flow:
+
+1. `SIM_DEVICE="iPhone 17" just ios-run`, and note the UDID on its
+   `launched on <UDID>` line. That device picks the newest runtime installed.
+2. The first time in a worktree, `XcodeOpenWorkspace` on that worktree's
+   `ios/Intrada.xcodeproj` (absolute path).
+3. `DeviceInteractionStartSession` with that UDID as `deviceIdentifier`.
+4. `DeviceInteractionSynthesize` with an empty `interactionCommand` to capture,
+   then read the hierarchy file and tap the element's `hitPoint`
+   (`t X Y`), never a position guessed from the screenshot. Swipe with
+   `t X1 Y1 f X2 Y2 0.3`; type with `sender keyboard kbd TEXT`, last in the
+   chain. Each call returns a fresh capture; read it to confirm the step landed.
+5. `DeviceInteractionEndSession` when done: an open session keeps the device
+   busy. Close the worktree's workspace with `XcodeCloseWorkspace` when finished
+   with it.
+
+Measured on Xcode 27.0 with the seeded library: starting a session took 0.1s;
+capture, tap into "Clair de Lune", back, open search and type "Hanon" each took
+between 0.4s and 1.2s, and every capture carried labels and hitPoints for the
+rows, buttons and search field. The first typing on a fresh simulator shows
+the keyboard's swipe-typing tip over the lower half of the screen. On 2026-09-15
+the fast tier passed 469 of 469 with this worktree's headless workspace still
+open, so an open headless workspace is not the Xcode window the "Quit Xcode
+before `xcodebuild test`" gotcha warns about (measured once).
+
+**The device tools need an iOS 27 simulator**, so the flow runs on iPhone 17 on
+iOS 27. Snapshot references and both test tiers stay on iPhone 16 / iOS 26.5 to
+match CI; nothing here changes that.
+
+**Approval is once per agent and per folder.** Xcode refuses every tool until
+Jon approves the agent program in the prompt Xcode shows the first time that
+agent opens a project, and the approval covers that project's folder. A new
+worktree asks again the first time.
+
+**`RenderPreview` takes project paths**, relative to `ios/` as the project
+navigator shows them (`Intrada/Views/Screens/LibraryScreen.swift`), not
+filesystem paths. A warm render of the library screen took 5.4s.
 
 ### `just` recipes
 
@@ -97,8 +144,8 @@ gesture (e.g. pull-to-reveal) never fired.
   launch the test runner") is almost always Xcode.app holding the simulator
   while the CLI also wants it. `osascript -e 'quit app "Xcode"'`, then re-run.
 - **Transient runner flake** → restart the sim service:
-  `killall com.apple.CoreSimulator.CoreSimulatorService Simulator`, then re-boot
-  the sim. UI-test *runners* trip this first; if unit tests pass but the UI test
+  `killall com.apple.CoreSimulator.CoreSimulatorService`, quit Device Hub if it
+  is open, then re-boot the sim. UI-test *runners* trip this first; if unit tests pass but the UI test
   fails on launch, it's the host, not the test.
 - **Stale bindings after pulling/rebasing** onto a main with core changes →
   `extra argument` / `cannot find type` Swift errors. Run `just ios-gen`
