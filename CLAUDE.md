@@ -47,7 +47,7 @@ just ios-test-full    # adds XCUITests (the merge gate; mirrors CI)
   machine-wide lock (`scripts/ios-sim-lock.sh`) rather than refusing when another session's
   run is live, and leave their sim booted for the next run, shutting it down after ten idle
   minutes: a booted device on its own is no longer a signal of anything. Global resets are
-  still denied; a device outside that flow (someone poking at Simulator.app by hand) still
+  still denied; a device outside that flow (someone poking at Device Hub by hand) still
   needs asking about before you touch it.
 - **Seed mode skips persistence**: `SEED=0 just ios-run` to test persistence.
 - **Read source with the Read tool, not `cat`.** Path-scoped rules fire on Read.
