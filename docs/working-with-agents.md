@@ -29,8 +29,8 @@
 | 7. Ship | `just pr-open` as a draft, CI watched to a conclusion, a human merges | Branch protection, the deny list, the git hooks |
 | 8. Measure | A dated row in `harness-log.md` per harness change; the Monday read | `just usage 7 --quality` |
 
-Every rule below is held by a hook or a recipe named in its section. A rule a
-hook can enforce loses its prose in the same change.
+Most rules below are held by a hook or a recipe named in their section. A rule
+a hook can enforce loses its prose in the same change.
 
 ## 1. Claim
 
@@ -38,7 +38,7 @@ hook can enforce loses its prose in the same change.
 |---|---|
 | Starting a unit of work | `just claim N`. It refuses and names the other branch when the issue is already claimed or an open PR references it; otherwise it labels the issue, comments the branch and moves the board to In progress |
 | Asked "what's next" or "what can run in parallel" | Answer from `just status` and the session-start claims list, with no further reads |
-| About to start a third fix on one issue | Stop and name the decision: two corrections on one point end the change, and `just claim` refuses a third claim at two merged PRs (#1890) |
+| About to start a third fix on one issue | Stop and name the decision: two corrections on one point stop the change and ask if the approach is wrong before a third, and `just claim` refuses a third claim at two merged PRs (#1890) |
 
 A claim is the check that the work is not already in flight:
 
@@ -65,8 +65,9 @@ to 14 September, each a fresh 80k to 200k context, all picking Tier 1 work
 Every session that edits works in its own worktree, whether or not another is
 running, and makes it itself from the main checkout Jon started it in
 (CLAUDE.md, Always step 3). Over 12 to 14 September the three rules that said
-otherwise cost eleven corrections and 51 denied writes in main (#1837);
-`guard-worktree.sh` now denies the write in main.
+otherwise cost eleven corrections (#1837), and `guard-worktree.sh` denied 51
+writes in main, almost all a missing `cd` prefix, which the self-heal now adds
+for you (#1840).
 
 `just worktree-new <name>` branches from fresh `origin/main` and seeds the warm
 `target/` and `ios/build` caches (#1205). Worktrees live at
@@ -89,15 +90,16 @@ command for the new worktree, because the sidebar shows the branch and PR of the
 directory a session started in. It never starts a session itself (#1720).
 `INTRADA_WORKTREE_CMUX=0` silences the suggestion.
 
-**A session in the main checkout drives its worktree without restarting**, and
-that is the only shape in use. The path-scoped rules in `.claude/rules/` load
+**A session in the main checkout drives its worktree without restarting**, from
+2026-09-12, and that is the only shape in use. The path-scoped rules in `.claude/rules/` load
 only under the directory a session started in, so the session reads the rules
 for the files it is about to touch by hand, or it is working blind. The
 mechanism is the `cd` prefix, and the `EnterWorktree` tool is banned here: it
 marks the session isolated and the bash guard then refuses every version
 control command, so that session can never commit. The shape the prefix must
-take, and the self-heal that adds it when the session holds exactly one
-worktree lease (#1840), are in [`docs/worktrees.md`](worktrees.md).
+take, the self-heal that adds it when the session holds exactly one worktree
+lease (#1840), and what happens on a machine whose hooks predate all this, are
+in [`docs/worktrees.md`](worktrees.md).
 
 A subagent inherits none of this. Its brief names the worktree by absolute
 path, or its first edit lands in main and is denied, and `reviewer` diffs the
@@ -113,9 +115,12 @@ and the serialisation points.
 
 | You are | Do |
 |---|---|
-| Opening a session | Name the rung before the first edit: Opus 5 `xhigh`, which the session opens on, unless the work is on the Fable list |
-| Reaching work on the Fable list | `/model` and `/effort` in this session, saying so, and back to Opus 5 `xhigh` at the boundary. A new chat frees the lead; it is never how a rung changes |
+| Opening a session | Name the rung and effort before the first edit and at every boundary: Opus 5 `xhigh`, which the session opens on, unless the work is on the Fable list |
+| Reaching work on the Fable list | `/model` and `/effort` in this session before the work starts, saying so, and back to Opus 5 `xhigh` at the boundary. A new chat frees the lead; it is never how a rung changes |
 | Handing work down | Settled work goes to a subagent from one lead (step 5); a new chat is for freeing the session, never for work the lead could dispatch |
+
+The new-chat rule was set from twelve of 76 sessions over 12 to 14 September
+that did nothing but status or handover (#1836).
 
 Three rungs, set on 2026-09-15 (#1897): Fable thinks, Opus builds, Haiku runs.
 The lower rungs cost more of Jon's time in corrections and loops than they
@@ -140,8 +145,8 @@ is caught on the simulator, a wrong test fails in CI.
 `/model` and `/effort`, saying so, and back to Opus 5 `xhigh` at the boundary:
 
 - The plan comment on a Tier 2 or Tier 3 issue.
-- The shape and the build of anything crossing the bridge, a migration, the
-  crash-recovery blob or auth. The sensitivity override puts this work on the
+- The shape and the build of anything crossing the bridge, a schema change or
+  migration, the crash-recovery blob or auth. The sensitivity override puts this work on the
   list whatever the file count.
 - A direction call: a roadmap pivot, a reversal, "should we build this at all".
 - The bug nobody can explain: a bincode wire break, a silent no-op, a test
@@ -151,7 +156,7 @@ is caught on the simulator, a wrong test fails in CI.
 
 | Rung | Human equivalent | Ask them for |
 |---|---|---|
-| Fable 5.1 `high`, thinks | The architect you pull into a design review. Sets the shape, does not type the code | The plan comment, the bridge or migration shape, the direction call, the bug nobody can explain |
+| Fable 5.1 `high`, thinks | The architect you pull into a design review. Sets the shape; builds only the sensitive surfaces on the Fable list | The plan comment, the bridge or migration shape, the direction call, the bug nobody can explain |
 | Opus 5 `xhigh`, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed; they call the architect when the contract is in doubt |
 | Opus 5 `high`, `task` | The same senior engineer working alone on a branch from a written ticket | One slice, reported back as a diff; you do not sit with them while they type |
 | Opus 5 `high`, `reviewer` | A peer on the PR | Reads the diff, not the description; never merges |
@@ -413,8 +418,9 @@ built-in with no definition file, so that cap is on the spawning session. The
 lead opens at `xhigh`, so `fork` and `general-purpose` inherit Opus at `xhigh`
 (#1838); `Explore` takes `model: haiku`, a model the `/effort` menu does not
 offer `xhigh` for.
-`task` sits at `high`, not `xhigh`: over the fortnight to 2026-09-13 context
-length dominated its cost either way (59% of its turns past 200k).
+`task` sits at `high`, not `xhigh`: the effort premium buys little on work that
+follows a pattern already in the repo, and over the fortnight to 2026-09-13
+context length dominated its cost either way (59% of its turns past 200k).
 
 Rules on top:
 
@@ -435,8 +441,10 @@ Rules on top:
   reports after 60 turns or its second failed build, and refuses a brief
   naming more than ten files (`.claude/agents/task.md`, #1888).
 - **The lead verifies a task's result through `reviewer` and the gate
-  counts, never by re-reading its files** (#1846). It opens a file the task
-  touched only to act on a specific `reviewer` finding, and then by range.
+  counts, never by re-reading its files** (#1846). The report shape in
+  `.claude/agents/task.md` is what the lead checks the work against; it opens a
+  file the task touched only to act on a specific `reviewer` finding, and then
+  by range.
 - **Brief a task by file and line, not by area.** Naming the exact lines lets
   the task edit in place instead of opening a full read to relocate its own
   work; a `git grep` for a sentinel value beats reading a file end to end.
@@ -451,12 +459,12 @@ file again; a screenshot is read once and described. `read-guard.sh` denies a
 holds that exact path with an unchanged mtime, and denies one on a text file
 over 400 lines; images are exempt (#1844). Set from 981 of 1,930 text reads
 over one weekend that repeated a file already in the session; one core file
-was read 225 times.
+was read 225 times. `rtk read` covers the rest.
 
 **Context.** `context-watch.sh` warns at 150k, hands the rest of the unit to a
 subagent at 200k and says `/compact` at 400k (`CONTEXT_WARN` and
 `CONTEXT_FIRM` stay overridable env vars), set from 30 of 94 sessions passing
-200k over 12 to 14 September (#1848). The status line shows the context in
+200k over 12 to 14 September (#1849), and set in #1848. The status line shows the context in
 thousands, amber from 200k and red from 400k.
 
 **Build and test control.** The rules on driving iOS through the `just`
@@ -515,7 +523,7 @@ screens half starts.
 |---|---|
 | About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff, then `just pr-open` as a draft; watch CI to a conclusion in the same turn and read mergeability |
 | The PR is green and reviewed | `gh pr ready`, and `just project-status N "In review"` for the issue |
-| The unit has shipped: PR merged, issue closed, worktree removed | `/clear` in the same sitting |
+| The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting |
 | About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so |
 
 The gate funnel, Codecov expectations, the deferred-issue protocol and the PR
@@ -582,7 +590,14 @@ the unit ends with `/clear`; a launchd timer (`cold-nudge.sh`, machine-local,
 | Changing the harness | Add its row to [`harness-log.md`](harness-log.md) in the same PR: date, PR, what changed, the number it should move, first read |
 | It is Monday | Read `just usage 7 --quality` against the log; a lever that has not moved its number after two reads is reverted, not patched |
 | Correcting a rule that failed | Edit that rule; never add a second one beside it |
-| Wanting to see what sessions cost | `just usage` (last seven days by agent, model and effort, plus the biggest sessions); `just usage 14` for a fortnight |
+| Wanting to see what sessions cost | `just usage` (last seven days by agent, model and effort, plus the biggest sessions, from `usage-report.py`); `just usage 14` for a fortnight. `usage-daily.sh` opens the day's first session with one line of it |
+
+A correction edits the rule that failed and never adds a second one beside
+it: over 12 to 14 September three worktree rules disagreed, six memories
+restated them, and the mistake was back the next morning. The usage
+guidelines folded into these steps were set on 2026-09-14 from the review in
+#1836: three days, $1,225, 76 sessions, 44 PRs opened from Friday evening and
+40 of them merged.
 
 The three numbers are **speed** (Jon's time from claim to merged PR),
 **rework** (fix PRs, reverts and corrections) and **spend** (tokens and

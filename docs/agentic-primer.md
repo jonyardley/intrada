@@ -128,14 +128,14 @@ regardless of diff size.
 
 **Three rungs.** Measure your own, but one repo settled on the strongest model
 thinking, the middle model building and the cheapest model running, after
-finding that corrections ran at much the same rate per prompt on every rung and
-that the cheap rungs cost the human more time in loops than they saved in
-spend.
+corrections ran at much the same rate per prompt on every rung and the human
+judged that the cheap rungs cost more of their time in loops than they saved
+in spend.
 
 | Rung | Human equivalent | Ask it for |
 |---|---|---|
-| Strongest model, high effort | The architect you pull into a design review. Sets the shape, does not type the code | The plan, the contract or migration shape, the direction call, the bug nobody can explain |
-| Middle model, top effort, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed |
+| Strongest model, high effort | The architect you pull into a design review. Sets the shape; builds only what fails silently | The plan, the contract or migration shape, the direction call, the bug nobody can explain |
+| Middle model, the effort below max, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed |
 | Middle model, high effort, the builder | The same engineer working alone from a written ticket | One slice, reported back as a diff |
 | Middle model, high effort, the reviewer | A peer on the PR | Reads the diff, not the description; never merges |
 | Cheapest model, low effort, the gate runner | CI on your desk | Runs the gate, names what failed, has no opinion |
@@ -203,10 +203,11 @@ Rules that hold across all four:
   it could. Brief research agents to mark observed against inferred, and
   verify before acting.
 - **Pins beat spawns.** A definition with no model or effort inherits the
-  parent's, which is how a builder ends up on the top model at top
-  effort. Pin both in every definition; pass the cheapest model to the unpinned
-  explorer at the spawn, since it inherits the lead's effort; and have a guard refuse a spawn that lifts a
-  pinned agent, with the reviewer as the one exception.
+  parent's, which is how a builder ends up on the top model at top effort.
+  Pin both in every definition. The built-ins have no definition: pass the
+  cheapest model to the explorer at the spawn, and remember the others inherit
+  the lead's model and effort. Have a guard refuse a spawn that lifts a pinned
+  agent, with the reviewer as the one exception.
 - **Gates run in the gate runner, never the lead**, and every fan-out task
   skips the suites; the lead runs them once at the end.
 
