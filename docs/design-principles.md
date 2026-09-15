@@ -1020,3 +1020,16 @@ the heading, and in the toolbar the badge floated free of it.
 The bar itself is an opaque `paperTop` fill with no hairline, so it is the
 same colour as the page with no seam. A system blur stays configured under the
 fill although it never shows: without one, the toolbar items render flat.
+
+### T29: Section, field and tag each have one look; the type badge is a tag
+
+**Status:** DECIDED 2026-09-15 (jonyardley/intrada#1876). The item details
+screen had five label styles with no order between them. Now there are three:
+
+- **A section** is named by the small-capitals eyebrow (`SectionHeader`) inside
+  its card: Notes, Chord chart and Related exercises match Keys and Variations.
+  A count sits beside the name as "· 3", and an Edit action at the trailing edge.
+- **A field label** such as Key or Tempo is `metaMedium`, quieter than its value.
+- **A tag** is a pill, and the piece or exercise badge is the first pill in the
+  same scrolling row, tinted by type. The badge is a pill wherever it appears,
+  the Practice player included, so one shape means "what kind of thing this is".

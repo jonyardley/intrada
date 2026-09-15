@@ -36,25 +36,62 @@ struct SectionHeader: View {
 
   let title: String
   var caption: String?
+  // VoiceOver already hears the list's length, so a bare count is noise there.
+  var captionAccessibilityHidden = false
   var trailing: String?
+  var actionTitle: String?
+  var action: (() -> Void)?
+  var actionAccessibilityLabel: String?
+  var actionDisabled = false
 
   var body: some View {
     // The eyebrow breaks mid-word when it shares a line with trailing text (#1781).
     if dynamicTypeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow(title)
-        if let caption { meta(caption) }
+        if actionTitle != nil {
+          HStack(alignment: .firstTextBaseline) {
+            Eyebrow(title)
+            Spacer(minLength: IntradaSpacing.controlGap)
+            actionButton
+          }
+        } else {
+          Eyebrow(title)
+        }
+        if let caption { captionView(caption) }
         if let trailing { meta(trailing) }
       }
     } else {
       HStack(alignment: .firstTextBaseline) {
         Eyebrow(title)
-        if let caption { meta("· \(caption)") }
+        if let caption { captionView("· \(caption)") }
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
           meta(trailing)
+        } else if actionTitle != nil {
+          Spacer(minLength: IntradaSpacing.controlGap)
         }
+        actionButton
       }
+    }
+  }
+
+  @ViewBuilder private func captionView(_ text: String) -> some View {
+    if captionAccessibilityHidden {
+      meta(text).accessibilityHidden(true)
+    } else {
+      meta(text)
+    }
+  }
+
+  @ViewBuilder private var actionButton: some View {
+    if let actionTitle, let action {
+      Button(actionTitle, action: action)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .disabled(actionDisabled)
+        .opacity(actionDisabled ? 0 : 1)
+        .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
+        .accessibilityHidden(actionDisabled)
     }
   }
 
