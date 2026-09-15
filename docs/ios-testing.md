@@ -42,7 +42,10 @@ Building, running, testing, the debugger, and every tool that edits files,
 targets, schemes or build settings are denied in `.claude/settings.json`. The
 `just` recipes own builds and tests (destination pin, signing off, the
 simulator lock) and `ios/project.yml` owns the project through xcodegen, so an
-edit made through Xcode would be lost on the next regenerate.
+edit made through Xcode would be lost on the next regenerate. `XcodeOpenWorkspace`,
+`XcodeCloseWorkspace`, `XcodeListWorkspaces`, `XcodeListRunDestinations` and
+`XcodeSwitchRunDestination` are allowed for the flow below, and every tool on
+neither list asks first.
 
 The flow:
 
@@ -57,13 +60,17 @@ The flow:
    `t X1 Y1 f X2 Y2 0.3`; type with `sender keyboard kbd TEXT`, last in the
    chain. Each call returns a fresh capture; read it to confirm the step landed.
 5. `DeviceInteractionEndSession` when done: an open session keeps the device
-   busy.
+   busy. Close the worktree's workspace with `XcodeCloseWorkspace` when finished
+   with it.
 
 Measured on Xcode 27.0 with the seeded library: starting a session took 0.1s;
 capture, tap into "Clair de Lune", back, open search and type "Hanon" each took
 between 0.4s and 1.2s, and every capture carried labels and hitPoints for the
 rows, buttons and search field. The first typing on a fresh simulator shows
-the keyboard's swipe-typing tip over the lower half of the screen.
+the keyboard's swipe-typing tip over the lower half of the screen. On 2026-09-15
+the fast tier passed 469 of 469 with this worktree's headless workspace still
+open, so an open headless workspace is not the Xcode window the "Quit Xcode
+before `xcodebuild test`" gotcha warns about (measured once).
 
 **The device tools need an iOS 27 simulator**, so the flow runs on iPhone 17 on
 iOS 27. Snapshot references and both test tiers stay on iPhone 16 / iOS 26.5 to
@@ -137,8 +144,8 @@ gesture (e.g. pull-to-reveal) never fired.
   launch the test runner") is almost always Xcode.app holding the simulator
   while the CLI also wants it. `osascript -e 'quit app "Xcode"'`, then re-run.
 - **Transient runner flake** → restart the sim service:
-  `killall com.apple.CoreSimulator.CoreSimulatorService DeviceHub`, then re-boot
-  the sim. UI-test *runners* trip this first; if unit tests pass but the UI test
+  `killall com.apple.CoreSimulator.CoreSimulatorService`, quit Device Hub if it
+  is open, then re-boot the sim. UI-test *runners* trip this first; if unit tests pass but the UI test
   fails on launch, it's the host, not the test.
 - **Stale bindings after pulling/rebasing** onto a main with core changes →
   `extra argument` / `cannot find type` Swift errors. Run `just ios-gen`

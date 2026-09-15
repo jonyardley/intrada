@@ -35,7 +35,7 @@ just ios-test         # unit + snapshot (fast tier)
 just ios-test-full    # adds XCUITests (the merge gate; mirrors CI)
 ```
 
-- **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build call.**
+- **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or test call.** Xcode's `RenderPreview` is the one exception ([`docs/ios-testing.md`](docs/ios-testing.md)).
   They carry the destination pin, `CODE_SIGNING_ALLOWED=NO`, the freshness fingerprint and
   the concurrency guard (#1536, #1537). A passing run prints its own counts; silence is
   never the evidence.
