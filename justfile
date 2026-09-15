@@ -466,6 +466,12 @@ ios-snapshots-record filter: _ios-sync
     }
     refs="$(matching)"
     [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 rm -v
+    source scripts/ios-sim-lock.sh
+    ios_sim_lock_acquire_for_run
+    _ios_snapshots_record_cleanup() {
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
+    }
+    trap _ios_snapshots_record_cleanup EXIT
     just _ios-build-for-testing
     # First run writes the references and fails by design; the second is the
     # one whose result means anything.
@@ -521,7 +527,7 @@ ios-test-ui-class class: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
     source scripts/ios-sim-lock.sh
-    ios_sim_lock_acquire
+    ios_sim_lock_acquire_for_run
     _ios_test_ui_class_cleanup() {
         ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }
@@ -566,7 +572,7 @@ _ios-test-run tier:
         fi
     fi
     source scripts/ios-sim-lock.sh
-    ios_sim_lock_acquire
+    ios_sim_lock_acquire_for_run
     _ios_test_run_cleanup() {
         ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }

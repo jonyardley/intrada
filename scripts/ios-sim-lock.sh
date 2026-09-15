@@ -13,26 +13,26 @@
 # (#1622). `mkdir` is the lock primitive (atomic on every filesystem this
 # runs on) rather than `flock`, which macOS does not ship.
 #
-# Usage, from a caller that traps EXIT to release:
+# Usage, from a test run that keeps its worktree's sim booted for the next:
 #   source scripts/ios-sim-lock.sh
-#   ios_sim_lock_acquire
-#   trap ios_sim_lock_release EXIT
+#   ios_sim_lock_acquire_for_run
+#   trap 'ios_sim_lock_release_with_idle_shutdown "$udid"' EXIT
 #
-# IOS_SIM_LOCK_DIR and IOS_SIM_LOCK_TIMEOUT override the path and wait, in
-# seconds, both for tests, so this can be exercised without a 900s wait.
+# IOS_SIM_LOCK_DIR, IOS_SIM_LOCK_TIMEOUT, IOS_SIM_LOCK_POLL and
+# IOS_SIM_LAST_RUN_MARKER override the path, the wait and poll in seconds, and
+# the marker, all for tests, so this can be exercised without a 900s wait.
 
 IOS_SIM_LOCK_DIR="${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}"
 IOS_SIM_LOCK_TIMEOUT="${IOS_SIM_LOCK_TIMEOUT:-900}"
+IOS_SIM_LOCK_POLL="${IOS_SIM_LOCK_POLL:-5}"
+IOS_SIM_LAST_RUN_MARKER="${IOS_SIM_LAST_RUN_MARKER:-ios/build/.sim-last-run}"
+IOS_SIM_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # A crashed holder (kill -9, a yanked machine) never runs its EXIT trap, so a
 # dead PID means the lock is stale, not held.
 ios_sim_lock_stale() {
     [ -f "$IOS_SIM_LOCK_DIR/pid" ] \
         && ! kill -0 "$(cat "$IOS_SIM_LOCK_DIR/pid" 2>/dev/null || echo 0)" 2>/dev/null
-}
-
-ios_sim_lock_held() {
-    [ -d "$IOS_SIM_LOCK_DIR" ] && ! ios_sim_lock_stale
 }
 
 ios_sim_lock_acquire() {
@@ -52,8 +52,8 @@ ios_sim_lock_acquire() {
             echo "… waiting for the iOS simulator lock, held by $holder" >&2
             announced=1
         fi
-        sleep 5
-        waited=$((waited + 5))
+        sleep "$IOS_SIM_LOCK_POLL"
+        waited=$((waited + IOS_SIM_LOCK_POLL))
     done
     pwd > "$IOS_SIM_LOCK_DIR/holder"
     echo "$$" > "$IOS_SIM_LOCK_DIR/pid"
@@ -63,31 +63,24 @@ ios_sim_lock_release() {
     rm -rf "$IOS_SIM_LOCK_DIR"
 }
 
-# Release the lock but keep this worktree's sim booted, so its next run skips
-# the boot wait (#1885). The sim shuts down once the lock is free and this
-# worktree's last run ended over IOS_SIM_IDLE_SHUTDOWN_SECONDS ago (default
-# 600); `worktree-rm` and `ios-test-sim-clean` are the hard stops.
+ios_sim_mark_used() {
+    mkdir -p "$(dirname "$IOS_SIM_LAST_RUN_MARKER")" && date +%s >"$IOS_SIM_LAST_RUN_MARKER"
+}
+
+# Marked on queueing too, so an idle shutdown that wins the lock while this run
+# waits behind another worktree's does not take this worktree's sim down.
+ios_sim_lock_acquire_for_run() {
+    ios_sim_mark_used
+    ios_sim_lock_acquire
+}
+
+# Keeps this worktree's sim booted for its next run (#1885); `worktree-rm` and
+# `ios-test-sim-clean` stay the hard stops. Marked before the release, so the
+# idle shutdown never reads the marker from before this run.
 ios_sim_lock_release_with_idle_shutdown() {
-    local udid="$1" marker=ios/build/.sim-last-run
-    # Bumped before the release, so a timer waiting on this lock never reads
-    # the marker from before this run.
-    [ -z "$udid" ] || { mkdir -p ios/build && date +%s >"$marker"; }
+    ios_sim_mark_used
     ios_sim_lock_release
-    [ -n "$udid" ] || return 0
-    (
-        idle="${IOS_SIM_IDLE_SHUTDOWN_SECONDS:-600}"
-        while :; do
-            # Rechecked after every wait: a run that started while this timer
-            # slept has bumped the marker by the time its lock clears.
-            while ios_sim_lock_held; do sleep 5; done
-            last="$(cat "$marker" 2>/dev/null || echo 0)"
-            remaining=$((idle - ($(date +%s) - last)))
-            if [ "$remaining" -gt 0 ]; then
-                sleep "$remaining"
-                continue
-            fi
-            xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
-            break
-        done
-    ) >/dev/null 2>&1 &
+    [ -n "$1" ] || return 0
+    bash "$IOS_SIM_SCRIPTS_DIR/ios-sim-idle-shutdown.sh" "$1" "$IOS_SIM_LAST_RUN_MARKER" \
+        </dev/null >/dev/null 2>&1 &
 }
