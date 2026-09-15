@@ -862,8 +862,7 @@ private struct VariationListRow: View {
   }
 
   private var captionText: String {
-    if variation.isSolid { return "Solid" }
-    return "-"
+    variation.caption
   }
 
   private var captionColor: Color {
@@ -871,9 +870,7 @@ private struct VariationListRow: View {
   }
 
   private var accessibilityLabel: String {
-    guard let score = variation.latestScore else { return "\(variation.label), not yet attempted" }
-    return variation.isSolid
-      ? "\(variation.label), solid, \(score) of 10" : "\(variation.label), \(score) of 10"
+    "\(variation.label), \(variation.caption)"
   }
 }
 
