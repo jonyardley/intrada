@@ -32,7 +32,7 @@ env:
   SENTRY_ORG: jon-yardley
   # Asserted by the self-hosted gate, which runs on a machine that updates
   # itself. Not the rented pin below, which matches nothing we own (#1637).
-  SELFHOSTED_XCODE: "26.6"
+  SELFHOSTED_XCODE: "27.0"
   # Measured on local dev at Xcode 26.6; asserted where setup-xcode pins the
   # same version explicitly (native-ios-build, below) rather than relying on
   # a self-updating machine (#1637).
