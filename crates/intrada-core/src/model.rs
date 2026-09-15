@@ -158,6 +158,9 @@ pub enum FormErrorField {
     Tempo,
     Notes,
     Tags,
+    /// The exercise's inline variation rows (#1831). Appended last: the
+    /// bincode wire is positional.
+    Variations,
 }
 
 /// Serializable view state sent to shells for rendering.
