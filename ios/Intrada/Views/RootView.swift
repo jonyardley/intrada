@@ -5,7 +5,7 @@ struct RootView: View {
   @Environment(Store.self) private var store
   @Environment(\.scenePhase) private var scenePhase
 
-  private enum AppTab {
+  enum AppTab {
     case library, practice, routines, progress
   }
 
@@ -18,13 +18,20 @@ struct RootView: View {
     Self.applyNavBarAppearance()
   }
 
+  #if DEBUG
+    init(previewTab: AppTab) {
+      self.init()
+      _selectedTab = State(initialValue: previewTab)
+    }
+  #endif
+
   var body: some View {
     TabView(selection: $selectedTab) {
       LibrarySplitView().screenTransaction("Library")
         .tabItem { Label("Library", systemImage: "books.vertical") }
         .tag(AppTab.library)
       NavigationStack {
-        PracticeScreen().screenTransaction("Practice")
+        PracticeScreen().navigationBarHiddenAtRoot().screenTransaction("Practice")
       }
       .tabItem { Label("Practice", systemImage: "timer") }
       .tag(AppTab.practice)

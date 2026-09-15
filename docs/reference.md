@@ -401,6 +401,12 @@ and both the snapshot renderer and `swift format`'s defaults move with Xcode, so
 the gate fails when `xcodebuild -version` is not the `SELFHOSTED_XCODE` value in
 `ci.yml`, or when the iOS 26.5 simulator runtime is missing. A Software Update
 therefore reds the gate with a readable message instead of changing its verdict.
+That happened on 2026-09-15 (#1905): the machine moved to Xcode 27.0 and every
+push went red until the pin followed it. The self-hosted job has no formatter
+version check of its own, so the Xcode version assert pins its formatter; one
+cannot be added, because Xcode 27's bundled `swift format --version` prints
+`main` rather than a release number. `SWIFT_FORMAT_VERSION` in `ci.yml` binds
+only the rented fork build job, which stays on Xcode 26.6.
 
 **The agent restarts itself.** Its plist carries `KeepAlive`, so if the runner
 process dies launchd brings it straight back, verified by killing it and

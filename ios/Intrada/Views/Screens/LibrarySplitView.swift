@@ -43,7 +43,7 @@ struct LibrarySplitView: View {
         .frame(maxWidth: .infinity)
       }
     } else {
-      NavigationStack { LibraryScreen() }
+      NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }
     }
   }
 
