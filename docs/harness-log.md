@@ -15,8 +15,10 @@
    gets what its number did in its Reads cell.
 3. A lever whose number has not moved after two reads is reverted, not patched.
    A row whose number is "none" is a measure, not a lever. A number marked
-   "not in the report" was counted once from the transcripts, and the report
-   cannot give it again.
+   "not in the report" is counted by hand at its read and judged like any
+   other. A number several rows share, such as corrections, reverts nothing
+   until the Monday read has classified corrections by kind; from then each
+   row is judged on its own kind. Decided 2026-09-15 (#1898).
 4. The 2026-09-27 `just usage 14` read stays as the first fortnight check for
    #1849.
 
@@ -84,6 +86,7 @@ documented it, or by the file's own date where no PR did.
 | 2026-09-15 | #1900 (#1897) | Sessions open on Opus 5 `xhigh`; `task` and `reviewer` pinned to Opus 5 high; `smol` deleted; the activity ladder becomes three rungs and the Fable list; Tier 2 and 3 start with a plan comment on the issue | Speed: claim to merged PR; rework: corrections, by dominant rung. Spend is forecast to rise about $200 a week (#1897) | 2026-09-28, since the 2026-09-21 read sets the speed baseline | |
 | 2026-09-15 | machine-local | `turn-reminder.txt` asks for the `/model` and `/effort` switch only for work on the Fable list | Rework: rung switches | 2026-09-21 | |
 | 2026-09-15 | #1902 (#1897) | `docs/working-with-agents.md` rewritten along the process steps; the primer, the shipping skill, `/ship` and two path-scoped rules brought into line with the three rungs and the plan comment | Rework: fix PRs on the sensitive surfaces, now built on Fable at high rather than max | 2026-09-21 | |
+| 2026-09-15 | machine-local | `context-watch.sh` hands the rest of a unit past 200k to `task` alone, and the global `CLAUDE.md` stops naming the deleted `smol` agent | None: a correction | 2026-09-21 | |
 
 ## Later levers
 
