@@ -17,8 +17,9 @@ cover it: the rules do not load on their own in a worktree, and they bind the
 diff whether or not the author loaded them.
 
 When the brief names an issue, read it with its comments first
-(`gh issue view <n> --comments`), then check the diff delivers the plan
-comment's done looks like before anything else below.
+(`gh issue view <n> --comments`), then check the diff delivers the issue's
+done looks like (the plan comment's, or the body's where there is no plan
+comment) before anything else below.
 
 ## Two rules that exist because they were broken
 

@@ -137,13 +137,13 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
 - **Tier 1, just do it**: bug fixes, copy, style, renames, lint, one-file refactors, docs.
 - **Tier 2, plan comment** (default for feature work): a component or screen on existing
   patterns, an endpoint on established conventions, a field on a model. Before the first
-  commit a plan of about 150 words goes on the issue as a comment (done looks like, decisions
-  taken, files and lines, tests, out of scope, routing), approved by Jon and read by the
-  build; one that runs long is Tier 3. UI work does Claude Design first, and a new screen
-  starts by reading an existing one, which loads the UI rules.
+  commit a plan of about 150 words goes on the issue as a comment (done looks like,
+  decisions taken, files and lines, tests, out of scope, routing), approved by Jon and read
+  by the build; one that runs long is Tier 3. UI work does Claude Design first, and a new
+  screen starts by reading an existing one, which loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux core or
-  bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md` of
-  100 to 200 lines riding as the first commit of Phase A, never its own PR.
+  bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
+  of 100 to 200 lines riding as the first commit of Phase A, never its own PR.
 
 **Domain-sensitivity override**: auth, the bridge contract, DB schema or migrations go up at
 least one tier and onto the Fable list. **A phase that introduces a bridge shape, a
@@ -157,8 +157,8 @@ if the approach is wrong before a third; `just claim` refuses the same at two me
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). `reviewer` reviews
 Tier 2+, briefed with the issue so it checks the diff against done looks like; triage its
-findings. Rungs and plans: [`docs/working-with-agents.md`](docs/working-with-agents.md). **UI
-verification means driving the app on the simulator**; if you cannot, say what needs a hand check.
+findings. Rungs, plans and usage: [working with agents](docs/working-with-agents.md). **UI
+verification means driving the app on the simulator**; if you cannot, name the hand check.
 
 ### Always
 
@@ -172,7 +172,7 @@ verification means driving the app on the simulator**; if you cannot, say what n
    closes (automatic on merge; drop it by hand if the PR closes without merging).
 2. Find the roadmap item, or discuss first; check the
    [project board](https://github.com/users/jonyardley/projects/2). Read the issue and what
-   it points at before any code, then write the plan comment (Tier 2 and 3).
+   it points at, then state the rung and, for Tier 2 and 3, write the plan comment.
 3. **Always a feature branch in its own worktree, and a PR; a human merges.** Jon starts
    every session in the main checkout. The session runs `just worktree-new <name>` itself,
    prefixes every shell command with `cd <worktree> && `, and reads the rules for the files
