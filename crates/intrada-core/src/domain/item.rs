@@ -7,6 +7,7 @@ use super::chart::{ChordChart, ScaffoldKind};
 use super::metre::Metre;
 use super::types::{CreateItem, Tempo, UpdateItem};
 pub use super::variant::Variant;
+use super::variant::VariantEdit;
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
 use crate::model::{FormErrorField, FormErrorTarget, Model};
@@ -183,6 +184,14 @@ pub enum ItemEvent {
         piece: CreateItem,
         chart: Option<String>,
         exercises: Vec<ScaffoldEntry>,
+    },
+    /// The Edit form's whole ladder in one write (#1783): rows carry the id
+    /// they started from, so renames, reorders, removals and additions land
+    /// together, and a swap of two labels is not a duplicate. Tombstones and
+    /// the key migration follow `SetVariants`. Appended last: positional wire.
+    UpdateVariants {
+        id: String,
+        variants: Vec<VariantEdit>,
     },
 }
 
@@ -361,6 +370,92 @@ fn migrate_key_into_labels(
     (next, None)
 }
 
+/// A refused write, with the form field it points at when it has one.
+fn refuse(model: &mut Model, error: &LibraryError) -> Command<Effect, Event> {
+    model.last_error_target = form_field(error).map(|field| FormErrorTarget::Piece { field });
+    model.last_error = Some(error.to_string());
+    crux_core::render::render()
+}
+
+/// `migrate_key_into_labels` for the Edit form's rows: a folded-in key is a
+/// row with no id, since it never was one.
+fn migrate_key_into_edits(
+    key: Option<String>,
+    edits: Vec<VariantEdit>,
+    eligible: bool,
+) -> (Vec<VariantEdit>, Option<String>) {
+    let labels: Vec<String> = edits.iter().map(|e| e.label.clone()).collect();
+    let (labels, key) = migrate_key_into_labels(key, labels, eligible);
+    if labels.len() == edits.len() {
+        return (edits, key);
+    }
+    let mut next = Vec::with_capacity(labels.len());
+    next.push(VariantEdit {
+        id: None,
+        label: labels[0].clone(),
+    });
+    next.extend(edits);
+    (next, key)
+}
+
+/// `SetVariants` and `UpdateVariants` share everything past the wire shape.
+fn update_ladder(model: &mut Model, id: String, edits: Vec<VariantEdit>) -> Command<Effect, Event> {
+    let edits: Vec<VariantEdit> = edits
+        .into_iter()
+        .map(|e| VariantEdit {
+            id: e.id,
+            label: e.label.trim().to_string(),
+        })
+        .collect();
+    if let Err(e) = validation::validate_variant_host(&id, model) {
+        return refuse(model, &e);
+    }
+
+    let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
+        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        return crux_core::render::render();
+    };
+
+    // The exercise's own key migrates into the ladder as its first
+    // rung when this call gives it its first live variation (#1783
+    // decision), never on a later call: an exercise that already had
+    // variations alongside a key predates that decision and is left
+    // alone here.
+    let had_live_variant = item.variants.iter().any(|v| v.deleted_at.is_none());
+    let (edits, key) = migrate_key_into_edits(item.key.clone(), edits, !had_live_variant);
+
+    let labels: Vec<String> = edits.iter().map(|e| e.label.clone()).collect();
+    if let Err(e) = validation::validate_variant_labels(&labels) {
+        return refuse(model, &e);
+    }
+
+    let now = chrono::Utc::now();
+    let existing = std::mem::take(&mut item.variants);
+    let reconciled = super::variant::reconcile_variant_edits(existing.clone(), &edits, now);
+
+    // Order-insensitive: the store loads by position (tombstones
+    // interleaved) while reconcile emits live-then-tombstones.
+    let sorted_by_id = |mut v: Vec<Variant>| {
+        v.sort_by(|a, b| a.id.cmp(&b.id));
+        v
+    };
+    if sorted_by_id(existing.clone()) == sorted_by_id(reconciled.clone()) && key == item.key {
+        // No-op: don't bump the parent LWW stamp or write (it could
+        // spuriously win a future sync merge).
+        item.variants = existing;
+        model.last_error = None;
+        return crux_core::render::render();
+    }
+
+    item.variants = reconciled;
+    item.key = key;
+    item.updated_at = now;
+    model.last_error = None;
+
+    let item = item.clone();
+    persist_item(model, item)
+}
+
 fn persist_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
     model.record_success();
     Command::all([
@@ -381,6 +476,7 @@ fn form_field(error: &LibraryError) -> Option<FormErrorField> {
         "tempo" => Some(FormErrorField::Tempo),
         "notes" => Some(FormErrorField::Notes),
         "tags" => Some(FormErrorField::Tags),
+        "labels" | "variant_labels" => Some(FormErrorField::Variations),
         _ => None,
     }
 }
@@ -390,8 +486,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::Add(input) => {
             let input = validation::normalize_create_item(input);
             if let Err(e) = validation::validate_create_item(&input) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
+                return refuse(model, &e);
             }
 
             // A brand new item has no earlier variation to have already
@@ -399,8 +494,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let (variant_labels, key) =
                 migrate_key_into_labels(input.key, input.variant_labels, true);
             if let Err(e) = validation::validate_variant_labels(&variant_labels) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
+                return refuse(model, &e);
             }
 
             let now = chrono::Utc::now();
@@ -651,8 +745,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::Update { id, input } => {
             let input = validation::normalize_update_item(input);
             if let Err(e) = validation::validate_update_item(&input) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
+                return refuse(model, &e);
             }
 
             let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
@@ -852,58 +945,13 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             persist_item(model, piece)
         }
         ItemEvent::SetVariants { id, labels } => {
-            let labels = validation::normalize_variant_labels(labels);
-            if let Err(e) = validation::validate_variant_host(&id, model) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-                model.last_error = Some(LibraryError::NotFound { id }.to_string());
-                return crux_core::render::render();
-            };
-
-            // The exercise's own key migrates into the ladder as its first
-            // rung when this call gives it its first live variation (#1783
-            // decision), never on a later call: an exercise that already had
-            // variations alongside a key predates that decision and is left
-            // alone here.
-            let had_live_variant = item.variants.iter().any(|v| v.deleted_at.is_none());
-            let (labels, key) =
-                migrate_key_into_labels(item.key.clone(), labels, !had_live_variant);
-
-            if let Err(e) = validation::validate_variant_labels(&labels) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let now = chrono::Utc::now();
-            let existing = std::mem::take(&mut item.variants);
-            let reconciled = super::variant::reconcile_variants(existing.clone(), &labels, now);
-
-            // Order-insensitive: the store loads by position (tombstones
-            // interleaved) while reconcile emits live-then-tombstones.
-            let sorted_by_id = |mut v: Vec<Variant>| {
-                v.sort_by(|a, b| a.id.cmp(&b.id));
-                v
-            };
-            if sorted_by_id(existing.clone()) == sorted_by_id(reconciled.clone()) && key == item.key
-            {
-                // No-op: don't bump the parent LWW stamp or write (it could
-                // spuriously win a future sync merge).
-                item.variants = existing;
-                model.last_error = None;
-                return crux_core::render::render();
-            }
-
-            item.variants = reconciled;
-            item.key = key;
-            item.updated_at = now;
-            model.last_error = None;
-
-            let item = item.clone();
-            persist_item(model, item)
+            let edits = labels
+                .into_iter()
+                .map(|label| VariantEdit { id: None, label })
+                .collect();
+            update_ladder(model, id, edits)
         }
+        ItemEvent::UpdateVariants { id, variants } => update_ladder(model, id, variants),
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             if let Err(e) = validation::validate_chart_host(&piece_id, model) {
                 model.last_error = Some(e.to_string());
@@ -1041,8 +1089,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 .collect();
 
             if let Err(e) = validation::validate_variant_labels(&labels) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
+                return refuse(model, &e);
             }
 
             let now = chrono::Utc::now();
@@ -3797,7 +3844,13 @@ mod tests {
             "the chart failure points"
         );
 
-        send(&mut model, ItemEvent::Add(new_exercise_input("   ")));
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "piece-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
 
         assert!(
             model.last_error.is_some(),
@@ -3805,7 +3858,7 @@ mod tests {
         );
         assert!(
             model.last_error_target.is_none(),
-            "but must not inherit where the last one pointed"
+            "but a failure with no field of its own leaves no mark, and never the last one's"
         );
     }
 
@@ -3883,5 +3936,359 @@ mod tests {
                 exercises: vec![],
             },
         ));
+    }
+
+    // ── UpdateVariants ──
+
+    fn set_ladder(model: &mut Model, labels: &[&str]) {
+        send(
+            model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: labels.iter().map(|l| l.to_string()).collect(),
+            },
+        );
+    }
+
+    fn variant_id(model: &Model, label: &str) -> String {
+        exercise_variants(model)
+            .iter()
+            .find(|v| v.label == label && v.deleted_at.is_none())
+            .unwrap_or_else(|| panic!("live variation {label}"))
+            .id
+            .clone()
+    }
+
+    fn live_ladder(model: &Model) -> Vec<(String, String)> {
+        let mut live: Vec<_> = exercise_variants(model)
+            .iter()
+            .filter(|v| v.deleted_at.is_none())
+            .collect();
+        live.sort_by_key(|v| v.position);
+        live.iter()
+            .map(|v| (v.id.clone(), v.label.clone()))
+            .collect()
+    }
+
+    fn edit(id: Option<String>, label: &str) -> VariantEdit {
+        VariantEdit {
+            id,
+            label: label.to_string(),
+        }
+    }
+
+    fn update_variants(
+        model: &mut Model,
+        id: &str,
+        variants: Vec<VariantEdit>,
+    ) -> Command<Effect, Event> {
+        send_cmd(
+            model,
+            ItemEvent::UpdateVariants {
+                id: id.to_string(),
+                variants,
+            },
+        )
+    }
+
+    #[test]
+    fn update_variants_renames_by_id_keeping_the_row() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+
+        let mut cmd = update_variants(
+            &mut model,
+            "ex-1",
+            vec![edit(Some(c.clone()), "Do"), edit(Some(f.clone()), "F")],
+        );
+
+        assert_eq!(
+            live_ladder(&model),
+            vec![(c, "Do".to_string()), (f, "F".to_string())]
+        );
+        assert_eq!(
+            exercise_variants(&model).len(),
+            2,
+            "a rename is not remove plus add"
+        );
+        assert!(model.last_error.is_none());
+        assert!(emits_save(&mut cmd, "ex-1"));
+    }
+
+    #[test]
+    fn update_variants_swaps_two_labels_in_one_write() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+
+        let _ = update_variants(
+            &mut model,
+            "ex-1",
+            vec![edit(Some(c.clone()), "F"), edit(Some(f.clone()), "C")],
+        );
+
+        assert!(model.last_error.is_none(), "{:?}", model.last_error);
+        assert_eq!(
+            live_ladder(&model),
+            vec![(c, "F".to_string()), (f, "C".to_string())]
+        );
+    }
+
+    #[test]
+    fn update_variants_adds_removes_and_reorders_together() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F", "G"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+        let g = variant_id(&model, "G");
+
+        let _ = update_variants(
+            &mut model,
+            "ex-1",
+            vec![
+                edit(Some(g.clone()), "G"),
+                edit(None, "A"),
+                edit(Some(c.clone()), "C"),
+            ],
+        );
+
+        let live = live_ladder(&model);
+        let labels: Vec<&str> = live.iter().map(|(_, l)| l.as_str()).collect();
+        assert_eq!(labels, ["G", "A", "C"]);
+        assert_eq!(live[0].0, g);
+        assert_eq!(live[2].0, c);
+        let removed = exercise_variants(&model)
+            .iter()
+            .find(|v| v.id == f)
+            .unwrap();
+        assert!(removed.deleted_at.is_some(), "F is tombstoned, not dropped");
+    }
+
+    #[test]
+    fn update_variants_reads_a_bare_label_as_the_existing_row() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C"]);
+        let c = variant_id(&model, "C");
+
+        let _ = update_variants(&mut model, "ex-1", vec![edit(None, "c")]);
+
+        assert_eq!(live_ladder(&model), vec![(c, "c".to_string())]);
+    }
+
+    #[test]
+    fn update_variants_resurrects_a_removed_label() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+        set_ladder(&mut model, &["C"]);
+
+        let _ = update_variants(
+            &mut model,
+            "ex-1",
+            vec![edit(None, "F"), edit(Some(c.clone()), "C")],
+        );
+
+        assert_eq!(
+            live_ladder(&model),
+            vec![(f, "F".to_string()), (c, "C".to_string())]
+        );
+    }
+
+    #[test]
+    fn update_variants_rejects_a_duplicate_and_marks_the_section() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+
+        let mut cmd = update_variants(
+            &mut model,
+            "ex-1",
+            vec![edit(Some(c.clone()), "f"), edit(Some(f.clone()), "F")],
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Variations
+            })
+        );
+        assert_eq!(
+            live_ladder(&model),
+            vec![(c, "C".to_string()), (f, "F".to_string())]
+        );
+        assert!(!emits_save(&mut cmd, "ex-1"));
+    }
+
+    #[test]
+    fn update_variants_folds_the_key_into_the_first_rung() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("D".to_string());
+
+        let _ = update_variants(&mut model, "ex-1", vec![edit(None, "C")]);
+
+        let labels: Vec<String> = live_ladder(&model).into_iter().map(|(_, l)| l).collect();
+        assert_eq!(labels, ["D", "C"]);
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(
+            ex.key.is_none(),
+            "an exercise in several keys has no single key"
+        );
+    }
+
+    #[test]
+    fn update_variants_is_a_noop_without_a_save_when_unchanged() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+        let f = variant_id(&model, "F");
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = update_variants(
+            &mut model,
+            "ex-1",
+            vec![edit(Some(c), "C"), edit(Some(f), "F")],
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.updated_at, before);
+        assert!(!emits_save(&mut cmd, "ex-1"));
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn update_variants_rejects_a_piece_host() {
+        let mut model = model_with_piece_and_exercise();
+
+        let _ = update_variants(&mut model, "piece-1", vec![edit(None, "C")]);
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(piece.variants.is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    // ── Error targets on the item form (#1831) ──
+
+    #[test]
+    fn set_variants_and_rename_variant_mark_the_variations_section() {
+        let mut model = model_with_piece_and_exercise();
+        set_ladder(&mut model, &["C", "F"]);
+        let c = variant_id(&model, "C");
+
+        set_ladder(&mut model, &["C", "c"]);
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Variations
+            }),
+            "SetVariants"
+        );
+
+        send(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c,
+                new_label: "f".to_string(),
+            },
+        );
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Variations
+            }),
+            "RenameVariant"
+        );
+    }
+
+    #[test]
+    fn add_marks_the_field_it_refused() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::Add(CreateItem {
+                title: "Scale".to_string(),
+                kind: ItemKind::Exercise,
+                composer: None,
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                photo_id: None,
+                variant_labels: vec!["C".to_string(), "c".to_string()],
+            }),
+        );
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Variations
+            }),
+            "a duplicate rung"
+        );
+
+        send(
+            &mut model,
+            ItemEvent::Add(CreateItem {
+                title: "Scale".to_string(),
+                kind: ItemKind::Exercise,
+                composer: Some("x".repeat(201)),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                photo_id: None,
+                variant_labels: vec![],
+            }),
+        );
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Composer
+            }),
+            "a plain field, the way the one-pass create already marks it"
+        );
+    }
+
+    #[test]
+    fn update_marks_the_field_it_refused() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::Update {
+                id: "ex-1".to_string(),
+                input: UpdateItem {
+                    title: Some("Scale".to_string()),
+                    kind: Some(ItemKind::Exercise),
+                    composer: Some(Some("x".repeat(201))),
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: Some(vec![]),
+                    priority: None,
+                },
+            },
+        );
+
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Composer
+            })
+        );
     }
 }

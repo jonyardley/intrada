@@ -29,6 +29,16 @@ pub struct Variant {
 /// specs/exercise-variants.md).
 pub const SOLID_SCORE_MIN: u8 = 8;
 
+/// One row of a ladder as the Edit form sends it (#1783): `id` names the row
+/// it started from, so a renamed row keeps its marks; `None` is a row typed
+/// fresh, matched by label (a removed label re-added resurrects) or minted.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct VariantEdit {
+    pub id: Option<String>,
+    pub label: String,
+}
+
 /// Reconcile a ladder against the requested `labels` (ordered), matching by
 /// case-insensitive label. A match keeps its id (and so its score history)
 /// and adopts the incoming casing and position. `updated_at` bumps only on
@@ -38,12 +48,40 @@ pub fn reconcile_variants(
     labels: &[String],
     now: DateTime<Utc>,
 ) -> Vec<Variant> {
-    let mut pool = existing;
-    let mut next: Vec<Variant> = Vec::with_capacity(labels.len());
+    let edits: Vec<VariantEdit> = labels
+        .iter()
+        .map(|label| VariantEdit {
+            id: None,
+            label: label.clone(),
+        })
+        .collect();
+    reconcile_variant_edits(existing, &edits, now)
+}
 
-    for (position, label) in labels.iter().enumerate() {
-        // Prefer a live match; fall back to a tombstone, which a re-added
-        // label resurrects; its id, and so its score history, come back.
+/// `reconcile_variants` with the rows' own ids in play: every id that still
+/// names a row claims it first, so a swap of two labels or a rename beside a
+/// fresh row with the old name never hands one row's marks to another. Only
+/// then do the id-less rows match by label, live before tombstoned.
+pub fn reconcile_variant_edits(
+    existing: Vec<Variant>,
+    edits: &[VariantEdit],
+    now: DateTime<Utc>,
+) -> Vec<Variant> {
+    let mut pool = existing;
+    let mut slots: Vec<Option<Variant>> = (0..edits.len()).map(|_| None).collect();
+
+    for (slot, edit) in slots.iter_mut().zip(edits) {
+        let Some(id) = &edit.id else { continue };
+        if let Some(i) = pool.iter().position(|v| &v.id == id) {
+            *slot = Some(pool.remove(i));
+        }
+    }
+
+    for (slot, edit) in slots.iter_mut().zip(edits) {
+        if slot.is_some() {
+            continue;
+        }
+        let label = &edit.label;
         let matched = pool
             .iter()
             .position(|v| v.deleted_at.is_none() && v.label.to_lowercase() == label.to_lowercase())
@@ -51,9 +89,16 @@ pub fn reconcile_variants(
                 pool.iter()
                     .position(|v| v.label.to_lowercase() == label.to_lowercase())
             });
-        match matched {
-            Some(i) => {
-                let mut v = pool.remove(i);
+        if let Some(i) = matched {
+            *slot = Some(pool.remove(i));
+        }
+    }
+
+    let mut next: Vec<Variant> = Vec::with_capacity(edits.len());
+    for (position, (slot, edit)) in slots.into_iter().zip(edits).enumerate() {
+        let label = &edit.label;
+        match slot {
+            Some(mut v) => {
                 let changed = v.position != position || v.label != *label || v.deleted_at.is_some();
                 v.position = position;
                 v.label = label.clone();
@@ -248,5 +293,53 @@ mod tests {
         assert!(shows_key_field(0));
         assert!(!shows_key_field(1));
         assert!(!shows_key_field(2));
+    }
+
+    fn row(id: &str, label: &str, position: usize) -> Variant {
+        Variant {
+            id: id.to_string(),
+            label: label.to_string(),
+            position,
+            updated_at: Utc::now(),
+            deleted_at: None,
+        }
+    }
+
+    fn edit(id: Option<&str>, label: &str) -> VariantEdit {
+        VariantEdit {
+            id: id.map(str::to_string),
+            label: label.to_string(),
+        }
+    }
+
+    #[test]
+    fn an_id_match_wins_over_a_label_match() {
+        let existing = vec![row("c", "C", 0), row("f", "F", 1)];
+        let edits = [edit(Some("c"), "F"), edit(Some("f"), "C")];
+
+        let next = reconcile_variant_edits(existing, &edits, Utc::now());
+
+        let live: Vec<(&str, &str, usize)> = next
+            .iter()
+            .filter(|v| v.deleted_at.is_none())
+            .map(|v| (v.id.as_str(), v.label.as_str(), v.position))
+            .collect();
+        assert_eq!(live, vec![("c", "F", 0), ("f", "C", 1)], "swapped in place");
+    }
+
+    #[test]
+    fn an_unknown_id_falls_back_to_the_label() {
+        let existing = vec![row("c", "C", 0)];
+        let edits = [edit(Some("gone"), "c")];
+
+        let next = reconcile_variant_edits(existing, &edits, Utc::now());
+
+        assert_eq!(next.len(), 1);
+        assert_eq!(
+            next[0].id, "c",
+            "the row it named is gone, so the label decides"
+        );
+        assert_eq!(next[0].label, "c", "incoming casing adopted");
+        assert!(next[0].deleted_at.is_none());
     }
 }
