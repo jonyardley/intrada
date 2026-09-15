@@ -10,12 +10,14 @@ struct TabRootNavigationBarTests {
   private static let phone = CGSize(width: 390, height: 844)
   private static let pad = CGSize(width: 1194, height: 834)
 
-  private func barsHidden(_ rootView: some View, size: CGSize = phone) -> [Bool] {
+  private func barsHidden(
+    _ rootView: some View, size: CGSize = phone, store: Store = .previewLibrary
+  ) -> [Bool] {
     IntradaFonts.register()
     let vc = UIHostingController(
       rootView:
         rootView
-        .environment(Store.previewLibrary)
+        .environment(store)
         .environment(\.locale, Locale(identifier: "en_US"))
         .environment(\.calendar, PreviewCalendar.utc)
         .environment(\.intradaMotionDisabled, true))
@@ -54,6 +56,10 @@ struct TabRootNavigationBarTests {
       LibraryScreen().navigationBarHiddenAtRoot()
     }
     #expect(barsHidden(pushed) == [false])
+  }
+
+  @Test func buildSessionOpenedFromPracticeKeepsItsBar() {
+    #expect(barsHidden(RootView(previewTab: .practice), store: .previewBuilding) == [false])
   }
 
   @Test func bothIPadLibraryColumnsKeepTheirBars() {

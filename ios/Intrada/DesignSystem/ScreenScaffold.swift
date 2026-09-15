@@ -18,6 +18,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   let trailingPlacement: TrailingPlacement
   @ViewBuilder var content: Content
   @Environment(\.navigationBarHiddenAtRoot) private var hiddenAtRoot
+  @Environment(\.isPresented) private var isPresented
 
   struct TrailingAction {
     let label: String
@@ -125,8 +126,11 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
       }
       // Forced visible so an item-less bar keeps the iPad split's columns matched
       // (#1868, #1682); a tab's first screen drops its empty band instead (#1912).
-      .toolbar(hiddenAtRoot ? .hidden : .visible, for: .navigationBar)
+      .toolbar(hidesBar ? .hidden : .visible, for: .navigationBar)
   }
+
+  // Unproven before iOS 26.5: an opened screen or sheet may inherit the flag (#1912).
+  private var hidesBar: Bool { hiddenAtRoot && !isPresented }
 
   private var titleText: some View {
     Text(title)
@@ -186,7 +190,7 @@ extension EnvironmentValues {
 }
 
 extension View {
-  /// Hides the bar on a tab's first screen; screens pushed from it keep theirs.
+  /// Hides the bar on the first screen of a tab's stack.
   func navigationBarHiddenAtRoot() -> some View {
     environment(\.navigationBarHiddenAtRoot, true)
   }
