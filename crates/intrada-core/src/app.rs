@@ -932,7 +932,7 @@ fn build_variant_views(
     variant_scores: &std::collections::HashMap<(&str, &str), Vec<crate::model::ScoreHistoryEntry>>,
 ) -> Vec<crate::model::VariantView> {
     use crate::domain::variant::SOLID_SCORE_MIN;
-    use crate::model::VariantView;
+    use crate::model::{saved_mark_caption, VariantView};
 
     let mut live: Vec<_> = item
         .variants
@@ -949,13 +949,15 @@ fn build_variant_views(
                 .cloned()
                 .unwrap_or_default();
             let latest_score = score_history.first().map(|e| e.score);
+            let is_solid = latest_score.is_some_and(|s| s >= SOLID_SCORE_MIN);
             VariantView {
                 id: v.id.clone(),
                 label: v.label.clone(),
                 position: v.position,
                 latest_score,
                 score_history,
-                is_solid: latest_score.is_some_and(|s| s >= SOLID_SCORE_MIN),
+                is_solid,
+                caption: saved_mark_caption(latest_score, is_solid),
             }
         })
         .collect();
@@ -4766,6 +4768,29 @@ mod tests {
             "unpractised variation has no score"
         );
         assert!(!variations[2].is_solid);
+    }
+
+    /// The Library row and the practice session's Switch variation sheet read
+    /// the same saved-mark caption, written once in the core (#1809).
+    #[test]
+    fn variant_views_caption_the_saved_mark() {
+        let ex = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
+        let now = chrono::Utc::now();
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![
+                variant_entry("ex-1", "ex-1-v0", Some(9)),
+                variant_entry("ex-1", "ex-1-v1", Some(5)),
+            ],
+        )];
+
+        let captions: Vec<String> = derived_variants(&ex, &sessions)
+            .into_iter()
+            .map(|v| v.caption)
+            .collect();
+
+        assert_eq!(captions, ["Solid · 9 of 10", "5 of 10", "Not yet played"]);
     }
 
     #[test]

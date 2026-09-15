@@ -1777,6 +1777,7 @@ mod tests {
                 latest_score: solid.then_some(9),
                 score_history: Vec::new(),
                 is_solid: *solid,
+                caption: crate::model::saved_mark_caption(solid.then_some(9), *solid),
             })
             .collect();
         view
