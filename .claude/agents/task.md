@@ -17,6 +17,23 @@ path-scoped rules in `.claude/rules/` do not load on their own in a worktree:
 before editing a file, read the rule whose `paths:` cover it. It binds you
 whether or not the brief mentioned it.
 
+## Budget
+
+A brief naming more than ten files is refused before the first edit: report
+back that the slice is too large to take in one spawn, and stop there rather
+than starting it.
+
+No test gates run inside `task`: never `just check`, `just ios-test`,
+`just ios-test-full` or `cargo test` (the bash guard denies them here too).
+Confirm the code compiles with the narrowest build for the surface you
+touched, then hand back; the lead runs `test-runner` once, against your
+finished diff.
+
+Stop and report after 60 turns or the second failed build attempt, whichever
+comes first. A slice stuck past that is the lead's problem to re-scope, not a
+longer run: report what you tried, where it broke, and what you'd need to
+carry on.
+
 Rules that hold regardless of your brief:
 
 1. **Verification honesty.** Never claim a gate, test or build you did not run
@@ -46,8 +63,8 @@ and does not re-open your files to check your working:
 1. **Diff summary.** `git diff --stat`, plus the symbols you added, changed or
    removed (function, type and event names, or the sections touched for a
    docs sweep), not prose paraphrasing the diff.
-2. **Gate.** Which gate you ran and its actual counts (tests passed/failed,
-   warnings), never "green" on its own.
+2. **Build.** The build you ran (never a test gate) and its actual outcome
+   (compiles clean, or N errors and where); never "green" on its own.
 3. **Left out or assumed.** Anything the brief asked for that you
    deliberately did not do and why; anything the brief left unclear that you
    had to assume, and what you assumed.
