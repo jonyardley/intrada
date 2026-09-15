@@ -1219,11 +1219,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(badges), as: config)
   }
 
-  /// Largest accessibility text size: the SectionHeader Eyebrow + Edit button
-  /// reflow onto their own row rather than clipping or wrapping mid-word
-  /// (#1781, #1876). Component-level rather than a whole screen: the header
-  /// row is what changes, so it's the only thing that can independently
-  /// regress.
+  // The eyebrow must wrap between words beside the Edit button, never inside one (#1781).
   func testSectionHeaderWithActionAccessibilitySize() {
     let headers = ZStack {
       PaperBackground()

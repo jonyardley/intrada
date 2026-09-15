@@ -36,13 +36,9 @@ struct SectionHeader: View {
 
   let title: String
   var caption: String?
-  // A bare count (e.g. "3") reads ambiguously to VoiceOver against the "· "
-  // prefix; hide it there when the count adds nothing a list of that length
-  // doesn't already convey (matches the old capsule badge's accessibilityHidden).
+  // VoiceOver already hears the list's length, so a bare count is noise there.
   var captionAccessibilityHidden = false
   var trailing: String?
-  // Trailing action button (e.g. "Edit"/"Done"), matching the disabled/
-  // hidden-when-empty pattern used across the header buttons on this screen.
   var actionTitle: String?
   var action: (() -> Void)?
   var actionAccessibilityLabel: String?
@@ -71,8 +67,7 @@ struct SectionHeader: View {
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
           meta(trailing)
-        }
-        if actionTitle != nil {
+        } else if actionTitle != nil {
           Spacer(minLength: IntradaSpacing.controlGap)
         }
         actionButton
@@ -96,6 +91,7 @@ struct SectionHeader: View {
         .disabled(actionDisabled)
         .opacity(actionDisabled ? 0 : 1)
         .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
+        .accessibilityHidden(actionDisabled)
     }
   }
 
