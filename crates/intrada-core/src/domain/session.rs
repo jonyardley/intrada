@@ -1763,6 +1763,19 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
+            // current_entry indexes len() - 1; the recovery blob is the one
+            // input nothing keeps non-empty (#1807).
+            if session.entries.is_empty() {
+                model.last_error = Some(
+                    "Couldn't resume · the saved practice was empty, so it's been removed."
+                        .to_string(),
+                );
+                return Command::all([
+                    Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
+                    crux_core::render::render(),
+                ]);
+            }
+
             // Re-anchor the running item's wall-clock timer: the blob's anchor
             // is from before the kill, so resuming hours later would otherwise
             // show that gap as elapsed practice (#962).
@@ -3621,6 +3634,39 @@ mod tests {
         );
 
         assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        let active = ActiveSession {
+            id: "empty-snapshot".to_string(),
+            entries: vec![],
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+        };
+
+        let app = Intrada;
+        let mut cmd = app.update(
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
+            &mut model,
+        );
+
+        assert!(
+            matches!(model.session_status, SessionStatus::Idle),
+            "an empty setlist never becomes Active: current_entry would index it (#1807)"
+        );
+        assert!(model.last_error.is_some());
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::App(req)
+                if matches!(req.operation, AppEffect::ClearSessionInProgress))),
+            "the unusable snapshot is cleared so Resume does not reappear at next launch"
+        );
     }
 
     // --- Edge Case Tests ---
