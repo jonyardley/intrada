@@ -95,8 +95,20 @@ struct ItemFormFaultMarkTests {
     form.title = "Autumn Leaves "
     form.notes = "From the lesson"
     form.tags = ["standards"]
+    form.variations = [VariationRow(label: "C")]
 
     #expect(form.faults(.composer), "the composer is still the field at fault")
+  }
+
+  @Test func typingInAVariationClearsAVariationsMark() {
+    let form = ItemFormModel(kind: .exercise)
+    form.variations = ["C", "c"].map { VariationRow(label: $0) }
+    form.mark(.piece(field: .variations))
+    #expect(form.faults(.variations))
+
+    form.variations[1].label = "G"
+
+    #expect(form.errorTarget == nil, "a keystroke in any row answers the banner")
   }
 
   @Test func editingTheChartClearsAChartMarkAndOnlyThat() {

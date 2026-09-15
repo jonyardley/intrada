@@ -115,22 +115,3 @@ final class TrackedTempoTests: XCTestCase {
     XCTAssertFalse(tempo.userSet, "clamping is the app tidying up, not the user choosing")
   }
 }
-
-@MainActor
-final class AddVariationsSheetTests: XCTestCase {
-  func testEmptyArrayTrimsToEmpty() {
-    XCTAssertEqual(AddVariationsSheet.trimmedLabels([]), [])
-  }
-
-  func testAllWhitespaceRowsAreDropped() {
-    XCTAssertEqual(AddVariationsSheet.trimmedLabels(["", "  ", "\n"]), [])
-  }
-
-  func testMixedBlankAndPopulatedRowsKeepsOnlyPopulated() {
-    XCTAssertEqual(AddVariationsSheet.trimmedLabels(["C", "", "G", "  "]), ["C", "G"])
-  }
-
-  func testLeadingAndTrailingWhitespaceIsTrimmed() {
-    XCTAssertEqual(AddVariationsSheet.trimmedLabels(["  C  ", " G"]), ["C", "G"])
-  }
-}

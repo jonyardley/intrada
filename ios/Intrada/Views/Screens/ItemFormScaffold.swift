@@ -69,10 +69,18 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
                     readWeakly: form.readFrom[.composer], faulted: form.faults(.composer)
                   )
                   .id(FormAnchor.field(.composer))
-                  HairlineDivider()
-                  KeyPicker(label: "Key", key: $form.key, modality: $form.modality)
+                  if form.showsKey {
+                    HairlineDivider()
+                    KeyPicker(label: "Key", key: $form.key, modality: $form.modality)
+                  }
                 }
                 .cardSurface()
+
+                if form.kind == .exercise {
+                  VariationRowsSection(rows: $form.variations, faulted: form.faults(.variations))
+                    .cardSurface()
+                    .id(FormAnchor.field(.variations))
+                }
 
                 VStack(spacing: 0) {
                   FormField(

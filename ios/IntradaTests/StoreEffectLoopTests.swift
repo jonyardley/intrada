@@ -480,6 +480,53 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(exerciseFormShowsKey(liveVariantCount: 1))
   }
 
+  /// The Edit form's two events against the real core (#1783): a key folded into
+  /// a new ladder must not come back as a second key, and a key typed after
+  /// clearing the rows must not be refused while they still stand.
+  func testRealBridgeEditFormFoldsAKeyInAndTakesOneBack() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Arpeggios", kind: .exercise, composer: nil, key: "G", modality: .major,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let keyed = try XCTUnwrap(try bridge.view().items.first)
+
+    let adding = ItemFormModel(item: keyed)
+    adding.variations = ["C", "F"].map { VariationRow(label: $0) }
+    for event in adding.editEvents(id: keyed.id) {
+      _ = try bridge.update(.item(event))
+      XCTAssertNil(try bridge.view().error)
+    }
+    let laddered = try XCTUnwrap(try bridge.view().items.first { $0.id == keyed.id })
+    XCTAssertEqual(
+      laddered.variants.map(\.label), ["G", "C", "F"], "the key became the first rung")
+
+    let refilling = ItemFormModel(item: laddered)
+    refilling.variations = []
+    refilling.key = "D"
+    refilling.variations = [VariationRow(label: "A")]
+    for event in refilling.editEvents(id: keyed.id) {
+      _ = try bridge.update(.item(event))
+      XCTAssertNil(try bridge.view().error, "a key chosen while no rows showed is not sent")
+    }
+    let refilled = try XCTUnwrap(try bridge.view().items.first { $0.id == keyed.id })
+    XCTAssertEqual(refilled.variants.map(\.label), ["A"])
+
+    let clearing = ItemFormModel(item: refilled)
+    clearing.variations = []
+    clearing.key = "D"
+    for event in clearing.editEvents(id: keyed.id) {
+      _ = try bridge.update(.item(event))
+      XCTAssertNil(try bridge.view().error)
+    }
+    let rekeyed = try XCTUnwrap(try bridge.view().items.first { $0.id == keyed.id })
+    XCTAssertTrue(rekeyed.variants.isEmpty)
+    XCTAssertEqual(rekeyed.key, "D")
+  }
+
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
   /// the Rust deserializer and the `ViewModel` projection must all agree on the
   /// new `Item` field and the two new `ItemEvent` variants. A stub bridge

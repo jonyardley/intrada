@@ -965,20 +965,13 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  // #1083 C2/C3: Variations section empty state: key-preset buttons + custom-variations link.
+  // #1783: Variations empty state: the two key presets, and Add variations opening Edit.
   func testExerciseDetailVariationsEmptyState() {
     let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExercise.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
-  }
-
-  // #1083 C4: Variations edit mode: drag handle, inline rename field, remove button.
-  func testExerciseDetailVariationsEditing() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithVariations]))
-    let editing = EditingStepsWrapper(item: .previewExerciseWithVariations)
-    assertSnapshot(of: host(editing, store: store), as: config)
   }
 
   // #1083 C2: Variations section: solid / current / unrated ring states, horizontal
@@ -1037,17 +1030,23 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: axConfig)
   }
 
-  // #1083 C2: minimal variation-list creation sheet, opened from the "+ Add variations" link.
-  func testAddVariationsSheet() {
-    assertSnapshot(of: host(AddVariationsSheet(itemId: "exercise-1")), as: config)
-  }
-
   func testLibraryAddScreen() {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }
 
   func testLibraryAddScreenExercise() {
     assertSnapshot(of: host(LibraryAddScreen(defaultKind: .exercise)), as: config)
+  }
+
+  /// #1783, #1831: rows in place of Key, which the core hides once a row exists,
+  /// and a refused rung marking the section while the banner names it.
+  func testLibraryAddScreenMarksTheVariations() {
+    let form = ItemFormModel(kind: .exercise)
+    form.title = "Arpeggios"
+    form.variations = ["C", "F", "c"].map { VariationRow(label: $0) }
+    form.formError = "Duplicate variation \u{201c}c\u{201d}"
+    form.mark(.piece(field: .variations))
+    assertSnapshot(of: host(LibraryAddScreen(previewForm: form)), as: config)
   }
 
   func testLibraryAddScreenStaged() {
@@ -1206,6 +1205,12 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testLibraryEditScreenExercise() {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewExercise)), as: config)
+  }
+
+  /// #1783: the saved rows, ready to rename, reorder and remove.
+  func testLibraryEditScreenExerciseWithVariations() {
+    assertSnapshot(
+      of: host(LibraryEditScreen(item: .previewExerciseWithVariations)), as: config)
   }
 
   func testTypeBadges() {

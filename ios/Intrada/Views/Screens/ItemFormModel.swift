@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -92,6 +93,11 @@ final class ItemFormModel {
     }
   }
 
+  var variations: [VariationRow] = [] {
+    didSet { cleared(.variations) }
+  }
+  private var loadedVariations = false
+
   private var storedTitle = ""
   private var storedComposer = ""
   private var storedMarking = ""
@@ -117,6 +123,10 @@ final class ItemFormModel {
     storedMarking = item.tempoMarking ?? ""
     storedBpm = item.tempoBpm.map(String.init) ?? ""
     storedNotes = item.notes ?? ""
+    variations = item.variants.map {
+      VariationRow(variantId: $0.id, label: $0.label, hasMarks: !$0.scoreHistory.isEmpty)
+    }
+    loadedVariations = !item.variants.isEmpty
   }
 
   /// A field is written when empty, or when it still holds an earlier read:
@@ -211,6 +221,35 @@ final class ItemFormModel {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
+  /// The core decides (#1783): an exercise in several keys has no single key.
+  /// Blank rows count, so Key does not flicker back while a new row is empty.
+  var showsKey: Bool {
+    kind != .exercise || exerciseFormShowsKey(liveVariantCount: UInt32(variations.count))
+  }
+
+  /// A row added and left blank is not a label, so it is left out rather than
+  /// refused. A saved row blanked is still sent, for the core to refuse, so a
+  /// row with marks never goes without the removal prompt.
+  private var sentEdits: [VariantEdit] {
+    variations.compactMap { row in
+      let label = row.label.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !label.isEmpty || row.variantId != nil else { return nil }
+      return VariantEdit(id: row.variantId, label: label)
+    }
+  }
+
+  /// Fields and rows are two events (#1910). With rows, the rows go last, or the
+  /// key the core has just folded into a new ladder comes back as a second key;
+  /// with none they go first, or a key typed after clearing them is refused
+  /// while the old ones still stand.
+  func editEvents(id: String) -> [ItemEvent] {
+    let fields = ItemEvent.update(id: id, input: updateInput())
+    let edits = sentEdits
+    guard kind == .exercise, loadedVariations || !edits.isEmpty else { return [fields] }
+    let rows = ItemEvent.updateVariants(id: id, variants: edits)
+    return edits.isEmpty ? [rows, fields] : [fields, rows]
+  }
+
   func createInput() -> CreateItem {
     CreateItem(
       title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -222,7 +261,7 @@ final class ItemFormModel {
       notes: emptyToNil(notes),
       tags: tags,
       photoId: photoId,
-      variantLabels: [])
+      variantLabels: kind == .exercise ? sentEdits.map(\.label) : [])
   }
 
   var hasStagedExtras: Bool {
@@ -238,7 +277,9 @@ final class ItemFormModel {
       title: title,
       kind: kind,
       composer: .some(emptyToNil(composer)),
-      key: .some(emptyToNil(key)),
+      // Hidden over saved rows, Key is not the musician's to change, and a key
+      // sent then would be refused as a second key while those rows stand.
+      key: loadedVariations && !showsKey ? nil : .some(emptyToNil(key)),
       modality: .some(modality),
       tempo: .some(buildTempo()),
       notes: .some(emptyToNil(notes)),
@@ -256,6 +297,30 @@ final class ItemFormModel {
     let beats = UInt16(bpm.trimmingCharacters(in: .whitespaces))
     if mark == nil && beats == nil { return nil }
     return Tempo(marking: mark, bpm: beats)
+  }
+}
+
+/// One row of the Variations section. `variantId` is the saved variation it was
+/// loaded from, so a rename keeps its marks; `nil` for a row typed on the form.
+struct VariationRow: Identifiable, Hashable {
+  let id = UUID()
+  var variantId: String?
+  var label: String
+  var hasMarks = false
+}
+
+extension [VariationRow] {
+  mutating func move(_ id: UUID, by offset: Int) {
+    guard let from = firstIndex(where: { $0.id == id }), indices.contains(from + offset) else {
+      return
+    }
+    swapAt(from, from + offset)
+  }
+
+  mutating func move(_ id: UUID, before target: UUID) {
+    guard id != target, let from = firstIndex(where: { $0.id == id }) else { return }
+    let row = remove(at: from)
+    insert(row, at: firstIndex(where: { $0.id == target }) ?? endIndex)
   }
 }
 
