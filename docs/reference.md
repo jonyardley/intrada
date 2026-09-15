@@ -474,7 +474,7 @@ once.
 - **stream** — one line of work in one worktree and session; *vertical* means
   core + iOS together.
 - **tier** — ceremony level per CLAUDE.md Workflow: 1 just do it, 2 plan
-  mode, 3 spec first.
+  comment, 3 spec first.
 - **fast tier / full tier**, the two iOS test gates: `just ios-test` (unit and
   snapshot) and `just ios-test-full` (adds XCUITests, the merge gate). Not the
   ceremony tier above.

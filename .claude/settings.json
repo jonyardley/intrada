@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "sonnet[1m]",
-  "effortLevel": "medium",
+  "model": "opus[1m]",
+  "effortLevel": "xhigh",
   "permissions": {
     "allow": [
       "Bash(just check)",
