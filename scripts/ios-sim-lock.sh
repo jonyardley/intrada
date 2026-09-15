@@ -24,14 +24,22 @@
 IOS_SIM_LOCK_DIR="${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}"
 IOS_SIM_LOCK_TIMEOUT="${IOS_SIM_LOCK_TIMEOUT:-900}"
 
+# A crashed holder (kill -9, a yanked machine) never runs its EXIT trap, so a
+# dead PID means the lock is stale, not held.
+ios_sim_lock_stale() {
+    [ -f "$IOS_SIM_LOCK_DIR/pid" ] \
+        && ! kill -0 "$(cat "$IOS_SIM_LOCK_DIR/pid" 2>/dev/null || echo 0)" 2>/dev/null
+}
+
+ios_sim_lock_held() {
+    [ -d "$IOS_SIM_LOCK_DIR" ] && ! ios_sim_lock_stale
+}
+
 ios_sim_lock_acquire() {
     local waited=0 announced=0 holder
     while ! mkdir "$IOS_SIM_LOCK_DIR" 2>/dev/null; do
         holder="$(cat "$IOS_SIM_LOCK_DIR/holder" 2>/dev/null || echo "another session")"
-        # A crashed holder (kill -9, a yanked machine) never runs its EXIT
-        # trap, so a dead PID means the lock is stale, not held.
-        if [ -f "$IOS_SIM_LOCK_DIR/pid" ] \
-            && ! kill -0 "$(cat "$IOS_SIM_LOCK_DIR/pid" 2>/dev/null || echo 0)" 2>/dev/null; then
+        if ios_sim_lock_stale; then
             echo "⚠ stale iOS simulator lock ($holder, holder process gone): clearing it" >&2
             rm -rf "$IOS_SIM_LOCK_DIR"
             continue
