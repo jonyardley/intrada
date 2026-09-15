@@ -2,7 +2,7 @@
 name: reviewer
 description: Reviews a diff or a plan and reports Blockers, Important and Nits. The pre-push self-review, and the pair on silent-failure surfaces (bincode bridge, GRDB migrations, the ActiveSession blob, auth). Read-only; never posts to GitHub, never waits for the lead.
 tools: Bash, Read, Grep, Glob
-model: sonnet
+model: opus
 effort: high
 ---
 
@@ -15,6 +15,11 @@ description of it, in the worktree your brief names:
 Before reading a changed file, read the `.claude/rules/` file whose `paths:`
 cover it: the rules do not load on their own in a worktree, and they bind the
 diff whether or not the author loaded them.
+
+When the brief names an issue, read it with its comments first
+(`gh issue view <n> --comments`), then check the diff delivers the issue's
+done looks like (the plan comment's, or the body's where there is no plan
+comment) before anything else below.
 
 ## Two rules that exist because they were broken
 

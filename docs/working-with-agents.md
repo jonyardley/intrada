@@ -1,7 +1,7 @@
 # Working with Claude Code on intrada
 
 > The mechanics of driving this repo from Claude Code: what loads and what it
-> costs, the layers a rule can live in, model and effort per activity, what a
+> costs, the layers a rule can live in, the three rungs and the Fable list, what a
 > plan must say, delegation, isolation, guardrails and worked examples. The tier
 > system in [`CLAUDE.md`](../CLAUDE.md) is normative and not restated. This
 > file replaced the OMP-era guides and `model-guide.md` on 2026-09-08; why OMP
@@ -24,21 +24,20 @@ from is under "Usage guidelines".
 | You are | Do | Explained under |
 |---|---|---|
 | Starting a unit of work | `just claim N`, `just worktree-new <name>`, prefix every shell command with `cd <worktree> && `, read the `.claude/rules/` files for the surfaces you will touch, and name the model and effort before the first edit | CLAUDE.md Always; Isolating concurrent work; Model and effort |
-| Choosing a rung | Read the activity ladder row for what you are doing now, not the file count. Decisions go up the ladder, execution goes down it; `/model` and `/effort` switch in place | Model and effort |
-| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Sonnet 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files | Delegating |
-| Holding a fully specified mechanical edit | `smol` (Haiku 4.5 `low`) | Delegating |
+| Choosing a rung | Stay on Opus 5 `xhigh`; switch to Fable 5.1 `high` only for work on the Fable list, with `/model` and `/effort` in place, and back at the boundary | Model and effort |
+| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Opus 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files | Delegating |
 | About to run a gate | `test-runner`, never in the lead; a fan-out task skips the suites and the lead runs them once at the end | Delegating |
-| Needing facts from many files | `Explore` with `model: haiku`, spawned from a session at `high` or below; its findings are leads, not facts | Delegating |
-| About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff (Opus on a sensitive surface), then `just pr-open`; watch CI to a conclusion in the same turn and read mergeability | Shipping; Verification, the standard held |
+| Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts | Delegating |
+| About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff (Fable on a sensitive surface), then `just pr-open`; watch CI to a conclusion in the same turn and read mergeability | Shipping; Verification, the standard held |
 | Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that | Usage guidelines; Troubleshooting |
-| Warned at 150k context | Finish the slice in hand; everything after it goes to `task` or `smol`, and this session checks and ships | Session controls |
+| Warned at 150k context | Finish the slice in hand; everything after it goes to `task`, and this session checks and ships | Session controls |
 | At 200k | The rest of the unit goes to a subagent now | Session controls |
 | At 400k | `/compact` now, then carry on to the end of the unit | Session controls |
 | Mid-task and the thread matters | `/compact`, not `/clear`: compact keeps the decisions and drops the tool output, and the path-scoped rules reload on the next Read | Session controls |
 | The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting | Usage guidelines |
 | About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so | Usage guidelines |
-| Needing a stronger rung for one decision | `/model` and `/effort` in this session, saying so, and back down at the boundary. A new chat frees the lead; it is never how a rung changes | Model and effort |
-| Handing work to another session | An opener the new session pastes into a chat opened in the main checkout, naming the issue, activity, model, effort and stream; that session claims the issue and makes its own worktree. Never a worktree command for Jon to run | Plans ship their own resourcing |
+| Reaching work on the Fable list | `/model` and `/effort` in this session, saying so, and back to Opus 5 `xhigh` at the boundary. A new chat frees the lead; it is never how a rung changes | Model and effort |
+| Handing work to another session | An opener the new session pastes into a chat opened in the main checkout, naming the issue, model, effort and stream; that session claims the issue and makes its own worktree. Never a worktree command for Jon to run | Plans ship their own resourcing |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/`, a third only shell-only and announced | Isolating concurrent work |
 | Asked "what's next" | Answer from `just status` and the session-start claims list, with no further reads | Usage guidelines |
 
@@ -53,7 +52,7 @@ most of it again. Everything in the first column below is in that bill.
 | Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
-| Repo settings | `.claude/settings.json` | The model and effort a session opens on (Sonnet 5 medium, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
+| Repo settings | `.claude/settings.json` | The model and effort a session opens on (Opus 5 `xhigh`, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
 | User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text injected on every prompt (the turn reminder, and the context watch nudges, thresholds below), after a push (the CI-watch note) and in the day's first session (one usage line); before a tool runs, the worktree guard on every edit and command, the bash guard on every command, the read guard on every Read, the spawn guard on every subagent. Each is listed under "Guardrails already in place" |
@@ -84,7 +83,7 @@ A rule lives in exactly one of these, chosen by who reads it and when.
    read, then in context for the rest of the session.
 4. **Skills, by name.** Workflows rather than surfaces: shipping and parallel
    streams. `/ship` is the pre-push funnel.
-5. **Agents.** `reviewer`, `test-runner`, `smol`, `task`, with model and effort
+5. **Agents.** `reviewer`, `test-runner` and `task`, with model and effort
    pinned in the definition. `Explore`, `fork` and `general-purpose` are
    built-in with no definition to pin ("Delegating" below).
 6. **Hooks.** Repo: format on edit, install the git hooks, the session-start
@@ -112,7 +111,7 @@ merged.
 
 | Guideline | What holds it | Set from |
 |---|---|---|
-| Open on Sonnet 5 medium. Go up by activity, not by task size, and name the rung and effort at every boundary | `.claude/settings.json`, the turn reminder | Monday at 65% Sonnet cost a quarter of Saturday for the same PR count |
+| Open on Opus 5 `xhigh` and switch rung only for the Fable list; name the rung and effort at every boundary | `.claude/settings.json`, the turn reminder | The lower rungs cost more of Jon's time than they saved in spend, read from the 11 to 14 September sessions (#1893, #1897) |
 | One unit per session: finish, `/clear`. Before a break over an hour, `/clear` | `context-watch.sh` on the next turn; a launchd timer (`cold-nudge.sh`, machine-local, #1842) nudges before that turn arrives | Seven sessions over four hours, every one Fable or Opus left open across a break; 194 cold turns cost $233 in the week before |
 | Two streams by default; a third only shell-only, and say so when starting it | `intrada-parallel-streams` (#1839) | 34 simulator-busy hits across 20 sessions |
 | The session makes and drives its worktree. Jon never runs a worktree command, and a handover is an opener pasted into a new chat in main | Always step 3; `guard-worktree.sh` denies the write in main, and #1840 makes the prefix automatic | Eleven corrections in three days, 51 denied writes in main |
@@ -129,52 +128,60 @@ that becomes a gate is decided by measuring the PRs after #1634 against its
 
 ## Model and effort
 
-Match the **model** to how silently wrong the work can go, and the **effort** to
-how much thinking beats typing. The silent-failure surfaces here are the FFI
-bridge (positional bincode: wrong is a no-op, not a crash, #846), local GRDB
-migrations (the device is the only copy of the user's data), the `ActiveSession`
-crash-recovery blob (#1223, #1244, #1256) and auth. Those get the strongest
-setup regardless of diff size. Everything else degrades gracefully because
-failure is visible: a wrong layout is caught on the simulator, a wrong test
-fails in CI.
+Three rungs, set on 2026-09-15 (#1897): Fable thinks, Opus builds, Haiku runs.
+A session opens on Opus 5 `xhigh` (`.claude/settings.json`) and switches rung
+only for the Fable list below. The lower rungs cost more of Jon's time in
+corrections and loops than they saved in spend, so nothing with judgement in
+it runs below Opus.
+
+Match the **model** to how silently wrong the work can go. The silent-failure
+surfaces here are the FFI bridge (positional bincode: wrong is a no-op, not a
+crash, #846), local GRDB migrations (the device is the only copy of the user's
+data), the `ActiveSession` crash-recovery blob (#1223, #1244, #1256) and auth.
+Everything else degrades gracefully because failure is visible: a wrong layout
+is caught on the simulator, a wrong test fails in CI.
 
 | Model | $/MTok in/out | Use for |
 |---|---|---|
-| Fable 5.1 | 10 / 50 | Unrecoverable-if-wrong work; direction-setting; the worst debugging |
-| Opus 5 | 5 / 25 | Default for judgement-dense feature work and reviews |
-| Sonnet 5 | 2 / 10 | Conventional coding on non-sensitive surfaces; near-Opus on coding |
-| Haiku 4.5 | 1 / 5 | Search, explore and report subagents |
+| Fable 5.1 | 10 / 50 | The Fable list, and nothing else |
+| Opus 5 | 5 / 25 | Everything with judgement in it: the lead, `task`, `reviewer` |
+| Haiku 4.5 | 1 / 5 | `test-runner` and `Explore`, nothing else |
+| Sonnet 5 | 2 / 10 | Retired from this repo |
 
-Effort has five levels: `low`, `medium`, `high`, `xhigh`, `max`. This repo
-opens at `medium`, and effort does not follow a model switch, so a session
-that climbs the ladder sets `/effort` as well as `/model`. `xhigh` is the
-documented sweet spot for lead-session coding on judgement-dense work; `high`
-for patterned coding, planning, docs and review synthesis; `max` only when correctness beats cost
-outright (a migration touching shipped data, a blob-graph change), since it can
-overthink routine work; `low` and `medium` for mechanical work and gate
-runners. `/model` and `/effort` change the running session, and both persist
-to settings unless chosen as session-only. Fast mode (Opus only) is priced at
-Fable's rate: use it when interactive latency genuinely matters, never as an
-economy measure, and for sensitive work Fable at normal speed is better value.
+**The Fable list.** Switch the lead to Fable 5.1 `high` for these, with
+`/model` and `/effort`, saying so, and back to Opus 5 `xhigh` at the boundary:
 
-**The activity ladder.** A piece of work passes through up to six
-activities, and the rung follows the activity, not the file count. Read the
-row for what you are doing now; a task that spans rows changes rung at the
-boundary, saying so.
+- The plan comment on a Tier 2 or Tier 3 issue.
+- The shape and the build of anything crossing the bridge, a migration, the
+  crash-recovery blob or auth.
+- A direction call: a roadmap pivot, a reversal, "should we build this at all".
+- The bug nobody can explain: a bincode wire break, a silent no-op, a test
+  green for the wrong reason.
 
-| Activity | Decide | Build or run | Runs in | Why this shape |
-|---|---|---|---|---|
-| Technical design: the `Event`/`Effect`/`ViewModel` shape, anything crossing the bridge, schema strategy, auth | Fable 5.1 `xhigh`; `max` for a migration or the `ActiveSession` blob graph | Opus 5 `high` against a reviewed spec that fixes the shape field by field, escalating any choice it leaves open | The lead, one session; the shape is written into the spec or issue before either side is wired | Fails silently (#846, #1223, #1345): the strongest rung decides, and no Sonnet tier |
-| Visual design: a new flow against `design-principles.md`, a screen mocked in Claude Design | Opus 5 `high`; Fable 5.1 `high` only for a T-numbered decision or a flow with no precedent in the app | Opus 5 `high` for the mocks; Sonnet 5 `medium` for bookkeeping (`DesignSync`, tokens, filing the decision) | The lead, or a short session of its own | Fails visibly on the simulator, so a wrong call is cheap to see and cheap to redo |
-| Planning: direction, slice plans, specs | Fable 5.1 `high` for direction (roadmap pivots, reversals, "should we build this at all", Tier 3 specs); Opus 5 `high` for a slice inside a settled direction | Sonnet 5 `medium` for the mechanics: issues from an agreed plan, handover openers | The lead, plan mode; on a model no weaker than the build it plans | A plan is where the judgement concentrates; the build that follows it is patterned |
-| Tasks: writing the code | Opus 5 `xhigh` for core work with real judgement (new events and handlers in `intrada-core`, TDD-first) and judgement-dense screens | Sonnet 5 `high` for conventional Tier 2 on a non-sensitive surface, via `task`; Tier 1 trivia at Sonnet 5 `low` in the lead, or Haiku 4.5 via `smol` when fully specified | The judgement-dense half in the lead, since `task` is pinned to Sonnet and the spawn guard refuses a lift; the patterned half as a subagent from the session that planned it, once the plan is settled; a new session only to free the lead or on escalation | Sonnet is near Opus on patterned coding at a third of the cost; the pattern is already in the repo |
-| Review | `reviewer` is pinned to Sonnet 5 `high`, which covers Tier 1 and screens-only diffs; a diff touching `crates/intrada-ffi`, a migration, `ActiveSession` or auth spawns `reviewer` with `model` set to Opus instead (Fable for Fable-written bridge or migration work), the one lever that beats a definition's pin | `/code-review` inline for a small Tier 2 on one file with no sensitive surface | `reviewer` as a subagent; the Opus or Fable review and `/code-review` in the lead; on a multi-surface slice, the core half before the screens half starts | Sonnet covers the non-sensitive majority (52 runs, 12 to 14 September, $77 on mostly Tier 1); the strongest rung stays reserved for the silent-failure surfaces |
-| Gates and research | | `test-runner` (Haiku 4.5 `low`) for every gate; `Explore` with `model: haiku` for fan-out that reports facts back | A subagent, always | No judgement in the job; the gate or the lead's verification is the check |
+**The rungs, with the human equivalent.**
 
-The worst debugging (bincode wire breaks, silent no-ops, "green but wrong"
-tests, which got past Opus-era sessions three times) is technical design
-wearing a different hat: Fable 5.1 `xhigh`. A task with both design halves
-splits, contract first at the top of the ladder: the two-PR rule again.
+| Rung | Human equivalent | Ask them for |
+|---|---|---|
+| Fable 5.1 `high`, thinks | The architect you pull into a design review. Sets the shape, does not type the code | The plan comment, the bridge or migration shape, the direction call, the bug nobody can explain |
+| Opus 5 `xhigh`, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed; they call the architect when the contract is in doubt |
+| Opus 5 `high`, `task` | The same senior engineer working alone on a branch from a written ticket | One slice, reported back as a diff; you do not sit with them while they type |
+| Opus 5 `high`, `reviewer` | A peer on the PR | Reads the diff, not the description; never merges |
+| Haiku 4.5 `low`, `test-runner` | CI on your desk | Runs the gate, names what failed, has no opinion |
+| Haiku 4.5, `Explore` | A new starter sent to find where something lives | File names and line numbers; a lead, not a fact |
+| Sonnet 5, retired from the lead | A capable mid-level engineer who needs the pattern shown | Nothing that needs judgement: the time spent correcting is the rate saved |
+
+**Effort** is how long you would let them think before answering: `low` is a
+reply in the corridor, `medium` a minute at the desk, `high` worked through on
+paper, `xhigh` slept on and back with the trade-offs, `max` a spike or a design
+note. On Opus the longer think is nearly free per turn; on Fable it is the
+bill. Tiers map the same way: Tier 1 is a fix you would just do, Tier 2 a
+ticket with a plan attached, Tier 3 a design note before anyone builds.
+
+Effort does not follow a model switch, so a session that changes rung sets
+`/effort` as well as `/model`. Both change the running session, and both
+persist to settings unless chosen as session-only. Fast mode (Opus only) is
+priced at Fable's rate: use it when interactive latency genuinely matters,
+never as an economy measure.
 
 **What the rungs cost in money and time.** Measured over the fortnight to
 2026-09-14 from the session transcripts on Jon's machine, main sessions only.
@@ -191,27 +198,26 @@ so it includes thinking; medians are per request, not per task.
 | Sonnet 5 high | 70 | 0.06 | 4.8 | 29.4 |
 | Sonnet 5 medium | 483 | 0.05 | 3.4 | 8.2 |
 
-Three things follow, and the ladder above is shaped by them:
+Three things follow, and the rungs above are shaped by them:
 
 - **On Opus, effort is close to free.** `medium`, `high` and `xhigh` cost
   within the noise of each other per turn, which is what context length
   dominating the bill predicts, and the median reply time is flat; p90 rises
-  about a quarter from `medium` to `xhigh`. An Opus session sits at `high` by
-  default and goes to `xhigh` for judgement-dense work without a cost case
-  against it.
+  about a quarter from `medium` to `xhigh`. The lead sits at `xhigh` for that
+  reason, and `task` and `reviewer` at `high`.
 - **On Fable, effort is the lever.** `xhigh` costs half as much again per turn
-  as `high` and lengthens the slow tail by three quarters, so it buys the
-  deciding half of a task and hands the building half down. Fable at every
+  as `high` and lengthens the slow tail by three quarters, so Fable works at
+  `high`, and away from the sensitive surfaces it decides and hands the
+  building back to Opus. Fable at every
   measured effort is slower than Opus at every measured effort: use it where
   deliberation pays, not on interactive back-and-forth.
-- **Sonnet is where the saving is.** A third of Opus per turn and the fastest
-  reply. Sonnet `high` has a slow tail from a small sample, so treat its p90
-  as unknown until the turn count is in the hundreds.
+- **Sonnet saved on paper only.** A third of Opus per turn and the fastest
+  reply, but the corrections and loops on the lower rungs cost Jon more time
+  than the rate saved (#1897), so it is retired from this repo.
 
 **Rules of thumb.** The sensitivity override applies to models: auth, bridge,
-schema and migration work jumps a model-and-effort level whatever the file
-count. Drop effort before dropping model. Decisions go up the ladder,
-execution goes down it. A subagent's finding is a lead, not a fact: one on
+schema and migration work is on the Fable list whatever the file count. A
+subagent's finding is a lead, not a fact: one on
 2026-09-04 blamed the wrong commit, cited a line that pointed at a comment,
 and said it could not run `git show` when it could. Brief research agents to
 mark observed against inferred, and verify before acting.
@@ -237,10 +243,9 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   `test-runner`.
 - **Per-turn prices are in the rung table above.** Fable's cache reads cost
   $0.25 per MTok against Opus's $0.50, which keeps the gap to Opus small at
-  long context; dropping to Sonnet is what saves. This repo's
-  `.claude/settings.json` opens sessions on Sonnet 5 medium with the 1M
-  window, so name the rung the ladder gives the task and switch with `/model`
-  and `/effort` before the work starts, saying so, not after.
+  long context. This repo's `.claude/settings.json` opens sessions on Opus 5
+  `xhigh` with the 1M window; work on the Fable list switches with `/model`
+  and `/effort` before it starts, saying so, not after.
 - **Subagents were 26% of the fortnight's usage.** Their largest line was
   `task` spawned with `model: opus` over its Sonnet pin: keep the judgement
   in the lead and hand down settled work instead of lifting the agent. In the
@@ -249,20 +254,26 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   before the spawn guard existed; the guard now refuses both a model lift and
   an effort lift above a pinned definition, so the lead sets neither at the
   spawn for a pinned agent. It cannot see a built-in with no definition file
-  at all (`Explore`, `fork`, `general-purpose`), so that cap is on the
-  spawning session, not the guard: keep it at `high` or below there too.
+  at all (`Explore`, `fork`, `general-purpose`), so the lead's `xhigh`
+  reaches `fork` and `general-purpose` unchecked.
   `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
 ## Plans ship their own resourcing
 
-Every plan (slice plan, spec phase breakdown, handover) names, per task:
+A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words:
+done looks like, decisions taken, files and lines, tests, out of scope,
+routing. Jon approves it, the build reads it, and `reviewer` is briefed with
+the issue so it checks the diff against done looks like. A plan that runs long
+is the signal the issue is really Tier 3.
 
-1. **Which activity it is** (technical design, visual design, planning,
-   tasks, review, gates and research), because the rung follows from the row.
-2. **Model and effort**, from the ladder above. "Then build the screen" without
-   "Sonnet 5, high" forces the next session to re-derive the routing, or
-   default upward. An opener to a new session starts with the two commands
+Every plan (plan comment, spec phase breakdown, handover) names, per task:
+
+1. **Whether it is on the Fable list**, because nothing else moves the rung
+   off Opus.
+2. **Model and effort**, from the rungs above. "Then design the migration"
+   without "Fable 5.1, high" forces the next session to re-derive the routing,
+   or stay on the default. An opener to a new session starts with the two commands
    themselves, `/model` and `/effort`, on their own lines above the pasted
    text, so the new chat never opens on the default by accident.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
@@ -274,7 +285,7 @@ Every plan (slice plan, spec phase breakdown, handover) names, per task:
    time, which costs little to queue behind (a fast-tier run is well under a
    minute either way, #1621).
 
-A plan without activity, model, effort and stream annotations is incomplete, the same way
+A plan without model, effort and stream annotations is incomplete, the same way
 a phase without a test plan is.
 
 ## Delegating
@@ -282,19 +293,19 @@ a phase without a test plan is.
 | Job | Agent | Pinned | Because |
 |---|---|---|---|
 | Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, so it inherits the spawning session's effort (below) | Reports facts back; a wrong answer is caught by the lead verifying it |
-| Mechanical, fully specified edits | `smol` | Haiku 4.5, low | The decision is already made; the cheapest rung that types accurately |
 | Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
-| Review a diff or a plan | `reviewer` | Sonnet 5, high; lifted to Opus (Fable for Fable-written work) on `crates/intrada-ffi`, a migration, `ActiveSession` or auth | Sonnet covers the non-sensitive majority; the strongest rung stays reserved for the silent-failure surfaces |
-| Conventional Tier 2 slice | `task` | Sonnet 5, high | Non-sensitive surface, patterns already in the repo |
+| Review a diff or a plan | `reviewer` | Opus 5, high; lifted to Fable on `crates/intrada-ffi`, a migration, `ActiveSession` or auth | A peer who reads the diff, not the description; the strongest rung stays reserved for the silent-failure surfaces |
+| Conventional Tier 2 slice | `task` | Opus 5, high | Non-sensitive surface, patterns already in the repo |
 
-All four definitions live in `.claude/agents/`, so they are reviewed like code
+All three definitions live in `.claude/agents/`, so they are reviewed like code
 and travel with the checkout. Pin model and effort in the definition rather than
 at the spawn; the exceptions are `Explore`, `fork` and `general-purpose`, which
-have no definition to pin, and lifting `reviewer` to Opus on the sensitive
-surfaces, or to Fable for Fable-written work. Because a subagent with no
-`effort:` in its definition inherits the parent session's effort, `Explore`,
-`fork` and `general-purpose` should only be spawned from a session at `high`
-or below (#1838).
+have no definition to pin, and lifting `reviewer` to Fable on the sensitive
+surfaces. A subagent with no `effort:`
+in its definition inherits the parent session's effort (#1838), and the lead
+opens at `xhigh`: `fork` and `general-purpose` also inherit its model, so they
+run at Opus `xhigh`, and `Explore` takes `model: haiku`, a model the `/effort`
+menu does not offer `xhigh` for.
 
 `task` sits at high, not xhigh: the effort premium buys little on work that
 follows a pattern already in the repo, and over the fortnight to 2026-09-13
@@ -376,7 +387,7 @@ all this, are in [`docs/worktrees.md`](worktrees.md) and not repeated here.
 
 A subagent inherits none of this. Its brief names the worktree by absolute
 path, or its first edit lands in main and is denied, and `reviewer` diffs the
-wrong tree (#1861). The four definitions in `.claude/agents/` say so, and the
+wrong tree (#1861). The three definitions in `.claude/agents/` say so, and the
 brief still has to supply the path.
 
 ## Build and test control
@@ -421,9 +432,9 @@ These run whether or not an agent read the rules.
   matches the same denials inside compound commands, the turn reminder
   re-attaches the style rules on every prompt, and the post-push hook restates
   the CI-watch rule after every push. `guard-spawn.sh` refuses a spawn that
-  lifts a subagent above the model in its definition (`reviewer` excepted, per
-  the Review row of the activity ladder), `context-watch.sh` warns at 150k,
-  hands the rest of the unit to a `task`/`smol` subagent at 200k and at 400k
+  lifts a subagent above the model in its definition (`reviewer` excepted, lifted
+  to Fable on a sensitive surface), `context-watch.sh` warns at 150k,
+  hands the rest of the unit to a `task` subagent at 200k and at 400k
   says to `/compact` now (`CONTEXT_WARN` and `CONTEXT_FIRM` stay overridable
   env vars), and `usage-daily.sh` opens the first session of each day with one
   line from `usage-report.py`. `read-guard.sh` denies a `Read` with no offset,
@@ -440,10 +451,10 @@ These run whether or not an agent read the rules.
 | Change rung mid-session | `/model`, `/effort`. Both persist unless chosen as session-only |
 | See what loaded | `/context` lists the memory files and rules in this session |
 | See what sessions cost | `just usage` (last 7 days by agent, model and effort, plus the biggest sessions); `just usage 14` for a fortnight |
-| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: at 150k finish the slice and hand the rest to a `task`/`smol` subagent (this session checks and ships), at 200k hand it over now, at 400k `/compact` |
+| Read the context nudges | `context-watch.sh` nudges unprompted as context grows: at 150k finish the slice and hand the rest to a `task` subagent (this session checks and ships), at 200k hand it over now, at 400k `/compact` |
 | Keep the thread, drop the bulk | `/compact`. Decisions survive, tool output goes, the path-scoped rules reload on the next Read. Mid-task only |
 | End the unit | `/clear`, once the PR is green, the issue closed and the worktree removed. The transcript file survives it, which is why the read guard can deny the next unit's first read (#1866) |
-| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, activity, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
+| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
 | Edit the rules files | `/memory` |
 | Tidy up permission prompts | `/fewer-permission-prompts` |
 
@@ -507,8 +518,8 @@ version.
 
 Tier 1. One file, no bridge, no schema, no auth, so no override applies.
 
-1. One session, no plan mode, no subagents. Sonnet 5 at `low` is the rung, but
-   on a change this small the ceremony of moving there costs more than it saves.
+1. One session, no plan comment, no subagents. The lead's Opus 5 `xhigh` is the
+   rung; nothing here is on the Fable list.
 2. Reading the file loads `.claude/rules/ios-ui.md`: reuse before creating,
    never hand-roll something that exists.
 3. Replace the hand-roll with `Eyebrow`. Check the neighbouring `.badge`
@@ -550,9 +561,9 @@ prevent.
 Tier 2 on file count, but projecting a bound through the `ViewModel` changes the
 bridge contract, so the domain-sensitivity override puts it up a tier.
 
-1. Contract before code, at the top of the ladder: Fable 5.1 at `xhigh`. Pin
-   the `ViewModel` shape first, in one session, and write it down before either
-   side is wired. `max` is reserved for migrations.
+1. Contract before code, on the Fable list: Fable 5.1 at `high`. Pin the
+   `ViewModel` shape first, in one session, and write it into the plan comment
+   before either side is wired.
 2. This touches `crates/`, so it is the one crate-touching stream this repo
    allows at a time. Do not fan out, and do not start a second stream that
    touches `crates/` while it is in flight; a shell-only stream elsewhere that
@@ -574,11 +585,11 @@ bridge contract, so the domain-sensitivity override puts it up a tier.
 Opener for the first session:
 
 ```text
-Claim #1512 and stop if a PR already exists. Plan mode first, and do not
+Claim #1512 and stop if a PR already exists. Plan comment first, and do not
 write code this session beyond the contract.
 
-This changes the bridge contract, so use the strongest rung before you decide
-anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
+This changes the bridge contract, so switch to Fable 5.1 high (it is on the
+Fable list) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
 and the rep-target bound, and write it into the issue before either side is
 wired. A refused write with nothing on screen is the failure the offline-first
 rule exists to prevent.
@@ -625,7 +636,7 @@ gate and its counts, what you left out, what you could not verify.
 | `just check` says already green | Stamp matches HEAD and the tree is clean; delete the stamp |
 | Unformatted Swift or Rust reaching CI | The format hook loads at session start; run `just fmt` and `just ios-fmt` |
 | PR hangs on a check that never reports | A renamed job left its old required context "expected" (#1542) |
-| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's; spawn those from `high` or below (#1838) |
+| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's model or effort (#1838). Pass `model: haiku` to `Explore` |
 | The spawn guard refused a subagent | The spawn lifted `model` or `effort` above the definition's pin. Only `reviewer` may go up, on a sensitive surface. Drop the override; keep the judgement in the lead instead |
 | Read denied as "already in context" on the first read after `/clear` | The guard reads the transcript, which `/clear` does not restart (#1866). Range-read (`offset`, `limit`) until it is fixed |
 | Read denied on a file over 400 lines | Grep for the symbol, then read the range. The guard never allows the whole file (#1844) |
