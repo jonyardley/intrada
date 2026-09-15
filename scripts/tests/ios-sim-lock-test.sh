@@ -17,6 +17,7 @@ mkdir "$tmp/bin"
 cat >"$tmp/bin/xcrun" <<'EOF'
 #!/usr/bin/env bash
 echo "$(date +%s) $*" >>"$XCRUN_LOG"
+cat "$IOS_SIM_LOCK_DIR/holder" >>"$XCRUN_LOG.holder" 2>/dev/null || true
 EOF
 chmod +x "$tmp/bin/xcrun"
 export PATH="$tmp/bin:$PATH"
@@ -92,10 +93,10 @@ expect "a run marks its worktree's sim used while it queues" true \
   "$IOS_SIM_LAST_RUN_MARKER" "$root/scripts/ios-sim-lock.sh"
 rm -rf "$IOS_SIM_LOCK_DIR"
 
-# ── The idle shutdown, four timers side by side ──
+# ── The idle shutdown, five timers side by side ──
 
 old=$(($(date +%s) - 100))
-for s in idle held reran released; do mkdir "$tmp/$s"; done
+for s in idle held reran released empty; do mkdir "$tmp/$s"; done
 
 echo "$old" >"$tmp/idle/marker"
 XCRUN_LOG="$tmp/idle/xcrun" IOS_SIM_LOCK_DIR="$tmp/idle/lock" IOS_SIM_LOCK_TIMEOUT=30 \
@@ -113,6 +114,12 @@ XCRUN_LOG="$tmp/reran/xcrun" IOS_SIM_LOCK_DIR="$tmp/reran/lock" IOS_SIM_LOCK_TIM
   IOS_SIM_IDLE_SHUTDOWN_SECONDS=3 bash "$timer" "$udid" "$tmp/reran/marker" &
 reran_timer=$!
 
+: >"$tmp/empty/marker"
+empty_started=$(date +%s)
+XCRUN_LOG="$tmp/empty/xcrun" IOS_SIM_LOCK_DIR="$tmp/empty/lock" IOS_SIM_LOCK_TIMEOUT=30 \
+  IOS_SIM_IDLE_SHUTDOWN_SECONDS=3 bash "$timer" "$udid" "$tmp/empty/marker" &
+empty_timer=$!
+
 export XCRUN_LOG="$tmp/released/xcrun" IOS_SIM_LOCK_DIR="$tmp/released/lock"
 export IOS_SIM_LAST_RUN_MARKER="$tmp/released/marker" IOS_SIM_IDLE_SHUTDOWN_SECONDS=1
 ios_sim_lock_acquire
@@ -123,11 +130,12 @@ released_marker="$(cat "$IOS_SIM_LAST_RUN_MARKER")"
 expect "a released run frees the lock at once" false test -d "$IOS_SIM_LOCK_DIR"
 expect "a released run marks its sim used" true test "$released_marker" -gt "$old"
 
-live_pids="$live_pids $idle_timer $held_timer $reran_timer $released_timer"
+live_pids="$live_pids $idle_timer $held_timer $reran_timer $released_timer $empty_timer"
 
 sleep 1
 rerun_at=$(date +%s)
 echo "$rerun_at" >"$tmp/reran/marker"
+echo "$rerun_at" >"$tmp/empty/marker"
 expect "a sleeping idle shutdown does not hold the lock" true \
   env IOS_SIM_LOCK_DIR="$tmp/reran/lock" IOS_SIM_LOCK_TIMEOUT=2 \
   bash -c '. "$1" && ios_sim_lock_acquire && ios_sim_lock_release' _ "$root/scripts/ios-sim-lock.sh"
@@ -136,9 +144,11 @@ sleep 1
 released_at=$(date +%s)
 rm -rf "$tmp/held/lock"
 
-for t in $idle_timer $held_timer $reran_timer $released_timer; do wait_for_exit "$t"; done
+for t in $idle_timer $held_timer $reran_timer $released_timer $empty_timer; do wait_for_exit "$t"; done
 
 expect "an idle sim with the lock free shuts down" true test -n "$(shutdown_time "$tmp/idle/xcrun")"
+expect "the idle shutdown names itself as the lock holder while it shuts down" true \
+  grep -q "^idle shutdown of $udid in .* (pid [0-9]*)$" "$tmp/idle/xcrun.holder"
 expect "the idle shutdown releases the lock it took" false test -d "$tmp/idle/lock"
 expect "an idle sim waits while another run holds the lock" true \
   test "$(shutdown_time "$tmp/held/xcrun")" -ge "$released_at"
@@ -146,6 +156,9 @@ expect "a run since the timer started restarts the idle clock" true \
   test "$(shutdown_time "$tmp/reran/xcrun")" -ge $((rerun_at + 3))
 expect "a released run's sim shuts down once idle" true \
   test "$(shutdown_time "$tmp/released/xcrun")" -ge $((released_marker + 1))
+expect "an empty marker mid-write still shuts down" true test -n "$(shutdown_time "$tmp/empty/xcrun")"
+expect "an empty marker reads as a run just now" true \
+  test "$(shutdown_time "$tmp/empty/xcrun")" -ge $((empty_started + 3))
 
 echo "ios-sim-lock-test: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

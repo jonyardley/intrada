@@ -15,7 +15,9 @@ idle="${IOS_SIM_IDLE_SHUTDOWN_SECONDS:-600}"
 
 while :; do
     ios_sim_lock_acquire 2>/dev/null || continue
+    echo "idle shutdown of $udid in $(pwd) (pid $$)" >"$IOS_SIM_LOCK_DIR/holder"
     last="$(cat "$marker" 2>/dev/null || echo 0)"
+    [ -n "$last" ] || last="$(date +%s)"
     remaining=$((idle - ($(date +%s) - last)))
     if [ "$remaining" -le 0 ]; then
         xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
