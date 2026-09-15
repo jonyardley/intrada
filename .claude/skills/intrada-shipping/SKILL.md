@@ -15,12 +15,12 @@ main while its reviewer was still thinking.
 - **Small Tier 2**, one file with no bridge, DB, auth or migration surface, may
   take a lighter single-pass review. Anything on the domain-sensitivity list,
   or spanning files, takes the full agent.
-- **`reviewer` is pinned to Sonnet 5 high.** Tier 1 and screens-only diffs take
-  the pin; it is the answer to Tier 1 not being worth Opus, not a reason to
-  skip review (#1665). A diff touching `crates/intrada-ffi`, `ios/generated/`,
-  `ios/Intrada/Core/LibraryStore.swift` (the only migration registration site),
-  `ActiveSession` or auth spawns `reviewer` with `model: opus` instead (or
-  Fable for Fable-written work): check with
+- **`reviewer` is pinned to Opus 5 high**, briefed with the worktree and the
+  issue so it checks the diff against done looks like. Tier 1 and screens-only
+  diffs take the pin, which is no reason to skip review (#1665). A diff touching
+  `crates/intrada-ffi`, `ios/generated/`, `ios/Intrada/Core/LibraryStore.swift`
+  (the only migration registration site), `ActiveSession` or auth spawns
+  `reviewer` with `model: fable` instead: check with
   `git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session.rs'`,
   not the tier the author claimed.
 
