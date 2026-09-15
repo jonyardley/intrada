@@ -1,17 +1,11 @@
 import XCTest
 
 /// Real-device UITest for variation management (#1083, renamed in #1733): a
-/// rename on the Edit screen (#1783), driven against "Major Scales", the seeded
+/// rename and a drag on the Edit screen (#1783), driven against "Major Scales", the seeded
 /// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
 /// in that order; see `app.rs`'s `LoadSampleData` seed).
 ///
 /// Removing a variation moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
-///
-/// Drag reorder is deliberately not covered here: `.draggable`/
-/// `.dropDestination` ride the system Drag & Drop API, which XCUITest can't
-/// reliably script a drop through in the Simulator. The order the rows send is
-/// pinned in `ItemFormVariationsTests` and the reconcile in the core's own
-/// tests; only the gesture is untested here.
 @MainActor
 final class VariationManagementUITests: XCTestCase {
   override func setUp() {
@@ -60,5 +54,25 @@ final class VariationManagementUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["E"].exists, "old label gone")
     XCTAssertTrue(app.staticTexts["C"].exists, "untouched variation still present")
     XCTAssertTrue(app.staticTexts["G"].exists, "untouched variation still present")
+  }
+
+  /// The handle's own gesture, which synthesised touches drive: the system drag
+  /// and drop it replaced never landed a drop on a row on the simulator (#1783).
+  func testDraggingAHandleMovesItsRow() {
+    let app = openScalesEditor()
+
+    let eHandle = app.descendants(matching: .any)["Reorder E"].firstMatch
+    let cHandle = app.descendants(matching: .any)["Reorder C"].firstMatch
+    XCTAssertTrue(eHandle.waitForExistence(timeout: 5), "E's reorder handle")
+    XCTAssertGreaterThan(
+      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
+      "E starts below C")
+
+    eHandle.press(
+      forDuration: 0.2, thenDragTo: cHandle, withVelocity: .slow, thenHoldForDuration: 0.3)
+
+    XCTAssertLessThan(
+      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
+      "E dragged above C")
   }
 }
