@@ -1241,11 +1241,11 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       VStack(alignment: .leading, spacing: IntradaSpacing.section) {
         SectionHeader(
-          title: "Chord chart", actionTitle: "Edit", action: {},
-          actionAccessibilityLabel: "Edit chord chart")
+          title: "Chord chart",
+          action: .init(title: "Edit", accessibilityLabel: "Edit chord chart", perform: {}))
         SectionHeader(
           title: "Related exercises", caption: "3", captionAccessibilityHidden: true,
-          actionTitle: "Edit", action: {}, actionAccessibilityLabel: "Edit related exercises")
+          action: .init(title: "Edit", accessibilityLabel: "Edit related exercises", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }
