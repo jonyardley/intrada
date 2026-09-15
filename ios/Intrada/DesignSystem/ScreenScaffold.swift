@@ -3,7 +3,7 @@ import SwiftUI
 /// The shared shell every top-level screen is built from. The page title lives
 /// in the content, not the native nav bar's title (the locked *Library, Light*
 /// header). Every screen forces `.inline` display with an empty native
-/// title (#1724, #1822), so the bar is the same fixed ~44pt height everywhere
+/// title (#1724, #1822), so the bar is the same fixed height wherever it shows
 /// rather than a large title on some screens and none on others; on a pushed
 /// screen this also keeps the real native back chevron and its edge-swipe
 /// gesture, which a custom leading view could never reproduce. `leadingContent`
@@ -17,6 +17,8 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   let trailingContent: Trailing
   let trailingPlacement: TrailingPlacement
   @ViewBuilder var content: Content
+  @Environment(\.navigationBarHiddenAtRoot) private var hiddenAtRoot
+  @Environment(\.isPresented) private var isPresented
 
   struct TrailingAction {
     let label: String
@@ -122,10 +124,13 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
           ToolbarItemGroup(placement: .topBarTrailing) { trailingContent }
         }
       }
-      // An item-less bar goes isHidden internally, breaking the split view's
-      // symmetric-chrome invariant against a column that does carry items (#1868, #1682).
-      .toolbar(.visible, for: .navigationBar)
+      // Forced visible so an item-less bar keeps the iPad split's columns matched
+      // (#1868, #1682); a tab's first screen drops its empty band instead (#1912).
+      .toolbar(hidesBar ? .hidden : .visible, for: .navigationBar)
   }
+
+  // Unproven before iOS 26.5: an opened screen or sheet may inherit the flag (#1912).
+  private var hidesBar: Bool { hiddenAtRoot && !isPresented }
 
   private var titleText: some View {
     Text(title)
@@ -170,6 +175,24 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.controlGap)
+  }
+}
+
+private struct NavigationBarHiddenAtRootKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
+extension EnvironmentValues {
+  var navigationBarHiddenAtRoot: Bool {
+    get { self[NavigationBarHiddenAtRootKey.self] }
+    set { self[NavigationBarHiddenAtRootKey.self] = newValue }
+  }
+}
+
+extension View {
+  /// Hides the bar on the first screen of a tab's stack.
+  func navigationBarHiddenAtRoot() -> some View {
+    environment(\.navigationBarHiddenAtRoot, true)
   }
 }
 
