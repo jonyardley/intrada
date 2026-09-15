@@ -740,13 +740,13 @@
         variants: [
           VariantView(
             id: "variation-c", label: "C", position: 0, latestScore: 9, scoreHistory: [],
-            isSolid: true),
+            isSolid: true, caption: "Solid · 9 of 10"),
           VariantView(
             id: "variation-f", label: "F", position: 1, latestScore: 5, scoreHistory: [],
-            isSolid: false),
+            isSolid: false, caption: "5 of 10"),
           VariantView(
             id: "variation-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
-            isSolid: false),
+            isSolid: false, caption: "Not yet played"),
         ], ladderIsKeys: true, photoId: nil, showsKey: false)
     }
 
@@ -769,7 +769,8 @@
           return VariantView(
             id: "variation-\(index)", label: label, position: UInt64(index),
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
-            isSolid: solid)
+            isSolid: solid,
+            caption: solid ? "Solid · 9 of 10" : (current ? "6 of 10" : "Not yet played"))
         }, ladderIsKeys: true, photoId: nil, showsKey: false)
     }
 
@@ -786,7 +787,7 @@
         variants: rungs.enumerated().map { index, label in
           VariantView(
             id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
-            scoreHistory: [], isSolid: false)
+            scoreHistory: [], isSolid: false, caption: "Not yet played")
         }, ladderIsKeys: false, photoId: nil, showsKey: false)
     }
 
@@ -804,7 +805,8 @@
         variants: names.enumerated().map { index, label in
           VariantView(
             id: "long-variation-\(index)", label: label, position: UInt64(index),
-            latestScore: index == 0 ? 8 : nil, scoreHistory: [], isSolid: index == 0)
+            latestScore: index == 0 ? 8 : nil, scoreHistory: [], isSolid: index == 0,
+            caption: index == 0 ? "Solid · 8 of 10" : "Not yet played")
         }, ladderIsKeys: false, photoId: nil, showsKey: false)
     }
 

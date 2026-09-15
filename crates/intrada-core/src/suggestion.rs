@@ -484,15 +484,8 @@ mod tests {
             .find(|i| i.id == "p1-ex0")
             .expect("the exercise");
         ex.variants = vec![
-            VariantView {
-                latest_score: Some(9),
-                is_solid: true,
-                ..VariantView::fixture("v0", "C", 0)
-            },
-            VariantView {
-                latest_score: Some(4),
-                ..VariantView::fixture("v1", "F", 1)
-            },
+            VariantView::fixture("v0", "C", 0).scored(9),
+            VariantView::fixture("v1", "F", 1).scored(4),
         ];
 
         let first = &suggest(&library).items[0];
@@ -509,11 +502,7 @@ mod tests {
             .iter_mut()
             .find(|i| i.id == "p1-ex0")
             .expect("the exercise");
-        ex.variants = vec![VariantView {
-            latest_score: Some(9),
-            is_solid: true,
-            ..VariantView::fixture("v0", "C", 0)
-        }];
+        ex.variants = vec![VariantView::fixture("v0", "C", 0).scored(9)];
 
         let first = &suggest(&library).items[0];
         assert_eq!(first.variant_id, None);
@@ -530,10 +519,7 @@ mod tests {
             .iter_mut()
             .find(|i| i.id == "p1-ex1")
             .expect("the exercise");
-        ex.variants = vec![VariantView {
-            latest_score: Some(1),
-            ..VariantView::fixture("v1", "F♯", 0)
-        }];
+        ex.variants = vec![VariantView::fixture("v1", "F♯", 0).scored(1)];
 
         assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
     }

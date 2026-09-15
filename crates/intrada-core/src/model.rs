@@ -381,6 +381,17 @@ pub struct VariantView {
     pub score_history: Vec<ScoreHistoryEntry>,
     /// Latest score has reached `SOLID_SCORE_MIN` (8 of 10).
     pub is_solid: bool,
+    pub caption: String,
+}
+
+/// The saved mark in the musician's words: the one wording the Library row and
+/// the picker's out-of-session fallback share (#1809).
+pub(crate) fn saved_mark_caption(latest_score: Option<u8>, is_solid: bool) -> String {
+    match latest_score {
+        Some(score) if is_solid => format!("Solid · {score} of 10"),
+        Some(score) => format!("{score} of 10"),
+        None => "Not yet played".to_string(),
+    }
 }
 
 /// One row of the player's variation picker, captioned by the core so a
@@ -665,6 +676,17 @@ impl VariantView {
             latest_score: None,
             score_history: Vec::new(),
             is_solid: false,
+            caption: saved_mark_caption(None, false),
+        }
+    }
+
+    pub(crate) fn scored(self, score: u8) -> Self {
+        let is_solid = score >= crate::domain::variant::SOLID_SCORE_MIN;
+        Self {
+            latest_score: Some(score),
+            is_solid,
+            caption: saved_mark_caption(Some(score), is_solid),
+            ..self
         }
     }
 }
@@ -893,11 +915,7 @@ fn picker_variations(entry: &SetlistEntry, variants: &[VariantView]) -> Vec<Pick
                     crate::domain::session::format_duration_display(played_secs)
                 )
             } else {
-                match v.latest_score {
-                    Some(score) if v.is_solid => format!("Solid · {score} of 10"),
-                    Some(score) => format!("{score} of 10"),
-                    None => "Not yet played".to_string(),
-                }
+                saved_mark_caption(v.latest_score, v.is_solid)
             };
             PickerVariationView {
                 id: v.id.clone(),
@@ -1108,6 +1126,7 @@ mod tests {
                 session_id: "s1".to_string(),
             }],
             is_solid: true,
+            caption: "Solid · 8 of 10".to_string(),
         });
     }
 
@@ -1643,15 +1662,8 @@ mod tests {
     fn picker_caption_falls_back_to_the_saved_mark_or_not_yet_played() {
         let active = session_on(vec![VariationPlay::fixture()]);
         let variants = [
-            VariantView {
-                latest_score: Some(8),
-                is_solid: true,
-                ..VariantView::fixture("c", "C", 0)
-            },
-            VariantView {
-                latest_score: Some(5),
-                ..VariantView::fixture("d", "D", 1)
-            },
+            VariantView::fixture("c", "C", 0).scored(8),
+            VariantView::fixture("d", "D", 1).scored(5),
             VariantView::fixture("e", "E", 2),
         ];
         let view =
@@ -1679,11 +1691,7 @@ mod tests {
         };
         let active = session_on(vec![scored_at_switch, play_on("p2", "g", 0)]);
         let variants = [
-            VariantView {
-                latest_score: Some(9),
-                is_solid: true,
-                ..VariantView::fixture("c", "C", 0)
-            },
+            VariantView::fixture("c", "C", 0).scored(9),
             VariantView::fixture("g", "G", 1),
         ];
         let view =
