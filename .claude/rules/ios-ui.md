@@ -21,11 +21,9 @@ and its V-numbered log; its sweep checklist is the review pass for any PR that
 changes a string. Where the two disagree, the design principle wins and the
 tone doc gets a new example.
 
-## Model, and eyes before the PR
+## Eyes before the PR
 
-A change to what a musician sees runs on Opus 5 `high` (Fable 5.1 `high` only
-for a decision with no precedent in the app, entered in `docs/design-principles.md`
-as a new T-numbered decision). Before `just pr-open`, the reply shows Jon a
+Before `just pr-open` on a change to what a musician sees, the reply shows Jon a
 `just ios-run` screenshot and waits for his word on it: a PR that opens
 without that exchange is the failure this rule exists to stop (#1891; the
 terracotta accent, the metronome drag icon and the header toolbar all
@@ -53,7 +51,7 @@ shipped, and were each reworked, the same way).
    (`controlGap`, `cardCompact`, `row`, `card`), motion through `Motion.swift`.
 
 Deviation is allowed only in an explicit redesign, which is a flagged
-conversation (Claude Design first, then plan mode) and produces updated tokens
+conversation (Claude Design first, then the plan comment) and produces updated tokens
 and primitives in `Theme.swift`, not a clone in one view.
 
 ## Animated reveals need an opaque backing

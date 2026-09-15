@@ -32,10 +32,14 @@ between those two.
    work gets a written spec. Anything touching auth, a schema, a migration or
    the contract between components escalates regardless of how small it looks,
    because those fail silently.
-5. **Model choice is a policy, not a default.** Cheap, fast models for
-   patterned and mechanical work; the strongest model and effort for anything
-   that fails silently. Encode it as configuration, pinned where the agent is
-   defined, and name the rung out loud at every boundary.
+5. **Cheap models only where there is no judgement.** Running a gate or
+   finding where something lives needs none, so the cheapest model does it.
+   Everything with judgement in it runs on the middle model, and the strongest
+   model thinks: the plan, anything that fails silently, the direction call,
+   the bug nobody can explain. A cheap model on judgement work costs more of
+   your time in corrections than it saves in spend. Encode it as
+   configuration, pinned where the agent is defined, and name the rung out
+   loud at every boundary.
 6. **Verify against the real surface, and say so when you cannot.** "Green"
    means the thing ran: the app launched, the screen rendered, the test
    executed. Never quietly "the compiler was happy". If a surface cannot be
@@ -60,7 +64,7 @@ mostly, again by every subagent.
 | The project rules file (`CLAUDE.md`) | Every session and subagent, in full | Invariants every session needs: architecture, the tier system, the always-do list. Under 200 lines |
 | Path-scoped rules | When a file matching their globs is read with the Read tool | Rules for one surface: the persistence layer, the UI layer, the sensitive files. Free until relevant |
 | Skills, by name | Description always; body when invoked | Workflows: shipping, running parallel streams. Not surfaces |
-| Agent definitions | Description always; body becomes the subagent's system prompt | The four or five worker shapes you delegate to, with model and effort pinned |
+| Agent definitions | Description always; body becomes the subagent's system prompt | The three or four worker shapes you delegate to, with model and effort pinned |
 | Hooks | Run on events; inject text or deny a call | Guards and nudges: the machine-checkable rules from the top row that live outside the repo |
 | Auto memory | Every session, first 200 lines; not into subagents | Preferences, corrections, project state the code cannot show. The one layer that can carry a stale fact |
 | Docs on demand | Nothing per turn | The why behind every rule, the incident write-ups, specs, the roadmap |
@@ -86,7 +90,8 @@ re-sends its whole history on every turn.
 | You are | Do |
 |---|---|
 | Starting a unit | Claim the issue in the tracker so a second session cannot build it. Make a worktree of your own and drive it from where you started. Read the path-scoped rules for the surfaces you will touch. Name the model and effort before the first edit |
-| Choosing a rung | By activity, not file count: deciding goes up the ladder, executing goes down it (section 4) |
+| Choosing a rung | The middle model by default; the strongest only for the short list it owns (section 4) |
+| Holding ordinary feature work | A plan of about 150 words as a comment on the issue before the first commit, approved by the human (section 4) |
 | Holding a settled plan | Hand the patterned slices to a builder subagent, one slice per spawn; keep the judgement in the lead (section 5) |
 | About to run a gate | A gate-runner subagent, never the lead. A failing suite prints thousands of lines that are re-sent on every later turn |
 | Looking at a file for the second time | Grep, then a range read. Never the whole file again |
@@ -95,8 +100,8 @@ re-sends its whole history on every turn.
 | Context very long and the thread still matters | Compact: decisions survive, tool output goes. Mid-task only |
 | The unit has shipped | Clear the session, in the same sitting |
 | Leaving for over an hour | Finish or clear first. The prompt cache lapses; the first turn back re-sends the whole context at write price |
-| Needing a stronger rung for one decision | Switch model and effort in place, say so, and drop back at the boundary. A new chat is for freeing the session, never for a rung change |
-| Handing work on | An opener the next session pastes into a fresh chat, naming the issue, the activity, the model, the effort and any other stream running. That session claims the issue and makes its own worktree |
+| Reaching work on the strongest model's list | Switch model and effort in place, say so, and drop back at the boundary. A new chat is for freeing the session, never for a rung change |
+| Handing work on | An opener the next session pastes into a fresh chat, naming the issue, the model, the effort and any other stream running. That session claims the issue and makes its own worktree |
 | Asked what is next | Answer from the tracker command and the session-start list, with no further reads |
 
 **Clear versus compact versus new chat.** Clear ends a unit: nothing carries
@@ -116,52 +121,64 @@ not.
 
 Match the **model** to how silently wrong the work can go, and the **effort**
 to how much thinking beats typing. Failure that is visible (a wrong layout on
-the simulator, a red test) degrades gracefully and can run on a cheap rung.
+the simulator, a red test) degrades gracefully and is caught cheaply.
 Failure that is silent (a serialisation contract that becomes a no-op, a
 migration on the only copy of the user's data, auth) gets the strongest setup
 regardless of diff size.
 
-**The activity ladder.** A piece of work passes through up to six activities,
-and the rung follows the activity, not the task:
+**Three rungs.** Measure your own, but one repo settled on the strongest model
+thinking, the middle model building and the cheapest model running, after
+corrections ran at much the same rate per prompt on every rung and the human
+judged that the cheap rungs cost more of their time in loops than they saved
+in spend.
 
-| Activity | Decide on | Build or run on | Why |
-|---|---|---|---|
-| Technical design: contracts, schema, auth | The strongest model, high or top effort | The next model down, against a spec that fixes the shape | Fails silently, so the strongest rung decides and none of the cheap tier touches it |
-| Visual design | The middle model | The middle model for mocks, the cheap one for bookkeeping | Fails visibly, so a wrong call is cheap to see and redo |
-| Planning | Top model for direction and reversals, middle for a slice inside a settled direction | The cheap model for the mechanics: issues from an agreed plan, handover openers | Judgement concentrates in the plan; what follows is patterned |
-| Tasks: writing the code | Middle model, high effort, for judgement-dense work in the lead | The cheap model via a builder subagent for patterned work; the cheapest via a mechanic for fully specified edits | The pattern is already in the repo |
-| Review | Cheap model, high effort, for the majority; middle or top on a sensitive surface | Inline review in the lead for a one-file change on a safe surface | The strongest rung stays reserved for the silent-failure surfaces |
-| Gates and research | | The cheapest model, low effort, always as a subagent | No judgement in the job; the gate is the check |
+| Rung | Human equivalent | Ask it for |
+|---|---|---|
+| Strongest model, high effort | The architect you pull into a design review. Sets the shape; builds only what fails silently | The plan, the contract or migration shape, the direction call, the bug nobody can explain |
+| Middle model, the effort below max, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed |
+| Middle model, high effort, the builder | The same engineer working alone from a written ticket | One slice, reported back as a diff |
+| Middle model, high effort, the reviewer | A peer on the PR | Reads the diff, not the description; never merges |
+| Cheapest model, low effort, the gate runner | CI on your desk | Runs the gate, names what failed, has no opinion |
+| Cheapest model, the explorer | A new starter sent to find where something lives | File names and line numbers; a lead, not a fact |
 
-**What effort does depends on the model.** Measure your own, but the pattern
-one repo found: on the middle model effort was close to free per turn, since
-context length dominates the bill, so it sat at high by default. On the top
-model effort was the lever, half as much again per turn from high to the level
-above, so it bought the deciding half of a task and handed the building half
-down. The cheap model was where the saving was, at a third of the middle
-model's cost per turn.
+**The strongest model's list** is short and written down: the plan, anything
+that fails silently (the contract between components, a migration, auth), a
+direction call, and the bug nobody can explain. A session opens on the middle
+model and switches only for that list, in place, saying so.
 
-**Rules of thumb.** Drop effort before dropping model. Decisions go up the
-ladder, execution goes down it. Effort does not follow a model switch; set
-both. A session that says what the work needs in its first reply makes the
-routing a decision rather than a default, and a wrong one is one command away
-rather than a restart. Fast modes priced at the top tier's rate are for
-latency, never economy.
+**Effort** is how long you would let them think before answering: low is a
+reply in the corridor, medium a minute at the desk, high worked through on
+paper, the level above slept on and back with the trade-offs, max a spike or a
+design note. One repo found the longer think nearly free per turn on the
+middle model, since context length dominates the bill, while on the strongest
+model it was the bill. Tiers map the same way: a fix you would just do, a
+ticket with a plan attached, a design note before anyone builds.
+
+**The plan comment.** Ordinary feature work starts with a plan of about 150
+words on its issue: done looks like, decisions taken, files and lines, tests,
+out of scope, routing. The human approves it, the build reads it, and the
+reviewer checks the diff against its done looks like. A plan that runs long is
+the signal the work is really architectural and needs a spec.
+
+**Rules of thumb.** Effort does not follow a model switch; set both. A session
+that says what the work needs in its first reply makes the routing a decision
+rather than a default, and a wrong one is one command away rather than a
+restart. Fast modes priced at the top tier's rate are for latency, never
+economy.
 
 ## 5. Delegating
 
-Five worker shapes cover almost everything. Define each once, in a file the
+Four worker shapes cover almost everything. Define each once, in a file the
 repo reviews like code, with model and effort pinned in the definition:
 
 | Job | Shape | Rung | Because |
 |---|---|---|---|
 | Read-only research | The built-in explorer | Cheapest model, passed at the spawn since built-ins have no definition | Reports facts back; the lead verifies |
-| Mechanical, fully specified edits | A mechanic | Cheapest model, low effort | The decision is made; only the typing is left |
 | Run a gate and filter its log | A gate runner | Cheapest model, low effort | No judgement; the gate is the check |
-| Review a diff or a plan | A reviewer | Cheap model, high effort; lifted on sensitive surfaces | Covers the majority cheaply |
-| One conventional slice on a safe surface | A builder | Cheap model, high effort | Patterns already in the repo |
+| Review a diff or a plan | A reviewer | Middle model, high effort; lifted to the strongest on sensitive surfaces | A peer who reads the diff; the strongest rung stays for what fails silently |
+| One conventional slice on a safe surface | A builder | Middle model, high effort | Patterns already in the repo |
 
-Rules that hold across all five:
+Rules that hold across all four:
 
 - **One agent per vertical slice.** Splitting one slice across two agents
   (one on the core, one on the shell) fails because the second cannot see the
@@ -176,8 +193,8 @@ Rules that hold across all five:
   and its counts, what was left out or assumed, what could not be verified.
   The lead checks the report against a reviewer and the gate counts, and opens
   a file the subagent touched only to act on a named finding, by range.
-- **Acceptance criteria must be able to fail tomorrow.** A cheap model
-  satisfies the weakest reading of its instructions. A mechanic once wired a
+- **Acceptance criteria must be able to fail tomorrow.** An agent satisfies
+  the weakest reading of its instructions. A mechanical-edit agent once wired a
   binary to a per-shell directory that vanished with the shell; every
   criterion it was given was true at the moment of checking. "Works" is not
   the bar; "still works tomorrow" is.
@@ -186,10 +203,11 @@ Rules that hold across all five:
   it could. Brief research agents to mark observed against inferred, and
   verify before acting.
 - **Pins beat spawns.** A definition with no model or effort inherits the
-  parent's, which is how a cheap builder ends up on the top model at top
-  effort. Pin both in every definition; spawn the unpinned built-ins only from
-  a session at high or below; and have a guard refuse a spawn that lifts a
-  pinned agent, with the reviewer as the one exception.
+  parent's, which is how a builder ends up on the top model at top effort.
+  Pin both in every definition. The built-ins have no definition: pass the
+  cheapest model to the explorer at the spawn, and remember the others inherit
+  the lead's model and effort. Have a guard refuse a spawn that lifts a pinned
+  agent, with the reviewer as the one exception.
 - **Gates run in the gate runner, never the lead**, and every fan-out task
   skips the suites; the lead runs them once at the end.
 
@@ -313,18 +331,23 @@ the specific one.
 - **A green run proves nothing about whose work is in the tree.** Read the
   diff before staging.
 - **Terse output is a pass.** A quiet gate is not a broken one.
-- **Cheap models satisfy the weakest reading.** Criteria that can only be
-  true right now are not criteria.
-- **A plan without resourcing is incomplete.** "Then build the screen" with no
-  model, effort, location and stream forces the next session to re-derive the
-  routing, or default upward.
+- **A cheap model on judgement work is a false saving.** The corrections cost
+  more of your time than the rate saves; keep the cheapest models for jobs with
+  no judgement in them.
+- **A plan that lives in a chat is lost.** Put it on the issue as a comment:
+  done looks like, decisions, files and lines, tests, out of scope, and the
+  routing (model, effort, location, stream). Without the routing the next
+  session re-derives it, or takes the default.
 - **Twelve of seventy-six sessions did nothing but status or handover.** A
   new chat costs a full context load; answer "what's next" from the tracker
   command instead.
 - **Documents disagree with hooks within a week.** When a threshold or a name
   changes in a script, grep the docs for the old value in the same change.
-- **Nine harness PRs in a day is a smell.** Cap harness work at one slot a
-  day and freeze it entirely while measuring, or the measurement is noise.
+- **Log every harness change with the number it should move.** One repo
+  merged fifteen harness changes in a day with nothing saying what each was
+  for, then froze the harness to measure it. A dated row per change, read
+  weekly against the usage report, with a change reverted when its number has
+  not moved after two reads, keeps improvement continuous and measured.
 
 ## 10. What a newcomer should not copy
 
@@ -363,7 +386,8 @@ lift, in order of how much it saves:
    tier system, the sensitivity override, the always-do list (claim, worktree,
    PR, human merges, close the loop), the style rules, and the two links to
    `working-with-agents.md` and this file.
-3. **The five agent definitions** with model and effort pinned and the
+3. **The three agent definitions** (gate runner, reviewer, builder) with
+   model and effort pinned and the
    worktree paragraph in each, with the repo-specific hard stops (the
    sensitive paths) left as a clearly marked list to fill in.
 4. **The recipes**: make a worktree from fresh origin, list worktrees with

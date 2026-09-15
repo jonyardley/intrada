@@ -13,15 +13,13 @@ drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
 Jon. Before editing:
 
-1. **Match the rung to the activity** (the technical design row of the
-   ladder in `docs/working-with-agents.md`). Fable at `xhigh` to decide a
-   bridge shape; Opus at `high` to build one that a reviewed spec already
-   fixes field by field, stopping to escalate any choice the spec leaves open.
-   `max` for a migration or anything inside the `ActiveSession` blob graph.
-   Check with `/model` and `/effort`, and switch before the first edit.
+1. **Work it on Fable.** This surface is on the Fable list in
+   `docs/working-with-agents.md`: Fable 5.1 at `high` decides the shape and
+   builds it. Check with `/model` and `/effort`, and switch before the first
+   edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
-   starts**, not only at the end, spawned with `model: opus` (Fable for
-   Fable-written work); its definition pins Sonnet.
+   starts**, not only at the end, spawned with `model: fable`; its definition
+   pins Opus.
 3. **Domain-sensitivity override.** This work goes up at least one tier in
    ceremony, and a change to a bridge shape, a migration or the blob graph
    ships as two PRs: core first, screens in the same working session, or the
