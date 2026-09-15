@@ -887,6 +887,11 @@ jobs:
       # a deleted snapshot reference correctly (#1631).
       - name: pr-visuals still classifies each shape correctly
         run: bash scripts/tests/pr-visuals-test.sh
+      # ── iOS simulator lock ───────────────────────────────────────────────
+      # A crashed holder's lock must read as free, or the idle shutdown timer
+      # keeps a sim booted until the next run clears it (#1885).
+      - name: The simulator lock still tells a live holder from a crashed one
+        run: bash scripts/tests/ios-sim-lock-test.sh
       # ── just status ──────────────────────────────────────────────────────
       # The release block answers whether a cut is due (#1639), and both of its
       # GitHub reads can fail in ways a reader cannot see: an outage that

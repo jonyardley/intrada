@@ -72,6 +72,7 @@ hygiene:
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
+        "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
     )
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
@@ -465,6 +466,12 @@ ios-snapshots-record filter: _ios-sync
     }
     refs="$(matching)"
     [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 rm -v
+    source scripts/ios-sim-lock.sh
+    ios_sim_lock_acquire_for_run
+    _ios_snapshots_record_cleanup() {
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
+    }
+    trap _ios_snapshots_record_cleanup EXIT
     just _ios-build-for-testing
     # First run writes the references and fails by design; the second is the
     # one whose result means anything.
@@ -520,13 +527,9 @@ ios-test-ui-class class: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
     source scripts/ios-sim-lock.sh
-    ios_sim_lock_acquire
+    ios_sim_lock_acquire_for_run
     _ios_test_ui_class_cleanup() {
-        udid="$(just _ios-test-sim-udid 2>/dev/null || true)"
-        if [ -n "$udid" ]; then
-            xcrun simctl shutdown "$udid" 2>/dev/null || true
-        fi
-        ios_sim_lock_release
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }
     trap _ios_test_ui_class_cleanup EXIT
     just _ios-test-guard
@@ -569,16 +572,9 @@ _ios-test-run tier:
         fi
     fi
     source scripts/ios-sim-lock.sh
-    ios_sim_lock_acquire
+    ios_sim_lock_acquire_for_run
     _ios_test_run_cleanup() {
-        # Shut down THIS worktree's sim rather than leaving it idle, which was
-        # what actually blocked the next run under the old check-sim-free.sh
-        # heuristic (#1622). Runs on every exit path, pass or fail.
-        udid="$(just _ios-test-sim-udid 2>/dev/null || true)"
-        if [ -n "$udid" ]; then
-            xcrun simctl shutdown "$udid" 2>/dev/null || true
-        fi
-        ios_sim_lock_release
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }
     trap _ios_test_run_cleanup EXIT
     just _ios-test-guard
