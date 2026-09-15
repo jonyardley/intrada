@@ -9,8 +9,10 @@
 # itself, only holding this lock does.
 #
 # A second caller WAITS rather than refusing outright, since the wait is
-# short relative to the cost of an aborted gate and a manual restart
-# (#1622). `mkdir` is the lock primitive (atomic on every filesystem this
+# short relative to the cost of an aborted gate and a manual restart (#1622).
+# A full tier holds the lock for about five minutes since #1480, so the
+# default timeout leaves room for two queued runs. `mkdir` is the lock
+# primitive (atomic on every filesystem this
 # runs on) rather than `flock`, which macOS does not ship.
 #
 # Usage, from a test run that keeps its worktree's sim booted for the next:
@@ -20,10 +22,10 @@
 #
 # IOS_SIM_LOCK_DIR, IOS_SIM_LOCK_TIMEOUT, IOS_SIM_LOCK_POLL and
 # IOS_SIM_LAST_RUN_MARKER override the path, the wait and poll in seconds, and
-# the marker, all for tests, so this can be exercised without a 900s wait.
+# the marker, all for tests, so this can be exercised without a 1800s wait.
 
 IOS_SIM_LOCK_DIR="${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}"
-IOS_SIM_LOCK_TIMEOUT="${IOS_SIM_LOCK_TIMEOUT:-900}"
+IOS_SIM_LOCK_TIMEOUT="${IOS_SIM_LOCK_TIMEOUT:-1800}"
 IOS_SIM_LOCK_POLL="${IOS_SIM_LOCK_POLL:-5}"
 IOS_SIM_LAST_RUN_MARKER="${IOS_SIM_LAST_RUN_MARKER:-ios/build/.sim-last-run}"
 IOS_SIM_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
