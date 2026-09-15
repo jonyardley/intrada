@@ -523,11 +523,7 @@ ios-test-ui-class class: _ios-sync
     source scripts/ios-sim-lock.sh
     ios_sim_lock_acquire
     _ios_test_ui_class_cleanup() {
-        udid="$(just _ios-test-sim-udid 2>/dev/null || true)"
-        if [ -n "$udid" ]; then
-            xcrun simctl shutdown "$udid" 2>/dev/null || true
-        fi
-        ios_sim_lock_release
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }
     trap _ios_test_ui_class_cleanup EXIT
     just _ios-test-guard
@@ -572,43 +568,7 @@ _ios-test-run tier:
     source scripts/ios-sim-lock.sh
     ios_sim_lock_acquire
     _ios_test_run_cleanup() {
-        # Leave THIS worktree's sim booted rather than shutting it down on
-        # every exit: the machine-wide lock (above) now serialises runs, so
-        # an idle-but-booted sim no longer blocks anyone the way it did under
-        # the old check-sim-free.sh heuristic (#1622), and staying booted
-        # skips the boot wait on the next run in this worktree (#1885). Shut
-        # down on an idle timer instead, backgrounded so it outlives this
-        # script. `worktree-rm` and `ios-test-sim-clean` are the hard stops
-        # that always shut it down.
-        udid="$(just _ios-test-sim-udid 2>/dev/null || true)"
-        marker=ios/build/.sim-last-run
-        # Bump the marker before releasing the lock, so a timer that was
-        # waiting on the lock always sees a fresh marker once it clears
-        # rather than a stale one from before this run.
-        [ -z "$udid" ] || { mkdir -p ios/build && date +%s > "$marker"; }
-        ios_sim_lock_release
-        if [ -n "$udid" ]; then
-            (
-                idle="${IOS_SIM_IDLE_SHUTDOWN_SECONDS:-600}"
-                while :; do
-                    # Wait out any live run anywhere on the machine, not just
-                    # this worktree: the lock is machine-wide (#1622). A
-                    # crashed holder's lock does not count, or the sim would
-                    # stay booted until the next run cleared it. Recheck the
-                    # marker only after the lock clears, so a run that started
-                    # while this timer slept is never shut down under it.
-                    while ios_sim_lock_held; do sleep 5; done
-                    last="$(cat "$marker" 2>/dev/null || echo 0)"
-                    remaining=$(( idle - ($(date +%s) - last) ))
-                    if [ "$remaining" -gt 0 ]; then
-                        sleep "$remaining"
-                        continue
-                    fi
-                    xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
-                    break
-                done
-            ) >/dev/null 2>&1 &
-        fi
+        ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
     }
     trap _ios_test_run_cleanup EXIT
     just _ios-test-guard

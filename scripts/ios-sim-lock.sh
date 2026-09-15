@@ -62,3 +62,32 @@ ios_sim_lock_acquire() {
 ios_sim_lock_release() {
     rm -rf "$IOS_SIM_LOCK_DIR"
 }
+
+# Release the lock but keep this worktree's sim booted, so its next run skips
+# the boot wait (#1885). The sim shuts down once the lock is free and this
+# worktree's last run ended over IOS_SIM_IDLE_SHUTDOWN_SECONDS ago (default
+# 600); `worktree-rm` and `ios-test-sim-clean` are the hard stops.
+ios_sim_lock_release_with_idle_shutdown() {
+    local udid="$1" marker=ios/build/.sim-last-run
+    # Bumped before the release, so a timer waiting on this lock never reads
+    # the marker from before this run.
+    [ -z "$udid" ] || { mkdir -p ios/build && date +%s >"$marker"; }
+    ios_sim_lock_release
+    [ -n "$udid" ] || return 0
+    (
+        idle="${IOS_SIM_IDLE_SHUTDOWN_SECONDS:-600}"
+        while :; do
+            # Rechecked after every wait: a run that started while this timer
+            # slept has bumped the marker by the time its lock clears.
+            while ios_sim_lock_held; do sleep 5; done
+            last="$(cat "$marker" 2>/dev/null || echo 0)"
+            remaining=$((idle - ($(date +%s) - last)))
+            if [ "$remaining" -gt 0 ]; then
+                sleep "$remaining"
+                continue
+            fi
+            xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+            break
+        done
+    ) >/dev/null 2>&1 &
+}
