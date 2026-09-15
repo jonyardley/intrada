@@ -133,7 +133,8 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryScreen() {
-    assertSnapshot(of: host(NavigationStack { LibraryScreen() }), as: config)
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }), as: config)
   }
 
   func testLibrarySplitViewEmptyDetail() {
@@ -151,23 +152,29 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testLibraryScreenPopulated() {
     assertSnapshot(
-      of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: config)
+      of: host(
+        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }, store: .previewLibrary),
+      as: config)
   }
 
   func testLibraryScreenPriorities() {
     assertSnapshot(
-      of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryPriorities), as: config)
+      of: host(
+        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() },
+        store: .previewLibraryPriorities), as: config)
   }
 
   func testLibraryScreenFiltered() {
     assertSnapshot(
-      of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryFiltered), as: config)
+      of: host(
+        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() },
+        store: .previewLibraryFiltered), as: config)
   }
 
   func testLibraryScreenSearching() {
     assertSnapshot(
       of: host(
-        NavigationStack { LibraryScreen(previewSearch: "clair") },
+        NavigationStack { LibraryScreen(previewSearch: "clair").navigationBarHiddenAtRoot() },
         store: .previewLibrarySearching), as: config)
   }
 
@@ -175,7 +182,7 @@ final class ScreenSnapshotTests: XCTestCase {
   func testLibraryScreenSearchRevealedEmpty() {
     assertSnapshot(
       of: host(
-        NavigationStack { LibraryScreen(previewSearch: "") },
+        NavigationStack { LibraryScreen(previewSearch: "").navigationBarHiddenAtRoot() },
         store: .previewLibrary), as: config)
   }
 
@@ -183,7 +190,9 @@ final class ScreenSnapshotTests: XCTestCase {
   /// lays out wider than the device and shifts off its leading edge (#1470).
   func testLibraryScreenAccessibilityText() {
     assertSnapshot(
-      of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: axConfig)
+      of: host(
+        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }, store: .previewLibrary),
+      as: axConfig)
   }
 
   func testPracticeScreen() {
@@ -588,7 +597,9 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testLibraryScreenMastery() {
     assertSnapshot(
-      of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryMastery), as: config)
+      of: host(
+        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() },
+        store: .previewLibraryMastery), as: config)
   }
 
   // ── Engaging-refresh components ──
@@ -886,7 +897,7 @@ final class ScreenSnapshotTests: XCTestCase {
     // Preset path so the snapshot covers the pushed detail, not just the body.
     let store = Store(bridge: PreviewBridge(items: [.previewDetail]))
     let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail.id])) {
-      LibraryScreen()
+      LibraryScreen().navigationBarHiddenAtRoot()
     }
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
