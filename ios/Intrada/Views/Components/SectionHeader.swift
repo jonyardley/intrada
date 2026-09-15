@@ -114,6 +114,7 @@ struct SectionHeader: View {
         Eyebrow("Recent mastery")
         SectionHeader(title: "This month", trailing: "best week · 95 min")
         SectionHeader(title: "Used in", caption: "3 pieces")
+        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }
@@ -126,6 +127,7 @@ struct SectionHeader: View {
         Eyebrow("Recent mastery")
         SectionHeader(title: "Variations", trailing: "5 of 15 solid")
         SectionHeader(title: "Used in", caption: "3 pieces")
+        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }
