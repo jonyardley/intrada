@@ -450,13 +450,17 @@ which the host's `log show` does not hold: `xcrun simctl spawn <udid> log show
 --process SpringBoard`, and the line to look for is "Cannot launch application
 scene while it's application is being updated".
 
-**Cloned simulators are on in the self-hosted CI gate**, same as the local full
-tier; the rented `native-ios-test-ui` job stays sequential on its 7GB runner.
+**Cloned simulators are on in the self-hosted CI gate** only; the rented
+`native-ios-test-ui` job stays sequential on its 7GB runner, and so does the
+local full tier, which gave up clones on 2026-09-15 (#1480).
 Five at once had been saturating the machine enough that a UI test which
 silently skipped its own field-clearing under load started reddening main;
 #1642 fixed that test and turned clones back on in the self-hosted gate.
 Raised to six on 2026-09-14 (#1824): ten runs on the M4 gave a 175s UI-step
 median against 280s at four, no preflight failures across the run.
+`-collect-test-diagnostics never` applies to CI too, so a failing job's result
+bundle no longer carries a sysdiagnose, in exchange for not spending 600s
+collecting one after a refused launch (#1480).
 
 ## Mutate-response variants, in full
 

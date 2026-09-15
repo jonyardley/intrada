@@ -96,6 +96,7 @@ just ios-snapshots-optimize   # oxipng -o max every reference (run before commit
 just ios-snapshots-check      # orphan + 200 KB-ceiling guard (same as CI)
 just ios-test                 # fast tier: IntradaTests only (unit + snapshot) on a per-worktree sim
 just ios-test-full            # full gate: + IntradaUITests — what ship/CI run before merge (CI parity)
+                              # the UI tests run on this worktree's own sim, about five minutes on a quiet machine (#1480)
 just ios-test-sim-clean       # delete this worktree's ios-test sim
 ```
 
@@ -245,7 +246,11 @@ Rules to keep two checkouts from colliding:
   the reference and only text metrics moved (#1480). A fresh device passed the
   same build. Before believing a snapshot failure you can't explain, run it on
   a new sim: `just ios-test-sim-clean` then re-run, or create a scratch UDID
-  as above.
+  as above. From 2026-09-15 the local full tier no longer clones simulators,
+  because the `Busy ("Application failed preflight checks")` refusal lives in
+  the clones xcodebuild creates for each run and recreating the worktree's sim
+  does not clear it; the UI tier runs on the worktree's own device after the
+  boot wait (#1480).
 - **Check before any global op or a fresh test run** whether another session is
   live:
   ```bash
