@@ -83,7 +83,7 @@ documented it, or by the file's own date where no PR did.
 | 2026-09-15 | #1899 (#1897) | The harness words in the glossary; this log and the Monday read replace the freeze | None: the measure itself | 2026-09-21 | |
 | 2026-09-15 | #1900 (#1897) | Sessions open on Opus 5 `xhigh`; `task` and `reviewer` pinned to Opus 5 high; `smol` deleted; the activity ladder becomes three rungs and the Fable list; Tier 2 and 3 start with a plan comment on the issue | Speed: claim to merged PR; rework: corrections, by dominant rung. Spend is forecast to rise about $200 a week (#1897) | 2026-09-28, since the 2026-09-21 read sets the speed baseline | |
 | 2026-09-15 | machine-local | `turn-reminder.txt` asks for the `/model` and `/effort` switch only for work on the Fable list | Rework: rung switches | 2026-09-21 | |
-| 2026-09-15 | #1901 (#1897) | `docs/working-with-agents.md` rewritten along the process steps; the primer, the shipping skill, `/ship` and two path-scoped rules brought into line with the three rungs and the plan comment | Rework: fix PRs on the sensitive surfaces, now built on Fable at high rather than max | 2026-09-21 | |
+| 2026-09-15 | #1902 (#1897) | `docs/working-with-agents.md` rewritten along the process steps; the primer, the shipping skill, `/ship` and two path-scoped rules brought into line with the three rungs and the plan comment | Rework: fix PRs on the sensitive surfaces, now built on Fable at high rather than max | 2026-09-21 | |
 
 ## Later levers
 
