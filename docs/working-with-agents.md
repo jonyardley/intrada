@@ -27,7 +27,7 @@ from is under "Usage guidelines".
 | Choosing a rung | Stay on Opus 5 `xhigh`; switch to Fable 5.1 `high` only for work on the Fable list, with `/model` and `/effort` in place, and back at the boundary | Model and effort |
 | Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Opus 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files | Delegating |
 | About to run a gate | `test-runner`, never in the lead; a fan-out task skips the suites and the lead runs them once at the end | Delegating |
-| Needing facts from many files | `Explore` with `model: haiku`, spawned from a session at `high` or below; its findings are leads, not facts | Delegating |
+| Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts | Delegating |
 | About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff (Fable on a sensitive surface), then `just pr-open`; watch CI to a conclusion in the same turn and read mergeability | Shipping; Verification, the standard held |
 | Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that | Usage guidelines; Troubleshooting |
 | Warned at 150k context | Finish the slice in hand; everything after it goes to `task`, and this session checks and ships | Session controls |
@@ -206,8 +206,9 @@ Three things follow, and the rungs above are shaped by them:
   about a quarter from `medium` to `xhigh`. The lead sits at `xhigh` for that
   reason, and `task` and `reviewer` at `high`.
 - **On Fable, effort is the lever.** `xhigh` costs half as much again per turn
-  as `high` and lengthens the slow tail by three quarters, so it buys the
-  deciding half of a task and hands the building half down. Fable at every
+  as `high` and lengthens the slow tail by three quarters, so Fable works at
+  `high`, and away from the sensitive surfaces it decides and hands the
+  building back to Opus. Fable at every
   measured effort is slower than Opus at every measured effort: use it where
   deliberation pays, not on interactive back-and-forth.
 - **Sonnet saved on paper only.** A third of Opus per turn and the fastest
@@ -253,8 +254,8 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   before the spawn guard existed; the guard now refuses both a model lift and
   an effort lift above a pinned definition, so the lead sets neither at the
   spawn for a pinned agent. It cannot see a built-in with no definition file
-  at all (`Explore`, `fork`, `general-purpose`), so that cap is on the
-  spawning session, not the guard: keep it at `high` or below there too.
+  at all (`Explore`, `fork`, `general-purpose`), so the lead's `xhigh`
+  reaches `fork` and `general-purpose` unchecked.
   `task` runs grow as long as
   main sessions (59% of their turns past 200k), so brief one slice per spawn.
 
@@ -300,10 +301,11 @@ All three definitions live in `.claude/agents/`, so they are reviewed like code
 and travel with the checkout. Pin model and effort in the definition rather than
 at the spawn; the exceptions are `Explore`, `fork` and `general-purpose`, which
 have no definition to pin, and lifting `reviewer` to Fable on the sensitive
-surfaces. Because a subagent with no
-`effort:` in its definition inherits the parent session's effort, `Explore`,
-`fork` and `general-purpose` should only be spawned from a session at `high`
-or below (#1838).
+surfaces. A subagent with no `effort:`
+in its definition inherits the parent session's effort (#1838), and the lead
+opens at `xhigh`: `fork` and `general-purpose` also inherit its model, so they
+run at Opus `xhigh`, and `Explore` takes `model: haiku`, a model the `/effort`
+menu does not offer `xhigh` for.
 
 `task` sits at high, not xhigh: the effort premium buys little on work that
 follows a pattern already in the repo, and over the fortnight to 2026-09-13
@@ -452,7 +454,7 @@ These run whether or not an agent read the rules.
 | Read the context nudges | `context-watch.sh` nudges unprompted as context grows: at 150k finish the slice and hand the rest to a `task` subagent (this session checks and ships), at 200k hand it over now, at 400k `/compact` |
 | Keep the thread, drop the bulk | `/compact`. Decisions survive, tool output goes, the path-scoped rules reload on the next Read. Mid-task only |
 | End the unit | `/clear`, once the PR is green, the issue closed and the worktree removed. The transcript file survives it, which is why the read guard can deny the next unit's first read (#1866) |
-| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, activity, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
+| Free the session or change the driver | A new chat, opened in the main checkout, from an opener that names the issue, model, effort and stream. Never for a rung change alone: `/model` and `/effort` do that in place |
 | Edit the rules files | `/memory` |
 | Tidy up permission prompts | `/fewer-permission-prompts` |
 
@@ -586,8 +588,8 @@ Opener for the first session:
 Claim #1512 and stop if a PR already exists. Plan comment first, and do not
 write code this session beyond the contract.
 
-This changes the bridge contract, so use the strongest rung before you decide
-anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
+This changes the bridge contract, so switch to Fable 5.1 high (it is on the
+Fable list) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
 and the rep-target bound, and write it into the issue before either side is
 wired. A refused write with nothing on screen is the failure the offline-first
 rule exists to prevent.
@@ -634,7 +636,7 @@ gate and its counts, what you left out, what you could not verify.
 | `just check` says already green | Stamp matches HEAD and the tree is clean; delete the stamp |
 | Unformatted Swift or Rust reaching CI | The format hook loads at session start; run `just fmt` and `just ios-fmt` |
 | PR hangs on a check that never reports | A renamed job left its old required context "expected" (#1542) |
-| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's; spawn those from `high` or below (#1838) |
+| A subagent ran on the wrong model or effort | Its definition has no `model:` or `effort:` pin (`Explore`, `fork`, `general-purpose`), so it inherited the session's model or effort (#1838). Pass `model: haiku` to `Explore` |
 | The spawn guard refused a subagent | The spawn lifted `model` or `effort` above the definition's pin. Only `reviewer` may go up, on a sensitive surface. Drop the override; keep the judgement in the lead instead |
 | Read denied as "already in context" on the first read after `/clear` | The guard reads the transcript, which `/clear` does not restart (#1866). Range-read (`offset`, `limit`) until it is fixed |
 | Read denied on a file over 400 lines | Grep for the symbol, then read the range. The guard never allows the whole file (#1844) |
