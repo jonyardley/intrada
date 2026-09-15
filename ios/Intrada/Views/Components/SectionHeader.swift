@@ -32,6 +32,13 @@ struct Eyebrow: View {
 /// `caption` sits against the eyebrow instead, for a count that qualifies the
 /// title rather than commenting on the section ("USED IN · 3 pieces").
 struct SectionHeader: View {
+  struct Action {
+    let title: String
+    var accessibilityLabel: String?
+    var isDisabled = false
+    let perform: () -> Void
+  }
+
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   let title: String
@@ -39,16 +46,13 @@ struct SectionHeader: View {
   // VoiceOver already hears the list's length, so a bare count is noise there.
   var captionAccessibilityHidden = false
   var trailing: String?
-  var actionTitle: String?
-  var action: (() -> Void)?
-  var actionAccessibilityLabel: String?
-  var actionDisabled = false
+  var action: Action?
 
   var body: some View {
     // The eyebrow breaks mid-word when it shares a line with trailing text (#1781).
     if dynamicTypeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        if actionTitle != nil {
+        if action != nil {
           HStack(alignment: .firstTextBaseline) {
             Eyebrow(title)
             Spacer(minLength: IntradaSpacing.controlGap)
@@ -67,7 +71,7 @@ struct SectionHeader: View {
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
           meta(trailing)
-        } else if actionTitle != nil {
+        } else if action != nil {
           Spacer(minLength: IntradaSpacing.controlGap)
         }
         actionButton
@@ -84,14 +88,14 @@ struct SectionHeader: View {
   }
 
   @ViewBuilder private var actionButton: some View {
-    if let actionTitle, let action {
-      Button(actionTitle, action: action)
+    if let action {
+      Button(action.title, action: action.perform)
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.accent)
-        .disabled(actionDisabled)
-        .opacity(actionDisabled ? 0 : 1)
-        .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
-        .accessibilityHidden(actionDisabled)
+        .disabled(action.isDisabled)
+        .opacity(action.isDisabled ? 0 : 1)
+        .accessibilityLabel(action.accessibilityLabel ?? action.title)
+        .accessibilityHidden(action.isDisabled)
     }
   }
 
@@ -110,6 +114,7 @@ struct SectionHeader: View {
         Eyebrow("Recent mastery")
         SectionHeader(title: "This month", trailing: "best week · 95 min")
         SectionHeader(title: "Used in", caption: "3 pieces")
+        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }
@@ -122,6 +127,7 @@ struct SectionHeader: View {
         Eyebrow("Recent mastery")
         SectionHeader(title: "Variations", trailing: "5 of 15 solid")
         SectionHeader(title: "Used in", caption: "3 pieces")
+        SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
       }
       .padding(IntradaSpacing.card)
     }

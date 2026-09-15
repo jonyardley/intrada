@@ -85,9 +85,10 @@ struct LibraryDetailScreen: View {
     VStack(spacing: 0) {
       SectionHeader(
         title: "Chord chart",
-        actionTitle: item.chordChart == nil ? "Add" : "Edit",
-        action: { editingChart = true },
-        actionAccessibilityLabel: item.chordChart == nil ? "Add a chord chart" : "Edit chord chart"
+        action: .init(
+          title: item.chordChart == nil ? "Add" : "Edit",
+          accessibilityLabel: item.chordChart == nil ? "Add a chord chart" : "Edit chord chart",
+          perform: { editingChart = true })
       )
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.top, IntradaSpacing.card)
@@ -296,11 +297,12 @@ struct LibraryDetailScreen: View {
       title: "Related exercises",
       caption: item.linkedExercises.isEmpty ? nil : "\(item.linkedExercises.count)",
       captionAccessibilityHidden: true,
-      actionTitle: editingLinks ? "Done" : "Edit",
-      action: { editingLinks.toggle() },
-      actionAccessibilityLabel: editingLinks
-        ? "Done editing related exercises" : "Edit related exercises",
-      actionDisabled: item.linkedExercises.isEmpty
+      action: .init(
+        title: editingLinks ? "Done" : "Edit",
+        accessibilityLabel: editingLinks
+          ? "Done editing related exercises" : "Edit related exercises",
+        isDisabled: item.linkedExercises.isEmpty,
+        perform: { editingLinks.toggle() })
     )
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
@@ -607,12 +609,8 @@ struct LibraryDetailScreen: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.card) {
         if item.itemType == .exercise {
           exerciseHero
-          if !item.tags.isEmpty {
-            tags
-          }
-        } else {
-          pieceBadgeRow
         }
+        badgeRow
 
         if let notes = item.notes, !notes.isEmpty {
           notesSection(notes)
@@ -717,17 +715,7 @@ struct LibraryDetailScreen: View {
     return rows
   }
 
-  private var tags: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        ForEach(item.tags, id: \.self) { tag in
-          TagChip(tag, style: .outlined)
-        }
-      }
-    }
-  }
-
-  private var pieceBadgeRow: some View {
+  private var badgeRow: some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: IntradaSpacing.controlGap) {
         TypeBadge(kind: item.itemType)
