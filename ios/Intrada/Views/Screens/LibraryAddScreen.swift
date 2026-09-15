@@ -53,8 +53,10 @@ struct LibraryAddScreen: View {
       send()
     }
     // Switching kind drops what was staged: an exercise carries neither a
-    // chart nor related exercises, so the sections vanishing is the only sign.
+    // chart nor related exercises, and a piece no variations, so the sections
+    // vanishing is the only sign.
     .onChange(of: form.kind) { _, kind in
+      if kind != .exercise { form.variations = [] }
       guard kind != .piece else { return }
       form.chartText = ""
       form.stagedExercises = []

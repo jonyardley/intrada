@@ -1,19 +1,11 @@
 import XCTest
 
-/// Real-device UITest for variation management (#1083, renamed in #1733):
-/// renaming a live-queried field, driven against "Major Scales", the seeded
+/// Real-device UITest for variation management (#1083, renamed in #1733): a
+/// rename and a drag on the Edit screen (#1783), driven against "Major Scales", the seeded
 /// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
 /// in that order; see `app.rs`'s `LoadSampleData` seed).
 ///
 /// Removing a variation moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
-///
-/// Drag reorder is deliberately not covered here: `.draggable`/
-/// `.dropDestination` ride the system Drag & Drop API, which XCUITest can't
-/// reliably script a drop through in the Simulator (unlike a List's
-/// `onMove` long-press-drag, which `SessionBuilderUITests` automates
-/// successfully). Reorder-by-relabeling itself is fully covered by the
-/// core's `set_variants_reorder_preserves_ids_by_label` test (id/history
-/// preserved, position updated); only the gesture is untested here.
 @MainActor
 final class VariationManagementUITests: XCTestCase {
   override func setUp() {
@@ -21,7 +13,7 @@ final class VariationManagementUITests: XCTestCase {
     continueAfterFailure = false
   }
 
-  private func openScalesVariations() -> XCUIApplication {
+  private func openScalesEditor() -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["--seed-sample-data", "--disable-animations"]
     app.launch()
@@ -33,9 +25,8 @@ final class VariationManagementUITests: XCTestCase {
     XCTAssertTrue(scalesRow.waitForExistence(timeout: 10), "Major Scales library row")
     scalesRow.tap()
 
-    // Major Scales is an all-key ladder, so #1464 reads it as "Keys".
-    let editButton = app.buttons["Edit keys"]
-    XCTAssertTrue(editButton.waitForExistence(timeout: 10), "Keys section with Edit button")
+    let editButton = app.buttons["Edit"].firstMatch
+    XCTAssertTrue(editButton.waitForExistence(timeout: 10), "Edit on the exercise's details")
     editButton.tap()
     return app
   }
@@ -45,7 +36,7 @@ final class VariationManagementUITests: XCTestCase {
   }
 
   func testRenameVariationPersistsAndLeavesOthersUntouched() {
-    let app = openScalesVariations()
+    let app = openScalesEditor()
 
     let eField = variationField(app, value: "E")
     XCTAssertTrue(eField.waitForExistence(timeout: 5), "E variation field")
@@ -55,14 +46,33 @@ final class VariationManagementUITests: XCTestCase {
     // re-resolve it, since the value has already changed (#1642).
     eField.typeText(XCUIKeyboardKey.delete.rawValue + "Fa\n")
 
-    // "Fa" isn't a key, so the ladder reads "Variations" again by Done.
-    app.buttons["Done editing variations"].tap()
+    app.buttons["Save"].tap()
 
-    // Back in read mode: the renamed variation shows, "E" is gone, others intact.
+    // "Fa" isn't a key, so the details list the ladder as named rows.
     XCTAssertTrue(
       app.staticTexts["Fa"].waitForExistence(timeout: 5), "renamed variation reads back as Fa")
     XCTAssertFalse(app.staticTexts["E"].exists, "old label gone")
     XCTAssertTrue(app.staticTexts["C"].exists, "untouched variation still present")
     XCTAssertTrue(app.staticTexts["G"].exists, "untouched variation still present")
+  }
+
+  /// The handle's own gesture, which synthesised touches drive: the system drag
+  /// and drop it replaced never landed a drop on a row on the simulator (#1783).
+  func testDraggingAHandleMovesItsRow() {
+    let app = openScalesEditor()
+
+    let eHandle = app.descendants(matching: .any)["Reorder E"].firstMatch
+    let cHandle = app.descendants(matching: .any)["Reorder C"].firstMatch
+    XCTAssertTrue(eHandle.waitForExistence(timeout: 5), "E's reorder handle")
+    XCTAssertGreaterThan(
+      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
+      "E starts below C")
+
+    eHandle.press(
+      forDuration: 0.2, thenDragTo: cHandle, withVelocity: .slow, thenHoldForDuration: 0.3)
+
+    XCTAssertLessThan(
+      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
+      "E dragged above C")
   }
 }

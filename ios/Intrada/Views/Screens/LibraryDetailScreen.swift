@@ -17,21 +17,15 @@ struct LibraryDetailScreen: View {
   @State private var confirmingDelete = false
   @State private var editing = false
   @State private var editingLinks: Bool
-  @State private var editingVariations: Bool
   @State private var showingPicker = false
   @State private var showingPiecePicker = false
   @State private var editingChart = false
   @State private var showingScaffold = false
-  @State private var showingAddVariations = false
 
-  init(
-    item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false,
-    startEditingSteps: Bool = false
-  ) {
+  init(item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false) {
     self.item = item
     self.showsBackButton = showsBackButton
     _editingLinks = State(initialValue: startEditingLinks)
-    _editingVariations = State(initialValue: startEditingSteps)
   }
 
   var body: some View {
@@ -74,10 +68,6 @@ struct LibraryDetailScreen: View {
       if let preview = item.scaffoldPreview {
         ScaffoldPreviewSheet(preview: preview, onCommit: commitScaffold)
       }
-    }
-    .sheet(isPresented: $showingAddVariations) {
-      AddVariationsSheet(itemId: item.id)
-        .environment(store)
     }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
@@ -398,23 +388,6 @@ struct LibraryDetailScreen: View {
       variationsHeader
       if item.variants.isEmpty {
         variationsEmptyState
-      } else if editingVariations {
-        VStack(spacing: 0) {
-          ForEach(Array(item.variants.enumerated()), id: \.element.id) { index, variation in
-            if index > 0 {
-              HairlineDivider()
-            }
-            VariationEditRow(
-              variation: variation,
-              nounSingular: ladderNounSingular,
-              onRename: { renameVariation(id: variation.id, to: $0) },
-              onMoveUp: { moveVariation(id: variation.id, by: -1) },
-              onMoveDown: { moveVariation(id: variation.id, by: 1) },
-              onRemove: { removeVariation(id: variation.id) },
-              onDrop: { droppedId in moveVariation(id: droppedId, before: variation.id) })
-          }
-        }
-        .cardSurface()
       } else if item.ladderIsKeys {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: IntradaSpacing.card) {
@@ -437,14 +410,7 @@ struct LibraryDetailScreen: View {
         .cardSurface()
       }
     }
-    .onChange(of: item.variants.isEmpty) { _, isEmpty in
-      if isEmpty { editingVariations = false }
-    }
   }
-
-  /// So the heading, labels and rename field agree (#1464).
-  private var ladderNounPlural: String { item.ladderIsKeys ? "keys" : "variations" }
-  private var ladderNounSingular: String { item.ladderIsKeys ? "key" : "variation" }
 
   private var variationsHeader: some View {
     HStack(alignment: .firstTextBaseline) {
@@ -455,15 +421,6 @@ struct LibraryDetailScreen: View {
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer()
-      if !item.variants.isEmpty {
-        Button(editingVariations ? "Done" : "Edit") {
-          editingVariations.toggle()
-        }
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
-        .accessibilityLabel(
-          editingVariations ? "Done editing \(ladderNounPlural)" : "Edit \(ladderNounPlural)")
-      }
     }
   }
 
@@ -477,62 +434,16 @@ struct LibraryDetailScreen: View {
         .accessibilityLabel("Add 12 major keys as this exercise's variations")
       AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circleMinor) }
         .accessibilityLabel("Add 12 minor keys as this exercise's variations")
-      AddRowButton(title: "Add custom variations", style: .plain) {
-        showingAddVariations = true
+      AddRowButton(title: "Add variations", style: .plain) {
+        editing = true
       }
-      .accessibilityLabel("Add custom variations to this exercise")
+      .accessibilityLabel("Add variations to this exercise")
     }
     .padding(IntradaSpacing.card)
     .cardSurface()
   }
 
   private func addKeyPreset(_ labels: [String]) {
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.setVariants(id: item.id, labels: labels)))
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
-  }
-
-  private func renameVariation(id: String, to newLabel: String) {
-    store.send(.item(.renameVariant(itemId: item.id, variantId: id, newLabel: newLabel)))
-  }
-
-  private func moveVariation(id: String, by delta: Int) {
-    var ids = item.variants.map(\.id)
-    guard let index = ids.firstIndex(of: id) else { return }
-    let dest = index + delta
-    guard dest >= 0, dest < ids.count else { return }
-    ids.swapAt(index, dest)
-    reorderSteps(ids)
-  }
-
-  // Drop-onto-a-row reorder: move the dragged variation to just before the target.
-  private func moveVariation(id: String, before targetId: String) {
-    guard id != targetId else { return }
-    var ids = item.variants.map(\.id)
-    guard ids.contains(id), let sourceIndex = ids.firstIndex(of: id) else { return }
-    ids.remove(at: sourceIndex)
-    let insertIndex = ids.firstIndex(of: targetId) ?? ids.count
-    ids.insert(id, at: insertIndex)
-    reorderSteps(ids)
-  }
-
-  // Reordering existing labels resolves by label match (core-tested), so no
-  // labels actually change — only position — and every id/score history is
-  // preserved.
-  private func reorderSteps(_ orderedIds: [String]) {
-    let labelsById = Dictionary(uniqueKeysWithValues: item.variants.map { ($0.id, $0.label) })
-    let labels = orderedIds.compactMap { labelsById[$0] }
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.setVariants(id: item.id, labels: labels)))
-    if store.viewModel?.errorSeq == before {
-      UISelectionFeedbackGenerator().selectionChanged()
-    }
-  }
-
-  private func removeVariation(id: String) {
-    let labels = item.variants.filter { $0.id != id }.map(\.label)
     let before = store.viewModel?.errorSeq
     store.send(.item(.setVariants(id: item.id, labels: labels)))
     if store.viewModel?.errorSeq == before {
@@ -978,73 +889,6 @@ private struct VariationListRow: View {
   }
 }
 
-/// Edit-mode row: drag handle (native drag reorder) + inline rename field +
-/// remove button. VoiceOver gets move-up/move-down actions since a drag
-/// gesture alone isn't screen-reader-operable.
-private struct VariationEditRow: View {
-  let variation: VariantView
-  let nounSingular: String
-  let onRename: (String) -> Void
-  let onMoveUp: () -> Void
-  let onMoveDown: () -> Void
-  let onRemove: () -> Void
-  let onDrop: (String) -> Void
-
-  @State private var label: String
-
-  init(
-    variation: VariantView, nounSingular: String, onRename: @escaping (String) -> Void,
-    onMoveUp: @escaping () -> Void,
-    onMoveDown: @escaping () -> Void, onRemove: @escaping () -> Void,
-    onDrop: @escaping (String) -> Void
-  ) {
-    self.variation = variation
-    self.nounSingular = nounSingular
-    self.onRename = onRename
-    self.onMoveUp = onMoveUp
-    self.onMoveDown = onMoveDown
-    self.onRemove = onRemove
-    self.onDrop = onDrop
-    _label = State(initialValue: variation.label)
-  }
-
-  var body: some View {
-    HStack(spacing: IntradaSpacing.cardCompact) {
-      Image(systemName: "line.3.horizontal")
-        .imageScale(.small)
-        .foregroundStyle(IntradaColor.inkFaint)
-        .accessibilityLabel("Reorder \(variation.label)")
-        .accessibilityHint("Drag to change this \(nounSingular)'s position")
-        .accessibilityAction(named: "Move up", onMoveUp)
-        .accessibilityAction(named: "Move down", onMoveDown)
-        .draggable(variation.id)
-      TextField("\(nounSingular.capitalized) label", text: $label)
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-        .onChange(of: label) { _, value in
-          let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-          guard !trimmed.isEmpty, trimmed != variation.label else { return }
-          onRename(trimmed)
-        }
-      Button(action: onRemove) {
-        Image(systemName: "minus.circle")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.danger)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Remove \(variation.label) from \(nounSingular)s")
-    }
-    .padding(.vertical, IntradaSpacing.cardCompact)
-    .padding(.horizontal, IntradaSpacing.card)
-    .background(IntradaColor.cardFill)
-    .dropDestination(for: String.self) { items, _ in
-      guard let droppedId = items.first else { return false }
-      onDrop(droppedId)
-      return true
-    }
-  }
-}
-
 /// Edit-mode row: remove button + title + meta + up/down move buttons (VoiceOver-accessible reorder).
 private struct LinkedExerciseEditRow: View {
   let exercise: LinkedExerciseView
@@ -1152,18 +996,6 @@ private struct LinkedExerciseEditRow: View {
     var body: some View {
       NavigationStack {
         LibraryDetailScreen(item: item, startEditingLinks: true)
-      }
-    }
-  }
-
-  /// Snapshot seed: renders the detail screen with editingVariations already on,
-  /// so the test can capture the variations edit-mode row layout without UI
-  /// interaction.
-  struct EditingStepsWrapper: View {
-    let item: LibraryItemView
-    var body: some View {
-      NavigationStack {
-        LibraryDetailScreen(item: item, startEditingSteps: true)
       }
     }
   }
