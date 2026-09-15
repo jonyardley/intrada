@@ -183,6 +183,14 @@ pub fn sort_and_filter_picker_candidates(
     crate::app::sort_and_filter_candidates(&candidates, &sort.into(), &search)
 }
 
+/// The Add form has no saved exercise to read `LibraryItemView.shows_key`
+/// from, so it asks with its own unsaved row count (#1783 decision 1).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
+    crate::domain::variant::shows_key_field(live_variant_count as usize)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

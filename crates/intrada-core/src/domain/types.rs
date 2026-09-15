@@ -601,6 +601,25 @@ mod tests {
     }
 
     #[test]
+    fn update_variants_event_round_trips_on_ffi_bincode_wire() {
+        use crate::domain::item::ItemEvent;
+        use crate::domain::variant::VariantEdit;
+        assert_round_trips(ItemEvent::UpdateVariants {
+            id: "ex-1".to_string(),
+            variants: vec![
+                VariantEdit {
+                    id: Some("v1".to_string()),
+                    label: "C".to_string(),
+                },
+                VariantEdit {
+                    id: None,
+                    label: "Land on the 3rd".to_string(),
+                },
+            ],
+        });
+    }
+
+    #[test]
     fn recover_session_event_round_trips_on_ffi_bincode_wire() {
         use crate::domain::session::{ActiveSession, SessionEvent};
         use chrono::TimeZone;

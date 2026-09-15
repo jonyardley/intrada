@@ -424,6 +424,62 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(labels, ["C", "G", "D", "E"], "A is gone, the others keep their order")
   }
 
+  /// Real-bridge pin for the Edit form's one-write ladder (#1783): the id on a
+  /// row crosses the wire and keeps the row through a rename, beside a fresh
+  /// row and a reorder in the same event.
+  func testRealBridgeUpdateVariantsRenamesByIdInOneWrite() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "G"]))))
+    let item = try XCTUnwrap(try bridge.view().items.first)
+    let cId = try XCTUnwrap(item.variants.first { $0.label == "C" }?.id)
+    let gId = try XCTUnwrap(item.variants.first { $0.label == "G" }?.id)
+
+    _ = try bridge.update(
+      .item(
+        .updateVariants(
+          id: item.id,
+          variants: [
+            VariantEdit(id: gId, label: "Sol"), VariantEdit(id: nil, label: "A"),
+            VariantEdit(id: cId, label: "C"),
+          ])))
+
+    let after = try XCTUnwrap(try bridge.view().items.first { $0.id == item.id })
+    XCTAssertEqual(after.variants.map(\.label), ["Sol", "A", "C"])
+    XCTAssertEqual(after.variants.first?.id, gId, "renamed in place, marks intact")
+    XCTAssertFalse(after.showsKey, "an exercise in several keys has no single key")
+  }
+
+  /// The new `FormErrorField` case decodes on the wire (#846, #1831): a
+  /// refused rung points the form at the Variations section.
+  func testRealBridgeRefusedVariationPointsAtTheSection() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "c"]))))
+
+    let view = try bridge.view()
+    XCTAssertNotNil(view.error)
+    XCTAssertEqual(view.errorTarget, .piece(field: .variations))
+    XCTAssertTrue(view.items.isEmpty, "nothing written")
+  }
+
+  /// The Add form has no saved exercise to read `showsKey` from, so it asks
+  /// the core with its own row count (#1783 decision 1).
+  func testExerciseFormShowsKeyOnlyWithNoRows() {
+    XCTAssertTrue(exerciseFormShowsKey(liveVariantCount: 0))
+    XCTAssertFalse(exerciseFormShowsKey(liveVariantCount: 1))
+  }
+
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
   /// the Rust deserializer and the `ViewModel` projection must all agree on the
   /// new `Item` field and the two new `ItemEvent` variants. A stub bridge
@@ -968,15 +1024,10 @@ final class StoreEffectLoopTests: XCTestCase {
 
     XCTAssertEqual(try bridge.view().errorTarget, .piece(field: .composer))
 
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "", kind: .exercise, composer: nil, key: nil, modality: nil, tempo: nil,
-            notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    _ = try bridge.update(.item(.setVariants(id: "no-such-exercise", labels: ["C"])))
 
     let unrelated = try bridge.view()
-    XCTAssertNotNil(unrelated.error, "an ordinary create still reports what went wrong")
+    XCTAssertNotNil(unrelated.error, "a failure with no field still reports what went wrong")
     XCTAssertNil(
       unrelated.errorTarget, "but must not leave the form pointing at the last failure")
   }
