@@ -493,6 +493,22 @@ once.
   stored data.
 - **shell-dead** — core code no Swift screen calls any more; a deletion
   candidate (the #1348 pattern).
+- **harness**, the machinery around the model: rules, skills, agents, hooks,
+  settings, the recipes agents drive, and memory. Every change to it gets a row
+  in [`harness-log.md`](harness-log.md).
+- **process**, the steps one unit of work takes: claim, isolate, route, plan,
+  build, review, ship, measure.
+- **isolation**, worktrees and who may edit where
+  ([`worktrees.md`](worktrees.md)).
+- **routing**, which rung a piece of work runs on. A **rung** is one model and
+  effort pair, such as Opus 5 at `xhigh`.
+- **context**, what a session carries and for how long.
+- **speed**, Jon's time from claiming an issue to its merged PR. One of the
+  three numbers the harness is measured by.
+- **rework**, the fix PRs, reverts and corrections a piece of work needed. The
+  second of the three numbers.
+- **spend**, tokens and dollars. The third number, and the constraint rather
+  than the goal.
 
 ## Why mutation-test by deletion, not inversion (#1423)
 
