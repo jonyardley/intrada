@@ -588,10 +588,12 @@ _ios-test-run tier:
         # `xcodebuild` call locally, so retry applies to both; CI's fanned-out
         # jobs (#1207) call `_ios-test-without-building` once per slice (unit,
         # then the two UI slices) and scope retry to the UI slices only.
-        # Parallel here and nowhere else: cloned simulators need the RAM this
-        # machine has and CI's runner does not, and the UI tier is 86s parallel
-        # against 339s sequential (measured over three runs, 2026-09-07).
-        just _ios-test-without-building "" 1 1
+        # Sequential, on the settled source device: a just-booted clone loses
+        # SpringBoard's install-placeholder race and refuses the runner as
+        # Busy, and the `bootstatus` wait cannot reach a clone because
+        # xcodebuild shuts the source device down before cloning (#1480).
+        # Costs the UI tier 339s against 86s parallel (2026-09-07).
+        just _ios-test-without-building "" 1 0
     fi
     # Same exact-tree guard as `check` above (#1204).
     if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
@@ -663,9 +665,10 @@ _ios-build-for-testing:
 # `-skip-testing:` flags, or "" to run everything the built products contain;
 # `retry` is "1" to add the relaunch-on-crash flags (#1203), else "0";
 # `parallel` is "1" to clone simulators and run test classes concurrently,
-# else "0". Shared by `_ios-test-run` (local, everything in one call) and CI's
-# fanned-out `native-ios-test-unit` / `native-ios-test-ui` jobs (#1207), which
-# slice the suite so a crash in one slice can't take the others down with it.
+# else "0". Shared by `_ios-test-run` (local, everything in one call),
+# `ios-test-ui-class` and `ios-snapshots-record`, and CI's fanned-out
+# `native-ios-test-unit` / `native-ios-test-ui` jobs (#1207), which slice the
+# suite so a crash in one slice can't take the others down with it.
 [private]
 _ios-test-without-building filters retry parallel="0":
     #!/usr/bin/env bash
@@ -678,6 +681,10 @@ _ios-test-without-building filters retry parallel="0":
     # installs the app while SpringBoard is still starting, SpringBoard never
     # sees that install finish, and every launch is refused as "Busy" (#1648).
     xcrun simctl bootstatus "$udid" -b
+    # With the UI tier sequential the device outlives the run, so the app's
+    # UserDefaults would too, and a leftover crash-recovery blob satisfies the
+    # resume prompt on its own, hiding a broken save seam (#1480).
+    xcrun simctl uninstall "$udid" com.intrada.native >/dev/null 2>&1 || true
     shopt -s nullglob
     runs=(build/dd/Build/Products/*.xctestrun)
     if [ "${#runs[@]}" -ne 1 ]; then
@@ -699,11 +706,11 @@ _ios-test-without-building filters retry parallel="0":
     # pressure, which reds the gate for no test reason, and a rented 7GB
     # runner has too little to hold more than one. Six measured on the
     # self-hosted M4 over ten runs (#1824): UI step 175s median against 280s
-    # at four, no preflight failures, so the local full tier and the
-    # self-hosted CI gate both opt in at six. The rented `native-ios-test-ui`
-    # job stays sequential at 7GB. #1642 fixed the rename test that used to
-    # silently skip its own field-clearing under clone load and reddened
-    # main; both CI paths still keep the job fan-out.
+    # at four, no preflight failures, so the self-hosted CI gate opts in at
+    # six. The rented `native-ios-test-ui` job stays sequential at 7GB, and so
+    # does the local full tier since #1480. #1642 fixed the rename test that
+    # used to silently skip its own field-clearing under clone load and
+    # reddened main; both CI paths still keep the job fan-out.
     flags=()
     if [ "{{parallel}}" = "1" ]; then
         flags+=(-parallel-testing-enabled YES -maximum-concurrent-test-simulator-destinations 6)
@@ -715,8 +722,12 @@ _ios-test-without-building filters retry parallel="0":
     fi
     [ "{{retry}}" != "1" ] || flags+=(-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES)
     status=0
+    # `-collect-test-diagnostics never`: after a refused app launch xcodebuild
+    # otherwise spends a fixed 600s gathering a sysdiagnose-style bundle nobody
+    # reads, which is why a failed full tier took 12 to 21 minutes (#1480).
     xcodebuild test-without-building -xctestrun "${runs[0]}" \
         -destination "id=$udid" -derivedDataPath build/dd -quiet \
+        -collect-test-diagnostics never \
         "${flags[@]}" || status=$?
     # `-quiet` prints nothing on success, so a passing run is indistinguishable
     # from one that never started, and a failing one never says how much of the
