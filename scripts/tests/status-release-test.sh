@@ -38,6 +38,7 @@ if [ "${1:-}" = "api" ]; then
     *milestones*) body="$(cat "$FIXTURES/milestones.json")" ;;
     *tags*) body="$(cat "$FIXTURES/tags.json")" ;;
     *compare*) body="$(cat "$FIXTURES/compare.json")" ;;
+    graphql) body='{"data":{"repository":{"issues":{"nodes":[]}}}}' ;;
   esac
 fi
 

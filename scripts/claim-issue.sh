@@ -67,10 +67,14 @@ fi
 # The newest comment whose body opens with "Claimed" names the current owner;
 # a withdrawal or release comment does not start that way, so it is never
 # mistaken for a live claim.
-issue="$(gh issue view "$number" --repo "$repo" --json labels,comments)"
+issue="$(gh issue view "$number" --repo "$repo" --json labels,comments,parent)"
 has_label="$(printf '%s' "$issue" | jq -r '([.labels[].name] | index("in-flight")) != null')"
 claim_body="$(printf '%s' "$issue" | jq -r '[.comments[] | select(.body | test("^Claimed"; "i"))] | last | .body // empty')"
 claim_branch="$(claim_branch_from_body "$claim_body")"
+epic_number="$(printf '%s' "$issue" | jq -r '.parent.number // empty')"
+epic_title="$(printf '%s' "$issue" | jq -r '.parent.title // empty')"
+epic_note="(no epic)"
+[ -n "$epic_number" ] && epic_note="(epic #$epic_number: $epic_title)"
 
 if [ -n "$claim_branch" ] && [ "$claim_branch" = "$branch" ]; then
   # Already ours: make sure the label is set (a retry after a failed label
@@ -78,7 +82,7 @@ if [ -n "$claim_branch" ] && [ "$claim_branch" = "$branch" ]; then
   if [ "$has_label" != "true" ]; then
     gh issue edit "$number" --repo "$repo" --add-label in-flight
   fi
-  echo "✓ #$number is already claimed on $branch"
+  echo "✓ #$number is already claimed on $branch $epic_note"
   exit 0
 fi
 
@@ -107,7 +111,10 @@ fi
 # (network blip, permissions), a retry sees claim_branch == branch above and
 # recovers by adding the label alone, rather than wedging with a label and no
 # comment to identify the owner.
+# The epic rides on the claim so the plan comment and the next session see the
+# body of work, not a lone issue (#1968). No epic is allowed: a Tier 1 fix has none.
 claim_comment="Claimed: branch \`$branch\`."
+[ -n "$epic_number" ] && claim_comment="$claim_comment Epic: #$epic_number."
 [ -n "$decision" ] && claim_comment="$claim_comment Decision: $decision"
 gh issue comment "$number" --repo "$repo" --body "$claim_comment"
 gh issue edit "$number" --repo "$repo" --add-label in-flight
@@ -122,4 +129,4 @@ else
   echo "! board not updated; the token needs project scope: gh auth refresh -s project" >&2
 fi
 
-echo "✓ claimed #$number on $branch"
+echo "✓ claimed #$number on $branch $epic_note"

@@ -247,5 +247,43 @@ if [ -f "$CALLS/issue_comment.log" ] && [ -f "$CALLS/issue_edit.log" ]; then
   fi
 fi
 
+# ── The epic rides on the claim (#1968) ─────────────────────────────────────
+
+echo '[]' >"$FIXTURES/pr_list.json"
+echo 0 >"$FIXTURES/closers_count.txt"
+echo '{"labels":[],"comments":[],"parent":{"number":1967,"title":"Work the audit"}}' \
+  >"$FIXTURES/issue.json"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run)"
+if grep -qF "Claimed: branch \`my-branch\`. Epic: #1967." "$CALLS/issue_comment.log" 2>/dev/null; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ issue under an epic: expected the claim comment to name it\n    comment: %s\n' \
+    "$(cat "$CALLS/issue_comment.log" 2>/dev/null)" >&2
+fi
+if printf '%s' "$out" | grep -qF "claimed #42 on my-branch (epic #1967: Work the audit)"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ issue under an epic: expected the success line to name it\n    output: %s\n' "$out" >&2
+fi
+
+echo '{"labels":[],"comments":[],"parent":null}' >"$FIXTURES/issue.json"
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+out="$(run)"
+if grep -qF "Epic" "$CALLS/issue_comment.log" 2>/dev/null; then
+  fail=$((fail + 1))
+  printf '✗ issue with no epic: the claim comment should not mention one\n' >&2
+else
+  pass=$((pass + 1))
+fi
+if printf '%s' "$out" | grep -qF "claimed #42 on my-branch (no epic)"; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ issue with no epic: expected the success line to say so\n    output: %s\n' "$out" >&2
+fi
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
