@@ -51,7 +51,6 @@
       "Bash(cargo build:*)",
       "Bash(xcodegen generate:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(wc:*)",
@@ -74,7 +73,10 @@
       "mcp__xcode__XcodeCloseWorkspace",
       "mcp__xcode__XcodeListWorkspaces",
       "mcp__xcode__XcodeListRunDestinations",
-      "mcp__xcode__XcodeSwitchRunDestination"
+      "mcp__xcode__XcodeSwitchRunDestination",
+      "Bash(just claim:*)",
+      "Bash(just pr-open:*)",
+      "Bash(just ios-test-full)"
     ],
     "ask": [
       "Bash(gh run rerun:*)",
@@ -122,7 +124,8 @@
       "mcp__xcode__StringCatalogEdit",
       "mcp__xcode__LocalizationPlanner",
       "mcp__xcode__XcodeSwitchScheme",
-      "mcp__xcode__XcodeSwitchTestPlan"
+      "mcp__xcode__XcodeSwitchTestPlan",
+      "Bash(xcodebuild:*)"
     ]
   },
   "hooks": {
