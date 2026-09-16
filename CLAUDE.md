@@ -154,6 +154,12 @@ and screens is not itself the trigger. Review the core PR before the screens.
 **Two strikes, then a decision** (#1890): two corrections on one point stop the change and ask
 if the approach is wrong before a third; `just claim` refuses the same at two merged PRs.
 
+**Epics hold the backlog** (#1968): three or more issues with a working order sit under an
+`epic`-labelled parent as GitHub sub-issues (`just epic-add EPIC N...`), one parent each, one
+level deep, the body naming the order. `just status` shows each epic's next open child and
+`just claim` names the epic. A plan that creates issues attaches them; whoever closes the last
+child closes the epic. The rules: [Epics](docs/roadmap.md#epics).
+
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). `reviewer` reviews
 Tier 2+, briefed with the issue so it checks the diff against done looks like; triage its
@@ -170,9 +176,9 @@ verification means driving the app on the simulator**; if you cannot, name the h
    refuses if an issue number in the title has no claim naming the current branch. A
    handover opener names the issue; the new session claims it. Drop the label when the PR
    closes (automatic on merge; drop it by hand if the PR closes without merging).
-2. Find the roadmap item, or discuss first; check the
-   [project board](https://github.com/users/jonyardley/projects/2). Read the issue and what
-   it points at, then state the rung and, for Tier 2 and 3, write the plan comment.
+2. Find the issue's epic, or the roadmap item, or discuss first; check the
+   [project board](https://github.com/users/jonyardley/projects/2). Read the issue, its epic
+   and what they point at, then state the rung and, for Tier 2 and 3, write the plan comment.
 3. **Always a feature branch in its own worktree, and a PR; a human merges.** Jon starts
    every session in the main checkout. The session runs `just worktree-new <name>` itself,
    prefixes every shell command with `cd <worktree> && `, and reads the rules for the files

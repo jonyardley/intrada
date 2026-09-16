@@ -167,7 +167,34 @@ one place — the banner at the top of this doc.
 | `ux` / `accessibility` | Cross-cutting |
 | `security` | Security-relevant |
 | `ios` | iOS-specific (native SwiftUI shell) |
-| `epic` | Umbrella issue with sub-items |
+| `epic` | A body of work whose issues are its sub-issues ([Epics](#epics)) |
+
+### Epics
+
+An epic is the container for a body of work: a roadmap line, an audit's
+backlog, a spec's phases, a tooling programme. The next slice is picked from
+one, not from the flat list of open issues: `just status` shows every open
+epic with its done count and its next open, unclaimed child.
+
+- **What earns one**: three or more issues that ship as separate PRs and have
+  an order worth writing down. A pillar, layer or journey label is a filter,
+  not an epic. Loose tidy-ups with no order between them stay single issues.
+- **Membership is a GitHub sub-issue**, attached with
+  `just epic-add EPIC N...` in working order; `just epic-move` takes an issue
+  from the epic that holds it. A checklist in the body is not membership. The
+  parent carries the `epic` label, and no epic sits under another.
+- **One parent per issue**, which GitHub enforces. Where two epics fit, the
+  one that says when to build it wins and the other names it in prose. An
+  audit epic keeps its findings until it closes.
+- **The body** follows the issue template, and What to do names the working
+  order, which the sub-issue list mirrors. The title names the outcome, with
+  no "Epic:" prefix; the label says it. #1967 is the model.
+- **Horizon stays on each issue.** The epic carries the nearest of its
+  children's, so filtering on a horizon still finds it.
+- **Closing**: the session that closes the last child closes the epic in the
+  same turn, after checking the body for work that never became an issue. An
+  epic never closes with children open; they move or close first. When the
+  direction changes, Jon closes it with a comment naming where the rest went.
 
 ### Board
 

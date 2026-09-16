@@ -42,6 +42,25 @@ if ! milestones=$(gh api "repos/$repo/milestones?state=open" 2>&1); then
   milestones='[]'
 fi
 
+# The epics are the backlog's containers (#1968): the next slice is picked from
+# one of them, not from the flat list of open issues. GitHub caps an epic at
+# 100 sub-issues, so one page of children is all of them.
+epics_limit=30
+epics_error=""
+epics_query='query($owner: String!, $name: String!, $limit: Int!) {
+  repository(owner: $owner, name: $name) {
+    issues(labels: ["epic"], states: OPEN, first: $limit,
+           orderBy: {field: CREATED_AT, direction: ASC}) {
+      nodes { number title subIssues(first: 100) { nodes { number title state } } }
+    }
+  }
+}'
+if ! epics=$(gh api graphql -f query="$epics_query" -f owner="${repo%%/*}" \
+  -f name="${repo#*/}" -F limit="$epics_limit" --jq '.data.repository.issues.nodes' 2>&1); then
+  epics_error=$(printf '%s' "$epics" | head -1)
+  epics='[]'
+fi
+
 last_tag=""
 tags_error=""
 if tags=$(gh api "repos/$repo/tags?per_page=100" --jq '.[].name' 2>&1); then
@@ -97,6 +116,30 @@ release_lines=$(printf '%s' "$milestones" | jq -r '
     \(.closed_issues // 0) of \((.closed_issues // 0) + (.open_issues // 0)) closed"
 ')
 
+# Next is the first open child in the epic's own order that nobody has claimed:
+# the epic body names the working order and the sub-issue list mirrors it.
+epic_lines=$(printf '%s\n%s' "$epics" "$claimed" | jq -rs '
+  .[0] as $epics | [.[1][].number] as $flying |
+  $epics[] |
+  .subIssues.nodes as $kids |
+  ($kids | length) as $total |
+  ($kids | map(select(.state == "CLOSED")) | length) as $done |
+  ($kids | map(select(.state == "OPEN")
+    | select([.number] | inside($flying)))) as $live |
+  ($kids | map(select(.state == "OPEN")
+    | select([.number] | inside($flying) | not)) | first) as $next |
+  "- #\(.number) \(.title)\n    "
+  + (if $total == 0 then "no sub-issues yet"
+     elif $done == $total then "all \($total) done: close it"
+     else "\($done) of \($total) done"
+       + (if ($live | length) > 0
+          then ", in flight: " + ($live | map("#\(.number)") | join(" "))
+          else "" end)
+       + (if $next then "\n    next: #\($next.number) \($next.title)"
+          else "; every open one is in flight" end)
+     end)
+')
+
 landed_lines=$(printf '%s' "$merged_prs" | jq -r "
   sort_by(.mergedAt) | reverse | .[:$landed_limit] | .[] |
   \"- #\(.number) — \(.title) (merged \(.mergedAt | split(\"T\")[0]))\"
@@ -135,6 +178,16 @@ elif [ -n "$tags_error" ]; then
 fi
 echo "    Cut when the headline works on the phone, then roll whatever is"
 echo "    still open into the next milestone. See docs/roadmap.md."
+
+section "EPICS (open, oldest first)" "$epic_lines"
+echo
+if [ -n "$epics_error" ]; then
+  echo "    GitHub did not answer, so this section is not an answer either:"
+  echo "    $epics_error"
+fi
+capped "$epics" "$epics_limit"
+echo "    Pick the next slice from an epic. An open issue under none is a"
+echo "    one-off, or a sign a new epic is due (CLAUDE.md, Workflow)."
 
 section "IN FLIGHT (open PRs)" "$pr_lines"
 capped "$open_prs" "$open_limit"

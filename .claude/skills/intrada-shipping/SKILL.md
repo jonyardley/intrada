@@ -81,6 +81,10 @@ Every deferred or out-of-scope item becomes a tracked issue, labelled
 posted. PR descriptions are not tracking. The comment ends with
 `Deferred items tracked: #N, #M` or `none, all flagged items addressed inline`.
 
+A deferred issue that belongs to the same body of work joins the PR's epic
+with `just epic-add EPIC N`; one that belongs elsewhere joins that epic, and a
+genuine one-off stays single (the Epics rules in `docs/roadmap.md`).
+
 ## PR bodies and issues
 
 Both are read cold, months later, by someone deciding whether to merge and

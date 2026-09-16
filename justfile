@@ -69,6 +69,8 @@ hygiene:
         "hygiene-checks-test:bash scripts/tests/hygiene-checks-test.sh"
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"
+        "status-epics-test:bash scripts/tests/status-epics-test.sh"
+        "epic-add-test:bash scripts/tests/epic-add-test.sh"
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
@@ -116,6 +118,17 @@ pr-visuals:
 # just claim 1650 "the approach is wrong because X" (#1890).
 claim number decision="":
     bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
+
+# Put issues under an epic as GitHub sub-issues, in the working order given:
+# just epic-add 1967 1934 1935 (#1968). Refuses an issue another epic holds.
+[positional-arguments]
+epic-add parent +children:
+    bash scripts/epic-add.sh "$@"
+
+# The same, taking issues from whichever epic holds them now.
+[positional-arguments]
+epic-move parent +children:
+    bash scripts/epic-add.sh --move "$@"
 
 # Wrap `gh pr create`, refusing when an issue number in the title has no
 # claim naming this branch (#1702): `just pr-open "Title (#42)" "Body text"`.
