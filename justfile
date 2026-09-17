@@ -74,6 +74,7 @@ hygiene:
         "claim-issue-test:bash scripts/tests/claim-issue-test.sh"
         "pr-open-test:bash scripts/tests/pr-open-test.sh"
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
+        "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
     )
     tmpdir=$(mktemp -d) || exit 1
@@ -118,6 +119,12 @@ pr-visuals:
 # just claim 1650 "the approach is wrong because X" (#1890).
 claim number decision="":
     bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
+
+# Print the opener for the next session, so finishing a unit and clearing
+# costs a paste rather than a retelling (#1986). The issue number defaults to
+# the one in the title of an open PR on this branch.
+handover number="":
+    bash scripts/handover.sh {{number}}
 
 # Put issues under an epic as GitHub sub-issues, in the working order given:
 # just epic-add 1967 1934 1935 (#1968). Refuses an issue another epic holds.

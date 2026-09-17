@@ -87,6 +87,8 @@ documented it, or by the file's own date where no PR did.
 | 2026-09-15 | machine-local | `turn-reminder.txt` asks for the `/model` and `/effort` switch only for work on the Fable list | Rework: rung switches | 2026-09-21 | |
 | 2026-09-15 | #1902 (#1897) | `docs/working-with-agents.md` rewritten along the process steps; the primer, the shipping skill, `/ship` and two path-scoped rules brought into line with the three rungs and the plan comment | Rework: fix PRs on the sensitive surfaces, now built on Fable at high rather than max | 2026-09-21 | |
 | 2026-09-15 | machine-local | `context-watch.sh` hands the rest of a unit past 200k to `task` alone, and the global `CLAUDE.md` stops naming the deleted `smol` agent | None: a correction | 2026-09-21 | |
+| 2026-09-17 | #1986 | `just handover [N]` prints the next session's opener, so finishing a unit and clearing costs a paste rather than a retelling | Spend: sessions past 200k, and the 123 cold turns that cost $199 in the fortnight to 2026-09-17 | 2026-09-24 | |
+| 2026-09-17 | machine-local (#1986) | `read-guard.sh` also denies a bare `cat`, `sed`, `head` or `tail` of a file already in context or over 400 lines, which the Read-only guard let round it | Spend: tool output tokens, and the 42% of text reads that repeated a file | 2026-09-24 | |
 
 ## Later levers
 
