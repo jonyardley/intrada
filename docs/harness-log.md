@@ -87,6 +87,8 @@ documented it, or by the file's own date where no PR did.
 | 2026-09-15 | machine-local | `turn-reminder.txt` asks for the `/model` and `/effort` switch only for work on the Fable list | Rework: rung switches | 2026-09-21 | |
 | 2026-09-15 | #1902 (#1897) | `docs/working-with-agents.md` rewritten along the process steps; the primer, the shipping skill, `/ship` and two path-scoped rules brought into line with the three rungs and the plan comment | Rework: fix PRs on the sensitive surfaces, now built on Fable at high rather than max | 2026-09-21 | |
 | 2026-09-15 | machine-local | `context-watch.sh` hands the rest of a unit past 200k to `task` alone, and the global `CLAUDE.md` stops naming the deleted `smol` agent | None: a correction | 2026-09-21 | |
+| 2026-09-17 | #1985 | Sessions open on Opus 5 `high`, not `xhigh`, reversing that half of the 2026-09-15 row (#1900); the Fable list narrows to the four silent-failure surfaces, with the plan comment, the direction call and the unexplained bug following the work rather than triggering on their own | Spend: $ per turn by rung, and Fable's share of the fortnight (32% of spend on 20% of turns before the change) | 2026-09-24 | |
+| 2026-09-17 | machine-local (#1985) | `turn-reminder.txt` and the global `CLAUDE.md` name Opus 5 `high` and the narrowed Fable list | Spend: rung switches per session | 2026-09-24 | |
 
 ## Later levers
 
