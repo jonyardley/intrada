@@ -288,8 +288,8 @@ by breaking a line and watching it go red.
 | Read guard | Before every Read | Deny an unranged re-read of a path the transcript already holds unchanged, and any unranged read of a big file | Half of all reads over a weekend repeated a file already in the session |
 | Spawn guard | Before every subagent | Refuse a spawn that lifts model or effort above the definition's pin | The largest single cost line was a cheap builder spawned on the top model |
 | Context watch | Every prompt | Nudge at the warning, firm and compaction lines | A third of sessions passed the firm line |
-| Turn reminder | Every prompt | Re-attach the house style and the model-gate rule as text | Style rules read once at session start were forgotten by turn thirty |
-| Post-push watch | After a push or PR update | Restate "watch CI to a conclusion, read mergeability" at the point of action | Three unbacked "watching now" claims in one session |
+| Turn reminder | Every prompt | Re-attach the house style and the model-gate rule as text. intrada unhooked it on 2026-09-17 (#1989): the model gate had become the churn, not the saving | Style rules read once at session start were forgotten by turn thirty |
+| Post-push watch | After a push or PR update | Restate "watch CI to a conclusion, read mergeability" at the point of action. intrada unhooked it on 2026-09-17 (#1989); the rule stays in its CLAUDE.md | Three unbacked "watching now" claims in one session |
 | Cold nudge | A timer outside Claude Code | Desktop notification when a large context has sat idle long enough for the cache to lapse | Two hundred cold turns in a week |
 | Daily usage line | First session of the day | One line of yesterday's spend by agent, model and effort | Spend was invisible until the invoice |
 | Format on edit | After every edit, repo-level | Run the formatter on the file just written | Unformatted code reaching CI |
