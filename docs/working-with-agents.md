@@ -15,6 +15,9 @@
 > The generic version of this file, with the intrada names taken out, is
 > [`agentic-primer.md`](agentic-primer.md): read that to set up a new repo,
 > this to drive this one.
+>
+> The one-page version, what Jon does at the keyboard and which tool when, is
+> [`playbook.md`](playbook.md).
 
 ## The steps at a glance
 
@@ -22,7 +25,7 @@
 |---|---|---|
 | 1. Claim | `just claim N`, and stop if a PR already exists | `scripts/claim-issue.sh`, `just pr-open` |
 | 2. Isolate | `just worktree-new <name>`, then `cd <worktree> && ` on every command | The worktree guard and its lease |
-| 3. Route | Opus 5 `high` in the lead; Fable 5.1 `high` only for the Fable list | `.claude/settings.json`, the agent pins, the spawn guard, the turn reminder |
+| 3. Route | Opus 5 `high` in the lead; Fable 5.1 `high` only for the Fable list | `.claude/settings.json`, the agent pins, the spawn guard |
 | 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon | CLAUDE.md Workflow; `reviewer` checks the diff against it |
 | 5. Build | Settled slices to `task`, gates to `test-runner`, each file read once | The read guard, the bash guard, the context watch |
 | 6. Review | `reviewer` over the local diff, briefed with the worktree and the issue | `/ship` |
@@ -115,7 +118,7 @@ and the serialisation points.
 
 | You are | Do |
 |---|---|
-| Opening a session | Name the rung and effort before the first edit and at every boundary: Opus 5 `high`, which the session opens on, unless the work is on the Fable list |
+| Opening a session | Opus 5 `high`, which the session opens on. Name the rung once, at the start, and only when the work is on the Fable list; the line at every boundary was the turn reminder's, unhooked 2026-09-17 (#1989) |
 | Reaching work on the Fable list | `/model` and `/effort` in this session before the work starts, saying so, and back to Opus 5 `high` at the boundary. A new chat frees the lead; it is never how a rung changes |
 | Handing work down | Settled work goes to a subagent from one lead (step 5); a new chat is for freeing the session, never for work the lead could dispatch |
 
@@ -251,7 +254,7 @@ column below is in that bill.
 | Repo settings | `.claude/settings.json` | The model and effort a session opens on (Opus 5 `high`, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
-| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text on every prompt (the turn reminder and the context watch), after a push (the CI-watch note) and in the day's first session (one usage line); before a tool runs, the worktree guard, the bash guard, the read guard and the spawn guard |
+| User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text on every prompt (the context watch) and in the day's first session (one usage line); before a tool runs, the worktree guard, the bash guard, the read guard and the spawn guard |
 | Plugins | `enabledPlugins` in user settings | Each plugin skill's description, every session. `.claude/settings.json` switches slack, atlassian, visual-explainer and frontend-design off here |
 | Xcode tools | `.mcp.json` | Xcode's tool server (`xcrun mcpbridge`) for driving the running app on an iOS 27 simulator, rendering previews and Apple docs search; builds, tests and project edits are denied in `.claude/settings.json` |
 
@@ -291,11 +294,12 @@ Every plan (plan comment, spec phase breakdown, handover) names, per task:
 
 1. **Whether it is on the Fable list**, because nothing else moves the rung
    off Opus.
-2. **Model and effort**, from the rungs above. "Then design the migration"
-   without "Fable 5.1, high" forces the next session to re-derive the routing,
-   or stay on the default. An opener to a new session starts with the two
-   commands themselves, `/model` and `/effort`, on their own lines above the
-   pasted text, so the new chat never opens on the wrong rung by accident.
+2. **The two commands, only for Fable-list work**: an opener written by hand
+   starts with `/model fable` and `/effort high` on their own lines above the
+   pasted text when the task is on the list, and says nothing about the rung
+   otherwise, since the session opens on Opus 5 `high` (2026-09-17, #1989).
+   `just handover` prints the two lines from the settings either way; they
+   name the default, so pasting them changes nothing.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
    session per task unless stated.
 4. **Parallel streams**: two by default, at most one of them touching
@@ -305,9 +309,9 @@ Every plan (plan comment, spec phase breakdown, handover) names, per task:
    time, which costs little to queue behind (a fast-tier run is well under a
    minute either way, #1621).
 
-A plan without model, effort and stream annotations is incomplete, the same way
-a phase without a test plan is. Vague approval of large scope ("do the rest")
-instead of finishing the current slice is what slows a plan down.
+A plan without its Fable-list call and its stream annotations is incomplete, the
+same way a phase without a test plan is. Vague approval of large scope ("do the
+rest") instead of finishing the current slice is what slows a plan down.
 
 ### Worked plans
 
@@ -608,8 +612,6 @@ that becomes a gate is decided by measuring the PRs after #1634 against its
   simulator resets outright. Branch protection on `main` backs the first two
   server-side, and `guard-bash.sh` on Jon's machine matches the same denials
   inside compound commands.
-- **Post-push note.** A hook on Jon's machine restates the CI-watch rule after
-  every push.
 
 After the merge, CLAUDE.md step 5 closes the loop: close the issue, drop
 `in-flight`, `just project-status N "Done"`, and `just worktree-rm` once
@@ -687,12 +689,12 @@ who reads it and when.
    pinned in the definition. `Explore`, `fork` and `general-purpose` are
    built-in with no definition to pin.
 6. **Hooks.** Repo: format on edit, install the git hooks, the session-start
-   claims list. User: the worktree guard and its lease, the bash guard, the
-   read guard, the spawn guard, the turn reminder and context watch, the
-   post-push CI note, the daily usage line, and the cold nudge on a launchd
-   timer. Every user hook fails open and ships with a test battery that is
-   mutation-tested, not trusted green. When a threshold or a name changes in a
-   hook, grep the docs for the old value in the same change.
+   claims list. User: the worktree guard and its lease, the bash guard, the read
+   guard, the spawn guard, the context watch, the daily usage line, and the cold
+   nudge on a launchd timer; the turn reminder and the post-push CI note were
+   unhooked on 2026-09-17 (#1989). Every user hook fails open and ships with a
+   test battery that is mutation-tested, not trusted green. When a threshold or
+   a name changes in a hook, grep the docs for the old value in the same change.
 7. **Auto memory.** What neither CLAUDE.md records: preferences, corrections,
    project state the code cannot show.
 8. **Docs on demand.** `reference.md` for the why behind every rule, the specs,
