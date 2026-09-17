@@ -58,7 +58,7 @@ to 14 September, each a fresh 80k to 200k context, all picking Tier 1 work
 | You are | Do |
 |---|---|
 | About to edit anything | `just worktree-new <name>` from the main checkout, prefix every shell command with `cd <worktree> && `, and read the `.claude/rules/` files for the surfaces you will touch by hand |
-| Handing work to another session | An opener pasted into a new chat opened in the main checkout, naming the issue, model, effort and stream; that session claims the issue and makes its own worktree. Never a worktree command for Jon |
+| Handing work to another session | `just handover [N]` prints the opener: issue, model, effort, the claim, the branch and what it has touched. Paste it into a new chat opened in the main checkout; the opener names the worktree to carry on in when this branch already has the work, and tells that session to make its own when it does not. Never a worktree command for Jon |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/`, a third only shell-only and announced |
 | Spawning a subagent | Name the worktree by absolute path in the brief |
 
@@ -273,7 +273,7 @@ standalone globals: `test-driven-development`, `requesting-code-review`,
 |---|---|
 | Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on Fable 5.1 `high` if the work is on the Fable list and on the lead's own rung if it is not; wait for Jon's approval |
 | Holding a Tier 1 fix | No plan comment; build it |
-| Handing a task to a new session | An opener that starts with the `/model` and `/effort` lines and names the issue and stream |
+| Handing a task to a new session | `just handover [N]`, which starts the opener with the `/model` and `/effort` lines and names the issue; add the stream by hand when there is more than one |
 
 A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words:
 done looks like, decisions taken, files and lines, tests, out of scope,
@@ -428,7 +428,7 @@ gate and its counts, what you left out, what you could not verify.
 | Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Opus 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files |
 | About to run a gate | `test-runner`, never in the lead and never inside `task`; a fan-out skips the suites and the lead runs them once at the end |
 | Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts |
-| Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that |
+| Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, whether the Read tool or a bare `cat`, `sed`, `head` or `tail` asks for it (#1986), and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that |
 | Warned at 150k context | Finish the slice in hand; everything after it goes to `task`, and this session checks and ships |
 | At 200k | The rest of the unit goes to a subagent now |
 | At 400k | `/compact` now, then carry on to the end of the unit |
@@ -655,8 +655,10 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   that week's spend. The context watch names such a turn as it happens.
 - **Tool output is what fills the context.** 36 MB in the week to 2026-09-13,
   Read 31%, then git, sed, grep, just and cat at 5 to 10% each; `just usage`
-  prints the table. Read once, keep ranges tight, and run gates in
-  `test-runner`.
+  prints the table. In the fortnight to 2026-09-17 Read was 38% and 42% of
+  text reads repeated a file the session already held, which is why the read
+  guard now watches the Bash reads too (#1986). Read once, keep ranges tight,
+  and run gates in `test-runner`.
 - **Fable's cache reads** cost $0.25 per MTok against Opus's $0.50, which keeps
   the gap to Opus small at long context.
 - **Subagents were 26% of the fortnight to 2026-09-14, and 15% of the

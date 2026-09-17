@@ -89,6 +89,8 @@ documented it, or by the file's own date where no PR did.
 | 2026-09-15 | machine-local | `context-watch.sh` hands the rest of a unit past 200k to `task` alone, and the global `CLAUDE.md` stops naming the deleted `smol` agent | None: a correction | 2026-09-21 | |
 | 2026-09-17 | #1985 | Sessions open on Opus 5 `high`, not `xhigh`, reversing that half of the 2026-09-15 row (#1900); the Fable list narrows to the four silent-failure surfaces, with the plan comment, the direction call and the unexplained bug following the work rather than triggering on their own | Spend: $ per turn by rung, and Fable's share of the fortnight (32% of spend on 20% of turns before the change) | 2026-09-24 | |
 | 2026-09-17 | machine-local (#1985) | `turn-reminder.txt` and the global `CLAUDE.md` name Opus 5 `high` and the narrowed Fable list | Spend: rung switches per session | 2026-09-24 | |
+| 2026-09-17 | #1986 | `just handover [N]` prints the next session's opener, so finishing a unit and clearing costs a paste rather than a retelling | Spend: sessions past 200k, and the 123 cold turns that cost $199 in the fortnight to 2026-09-17 | 2026-09-24 | |
+| 2026-09-17 | machine-local (#1986) | `read-guard.sh` also denies a bare `cat`, `sed`, `head` or `tail` of a file already in context or over 400 lines, and its hook matcher widens from `Read` to `Read|Bash`, which is what the Read-only registration let round it | Spend: tool output tokens, and the 42% of text reads that repeated a file | 2026-09-24 | |
 
 ## Later levers
 
