@@ -58,7 +58,7 @@ to 14 September, each a fresh 80k to 200k context, all picking Tier 1 work
 | You are | Do |
 |---|---|
 | About to edit anything | `just worktree-new <name>` from the main checkout, prefix every shell command with `cd <worktree> && `, and read the `.claude/rules/` files for the surfaces you will touch by hand |
-| Handing work to another session | `just handover [N]` prints the opener: issue, model, effort, the claim, the branch and what it has touched. Paste it into a new chat opened in the main checkout; that session claims the issue and makes its own worktree. Never a worktree command for Jon |
+| Handing work to another session | `just handover [N]` prints the opener: issue, model, effort, the claim, the branch and what it has touched. Paste it into a new chat opened in the main checkout; the opener names the worktree to carry on in when this branch already has the work, and tells that session to make its own when it does not. Never a worktree command for Jon |
 | Thinking of a second stream | Read `intrada-parallel-streams` first: two by default, at most one touching `crates/`, a third only shell-only and announced |
 | Spawning a subagent | Name the worktree by absolute path in the brief |
 

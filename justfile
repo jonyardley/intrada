@@ -124,7 +124,7 @@ claim number decision="":
 # costs a paste rather than a retelling (#1986). The issue number defaults to
 # the one in the title of an open PR on this branch.
 handover number="":
-    bash scripts/handover.sh {{number}}
+    bash scripts/handover.sh "{{number}}"
 
 # Put issues under an epic as GitHub sub-issues, in the working order given:
 # just epic-add 1967 1934 1935 (#1968). Refuses an issue another epic holds.
