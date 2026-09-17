@@ -12,9 +12,10 @@
 > Last reviewed: 2026-09-17, against the Claude 5 family (Fable 5.1, Opus 5,
 > Sonnet 5, Haiku 4.5). Re-review at the next model generation.
 >
-> The generic version of this file, with the intrada names taken out, is
-> [`agentic-primer.md`](agentic-primer.md): read that to set up a new repo,
-> this to drive this one.
+> The generic version, with the intrada names taken out, is the shared guide
+> [Working with an agent: what good looks like](https://claude.ai/code/artifact/153ece12-8089-40c8-9f3d-5ce484503015):
+> read that to set up a new repo, this to drive this one. It replaced
+> `docs/agentic-primer.md` on 2026-09-17 (#1992).
 >
 > The one-page version, what Jon does at the keyboard and which tool when, is
 > [`playbook.md`](playbook.md).

@@ -111,7 +111,7 @@ specs/                # Design specs for major features
 | [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |
 | [`SETUP.md`](SETUP.md) | Configuration (Sentry, TestFlight) |
 | [`docs/working-with-agents.md`](docs/working-with-agents.md) | One unit of work in this repo, step by step: claim, isolate, route, plan, build, review, ship, measure |
-| [`docs/agentic-primer.md`](docs/agentic-primer.md) | The from-scratch guide to Claude Code on any repo: layers, session lifecycle, model and effort, delegation, worktrees, the hooks worth building, the gotchas, and how to turn it into a starter kit. No intrada specifics; written to be read outside this repo |
+| [Working with an agent: what good looks like](https://claude.ai/code/artifact/153ece12-8089-40c8-9f3d-5ce484503015) | The generic guide to Claude Code on any repo, written for a newcomer and shared as a Claude Doc: the ten rules, the shape of a unit, where the money goes, the gotchas, trust, and how to build a harness. No intrada specifics |
 
 ## CI/CD
 
