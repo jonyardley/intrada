@@ -36,4 +36,14 @@ enum ReflectionHandoff {
         .nextItem(now: now, nextItemStartedAt: nextItemStartedAt, reading: reading)),
       after: scores + tempos)
   }
+
+  /// Errors surface on PlayerHost's banner. False keeps the sheet up with its
+  /// answers: a refused note or move leaves the entry current. Once it has
+  /// moved on the sheet closes, or a retry would send NextItem twice (#1945).
+  static func run(_ plan: Plan, send: (Event) -> Bool) -> Bool {
+    if let note = plan.note, !send(note) { return false }
+    if !send(plan.nextItem) { return false }
+    plan.after.forEach { _ = send($0) }
+    return true
+  }
 }

@@ -20,10 +20,15 @@ enum SuccessFeedback {
 extension Store {
   @discardableResult
   func send(_ event: Event, onSuccess feedback: SuccessFeedback) -> Bool {
-    let before = viewModel?.errorSeq
-    send(event)
-    let accepted = viewModel?.errorSeq == before
+    let accepted = sendAccepted(event)
     if accepted { feedback.fire() }
     return accepted
+  }
+
+  /// False when the core refused the event (`errorSeq` moved).
+  func sendAccepted(_ event: Event) -> Bool {
+    let before = viewModel?.errorSeq
+    send(event)
+    return viewModel?.errorSeq == before
   }
 }

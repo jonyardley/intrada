@@ -220,13 +220,11 @@ struct FocusPlayerScreen: View {
   private func switchVariation(_ active: ActiveSessionView, to variationId: String) -> Bool {
     let pos = Int(active.currentPosition)
     guard active.entries.indices.contains(pos) else { return false }
-    let before = store.viewModel?.errorSeq
-    store.send(
+    return store.sendAccepted(
       .session(
         .switchVariation(
           entryId: active.entries[pos].id, variationId: variationId,
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
-    return store.viewModel?.errorSeq == before
   }
 
   @ViewBuilder private func timer(_ active: ActiveSessionView) -> some View {
@@ -387,32 +385,20 @@ struct FocusPlayerScreen: View {
       plays: ReflectionPlay.rows(stamped), now: now)
   }
 
-  // Errors surface on RootView's banner. A refused note or move keeps the
-  // sheet up with its answers; once the entry has moved on, closing is the
-  // only safe exit, since a retry would send NextItem twice (#1945).
   private func handleReflection(_ target: ReflectionTarget, _ result: ReflectionResult) {
     // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
     let plan = ReflectionHandoff.plan(
       entryId: target.id, now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(),
       reading: target.reading, plays: target.plays, result: result)
-    if let note = plan.note, !sendAccepted(note) { return }
-    if !sendAccepted(plan.nextItem) { return }
-    plan.after.forEach(store.send)
-    reflecting = nil
+    if ReflectionHandoff.run(plan, send: store.sendAccepted) { reflecting = nil }
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
-    let accepted = sendAccepted(
+    let accepted = store.sendAccepted(
       .session(
         .nextItem(
           now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
     if accepted { reflecting = nil }
-  }
-
-  private func sendAccepted(_ event: Event) -> Bool {
-    let before = store.viewModel?.errorSeq
-    store.send(event)
-    return store.viewModel?.errorSeq == before
   }
 }
 

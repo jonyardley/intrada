@@ -4,7 +4,7 @@ import Testing
 @testable import Intrada
 
 /// The item-complete hand-off through `LiveBridge` (#1945): the score and the
-/// tempo land only on a completed entry, so a reordered plan loses them.
+/// tempo land only on a completed entry, and a refused note must stop the move.
 struct ReflectionHandoffTests {
 
   private func pieceMidSession(_ bridge: LiveBridge) throws -> (
@@ -41,14 +41,20 @@ struct ReflectionHandoffTests {
       nextItemStartedAt: "2026-09-21T10:05:30Z", reading: .silent, plays: plays, result: result)
   }
 
+  private func accepting(_ bridge: LiveBridge) -> (Event) -> Bool {
+    { event in
+      let before = try? bridge.view().errorSeq
+      _ = try? bridge.update(event)
+      return (try? bridge.view().errorSeq) == before
+    }
+  }
+
   @Test func theNoteTheMarkAndTheTempoAllLandOnTheCompletedEntry() throws {
     let bridge = LiveBridge()
     let (entryId, plays) = try pieceMidSession(bridge)
     let handoff = plan(entryId: entryId, plays: plays, note: "Pedal clearer", marked: true)
 
-    for event in [handoff.note].compactMap({ $0 }) + [handoff.nextItem] + handoff.after {
-      _ = try bridge.update(event)
-    }
+    #expect(ReflectionHandoff.run(handoff, send: accepting(bridge)))
 
     let entry = try #require(try bridge.view().summary?.entries.first)
     #expect(entry.notes == "Pedal clearer")
@@ -56,7 +62,18 @@ struct ReflectionHandoffTests {
     #expect(entry.plays.last?.achievedTempo == 96)
   }
 
-  @Test func anEmptyNoteAndNoMarksSendOnlyTheMoveAndTheTempos() throws {
+  @Test func aRefusedNoteKeepsTheSheetUpAndTheItemCurrent() throws {
+    let bridge = LiveBridge()
+    let (entryId, plays) = try pieceMidSession(bridge)
+    let handoff = plan(
+      entryId: entryId, plays: plays, note: String(repeating: "a", count: 5001), marked: true)
+
+    #expect(!ReflectionHandoff.run(handoff, send: accepting(bridge)))
+    #expect(try bridge.view().activeSession != nil, "the item has not moved on")
+    #expect(try bridge.view().summary == nil)
+  }
+
+  @Test func anEmptyNoteAndNoMarksSendNoNoteAndNoScores() throws {
     let plays = [
       ReflectionPlay(
         id: "p1", variationLabel: nil, durationDisplay: "5:00", repCount: nil, repTarget: nil,
