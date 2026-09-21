@@ -46,6 +46,7 @@ struct FocusPlayerScreen: View {
         onSkip: { handleSkipRating(target) }
       )
       .presentationDetents([.medium, .large])
+      .interactiveDismissDisabled()
     }
     .sheet(isPresented: $configuringClick) {
       ClickSheet(click: click, bpm: click.bpm)
