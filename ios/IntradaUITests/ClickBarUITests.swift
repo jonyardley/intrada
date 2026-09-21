@@ -61,6 +61,11 @@ final class ClickBarUITests: XCTestCase {
       "the stepper counts in the unit the click counted, not crotchets: "
         + "\(achieved.value as? String ?? "no value")")
 
+    // A swipe must not throw the marks and the note away (#1934).
+    app.swipeDown()
+    app.swipeDown()
+    XCTAssertTrue(app.buttons["Skip rating"].exists, "a swipe leaves the reflection sheet up")
+
     app.buttons["Skip rating"].tap()
     app.discardSummary()
   }
