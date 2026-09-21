@@ -387,43 +387,32 @@ struct FocusPlayerScreen: View {
       plays: ReflectionPlay.rows(stamped), now: now)
   }
 
-  // Notes first (no status guard — surfaces a validation error before advancing);
-  // then NextItem completes the entry so the score and tempo can land (both
-  // need Completed). Errors surface on RootView's banner, so dismiss only on
-  // success.
+  // Errors surface on RootView's banner. A refused note or move keeps the
+  // sheet up with its answers; once the entry has moved on, closing is the
+  // only safe exit, since a retry would send NextItem twice (#1945).
   private func handleReflection(_ target: ReflectionTarget, _ result: ReflectionResult) {
-    if !result.note.isEmpty {
-      let before = store.viewModel?.errorSeq
-      store.send(.session(.updateEntryNotes(entryId: target.id, notes: result.note)))
-      if store.viewModel?.errorSeq != before { return }
-    }
     // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
-    store.send(
-      .session(
-        .nextItem(
-          now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
-    for play in target.plays {
-      guard let score = result.marks[play.id] else { continue }
-      store.send(.session(.updateEntryScore(entryId: target.id, playId: play.id, score: score)))
-    }
-    // The click's tempo already landed on each play as it closed; this is the
-    // manual path, and the core ignores a row nobody moved (#1761).
-    for row in result.tempos {
-      store.send(
-        .session(
-          .updateEntryTempo(
-            entryId: target.id, playId: row.playId, tempo: row.tempo, userSet: row.userSet,
-            click: row.click)))
-    }
+    let plan = ReflectionHandoff.plan(
+      entryId: target.id, now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(),
+      reading: target.reading, plays: target.plays, result: result)
+    if let note = plan.note, !sendAccepted(note) { return }
+    if !sendAccepted(plan.nextItem) { return }
+    plan.after.forEach(store.send)
     reflecting = nil
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
-    store.send(
+    let accepted = sendAccepted(
       .session(
         .nextItem(
           now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
-    reflecting = nil
+    if accepted { reflecting = nil }
+  }
+
+  private func sendAccepted(_ event: Event) -> Bool {
+    let before = store.viewModel?.errorSeq
+    store.send(event)
+    return store.viewModel?.errorSeq == before
   }
 }
 
