@@ -1,4 +1,5 @@
 import Foundation
+import IntradaCoreFFI
 import SharedTypes
 
 /// Holds the `ViewModel`, sends `Event`s to the core, and runs the effect loop.
@@ -27,9 +28,9 @@ final class Store {
   /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
-  /// Positional bincode: any change to `ActiveSession`'s graph takes a new key
-  /// (#1345; pinned by the core's `active_session_blob_wire_is_pinned`).
-  static let sessionInProgressKey = "intrada.session-in-progress.v4"
+  /// Positional bincode: any change to `ActiveSession`'s graph takes a new key,
+  /// named by the core's `ActiveSession::BLOB_VERSION` so the bump never lives here (#1345, #1116).
+  static let sessionInProgressKey = "intrada.session-in-progress.v\(sessionBlobVersion())"
   /// Positional bincode too: a field added to `Profile` takes a new key
   /// (`specs/profile.md`; pinned by the core's `profile_blob_wire_is_pinned`).
   static let profileDefaultsKey = "intrada.profile.v1"
