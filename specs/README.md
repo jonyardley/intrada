@@ -44,6 +44,7 @@ Accurate about how the app works or is being built now.
 | [`one-pass-create.md`](one-pass-create.md) | Adding a piece with its chord chart and exercises in one save. Core landed 2026-09-07 (#1390, PR #1591) and `ItemEvent::AddPieceInFull` has no caller in `ios/Intrada` yet: this is the screens half of a two-PR split, still owed |
 | [`picker-core-sort.md`](picker-core-sort.md) | The linked-item picker sheet's sort and search calling into the core instead of a Swift copy. Core landed on main (`sort_and_filter_candidates` in `app.rs`, `sort_and_filter_picker_candidates` in `intrada-ffi`, #1653, #1662); the screens half wiring `LinkedItemPickerSheet` to it and deleting the Swift copies is #1664, open |
 | [`exercise-variations.md`](exercise-variations.md) | Variations defined on the exercise, and a session recording what was actually played (#1739). Phase A (core) and Phase B (the player's variation picker and the item-complete sheet) shipped; Phase C is open. Supersedes decisions 4 and 5 of `exercise-variants.md` |
+| [`notice-channel.md`](notice-channel.md) | A calm banner for an outcome that is true but not a failure (`ViewModel.notice`, #1325). Core half first; the screen half follows in the same working session |
 
 ## Shipped record, verify against the code before extending
 

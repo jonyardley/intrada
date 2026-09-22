@@ -53,6 +53,8 @@ pub enum Event {
 
     // ── Error handling ──────────────────────────────────────────────
     ClearError,
+    /// Dismiss the neutral banner (#1325). Independent of `ClearError`.
+    ClearNotice,
     SetQuery(Option<ListQuery>),
     /// User chose a library sort order; persist it and re-render.
     SetSort(LibrarySort),
@@ -166,6 +168,10 @@ impl Intrada {
             // ── Error handling ───────────────────────────────────────
             Event::ClearError => {
                 model.dismiss_error();
+                crux_core::render::render()
+            }
+            Event::ClearNotice => {
+                model.clear_notice();
                 crux_core::render::render()
             }
             Event::SetQuery(query) => {
@@ -460,6 +466,8 @@ impl Intrada {
             error: model.last_error.clone(),
             error_target: model.last_error_target.clone(),
             error_seq: model.error_seq,
+            notice: model.last_notice.clone(),
+            notice_seq: model.notice_seq,
             analytics,
             last_practised,
             profile: build_profile_view(&model.profile, clock.hour_of(now)),
@@ -3924,6 +3932,61 @@ mod tests {
             "a dismiss never mutes a refusal"
         );
         assert!(app.view(&model).error_seq > before);
+    }
+
+    // ── The notice channel (#1325) ──
+
+    #[test]
+    fn view_carries_the_notice_and_its_sequence() {
+        let app = Intrada;
+        let mut model = Model::default();
+        assert_eq!(app.view(&model).notice, None);
+        assert_eq!(app.view(&model).notice_seq, 0);
+
+        model.raise_notice("kept, but");
+
+        let view = app.view(&model);
+        assert_eq!(view.notice.as_deref(), Some("kept, but"));
+        assert_eq!(view.notice_seq, 1);
+    }
+
+    #[test]
+    fn clear_notice_leaves_a_standing_error_and_clear_error_leaves_a_notice() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.raise_error("refused");
+        model.raise_notice("kept, but");
+
+        let _ = app.update(Event::ClearNotice, &mut model);
+        let view = app.view(&model);
+        assert_eq!(view.notice, None, "the notice is dismissed");
+        assert_eq!(view.error.as_deref(), Some("refused"), "the error stands");
+
+        model.raise_notice("kept, but");
+        let _ = app.update(Event::ClearError, &mut model);
+        let view = app.view(&model);
+        assert_eq!(view.error, None, "the error is dismissed");
+        assert_eq!(
+            view.notice.as_deref(),
+            Some("kept, but"),
+            "the notice stands"
+        );
+    }
+
+    #[test]
+    fn a_notice_never_moves_error_seq() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let before = app.view(&model).error_seq;
+
+        model.raise_notice("kept, but");
+        let _ = app.update(Event::SetQuery(None), &mut model);
+
+        assert_eq!(
+            app.view(&model).error_seq,
+            before,
+            "a notice is not a refusal, so the shell's success haptic still fires"
+        );
     }
 
     #[test]
