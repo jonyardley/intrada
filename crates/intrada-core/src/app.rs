@@ -3919,7 +3919,10 @@ mod tests {
             }),
             &mut model,
         );
-        assert!(model.last_error.is_some());
+        assert!(
+            model.last_error.is_some(),
+            "a dismiss never mutes a refusal"
+        );
         assert!(app.view(&model).error_seq > before);
     }
 

@@ -96,12 +96,12 @@ impl Model {
         if self.error_muted {
             return;
         }
+        self.error_seq = self.error_seq.wrapping_add(1);
         let msg = msg.into();
         if self.last_error.as_deref() == Some(msg.as_str()) {
             return;
         }
         self.last_error = Some(msg);
-        self.error_seq = self.error_seq.wrapping_add(1);
     }
 
     /// Leaves the dismiss mute alone: only an acknowledged write lifts it (#1936).
@@ -1203,6 +1203,7 @@ mod tests {
         model.surface_error("fail");
         model.surface_error("fail");
         assert_eq!(model.last_error.as_deref(), Some("fail"));
+        assert_eq!(model.error_seq, 2, "a repeat is still a new failure");
     }
 
     #[test]

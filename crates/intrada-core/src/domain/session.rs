@@ -1729,7 +1729,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.sessions.push(practice_session.clone());
             model.practice_summaries = crate::app::build_practice_summaries(&model.sessions);
             model.session_status = SessionStatus::Idle;
-            model.last_error = None;
 
             let clear = Command::notify_shell(AppEffect::ClearSessionInProgress).into();
             model.clear_error();
