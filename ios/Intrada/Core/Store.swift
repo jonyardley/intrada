@@ -8,6 +8,10 @@ import SharedTypes
 final class Store {
   private(set) var viewModel: ViewModel?
 
+  /// Bumped on every throw from the core bridge: a throw yields no render and no `errorSeq`
+  /// move, so confirmations need their own signal for it (#1937).
+  private(set) var bridgeFailureSeq = 0
+
   /// On-disk store couldn't open → fell back to in-memory, so writes won't
   /// persist. The shell shows a standing warning. False for tests/previews.
   let degraded: Bool
@@ -40,11 +44,11 @@ final class Store {
     self.sortDefaults = sortDefaults
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
-    self.viewModel = guarded { try bridge.view() }
+    self.viewModel = bridged { try bridge.view() }
   }
 
   func send(_ event: Event) {
-    process(guarded { try bridge.update(event) } ?? [])
+    process(bridged { try bridge.update(event) } ?? [])
   }
 
   private func process(_ requests: [Request]) {
@@ -57,7 +61,7 @@ final class Store {
         handleAppEffect(appEffect)
       case .persistence(let operation):
         let output = persistenceOutput(for: operation)
-        process(guarded { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
+        process(bridged { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
       case .recognition(let operation):
         Task { await self.handleRecognition(operation, id: request.id) }
       }
@@ -70,11 +74,11 @@ final class Store {
     case .readPage(let photoId):
       output = await PageReader.read(photoId: photoId)
     }
-    process(guarded { try bridge.resolve(id, recognitionOutput: output) } ?? [])
+    process(bridged { try bridge.resolve(id, recognitionOutput: output) } ?? [])
   }
 
   private func refreshView() {
-    if let next = guarded({ try bridge.view() }) {
+    if let next = bridged({ try bridge.view() }) {
       viewModel = next
     }
   }
@@ -187,5 +191,11 @@ final class Store {
       report(error, "bridge")
       return nil
     }
+  }
+
+  private func bridged<T>(_ work: () throws -> T) -> T? {
+    let result = guarded(work)
+    if result == nil { bridgeFailureSeq += 1 }
+    return result
   }
 }

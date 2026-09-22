@@ -148,18 +148,15 @@ struct ChordChartEditSheet: View {
     .cardSurface()
   }
 
-  // Optimistic send guarded on errorSeq: on a parse rejection the core bumps
-  // the error, so we keep the sheet open and mirror the message inline.
+  // A parse rejection or a bridge failure keeps the sheet open with the
+  // message inline.
   private func save() {
     switch destination {
     case .piece(let id):
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.setChordChart(pieceId: id, rawChart: text)))
-      if store.viewModel?.errorSeq == before {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+      if store.send(.item(.setChordChart(pieceId: id, rawChart: text)), onSuccess: .success) {
         dismiss()
       } else {
-        parseError = store.viewModel?.error
+        parseError = store.viewModel?.error ?? "Couldn't save the chart. Try again."
       }
     case .caller(let onSave):
       onSave(text)

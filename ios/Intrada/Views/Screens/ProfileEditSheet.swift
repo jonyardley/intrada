@@ -176,10 +176,12 @@ struct ProfileEditSheet: View {
   private func save() {
     formError = nil
     faultedField = nil
-    store.send(
+    let accepted = store.sendAccepted(
       .profile(
         .save(Profile(name: name, instrument: instrument, iconChoice: iconChoice, colour: colour))))
-    if let error = store.viewModel?.error {
+    if let error = store.viewModel?.error
+      ?? (accepted ? nil : "Couldn't save your profile. Try again.")
+    {
       if case .profile(let field) = store.viewModel?.errorTarget {
         faultedField = field
       }
