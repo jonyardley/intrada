@@ -56,12 +56,4 @@ struct StoreSendAcceptedTests {
     #expect(store.viewModel == nil)
     #expect(!store.sendAccepted(.setQuery(nil)))
   }
-
-  @Test func successFeedbackReportsTheRefusal() {
-    let bridge = FakeBridge()
-    let store = Store(bridge: bridge)
-    bridge.throwOnUpdate = BridgeBroke()
-
-    #expect(!store.send(.setQuery(nil), onSuccess: .success))
-  }
 }

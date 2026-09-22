@@ -555,8 +555,6 @@ struct LibraryDetailScreen: View {
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {
     guard !kinds.isEmpty else { return }
-    // Optimistic UI reconciles with the core's confirmed outcome — only fire the
-    // success haptic when no error was surfaced (surface-don't-swallow).
     store.send(.item(.commitScaffold(pieceId: item.id, kinds: Array(kinds))), onSuccess: .success)
   }
 

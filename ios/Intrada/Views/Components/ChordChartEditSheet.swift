@@ -148,8 +148,8 @@ struct ChordChartEditSheet: View {
     .cardSurface()
   }
 
-  // On a parse rejection the core bumps the error, so we keep the sheet open
-  // and mirror the message inline.
+  // A parse rejection or a bridge failure keeps the sheet open with the
+  // message inline.
   private func save() {
     switch destination {
     case .piece(let id):

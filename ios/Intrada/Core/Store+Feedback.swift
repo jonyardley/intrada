@@ -7,7 +7,6 @@ enum SuccessFeedback {
   case impact
   case selection
   case success
-  case warning
 
   @MainActor
   fileprivate func fire() {
@@ -15,7 +14,6 @@ enum SuccessFeedback {
     case .impact: UIImpactFeedbackGenerator(style: .light).impactOccurred()
     case .selection: UISelectionFeedbackGenerator().selectionChanged()
     case .success: UINotificationFeedbackGenerator().notificationOccurred(.success)
-    case .warning: UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
   }
 }
