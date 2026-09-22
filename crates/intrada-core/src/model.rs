@@ -242,13 +242,12 @@ pub struct ViewModel {
     pub has_priorities: bool,
     /// What the last photographed page was read into, for the confirm surface.
     pub photo_recognition: PhotoRecognitionView,
-    /// Appended last: the bincode wire is positional.
     pub limits: LimitsView,
 }
 
-/// The bounds `validation.rs` enforces, projected for the controls that offer
-/// them: a control repeating the numbers keeps offering the old range once one
-/// moves, and the write is then refused with nothing on screen (#1512).
+/// The bounds `validation.rs` enforces, projected so no sheet repeats them: a
+/// repeated number keeps offering the old range once a bound moves, and the
+/// refused write shows nothing on screen (#1512).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LimitsView {
@@ -1164,7 +1163,10 @@ mod tests {
             }
         }
 
-        for beats in [limits.metre_beats_min - 1, limits.metre_beats_max + 1] {
+        for beats in [
+            limits.metre_beats_min.saturating_sub(1),
+            limits.metre_beats_max + 1,
+        ] {
             let metre = Metre {
                 beats,
                 unit: limits.metre_units[0],
@@ -1173,6 +1175,22 @@ mod tests {
             assert!(
                 crate::validation::validate_metre(&metre).is_err(),
                 "{beats} beats is outside the offered range but the core accepts it"
+            );
+        }
+
+        for unit in [1, 16] {
+            assert!(
+                !limits.metre_units.contains(&unit),
+                "the test's unoffered beat value {unit} is now offered"
+            );
+            let metre = Metre {
+                beats: limits.metre_beats_min,
+                unit,
+                groups: None,
+            };
+            assert!(
+                crate::validation::validate_metre(&metre).is_err(),
+                "the core accepts a {unit} beat value the sheet never offers"
             );
         }
     }
@@ -1188,7 +1206,10 @@ mod tests {
             );
         }
 
-        for target in [limits.rep_target_min - 1, limits.rep_target_max + 1] {
+        for target in [
+            limits.rep_target_min.saturating_sub(1),
+            limits.rep_target_max + 1,
+        ] {
             assert!(
                 crate::validation::validate_rep_target(&Some(target)).is_err(),
                 "{target} reps is outside the offered range but the core accepts it"
@@ -1221,7 +1242,7 @@ mod tests {
         }
 
         for secs in [
-            limits.planned_duration_min_secs - 60,
+            limits.planned_duration_min_secs.saturating_sub(60),
             limits.planned_duration_max_secs + 60,
         ] {
             assert!(
