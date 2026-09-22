@@ -143,8 +143,8 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
   private func confirm() {
     form.formError = nil
     form.clearFault()
-    send()
-    if let error = store.viewModel?.error {
+    let accepted = store.confirmed(send)
+    if let error = store.viewModel?.error ?? (accepted ? nil : "Couldn't save. Try again.") {
       // Read in the same pass as the message: the core's update is synchronous,
       // and `clearError` below drops both (#1595).
       let target = store.viewModel?.errorTarget

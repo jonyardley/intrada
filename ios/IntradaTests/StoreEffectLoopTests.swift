@@ -1695,11 +1695,11 @@ final class StoreEffectLoopTests: XCTestCase {
 
 }
 
-private func emptyViewModel() throws -> ViewModel {
+func emptyViewModel() throws -> ViewModel {
   try ViewModel.bincodeDeserialize(input: [UInt8](CoreFfi().view()))
 }
 
-private final class FakeBridge: CoreBridge {
+final class FakeBridge: CoreBridge {
   var updateHandler: (Event) -> [Request] = { _ in [] }
   var resolveHandler: (UInt32) -> [Request] = { _ in [] }
   var nextViewModel: (() throws -> ViewModel)?

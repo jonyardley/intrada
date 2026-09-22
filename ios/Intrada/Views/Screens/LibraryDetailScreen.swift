@@ -446,11 +446,7 @@ struct LibraryDetailScreen: View {
   }
 
   private func addKeyPreset(_ labels: [String]) {
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.setVariants(id: item.id, labels: labels)))
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    store.send(.item(.setVariants(id: item.id, labels: labels)), onSuccess: .impact)
   }
 
   // ── Used in (pieces this exercise serves) ──
@@ -475,11 +471,7 @@ struct LibraryDetailScreen: View {
   }
 
   private func practiseThis() {
-    let before = store.viewModel?.errorSeq
-    store.send(.session(.startBuildingWith(itemId: item.id)))
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    store.send(.session(.startBuildingWith(itemId: item.id)), onSuccess: .impact)
   }
 
   // ── Recent sessions ──
@@ -511,11 +503,7 @@ struct LibraryDetailScreen: View {
   }
 
   private func linkPiece(id: String) {
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.linkExercise(pieceId: id, exerciseId: item.id)))
-    if store.viewModel?.errorSeq == before {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
+    store.send(.item(.linkExercise(pieceId: id, exerciseId: item.id)), onSuccess: .success)
   }
 
   private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
@@ -524,14 +512,14 @@ struct LibraryDetailScreen: View {
     let toUnlink = current.subtracting(selected)
     var ok = true
     for pieceId in toLink {
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.linkExercise(pieceId: pieceId, exerciseId: item.id)))
-      if store.viewModel?.errorSeq != before { ok = false }
+      if !store.sendAccepted(.item(.linkExercise(pieceId: pieceId, exerciseId: item.id))) {
+        ok = false
+      }
     }
     for pieceId in toUnlink {
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.unlinkExercise(pieceId: pieceId, exerciseId: item.id)))
-      if store.viewModel?.errorSeq != before { ok = false }
+      if !store.sendAccepted(.item(.unlinkExercise(pieceId: pieceId, exerciseId: item.id))) {
+        ok = false
+      }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -547,20 +535,18 @@ struct LibraryDetailScreen: View {
     let toUnlink = current.subtracting(selected)
     var ok = true
     for id in toLink {
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
-      if store.viewModel?.errorSeq != before { ok = false }
+      if !store.sendAccepted(.item(.linkExercise(pieceId: item.id, exerciseId: id))) { ok = false }
     }
     for id in toUnlink {
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
-      if store.viewModel?.errorSeq != before { ok = false }
+      if !store.sendAccepted(.item(.unlinkExercise(pieceId: item.id, exerciseId: id))) {
+        ok = false
+      }
     }
     for draft in drafts {
       guard case .new(let input) = draft.entry else { continue }
-      let before = store.viewModel?.errorSeq
-      store.send(.item(.addLinkedExercise(pieceId: item.id, input: input)))
-      if store.viewModel?.errorSeq != before { ok = false }
+      if !store.sendAccepted(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
+        ok = false
+      }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -571,11 +557,7 @@ struct LibraryDetailScreen: View {
     guard !kinds.isEmpty else { return }
     // Optimistic UI reconciles with the core's confirmed outcome — only fire the
     // success haptic when no error was surfaced (surface-don't-swallow).
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.commitScaffold(pieceId: item.id, kinds: Array(kinds))))
-    if store.viewModel?.errorSeq == before {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
+    store.send(.item(.commitScaffold(pieceId: item.id, kinds: Array(kinds))), onSuccess: .success)
   }
 
   private func moveExercise(at index: Int, by delta: Int) {
@@ -583,19 +565,12 @@ struct LibraryDetailScreen: View {
     let dest = index + delta
     guard dest >= 0, dest < ids.count else { return }
     ids.swapAt(index, dest)
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)))
-    if store.viewModel?.errorSeq == before {
-      UISelectionFeedbackGenerator().selectionChanged()
-    }
+    store.send(
+      .item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)), onSuccess: .selection)
   }
 
   private func removeExercise(id: String) {
-    let before = store.viewModel?.errorSeq
-    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
+    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)), onSuccess: .impact)
   }
 
   private var deleteButton: some View {

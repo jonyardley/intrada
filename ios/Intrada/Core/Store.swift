@@ -8,6 +8,10 @@ import SharedTypes
 final class Store {
   private(set) var viewModel: ViewModel?
 
+  /// Bumped on every bridge throw: a throw yields no render and no `errorSeq`
+  /// move, so confirmations need their own signal for it (#1937).
+  private(set) var bridgeFailureSeq = 0
+
   /// On-disk store couldn't open → fell back to in-memory, so writes won't
   /// persist. The shell shows a standing warning. False for tests/previews.
   let degraded: Bool
@@ -185,6 +189,7 @@ final class Store {
   private func guarded<T>(_ work: () throws -> T) -> T? {
     do { return try work() } catch {
       report(error, "bridge")
+      bridgeFailureSeq += 1
       return nil
     }
   }

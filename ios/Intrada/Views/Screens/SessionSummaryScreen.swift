@@ -199,9 +199,7 @@ struct SessionSummaryScreen: View {
       guard next != entry.notes else { return }
       // A refusal (over-long note) surfaces on RootView's banner; the field
       // must not keep showing text the core rejected.
-      let before = store.viewModel?.errorSeq
-      store.send(.session(.updateEntryNotes(entryId: entry.id, notes: next)))
-      if store.viewModel?.errorSeq != before {
+      if !store.sendAccepted(.session(.updateEntryNotes(entryId: entry.id, notes: next))) {
         entryNotes[entry.id] = entry.notes ?? ""
       }
     }
