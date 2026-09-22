@@ -131,11 +131,7 @@ impl App for Intrada {
         // Before the handler, not after: a target only ever belongs to the
         // error the event in hand reported (#1595).
         model.last_error_target = None;
-        let command = self.handle_event(event, model);
-        if model.last_error.is_some() {
-            model.error_seq = model.error_seq.wrapping_add(1);
-        }
-        command
+        self.handle_event(event, model)
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -199,7 +195,10 @@ impl Intrada {
                 }
             },
             Event::StoreWritten(output) => match output {
-                PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Ack => {
+                    model.record_ack();
+                    Command::done()
+                }
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
@@ -220,7 +219,10 @@ impl Intrada {
                 }
             },
             Event::SessionStoreWritten(output) => match output {
-                PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Ack => {
+                    model.record_ack();
+                    Command::done()
+                }
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed save → reload sessions to roll back the optimistic push (#825).
                 PersistenceOutput::Failed => {
@@ -3881,6 +3883,47 @@ mod tests {
         let before = app.view(&model).error_seq;
         let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
         assert_eq!(app.view(&model).error_seq, before);
+    }
+
+    #[test]
+    fn a_success_under_a_standing_storage_banner_leaves_error_seq_alone() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _ = app.update(
+            Event::StoreLoaded(crate::persistence::PersistenceOutput::Failed),
+            &mut model,
+        );
+        let before = app.view(&model).error_seq;
+        let _ = app.update(Event::SetQuery(None), &mut model);
+        assert!(model.last_error.is_some(), "the banner is still up");
+        assert_eq!(
+            app.view(&model).error_seq,
+            before,
+            "an accepted send must not read as refused in the shell"
+        );
+    }
+
+    #[test]
+    fn a_refusal_after_a_dismiss_still_shows() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _ = app.update(
+            Event::StoreLoaded(crate::persistence::PersistenceOutput::Failed),
+            &mut model,
+        );
+        let _ = app.update(Event::ClearError, &mut model);
+        let before = app.view(&model).error_seq;
+        let _ = app.update(
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "x".to_string(),
+            }),
+            &mut model,
+        );
+        assert!(
+            model.last_error.is_some(),
+            "a dismiss never mutes a refusal"
+        );
+        assert!(app.view(&model).error_seq > before);
     }
 
     #[test]

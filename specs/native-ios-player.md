@@ -47,7 +47,7 @@ Mirror the **Items** local-first pipeline exactly (`domain/item.rs` +
   `PersistenceOutput` gains `Sessions(Vec<PracticeSession>)`.
 - `persistence::load_sessions()` / `save_session()` helpers (→ `Event::Sessions…`).
 - `SaveSession` handler branches on `model.local_first`: local → `save_session`
-  (+ `record_success`, keep the `ClearSessionInProgress` notify); online →
+  (+ `clear_error`, keep the `ClearSessionInProgress` notify); online →
   `http::create_session` (unchanged). The optimistic `model.sessions.push` stays
   in both.
 - `StartApp { local_first: true }` issues `load_items()` **and** `load_sessions()`.

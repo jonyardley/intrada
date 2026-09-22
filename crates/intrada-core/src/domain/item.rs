@@ -254,13 +254,13 @@ pub(crate) fn scaffold_already_linked(
 fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Effect, Event> {
     if let Some(photo_id) = next.as_deref() {
         if let Err(e) = validation::validate_photo_id(photo_id) {
-            model.last_error = Some(e.to_string());
+            model.raise_error(e.to_string());
             return crux_core::render::render();
         }
     }
 
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
     };
 
@@ -273,7 +273,7 @@ fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Eff
     item.updated_at = chrono::Utc::now();
     let item = item.clone();
 
-    model.record_success();
+    model.clear_error();
     Command::all([
         crate::persistence::save_item(item),
         crux_core::render::render(),
@@ -285,13 +285,13 @@ fn set_photo(model: &mut Model, id: String, next: Option<String>) -> Command<Eff
 fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effect, Event> {
     if let Some(ref metre) = next {
         if let Err(e) = validation::validate_metre(metre) {
-            model.last_error = Some(e.to_string());
+            model.raise_error(e.to_string());
             return crux_core::render::render();
         }
     }
 
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
     };
 
@@ -308,7 +308,7 @@ fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effe
     item.updated_at = chrono::Utc::now();
     let item = item.clone();
 
-    model.record_success();
+    model.clear_error();
     Command::all([
         crate::persistence::save_item(item),
         crux_core::render::render(),
@@ -319,7 +319,7 @@ fn set_metre(model: &mut Model, id: String, next: Option<Metre>) -> Command<Effe
 /// shell-side), so the core only ever names the file.
 fn read_photo(model: &mut Model, photo_id: String) -> Command<Effect, Event> {
     if let Err(e) = validation::validate_photo_id(&photo_id) {
-        model.last_error = Some(e.to_string());
+        model.raise_error(e.to_string());
         return crux_core::render::render();
     }
 
@@ -373,7 +373,7 @@ fn migrate_key_into_labels(
 /// A refused write, with the form field it points at when it has one.
 fn refuse(model: &mut Model, error: &LibraryError) -> Command<Effect, Event> {
     model.last_error_target = form_field(error).map(|field| FormErrorTarget::Piece { field });
-    model.last_error = Some(error.to_string());
+    model.raise_error(error.to_string());
     crux_core::render::render()
 }
 
@@ -412,7 +412,7 @@ fn update_ladder(model: &mut Model, id: String, edits: Vec<VariantEdit>) -> Comm
     }
 
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-        model.last_error = Some(LibraryError::NotFound { id }.to_string());
+        model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
     };
 
@@ -457,7 +457,7 @@ fn update_ladder(model: &mut Model, id: String, edits: Vec<VariantEdit>) -> Comm
 }
 
 fn persist_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
-    model.record_success();
+    model.clear_error();
     Command::all([
         crate::persistence::save_item(item),
         crux_core::render::render(),
@@ -522,7 +522,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.items.push(item.clone());
             model.last_error = None;
 
-            model.record_success();
+            model.clear_error();
             Command::all([
                 crate::persistence::save_item(item),
                 crux_core::render::render(),
@@ -530,11 +530,11 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         }
         ItemEvent::AddLinkedExercise { piece_id, input } => {
             if let Err(e) = validation::validate_piece_host(&piece_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
             if let Err(e) = validation::validate_no_variant_labels(&input) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -547,7 +547,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             };
             let input = validation::normalize_create_item(input);
             if let Err(e) = validation::validate_create_item(&input) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -575,7 +575,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
             piece.linked_exercise_ids.push(exercise.id.clone());
@@ -583,8 +583,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let piece = piece.clone();
 
             model.items.push(exercise.clone());
-            model.last_error = None;
-            model.record_success();
+            model.clear_error();
 
             Command::all([
                 crate::persistence::save_items(vec![exercise, piece]),
@@ -605,7 +604,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             if let Err(e) = validation::validate_create_item(&piece_input) {
                 model.last_error_target =
                     form_field(&e).map(|field| FormErrorTarget::Piece { field });
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -618,7 +617,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                                 index,
                                 field: form_field(&e),
                             });
-                            model.last_error = Some(e.to_string());
+                            model.raise_error(e.to_string());
                             return crux_core::render::render();
                         }
                         let input = validation::normalize_create_item(CreateItem {
@@ -630,7 +629,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                                 index,
                                 field: form_field(&e),
                             });
-                            model.last_error = Some(e.to_string());
+                            model.raise_error(e.to_string());
                             return crux_core::render::render();
                         }
                         entries.push(ScaffoldEntry::New(input));
@@ -639,7 +638,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                         if let Err(e) = validation::validate_exercise_link_target(&id, model) {
                             model.last_error_target =
                                 Some(FormErrorTarget::Exercise { index, field: None });
-                            model.last_error = Some(e.to_string());
+                            model.raise_error(e.to_string());
                             return crux_core::render::render();
                         }
                         entries.push(ScaffoldEntry::Existing { id });
@@ -664,7 +663,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                                     token: e.token.clone(),
                                 }
                             });
-                            model.last_error = Some(e.to_string());
+                            model.raise_error(e.to_string());
                             return crux_core::render::render();
                         }
                     }
@@ -730,8 +729,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             model.items.extend(created.iter().cloned());
             model.items.push(piece_item.clone());
-            model.last_error = None;
-            model.record_success();
+            model.clear_error();
 
             // One batch, exercises before the piece: the shell writes it in a
             // single transaction, so the piece never lands without them.
@@ -749,7 +747,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
 
             let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
-                model.last_error = Some(LibraryError::NotFound { id }.to_string());
+                model.raise_error(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -768,7 +766,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     item.key.as_deref().map(str::to_lowercase) != Some(new_key.to_lowercase());
                 if stays_exercise && changed && item.variants.iter().any(|v| v.deleted_at.is_none())
                 {
-                    model.last_error = Some(
+                    model.raise_error(
                         LibraryError::Validation {
                             field: "key".to_string(),
                             message: "An exercise with variations has no single key".to_string(),
@@ -816,12 +814,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let len_before = model.items.len();
             model.items.retain(|i| i.id != id);
             if model.items.len() == len_before {
-                model.last_error = Some(LibraryError::NotFound { id }.to_string());
+                model.raise_error(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             }
             model.last_error = None;
 
-            model.record_success();
+            model.clear_error();
             Command::all([
                 crate::persistence::delete_item(id, chrono::Utc::now()),
                 crux_core::render::render(),
@@ -836,12 +834,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercise_id,
         } => {
             if let Err(e) = validation::validate_link_exercise(&piece_id, &exercise_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -859,7 +857,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercise_id,
         } => {
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -875,7 +873,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             ordered_ids,
         } => {
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -905,7 +903,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             raw_chart,
         } => {
             if let Err(e) = validation::validate_chart_host(&piece_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -928,13 +926,13 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 Ok(chart) => chart,
                 Err(e) => {
                     // Surface the parse error; store nothing (never a partial).
-                    model.last_error = Some(e.to_string());
+                    model.raise_error(e.to_string());
                     return crux_core::render::render();
                 }
             };
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
             piece.chord_chart = Some(chart);
@@ -954,7 +952,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::UpdateVariants { id, variants } => update_ladder(model, id, variants),
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             if let Err(e) = validation::validate_chart_host(&piece_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -966,7 +964,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 .find(|i| i.id == piece_id)
                 .and_then(|p| p.chord_chart.clone())
             else {
-                model.last_error = Some(
+                model.raise_error(
                     LibraryError::Validation {
                         field: "piece_id".to_string(),
                         message: "This piece has no chord chart to build from".to_string(),
@@ -1019,17 +1017,16 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let new_ids: Vec<String> = new_exercises.iter().map(|e| e.id.clone()).collect();
 
             let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
                 return crux_core::render::render();
             };
             piece.linked_exercise_ids.extend(new_ids);
             piece.updated_at = now;
             let piece = piece.clone();
-            model.last_error = None;
 
             model.items.extend(new_exercises.iter().cloned());
 
-            model.record_success();
+            model.clear_error();
             let mut batch = new_exercises;
             batch.push(piece);
             Command::all([
@@ -1043,12 +1040,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             new_label,
         } => {
             if let Err(e) = validation::validate_variant_host(&item_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(item) = model.items.iter_mut().find(|i| i.id == item_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -1057,7 +1054,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 .iter()
                 .find(|v| v.id == variant_id && v.deleted_at.is_none())
             else {
-                model.last_error = Some(LibraryError::NotFound { id: variant_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: variant_id }.to_string());
                 return crux_core::render::render();
             };
 

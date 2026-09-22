@@ -192,11 +192,11 @@ pub fn handle_profile_event(event: ProfileEvent, model: &mut Model) -> Command<E
                 model.last_error_target = Some(FormErrorTarget::Profile {
                     field: profile_field(&e),
                 });
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
             model.profile = profile.clone();
-            model.record_success();
+            model.clear_error();
             Command::all([
                 Command::notify_shell(AppEffect::SaveProfile(profile)).into(),
                 crux_core::render::render(),
