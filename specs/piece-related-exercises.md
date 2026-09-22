@@ -70,7 +70,7 @@ Handler, in order:
 3. `input.kind` is forced to `ItemKind::Exercise`. The form cannot offer a
    choice here and the core should not trust one.
 4. Mint the ulid, push the item, extend `piece.linked_exercise_ids`, stamp both
-   `updated_at`, then `save_items(vec![exercise, piece])` and `record_success()`.
+   `updated_at`, then `save_items(vec![exercise, piece])` and `clear_error()`.
 
 **Local-first only.** Online returns the same "not available online yet" shape
 `AddVariant` uses. The online create path reassigns ids server-side, so a link

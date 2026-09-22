@@ -38,15 +38,16 @@ pub struct Model {
     /// Set when the user dismisses the error banner. While true, failures
     /// routed through [`Model::surface_error`] are silently swallowed, which
     /// avoids the "dismiss, next write fails, banner reappears" loop when the
-    /// underlying problem hasn't been resolved. Cleared by any confirmed
-    /// success via [`Model::record_success`], signalling the system has
-    /// recovered and new failures are worth surfacing again (#346).
+    /// underlying problem hasn't been resolved. Cleared only by a write the
+    /// store acknowledges ([`Model::record_ack`]), not by an optimistic
+    /// mutation, since only the store can say it has recovered (#346, #1936).
     pub error_muted: bool,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
     /// Device data, not account data (`specs/profile.md`).
     pub profile: Profile,
-    /// Bumped by every update that concludes with `last_error` present, so
-    /// shells can tell a repeated identical failure from a success (#1056).
+    /// Bumped each time an error is raised or surfaced, never because one is
+    /// still standing, so a send accepted under the banner does not read as
+    /// refused (#1056, #1936).
     pub error_seq: u64,
     /// What the last `ReadPhoto` produced. Transient: the confirm surface reads
     /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
@@ -78,11 +79,18 @@ pub enum PhotoRecognition {
 }
 
 impl Model {
+    /// Refuse the event in hand. Never muted: the musician needs to see why
+    /// their own action did not happen, whatever they dismissed earlier.
+    pub fn raise_error(&mut self, msg: impl Into<String>) {
+        self.last_error = Some(msg.into());
+        self.error_seq = self.error_seq.wrapping_add(1);
+    }
+
     /// Surface an error from a background failure. Respects the
     /// dismiss-mute state set by [`Model::dismiss_error`]: if the user has
-    /// already dismissed the banner and the system has not yet recovered,
-    /// the error is silently swallowed to stop the banner re-popping. Also
-    /// dedupes identical messages to avoid render storms during burst
+    /// already dismissed the banner and the store has not yet acknowledged a
+    /// write, the error is silently swallowed to stop the banner re-popping.
+    /// Also dedupes identical messages to avoid render storms during burst
     /// failures (#346).
     pub fn surface_error(&mut self, msg: impl Into<String>) {
         if self.error_muted {
@@ -93,14 +101,17 @@ impl Model {
             return;
         }
         self.last_error = Some(msg);
+        self.error_seq = self.error_seq.wrapping_add(1);
     }
 
-    /// Mark a confirmed success. Clears any active error and exits the
-    /// dismiss-mute state, since the system has demonstrably recovered and
-    /// future failures are worth showing again. Call from any handler that
-    /// completes a write.
-    pub fn record_success(&mut self) {
+    /// Leaves the dismiss mute alone: only an acknowledged write lifts it (#1936).
+    pub fn clear_error(&mut self) {
         self.last_error = None;
+    }
+
+    /// The store confirmed a write, so later failures are worth showing
+    /// again. Leaves a standing banner alone.
+    pub fn record_ack(&mut self) {
         self.error_muted = false;
     }
 
@@ -1237,15 +1248,33 @@ mod tests {
     }
 
     #[test]
-    fn record_success_clears_error_and_unmutes() {
+    fn record_ack_unmutes() {
         let mut model = Model::default();
         model.surface_error("oops");
         model.dismiss_error();
-        model.record_success();
-        assert!(model.last_error.is_none());
+        model.record_ack();
         assert!(!model.error_muted);
         model.surface_error("new error");
         assert_eq!(model.last_error.as_deref(), Some("new error"));
+    }
+
+    #[test]
+    fn clear_error_keeps_the_mute() {
+        let mut model = Model::default();
+        model.dismiss_error();
+        model.clear_error();
+        model.surface_error("still broken");
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn raise_error_ignores_the_mute_and_bumps_the_sequence() {
+        let mut model = Model::default();
+        model.dismiss_error();
+        model.raise_error("Title is required");
+        model.raise_error("Title is required");
+        assert_eq!(model.last_error.as_deref(), Some("Title is required"));
+        assert_eq!(model.error_seq, 2);
     }
 
     // ── entry_to_view ──────────────────────────────────────────────────

@@ -390,17 +390,95 @@ mod tests {
         assert_eq!(model.items[0].id, "p1");
     }
 
+    // ── Storage failures and the dismiss mute (#1936) ─────────────────
+
+    type Arm = (&'static str, fn() -> Event);
+
+    fn failure_arms() -> [Arm; 4] {
+        [
+            ("items read", || {
+                Event::StoreLoaded(PersistenceOutput::Failed)
+            }),
+            ("items write", || {
+                Event::StoreWritten(PersistenceOutput::Failed)
+            }),
+            ("sessions read", || {
+                Event::SessionsStoreLoaded(PersistenceOutput::Failed)
+            }),
+            ("sessions write", || {
+                Event::SessionStoreWritten(PersistenceOutput::Failed)
+            }),
+        ]
+    }
+
+    fn ack_arms() -> [Arm; 2] {
+        [
+            ("items write", || {
+                Event::StoreWritten(PersistenceOutput::Ack)
+            }),
+            ("sessions write", || {
+                Event::SessionStoreWritten(PersistenceOutput::Ack)
+            }),
+        ]
+    }
+
     #[test]
-    fn a_successful_write_clears_the_dismiss_mute() {
+    fn every_storage_failure_arm_reaches_the_banner_and_the_sequence() {
+        let app = crate::app::Intrada;
+        for (arm, fail) in failure_arms() {
+            let mut model = Model::default();
+            let _ = app.update(fail(), &mut model);
+            assert_eq!(
+                model.last_error.as_deref(),
+                Some("Couldn't access local storage."),
+                "{arm}"
+            );
+            assert_eq!(app.view(&model).error_seq, 1, "{arm}");
+        }
+    }
+
+    #[test]
+    fn an_acknowledged_write_after_dismiss_lets_the_next_failure_show() {
+        let app = crate::app::Intrada;
+        for (ack, ack_event) in ack_arms() {
+            for (arm, fail) in failure_arms() {
+                let mut model = Model::default();
+                let _ = app.update(fail(), &mut model);
+                let _ = app.update(Event::ClearError, &mut model);
+                let _ = app.update(ack_event(), &mut model);
+                let _ = app.update(fail(), &mut model);
+                assert!(
+                    model.last_error.is_some(),
+                    "{arm} after a dismiss and an acknowledged {ack}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_write_the_store_has_not_confirmed_keeps_the_mute() {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
         let mut model = Model::default();
-        model.dismiss_error();
+        let _ = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
+        let _ = app.update(Event::ClearError, &mut model);
         let _ = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
+        let _ = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
         assert!(
-            !model.error_muted,
-            "a successful local write should un-mute"
+            model.last_error.is_none(),
+            "a still-broken store must not re-pop a dismissed banner (#346)"
         );
+    }
+
+    #[test]
+    fn an_acknowledged_write_leaves_a_standing_banner_alone() {
+        let app = crate::app::Intrada;
+        for (ack, ack_event) in ack_arms() {
+            let mut model = Model::default();
+            let _ = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+            let _ = app.update(ack_event(), &mut model);
+            assert!(model.last_error.is_some(), "{ack}");
+        }
     }
 
     #[test]

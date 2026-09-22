@@ -871,7 +871,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         // ── Building Phase ─────────────────────────────────────────
         SessionEvent::StartBuilding => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
+                model.raise_error("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
             model.session_status = SessionStatus::Building(BuildingSession::default());
@@ -889,12 +889,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if let Err(e) = validation::validate_intention(&intention) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
@@ -911,23 +911,22 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             // record is the plays and `SwitchVariation` is what changes it
             // (#1739 decision 5).
             if !matches!(model.session_status, SessionStatus::Building(_)) {
-                model.last_error =
-                    Some("A variation can only be planned while building".to_string());
+                model.raise_error("A variation can only be planned while building".to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = entry_for_variant(model, &entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found"));
+                model.raise_error(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
 
             if let Err(e) = validation::validate_entry_variation(entry, &variant_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = entry_for_variant_mut(model, &entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found"));
+                model.raise_error(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
             entry.planned_variation_id = variant_id;
@@ -943,13 +942,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             if let Some(t) = target {
                 if let Err(e) = validation::validate_rep_target(&Some(t)) {
-                    model.last_error = Some(e.to_string());
+                    model.raise_error(e.to_string());
                     return crux_core::render::render();
                 }
             }
 
             let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
@@ -968,12 +967,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if let Err(e) = validation::validate_planned_duration(&duration_secs) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
@@ -984,11 +983,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::StartBuildingWith { item_id } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
+                model.raise_error("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
             if !model.items.iter().any(|i| i.id == item_id) {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
                 return crux_core::render::render();
             }
             model.session_status = SessionStatus::Building(BuildingSession::default());
@@ -997,7 +996,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::StartBuildingFromSuggestion { now } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
+                model.raise_error("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
             // Nothing to suggest is not an error: the CTA cannot be on screen
@@ -1028,7 +1027,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::StartBuildingWithPriorities { now } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
+                model.raise_error("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
             // Nothing starred is not an error, for the same reason as the Up
@@ -1056,7 +1055,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::AddToSetlist { item_id } => {
             if !matches!(model.session_status, SessionStatus::Building(_)) {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             }
 
@@ -1072,7 +1071,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             // Resolve the item and — for a piece — its related exercises as owned
             // tuples before taking the mutable Building borrow.
             let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
                 return crux_core::render::render();
             };
             let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
@@ -1092,7 +1091,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Internal error: expected Building state".to_string());
+                model.raise_error("Internal error: expected Building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1129,7 +1128,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::RemoveFromSetlist { entry_id } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1137,7 +1136,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             building.entries.retain(|e| e.id != entry_id);
 
             if building.entries.len() == len_before {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
                 return crux_core::render::render();
             }
 
@@ -1152,20 +1151,21 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             new_position,
         } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
             let Some(current_index) = building.entries.iter().position(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
             if new_position >= building.entries.len() {
-                model.last_error = Some(format!(
+                let msg = format!(
                     "Invalid position: {new_position} (max: {})",
                     building.entries.len().saturating_sub(1)
-                ));
+                );
+                model.raise_error(msg);
                 return crux_core::render::render();
             }
 
@@ -1175,7 +1175,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 // Revert — the move would split a block.
                 let entry = building.entries.remove(new_position);
                 building.entries.insert(current_index, entry);
-                model.last_error = Some("Can't move an item out of its block".to_string());
+                model.raise_error("Can't move an item out of its block".to_string());
                 return crux_core::render::render();
             }
             reindex_entries(&mut building.entries);
@@ -1188,7 +1188,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             new_position,
         } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1197,7 +1197,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 u.first().and_then(|e| e.group_id.as_deref()) == Some(group_id.as_str())
             }) else {
                 building.entries = units.into_iter().flatten().collect();
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                model.raise_error(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
@@ -1212,13 +1212,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::KeepOnlyPiece { group_id } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
             let in_block = |e: &SetlistEntry| e.group_id.as_deref() == Some(group_id.as_str());
             if !building.entries.iter().any(in_block) {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                model.raise_error(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             }
 
@@ -1236,7 +1236,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::UngroupBlock { group_id } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1250,7 +1250,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 found = true;
             }
             if !found {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                model.raise_error(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             }
             model.last_error = None;
@@ -1259,7 +1259,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::UngroupAllBlocks => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
             for entry in &mut building.entries {
@@ -1271,7 +1271,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::RemoveBlock { group_id } => {
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1280,7 +1280,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 .entries
                 .retain(|e| e.group_id.as_deref() != Some(group_id.as_str()));
             if building.entries.len() == len_before {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                model.raise_error(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             }
             reindex_entries(&mut building.entries);
@@ -1290,7 +1290,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::AddExerciseToBlock { group_id, item_id } => {
             let SessionStatus::Building(ref building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1303,22 +1303,22 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             let Some(anchor_index) = building.entries.iter().position(|e| {
                 e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Piece
             }) else {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                model.raise_error(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             };
 
             let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
                 return crux_core::render::render();
             };
             if item.kind != ItemKind::Exercise {
-                model.last_error = Some("Only an exercise can be added to a block".to_string());
+                model.raise_error("Only an exercise can be added to a block".to_string());
                 return crux_core::render::render();
             }
             let (id, title, kind) = (item.id.clone(), item.title.clone(), item.kind.clone());
 
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Internal error: expected Building state".to_string());
+                model.raise_error("Internal error: expected Building state".to_string());
                 return crux_core::render::render();
             };
             let mut entry = create_entry(&id, &title, kind, anchor_index);
@@ -1331,12 +1331,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::StartSession { now } => {
             let SessionStatus::Building(ref building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
+                model.raise_error("Not in building state".to_string());
                 return crux_core::render::render();
             };
 
             if let Err(e) = validation::validate_entries_not_empty(&building.entries, "Setlist") {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -1370,7 +1370,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                     model.last_error = None;
                 }
                 _ => {
-                    model.last_error = Some("Not in building state".to_string());
+                    model.raise_error("Not in building state".to_string());
                 }
             }
             crux_core::render::render()
@@ -1397,7 +1397,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             reading,
         } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
-                model.last_error = Some("Not in active state".to_string());
+                model.raise_error("Not in active state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1441,7 +1441,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::SkipItem { now } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
-                model.last_error = Some("Not in active state".to_string());
+                model.raise_error("Not in active state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1496,7 +1496,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::EndSessionEarly { now, reading } => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
-                model.last_error = Some("Not in active state".to_string());
+                model.raise_error("Not in active state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1523,12 +1523,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             reading,
         } => {
             if !matches!(model.session_status, SessionStatus::Active(_)) {
-                model.last_error = Some("Not in active state".to_string());
+                model.raise_error("Not in active state".to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = entry_for_variant(model, &entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found"));
+                model.raise_error(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
 
@@ -1542,12 +1542,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             if let Err(e) = validation::validate_entry_variation(entry, &variation_id, model) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             if let Err(e) = validation::validate_play_capacity(entry) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -1595,7 +1595,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             if let Err(e) = validation::validate_play_belongs(entry, &play_id) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -1615,7 +1615,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         } => {
             if let Some(ref state) = click {
                 if let Err(e) = validation::validate_click_state(state) {
-                    model.last_error = Some(e.to_string());
+                    model.raise_error(e.to_string());
                     return crux_core::render::render();
                 }
             }
@@ -1644,7 +1644,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             if let Err(e) = validation::validate_play_belongs(entry, &play_id) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -1662,12 +1662,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::UpdateEntryNotes { entry_id, notes } => {
             if let Err(e) = validation::validate_entry_notes(&notes) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
             let Some(entry) = entry_for_update_mut(model, &entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found"));
+                model.raise_error(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
 
@@ -1678,12 +1678,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::UpdateSessionNotes { notes } => {
             let SessionStatus::Summary(ref mut summary) = model.session_status else {
-                model.last_error = Some("Not in summary state".to_string());
+                model.raise_error("Not in summary state".to_string());
                 return crux_core::render::render();
             };
 
             if let Err(e) = validation::validate_session_notes(&notes) {
-                model.last_error = Some(e.to_string());
+                model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -1699,7 +1699,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 }
             }
             let SessionStatus::Summary(ref mut summary) = model.session_status else {
-                model.last_error = Some("Not in summary state".to_string());
+                model.raise_error("Not in summary state".to_string());
                 return crux_core::render::render();
             };
             summary.session_score = score;
@@ -1709,7 +1709,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::SaveSession { now } => {
             let SessionStatus::Summary(ref summary) = model.session_status else {
-                model.last_error = Some("Not in summary state".to_string());
+                model.raise_error("Not in summary state".to_string());
                 return crux_core::render::render();
             };
 
@@ -1732,7 +1732,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             let clear = Command::notify_shell(AppEffect::ClearSessionInProgress).into();
-            model.record_success();
+            model.clear_error();
             Command::all([
                 crate::persistence::save_session(practice_session),
                 clear,
@@ -1742,7 +1742,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::DiscardSession => {
             if !matches!(model.session_status, SessionStatus::Summary(_)) {
-                model.last_error = Some("Not in summary state".to_string());
+                model.raise_error("Not in summary state".to_string());
                 return crux_core::render::render();
             }
 
@@ -1758,15 +1758,14 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         // ── Recovery ───────────────────────────────────────────────
         SessionEvent::RecoverSession { session, now } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error =
-                    Some("Cannot recover: a practice is already in progress".to_string());
+                model.raise_error("Cannot recover: a practice is already in progress".to_string());
                 return crux_core::render::render();
             }
 
             // current_entry indexes len() - 1; the recovery blob is the one
             // input nothing keeps non-empty (#1807).
             if session.entries.is_empty() {
-                model.last_error = Some(
+                model.raise_error(
                     "Couldn't resume · the saved practice was empty, so it's been removed."
                         .to_string(),
                 );
