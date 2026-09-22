@@ -265,8 +265,7 @@ struct FocusPlayerScreen: View {
 
   // The indicator reads the audio's clock through the engine on every frame,
   // so it cannot drift against the click the way a view timer would (T19).
-  // Snapshots pass a reference date and get a settled frame with no ring;
-  // Reduce Motion gets the same frame, since the ring travels on every beat.
+  // Snapshots and Reduce Motion get a settled frame with no ring.
   @ViewBuilder private var barLine: some View {
     if referenceDate != nil || reduceMotion {
       barLineBody(currentBeat: nil)

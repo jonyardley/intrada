@@ -68,19 +68,19 @@ struct ClickControlTests {
     #expect(control(unavailable: true).spokenValue == "unavailable")
   }
 
-  /// A drag commit inside the click engine's own lead-in cancels the pulse
-  /// it just scheduled, so the click never sounds for the whole drag (#1823).
-  @Test func aVoiceOverSwipeStepsTheTempoEvenWithTheClickStopped() {
+  @Test func adjustStepsByOneTempoStepEachWay() {
     var steps: [Int] = []
-    let stopped = ClickControl(
+    let control = ClickControl(
       bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
       targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { steps.append($0) },
       onDragChange: { _ in })
-    stopped.adjust(.increment)
-    stopped.adjust(.decrement)
+    control.adjust(.increment)
+    control.adjust(.decrement)
     #expect(steps == [TempoScale.step, -TempoScale.step])
   }
 
+  /// A drag commit inside the click engine's own lead-in cancels the pulse
+  /// it just scheduled, so the click never sounds for the whole drag (#1823).
   @Test func theDragThrottleNeverCommitsFasterThanTheEngineCanSound() {
     #expect(ClickControl.commitInterval >= .milliseconds(Int(ClickEngine.leadInSeconds * 1000)))
   }
