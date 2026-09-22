@@ -41,7 +41,7 @@ struct FormSectionRow: View {
     case .opensSheet, .collapsed, .expanded:
       Image(systemName: chevron)
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkFaintIcon)
     }
   }
 

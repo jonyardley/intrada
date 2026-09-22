@@ -27,7 +27,7 @@ struct SessionCard: View {
       if session.completionStatus == .endedEarly {
         Text("Ended early")
           .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, 2)
       }
     }

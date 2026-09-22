@@ -16,7 +16,7 @@ struct SegmentedPills<Option: Hashable>: View {
   let label: (Option) -> String
   var hint: ((Option) -> String)?
   var font: Font = IntradaFont.tab
-  var unselectedColor: Color = IntradaColor.inkFaint
+  var unselectedColor: Color = IntradaColor.inkSecondary
   var layout: Layout = .inlineScrolling(edgeInset: 0)
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

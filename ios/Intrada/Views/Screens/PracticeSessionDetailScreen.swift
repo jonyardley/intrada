@@ -135,13 +135,13 @@ struct PracticeSessionDetailScreen: View {
         .foregroundStyle(IntradaColor.ink)
       Text(entryMeta(entry))
         .font(IntradaFont.micro)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
       if entry.plays.count > 1 {
         VStack(alignment: .leading, spacing: 2) {
           ForEach(entry.plays, id: \.id) { play in
             Text(playLine(play))
               .font(IntradaFont.micro)
-              .foregroundStyle(IntradaColor.inkFaint)
+              .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
         .padding(.top, 2)
@@ -150,7 +150,7 @@ struct PracticeSessionDetailScreen: View {
         // the multi-variation lines above rather than a one-off treatment.
         Text(singleVariationLine(play))
           .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, 2)
       }
       if let notes = entry.notes, !notes.isEmpty {

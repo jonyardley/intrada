@@ -103,7 +103,7 @@ struct ScaffoldPreviewSheet: View {
         .accessibilityHidden(true)
       Text("Fallback flags a change mapped to its arpeggio, not a scale.")
         .font(IntradaFont.micro)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .padding(.horizontal, IntradaSpacing.controlGap)
   }

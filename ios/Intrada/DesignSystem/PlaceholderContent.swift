@@ -14,7 +14,7 @@ struct PlaceholderContent: View {
         .foregroundStyle(glyphTint)
       Text(message)
         .font(IntradaFont.body)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
         .multilineTextAlignment(.center)
     }
     .padding(32)

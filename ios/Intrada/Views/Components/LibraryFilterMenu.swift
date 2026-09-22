@@ -55,7 +55,7 @@ struct LibraryFilterMenu: View {
         .font(IntradaFont.segment)
       Image(systemName: "chevron.down")
         .font(.system(size: 11, weight: .semibold))
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkFaintIcon)
     }
     .foregroundStyle(IntradaColor.ink)
   }

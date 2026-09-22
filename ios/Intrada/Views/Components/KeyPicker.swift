@@ -72,7 +72,7 @@ struct KeyPicker: View {
         } else {
           Text("Select a key")
             .font(IntradaFont.field)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,7 +84,7 @@ struct KeyPicker: View {
           UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
           Image(systemName: "xmark.circle.fill")
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Clear key")
@@ -92,7 +92,7 @@ struct KeyPicker: View {
 
       Image(systemName: "chevron.down")
         .font(IntradaFont.metaMedium)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkFaintIcon)
         .rotationEffect(.degrees(expanded ? 180 : 0))
         // Keep clear distance from the clear (×) button so a tap aimed at the
         // chevron doesn't land on clear and wipe the key.
@@ -180,10 +180,10 @@ struct KeyPicker: View {
         VStack(spacing: 2) {
           Text("\u{266A}")  // ♪
             .font(IntradaFont.cardTitle(26))
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
           Text("Select a key")
             .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
     }
@@ -204,7 +204,7 @@ struct KeyPicker: View {
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.ink)
           Text("\u{21C5} \(KeyHelper.prettify(pair.bottom))")  // ⇅
             .font(IntradaFont.micro)
-            .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkFaint)
+            .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkSecondary)
         }
       } else {
         Text(KeyHelper.prettify(primary))

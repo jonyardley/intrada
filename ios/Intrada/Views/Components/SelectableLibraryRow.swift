@@ -17,7 +17,7 @@ struct SelectableLibraryRow: View {
         .overlay(alignment: .trailing) {
           Image(systemName: added ? "checkmark.circle.fill" : "plus.circle")
             .font(.title2)
-            .foregroundStyle(added ? IntradaColor.accent : IntradaColor.inkFaint)
+            .foregroundStyle(added ? IntradaColor.accent : IntradaColor.inkFaintIcon)
             .padding(.trailing, IntradaSpacing.card)
             .accessibilityHidden(true)
         }

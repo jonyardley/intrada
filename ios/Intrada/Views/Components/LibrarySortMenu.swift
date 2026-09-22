@@ -76,7 +76,7 @@ struct LibrarySortMenu: View {
     } label: {
       Image(systemName: "arrow.up.arrow.down")
         .font(IntradaFont.tab)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkFaintIcon)
         .padding(IntradaSpacing.controlGap)
     }
     .accessibilityLabel("Sort")

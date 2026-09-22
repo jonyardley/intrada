@@ -43,7 +43,7 @@ struct ConsistencyBars: View {
             .animation(animation(index: index), value: grown)
           Text(week.label)
             .font(IntradaFont.micro)
-            .foregroundStyle(week.isCurrent ? IntradaColor.accent : IntradaColor.inkFaint)
+            .foregroundStyle(week.isCurrent ? IntradaColor.accent : IntradaColor.inkSecondary)
             .fontWeight(week.isCurrent ? .semibold : .regular)
         }
         .frame(maxWidth: .infinity)

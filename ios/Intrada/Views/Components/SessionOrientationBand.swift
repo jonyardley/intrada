@@ -24,7 +24,7 @@ struct SessionOrientationBand<Menu: View>: View {
         Text(positionLabel)
           .font(IntradaFont.badge)
           .tracking(IntradaFont.eyebrowTracking)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
           // Scales rather than truncating: "FOCUS · 3 OF 5" losing its tail to an
           // ellipsis costs the item number, which is the half that carries the fact.
           .lineLimit(1)

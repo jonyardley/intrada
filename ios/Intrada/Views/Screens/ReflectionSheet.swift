@@ -251,10 +251,7 @@ struct ReflectionSheet: View {
   }
 
   private func eyebrow(_ text: String) -> some View {
-    Text(text)
-      .font(IntradaFont.eyebrow).textCase(.uppercase).kerning(1.2)
-      .foregroundStyle(IntradaColor.inkFaint)
-      .frame(maxWidth: .infinity, alignment: .leading)
+    Eyebrow(text).frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

@@ -879,6 +879,11 @@ jobs:
       # Info.plist fields, and nothing else reads the two together (#1611).
       - name: Release name agrees across the app and the release lane
         run: bash scripts/check-release-name.sh
+      # ── faint ink ──────────────────────────────────────────────────────
+      # inkFaint fails AA on text and a snapshot cannot see contrast, so the
+      # token is kept to the section eyebrow (#1941).
+      - name: Faint ink stays on eyebrows
+        run: bash scripts/check-faint-ink.sh
       # ── the gates above, proven against broken input ────────────────────
       - name: Hygiene checks still bite
         run: bash scripts/tests/hygiene-checks-test.sh

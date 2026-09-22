@@ -13,7 +13,7 @@ struct LibrarySearchBar: View {
       HStack(spacing: IntradaSpacing.controlGap) {
         Image(systemName: "magnifyingglass")
           .font(.system(size: 15, weight: .medium))
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
         TextField("Search library", text: $text)
           .font(IntradaFont.field)
           .foregroundStyle(IntradaColor.ink)
@@ -28,7 +28,7 @@ struct LibrarySearchBar: View {
           } label: {
             Image(systemName: "xmark.circle.fill")
               .font(.system(size: 15))
-              .foregroundStyle(IntradaColor.inkFaint)
+              .foregroundStyle(IntradaColor.inkFaintIcon)
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Clear search")

@@ -298,6 +298,30 @@ expect 0 "the lane mentioning the release again further down" \
 
 expect 0 "the files this repo actually ships" bash "$repo_root/scripts/check-release-name.sh"
 
+# ── The faint ink check ─────────────────────────────────────────────────────
+
+faint="$work/faint"
+mkdir -p "$faint/Views"
+faint_check() {
+  FAINT_INK_ROOT="$faint" bash "$repo_root/scripts/check-faint-ink.sh"
+}
+
+printf 'Text("a").foregroundStyle(IntradaColor.inkFaint)\n' >"$faint/Views/SectionHeader.swift"
+printf 'Image(systemName: "x").foregroundStyle(IntradaColor.inkFaintIcon)\n' >"$faint/Views/Glyph.swift"
+printf 'Rectangle().fill(IntradaColor.inkFainter)\n' >"$faint/Views/Tick.swift"
+printf 'Text("b")  // not inkFaint: it fails AA\n' >"$faint/Views/Note.swift"
+expect 0 "the eyebrow, a glyph token, the fainter token and a comment" faint_check
+
+printf 'Text(meta).foregroundStyle(IntradaColor.inkFaint)\n' >"$faint/Views/Row.swift"
+expect 1 "faint ink on a meta line" faint_check
+rm "$faint/Views/Row.swift"
+
+printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Pills.swift"
+expect 1 "faint ink as a default argument" faint_check
+rm "$faint/Views/Pills.swift"
+
+expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then
@@ -305,4 +329,4 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
-printf '✓ hygiene self-test: %s cases, both gates seen to fail and to pass\n' "$passed"
+printf '✓ hygiene self-test: %s cases, every gate seen to fail and to pass\n' "$passed"
