@@ -43,7 +43,7 @@ enum ReflectionHandoff {
   static func run(_ plan: Plan, send: (Event) -> Bool) -> Bool {
     if let note = plan.note, !send(note) { return false }
     if !send(plan.nextItem) { return false }
-    plan.after.forEach { _ = send($0) }
+    for event in plan.after { _ = send(event) }
     return true
   }
 }
