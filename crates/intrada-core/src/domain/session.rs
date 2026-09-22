@@ -1781,6 +1781,15 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             // show that gap as elapsed practice (#962).
             let mut session = session;
             session.current_item_started_at = now;
+            // The open play's clock is the same clock one level down: left
+            // alone, its close would record the gap as practice (#1795).
+            if let Some(play) = session
+                .entries
+                .get_mut(session.current_index)
+                .and_then(SetlistEntry::open_play_mut)
+            {
+                play.started_at = now;
+            }
             model.session_status = SessionStatus::Active(session);
             model.last_error = None;
             crux_core::render::render()
@@ -3609,6 +3618,114 @@ mod tests {
             a.session_started_at, started_yesterday,
             "the session's historical start stays untouched"
         );
+    }
+
+    #[test]
+    fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
+        let mut model = model_with_library();
+        let started_yesterday = Utc::now() - chrono::Duration::hours(20);
+        let now = Utc::now();
+        let closed_seconds = 90;
+
+        let mut entry = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
+        let mut earlier = VariationPlay::opened(None, None, started_yesterday);
+        earlier.seconds = closed_seconds;
+        entry.plays.push(earlier);
+        entry
+            .plays
+            .push(VariationPlay::opened(None, None, started_yesterday));
+
+        let active = ActiveSession {
+            id: "stale-session".to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            current_item_started_at: started_yesterday,
+            session_started_at: started_yesterday,
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
+        );
+
+        let closed_at = now + chrono::Duration::seconds(3);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::PrepareReflection {
+                now: closed_at,
+                reading: TempoReading::silent(),
+            }),
+        );
+
+        let SessionStatus::Active(ref a) = model.session_status else {
+            panic!("Expected Active state");
+        };
+        let plays = &a.entries[0].plays;
+        assert_eq!(
+            plays[1].seconds, 3,
+            "the open play counts from the resume, not from before the kill (#1795)"
+        );
+        assert!(
+            plays[1].is_incidental(),
+            "three seconds after resume is a stray play, not one to offer a mark for"
+        );
+        assert_eq!(
+            plays[0].seconds, closed_seconds,
+            "a play closed before the kill keeps its recorded time"
+        );
+        assert_eq!(
+            plays[0].started_at, started_yesterday,
+            "a closed play keeps its historical start"
+        );
+    }
+
+    #[test]
+    fn test_recover_session_reanchors_only_the_current_entry_play() {
+        let mut model = model_with_library();
+        let started_yesterday = Utc::now() - chrono::Duration::hours(20);
+        let now = Utc::now();
+
+        let mut done = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
+        done.status = EntryStatus::Completed;
+        let mut done_play = VariationPlay::opened(None, None, started_yesterday);
+        done_play.seconds = 90;
+        done.plays.push(done_play);
+        let mut current = create_entry("piece-2", "Clair de Lune", ItemKind::Piece, 1);
+        current
+            .plays
+            .push(VariationPlay::opened(None, None, started_yesterday));
+
+        let active = ActiveSession {
+            id: "stale-session".to_string(),
+            entries: vec![done, current],
+            current_index: 1,
+            current_item_started_at: started_yesterday,
+            session_started_at: started_yesterday,
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
+        );
+
+        let SessionStatus::Active(ref a) = model.session_status else {
+            panic!("Expected Active state");
+        };
+        assert_eq!(
+            a.entries[1].plays[0].started_at, now,
+            "the current entry's open play counts from the resume"
+        );
+        assert_eq!(
+            a.entries[0].plays[0].started_at, started_yesterday,
+            "a completed entry's play keeps its historical start"
+        );
+        assert_eq!(a.entries[0].plays[0].seconds, 90);
     }
 
     #[test]
