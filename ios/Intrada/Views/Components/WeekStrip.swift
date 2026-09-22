@@ -60,7 +60,7 @@ private struct WeekDayCell: View {
         Text(weekdayInitial)
           .font(IntradaFont.micro)
           .fontWeight(isSelected || isToday ? .semibold : .regular)
-          .foregroundStyle(isSelected || isToday ? IntradaColor.accent : IntradaColor.inkFaint)
+          .foregroundStyle(isSelected || isToday ? IntradaColor.accent : IntradaColor.inkSecondary)
         Text(dayNumber)
           .font(IntradaFont.metaMedium)
           .foregroundStyle(dayNumberColor)

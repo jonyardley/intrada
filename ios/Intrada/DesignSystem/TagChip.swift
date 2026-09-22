@@ -42,7 +42,7 @@ struct TagChip: View {
       if removable {
         Image(systemName: "xmark")
           .font(.system(size: 9, weight: .semibold))
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
       }
     }
     .padding(.vertical, style == .outlined ? 5 : (removable ? 4 : 3))

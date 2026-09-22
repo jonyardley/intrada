@@ -298,6 +298,37 @@ expect 0 "the lane mentioning the release again further down" \
 
 expect 0 "the files this repo actually ships" bash "$repo_root/scripts/check-release-name.sh"
 
+# ── The faint ink check ─────────────────────────────────────────────────────
+
+faint="$work/faint"
+mkdir -p "$faint/Views/Components" "$faint/DesignSystem" "$faint/Views/Screens"
+faint_check() {
+  FAINT_INK_ROOT="$faint" bash "$repo_root/scripts/check-faint-ink.sh"
+}
+
+printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Components/SectionHeader.swift"
+printf 'static let inkFaint = Color(hex: 0xA99C8C)\nlet x = IntradaColor.inkFaint\n' >"$faint/DesignSystem/Theme.swift"
+printf 'Image(systemName: "x").foregroundStyle(IntradaColor.inkFaintIcon)\n' >"$faint/Views/Glyph.swift"
+printf 'Rectangle().fill(IntradaColor.inkFainter)\n' >"$faint/Views/Tick.swift"
+printf 'Text("b")  // not inkFaint: it fails AA\n' >"$faint/Views/Note.swift"
+expect 0 "the eyebrow, the token itself, a glyph token, the fainter token and a comment" faint_check
+
+printf 'Text(meta).foregroundStyle(IntradaColor.inkFaint)\n' >"$faint/Views/Row.swift"
+expect 1 "faint ink on a meta line" faint_check
+rm "$faint/Views/Row.swift"
+
+printf 'Text(meta)\n  .foregroundStyle(\n    IntradaColor.inkFaint\n  )\n' >"$faint/Views/Wrapped.swift"
+expect 1 "faint ink with the modifier wrapped over lines" faint_check
+rm "$faint/Views/Wrapped.swift"
+
+printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Screens/SectionHeader.swift"
+expect 1 "faint ink in a second file named like the eyebrow's" faint_check
+rm "$faint/Views/Screens/SectionHeader.swift"
+
+expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$repo_root/scripts/check-faint-ink.sh"
+
+expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then
@@ -305,4 +336,4 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
-printf '✓ hygiene self-test: %s cases, both gates seen to fail and to pass\n' "$passed"
+printf '✓ hygiene self-test: %s cases, every gate seen to fail and to pass\n' "$passed"

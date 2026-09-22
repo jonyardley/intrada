@@ -165,7 +165,9 @@ struct ReflectionSheet: View {
           }
           .padding(.top, IntradaSpacing.controlGap)
 
-          eyebrow(singlePlayTempoEyebrow).padding(.top, IntradaSpacing.card)
+          Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, IntradaSpacing.card)
           TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
             .padding(.top, IntradaSpacing.controlGap)
         }
@@ -265,10 +267,7 @@ struct ReflectionSheet: View {
   }
 
   private func eyebrow(_ text: String) -> some View {
-    Text(text)
-      .font(IntradaFont.eyebrow).textCase(.uppercase).kerning(1.2)
-      .foregroundStyle(IntradaColor.inkFaint)
-      .frame(maxWidth: .infinity, alignment: .leading)
+    Eyebrow(text).frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

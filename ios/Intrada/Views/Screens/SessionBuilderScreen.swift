@@ -240,7 +240,7 @@ struct SessionBuilderScreen: View {
   private var gripGlyph: some View {
     Image(systemName: "line.3.horizontal")
       .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.inkFaint)
+      .foregroundStyle(IntradaColor.inkFaintIcon)
       .accessibilityHidden(true)
   }
 
@@ -290,9 +290,11 @@ struct SessionBuilderScreen: View {
         Button {
           removeUnit(block)
         } label: {
-          Image(systemName: "xmark").font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaint)
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
+          Image(systemName: "xmark").font(IntradaFont.meta).foregroundStyle(
+            IntradaColor.inkFaintIcon
+          )
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .hitTargetCompensation()
@@ -344,7 +346,7 @@ struct SessionBuilderScreen: View {
       .accessibilityAction(named: "Move down") { moveUnit(block, by: 1) }
       blockMenu(block, groupId: groupId)
       Image(systemName: collapsed ? "chevron.down" : "chevron.up")
-        .font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaint).frame(width: 20)
+        .font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaintIcon).frame(width: 20)
         .accessibilityHidden(true)
     }
     .padding(.horizontal, IntradaSpacing.cardCompact)

@@ -72,7 +72,7 @@ struct VariationRowsSection: View {
       HStack(spacing: IntradaSpacing.cardCompact) {
         Image(systemName: "line.3.horizontal")
           .imageScale(.small)
-          .foregroundStyle(isDragged ? IntradaColor.ink : IntradaColor.inkFaint)
+          .foregroundStyle(isDragged ? IntradaColor.ink : IntradaColor.inkFaintIcon)
           .frame(height: 44)
           .contentShape(Rectangle().inset(by: -8))
           .gesture(reorder(current.id))

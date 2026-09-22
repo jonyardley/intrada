@@ -8,8 +8,7 @@ struct KindSegment: View {
     VStack(spacing: IntradaSpacing.controlGap) {
       SegmentedPills(
         options: [.piece, .exercise], selection: $selection, label: \.label,
-        hint: \.caption, font: IntradaFont.segment,
-        unselectedColor: IntradaColor.inkSecondary, layout: .fullWidthTrack)
+        hint: \.caption, font: IntradaFont.segment, layout: .fullWidthTrack)
 
       Text(selection.caption)
         .font(IntradaFont.meta)

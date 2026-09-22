@@ -66,6 +66,7 @@ hygiene:
         "actionlint:$actionlint_cmd"
         "check-links:bash scripts/check-links.sh"
         "check-release-name:bash scripts/check-release-name.sh"
+        "check-faint-ink:bash scripts/check-faint-ink.sh"
         "hygiene-checks-test:bash scripts/tests/hygiene-checks-test.sh"
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"

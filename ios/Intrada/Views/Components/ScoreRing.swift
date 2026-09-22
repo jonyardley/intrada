@@ -44,11 +44,11 @@ struct ScoreRing: View {
             .font(IntradaFont.scoreNumeral(size * 0.33))
             .lineLimit(1)
             .minimumScaleFactor(0.5)
-            .foregroundStyle(isUnrated ? IntradaColor.inkFaint : IntradaColor.ink)
+            .foregroundStyle(isUnrated ? IntradaColor.inkSecondary : IntradaColor.ink)
         } else if isUnrated {
           // "Not yet played" reads as a rest (see EighthRestShape).
           EighthRestShape()
-            .fill(IntradaColor.inkFaint)
+            .fill(IntradaColor.inkFaintIcon)
             .frame(width: size * 0.45 * EighthRestShape.aspect, height: size * 0.45)
         } else {
           Text("\(clampedScore)")
@@ -58,7 +58,7 @@ struct ScoreRing: View {
             Text("OF 10")
               .font(IntradaFont.eyebrow)
               .kerning(0.5)
-              .foregroundStyle(IntradaColor.inkFaint)
+              .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
       }

@@ -98,7 +98,7 @@ struct EntrySettingsSheet: View {
           Spacer()
           Image(systemName: "chevron.up.chevron.down")
             .imageScale(.small)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
         }
         .padding(IntradaSpacing.cardCompact)
         .cardSurface(cornerRadius: IntradaRadius.control)

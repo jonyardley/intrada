@@ -92,7 +92,7 @@ struct ChordChartEditSheet: View {
       if text.isEmpty {
         Text("| Cm7 | F7 | Bbmaj7 |")
           .font(IntradaFont.chartEditor)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.horizontal, 5)
           .padding(.vertical, 8)
           .allowsHitTesting(false)
@@ -141,7 +141,7 @@ struct ChordChartEditSheet: View {
         .foregroundStyle(IntradaColor.inkSecondary)
       Text("Cm7  F7  Bbmaj7  Aø7  D7alt")
         .font(IntradaFont.chart)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.card)

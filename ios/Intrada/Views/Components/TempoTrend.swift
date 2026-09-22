@@ -217,7 +217,7 @@ struct TempoTrend: View {
       }
     }
     .font(IntradaFont.micro)
-    .foregroundStyle(IntradaColor.inkFaint)
+    .foregroundStyle(IntradaColor.inkSecondary)
     .padding(.top, IntradaSpacing.controlGap)
   }
 

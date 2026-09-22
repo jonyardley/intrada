@@ -113,11 +113,11 @@ struct SessionSummaryScreen: View {
             .foregroundStyle(IntradaColor.ink)
           Text(metaLine(entry, unfinished: unfinished))
             .font(IntradaFont.micro)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkSecondary)
           if let aim = entry.intention, !aim.isEmpty {
             Text("“\(aim)”")
               .font(IntradaFont.micro).italic()
-              .foregroundStyle(IntradaColor.inkFaint)
+              .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
         Spacer()
@@ -245,7 +245,7 @@ struct SessionSummaryScreen: View {
               .frame(maxWidth: .infinity, alignment: .leading)
             Text(play.metaParts.joined(separator: " · "))
               .font(IntradaFont.micro)
-              .foregroundStyle(IntradaColor.inkFaint)
+              .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
         ScoreSelector(

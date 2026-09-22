@@ -114,7 +114,7 @@ struct UsedInRow: View {
         if navigable {
           Image(systemName: "chevron.right")
             .imageScale(.small)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
             .accessibilityHidden(true)
         }
       }

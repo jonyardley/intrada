@@ -21,7 +21,7 @@ struct ClickBarLine: View {
         dots
         Image(systemName: "chevron.right")
           .imageScale(.small)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
       }
       .padding(.horizontal, IntradaSpacing.cardCompact)
       .frame(minHeight: 44)

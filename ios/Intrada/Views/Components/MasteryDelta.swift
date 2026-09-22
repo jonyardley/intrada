@@ -25,7 +25,7 @@ struct MasteryDelta: View {
         if let subtitle {
           Text(subtitle)
             .font(IntradaFont.micro)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
       Spacer(minLength: IntradaSpacing.controlGap)
@@ -35,7 +35,7 @@ struct MasteryDelta: View {
             .foregroundStyle(IntradaColor.figureMuted)
           Image(systemName: "arrow.right")
             .font(.system(size: 13))
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
         }
         Text("\(now)")
           .foregroundStyle(IntradaColor.success)
