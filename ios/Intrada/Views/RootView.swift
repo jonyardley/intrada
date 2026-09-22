@@ -70,6 +70,9 @@ struct RootView: View {
         if let error = store.viewModel?.error {
           GlobalBanner(message: error) { store.send(.clearError) }
         }
+        if let notice = store.viewModel?.notice {
+          GlobalBanner(message: notice, tone: .notice) { store.send(.clearNotice) }
+        }
       }
     }
     .task {

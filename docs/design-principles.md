@@ -1035,3 +1035,19 @@ screen had five label styles with no order between them. Now there are three:
 - **A tag** is a pill, and the piece or exercise badge is the first pill in the
   same scrolling row, tinted by type. The badge is a pill wherever it appears,
   the Practice player included, so one shape means "what kind of thing this is".
+
+### T30: The banner has two tones, and grey means it worked
+
+**Status:** DECIDED 2026-09-22 (jonyardley/intrada#1325). The red banner was the
+only way the app could say anything, so a true outcome that was not a failure
+either showed up red or went unsaid. Now `GlobalBanner` has two tones:
+
+- **Danger** stays for a refusal or a failed write: `danger` ink on
+  `dangerBanner`, the warning triangle, and the success haptic withheld.
+- **Notice** is for something that worked but needs a word: `inkSecondary` on
+  `cardFill` with a hairline underneath and the info circle. It reads as a note
+  on the page, not an alarm. The tap that raised it keeps its success haptic.
+
+Both can stand at once, error on top, and each dismisses on its own. The first
+notice is a play closing with the metronome at a speed the app cannot keep as a
+crotchet tempo.

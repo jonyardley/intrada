@@ -44,6 +44,8 @@ enum IntradaColor {
   /// The banner and whatever it points at wear the same wash, so the pair reads
   /// as one thing rather than two unrelated red surfaces (#1595).
   static let dangerWash = danger.opacity(0.10)
+  /// The banner keeps a heavier wash than `dangerWash` so the recorded references stay valid.
+  static let dangerBanner = danger.opacity(0.12)
   static let dangerEdge = danger.opacity(0.25)
   static let shadow = ink.opacity(0.05)
   static let buttonShadow = ink.opacity(0.06)
