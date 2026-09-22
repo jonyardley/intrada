@@ -274,7 +274,7 @@ pub struct BuildingSession {
 }
 
 /// State during active practice (Active phase).
-/// Persisted under `Store.sessionInProgressKey` for crash recovery.
+/// Persisted for crash recovery under a shell key built from `BLOB_VERSION`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSession {
@@ -286,6 +286,12 @@ pub struct ActiveSession {
 }
 
 impl ActiveSession {
+    /// The crash-recovery blob is positional bincode, so a build reads only a
+    /// blob of its own shape. The shell names its storage key by this number
+    /// and `active_session_blob_wire_is_pinned` pins it beside the bytes, so a
+    /// shape change bumps them together (#1116).
+    pub const BLOB_VERSION: u32 = 4;
+
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
     pub fn current_entry(&self) -> &SetlistEntry {
@@ -6914,11 +6920,20 @@ mod tests {
         "3032362d30392d30335430383a34373a30305a",
     );
 
+    const PINNED_BLOB_VERSION: u32 = 4;
+
+    /// Versions 1 to 3 named blobs of earlier shapes; reusing one would let a
+    /// blob from that build decode into a valid-looking wrong session.
+    const RETIRED_BLOB_VERSION_MAX: u32 = 3;
+    const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
+
     /// `AppEffect::SaveSessionInProgress(ActiveSession)` is positional bincode
     /// written by one build and read by the next, so any change to this graph
-    /// must bump `Store.sessionInProgressKey` in the shell or an old blob
-    /// decodes into a valid-looking wrong session (#1345). When this fails:
-    /// bump the key, then paste the new hex. Never just paste the hex.
+    /// takes a new `ActiveSession::BLOB_VERSION`, which the shell builds its
+    /// storage key from, or an old blob decodes into a valid-looking wrong
+    /// session (#1345). The shell key was once left behind when only the hex
+    /// was re-pinned (#1116), so version and hex are pinned as one pair. When
+    /// this fails: bump `BLOB_VERSION`, then re-pin both. Never just the hex.
     #[test]
     fn active_session_blob_wire_is_pinned() {
         use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
@@ -6927,8 +6942,9 @@ mod tests {
         BincodeFfiFormat::serialize(&mut bytes, &session).expect("serialize");
         let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
-            hex, PINNED_ACTIVE_SESSION_HEX,
-            "the crash-recovery blob changed shape: bump Store.sessionInProgressKey, then re-pin"
+            (ActiveSession::BLOB_VERSION, hex.as_str()),
+            (PINNED_BLOB_VERSION, PINNED_ACTIVE_SESSION_HEX),
+            "the crash-recovery blob changed shape: bump ActiveSession::BLOB_VERSION, then re-pin the version and the hex together"
         );
         let back: ActiveSession =
             BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");

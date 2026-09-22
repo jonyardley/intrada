@@ -614,8 +614,12 @@ non-self-describing wire.
 
 The coach era missed this three times (#1223, #1244, #1256) and answered it
 with a per-variant wire-pin test. `active_session_blob_wire_is_pinned`
-(`domain/session.rs`) now pins the blob the same way (#1345). When it fails,
-bump `Store.sessionInProgressKey` first, then re-pin. Never only re-pin.
+(`domain/session.rs`) now pins the blob the same way (#1345). The shell builds
+its UserDefaults key from `ActiveSession::BLOB_VERSION`, which crosses the
+bridge as `session_blob_version()`, and the pin test asserts the version and
+the hex as one pair, because the hex was once re-pinned with the shell key left
+behind (#1116). When it fails, bump `BLOB_VERSION` first, then re-pin both.
+Never only re-pin the hex.
 
 ## Why docs and issues use plain language (2026-08-14)
 
