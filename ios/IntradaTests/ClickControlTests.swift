@@ -104,6 +104,29 @@ struct ClickControllerTests {
     #expect(ClickController.seedBpm(from: 320) == TempoScale.range.upperBound)
   }
 
+  @Test(arguments: [
+    (UInt16?(66), UInt8(4), true),
+    (UInt16?(208), UInt8(4), true),
+    (UInt16?(240), UInt8(4), false),
+    (UInt16?(30), UInt8(4), false),
+    (UInt16?(240), UInt8(8), true),
+    (UInt16?(nil), UInt8(4), false),
+  ])
+  func theRowNamesATargetOnlyWhenTheClickSoundsIt(target: UInt16?, unit: UInt8, sounds: Bool) {
+    let click = ClickController()
+    click.reseed(target: target, metre: Metre(beats: unit == 8 ? 6 : 4, unit: unit, groups: nil))
+    #expect(click.soundsTarget == sounds)
+  }
+
+  @Test func aBarInAnotherUnitLeavesTheSeedAndKeepsAClampedTargetUnsounded() {
+    let click = ClickController()
+    click.reseed(target: 240, metre: nil)
+
+    click.setMetre(Metre(beats: 6, unit: 8, groups: nil))
+    #expect(!click.soundsTarget)
+    #expect(!click.isAtSeededTempo)
+  }
+
   @Test func movingToANewItemReseedsToThatItemsTempo() {
     let click = ClickController()
 
@@ -319,5 +342,16 @@ struct ClickPatternTests {
     #expect(
       ClickSheet.gridRows(Metre(beats: 6, unit: 8, groups: [3, 3])).map(\.count) == [6],
       "a bar that fits stays on one row")
+  }
+}
+
+@MainActor
+struct ReflectionSheetHeadingTests {
+  @Test func aMeasuredItemShowsItsTime() {
+    #expect(ReflectionSheet.heading(elapsedDisplay: "7:00") == "Item complete · 7:00")
+  }
+
+  @Test func anUnmeasuredItemShowsNoTime() {
+    #expect(ReflectionSheet.heading(elapsedDisplay: nil) == "Item complete")
   }
 }
