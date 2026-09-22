@@ -79,7 +79,7 @@ struct ReflectionResult {
 
 struct ReflectionSheet: View {
   let itemTitle: String
-  let elapsedDisplay: String
+  let elapsedDisplay: String?
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
   /// The beat value an unstamped row's stepper counts in, and reads `♪` for (#1499).
@@ -99,7 +99,7 @@ struct ReflectionSheet: View {
   @State private var tempos: [String: TrackedTempo]
 
   init(
-    itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
+    itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
     startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
@@ -126,11 +126,15 @@ struct ReflectionSheet: View {
         }, uniquingKeysWith: { first, _ in first }))
   }
 
+  static func heading(elapsedDisplay: String?) -> String {
+    elapsedDisplay.map { "Item complete · \($0)" } ?? "Item complete"
+  }
+
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         VStack(spacing: 8) {
-          Text("Item complete · \(elapsedDisplay)")
+          Text(Self.heading(elapsedDisplay: elapsedDisplay))
             .font(IntradaFont.badge).textCase(.uppercase).kerning(1.5)
             .foregroundStyle(IntradaColor.exerciseBadgeFg)
           Text("How did it go?")

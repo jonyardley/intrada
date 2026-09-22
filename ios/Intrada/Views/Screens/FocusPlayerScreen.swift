@@ -228,8 +228,15 @@ struct FocusPlayerScreen: View {
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 
+  // No ring beats one counting from screen appearance, for the same reason as
+  // the session band's total (#1942).
   @ViewBuilder private func timer(_ active: ActiveSessionView) -> some View {
-    let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
+    if let start = SessionClock.parseRFC3339(active.currentItemStartedAt) {
+      timerRing(active, start: start)
+    }
+  }
+
+  @ViewBuilder private func timerRing(_ active: ActiveSessionView, start: Date) -> some View {
     if let referenceDate {
       timerBody(
         elapsed: Int(referenceDate.timeIntervalSince(start)),
@@ -247,11 +254,13 @@ struct FocusPlayerScreen: View {
     TimerRing(elapsed: elapsed, planned: planned.map(Int.init))
   }
 
-  // A marking with no BPM ("Andante", no number) is not a tempo the click can
-  // play, so the row falls through to naming the click rather than advertising
-  // a target the next tap would not sound.
+  // A marking with no BPM ("Andante", no number), or one outside the click's
+  // range (crotchet = 240 plays 208), is not a tempo the click can play, so the
+  // row falls through to naming the click rather than advertising a target the
+  // next tap would not sound (#1942).
   private func clickRow(_ active: ActiveSessionView) -> some View {
-    let declared = active.currentItemTempoBpm != nil
+    let declared = ClickController.canSound(
+      target: active.currentItemTempoBpm, unit: click.metre.unit)
     return ClickControl(
       bpm: click.bpm, unit: click.metre.unit, isRunning: click.isRunning,
       unavailable: click.unavailable,
@@ -338,7 +347,7 @@ struct FocusPlayerScreen: View {
   private struct ReflectionTarget: Identifiable {
     let id: String  // the current entry's ulid
     let title: String
-    let elapsedDisplay: String
+    let elapsedDisplay: String?
     let tempoTargetBpm: UInt16?
     /// The click at the moment the item ended, read before it was stopped:
     /// `PrepareReflection` stamps from it and `NextItem` must send it again
@@ -365,8 +374,9 @@ struct FocusPlayerScreen: View {
       store.send(.session(.nextItem(now: now, nextItemStartedAt: now, reading: reading)))
       return
     }
-    let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
-    let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
+    let elapsed = SessionClock.parseRFC3339(active.currentItemStartedAt).map {
+      max(Int((referenceDate ?? Date()).timeIntervalSince($0)), 0)
+    }
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
@@ -381,7 +391,7 @@ struct FocusPlayerScreen: View {
       ?? entry.plays
     reflecting = ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
-      elapsedDisplay: SessionClock.clockDisplay(elapsed),
+      elapsedDisplay: elapsed.map(SessionClock.clockDisplay),
       tempoTargetBpm: active.currentItemTempoBpm, reading: reading,
       plays: ReflectionPlay.rows(stamped), now: now)
   }

@@ -34,6 +34,11 @@ final class ClickController {
     TempoScale.clamp(target.map(Int.init) ?? TempoScale.defaultBpm, unit: unit)
   }
 
+  static func canSound(target: UInt16?, unit: UInt8 = 4) -> Bool {
+    guard let target else { return false }
+    return seedBpm(from: target, unit: unit) == Int(target)
+  }
+
   /// Silences the click: its tempo and bar belonged to the item that just
   /// finished. The metre opens with the piece's answer in it (T19).
   func reseed(target: UInt16?, metre itemMetre: Metre?) {
