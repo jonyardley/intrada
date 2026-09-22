@@ -178,7 +178,7 @@ struct LinkedItemPickerSheet: View {
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       } else {
-        Eyebrow("\(count) \(copy.selectedSuffix)")
+        Eyebrow("\(count) \(copy.selectedSuffix)", tint: IntradaColor.inkSecondary)
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)

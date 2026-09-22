@@ -4,6 +4,9 @@
 # and a pixel snapshot cannot see contrast. Text takes inkSecondary and glyphs
 # inkFaintIcon; the Eyebrow view in SectionHeader.swift is the one reader.
 #
+# A `//` inside a string literal is read as a comment, so a use after one on
+# the same line slips through: deliberate, not tracked.
+#
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 
@@ -13,9 +16,15 @@ cd "$(git rev-parse --show-toplevel)"
 
 root="${FAINT_INK_ROOT:-ios/Intrada}"
 
+if [ ! -d "$root" ]; then
+  echo "✗ check-faint-ink: no $root to read" >&2
+  exit 2
+fi
+
 hits=$(find "$root" -name '*.swift' \
-  ! -name Theme.swift ! -name SectionHeader.swift -print0 |
-  xargs -0 perl -ne 's{//.*}{}; print "$ARGV:$.: $_" if /\binkFaint(?![A-Za-z])/; close ARGV if eof' || true)
+  ! -path "$root/DesignSystem/Theme.swift" \
+  ! -path "$root/Views/Components/SectionHeader.swift" -print0 |
+  xargs -0 perl -ne 's{//.*}{}; print "$ARGV:$.: $_" if /\binkFaint(?![A-Za-z])/; close ARGV if eof')
 
 if [ -n "$hits" ]; then
   echo "✗ inkFaint on something other than an eyebrow (#1941):" >&2

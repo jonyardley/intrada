@@ -178,7 +178,6 @@ struct ClickSheet: View {
           get: { ClickPattern.matching(click.sounding, in: metre) },
           set: { if let pattern = $0 { click.apply(pattern) } }),
         label: { $0?.title ?? "" },
-        unselectedColor: IntradaColor.inkSecondary,
         layout: .fullWidthTrack)
       beatGrid(metre)
     }

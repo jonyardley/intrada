@@ -157,7 +157,9 @@ struct ReflectionSheet: View {
           }
           .padding(.top, IntradaSpacing.controlGap)
 
-          eyebrow(singlePlayTempoEyebrow).padding(.top, IntradaSpacing.card)
+          Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, IntradaSpacing.card)
           TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
             .padding(.top, IntradaSpacing.controlGap)
         }

@@ -798,7 +798,7 @@ private struct VariationRingItem: View {
   }
 
   private var captionColor: Color {
-    variation.isSolid ? IntradaColor.accent : IntradaColor.inkSecondary
+    variation.isSolid ? IntradaColor.accent : IntradaColor.inkFaintIcon
   }
 
   private var accessibilityLabel: String {
@@ -876,7 +876,7 @@ private struct LinkedExerciseEditRow: View {
             Image(systemName: "chevron.up")
               .imageScale(.small)
               .font(IntradaFont.meta)
-              .foregroundStyle(isFirst ? IntradaColor.inkFaintIcon : IntradaColor.inkSecondary)
+              .foregroundStyle(isFirst ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
           }
           .buttonStyle(.plain)
           .disabled(isFirst)
@@ -885,7 +885,7 @@ private struct LinkedExerciseEditRow: View {
             Image(systemName: "chevron.down")
               .imageScale(.small)
               .font(IntradaFont.meta)
-              .foregroundStyle(isLast ? IntradaColor.inkFaintIcon : IntradaColor.inkSecondary)
+              .foregroundStyle(isLast ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
           }
           .buttonStyle(.plain)
           .disabled(isLast)

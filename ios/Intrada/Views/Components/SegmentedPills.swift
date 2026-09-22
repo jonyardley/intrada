@@ -94,7 +94,7 @@ struct SegmentedPills<Option: Hashable>: View {
             layout: .inlineScrolling(edgeInset: 0))
           SegmentedPills(
             options: [.piece, .exercise], selection: $kind, label: \.label,
-            font: IntradaFont.segment, unselectedColor: IntradaColor.inkSecondary,
+            font: IntradaFont.segment,
             layout: .fullWidthTrack)
         }
         .padding(IntradaSpacing.card)
