@@ -27,7 +27,7 @@ struct RepCounter: View {
 
   private var header: some View {
     HStack {
-      Text("Repetitions")
+      Text("Passes")
         .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer()
@@ -42,7 +42,7 @@ struct RepCounter: View {
       .monospacedDigit()
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Repetitions")
+    .accessibilityLabel("Passes")
     .accessibilityValue(spokenCount)
   }
 
@@ -85,7 +85,7 @@ struct RepCounter: View {
       disabled: reached, action: onGotIt
     )
     .accessibilityLabel("Got it")
-    .accessibilityHint("Counts one repetition")
+    .accessibilityHint("Counts one pass")
   }
 
   private func notQuite(title: String) -> some View {
@@ -95,7 +95,7 @@ struct RepCounter: View {
       disabled: reached, action: onNotQuite
     )
     .accessibilityLabel(title)
-    .accessibilityHint("Takes one repetition off")
+    .accessibilityHint("Takes one pass off")
   }
 
   private func repButton(
