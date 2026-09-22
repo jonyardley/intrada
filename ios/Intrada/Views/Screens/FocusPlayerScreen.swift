@@ -228,8 +228,8 @@ struct FocusPlayerScreen: View {
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 
-  // No ring beats one counting from screen appearance, for the same reason as
-  // the session band's total (#1942).
+  // An anchor that will not parse draws no ring rather than counting from when
+  // the screen appeared (#1942).
   @ViewBuilder private func timer(_ active: ActiveSessionView) -> some View {
     if let start = SessionClock.parseRFC3339(active.currentItemStartedAt) {
       timerRing(active, start: start)
@@ -254,13 +254,10 @@ struct FocusPlayerScreen: View {
     TimerRing(elapsed: elapsed, planned: planned.map(Int.init))
   }
 
-  // A marking with no BPM ("Andante", no number), or one outside the click's
-  // range (crotchet = 240 plays 208), is not a tempo the click can play, so the
-  // row falls through to naming the click rather than advertising a target the
-  // next tap would not sound (#1942).
+  // A marking with no BPM, or one outside the click's range (crotchet = 240
+  // plays 208), names the click instead (#1942).
   private func clickRow(_ active: ActiveSessionView) -> some View {
-    let declared = ClickController.canSound(
-      target: active.currentItemTempoBpm, unit: click.metre.unit)
+    let declared = click.soundsTarget
     return ClickControl(
       bpm: click.bpm, unit: click.metre.unit, isRunning: click.isRunning,
       unavailable: click.unavailable,

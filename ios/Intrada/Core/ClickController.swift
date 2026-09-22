@@ -20,9 +20,14 @@ final class ClickController {
 
   private var engine: ClickEngine?
   private var seeded = TempoScale.defaultBpm
+  private var seededUnit: UInt8 = 4
   private var configured = false
 
-  var isAtSeededTempo: Bool { bpm == seeded }
+  /// A bar change to another beat unit re-reads the same number as a different
+  /// tempo, so it leaves the seed even when `bpm` is untouched (#1942).
+  var isAtSeededTempo: Bool { bpm == seeded && metre.unit == seededUnit }
+  /// False when the item declares no BPM, or one the clamp moved (#1942).
+  private(set) var soundsTarget = false
   /// `nil` until the click is started or its bar is changed: the core reads
   /// `Some` as a metre the player chose, and would normalise a tempo against
   /// it (spec § question 2).
@@ -34,11 +39,6 @@ final class ClickController {
     TempoScale.clamp(target.map(Int.init) ?? TempoScale.defaultBpm, unit: unit)
   }
 
-  static func canSound(target: UInt16?, unit: UInt8 = 4) -> Bool {
-    guard let target else { return false }
-    return seedBpm(from: target, unit: unit) == Int(target)
-  }
-
   /// Silences the click: its tempo and bar belonged to the item that just
   /// finished. The metre opens with the piece's answer in it (T19).
   func reseed(target: UInt16?, metre itemMetre: Metre?) {
@@ -46,6 +46,8 @@ final class ClickController {
     unavailable = false
     metre = itemMetre ?? Metre(beats: 4, unit: 4, groups: nil)
     seeded = Self.seedBpm(from: target, unit: metre.unit)
+    seededUnit = metre.unit
+    soundsTarget = target.map { Int($0) == seeded } ?? false
     bpm = seeded
     sounding = ClickPattern.everyBeat(of: metre)
     configured = false

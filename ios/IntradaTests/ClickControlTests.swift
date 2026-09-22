@@ -113,7 +113,18 @@ struct ClickControllerTests {
     (UInt16?(nil), UInt8(4), false),
   ])
   func theRowNamesATargetOnlyWhenTheClickSoundsIt(target: UInt16?, unit: UInt8, sounds: Bool) {
-    #expect(ClickController.canSound(target: target, unit: unit) == sounds)
+    let click = ClickController()
+    click.reseed(target: target, metre: Metre(beats: unit == 8 ? 6 : 4, unit: unit, groups: nil))
+    #expect(click.soundsTarget == sounds)
+  }
+
+  @Test func aBarInAnotherUnitLeavesTheSeedAndKeepsAClampedTargetUnsounded() {
+    let click = ClickController()
+    click.reseed(target: 240, metre: nil)
+
+    click.setMetre(Metre(beats: 6, unit: 8, groups: nil))
+    #expect(!click.soundsTarget)
+    #expect(!click.isAtSeededTempo)
   }
 
   @Test func movingToANewItemReseedsToThatItemsTempo() {
