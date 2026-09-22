@@ -1124,7 +1124,7 @@ mod tests {
     }
 
     /// "é" is two bytes: a byte count drops each of these at half the cap
-    /// (#1944). Deleting the character count from any one reader fails its row.
+    /// (#1944). Counting bytes at any one reader fails its row.
     #[test]
     fn an_accented_reading_at_the_cap_is_kept() {
         let title = "é".repeat(MAX_TITLE);
@@ -1168,6 +1168,19 @@ mod tests {
             assert_eq!(&field.value, expected, "{reader}");
             assert_eq!(field.source, source, "{reader}");
         }
+    }
+
+    /// Deleting the composer length filter keeps this one: nothing else drops
+    /// a recognised credit that is too long for the form.
+    #[test]
+    fn a_credit_longer_than_the_composer_field_is_dropped() {
+        let composer = "é".repeat(MAX_COMPOSER + 1);
+        let draft = read_fields(&page(vec![line(
+            &format!("Music by {composer}"),
+            0.18,
+            0.03,
+        )]));
+        assert!(draft.composer.is_none(), "too long for the form");
     }
 
     /// #1454: a suggestion claimed `confidence: 1.0`, so the field with the least

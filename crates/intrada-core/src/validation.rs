@@ -87,7 +87,7 @@ pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
 }
 
 /// Every cap is in characters, as the messages say; `str::len` is bytes (#1944).
-pub fn exceeds_chars(value: &str, max: usize) -> bool {
+pub(crate) fn exceeds_chars(value: &str, max: usize) -> bool {
     value.chars().count() > max
 }
 
