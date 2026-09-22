@@ -11,7 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
 use crate::domain::types::Tempo;
-use crate::validation::{MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TEMPO_MARKING, MAX_TITLE};
+use crate::validation::{
+    exceeds_chars, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TEMPO_MARKING, MAX_TITLE,
+};
 
 // ── The effect contract ─────────────────────────────────────────────
 
@@ -328,7 +330,7 @@ impl Haystack {
 /// whitespace-insensitive, because OCR spacing is not the user's problem.
 fn clamped_text(value: Option<&str>, haystack: &Haystack, max: usize) -> Option<TextDraftField> {
     let value = value?.trim();
-    if value.is_empty() || value.len() > max {
+    if value.is_empty() || exceeds_chars(value, max) {
         return None;
     }
     let confidence = haystack.confidence_of(value)?;
@@ -452,7 +454,7 @@ fn heuristic_title(lines: &[RecognisedLine]) -> Option<TextDraftField> {
         .filter(|l| looks_like_a_title(&l.text))
         .filter(|l| credit_prefix(&l.text).is_none())
         .filter(|l| tempo_line(&l.text, true).is_none())
-        .filter(|l| l.text.trim().len() <= MAX_TITLE)
+        .filter(|l| !exceeds_chars(l.text.trim(), MAX_TITLE))
         .collect();
 
     // A hallucinated line can dwarf the real heading (#1436); a weak one takes
@@ -488,7 +490,7 @@ fn heuristic_composer(lines: &[RecognisedLine]) -> Option<TextDraftField> {
                 return None;
             }
             let rest = rest.trim().trim_end_matches([')', ']', '(', '[']).trim();
-            (!rest.is_empty() && rest.len() <= MAX_COMPOSER).then_some((l, rest, damping))
+            (!rest.is_empty() && !exceeds_chars(rest, MAX_COMPOSER)).then_some((l, rest, damping))
         })
         // Strongest claim, then topmost: Vision's order is not the page's,
         // and its first match let a lyric beat an explicit credit (#1436).
@@ -1119,6 +1121,66 @@ mod tests {
             }),
         });
         assert!(draft.title.is_none(), "too long for the form either way");
+    }
+
+    /// "é" is two bytes: a byte count drops each of these at half the cap
+    /// (#1944). Counting bytes at any one reader fails its row.
+    #[test]
+    fn an_accented_reading_at_the_cap_is_kept() {
+        let title = "é".repeat(MAX_TITLE);
+        let suggested = read_fields(&PageReading {
+            lines: vec![line(&title, 0.08, 0.09)],
+            suggested: Some(SuggestedFields {
+                title: Some(title.clone()),
+                ..no_suggestions()
+            }),
+        });
+        let recognised = read_fields(&page(vec![line(&title, 0.08, 0.09)]));
+        let composer = "é".repeat(MAX_COMPOSER);
+        let credited = read_fields(&page(vec![line(
+            &format!("Music by {composer}"),
+            0.18,
+            0.03,
+        )]));
+
+        let rows = [
+            (
+                "suggested title",
+                suggested.title,
+                &title,
+                DraftSource::Suggested,
+            ),
+            (
+                "recognised title",
+                recognised.title,
+                &title,
+                DraftSource::Recognised,
+            ),
+            (
+                "recognised composer",
+                credited.composer,
+                &composer,
+                DraftSource::Recognised,
+            ),
+        ];
+        for (reader, field, expected, source) in rows {
+            let field = field.unwrap_or_else(|| panic!("{reader}: dropped at the cap"));
+            assert_eq!(&field.value, expected, "{reader}");
+            assert_eq!(field.source, source, "{reader}");
+        }
+    }
+
+    /// Deleting the composer length filter keeps this one: nothing else drops
+    /// a recognised credit that is too long for the form.
+    #[test]
+    fn a_credit_longer_than_the_composer_field_is_dropped() {
+        let composer = "é".repeat(MAX_COMPOSER + 1);
+        let draft = read_fields(&page(vec![line(
+            &format!("Music by {composer}"),
+            0.18,
+            0.03,
+        )]));
+        assert!(draft.composer.is_none(), "too long for the form");
     }
 
     /// #1454: a suggestion claimed `confidence: 1.0`, so the field with the least
