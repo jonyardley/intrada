@@ -49,7 +49,8 @@ Mirror the **Items** local-first pipeline exactly (`domain/item.rs` +
 - `SaveSession` handler branches on `model.local_first`: local → `save_session`
   (+ `clear_error`, keep the `ClearSessionInProgress` notify); online →
   `http::create_session` (unchanged). The optimistic `model.sessions.push` stays
-  in both.
+  in both. Superseded by `specs/save-acknowledged.md` (#974): the push and the
+  clear now wait for the store's ack.
 - `StartApp { local_first: true }` issues `load_items()` **and** `load_sessions()`.
 - A `SessionsStoreLoaded` handler sets `model.sessions` from the output (mirrors
   `StoreLoaded` for items); rebuilds `practice_summaries`.

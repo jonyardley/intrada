@@ -27,6 +27,10 @@ pub struct Model {
     pub items: Vec<Item>,
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
+    /// The finished practice whose write is with the store. Pushed into
+    /// `sessions` only when the store acknowledges it; a failure hands it
+    /// back to the summary so Save can be tapped again (#974).
+    pub saving_session: Option<PracticeSession>,
     pub active_query: Option<ListQuery>,
     pub active_sort: LibrarySort,
     pub last_error: Option<String>,

@@ -1712,6 +1712,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 model.raise_error("Not in summary state".to_string());
                 return crux_core::render::render();
             };
+            if model.saving_session.is_some() {
+                return Command::done();
+            }
 
             let total_duration_secs: u64 = summary.entries.iter().map(|e| e.duration_secs).sum();
 
@@ -1726,15 +1729,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 session_score: summary.session_score,
             };
 
-            model.sessions.push(practice_session.clone());
-            model.practice_summaries = crate::app::build_practice_summaries(&model.sessions);
-            model.session_status = SessionStatus::Idle;
-
-            let clear = Command::notify_shell(AppEffect::ClearSessionInProgress).into();
+            model.saving_session = Some(practice_session.clone());
             model.clear_error();
             Command::all([
                 crate::persistence::save_session(practice_session),
-                clear,
                 crux_core::render::render(),
             ])
         }
@@ -1796,6 +1794,41 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────
+
+pub const SAVE_FAILED: &str =
+    "Couldn't save this practice. Your notes and scores are still here: try Save again.";
+
+/// The store has the row, so the model says so: push it, and close the
+/// summary if it is still the one being saved (#974).
+pub fn save_acknowledged(model: &mut Model) -> Command<Effect, Event> {
+    let Some(session) = model.saving_session.take() else {
+        return Command::done();
+    };
+    let still_open =
+        matches!(&model.session_status, SessionStatus::Summary(s) if s.id == session.id);
+    model.sessions.push(session);
+    model.practice_summaries = crate::app::build_practice_summaries(&model.sessions);
+    if !still_open {
+        return crux_core::render::render();
+    }
+    model.session_status = SessionStatus::Idle;
+    Command::all([
+        Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
+        crux_core::render::render(),
+    ])
+}
+
+/// Nothing reached the disk: keep the summary and the recovery copy, and say
+/// so past any dismissed banner, since this answers the musician's own tap.
+/// Returns `None` when no save was in flight, so the caller keeps the
+/// background-failure path.
+pub fn save_refused(model: &mut Model) -> Option<Command<Effect, Event>> {
+    let session = model.saving_session.take()?;
+    if matches!(&model.session_status, SessionStatus::Summary(s) if s.id == session.id) {
+        model.raise_error(SAVE_FAILED);
+    }
+    Some(crux_core::render::render())
+}
 
 #[cfg(test)]
 mod tests {
@@ -3447,17 +3480,69 @@ mod tests {
         };
     }
 
-    #[test]
-    fn test_save_session() {
-        let mut model = model_with_summary();
+    fn saves_session(cmd: &mut Command<Effect, Event>) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::Persistence(req)
+            if matches!(&req.operation, crate::persistence::PersistenceOperation::SaveSession(_)))
+        })
+    }
 
-        let now = Utc::now();
-        update(
+    fn clears_recovery_copy(cmd: &mut Command<Effect, Event>) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::App(req)
+            if matches!(req.operation, AppEffect::ClearSessionInProgress))
+        })
+    }
+
+    fn reloads_sessions(cmd: &mut Command<Effect, Event>) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::Persistence(req)
+            if req.operation == crate::persistence::PersistenceOperation::LoadSessions)
+        })
+    }
+
+    #[test]
+    fn save_session_parks_the_practice_until_the_store_answers() {
+        let mut model = model_with_summary();
+        let summary_id = match model.session_status {
+            SessionStatus::Summary(ref s) => s.id.clone(),
+            _ => panic!("fixture is in Summary"),
+        };
+        let mut cmd = Intrada.update(
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
             &mut model,
-            Event::Session(SessionEvent::SaveSession { now }),
         );
 
+        assert!(saves_session(&mut cmd), "the write is sent");
+        assert!(
+            !clears_recovery_copy(&mut cmd),
+            "the recovery copy outlives the write until the store confirms it (#974)"
+        );
+        assert!(matches!(model.session_status, SessionStatus::Summary(_)));
+        assert!(
+            model.sessions.is_empty(),
+            "nothing is pushed before the ack"
+        );
+        assert_eq!(
+            model.saving_session.as_ref().map(|s| s.id.as_str()),
+            Some(summary_id.as_str())
+        );
         assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn acknowledged_save_pushes_the_session_clears_the_copy_and_closes_the_summary() {
+        let mut model = model_with_summary();
+        model.error_muted = true;
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        let mut cmd = Intrada.update(
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
+            &mut model,
+        );
+
         assert!(matches!(model.session_status, SessionStatus::Idle));
         assert_eq!(model.sessions.len(), 1);
         assert_eq!(model.sessions[0].total_duration_secs, 75); // 30 + 45
@@ -3465,28 +3550,130 @@ mod tests {
             model.sessions[0].completion_status,
             CompletionStatus::Completed
         );
+        assert!(model.saving_session.is_none());
+        assert!(
+            !model.practice_summaries.is_empty(),
+            "practice data is visible without a re-fetch (#247)"
+        );
+        assert!(clears_recovery_copy(&mut cmd));
+        assert!(
+            !model.error_muted,
+            "an acknowledged write lifts the mute (#1936)"
+        );
+        assert!(model.last_error.is_none());
     }
 
     #[test]
-    fn save_session_persists_the_session_locally() {
+    fn failed_save_keeps_the_summary_and_the_copy_and_shows_the_banner() {
         let mut model = model_with_summary();
-        let app = Intrada;
-        let mut cmd = app.update(
+        model.error_muted = true;
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        let mut cmd = Intrada.update(
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Failed),
+            &mut model,
+        );
+
+        assert!(
+            matches!(model.session_status, SessionStatus::Summary(_)),
+            "the summary stays so Save can be tapped again"
+        );
+        assert!(model.sessions.is_empty());
+        assert!(model.saving_session.is_none());
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some(SAVE_FAILED),
+            "the musician's own tap is never muted"
+        );
+        assert!(
+            !reloads_sessions(&mut cmd),
+            "nothing was pushed, so there is nothing to roll back"
+        );
+        assert!(!clears_recovery_copy(&mut cmd));
+    }
+
+    #[test]
+    fn save_can_be_tapped_again_after_a_failure() {
+        let mut model = model_with_summary();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Failed),
+        );
+        let mut cmd = Intrada.update(
             Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
             &mut model,
         );
-        let id = model.sessions[0].id.clone();
-        assert!(
-            cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
-                if matches!(&req.operation, crate::persistence::PersistenceOperation::SaveSession(s) if s.id == id))),
-            "the saved session reaches the on-device store"
+        assert!(saves_session(&mut cmd));
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn a_second_save_while_one_is_in_flight_sends_nothing() {
+        let mut model = model_with_summary();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
         );
+        let mut cmd = Intrada.update(
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+            &mut model,
+        );
+        assert!(!saves_session(&mut cmd), "one write in flight at a time");
+        assert!(model.saving_session.is_some());
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn ack_after_discard_still_records_the_session() {
+        let mut model = model_with_summary();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        update(&mut model, Event::Session(SessionEvent::DiscardSession));
+        let mut cmd = Intrada.update(
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
+            &mut model,
+        );
+        assert_eq!(
+            model.sessions.len(),
+            1,
+            "the row is on disk, so the model says what the disk says"
+        );
+        assert!(matches!(model.session_status, SessionStatus::Idle));
+        assert!(
+            !clears_recovery_copy(&mut cmd),
+            "discard already cleared it; a later practice's copy must survive"
+        );
+    }
+
+    #[test]
+    fn failed_save_after_discard_says_nothing() {
+        let mut model = model_with_summary();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        update(&mut model, Event::Session(SessionEvent::DiscardSession));
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Failed),
+        );
+        assert!(model.last_error.is_none(), "the musician chose to drop it");
+        assert!(model.saving_session.is_none());
+        assert!(model.sessions.is_empty());
     }
 
     #[test]
     fn test_save_session_updates_practice_summaries_in_view() {
         // Regression test for #247: practice data must be visible in the
-        // ViewModel immediately after SaveSession, without a re-fetch.
+        // ViewModel immediately after the save is acknowledged, without a re-fetch.
         let mut model = model_with_summary();
 
         // Score the first entry before saving
@@ -3502,11 +3689,9 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::SaveSession { now }),
         );
-
-        // The model should have updated practice_summaries
-        assert!(
-            !model.practice_summaries.is_empty(),
-            "practice_summaries should be populated after save"
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
         );
 
         // Build the view — this is what the shell sees
@@ -3808,6 +3993,10 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::SaveSession { now: save_time }),
         );
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
+        );
 
         assert_eq!(model.sessions.len(), 1);
         assert_eq!(model.sessions[0].total_duration_secs, 0);
@@ -3924,6 +4113,10 @@ mod tests {
         update(
             &mut model,
             Event::Session(SessionEvent::SaveSession { now: t_save }),
+        );
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
         );
 
         // Verify final state
@@ -4741,6 +4934,10 @@ mod tests {
             Event::Session(SessionEvent::SaveSession {
                 now: now + chrono::Duration::seconds(65),
             }),
+        );
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
         );
 
         assert_eq!(model.sessions.len(), 1);
@@ -6201,6 +6398,10 @@ mod tests {
         update(
             &mut model,
             Event::Session(SessionEvent::SaveSession { now: t2 }),
+        );
+        update(
+            &mut model,
+            Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
         );
 
         assert_eq!(model.sessions.len(), 1);
