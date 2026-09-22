@@ -191,6 +191,14 @@ pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
     crate::domain::variant::shows_key_field(live_variant_count as usize)
 }
 
+/// The shell builds the crash-recovery blob's storage key from this, so a
+/// shape change in the core retires the old key on its own (#1116).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn session_blob_version() -> u32 {
+    crate::domain::session::ActiveSession::BLOB_VERSION
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

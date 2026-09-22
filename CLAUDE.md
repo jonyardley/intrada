@@ -128,7 +128,7 @@ touching it, never wholesale; XCUITest stays on XCTest.
 - **JSON-only serde attrs break the bincode bridge silently** (#846), and a stub-bridge test
   cannot catch it: use `LiveBridge`.
 - **A field inside the crash-recovery snapshot invalidates every blob** (#1345): bump
-  `Store.sessionInProgressKey` first, then re-pin.
+  `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it (#1116).
 
 ## Workflow
 
