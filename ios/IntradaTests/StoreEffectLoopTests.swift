@@ -685,6 +685,17 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
+  /// Answers the session write the way GRDB does, so the core commits the
+  /// practice, clears the recovery copy and closes the summary (#974).
+  private func acknowledgeSave(_ bridge: LiveBridge, _ requests: [Request]) throws {
+    let write = try XCTUnwrap(
+      requests.first {
+        if case .persistence(.saveSession) = $0.effect { return true } else { return false }
+      },
+      "saveSession sends the write to the store")
+    _ = try bridge.resolve(write.id, persistenceOutput: .ack)
+  }
+
   private func bridgeWithCompletedEntry() throws -> (LiveBridge, String, String) {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp)
@@ -1256,9 +1267,13 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
     XCTAssertNil(try bridge.view().summary?.notes, "clearing notes round-trips")
 
-    _ = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
+    let saveRequests = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
+    XCTAssertNotNil(
+      try bridge.view().summary,
+      "the summary waits for the store to confirm the save (#974)")
+    try acknowledgeSave(bridge, saveRequests)
     let saved = try bridge.view()
-    XCTAssertNil(saved.summary, "saveSession clears the summary (session persisted)")
+    XCTAssertNil(saved.summary, "saveSession clears the summary once the store has it")
     XCTAssertNil(saved.activeSession)
     XCTAssertNil(saved.error, "a clean save surfaces no error")
 
@@ -1638,7 +1653,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let playId = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays.last?.id)
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: playId, score: 8)))
-    _ = try bridge.update(.session(.saveSession(now: "2026-09-04T09:06:00Z")))
+    try acknowledgeSave(
+      bridge, try bridge.update(.session(.saveSession(now: "2026-09-04T09:06:00Z"))))
 
     let view = try bridge.view()
     XCTAssertNil(view.error, "the score, attribution and save must all decode cleanly (#846)")
