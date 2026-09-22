@@ -99,10 +99,10 @@ Test-first, in this order:
   notice and leaves a standing error; `ClearError` leaves a standing notice; an
   accepted event after a notice leaves `error_seq` where it was.
 - `model.rs`: `raise_notice` bumps the sequence on identical text.
-- `ios/IntradaTests/StoreEffectLoopTests.swift`: a `LiveBridge` round trip
-  that closes a play with a minim reading past the ceiling and reads the notice
-  and the unmoved `errorSeq` back off the `ViewModel` (#846: a stub bridge
-  cannot catch a dropped field).
+- `ios/IntradaTests/VariationPlayBridgeTests.swift`: a `LiveBridge` round
+  trip that closes a play with a minim reading past the ceiling and reads the
+  notice and the unmoved `errorSeq` back off the `ViewModel` (#846: a stub
+  bridge cannot catch a dropped field).
 
 ## Out of scope
 

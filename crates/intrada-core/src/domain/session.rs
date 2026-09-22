@@ -685,26 +685,45 @@ fn open_first_play(entry: &mut SetlistEntry, items: &[Item], now: DateTime<Utc>)
 /// splits the time rather than double-counting it, and its tempo from what
 /// the click was doing at that instant (#1761). `None` is a close with no
 /// reading, which only a skip makes.
-fn close_open_play(entry: &mut SetlistEntry, now: DateTime<Utc>, reading: Option<&TempoReading>) {
-    if let Some(play) = entry.open_play_mut() {
-        play.seconds = (now - play.started_at).num_seconds().max(0) as u64;
-        if let Some(reading) = reading {
-            stamp_tempo(play, reading);
-        }
+fn close_open_play(
+    entry: &mut SetlistEntry,
+    now: DateTime<Utc>,
+    reading: Option<&TempoReading>,
+) -> TempoStamp {
+    let Some(play) = entry.open_play_mut() else {
+        return TempoStamp::NothingToKeep;
+    };
+    play.seconds = (now - play.started_at).num_seconds().max(0) as u64;
+    match reading {
+        Some(reading) => stamp_tempo(play, reading),
+        None => TempoStamp::NothingToKeep,
     }
 }
 
+/// What a close did with its reading. The handler that closed the play
+/// reports `Unusable` as a notice, not an error: the play still closed and
+/// the tap landed (#1325).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TempoStamp {
+    Kept,
+    NothingToKeep,
+    Unusable,
+}
+
+const UNUSABLE_TEMPO_NOTICE: &str =
+    "That metronome setting doesn't give a crotchet tempo, so this play has none.";
+
 /// A silent reading writes nothing and clears nothing, so a later close never
 /// erases an earlier stamp, and a sounding one overwrites it: the later instant
-/// wins. An invalid reading stamps nothing and raises nothing, since a close is
-/// not a user action (#944).
-fn stamp_tempo(play: &mut VariationPlay, reading: &TempoReading) {
+/// wins. An invalid reading stamps nothing and raises no error, since a close
+/// is not a user action (#944).
+fn stamp_tempo(play: &mut VariationPlay, reading: &TempoReading) -> TempoStamp {
     if !reading.click_sounding {
-        return;
+        return TempoStamp::NothingToKeep;
     }
     if let Some(click) = &reading.click {
         if validation::validate_click_state(click).is_err() {
-            return;
+            return TempoStamp::Unusable;
         }
     }
     let crotchets = reading
@@ -712,10 +731,11 @@ fn stamp_tempo(play: &mut VariationPlay, reading: &TempoReading) {
         .as_ref()
         .map_or(reading.bpm, |c| c.metre.crotchet_bpm(reading.bpm));
     if validation::validate_achieved_tempo(&Some(crotchets)).is_err() {
-        return;
+        return TempoStamp::Unusable;
     }
     play.achieved_tempo = Some(crotchets);
     play.click_pattern = reading.click.clone();
+    TempoStamp::Kept
 }
 
 /// A stray tap on the picker is not practice: every terminal transition drops
@@ -833,13 +853,14 @@ fn transition_to_summary(
     now: DateTime<Utc>,
     reading: &TempoReading,
     completion_status: CompletionStatus,
-) -> SummarySession {
+) -> (SummarySession, TempoStamp) {
     let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
+    let mut stamp = TempoStamp::NothingToKeep;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
         open_first_play(entry, items, active.current_item_started_at);
-        close_open_play(entry, now, Some(reading));
+        stamp = close_open_play(entry, now, Some(reading));
         freeze_rep_state(entry);
     }
 
@@ -853,7 +874,7 @@ fn transition_to_summary(
 
     drop_incidental_plays(&mut active.entries);
 
-    SummarySession {
+    let summary = SummarySession {
         id: active.id.clone(),
         entries: active.entries.clone(),
         session_started_at: active.session_started_at,
@@ -861,6 +882,13 @@ fn transition_to_summary(
         session_notes: None,
         completion_status,
         session_score: None,
+    };
+    (summary, stamp)
+}
+
+fn report_stamp(model: &mut Model, stamp: TempoStamp) {
+    if stamp == TempoStamp::Unusable {
+        model.raise_notice(UNUSABLE_TEMPO_NOTICE);
     }
 }
 
@@ -1384,9 +1412,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            if let Some(entry) = active.entries.get_mut(active.current_index) {
-                close_open_play(entry, now, Some(&reading));
-            }
+            let stamp = active
+                .entries
+                .get_mut(active.current_index)
+                .map_or(TempoStamp::NothingToKeep, |entry| {
+                    close_open_play(entry, now, Some(&reading))
+                });
+            report_stamp(model, stamp);
 
             crux_core::render::render()
         }
@@ -1402,7 +1434,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if active.current_index >= active.entries.len() - 1 {
-                let summary = transition_to_summary(
+                let (summary, stamp) = transition_to_summary(
                     active,
                     &model.items,
                     now,
@@ -1411,16 +1443,18 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 );
                 model.session_status = SessionStatus::Summary(summary);
                 model.last_error = None;
+                report_stamp(model, stamp);
                 return crux_core::render::render();
             }
 
             let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
 
+            let mut stamp = TempoStamp::NothingToKeep;
             if let Some(entry) = active.entries.get_mut(active.current_index) {
                 entry.duration_secs = elapsed;
                 entry.status = EntryStatus::Completed;
                 open_first_play(entry, &model.items, active.current_item_started_at);
-                close_open_play(entry, now, Some(&reading));
+                stamp = close_open_play(entry, now, Some(&reading));
                 freeze_rep_state(entry);
                 drop_incidental_play(entry);
             }
@@ -1433,6 +1467,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            report_stamp(model, stamp);
             Command::all([
                 Command::notify_shell(save_effect).into(),
                 crux_core::render::render(),
@@ -1500,7 +1535,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            let summary = transition_to_summary(
+            let (summary, stamp) = transition_to_summary(
                 active,
                 &model.items,
                 now,
@@ -1509,6 +1544,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             );
             model.session_status = SessionStatus::Summary(summary);
             model.last_error = None;
+            report_stamp(model, stamp);
             crux_core::render::render()
         }
 
@@ -1558,7 +1594,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            close_open_play(entry, now, Some(&reading));
+            let stamp = close_open_play(entry, now, Some(&reading));
             freeze_rep_state(entry);
             let rep_target = entry.planned_rep_target;
             entry
@@ -1566,8 +1602,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 .push(VariationPlay::opened(variation_id, rep_target, now));
 
             model.last_error = None;
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            report_stamp(model, stamp);
             Command::all([
-                Command::notify_shell(AppEffect::SaveSessionInProgress(active.clone())).into(),
+                Command::notify_shell(save_effect).into(),
                 crux_core::render::render(),
             ])
         }
@@ -5386,8 +5424,142 @@ mod tests {
             assert_eq!(entry.plays[0].seconds, 180, "{case}");
             assert_eq!(entry.plays[0].achieved_tempo, None, "{case}");
             assert_eq!(entry.plays[0].click_pattern, None, "{case}");
-            assert!(model.last_error.is_none(), "{case}: a close raises nothing");
+            assert!(
+                model.last_error.is_none(),
+                "{case}: a close raises no error"
+            );
+            assert_eq!(
+                model.last_notice.as_deref(),
+                Some(UNUSABLE_TEMPO_NOTICE),
+                "{case}: the musician hears why the play has no tempo (#1325)"
+            );
         }
+    }
+
+    fn minims_past_the_ceiling() -> TempoReading {
+        sounding(
+            260,
+            Some(ClickState {
+                metre: Metre {
+                    beats: 2,
+                    unit: 2,
+                    groups: None,
+                },
+                sounding: 0b11,
+            }),
+        )
+    }
+
+    #[test]
+    fn every_close_path_reports_a_reading_it_could_not_keep() {
+        type Close = fn(&mut Model, DateTime<Utc>, TempoReading);
+        let closes: [(&str, Close); 4] = [
+            ("a switch", switch_to_d),
+            ("the reflection sheet opening", |model, at, reading| {
+                update(
+                    model,
+                    Event::Session(SessionEvent::PrepareReflection { now: at, reading }),
+                );
+            }),
+            ("the last item", |model, at, reading| {
+                update(
+                    model,
+                    Event::Session(SessionEvent::NextItem {
+                        now: at,
+                        next_item_started_at: at,
+                        reading,
+                    }),
+                );
+            }),
+            ("ending early", |model, at, reading| {
+                update(
+                    model,
+                    Event::Session(SessionEvent::EndSessionEarly { now: at, reading }),
+                );
+            }),
+        ];
+        for (case, close) in closes {
+            let (mut model, start) = model_with_variations();
+            let error_seq = model.error_seq;
+            let notice_seq = model.notice_seq;
+
+            close(
+                &mut model,
+                start + chrono::Duration::seconds(180),
+                minims_past_the_ceiling(),
+            );
+
+            assert_eq!(
+                model.last_notice.as_deref(),
+                Some(UNUSABLE_TEMPO_NOTICE),
+                "{case}"
+            );
+            assert!(model.notice_seq > notice_seq, "{case}: a notice is a raise");
+            assert_eq!(
+                model.error_seq, error_seq,
+                "{case}: a notice is not a refusal, so the haptic still fires"
+            );
+            assert!(model.last_error.is_none(), "{case}");
+        }
+    }
+
+    #[test]
+    fn the_next_item_mid_session_reports_a_reading_it_could_not_keep() {
+        let (mut model, start) = model_with_active_session(2);
+        let error_seq = model.error_seq;
+
+        let at = start + chrono::Duration::seconds(180);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem {
+                now: at,
+                next_item_started_at: at,
+                reading: minims_past_the_ceiling(),
+            }),
+        );
+
+        assert!(
+            matches!(model.session_status, SessionStatus::Active(_)),
+            "the session went on to the second item"
+        );
+        assert_eq!(model.last_notice.as_deref(), Some(UNUSABLE_TEMPO_NOTICE));
+        assert_eq!(model.notice_seq, 1);
+        assert_eq!(model.error_seq, error_seq);
+    }
+
+    #[test]
+    fn a_reading_the_core_keeps_or_ignores_raises_no_notice() {
+        let readings = [
+            ("silent", TempoReading::silent()),
+            (
+                "crotchets",
+                sounding(108, Some(every_beat_in_common_time())),
+            ),
+            ("no click state", sounding(108, None)),
+        ];
+        for (case, reading) in readings {
+            let (mut model, start) = model_with_variations();
+
+            switch_to_d(&mut model, start + chrono::Duration::seconds(180), reading);
+
+            assert_eq!(model.last_notice, None, "{case}");
+            assert_eq!(model.notice_seq, 0, "{case}");
+        }
+    }
+
+    #[test]
+    fn a_skip_carries_no_reading_and_raises_no_notice() {
+        let (mut model, start) = model_with_variations();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem {
+                now: start + chrono::Duration::seconds(180),
+            }),
+        );
+
+        assert_eq!(model.last_notice, None);
+        assert_eq!(model.notice_seq, 0);
     }
 
     #[test]

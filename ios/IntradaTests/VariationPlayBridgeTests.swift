@@ -274,6 +274,39 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertNil(after.plays.first?.score, "the foreign play id wrote nothing")
     XCTAssertNotNil(try bridge.view().error, "and the refusal is surfaced")
   }
+
+  /// The notice channel over the real bridge (#1325, #846): a reading the core
+  /// cannot keep reaches the shell as a notice, not an error.
+  func testAnUnusableReadingArrivesAsANoticeOverTheRealBridge() throws {
+    let bridge = LiveBridge()
+    let itemId = try exerciseWithTwoVariations(bridge)
+    let inD = try variationId(bridge, label: "D")
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
+    let before = try bridge.view()
+    XCTAssertNil(before.notice)
+
+    let minimsPastTheCeiling = TempoReading(
+      bpm: 260, clickSounding: true,
+      click: ClickState(metre: Metre(beats: 2, unit: 2, groups: nil), sounding: 0b11))
+    _ = try bridge.update(
+      .session(
+        .switchVariation(
+          entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z",
+          reading: minimsPastTheCeiling)))
+
+    let after = try bridge.view()
+    XCTAssertEqual(
+      after.notice, "That metronome setting doesn't give a crotchet tempo, so this play has none.")
+    XCTAssertEqual(after.noticeSeq, before.noticeSeq + 1)
+    XCTAssertEqual(after.errorSeq, before.errorSeq, "a notice is not a refusal")
+    XCTAssertNil(after.error)
+
+    _ = try bridge.update(.clearNotice)
+    XCTAssertNil(try bridge.view().notice)
+  }
 }
 
 extension TempoReading {

@@ -53,6 +53,12 @@ pub struct Model {
     /// still standing, so a send accepted under the banner does not read as
     /// refused (#1056, #1936).
     pub error_seq: u64,
+    /// A true outcome that is not a failure, for the neutral banner (#1325).
+    /// Never muted: it follows the musician's own action, like a refusal.
+    pub last_notice: Option<String>,
+    /// Bumped on every raise, identical text included, never because a
+    /// notice is standing.
+    pub notice_seq: u64,
     /// What the last `ReadPhoto` produced. Transient: the confirm surface reads
     /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
     /// to an item without that confirmation (spec non-goal "no silent write").
@@ -125,6 +131,15 @@ impl Model {
     pub fn dismiss_error(&mut self) {
         self.last_error = None;
         self.error_muted = true;
+    }
+
+    pub fn raise_notice(&mut self, msg: impl Into<String>) {
+        self.last_notice = Some(msg.into());
+        self.notice_seq = self.notice_seq.wrapping_add(1);
+    }
+
+    pub fn clear_notice(&mut self) {
+        self.last_notice = None;
     }
 }
 
@@ -212,6 +227,10 @@ pub struct ViewModel {
     pub error_target: Option<FormErrorTarget>,
     /// See `Model::error_seq` — compare around a send instead of the message.
     pub error_seq: u64,
+    /// See [`Model::last_notice`]: true, expected, not a failure (#1325).
+    pub notice: Option<String>,
+    /// See [`Model::notice_seq`].
+    pub notice_seq: u64,
     pub analytics: Option<AnalyticsView>,
     pub last_practised: Option<LastPractisedView>,
     pub profile: ProfileView,
@@ -1208,6 +1227,24 @@ mod tests {
         model.surface_error("fail");
         assert_eq!(model.last_error.as_deref(), Some("fail"));
         assert_eq!(model.error_seq, 2, "a repeat is still a new failure");
+    }
+
+    #[test]
+    fn raise_notice_is_a_new_raise_even_with_identical_text() {
+        let mut model = Model::default();
+        model.raise_notice("kept, but");
+        model.raise_notice("kept, but");
+        assert_eq!(model.last_notice.as_deref(), Some("kept, but"));
+        assert_eq!(model.notice_seq, 2);
+        assert_eq!(model.error_seq, 0, "a notice is not a refusal");
+    }
+
+    #[test]
+    fn a_dismissed_error_does_not_mute_a_notice() {
+        let mut model = Model::default();
+        model.dismiss_error();
+        model.raise_notice("kept, but");
+        assert_eq!(model.last_notice.as_deref(), Some("kept, but"));
     }
 
     #[test]
