@@ -95,6 +95,7 @@ struct ClickControl: View {
     .buttonStyle(PressRebound())
     .accessibilityLabel(isRunning ? "Stop the metronome" : "Start the metronome")
     .accessibilityValue(spokenValue)
+    .accessibilityAdjustableAction(adjust)
     .highPriorityGesture(dragGesture)
     .onDisappear(perform: resetDrag)
     .animation(reduceMotion ? nil : IntradaMotion.snappy, value: isDragging)
@@ -159,6 +160,16 @@ struct ClickControl: View {
     lastCommittedBpm = value
     lastCommitAt = now
     onDragChange(value)
+  }
+
+  // The steppers are gone while the click is stopped and a drag is out of
+  // VoiceOver's reach, so a swipe is the only way to set the tempo (#1943).
+  func adjust(_ direction: AccessibilityAdjustmentDirection) {
+    switch direction {
+    case .increment: onStep(TempoScale.step)
+    case .decrement: onStep(-TempoScale.step)
+    @unknown default: break
+    }
   }
 
   private func resetDrag() {

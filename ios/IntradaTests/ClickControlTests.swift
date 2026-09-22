@@ -1,4 +1,5 @@
 import SharedTypes
+import SwiftUI
 import Testing
 
 @testable import Intrada
@@ -69,6 +70,17 @@ struct ClickControlTests {
 
   /// A drag commit inside the click engine's own lead-in cancels the pulse
   /// it just scheduled, so the click never sounds for the whole drag (#1823).
+  @Test func aVoiceOverSwipeStepsTheTempoEvenWithTheClickStopped() {
+    var steps: [Int] = []
+    let stopped = ClickControl(
+      bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+      targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { steps.append($0) },
+      onDragChange: { _ in })
+    stopped.adjust(.increment)
+    stopped.adjust(.decrement)
+    #expect(steps == [TempoScale.step, -TempoScale.step])
+  }
+
   @Test func theDragThrottleNeverCommitsFasterThanTheEngineCanSound() {
     #expect(ClickControl.commitInterval >= .milliseconds(Int(ClickEngine.leadInSeconds * 1000)))
   }
