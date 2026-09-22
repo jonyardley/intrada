@@ -8,7 +8,11 @@ import XCTest
 
 private final class StubBridge: CoreBridge {
   private let core = CoreFfi()
-  func update(_ event: Event) throws -> [Request] { [] }
+  var throwOnUpdate: Error?
+  func update(_ event: Event) throws -> [Request] {
+    if let throwOnUpdate { throw throwOnUpdate }
+    return []
+  }
   func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
   func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
   func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
@@ -16,6 +20,8 @@ private final class StubBridge: CoreBridge {
     try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
   }
 }
+
+private struct Boom: Error {}
 
 /// Force light mode at the controller level (SwiftUI reads colorScheme from
 /// here, not the snapshot `traits:`) and pin `.iPhone13` + displayScale so the
@@ -107,6 +113,16 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testRootShell() {
     assertSnapshot(of: host(RootView()), as: config)
+  }
+
+  /// The tab shell after the core has panicked (#1946): the last screen stays
+  /// up under a standing banner.
+  func testRootShellHalted() {
+    let bridge = StubBridge()
+    bridge.throwOnUpdate = CorePanic(underlying: Boom())
+    let store = Store(bridge: bridge)
+    store.send(.setQuery(nil))
+    assertSnapshot(of: host(RootView(), store: store), as: config)
   }
 
   func testGlobalBanner() {

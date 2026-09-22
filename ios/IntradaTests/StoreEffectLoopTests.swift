@@ -277,6 +277,81 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(bridge.persistenceResolved.isEmpty)
     XCTAssertTrue(bridge.emptyResolved.isEmpty)
     XCTAssertNotNil(store.viewModel, "a thrown update should fail soft, not wipe the ViewModel")
+    XCTAssertFalse(store.halted, "one plain throw is soft, not the end of the launch")
+  }
+
+  // ── Halt on a core panic (#1946) ───────────────────────────────────────
+
+  func testCorePanicHaltsTheStoreOnTheFirstSend() {
+    let bridge = FakeBridge()
+    bridge.throwOnUpdate = CorePanic(underlying: TestError())
+    let store = Store(bridge: bridge)
+
+    store.send(.setQuery(nil))
+
+    XCTAssertTrue(store.halted, "a panic poisons the core's model lock; nothing after it can work")
+    XCTAssertNotNil(store.viewModel, "the last screen stays up under the banner")
+  }
+
+  func testHaltedStoreNeverReachesTheBridgeAgain() {
+    let bridge = FakeBridge()
+    bridge.throwOnUpdate = CorePanic(underlying: TestError())
+    let store = Store(bridge: bridge)
+    store.send(.setQuery(nil))
+    let callsAtHalt = bridge.events.count + bridge.viewCallCount
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.events.count + bridge.viewCallCount, callsAtHalt,
+      "a halted store refuses the send itself: one report, not one per tap")
+  }
+
+  func testTwoConsecutiveBridgeFailuresHaltTheStore() {
+    let bridge = FakeBridge()
+    bridge.throwOnUpdate = TestError()
+    let store = Store(bridge: bridge)
+
+    store.send(.setQuery(nil))
+    XCTAssertFalse(store.halted)
+    store.send(.setQuery(nil))
+
+    XCTAssertTrue(store.halted, "a second failure in a row is a broken bridge, not a blip")
+  }
+
+  func testASuccessBetweenTwoFailuresKeepsTheStoreAlive() {
+    let bridge = FakeBridge()
+    bridge.throwOnUpdate = TestError()
+    let store = Store(bridge: bridge)
+
+    store.send(.setQuery(nil))
+    bridge.throwOnUpdate = nil
+    store.send(.setQuery(nil))
+    bridge.throwOnUpdate = TestError()
+    store.send(.setQuery(nil))
+
+    XCTAssertFalse(store.halted, "the run resets on a send the bridge accepts")
+  }
+
+  func testHaltedStoreRefusesEverySend() {
+    let bridge = FakeBridge()
+    bridge.throwOnUpdate = CorePanic(underlying: TestError())
+    let store = Store(bridge: bridge)
+    store.send(.setQuery(nil))
+    bridge.throwOnUpdate = nil
+
+    XCTAssertFalse(
+      store.sendAccepted(.setQuery(nil)),
+      "a send that never reached the core must not fire a success haptic (#1937)")
+  }
+
+  func testCorePanicAtInitHaltsTheStore() {
+    let bridge = FakeBridge()
+    bridge.throwOnView = CorePanic(underlying: TestError())
+    let store = Store(bridge: bridge)
+
+    XCTAssertTrue(store.halted)
+    XCTAssertNil(store.viewModel)
   }
 
   func testViewThrowAtInitLeavesViewModelNil() {

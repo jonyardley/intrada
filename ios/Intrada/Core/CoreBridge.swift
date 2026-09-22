@@ -11,3 +11,9 @@ protocol CoreBridge {
   func resolveEmpty(_ id: UInt32) throws -> [Request]
   func view() throws -> ViewModel
 }
+
+/// The Rust side panicked, or the UniFFI call itself broke: nothing after this
+/// call can work (#1946).
+struct CorePanic: Error {
+  let underlying: Error
+}

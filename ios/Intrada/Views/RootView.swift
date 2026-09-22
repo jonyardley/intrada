@@ -61,6 +61,9 @@ struct RootView: View {
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
       VStack(spacing: 0) {
+        if store.halted {
+          GlobalBanner(message: Store.haltedMessage)
+        }
         if store.degraded {
           GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
         }

@@ -19,8 +19,13 @@ struct PlayerHost: View {
     // it's up. Re-surface viewModel.error here — otherwise an error raised mid
     // session (a swallowed score tap, a failed save) is a silent no-op (#846).
     .safeAreaInset(edge: .top, spacing: 0) {
-      if let error = store.viewModel?.error {
-        GlobalBanner(message: error) { store.send(.clearError) }
+      VStack(spacing: 0) {
+        if store.halted {
+          GlobalBanner(message: Store.haltedMessage)
+        }
+        if let error = store.viewModel?.error {
+          GlobalBanner(message: error) { store.send(.clearError) }
+        }
       }
     }
   }

@@ -12,6 +12,13 @@ final class Store {
   /// move, so confirmations need their own signal for it (#1937).
   private(set) var bridgeFailureSeq = 0
 
+  /// The core panicked, or the bridge failed twice running: nothing after that
+  /// can work, so sends are refused without reaching the bridge and the shell
+  /// shows a standing banner (#1946). The in-progress blob is untouched.
+  private(set) var halted = false
+  private var consecutiveBridgeFailures = 0
+  static let haltedMessage = "The app has stopped responding · close and reopen it to carry on."
+
   /// On-disk store couldn't open → fell back to in-memory, so writes won't
   /// persist. The shell shows a standing warning. False for tests/previews.
   let degraded: Bool
@@ -194,8 +201,21 @@ final class Store {
   }
 
   private func bridged<T>(_ work: () throws -> T) -> T? {
-    let result = guarded(work)
-    if result == nil { bridgeFailureSeq += 1 }
-    return result
+    guard !halted else {
+      bridgeFailureSeq += 1
+      return nil
+    }
+    do {
+      let result = try work()
+      consecutiveBridgeFailures = 0
+      return result
+    } catch {
+      bridgeFailureSeq += 1
+      consecutiveBridgeFailures += 1
+      let panicked = error is CorePanic
+      report(error, panicked ? "core-panic" : "bridge")
+      if panicked || consecutiveBridgeFailures >= 2 { halted = true }
+      return nil
+    }
   }
 }
