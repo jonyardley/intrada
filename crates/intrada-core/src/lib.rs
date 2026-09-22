@@ -22,8 +22,8 @@ pub use domain::types::{
 };
 pub use error::LibraryError;
 pub use model::{
-    ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
-    PhotoRecognition, PhotoRecognitionStatus, PhotoRecognitionView, PracticeSessionView,
+    ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LimitsView,
+    Model, PhotoRecognition, PhotoRecognitionStatus, PhotoRecognitionView, PracticeSessionView,
     ScoreHistoryEntry, SetlistEntryView, SummaryView, TempoTrendPoint, TempoTrendView, ViewModel,
 };
 pub use persistence::{PersistenceOperation, PersistenceOutput};

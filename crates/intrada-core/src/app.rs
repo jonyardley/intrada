@@ -18,8 +18,8 @@ use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
-    PhotoRecognitionView, ScaffoldPreviewView, ScaffoldSpecView, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LimitsView, LinkedExerciseView,
+    Model, PhotoRecognitionView, ScaffoldPreviewView, ScaffoldSpecView, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 use crate::recognition::{self, RecognitionOperation, RecognitionOutput};
@@ -474,6 +474,7 @@ impl Intrada {
             up_next,
             has_priorities,
             photo_recognition: photo_recognition_view(&model.photo_recognition),
+            limits: LimitsView::default(),
         }
     }
 }

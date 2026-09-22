@@ -242,6 +242,41 @@ pub struct ViewModel {
     pub has_priorities: bool,
     /// What the last photographed page was read into, for the confirm surface.
     pub photo_recognition: PhotoRecognitionView,
+    /// Appended last: the bincode wire is positional.
+    pub limits: LimitsView,
+}
+
+/// The bounds `validation.rs` enforces, projected for the controls that offer
+/// them: a control repeating the numbers keeps offering the old range once one
+/// moves, and the write is then refused with nothing on screen (#1512).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LimitsView {
+    pub metre_beats_min: u8,
+    pub metre_beats_max: u8,
+    pub metre_units: Vec<u8>,
+    pub rep_target_min: u8,
+    pub rep_target_max: u8,
+    pub rep_target_default: u8,
+    pub planned_duration_min_secs: u32,
+    pub planned_duration_max_secs: u32,
+}
+
+impl Default for LimitsView {
+    fn default() -> Self {
+        use crate::validation;
+
+        LimitsView {
+            metre_beats_min: validation::MIN_METRE_BEATS,
+            metre_beats_max: validation::MAX_METRE_BEATS,
+            metre_units: validation::METRE_UNITS.to_vec(),
+            rep_target_min: validation::MIN_REP_TARGET,
+            rep_target_max: validation::MAX_REP_TARGET,
+            rep_target_default: validation::DEFAULT_REP_TARGET,
+            planned_duration_min_secs: validation::MIN_PLANNED_DURATION_SECS,
+            planned_duration_max_secs: validation::MAX_PLANNED_DURATION_SECS,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -1108,6 +1143,98 @@ fn join_played_fragments(fragments: &[String], max_chars: usize) -> String {
 mod tests {
     use super::*;
     use chrono::Utc;
+
+    // ── Projected limits (#1512) ──
+
+    #[test]
+    fn offered_metre_range_is_what_validate_metre_accepts() {
+        let limits = LimitsView::default();
+
+        for beats in limits.metre_beats_min..=limits.metre_beats_max {
+            for unit in &limits.metre_units {
+                let metre = Metre {
+                    beats,
+                    unit: *unit,
+                    groups: None,
+                };
+                assert!(
+                    crate::validation::validate_metre(&metre).is_ok(),
+                    "the sheet offers {beats}/{unit}, which the core refuses"
+                );
+            }
+        }
+
+        for beats in [limits.metre_beats_min - 1, limits.metre_beats_max + 1] {
+            let metre = Metre {
+                beats,
+                unit: limits.metre_units[0],
+                groups: None,
+            };
+            assert!(
+                crate::validation::validate_metre(&metre).is_err(),
+                "{beats} beats is outside the offered range but the core accepts it"
+            );
+        }
+    }
+
+    #[test]
+    fn offered_rep_targets_are_what_validate_rep_target_accepts() {
+        let limits = LimitsView::default();
+
+        for target in limits.rep_target_min..=limits.rep_target_max {
+            assert!(
+                crate::validation::validate_rep_target(&Some(target)).is_ok(),
+                "the sheet offers {target} reps, which the core refuses"
+            );
+        }
+
+        for target in [limits.rep_target_min - 1, limits.rep_target_max + 1] {
+            assert!(
+                crate::validation::validate_rep_target(&Some(target)).is_err(),
+                "{target} reps is outside the offered range but the core accepts it"
+            );
+        }
+
+        assert!(
+            (limits.rep_target_min..=limits.rep_target_max).contains(&limits.rep_target_default),
+            "the default the sheet opens on sits outside the range it offers"
+        );
+    }
+
+    #[test]
+    fn offered_planned_durations_are_whole_minutes_the_core_accepts() {
+        let limits = LimitsView::default();
+
+        for secs in [
+            limits.planned_duration_min_secs,
+            limits.planned_duration_max_secs,
+        ] {
+            assert!(
+                crate::validation::validate_planned_duration(&Some(secs)).is_ok(),
+                "the sheet offers {secs}s, which the core refuses"
+            );
+            assert_eq!(
+                secs % 60,
+                0,
+                "the sheet steps in whole minutes, so {secs}s cannot be offered exactly"
+            );
+        }
+
+        for secs in [
+            limits.planned_duration_min_secs - 60,
+            limits.planned_duration_max_secs + 60,
+        ] {
+            assert!(
+                crate::validation::validate_planned_duration(&Some(secs)).is_err(),
+                "{secs}s is outside the offered range but the core accepts it"
+            );
+        }
+    }
+
+    #[test]
+    fn limits_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(LimitsView::default());
+    }
 
     /// `ExerciseUsageView` crosses the bincode FFI bridge inside the
     /// ViewModel; guard it against the #846 silent-drop class.
