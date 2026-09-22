@@ -391,4 +391,30 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(try store.loadItems().count, 1, "the v2 item survives the v3 migration")
     XCTAssertTrue(try store.loadSessions().isEmpty, "the new session table starts empty")
   }
+
+  /// A JSON column that will not decode reads back as empty and never fails the
+  /// load: one damaged row must not take the whole library with it (#1117).
+  func testDamagedJsonColumnsReadBackEmptyWithoutFailingTheLoad() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v17_item_metre",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id, metre,
+           deleted_at)
+        VALUES ('i1', 'X', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, 'not json', '{',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, '[', NULL, 'x', NULL);
+        INSERT INTO session
+          (id, started_at, completed_at, total_duration_secs, completion_status,
+           session_notes, session_intention, entries, updated_at, deleted_at)
+        VALUES ('s1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, 'completed',
+                NULL, NULL, '{', '2026-01-01T00:00:00Z', NULL)
+        """)
+    let item = try XCTUnwrap(try store.loadItems().first)
+    XCTAssertEqual(item.tags, [])
+    XCTAssertEqual(item.linkedExerciseIds, [])
+    XCTAssertNil(item.chordChart)
+    XCTAssertNil(item.metre)
+    XCTAssertEqual(try XCTUnwrap(try store.loadSessions().first).entries, [])
+  }
 }

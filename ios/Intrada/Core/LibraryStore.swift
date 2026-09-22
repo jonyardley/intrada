@@ -96,10 +96,11 @@ final class LibraryStore: ItemStore {
         item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
         Self.modalityString(item.modality),
         item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
-        Self.encodeTags(item.tags),
-        Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
+        try Self.encodeTags(item.tags),
+        try Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
-        Self.encodeChordChart(item.chordChart), item.photoId, Self.encodeMetre(item.metre),
+        try Self.encodeChordChart(item.chordChart), item.photoId,
+        try Self.encodeMetre(item.metre),
       ])
     // Same transaction as the item row, keyed by id; no delete-missing: the
     // core always carries the tombstones it loaded and writes them back
@@ -161,7 +162,7 @@ final class LibraryStore: ItemStore {
           session.id, session.startedAt, session.completedAt,
           Int(session.totalDurationSecs), Self.completionString(session.completionStatus),
           session.sessionNotes,
-          Self.encodeEntries(session.entries), session.completedAt,
+          try Self.encodeEntries(session.entries), session.completedAt,
           session.sessionScore.map { Int($0) },
         ])
     }
@@ -463,6 +464,28 @@ final class LibraryStore: ItemStore {
     var description: String { "unknown \(kind) on decode: \"\(raw)\"" }
   }
 
+  // A JSON column that will not decode is reported and reads back as empty; one
+  // that will not encode throws, so the save fails instead of storing "[]" (#1117).
+  private struct StoredCodecError: Error, CustomStringConvertible {
+    let field: String
+    var description: String { "\(field) failed to decode" }
+  }
+
+  private static func encodeJSON<T: Encodable>(_ value: T) throws -> String {
+    String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+  }
+
+  private static func decodeJSON<T: Decodable>(_ type: T.Type, from json: String, field: String)
+    -> T?
+  {
+    do {
+      return try JSONDecoder().decode(type, from: Data(json.utf8))
+    } catch {
+      report(StoredCodecError(field: field), decodeContext)
+      return nil
+    }
+  }
+
   private static func item(from row: Row, variants: [Variant]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
@@ -488,16 +511,14 @@ final class LibraryStore: ItemStore {
     var groups: [UInt8]?
   }
 
-  private static func encodeMetre(_ metre: Metre?) -> String? {
+  private static func encodeMetre(_ metre: Metre?) throws -> String? {
     guard let metre else { return nil }
     let dto = StoredMetre(beats: metre.beats, unit: metre.unit, groups: metre.groups)
-    guard let data = try? JSONEncoder().encode(dto) else { return nil }
-    return String(data: data, encoding: .utf8)
+    return try encodeJSON(dto)
   }
 
   private static func decodeMetre(_ json: String?) -> Metre? {
-    guard let json,
-      let dto = try? JSONDecoder().decode(StoredMetre.self, from: Data(json.utf8))
+    guard let json, let dto = decodeJSON(StoredMetre.self, from: json, field: "metre")
     else { return nil }
     return Metre(beats: dto.beats, unit: dto.unit, groups: dto.groups)
   }
@@ -560,24 +581,20 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  private static func encodeTags(_ tags: [String]) -> String {
-    guard let data = try? JSONEncoder().encode(tags), let json = String(data: data, encoding: .utf8)
-    else { return "[]" }
-    return json
+  private static func encodeTags(_ tags: [String]) throws -> String {
+    try encodeJSON(tags)
   }
 
   private static func decodeTags(_ json: String) -> [String] {
-    (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
+    decodeJSON([String].self, from: json, field: "tags") ?? []
   }
 
-  private static func encodeLinkedExerciseIds(_ ids: [String]) -> String {
-    guard let data = try? JSONEncoder().encode(ids), let json = String(data: data, encoding: .utf8)
-    else { return "[]" }
-    return json
+  private static func encodeLinkedExerciseIds(_ ids: [String]) throws -> String {
+    try encodeJSON(ids)
   }
 
   private static func decodeLinkedExerciseIds(_ json: String) -> [String] {
-    (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
+    decodeJSON([String].self, from: json, field: "linked_exercise_ids") ?? []
   }
 
   // ── Row ↔ ChordChart codec ───────────────────────────────────────────
@@ -611,12 +628,7 @@ final class LibraryStore: ItemStore {
     var raw: String
   }
 
-  private struct ChartCodecError: Error, CustomStringConvertible {
-    let phase: String
-    var description: String { "chord chart failed to \(phase)" }
-  }
-
-  private static func encodeChordChart(_ chart: ChordChart?) -> String? {
+  private static func encodeChordChart(_ chart: ChordChart?) throws -> String? {
     guard let chart else { return nil }
     let dto = StoredChart(
       key: chart.key, modality: modalityString(chart.modality) ?? "major", metre: nil,
@@ -635,22 +647,12 @@ final class LibraryStore: ItemStore {
               })
           })
       })
-    guard let data = try? JSONEncoder().encode(dto), let json = String(data: data, encoding: .utf8)
-    else {
-      // Surface, don't swallow: a chart that fails to encode would otherwise be
-      // stored as NULL (silently "no chart") on the only copy of the data.
-      report(ChartCodecError(phase: "encode"), decodeContext)
-      return nil
-    }
-    return json
+    return try encodeJSON(dto)
   }
 
   private static func decodeChordChart(_ json: String?) -> ChordChart? {
-    guard let json else { return nil }  // no chart — legitimate
-    guard let dto = try? JSONDecoder().decode(StoredChart.self, from: Data(json.utf8)) else {
-      report(ChartCodecError(phase: "decode"), decodeContext)
-      return nil
-    }
+    guard let json, let dto = decodeJSON(StoredChart.self, from: json, field: "chord_chart")
+    else { return nil }
     return ChordChart(
       key: dto.key, modality: modality(from: dto.modality) ?? .major,
       sections: dto.sections.map { section in
@@ -829,7 +831,7 @@ final class LibraryStore: ItemStore {
       achievedTempo: p.achievedTempo, clickPattern: storedClick(p.clickPattern), score: p.score)
   }
 
-  private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
+  private static func encodeEntries(_ entries: [SetlistEntry]) throws -> String {
     let dtos = entries.map { e in
       StoredEntry(
         id: e.id, itemId: e.itemId, itemTitle: e.itemTitle, itemType: kindString(e.itemType),
@@ -838,9 +840,7 @@ final class LibraryStore: ItemStore {
         groupId: e.groupId, plannedVariationId: e.plannedVariationId,
         plannedRepTarget: e.plannedRepTarget, plays: e.plays.map(storedPlay))
     }
-    guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
-    else { return "[]" }
-    return json
+    return try encodeJSON(dtos)
   }
 
   /// A row written before #1739 has no `plays` and carries one score, one rep
@@ -880,7 +880,7 @@ final class LibraryStore: ItemStore {
   }
 
   private static func decodeEntries(_ json: String, sessionStartedAt: String) -> [SetlistEntry] {
-    guard let dtos = try? JSONDecoder().decode([StoredEntry].self, from: Data(json.utf8)) else {
+    guard let dtos = decodeJSON([StoredEntry].self, from: json, field: "entries") else {
       return []
     }
     return dtos.map { d in
