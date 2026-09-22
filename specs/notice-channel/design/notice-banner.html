@@ -1,0 +1,97 @@
+<title>Notice Banner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper-top: #F7F4EF;
+    --paper-bottom: #EFEBE3;
+    --card: #FFFFFF;
+    --hairline: #ECE6DA;
+    --ink: #2A2725;
+    --ink-2: #6E6A66;
+    --danger: #9C4A3A;
+    --danger-wash: rgba(156, 74, 58, 0.12);
+    --page: #E9E4DA;
+    --sans: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "DM Mono", Menlo, Consolas, monospace;
+  }
+  body { background: var(--page); color: var(--ink); font-family: var(--sans); padding-inline: 16px; padding-block: 28px 48px; }
+  main { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; text-wrap: balance; }
+  .lede { color: var(--ink-2); margin: 0 0 28px; max-width: 62ch; line-height: 1.45; }
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .option { flex: 1 1 300px; max-width: 400px; }
+  .phone { background: linear-gradient(180deg, var(--paper-top), var(--paper-bottom)); border: 1px solid var(--hairline); border-radius: 28px; padding: 0; overflow: hidden; box-shadow: 0 8px 24px rgba(42, 39, 37, 0.08); }
+  .statusbar { display: flex; justify-content: space-between; padding: 14px 22px 6px; font-size: 13px; font-weight: 600; }
+  .banner { display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px; font-size: 17px; font-weight: 500; line-height: 1.3; }
+  .banner svg { flex: 0 0 auto; width: 20px; height: 20px; margin-top: 2px; }
+  .banner .text { flex: 1 1 auto; }
+  .banner .x { flex: 0 0 auto; font-size: 13.5px; font-weight: 600; margin-top: 3px; }
+  .danger { background: var(--danger-wash); color: var(--danger); }
+  .notice-a { background: var(--card); color: var(--ink-2); border-bottom: 1px solid var(--hairline); }
+  .notice-b { background: rgba(110, 106, 102, 0.10); color: var(--ink-2); }
+  .screen { padding: 18px 16px 26px; }
+  .fake { background: var(--card); border: 1px solid var(--hairline); border-radius: 14px; height: 74px; margin-bottom: 10px; }
+  .fake.short { width: 60%; height: 22px; border: 0; background: rgba(42, 39, 37, 0.08); border-radius: 6px; }
+  .note { font-size: 14px; color: var(--ink-2); line-height: 1.45; margin: 12px 0 0; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .tokens { font-family: var(--mono); font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+  .pick { display: inline-block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--card); background: var(--ink); border-radius: 999px; padding: 3px 9px; margin-left: 8px; vertical-align: middle; }
+  .stack { margin-top: 36px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<main>
+  <h1>A second banner tone for something that worked</h1>
+  <p class="lede">The red bar stays for refusals and failed saves. The grey bar is for a true outcome that is not a failure. First use: a play that ends with the metronome at a speed the app cannot keep as a crotchet tempo. Both tones use only tokens already in Theme.swift.</p>
+
+  <div class="row">
+    <section class="option">
+      <p class="eyebrow">Option A <span class="pick">lean</span></p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="banner notice-a">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><path d="M10 9v5" stroke-linecap="round"/><circle cx="10" cy="6.4" r="0.9" fill="currentColor" stroke="none"/></svg>
+          <span class="text">That metronome setting doesn't give a crotchet tempo, so this play has none.</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="screen"><div class="fake short"></div><div class="fake"></div><div class="fake"></div></div>
+      </div>
+      <p class="note"><b>Card white on paper, hairline underneath, ink secondary text.</b> Reads as a note pinned to the page, not an alarm. The glyph is <span class="tokens">info.circle</span>.</p>
+      <p class="tokens">cardFill · hairline · inkSecondary</p>
+    </section>
+
+    <section class="option">
+      <p class="eyebrow">Option B</p>
+      <div class="phone">
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="banner notice-b">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><path d="M10 9v5" stroke-linecap="round"/><circle cx="10" cy="6.4" r="0.9" fill="currentColor" stroke="none"/></svg>
+          <span class="text">That metronome setting doesn't give a crotchet tempo, so this play has none.</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="screen"><div class="fake short"></div><div class="fake"></div><div class="fake"></div></div>
+      </div>
+      <p class="note"><b>Same shape as the red bar, with the wash in ink secondary instead of danger.</b> Closest to what exists; a touch heavier on the paper.</p>
+      <p class="tokens">inkSecondary at 10% · inkSecondary</p>
+    </section>
+  </div>
+
+  <section class="stack">
+    <p class="eyebrow">Both up at once, error on top (Option A shown)</p>
+    <div class="phone" style="max-width: 400px;">
+      <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+      <div class="banner danger">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2.5 18.5 17h-17L10 2.5z"/><path d="M10 8v4.2" stroke="#F7F4EF" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="14.6" r="0.9" fill="#F7F4EF"/></svg>
+        <span class="text">Couldn't save this practice.</span>
+        <span class="x">✕</span>
+      </div>
+      <div class="banner notice-a">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><path d="M10 9v5" stroke-linecap="round"/><circle cx="10" cy="6.4" r="0.9" fill="currentColor" stroke="none"/></svg>
+        <span class="text">That metronome setting doesn't give a crotchet tempo, so this play has none.</span>
+        <span class="x">✕</span>
+      </div>
+      <div class="screen"><div class="fake short"></div><div class="fake"></div></div>
+    </div>
+    <p class="note">The tap that raised a notice still gets its success buzz; only the red bar withholds it. Each bar dismisses on its own.</p>
+  </section>
+</main>

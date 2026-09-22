@@ -9,6 +9,7 @@ import XCTest
 private final class StubBridge: CoreBridge {
   private let core = CoreFfi()
   var throwOnUpdate: Error?
+  var nextViewModel: (() throws -> ViewModel)?
   func update(_ event: Event) throws -> [Request] {
     if let throwOnUpdate { throw throwOnUpdate }
     return []
@@ -17,7 +18,8 @@ private final class StubBridge: CoreBridge {
   func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
   func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
   func view() throws -> ViewModel {
-    try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
+    if let nextViewModel { return try nextViewModel() }
+    return try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
   }
 }
 
@@ -125,12 +127,25 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(RootView(), store: store), as: config)
   }
 
+  func testRootShellWithNotice() {
+    let bridge = StubBridge()
+    bridge.nextViewModel = {
+      var model = try emptyViewModel()
+      model.notice = "That metronome setting doesn't give a crotchet tempo, so this play has none."
+      return model
+    }
+    assertSnapshot(of: host(RootView(), store: Store(bridge: bridge)), as: config)
+  }
+
   func testGlobalBanner() {
     let banners = ZStack {
       PaperBackground()
       VStack(spacing: 0) {
         GlobalBanner(message: "Couldn't delete that item.", onDismiss: {})
         GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
+        GlobalBanner(
+          message: "That metronome setting doesn't give a crotchet tempo, so this play has none.",
+          tone: .notice, onDismiss: {})
         Spacer()
       }
     }

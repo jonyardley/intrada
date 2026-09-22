@@ -57,10 +57,13 @@ This spec adds the third.
    same play with the same reading, so the notice is raised twice with the
    same text; the shell shows one banner.
 5. **The screen is a second PR.** The shell half (a neutral `GlobalBanner`
-   tone on `inkSecondary` over `cardFill`, mocked in Claude Design first,
+   tone on `inkSecondary` over `cardFill` with a hairline underneath, chosen
+   by Jon on 2026-09-22 from the two tones in
+   [`notice-channel/design/notice-banner.html`](notice-channel/design/notice-banner.html),
    rendered where the red one is in `RootView` and `PlayerHost`, the haptic
    left as it is since `errorSeq` does not move) ships after the core PR merges,
-   in the same working session (#1348, #1374).
+   in the same working session (#1348, #1374). Design principle T30 records
+   the two tones.
 
 ## Copy
 
