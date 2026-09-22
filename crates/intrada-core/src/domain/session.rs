@@ -1793,14 +1793,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
     }
 }
 
-// ── Tests ──────────────────────────────────────────────────────────────
-
-pub const SAVE_FAILED: &str =
-    "Couldn't save this practice. Your notes and scores are still here: try Save again.";
+pub(crate) const SAVE_FAILED: &str =
+    "Couldn't save this practice. Your notes and scores are still here: tap Save session again.";
 
 /// The store has the row, so the model says so: push it, and close the
 /// summary if it is still the one being saved (#974).
-pub fn save_acknowledged(model: &mut Model) -> Command<Effect, Event> {
+pub(crate) fn save_acknowledged(model: &mut Model) -> Command<Effect, Event> {
     let Some(session) = model.saving_session.take() else {
         return Command::done();
     };
@@ -1818,17 +1816,18 @@ pub fn save_acknowledged(model: &mut Model) -> Command<Effect, Event> {
     ])
 }
 
-/// Nothing reached the disk: keep the summary and the recovery copy, and say
-/// so past any dismissed banner, since this answers the musician's own tap.
-/// Returns `None` when no save was in flight, so the caller keeps the
-/// background-failure path.
-pub fn save_refused(model: &mut Model) -> Option<Command<Effect, Event>> {
+/// Nothing reached the disk: keep the summary and the copy, and raise past the
+/// dismiss mute since this answers the musician's own tap (#974). `None` when
+/// no save was parked.
+pub(crate) fn save_refused(model: &mut Model) -> Option<Command<Effect, Event>> {
     let session = model.saving_session.take()?;
     if matches!(&model.session_status, SessionStatus::Summary(s) if s.id == session.id) {
         model.raise_error(SAVE_FAILED);
     }
     Some(crux_core::render::render())
 }
+
+// ── Tests ──────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {

@@ -97,7 +97,8 @@ Mirror the **Items** local-first pipeline exactly (`domain/item.rs` +
 ## Testing (Phase A)
 
 - Core (TDD): `SaveSession` in `local_first` emits the persistence save (not HTTP)
-  and keeps the optimistic `model.sessions`; `StartApp { local_first }` loads
+  and keeps the optimistic `model.sessions` (superseded by
+  `specs/save-acknowledged.md`, #974); `StartApp { local_first }` loads
   sessions; online mode still POSTs. Both modes.
 - GRDB: a migration **upgrade-path** test (populate at v2, migrate to v3, items
   intact) and a session **round-trip** (save → load → equal, entries preserved).

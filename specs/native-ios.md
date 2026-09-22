@@ -196,7 +196,7 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     builder with a reorderable queue tray) and the **active player + post-session
     summary** (player Slice 1, #964/#932) have since shipped, closing the
     build→practise→reflect→save loop. Next: per-item transition beats (Slice 2,
-    #961) and the SaveSession optimistic-clear retry path (#974).
+    #961); the SaveSession retry path (#974) shipped.
 - **Phase D (sync = the paid tier):** LWW sync to the Axum API (server-
   authoritative `updated_at`, tombstones, deterministic tiebreak — designed
   above); account/sign-in gates sync; StoreKit subscription + entitlement
