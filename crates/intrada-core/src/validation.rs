@@ -86,8 +86,13 @@ pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
     input
 }
 
+/// Every cap is in characters, as the messages say; `str::len` is bytes (#1944).
+pub fn exceeds_chars(value: &str, max: usize) -> bool {
+    value.chars().count() > max
+}
+
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
-    if title.is_empty() || title.len() > MAX_TITLE {
+    if title.is_empty() || exceeds_chars(title, MAX_TITLE) {
         return Err(LibraryError::Validation {
             field: "title".to_string(),
             message: format!("Title must be between 1 and {MAX_TITLE} characters"),
@@ -104,7 +109,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     // Composer is optional for both pieces and exercises; when given, it must
     // be a sensible length.
     if let Some(ref composer) = input.composer {
-        if composer.is_empty() || composer.len() > MAX_COMPOSER {
+        if composer.is_empty() || exceeds_chars(composer, MAX_COMPOSER) {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
                 message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
@@ -112,7 +117,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
         }
     }
     if let Some(ref notes) = input.notes {
-        if notes.len() > MAX_NOTES {
+        if exceeds_chars(notes, MAX_NOTES) {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
                 message: format!("Notes must not exceed {MAX_NOTES} characters"),
@@ -154,7 +159,7 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
         validate_title(title)?;
     }
     if let Some(Some(ref composer)) = input.composer {
-        if composer.is_empty() || composer.len() > MAX_COMPOSER {
+        if composer.is_empty() || exceeds_chars(composer, MAX_COMPOSER) {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
                 message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
@@ -162,7 +167,7 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
         }
     }
     if let Some(Some(ref notes)) = input.notes {
-        if notes.len() > MAX_NOTES {
+        if exceeds_chars(notes, MAX_NOTES) {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
                 message: format!("Notes must not exceed {MAX_NOTES} characters"),
@@ -180,7 +185,7 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
 
 pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError> {
     if let Some(ref n) = notes {
-        if n.len() > MAX_NOTES {
+        if exceeds_chars(n, MAX_NOTES) {
             return Err(LibraryError::Validation {
                 field: "session_notes".to_string(),
                 message: format!("Practice notes must not exceed {MAX_NOTES} characters"),
@@ -192,7 +197,7 @@ pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError
 
 pub fn validate_entry_notes(notes: &Option<String>) -> Result<(), LibraryError> {
     if let Some(ref n) = notes {
-        if n.len() > MAX_NOTES {
+        if exceeds_chars(n, MAX_NOTES) {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
                 message: format!("Notes must not exceed {MAX_NOTES} characters"),
@@ -214,7 +219,7 @@ pub fn validate_entries_not_empty<T>(entries: &[T], context: &str) -> Result<(),
 
 pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
     for tag in tags {
-        if tag.is_empty() || tag.len() > MAX_TAG {
+        if tag.is_empty() || exceeds_chars(tag, MAX_TAG) {
             return Err(LibraryError::Validation {
                 field: "tags".to_string(),
                 message: format!("Each tag must be between 1 and {MAX_TAG} characters"),
@@ -226,7 +231,7 @@ pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
 
 pub fn validate_intention(intention: &Option<String>) -> Result<(), LibraryError> {
     if let Some(ref text) = intention {
-        if text.len() > MAX_INTENTION {
+        if exceeds_chars(text, MAX_INTENTION) {
             return Err(LibraryError::Validation {
                 field: "intention".to_string(),
                 message: format!("Intention must not exceed {MAX_INTENTION} characters"),
@@ -286,7 +291,7 @@ pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
         });
     }
     if let Some(ref marking) = tempo.marking {
-        if marking.len() > MAX_TEMPO_MARKING {
+        if exceeds_chars(marking, MAX_TEMPO_MARKING) {
             return Err(LibraryError::Validation {
                 field: "tempo".to_string(),
                 message: format!("Tempo marking must not exceed {MAX_TEMPO_MARKING} characters"),
@@ -485,7 +490,7 @@ pub fn validate_variant_labels(labels: &[String]) -> Result<(), LibraryError> {
 
     let mut seen = std::collections::HashSet::new();
     for label in labels {
-        if label.is_empty() || label.len() > MAX_VARIANT_LABEL {
+        if label.is_empty() || exceeds_chars(label, MAX_VARIANT_LABEL) {
             return Err(LibraryError::Validation {
                 field: "labels".to_string(),
                 message: format!(
@@ -571,13 +576,13 @@ pub fn normalize_profile(mut profile: Profile) -> Profile {
 }
 
 pub fn validate_profile(profile: &Profile) -> Result<(), LibraryError> {
-    if profile.name.chars().count() > MAX_PROFILE_NAME {
+    if exceeds_chars(&profile.name, MAX_PROFILE_NAME) {
         return Err(LibraryError::Validation {
             field: "name".to_string(),
             message: format!("Name must be {MAX_PROFILE_NAME} characters or fewer"),
         });
     }
-    if profile.instrument.chars().count() > MAX_INSTRUMENT {
+    if exceeds_chars(&profile.instrument, MAX_INSTRUMENT) {
         return Err(LibraryError::Validation {
             field: "instrument".to_string(),
             message: format!("Instrument must be {MAX_INSTRUMENT} characters or fewer"),
@@ -1752,6 +1757,89 @@ mod tests {
                 assert_eq!(message, "Duplicate variation \u{201c}c\u{201d}");
             }
             _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- length caps count characters, not bytes (#1944) ---
+
+    fn create_with(composer: Option<String>, notes: Option<String>) -> CreateItem {
+        CreateItem {
+            title: "Etude".to_string(),
+            kind: ItemKind::Piece,
+            composer,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes,
+            tags: vec![],
+            photo_id: None,
+            variant_labels: vec![],
+        }
+    }
+
+    /// "é" is two bytes, so a byte count refuses these at half the cap. Deleting
+    /// the character count from any one validator fails its row at the cap.
+    #[test]
+    fn every_length_cap_counts_accented_characters_not_bytes() {
+        type Check = fn(String) -> Result<(), LibraryError>;
+        let table: [(&str, usize, Check); 13] = [
+            ("title", MAX_TITLE, |s| validate_title(&s)),
+            ("create composer", MAX_COMPOSER, |s| {
+                validate_create_item(&create_with(Some(s), None))
+            }),
+            ("create notes", MAX_NOTES, |s| {
+                validate_create_item(&create_with(None, Some(s)))
+            }),
+            ("update composer", MAX_COMPOSER, |s| {
+                validate_update_item(&UpdateItem {
+                    composer: Some(Some(s)),
+                    ..Default::default()
+                })
+            }),
+            ("update notes", MAX_NOTES, |s| {
+                validate_update_item(&UpdateItem {
+                    notes: Some(Some(s)),
+                    ..Default::default()
+                })
+            }),
+            ("session notes", MAX_NOTES, |s| {
+                validate_session_notes(&Some(s))
+            }),
+            ("entry notes", MAX_NOTES, |s| validate_entry_notes(&Some(s))),
+            ("tag", MAX_TAG, |s| validate_tags(&[s])),
+            ("intention", MAX_INTENTION, |s| validate_intention(&Some(s))),
+            ("tempo marking", MAX_TEMPO_MARKING, |s| {
+                validate_tempo(&Tempo {
+                    marking: Some(s),
+                    bpm: None,
+                })
+            }),
+            ("variation label", MAX_VARIANT_LABEL, |s| {
+                validate_variant_labels(&[s])
+            }),
+            ("profile name", MAX_PROFILE_NAME, |s| {
+                validate_profile(&Profile {
+                    name: s,
+                    ..Default::default()
+                })
+            }),
+            ("instrument", MAX_INSTRUMENT, |s| {
+                validate_profile(&Profile {
+                    instrument: s,
+                    ..Default::default()
+                })
+            }),
+        ];
+
+        for (field, max, check) in table {
+            assert!(
+                check("é".repeat(max)).is_ok(),
+                "{field}: {max} characters at the cap"
+            );
+            assert!(
+                check("é".repeat(max + 1)).is_err(),
+                "{field}: one over the cap"
+            );
         }
     }
 }
