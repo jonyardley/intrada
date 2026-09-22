@@ -251,7 +251,7 @@ change breaks.
    API codec updates, round-trip and upgrade-path tests, plus the plumbing the
    event signatures break.
 4. **#1367 shell.** The resident counter and its quiet untouched state,
-   "Passes" copy, the at-target state, the reclaimed vertical space, snapshots.
+   the counter copy, the at-target state, the reclaimed vertical space, snapshots.
 5. **#1499 core.** `Metre` on `Item`, written by `ItemEvent::SetMetre` (kept out
    of `Update` for the same reason as `SetPhoto`), `ChordChart.metre` removed
    and the chart's beats derived again when the metre changes, the migration
@@ -287,10 +287,13 @@ and normalisation paths.
 
 ## Copy
 
-**Settled (Jon, 2026-09-02): `Passes`, `Got it`, `Not quite`.**
+**Settled (Jon, 2026-09-02; header revised 2026-09-22, #1938): `Repetitions`,
+`Got it`, `Not quite`.**
 
-The header becomes **Passes**, not Repetitions: Jon's own word on #1367 and a
-musician's rather than a data model's (tone rule 2).
+The header stays **Repetitions**, and the builder says "Track repetitions": it is
+the word musicians already use for the count. `Passes` was settled on #1367 and
+reversed before it reached the header. The mocks in `practice-instruments/design/`
+predate that reversal and still draw Passes; build from this section, not them.
 
 **Both buttons change.** `Clean` and `Missed` were mismatched in kind: `Clean`
 described the pass, `Missed` described the player, and you miss a note rather

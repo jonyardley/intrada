@@ -734,7 +734,9 @@ out, and the count drops its "to go" clause. Tone V1: the app has no microphone
 and does not know how it went, so a banner at ten would be the notebook claiming
 to have listened.
 
-**`Passes`, `Got it`, `Not quite`.** `Passes` replaces `Repetitions`. Both
+**`Repetitions`, `Got it`, `Not quite`.** The header stays `Repetitions`, and the
+builder spells it out too (`Track repetitions`): it is the word musicians
+already use for the count, and `Passes` was reversed on 2026-09-22 (#1938). Both
 buttons change, because `Clean` and `Missed` were mismatched in kind: one
 described the pass, the other the player, and you miss a note rather than a
 pass. `Got it` is already the core's own word for this (`SessionEvent::RepGotIt`),

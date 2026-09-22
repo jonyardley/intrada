@@ -115,7 +115,7 @@ struct EntrySettingsSheet: View {
 
   private var repsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Toggle(isOn: $tracksReps) { Eyebrow("Track reps") }
+      Toggle(isOn: $tracksReps) { Eyebrow("Track repetitions") }
         .tint(IntradaColor.accent)
         .onChange(of: tracksReps) { _, on in
           store.send(
@@ -123,7 +123,7 @@ struct EntrySettingsSheet: View {
         }
       if tracksReps {
         Stepper(value: $repTarget, in: repTargetRange) {
-          Text("Target: \(repTarget) reps")
+          Text("Target: \(repTarget) repetitions")
             .font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
         }
         .onChange(of: repTarget) { _, value in

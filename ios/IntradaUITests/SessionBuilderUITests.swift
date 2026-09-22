@@ -183,7 +183,7 @@ final class SessionBuilderUITests: XCTestCase {
     // Row tap opens the entry settings sheet (Toggle labels surface as switches).
     hanonRow.tap()
     XCTAssertTrue(
-      app.descendants(matching: .any)["Track reps"].firstMatch.waitForExistence(timeout: 5),
+      app.descendants(matching: .any)["Track repetitions"].firstMatch.waitForExistence(timeout: 5),
       "settings sheet opens")
   }
 }
