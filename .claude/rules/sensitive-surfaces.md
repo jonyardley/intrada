@@ -39,6 +39,7 @@ The hazards, by file:
 - **`domain/session.rs`.** A new field anywhere in the `ActiveSession` graph
   invalidates every crash-recovery blob on every device (#1345).
   `active_session_blob_wire_is_pinned` fails on purpose: bump
-  `Store.sessionInProgressKey` first, then re-pin. Never only re-pin.
+  `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it
+  (#1116). Never only re-pin.
 - **`LibraryStore.swift`.** Append-only on the device, per
   `.claude/rules/offline-first.md`.

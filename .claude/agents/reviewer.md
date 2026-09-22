@@ -42,8 +42,8 @@ comment) before anything else below.
    bridge-crossing type (`deserialize_with`, `serialize_with`,
    `skip_serializing_if` on a non-trailing field) are a silent no-op (#846), and
    only a real-bridge round-trip catches a wire break. A new field anywhere in
-   the `ActiveSession` graph needs `Store.sessionInProgressKey` bumped before
-   the wire test is re-pinned; `#[serde(default)]` does nothing on bincode.
+   the `ActiveSession` graph needs `ActiveSession::BLOB_VERSION` bumped before
+   the wire test is re-pinned (#1116); `#[serde(default)]` does nothing on bincode.
    Offline-first: network on the local-first path, an entity without
    `updated_at` and `deleted_at`, a server-owned id, reconciliation in Swift, a
    silent failed write, an account gate on existing functionality.

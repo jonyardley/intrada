@@ -285,11 +285,14 @@ pub struct ActiveSession {
     pub session_started_at: DateTime<Utc>,
 }
 
+const RETIRED_BLOB_VERSION_MAX: u32 = 3;
+const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
+
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
-    /// blob of its own shape. The shell names its storage key by this number
-    /// and `active_session_blob_wire_is_pinned` pins it beside the bytes, so a
-    /// shape change bumps them together (#1116).
+    /// blob of its own shape. The shell names its storage key by this number,
+    /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
+    /// 3 named earlier shapes and are never reused.
     pub const BLOB_VERSION: u32 = 4;
 
     /// `entries` is never empty during an active session, so this indexes
@@ -6922,18 +6925,10 @@ mod tests {
 
     const PINNED_BLOB_VERSION: u32 = 4;
 
-    /// Versions 1 to 3 named blobs of earlier shapes; reusing one would let a
-    /// blob from that build decode into a valid-looking wrong session.
-    const RETIRED_BLOB_VERSION_MAX: u32 = 3;
-    const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
-
-    /// `AppEffect::SaveSessionInProgress(ActiveSession)` is positional bincode
-    /// written by one build and read by the next, so any change to this graph
-    /// takes a new `ActiveSession::BLOB_VERSION`, which the shell builds its
-    /// storage key from, or an old blob decodes into a valid-looking wrong
-    /// session (#1345). The shell key was once left behind when only the hex
-    /// was re-pinned (#1116), so version and hex are pinned as one pair. When
-    /// this fails: bump `BLOB_VERSION`, then re-pin both. Never just the hex.
+    /// The blob is positional bincode written by one build and read by the
+    /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
+    /// here is what retires the old blob (#1116). The test cannot tell a
+    /// re-pin with a bump from one without: the failure message is the protocol.
     #[test]
     fn active_session_blob_wire_is_pinned() {
         use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
@@ -6944,7 +6939,7 @@ mod tests {
         assert_eq!(
             (ActiveSession::BLOB_VERSION, hex.as_str()),
             (PINNED_BLOB_VERSION, PINNED_ACTIVE_SESSION_HEX),
-            "the crash-recovery blob changed shape: bump ActiveSession::BLOB_VERSION, then re-pin the version and the hex together"
+            "the crash-recovery blob changed shape: bump ActiveSession::BLOB_VERSION and PINNED_BLOB_VERSION, then re-pin the hex. Never only the hex."
         );
         let back: ActiveSession =
             BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
