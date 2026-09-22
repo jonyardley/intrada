@@ -90,6 +90,8 @@ struct ReflectionSheet: View {
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
   let plays: [ReflectionPlay]
+  /// Shown here because the player's banner sits under the sheet (#2009).
+  let refusal: String?
   let onSave: (ReflectionResult) -> Void
   let onSkip: () -> Void
 
@@ -103,6 +105,7 @@ struct ReflectionSheet: View {
     startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
+    refusal: String? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void
   ) {
@@ -112,6 +115,7 @@ struct ReflectionSheet: View {
     self.tempoUnit = tempoUnit
     self.currentClick = currentClick
     self.plays = plays
+    self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
     _tempos = State(
@@ -170,6 +174,12 @@ struct ReflectionSheet: View {
           .padding(IntradaSpacing.cardCompact)
           .cardSurface(cornerRadius: IntradaRadius.control)
           .padding(.top, IntradaSpacing.controlGap)
+
+        if let refusal {
+          FormErrorBanner(message: refusal)
+            .padding(.top, IntradaSpacing.card)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
 
         BrandBarButton {
           onSave(

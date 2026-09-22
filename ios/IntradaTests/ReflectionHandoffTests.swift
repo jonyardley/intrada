@@ -69,6 +69,7 @@ struct ReflectionHandoffTests {
       entryId: entryId, plays: plays, note: String(repeating: "a", count: 5001), marked: true)
 
     #expect(!ReflectionHandoff.run(handoff, send: accepting(bridge)))
+    #expect(try bridge.view().error?.contains("5000") == true, "the reason the sheet shows")
     #expect(try bridge.view().activeSession != nil, "the item has not moved on")
     #expect(try bridge.view().summary == nil)
   }
