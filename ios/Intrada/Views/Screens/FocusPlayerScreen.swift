@@ -406,7 +406,8 @@ struct FocusPlayerScreen: View {
 
   /// Cleared from the core so it does not also wait on the banner behind the sheet (#2009).
   private func refuse() {
-    let message = store.viewModel?.error ?? "Couldn't save. Try again."
+    let message = ReflectionHandoff.refusalMessage(
+      halted: store.halted, error: store.viewModel?.error)
     withAnimation { reflecting?.refusal = message }
     store.send(.clearError)
     UINotificationFeedbackGenerator().notificationOccurred(.error)

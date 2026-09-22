@@ -37,12 +37,19 @@ enum ReflectionHandoff {
       after: scores + tempos)
   }
 
-  /// False keeps the sheet up with its answers and the core's error shown in it: a refused note or move leaves the entry current. Once it has
-  /// moved on the sheet closes, or a retry would send NextItem twice (#1945).
+  /// False keeps the sheet up with its answers and the refusal shown in it:
+  /// a refused note or move leaves the entry current. Once it has moved on
+  /// the sheet closes, or a retry would send NextItem twice (#1945).
   static func run(_ plan: Plan, send: (Event) -> Bool) -> Bool {
     if let note = plan.note, !send(note) { return false }
     if !send(plan.nextItem) { return false }
     for event in plan.after { _ = send(event) }
     return true
+  }
+
+  /// A halted app has no core error to read, and a retry can never succeed (#2009).
+  @MainActor static func refusalMessage(halted: Bool, error: String?) -> String {
+    if halted { return Store.haltedMessage }
+    return error ?? "Couldn't save. Try again."
   }
 }
