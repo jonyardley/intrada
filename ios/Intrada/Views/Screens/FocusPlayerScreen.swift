@@ -9,6 +9,7 @@ struct FocusPlayerScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.screenWakeLock) private var wakeLock
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   // Snapshots inject a fixed instant so the timer is deterministic; production
   // passes nil and the timer ticks off the wall clock (mirrors PracticeScreen).
@@ -264,9 +265,9 @@ struct FocusPlayerScreen: View {
 
   // The indicator reads the audio's clock through the engine on every frame,
   // so it cannot drift against the click the way a view timer would (T19).
-  // Snapshots pass a reference date and get a settled frame with no ring.
+  // Snapshots and Reduce Motion get a settled frame with no ring.
   @ViewBuilder private var barLine: some View {
-    if referenceDate != nil {
+    if referenceDate != nil || reduceMotion {
       barLineBody(currentBeat: nil)
     } else {
       TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in

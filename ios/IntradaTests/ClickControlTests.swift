@@ -1,4 +1,5 @@
 import SharedTypes
+import SwiftUI
 import Testing
 
 @testable import Intrada
@@ -65,6 +66,17 @@ struct ClickControlTests {
 
   @Test func spokenTempoCarriesTheFailure() {
     #expect(control(unavailable: true).spokenValue == "unavailable")
+  }
+
+  @Test func adjustStepsByOneTempoStepEachWay() {
+    var steps: [Int] = []
+    let control = ClickControl(
+      bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+      targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { steps.append($0) },
+      onDragChange: { _ in })
+    control.adjust(.increment)
+    control.adjust(.decrement)
+    #expect(steps == [TempoScale.step, -TempoScale.step])
   }
 
   /// A drag commit inside the click engine's own lead-in cancels the pulse
