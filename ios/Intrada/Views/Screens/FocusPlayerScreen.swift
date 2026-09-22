@@ -43,6 +43,7 @@ struct FocusPlayerScreen: View {
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
         tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
+        refusal: target.refusal,
         onSave: { result in handleReflection(target, result) },
         onSkip: { handleSkipRating(target) }
       )
@@ -360,6 +361,7 @@ struct FocusPlayerScreen: View {
     let plays: [ReflectionPlay]
     /// `PrepareReflection`'s instant: `NextItem`'s own `now` must reuse it, or the rows above stop predicting the drop (#1758).
     let now: String
+    var refusal: String?
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -398,7 +400,7 @@ struct FocusPlayerScreen: View {
     let plan = ReflectionHandoff.plan(
       entryId: target.id, now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(),
       reading: target.reading, plays: target.plays, result: result)
-    if ReflectionHandoff.run(plan, send: store.sendAccepted) { reflecting = nil }
+    if ReflectionHandoff.run(plan, send: store.sendAccepted) { reflecting = nil } else { refuse() }
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
@@ -406,7 +408,17 @@ struct FocusPlayerScreen: View {
       .session(
         .nextItem(
           now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
-    if accepted { reflecting = nil }
+    if accepted { reflecting = nil } else { refuse() }
+  }
+
+  /// Cleared from the core so it does not also wait on the banner behind the sheet (#2009).
+  private func refuse() {
+    let message = ReflectionHandoff.refusalMessage(
+      halted: store.halted, error: store.viewModel?.error)
+    withAnimation { reflecting?.refusal = message }
+    store.send(.clearError)
+    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")
   }
 }
 

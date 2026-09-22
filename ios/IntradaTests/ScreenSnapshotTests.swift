@@ -746,6 +746,18 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  func testReflectionSheetWithARefusedSave() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
+        plays: [.preview("p1", nil, "7:00")],
+        refusal: "Notes must not exceed 5000 characters",
+        onSave: { _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   func testReflectionSheetWithThreeVariationsAccessibilitySize() {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
