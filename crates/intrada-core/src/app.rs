@@ -221,14 +221,14 @@ impl Intrada {
             Event::SessionStoreWritten(output) => match output {
                 PersistenceOutput::Ack => {
                     model.record_ack();
-                    Command::done()
+                    crate::domain::session::save_acknowledged(model)
                 }
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
-                // Failed save → reload sessions to roll back the optimistic push (#825).
-                PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
-                    persistence::load_sessions()
-                }
+                PersistenceOutput::Failed => crate::domain::session::save_refused(model)
+                    .unwrap_or_else(|| {
+                        model.surface_error("Couldn't access local storage.");
+                        persistence::load_sessions()
+                    }),
             },
 
             // ── On-device recognition ────────────────────────────────

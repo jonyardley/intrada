@@ -470,7 +470,10 @@ persistence `Effect` (`PersistenceOperation::SaveItem` / `SaveSession`, or the
 delete equivalent). The store's confirmation reconciles the entity already in
 the model: `PersistenceOutput::Ack` is a no-op, since the write already
 happened optimistically, and `Failed` surfaces `last_error`. There is no
-refetch and no server echo.
+refetch and no server echo. A finished practice is the exception: `SaveSession`
+parks it until the store answers, so its `Ack` is the push and the recovery-copy
+clear, and its `Failed` keeps the summary and raises the banner instead of
+reloading (`specs/save-acknowledged.md`, #974).
 
 ## Glossary
 

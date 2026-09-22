@@ -49,7 +49,8 @@ Mirror the **Items** local-first pipeline exactly (`domain/item.rs` +
 - `SaveSession` handler branches on `model.local_first`: local → `save_session`
   (+ `clear_error`, keep the `ClearSessionInProgress` notify); online →
   `http::create_session` (unchanged). The optimistic `model.sessions.push` stays
-  in both.
+  in both. Superseded by `specs/save-acknowledged.md` (#974): the push and the
+  clear now wait for the store's ack.
 - `StartApp { local_first: true }` issues `load_items()` **and** `load_sessions()`.
 - A `SessionsStoreLoaded` handler sets `model.sessions` from the output (mirrors
   `StoreLoaded` for items); rebuilds `practice_summaries`.
@@ -96,7 +97,8 @@ Mirror the **Items** local-first pipeline exactly (`domain/item.rs` +
 ## Testing (Phase A)
 
 - Core (TDD): `SaveSession` in `local_first` emits the persistence save (not HTTP)
-  and keeps the optimistic `model.sessions`; `StartApp { local_first }` loads
+  and keeps the optimistic `model.sessions` (superseded by
+  `specs/save-acknowledged.md`, #974); `StartApp { local_first }` loads
   sessions; online mode still POSTs. Both modes.
 - GRDB: a migration **upgrade-path** test (populate at v2, migrate to v3, items
   intact) and a session **round-trip** (save → load → equal, entries preserved).
