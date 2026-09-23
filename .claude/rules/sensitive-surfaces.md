@@ -13,13 +13,12 @@ drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
 Jon. Before editing:
 
-1. **Work it on the Fable list's rung.** This surface is on the Fable list in
-   `docs/working-with-agents.md`: until 2026-10-07 that is Opus 5.5 at `high`
-   (#2044, #2052), which decides the shape and builds it. Check with `/model` and
-   `/effort`, and switch before the first edit.
+1. **Work it at the sensitive surfaces' rung.** This surface is one of the
+   sensitive surfaces in `docs/working-with-agents.md`: Opus 5.5 at `high`
+   (#2044, #2052), which decides the shape and builds it. Check with `/effort`
+   and switch before the first edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
-   starts**, not only at the end, spawned with `model: fable`; its definition
-   pins Opus.
+   starts**, not only at the end, on its Opus pin.
 3. **Domain-sensitivity override.** This work goes up at least one tier in
    ceremony, and a change to a bridge shape, a migration or the blob graph
    ships as two PRs: core first, screens in the same working session, or the
