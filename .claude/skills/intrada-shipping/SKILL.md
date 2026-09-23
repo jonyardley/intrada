@@ -21,7 +21,7 @@ main while its reviewer was still thinking.
   `crates/intrada-ffi`, `ios/generated/`, `ios/Intrada/Core/LibraryStore.swift`
   (the only migration registration site), `ActiveSession` or auth spawns
   `reviewer` with `model: fable` instead: check with
-  `git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session.rs'`,
+  `git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session/'`,
   not the tier the author claimed.
 
 **The reviewer never waits, and the lead posts the comment.** Brief it to

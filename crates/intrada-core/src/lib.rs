@@ -7,9 +7,11 @@ pub mod persistence;
 pub mod practice_weeks;
 pub(crate) mod priorities;
 pub mod recognition;
+pub(crate) mod sample;
 pub(crate) mod staleness;
 pub mod suggestion;
 pub mod validation;
+pub mod view;
 
 pub use app::{AppEffect, Effect, Event, Intrada};
 pub use domain::item::{Item, ItemEvent, ItemKind, Modality};

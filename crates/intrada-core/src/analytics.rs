@@ -988,7 +988,7 @@ mod tests {
         let analytics = compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &[],
             clock(day(2026, 9, 23)),
         );
@@ -1153,7 +1153,7 @@ mod tests {
         compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &[],
             clock(day(2026, 9, 23)),
         )
@@ -1323,7 +1323,7 @@ mod tests {
         clock: LocalClock,
     ) -> Vec<NeglectedItem> {
         compute_neglected_items(
-            &crate::app::build_practice_summaries(sessions),
+            &crate::view::library::build_practice_summaries(sessions),
             items,
             clock,
         )
@@ -1659,7 +1659,7 @@ mod tests {
         let changes = compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &[],
             clock(today),
         )
@@ -1772,7 +1772,7 @@ mod tests {
         let analytics = compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &[],
             clock(today),
         );
@@ -1934,7 +1934,7 @@ mod tests {
         let analytics = compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &views,
             clock(today),
         );
@@ -1975,7 +1975,7 @@ mod tests {
         let analytics = compute_analytics(
             &sessions,
             &[],
-            &crate::app::build_practice_summaries(&sessions),
+            &crate::view::library::build_practice_summaries(&sessions),
             &[],
             clock(today),
         );

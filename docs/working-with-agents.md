@@ -569,7 +569,7 @@ job.
 description. It reads the issue named in its brief and checks the diff
 delivers the plan comment's done looks like before anything else. Check for a
 sensitive surface with
-`git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session.rs'`,
+`git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session/'`,
 not the tier the author claimed; a hit lifts `reviewer` to Fable, the one
 lever that beats a definition's pin.
 

@@ -77,7 +77,7 @@ pub struct PickerCandidateArg {
     pub last_practiced_at: Option<String>,
 }
 
-impl From<PickerCandidateArg> for crate::app::PickerCandidate {
+impl From<PickerCandidateArg> for crate::view::library::PickerCandidate {
     fn from(c: PickerCandidateArg) -> Self {
         Self {
             id: c.id,
@@ -168,7 +168,7 @@ impl From<PickerSortArg> for LibrarySort {
 /// The picker sheet's own sort and search (#1653): a plain call, not an
 /// `Event` round trip, since it runs on every keystroke and must not disturb
 /// the Library screen's own `ListQuery` state. See
-/// `intrada_core::app::sort_and_filter_candidates` for the shared comparator
+/// `intrada_core::view::library::sort_and_filter_candidates` for the shared comparator
 /// and search predicate this calls into. Returns candidate ids in filtered,
 /// sorted order; the shell reorders its own list by them.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
@@ -178,9 +178,9 @@ pub fn sort_and_filter_picker_candidates(
     sort: PickerSortArg,
     search: String,
 ) -> Vec<String> {
-    let candidates: Vec<crate::app::PickerCandidate> =
+    let candidates: Vec<crate::view::library::PickerCandidate> =
         candidates.into_iter().map(Into::into).collect();
-    crate::app::sort_and_filter_candidates(&candidates, &sort.into(), &search)
+    crate::view::library::sort_and_filter_candidates(&candidates, &sort.into(), &search)
 }
 
 /// The Add form has no saved exercise to read `LibraryItemView.shows_key`

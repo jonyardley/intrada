@@ -1,6 +1,6 @@
 ---
 paths:
-  - "crates/intrada-core/src/domain/session.rs"
+  - "crates/intrada-core/src/domain/session/**"
   - "crates/intrada-ffi/**"
   - "ios/generated/**"
   - "ios/Intrada/Core/LibraryStore.swift"
@@ -36,7 +36,7 @@ The hazards, by file:
 - **`ios/generated/`.** Never hand-edit. Fix the Rust type and regenerate.
   UniFFI output fails under Swift 6.2 `MainActor`-default isolation
   (uniffi-rs#2818); the build recipe keeps the package non-MainActor-defaulted.
-- **`domain/session.rs`.** A new field anywhere in the `ActiveSession` graph
+- **`domain/session/`.** A new field anywhere in the `ActiveSession` graph
   invalidates every crash-recovery blob on every device (#1345).
   `active_session_blob_wire_is_pinned` fails on purpose: bump
   `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it

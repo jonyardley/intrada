@@ -31,7 +31,7 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   `.github/workflows/`).
 - **Core serialisation points.** If your task and another live branch both
   touch one of these, serialise: `crates/intrada-core/src/app.rs`,
-  `crates/intrada-core/src/domain/session.rs`, `Cargo.lock` (never pair
+  `crates/intrada-core/src/domain/session/`, `Cargo.lock` (never pair
   anything with a dependency bump).
 - **Shell serialisation points.** These four govern every screen, so a
   shell-only stream that touches one of them serialises with every other
