@@ -329,6 +329,43 @@ expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$re
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
 
+# ── The dash check ──────────────────────────────────────────────────────────
+
+em=$'\xe2\x80\x94'
+en=$'\xe2\x80\x93'
+sandbox="$work/dashes"
+mkdir -p "$sandbox"
+cd "$sandbox"
+git init -q -b main .
+git config user.email "test@example.com"
+git config user.name "Hygiene self-test"
+git config commit.gpgsign false
+printf 'let a = 1\n' >base.swift
+git add -A
+git commit -qm "base"
+git update-ref refs/remotes/origin/main main
+
+dash_case() {
+  local want="$1" name="$2" file="$3" line="$4"
+  git checkout -qB "case-$passed-$failures" main
+  printf '%s\n' "$line" >"$file"
+  git add -A
+  git commit -qm "case"
+  expect "$want" "$name" bash "$repo_root/scripts/check-dashes.sh"
+}
+
+dash_case 1 "a dash in a Swift comment" a.swift "/// A piece $em for the snapshot."
+dash_case 1 "an en dash in Rust prose" a.rs "// ii${en}V${en}i reads badly here"
+dash_case 1 "a dash in Markdown" a.md "Plain prose $em with a dash."
+dash_case 1 "a dash outside the string on a code line" a.swift "let x = \"ok\" $em 1"
+dash_case 1 "a quoted dash inside a comment" a.swift "// show \"$em\" when empty"
+dash_case 0 "a dash inside a Swift string literal" a.swift "durationDisplay: \"$em\","
+dash_case 0 "an en dash inside a Rust string literal" a.rs "title: \"ii${en}V${en}i\".to_string(),"
+dash_case 0 "an escaped quote before the dash" a.swift "let s = \"say \\\"$em\\\" now\""
+dash_case 0 "no dash at all" a.swift "let plain = \"text\""
+
+cd "$repo_root"
+
 # ── Result ──────────────────────────────────────────────────────────────────
 
 if [ "$failures" -gt 0 ]; then
