@@ -514,7 +514,7 @@ once.
 - **isolation**, worktrees and who may edit where
   ([`worktrees.md`](worktrees.md)).
 - **routing**, which rung a piece of work runs on. A **rung** is one model and
-  effort pair, such as Opus 5 at `high`.
+  effort pair, such as Opus 5.5 at `high`.
 - **context**, what a session carries and for how long.
 - **speed**, Jon's time from claiming an issue to its merged PR. One of the
   three numbers the harness is measured by.

@@ -9,8 +9,9 @@
 > the OMP-era guides and `model-guide.md` on 2026-09-08; why OMP was retired is
 > in [`reference.md`](reference.md) too.
 >
-> Last reviewed: 2026-09-17, against the Claude 5 family (Fable 5.1, Opus 5,
-> Sonnet 5, Haiku 4.5). Re-review at the next model generation.
+> Last reviewed: 2026-09-23, when Opus 5.5 replaced Opus 5 (Fable 5.1, Opus 5.5,
+> Sonnet 5, Haiku 4.5), with the Fable list on trial on Opus 5.5 until
+> 2026-10-07 (#2044). Re-review at the next model generation.
 >
 > The generic version, with the intrada names taken out, is the shared guide
 > [Working with an agent: what good looks like](https://claude.ai/code/artifact/153ece12-8089-40c8-9f3d-5ce484503015):
@@ -26,7 +27,7 @@
 |---|---|---|
 | 1. Claim | `just claim N`, and stop if a PR already exists | `scripts/claim-issue.sh`, `just pr-open` |
 | 2. Isolate | `just worktree-new <name>`, then `cd <worktree> && ` on every command | The worktree guard and its lease |
-| 3. Route | Opus 5 `high` in the lead; Fable 5.1 `high` only for the Fable list | `.claude/settings.json`, the agent pins, the spawn guard |
+| 3. Route | Opus 5.5 `high` in the lead; Opus 5.5 `xhigh` for the Fable list while #2044 runs | `.claude/settings.json`, the agent pins, the spawn guard |
 | 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon | CLAUDE.md Workflow; `reviewer` checks the diff against it |
 | 5. Build | Settled slices to `task`, gates to `test-runner`, each file read once | The read guard, the bash guard, the context watch |
 | 6. Review | `reviewer` over the local diff, briefed with the worktree and the issue | `/ship` |
@@ -119,8 +120,8 @@ and the serialisation points.
 
 | You are | Do |
 |---|---|
-| Opening a session | Opus 5 `high`, which the session opens on. Name the rung once, at the start, and only when the work is on the Fable list; the line at every boundary was the turn reminder's, unhooked 2026-09-17 (#1989) |
-| Reaching work on the Fable list | `/model` and `/effort` in this session before the work starts, saying so, and back to Opus 5 `high` at the boundary. A new chat frees the lead; it is never how a rung changes |
+| Opening a session | Opus 5.5 `high`, which the session opens on. Name the rung once, at the start, and only when the work is on the Fable list; the line at every boundary was the turn reminder's, unhooked 2026-09-17 (#1989) |
+| Reaching work on the Fable list | While #2044 runs, `/effort xhigh` in this session before the work starts, saying so, and `/effort high` at the boundary; after it, whatever its verdict names. A new chat frees the lead; it is never how a rung changes |
 | Handing work down | Settled work goes to a subagent from one lead (step 5); a new chat is for freeing the session, never for work the lead could dispatch |
 
 The new-chat rule was set from twelve of 76 sessions over 12 to 14 September
@@ -140,13 +141,15 @@ is caught on the simulator, a wrong test fails in CI.
 
 | Model | $/MTok in/out | Use for |
 |---|---|---|
-| Fable 5.1 | 10 / 50 | The Fable list, and nothing else |
-| Opus 5 | 5 / 25 | Everything with judgement in it: the lead, `task`, `reviewer` |
+| Fable 5.1 | 10 / 50 | The Fable review of a diff on a sensitive surface; the Fable list again if #2044 ends that way |
+| Opus 5.5 | 4 / 20 | Everything with judgement in it: the lead, `task`, `reviewer`, and the Fable list while #2044 runs |
 | Haiku 4.5 | 1 / 5 | `test-runner` and `Explore`, nothing else |
 | Sonnet 5 | 2 / 10 | Retired from this repo |
 
-**The Fable list.** Switch the lead to Fable 5.1 `high` for these, with
-`/model` and `/effort`, saying so, and back to Opus 5 `high` at the boundary:
+**The Fable list.** From 2026-09-23 to 2026-10-07 this work runs on Opus 5.5
+at `xhigh` (#2044): `/effort xhigh`, saying so, and `/effort high` at the
+boundary. The Fable review of the diff (step 6) stays, and is the check on the
+trial:
 
 - The shape and the build of anything crossing the bridge, a schema change or
   migration, the crash-recovery blob or auth. The sensitivity override puts
@@ -163,14 +166,24 @@ of those turns ran at `xhigh` or `medium` against a pin of `high`. What the
 rate buys is judgement where being wrong is silent, so the list is the four
 silent-failure surfaces and nothing else.
 
+**The Opus 5.5 trial (#2044).** Opus 5.5 arrived on 2026-09-23 at $4 / $20
+against Opus 5's $5 / $25, and the lead moved to it without a decision because
+the repo setting names the `opus` alias. Anthropic's notes say it thinks more
+per turn at each effort than Opus 5, and that its `medium` beats Opus 5's
+`high` on coding; neither is measured here yet. So for a fortnight the Fable
+list runs on Opus 5.5 `xhigh` and `task` on `medium`, with the lead at `high`
+as the control. A Fable review that finds a Blocker the Opus 5.5 build missed
+puts that surface back on Fable; two such misses end the trial. Read at
+2026-09-27 and decided at 2026-10-07 in [`harness-log.md`](harness-log.md).
+
 **The rungs, with the human equivalent.**
 
 | Rung | Human equivalent | Ask them for |
 |---|---|---|
-| Fable 5.1 `high`, thinks | The architect you pull into a design review. Sets the shape; builds only the sensitive surfaces on the Fable list | The bridge or migration shape, the crash-recovery blob, auth, and the plan comment for those |
-| Opus 5 `high`, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed; they call the architect when the contract is in doubt |
-| Opus 5 `high`, `task` | The same senior engineer working alone on a branch from a written ticket | One slice, reported back as a diff; you do not sit with them while they type |
-| Opus 5 `high`, `reviewer` | A peer on the PR | Reads the diff, not the description; never merges |
+| Opus 5.5 `xhigh`, thinks, while #2044 runs (Fable 5.1 `high` before it) | The architect you pull into a design review. Sets the shape; builds only the sensitive surfaces on the Fable list | The bridge or migration shape, the crash-recovery blob, auth, and the plan comment for those |
+| Opus 5.5 `high`, the lead | A strong senior engineer who owns the ticket end to end | The build, within a shape already agreed; they call the architect when the contract is in doubt |
+| Opus 5.5 `medium`, `task` | The same senior engineer working alone on a branch from a written ticket | One slice, reported back as a diff; you do not sit with them while they type |
+| Opus 5.5 `high`, `reviewer` | A peer on the PR | Reads the diff, not the description; never merges |
 | Haiku 4.5 `low`, `test-runner` | CI on your desk | Runs the gate, names what failed, has no opinion |
 | Haiku 4.5, `Explore` | A new starter sent to find where something lives | File names and line numbers; a lead, not a fact |
 | Sonnet 5, retired from the lead | A capable mid-level engineer who needs the pattern shown | Nothing that needs judgement: the time spent correcting is the rate saved |
@@ -186,10 +199,11 @@ ticket with a plan attached, Tier 3 a design note before anyone builds.
 Effort does not follow a model switch, so a session that changes rung sets
 `/effort` as well as `/model`. Both change the running session, and both
 persist to settings unless chosen as session-only. Fast mode (Opus only) is
-priced at Fable's rate: use it when interactive latency genuinely matters,
-never as an economy measure.
+twice the standard rate, $8 / $40 on Opus 5.5: use it when interactive latency
+genuinely matters, never as an economy measure.
 
-**What the rungs cost.** Measured over the fortnight to 2026-09-17 with
+**What the rungs cost.** Every Opus row below is Opus 5, before Opus 5.5 arrived;
+the Opus 5.5 rows come at the #2044 reads. Measured over the fortnight to 2026-09-17 with
 `just usage 14`, from the session transcripts on Jon's machine, $1,137 in
 total. Every figure in this section comes from that one read. A subagent row
 carries the pin that was in force during the window, which for `task` and
@@ -252,7 +266,7 @@ column below is in that bill.
 | Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
-| Repo settings | `.claude/settings.json` | The model and effort a session opens on (Opus 5 `high`, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
+| Repo settings | `.claude/settings.json` | The model and effort a session opens on (Opus 5.5 `high` through the `opus` alias, 1M window), permissions, the format-on-edit and git-hook-install hooks, and the plugins switched off for this repo |
 | User rules | `~/.claude/CLAUDE.md`, `~/.claude/rules/` | Every session, before the project rules; project wins on conflict |
 | Auto memory | `~/.claude/projects/<project>/memory/MEMORY.md` | Every session, first 200 lines. Not loaded into subagents. The one input that can carry a stale fact |
 | User hooks | `~/.claude/settings.json`, `~/.claude/hooks/` | Text on every prompt (the context watch) and in the day's first session (one usage line); before a tool runs, the worktree guard, the bash guard, the read guard and the spawn guard |
@@ -275,7 +289,7 @@ standalone globals: `test-driven-development`, `requesting-code-review`,
 
 | You are | Do |
 |---|---|
-| Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on Fable 5.1 `high` if the work is on the Fable list and on the lead's own rung if it is not; wait for Jon's approval |
+| Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on the Fable list's rung (Opus 5.5 `xhigh` while #2044 runs) if the work is on the list and on the lead's own rung if it is not; wait for Jon's approval |
 | Holding a Tier 1 fix | No plan comment; build it |
 | Handing a task to a new session | `just handover [N]`, which starts the opener with the `/model` and `/effort` lines and names the issue; add the stream by hand when there is more than one |
 
@@ -295,10 +309,11 @@ Every plan (plan comment, spec phase breakdown, handover) names, per task:
 
 1. **Whether it is on the Fable list**, because nothing else moves the rung
    off Opus.
-2. **The two commands, only for Fable-list work**: an opener written by hand
-   starts with `/model fable` and `/effort high` on their own lines above the
-   pasted text when the task is on the list, and says nothing about the rung
-   otherwise, since the session opens on Opus 5 `high` (2026-09-17, #1989).
+2. **The rung, only for Fable-list work**: an opener written by hand starts
+   with `/effort xhigh` on its own line above the pasted text while #2044
+   runs (`/model fable` and `/effort high` before it), and says nothing about
+   the rung otherwise, since the session opens on Opus 5.5 `high` (2026-09-17,
+   #1989).
    `just handover` prints the two lines from the settings either way; they
    name the default, so pasting them changes nothing.
 3. **Where it runs**: this session, a new session, or a subagent; one fresh
@@ -327,7 +342,7 @@ other eyebrows in the app, and the hand-roll drops `Eyebrow`'s un-uppercased
 
 Tier 1. One file, no bridge, no schema, no auth, so no override applies.
 
-1. One session, no plan comment, no subagents. The lead's Opus 5 `high` is the
+1. One session, no plan comment, no subagents. The lead's Opus 5.5 `high` is the
    rung; nothing here is on the Fable list.
 2. Reading the file loads `.claude/rules/ios-ui.md`: reuse before creating,
    never hand-roll something that exists.
@@ -368,7 +383,8 @@ swallowed-update failure the offline-first rule exists to prevent.
 Tier 2 on file count, but projecting a bound through the `ViewModel` changes the
 bridge contract, so the domain-sensitivity override puts it up a tier.
 
-1. Contract before code, on the Fable list: Fable 5.1 at `high`. Pin the
+1. Contract before code, on the Fable list: Opus 5.5 at `xhigh` while #2044
+   runs, Fable 5.1 at `high` before it. Pin the
    `ViewModel` shape first, in one session, and write it into the plan comment
    before either side is wired.
 2. This touches `crates/`, so it is the one crate-touching stream this repo
@@ -395,8 +411,8 @@ Opener for the first session:
 Claim #1512 and stop if a PR already exists. Plan comment first, and do not
 write code this session beyond the contract.
 
-This changes the bridge contract, so switch to Fable 5.1 high (it is on the
-Fable list) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
+This changes the bridge contract, so switch to Opus 5.5 xhigh (it is on the
+Fable list, on trial under #2044) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
 and the rep-target bound, and write it into the issue before either side is
 wired. A refused write with nothing on screen is the failure the offline-first
 rule exists to prevent.
@@ -430,7 +446,7 @@ gate and its counts, what you left out, what you could not verify.
 
 | You are | Do |
 |---|---|
-| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Opus 5 `high`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files |
+| Holding a settled plan whose build follows a pattern in the repo | Hand each slice to `task` (Opus 5.5 `medium`), one slice per spawn, briefed by worktree, file and line; check its report against `reviewer` and the gate counts, never by re-reading its files |
 | About to run a gate | `test-runner`, never in the lead and never inside `task`; a fan-out skips the suites and the lead runs them once at the end |
 | Needing facts from many files | `Explore` with `model: haiku`; its findings are leads, not facts |
 | Looking at a file for the second time | grep, then a range read. The read guard denies the whole file, whether the Read tool or a bare `cat`, `sed`, `head` or `tail` asks for it (#1986), and it also denies the first read after `/clear` of a file the session read before it (#1866): range-read round that |
@@ -445,7 +461,7 @@ gate and its counts, what you left out, what you could not verify.
 |---|---|---|---|
 | Read-only research | `Explore` (built-in) | Pass `model: haiku` at the spawn; it has no definition to pin, so it inherits the spawning session's effort | Reports facts back; a wrong answer is caught by the lead verifying it |
 | Run a gate and filter its log | `test-runner` | Haiku 4.5, low | No judgement; the gate itself is the check |
-| Conventional Tier 2 slice | `task` | Opus 5, high | Non-sensitive surface, patterns already in the repo |
+| Conventional Tier 2 slice | `task` | Opus 5.5, medium while #2044 runs | Non-sensitive surface, patterns already in the repo |
 
 The three definitions in `.claude/agents/` (`reviewer` is the third, step 6)
 are reviewed like code and travel with the checkout. Pin model and effort in
@@ -457,10 +473,10 @@ built-in with no definition file, so that cap is on the spawning session. The
 lead opens at `high`, so `fork` and `general-purpose` inherit Opus at `high`
 (#1838, #1985); `Explore` takes `model: haiku`, a model the `/effort` menu
 does not offer `xhigh` for.
-`task` and the lead now sit at the same effort: the premium buys little on work
-that follows a pattern already in the repo, and context length dominates the
-cost either way (59% of `task`'s turns in the fortnight to 2026-09-13 ran past
-200k).
+`task` sits one effort below the lead while #2044 runs: on Opus 5.5 `medium`
+is claimed to beat Opus 5 `high`, the premium buys little on work that follows
+a pattern already in the repo, and context length dominates the cost either way
+(59% of `task`'s turns in the fortnight to 2026-09-13 ran past 200k).
 
 Rules on top:
 
@@ -472,7 +488,8 @@ Rules on top:
   was gone with the shell; every criterion it was given was true at the moment
   of checking.
 - **The sensitivity override applies to subagents.** A slice touching the
-  bridge, a migration, the blob or auth stays with the lead on Fable.
+  bridge, a migration, the blob or auth stays with the lead on the Fable
+  list's rung.
 - **Gates run through `test-runner`, never in the lead, and never inside
   `task`.** A failing suite prints thousands of lines that are re-sent on
   every later turn. `guard-bash.sh` denies `just check`, `just ios-test`,
@@ -542,7 +559,7 @@ job.
 | Holding a diff on a sensitive surface | Spawn `reviewer` with `model` set to Fable: `crates/intrada-ffi`, `ios/generated/`, a migration, `ActiveSession` or auth |
 | Holding a small Tier 2 on one file with no sensitive surface | `/code-review` inline in the lead may stand in. Say "comment-policy violations are Blockers" or they survive as nits |
 
-`reviewer` is pinned to Opus 5 `high`, a peer who reads the diff, not the
+`reviewer` is pinned to Opus 5.5 `high`, a peer who reads the diff, not the
 description. It reads the issue named in its brief and checks the diff
 delivers the plan comment's done looks like before anything else. Check for a
 sensitive surface with
@@ -662,8 +679,9 @@ the session transcripts on Jon's machine, all projects, weighted at API prices;
   text reads repeated a file the session already held, which is why the read
   guard now watches the Bash reads too (#1986). Read once, keep ranges tight,
   and run gates in `test-runner`.
-- **Fable's cache reads** cost $0.25 per MTok against Opus's $0.50, which keeps
-  the gap to Opus small at long context.
+- **Fable's cache reads** cost $0.25 per MTok against Opus 5's $0.50, which
+  kept the gap to Opus 5 small at long context. Opus 5.5 reads its cache at
+  $0.20, so that gap is back.
 - **Subagents were 26% of the fortnight to 2026-09-14, and 15% of the
   fortnight to 2026-09-17.** Their largest line was `task` spawned with
   `model: opus` over what was then its Sonnet pin. The 2026-09-14 read put

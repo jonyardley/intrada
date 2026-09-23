@@ -15,7 +15,7 @@ main while its reviewer was still thinking.
 - **Small Tier 2**, one file with no bridge, DB, auth or migration surface, may
   take a lighter single-pass review. Anything on the domain-sensitivity list,
   or spanning files, takes the full agent.
-- **`reviewer` is pinned to Opus 5 high**, briefed with the worktree and the
+- **`reviewer` is pinned to Opus 5.5 high**, briefed with the worktree and the
   issue so it checks the diff against done looks like. Tier 1 and screens-only
   diffs take the pin, which is no reason to skip review (#1665). A diff touching
   `crates/intrada-ffi`, `ios/generated/`, `ios/Intrada/Core/LibraryStore.swift`
