@@ -42,7 +42,7 @@ pub(crate) struct Projections {
     pub(crate) available_composers: Vec<String>,
     pub(crate) up_next: Option<SuggestedSession>,
     pub(crate) has_priorities: bool,
-    pub(crate) recently_practised: Vec<LibraryItemView>,
+    pub(crate) recently_practised_ids: Vec<String>,
     pub(crate) sessions: Vec<PracticeSessionView>,
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
     pub(crate) analytics: Option<AnalyticsView>,
@@ -94,7 +94,11 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
             direction: SortDirection::Descending,
         },
     );
-    recently_practised.truncate(RECENTLY_PRACTISED_LIMIT);
+    let recently_practised_ids = recently_practised
+        .into_iter()
+        .take(RECENTLY_PRACTISED_LIMIT)
+        .map(|i| i.id)
+        .collect();
 
     let sorted = crate::view::library::sorted_order(&library, &model.active_sort);
 
@@ -131,7 +135,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         available_composers,
         up_next,
         has_priorities,
-        recently_practised,
+        recently_practised_ids,
         sessions,
         practice_weeks,
         analytics,
@@ -382,15 +386,13 @@ mod tests {
     }
 
     #[test]
-    fn visible_ids_follow_the_filter_and_the_sort() {
+    fn items_hold_the_whole_library_and_visible_ids_follow_the_filter() {
         let mut model = sampled();
-        send(
-            &mut model,
-            Event::SetSort(crate::domain::types::LibrarySort {
-                field: crate::domain::types::SortField::Title,
-                direction: crate::domain::types::SortDirection::Ascending,
-            }),
-        );
+        let by_title = crate::domain::types::LibrarySort {
+            field: crate::domain::types::SortField::Title,
+            direction: crate::domain::types::SortDirection::Ascending,
+        };
+        send(&mut model, Event::SetSort(by_title));
         send(
             &mut model,
             Event::SetQuery(Some(ListQuery {
@@ -400,22 +402,18 @@ mod tests {
         );
 
         let view = build_view_at(&model, Utc::now());
-        let pieces: Vec<&str> = view.items.iter().map(|i| i.id.as_str()).collect();
-        assert!(view.all_items.len() > pieces.len());
-        assert_eq!(view.visible_ids, pieces);
-    }
-
-    #[test]
-    fn recently_practised_ids_name_the_recently_practised_rows() {
-        let model = sampled();
-        let view = build_view_at(&model, Utc::now());
-        assert!(!view.recently_practised.is_empty());
-        let rows: Vec<&str> = view
-            .recently_practised
+        assert_eq!(view.items.len(), model.items.len());
+        let mut by_title_rows = view.items.clone();
+        sort_library_items(&mut by_title_rows, &by_title);
+        assert_eq!(view.items, by_title_rows);
+        let pieces: Vec<&str> = view
+            .items
             .iter()
+            .filter(|i| i.item_type == ItemKind::Piece)
             .map(|i| i.id.as_str())
             .collect();
-        assert_eq!(view.recently_practised_ids, rows);
+        assert!(view.items.len() > pieces.len());
+        assert_eq!(view.visible_ids, pieces);
     }
 
     #[test]

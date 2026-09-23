@@ -21,7 +21,7 @@ struct AddRelatedExerciseSheet: View {
 
   private var candidates: [LibraryItemView] {
     let elsewhere = Swift.Set(entries.filter { $0.groupId != groupId }.map(\.itemId))
-    return (store.viewModel?.items ?? [])
+    return (store.viewModel?.visibleItems ?? [])
       .filter { $0.itemType == .exercise && !elsewhere.contains($0.id) }
   }
 

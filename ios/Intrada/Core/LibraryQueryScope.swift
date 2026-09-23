@@ -2,8 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// Clears the shared library `ListQuery` while a sheet is up and restores the
-/// Library's own on dismiss (#1440). Clears rather than narrows: `items` also
-/// resolves the pushed detail screen, so pinning it pops that screen.
+/// Library's own on dismiss (#1440).
 private struct LibraryQueryScope: ViewModifier {
   @Environment(Store.self) private var store
   @State private var queryBeforeSheet: ListQuery?

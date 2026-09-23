@@ -35,10 +35,13 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         }
     };
 
-    let visible: Vec<_> = cached
+    let items: Vec<_> = cached
         .sorted
         .iter()
-        .map(|&i| &cached.library[i])
+        .map(|&i| cached.library[i].clone())
+        .collect();
+    let visible: Vec<_> = items
+        .iter()
         .filter(|i| {
             model
                 .active_query
@@ -57,7 +60,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         .filter(|i| i.item_type == ItemKind::Exercise)
         .count();
     let visible_ids = visible.iter().map(|i| i.id.clone()).collect();
-    let items = visible.into_iter().cloned().collect();
 
     let labels = crate::view::session::variation_labels(&model.items);
 
@@ -132,8 +134,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
 
     ViewModel {
         items,
-        all_items: cached.library.clone(),
-        recently_practised: cached.recently_practised.clone(),
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
         visible_pieces,
@@ -158,11 +158,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         photo_recognition: photo_recognition_view(&model.photo_recognition),
         limits: LimitsView::default(),
         visible_ids,
-        recently_practised_ids: cached
-            .recently_practised
-            .iter()
-            .map(|i| i.id.clone())
-            .collect(),
+        recently_practised_ids: cached.recently_practised_ids.clone(),
     }
 }
 

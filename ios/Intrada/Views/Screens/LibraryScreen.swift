@@ -27,8 +27,9 @@ struct LibraryScreen: View {
   #endif
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
   private var displayedItems: [LibraryItemView] {
-    starFilter ? items.filter(\.priority) : items
+    starFilter ? visibleItems.filter(\.priority) : visibleItems
   }
 
   var body: some View {
@@ -140,7 +141,7 @@ struct LibraryScreen: View {
   }
 
   private var emptyMessage: String {
-    if starFilter && !items.isEmpty {
+    if starFilter && !visibleItems.isEmpty {
       return "No priorities yet. Swipe a row to add it to priorities."
     }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {

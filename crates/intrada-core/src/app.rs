@@ -671,7 +671,7 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 2);
+        assert_eq!(visible(&vm).len(), 2);
 
         let _cmd = app.update(
             Event::SetQuery(Some(ListQuery {
@@ -681,12 +681,12 @@ mod tests {
             &mut model,
         );
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].item_type, ItemKind::Piece);
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].item_type, ItemKind::Piece);
 
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 2);
+        assert_eq!(visible(&vm).len(), 2);
     }
 
     #[test]
@@ -759,8 +759,8 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "Moonlight Sonata");
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].title, "Moonlight Sonata");
     }
 
     #[test]
@@ -814,8 +814,8 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "Sonata");
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].title, "Sonata");
     }
 
     #[test]
@@ -854,12 +854,8 @@ mod tests {
             ..Default::default()
         });
 
-        let titles: Vec<String> = app
-            .view(&model)
-            .items
-            .iter()
-            .map(|i| i.title.clone())
-            .collect();
+        let vm = app.view(&model);
+        let titles: Vec<String> = visible(&vm).iter().map(|i| i.title.clone()).collect();
         assert_eq!(titles.len(), 2, "OR semantics: matches classical OR jazz");
         assert!(titles.contains(&"Bebop".to_string()));
         assert!(titles.contains(&"Nocturne".to_string()));
@@ -942,7 +938,7 @@ mod tests {
 
         let vm = app.view(&model);
         // Whole-library vocabulary: case-folded dedupe (first-seen "Chopin"), trimmed.
-        assert_eq!(vm.items.len(), 1);
+        assert_eq!(visible(&vm).len(), 1);
         assert_eq!(vm.available_composers, vec!["Beethoven", "Chopin", "Ravel"]);
     }
 
@@ -2047,6 +2043,13 @@ mod tests {
 
     // ── ViewModel projection tests (#554) ──────────────────────────────
 
+    fn visible(vm: &ViewModel) -> Vec<&LibraryItemView> {
+        vm.visible_ids
+            .iter()
+            .filter_map(|id| vm.items.iter().find(|i| &i.id == id))
+            .collect()
+    }
+
     fn make_item(
         id: &str,
         title: &str,
@@ -2114,7 +2117,7 @@ mod tests {
 
         let vm = app.view(&model);
         assert!(
-            !vm.items.iter().any(|i| i.id == "p1"),
+            !visible(&vm).iter().any(|i| i.id == "p1"),
             "the filter really does hide the piece from the list"
         );
         assert_eq!(
@@ -2141,12 +2144,12 @@ mod tests {
 
         let vm = app.view(&model);
         assert!(
-            !vm.items.iter().any(|i| i.id == "p1"),
+            !vm.visible_ids.iter().any(|id| id == "p1"),
             "the filter really does hide the piece from the list"
         );
         assert!(
-            vm.all_items.iter().any(|i| i.id == "p1"),
-            "all_items is the unfiltered picker source and must still offer it"
+            vm.items.iter().any(|i| i.id == "p1"),
+            "items is the unfiltered picker source and must still offer it"
         );
     }
 
@@ -2177,7 +2180,7 @@ mod tests {
 
         let vm = app.view(&model);
         assert!(
-            !vm.items.iter().any(|i| i.id == "ex1"),
+            !visible(&vm).iter().any(|i| i.id == "ex1"),
             "the filter really does hide the exercise from the list"
         );
         let analytics = vm.analytics.expect("a session makes the analytics view");
@@ -2263,7 +2266,7 @@ mod tests {
 
         let vm = app.view(&model);
         assert!(
-            !vm.items.iter().any(|i| i.id == "p1"),
+            !visible(&vm).iter().any(|i| i.id == "p1"),
             "the filter really does hide the starred piece from the list"
         );
         assert!(
@@ -2449,11 +2452,8 @@ mod tests {
         let vm = app.view(&model);
 
         assert_eq!(
-            vm.recently_practised
-                .iter()
-                .map(|i| i.title.as_str())
-                .collect::<Vec<_>>(),
-            ["Fresh", "Stale"],
+            vm.recently_practised_ids,
+            ["b", "a"],
             "most recently practised first, never-practised excluded"
         );
     }
@@ -2471,8 +2471,8 @@ mod tests {
 
         let vm = app.view(&model);
 
-        assert_eq!(vm.recently_practised.len(), 5);
-        assert_eq!(vm.recently_practised[0].title, "p0");
+        assert_eq!(vm.recently_practised_ids.len(), 5);
+        assert_eq!(vm.recently_practised_ids[0], "p0");
     }
 
     #[test]
@@ -2493,8 +2493,8 @@ mod tests {
 
         let vm = app.view(&model);
 
-        assert!(!vm.items.iter().any(|i| i.id == "p1"));
-        assert!(vm.recently_practised.iter().any(|i| i.id == "p1"));
+        assert!(!vm.visible_ids.iter().any(|id| id == "p1"));
+        assert!(vm.recently_practised_ids.iter().any(|id| id == "p1"));
     }
 
     #[test]
@@ -2530,8 +2530,8 @@ mod tests {
             text: None,
         });
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "Exercise One");
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].title, "Exercise One");
     }
 
     #[test]
@@ -2551,8 +2551,8 @@ mod tests {
             text: Some("clair".to_string()),
         });
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "Clair de Lune");
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].title, "Clair de Lune");
     }
 
     #[test]
@@ -2571,8 +2571,8 @@ mod tests {
             text: None,
         });
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "Tagged");
+        assert_eq!(visible(&vm).len(), 1);
+        assert_eq!(visible(&vm)[0].title, "Tagged");
     }
 
     #[test]
@@ -2637,7 +2637,7 @@ mod tests {
             text: None,
         });
         let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
+        assert_eq!(visible(&vm).len(), 1);
         assert_eq!(vm.visible_pieces, 0);
         assert_eq!(vm.visible_exercises, 1);
 
@@ -3677,7 +3677,7 @@ mod tests {
 
         let vm = app.view(&model);
         assert!(
-            vm.items.is_empty(),
+            visible(&vm).is_empty(),
             "the filter really does hide the exercise"
         );
         let captions: Vec<&str> = vm
