@@ -438,7 +438,7 @@
         entries: [
           SetlistEntryView.previewThreeVariations,
           summaryEntry("e2", "Clair de Lune", .piece, "7m 50s", 470, .completed, score: 6),
-        ], sessionScore: nil)
+        ], sessionScore: nil, completedCount: 2, topMover: nil)
     }
 
     static var previewSummary: SummaryView {
@@ -453,7 +453,7 @@
             "e3", "Gymnopédie No. 1", .piece, "11m 30s", 690, .completed, score: 5,
             notes: "Pedal changes cleaner than last week."),
           summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", 330, .completed, score: 3),
-        ], sessionScore: 8)
+        ], sessionScore: 8, completedCount: 4, topMover: nil)
     }
 
     static var previewSummaryEndedEarly: SummaryView {
@@ -463,7 +463,7 @@
           summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", 760, .completed, score: 3),
           summaryEntry("e2", "Hanon No. 1", .exercise, "8m 10s", 490, .completed, score: 4),
           summaryEntry("e3", "Étude Op. 10", .piece, "0s", 0, .notAttempted, score: nil),
-        ], sessionScore: 8)
+        ], sessionScore: 8, completedCount: 2, topMover: nil)
     }
 
     private static func summaryEntry(

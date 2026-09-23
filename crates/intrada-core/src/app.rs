@@ -1854,6 +1854,27 @@ mod tests {
         }
     }
 
+    fn test_variant(id: &str, label: &str, position: usize) -> crate::domain::variant::Variant {
+        crate::domain::variant::Variant {
+            id: id.to_string(),
+            label: label.to_string(),
+            position,
+            updated_at: chrono::Utc::now(),
+            deleted_at: None,
+        }
+    }
+
+    fn make_session_on_variation(
+        id: &str,
+        item_id: &str,
+        variation_id: &str,
+        score: u8,
+    ) -> PracticeSession {
+        let mut session = make_session(id, item_id, Some(score), None);
+        session.entries[0].plays[0].variation_id = Some(variation_id.to_string());
+        session
+    }
+
     // ── The tempo trend (#1420) ──
 
     /// `measured[i]` is the tempo of the i-th session chronologically. The
@@ -2309,6 +2330,127 @@ mod tests {
     }
 
     #[test]
+    fn the_priorities_button_shows_only_when_starred_and_nothing_is_under_way() {
+        use crate::domain::session::{SessionEvent, TempoReading};
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.priority = true;
+        let mut model = Model {
+            items: vec![piece].into(),
+            ..Default::default()
+        };
+        let shows = |model: &Model| app.view(model).shows_priorities;
+
+        assert!(shows(&model), "starred and idle");
+
+        model.items[0].priority = false;
+        assert!(!shows(&model), "nothing starred");
+        model.items[0].priority = true;
+
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        let _ = app.update(
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "p1".to_string(),
+            }),
+            &mut model,
+        );
+        assert!(!shows(&model), "a session is being built");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::StartSession { now }),
+            &mut model,
+        );
+        assert!(app.view(&model).active_session.is_some());
+        assert!(!shows(&model), "a session is being played");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::EndSessionEarly {
+                now,
+                reading: TempoReading::silent(),
+            }),
+            &mut model,
+        );
+        assert!(app.view(&model).summary.is_some());
+        assert!(!shows(&model), "a finished session is on screen");
+    }
+
+    #[test]
+    fn the_solid_count_counts_the_solid_variations() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
+        exercise.variants = ["C", "G", "D"]
+            .iter()
+            .enumerate()
+            .map(|(i, label)| test_variant(&format!("v{i}"), label, i))
+            .collect();
+        let mut model = Model {
+            items: vec![exercise].into(),
+            ..Default::default()
+        };
+        let solid_count = |model: &Model| app.view(model).items[0].solid_variation_count;
+        assert_eq!(solid_count(&model), 0, "nothing marked");
+
+        model.sessions = vec![
+            make_session_on_variation("s1", "ex1", "v0", 9),
+            make_session_on_variation("s2", "ex1", "v1", 3),
+            make_session_on_variation("s3", "ex1", "v2", 8),
+        ]
+        .into();
+        let vm = app.view(&model);
+        let flagged = vm.items[0].variants.iter().filter(|v| v.is_solid).count();
+        assert_eq!(flagged, 2, "v0 and v2 are solid, v1 is not");
+        assert_eq!(solid_count(&model), flagged);
+    }
+
+    #[test]
+    fn the_builder_carries_each_entrys_variations() {
+        use crate::domain::session::SessionEvent;
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
+        exercise.variants = vec![test_variant("v0", "C", 0), test_variant("v1", "G", 1)];
+        let plain = make_item("p1", "Sonata", ItemKind::Piece, now);
+        let mut model = Model {
+            items: vec![exercise, plain].into(),
+            ..Default::default()
+        };
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        for id in ["ex1", "p1"] {
+            let _ = app.update(
+                Event::Session(SessionEvent::AddToSetlist {
+                    item_id: id.to_string(),
+                }),
+                &mut model,
+            );
+        }
+        // A Library search must not empty the list (#1484).
+        model.active_query = Some(ListQuery {
+            text: Some("sonata".to_string()),
+            ..Default::default()
+        });
+
+        let building = app.view(&model).building_setlist.expect("building");
+        let exercise_entry = building
+            .entries
+            .iter()
+            .find(|e| e.item_id == "ex1")
+            .expect("the exercise is in the setlist");
+        assert_eq!(
+            building.entry_variations.len(),
+            1,
+            "only an entry with variations"
+        );
+        let row = &building.entry_variations[0];
+        assert_eq!(row.entry_id, exercise_entry.id);
+        let labels: Vec<&str> = row.variations.iter().map(|v| v.label.as_str()).collect();
+        assert_eq!(labels, ["C", "G"]);
+        crate::domain::types::assert_round_trips(building);
+    }
+
+    #[test]
     fn view_exposes_last_practised_when_a_session_has_been_played() {
         // Wiring only: the relative-day wording is pinned in analytics::tests,
         // which can hold the clock still.
@@ -2561,6 +2703,7 @@ mod tests {
             key: None,
             tags: vec![],
             text: None,
+            priority_only: false,
         });
         let vm = app.view(&model);
         assert_eq!(visible(&vm).len(), 1);
@@ -2582,6 +2725,7 @@ mod tests {
             key: None,
             tags: vec![],
             text: Some("clair".to_string()),
+            priority_only: false,
         });
         let vm = app.view(&model);
         assert_eq!(visible(&vm).len(), 1);
@@ -2602,10 +2746,79 @@ mod tests {
             key: None,
             tags: vec!["warm-up".to_string()],
             text: None,
+            priority_only: false,
         });
         let vm = app.view(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Tagged");
+    }
+
+    #[test]
+    fn view_query_star_filter_leaves_only_priorities() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+        let mut starred_piece = make_item("p1", "Clair de Lune", ItemKind::Piece, now);
+        starred_piece.priority = true;
+        starred_piece.tags = vec!["recital".to_string()];
+        let plain_piece = make_item("p2", "Clair Obscur", ItemKind::Piece, now);
+        let mut starred_exercise = make_item("e1", "Clair scales", ItemKind::Exercise, now);
+        starred_exercise.priority = true;
+        model.items = vec![starred_piece, plain_piece, starred_exercise].into();
+
+        let cases: &[(ListQuery, &[&str], &str)] = &[
+            (
+                ListQuery {
+                    priority_only: true,
+                    ..Default::default()
+                },
+                &["e1", "p1"],
+                "the star alone",
+            ),
+            (
+                ListQuery {
+                    priority_only: true,
+                    text: Some("clair".to_string()),
+                    ..Default::default()
+                },
+                &["e1", "p1"],
+                "with text every item matches",
+            ),
+            (
+                ListQuery {
+                    priority_only: true,
+                    item_type: Some(ItemKind::Piece),
+                    ..Default::default()
+                },
+                &["p1"],
+                "a starred exercise outside the type still drops",
+            ),
+            (
+                ListQuery {
+                    priority_only: true,
+                    tags: vec!["recital".to_string()],
+                    ..Default::default()
+                },
+                &["p1"],
+                "with a tag",
+            ),
+            (
+                ListQuery {
+                    text: Some("clair".to_string()),
+                    ..Default::default()
+                },
+                &["e1", "p1", "p2"],
+                "without the star an unstarred match stays",
+            ),
+        ];
+        for (query, expected, why) in cases {
+            model.active_query = Some(query.clone());
+            let vm = app.view(&model);
+            let mut got: Vec<&str> = visible(&vm).iter().map(|i| i.id.as_str()).collect();
+            got.sort_unstable();
+            assert_eq!(got, *expected, "{why}");
+            assert_eq!(vm.items.len(), 3, "{why}: the library stays whole");
+        }
     }
 
     #[test]
@@ -2633,6 +2846,7 @@ mod tests {
             key: None,
             tags: vec![],
             text: None,
+            priority_only: false,
         };
         model.active_query = Some(query.clone());
         let vm = app.view(&model);
@@ -2668,6 +2882,7 @@ mod tests {
             key: None,
             tags: vec![],
             text: None,
+            priority_only: false,
         });
         let vm = app.view(&model);
         assert_eq!(visible(&vm).len(), 1);
@@ -2679,6 +2894,7 @@ mod tests {
             key: None,
             tags: vec![],
             text: Some("Piece One".to_string()),
+            priority_only: false,
         });
         let vm = app.view(&model);
         assert_eq!(vm.visible_pieces, 1);

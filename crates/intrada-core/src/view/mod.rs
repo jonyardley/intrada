@@ -2,11 +2,13 @@ use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
-use crate::model::{BuildingSetlistView, LimitsView, Model, PhotoRecognitionView, ViewModel};
+use crate::model::{
+    BuildingSetlistView, EntryVariationsView, LimitsView, Model, PhotoRecognitionView, ViewModel,
+};
 use crate::view::cache::ProjectionKey;
 use crate::view::library::matches_query;
 use crate::view::session::{
-    build_active_session_view, build_blocks, build_summary_view, entry_to_view,
+    build_active_session_view, build_blocks, build_summary_view, entry_to_view, picker_variations,
 };
 
 pub mod cache;
@@ -91,6 +93,17 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             } else {
                 (None, None)
             };
+            let entry_variations = building
+                .entries
+                .iter()
+                .filter_map(|entry| {
+                    let item = cached.library.iter().find(|i| i.id == entry.item_id)?;
+                    (!item.variants.is_empty()).then(|| EntryVariationsView {
+                        entry_id: entry.id.clone(),
+                        variations: picker_variations(entry, &item.variants),
+                    })
+                })
+                .collect();
             (
                 None,
                 Some(BuildingSetlistView {
@@ -99,6 +112,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     blocks,
                     total_duration_display,
                     total_duration_summary,
+                    entry_variations,
                 }),
                 None,
             )
@@ -128,7 +142,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         SessionStatus::Summary(summary_session) => (
             None,
             None,
-            Some(build_summary_view(summary_session, &labels)),
+            Some(build_summary_view(
+                summary_session,
+                &labels,
+                &cached.score_changes,
+            )),
         ),
     };
 
@@ -159,6 +177,8 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         limits: LimitsView::default(),
         visible_ids,
         recently_practised_ids: cached.recently_practised_ids.clone(),
+        shows_priorities: cached.has_priorities
+            && matches!(model.session_status, SessionStatus::Idle),
     }
 }
 
@@ -171,16 +191,111 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             status: PhotoRecognitionStatus::Reading,
             photo_id: Some(photo_id.clone()),
             draft: None,
+            read_nothing: false,
         },
         PhotoRecognition::Ready { photo_id, draft } => PhotoRecognitionView {
             status: PhotoRecognitionStatus::Ready,
             photo_id: Some(photo_id.clone()),
             draft: Some(draft.clone()),
+            read_nothing: *draft == crate::recognition::PhotoDraft::default(),
         },
         PhotoRecognition::Failed { photo_id } => PhotoRecognitionView {
             status: PhotoRecognitionStatus::Failed,
             photo_id: Some(photo_id.clone()),
             draft: None,
+            read_nothing: false,
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::photo_recognition_view;
+    use crate::domain::types::Tempo;
+    use crate::model::PhotoRecognition;
+    use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};
+
+    fn text(value: &str) -> Option<TextDraftField> {
+        Some(TextDraftField {
+            value: value.to_string(),
+            source: DraftSource::Recognised,
+            confidence: 0.9,
+            weak: false,
+        })
+    }
+
+    fn ready(draft: PhotoDraft) -> PhotoRecognition {
+        PhotoRecognition::Ready {
+            photo_id: "photo".to_string(),
+            draft,
+        }
+    }
+
+    #[test]
+    fn a_finished_read_that_found_nothing_says_so() {
+        let tempo = Some(TempoDraftField {
+            value: Tempo {
+                marking: None,
+                bpm: Some(96),
+            },
+            source: DraftSource::Recognised,
+            confidence: 0.9,
+            weak: false,
+        });
+        let cases: Vec<(PhotoRecognition, bool, &str)> = vec![
+            (ready(PhotoDraft::default()), true, "an empty draft"),
+            (
+                ready(PhotoDraft {
+                    title: text("Autumn Leaves"),
+                    ..Default::default()
+                }),
+                false,
+                "a title alone",
+            ),
+            (
+                ready(PhotoDraft {
+                    composer: text("Kosma"),
+                    ..Default::default()
+                }),
+                false,
+                "a composer alone",
+            ),
+            (
+                ready(PhotoDraft {
+                    tempo,
+                    ..Default::default()
+                }),
+                false,
+                "a tempo alone",
+            ),
+            (
+                ready(PhotoDraft {
+                    chart_text: text("| Cm7 | F7 |"),
+                    ..Default::default()
+                }),
+                false,
+                "a chart alone",
+            ),
+            (PhotoRecognition::Idle, false, "no read"),
+            (
+                PhotoRecognition::Reading {
+                    photo_id: "photo".to_string(),
+                },
+                false,
+                "still reading",
+            ),
+            (
+                PhotoRecognition::Failed {
+                    photo_id: "photo".to_string(),
+                },
+                false,
+                "a failed read is its own state",
+            ),
+        ];
+        for (state, expected, why) in cases {
+            let view = photo_recognition_view(&state);
+            assert_eq!(view.read_nothing, expected, "{why}");
+            crate::domain::types::assert_round_trips(view);
+        }
     }
 }

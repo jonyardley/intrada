@@ -1,4 +1,7 @@
-use crate::analytics::{compute_analytics, AnalyticsView, LastPractisedView, LocalClock};
+use crate::analytics::{
+    analytics_from_changes, compute_score_changes, AnalyticsView, LastPractisedView, LocalClock,
+    ScoreChange,
+};
 use crate::domain::types::{LibrarySort, SortDirection, SortField};
 use crate::model::{LibraryItemView, Model, PracticeSessionView};
 use crate::practice_weeks::PracticeWeekView;
@@ -47,6 +50,9 @@ pub(crate) struct Projections {
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
     pub(crate) analytics: Option<AnalyticsView>,
     pub(crate) last_practised: Option<LastPractisedView>,
+    /// Every change this week, where `analytics` keeps only a few; the
+    /// summary's top mover reads the whole list.
+    pub(crate) score_changes: Vec<ScoreChange>,
 }
 
 /// Called at the end of every `update`, since `view` cannot store.
@@ -112,11 +118,13 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
 
     let practice_weeks = crate::practice_weeks::compute_practice_weeks(&model.sessions, clock);
 
+    let score_changes = compute_score_changes(&model.sessions, clock);
     let (analytics, last_practised) = if model.sessions.is_empty() {
         (None, None)
     } else {
         (
-            Some(compute_analytics(
+            Some(analytics_from_changes(
+                &score_changes,
                 &model.sessions,
                 &model.items,
                 &model.practice_summaries,
@@ -140,6 +148,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         practice_weeks,
         analytics,
         last_practised,
+        score_changes,
     }
 }
 

@@ -260,12 +260,14 @@ final class SessionBridgeTests: XCTestCase {
               tempo: nil, notes: nil, tags: nil, priority: true))))
     }
     XCTAssertTrue(try bridge.view().hasPriorities, "both items are starred")
+    XCTAssertTrue(try bridge.view().showsPriorities, "starred with nothing under way")
 
     _ = try bridge.update(.session(.startBuildingWithPriorities(now: SessionClock.nowRFC3339())))
     let vm = try bridge.view()
     XCTAssertEqual(
       vm.buildingSetlist?.entries.count, 2, "every starred item should reach the builder")
     XCTAssertNil(vm.error)
+    XCTAssertFalse(vm.showsPriorities, "a session is now being built")
   }
 
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
@@ -308,6 +310,7 @@ final class SessionBridgeTests: XCTestCase {
     let summary = try bridge.view()
     XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
     XCTAssertNil(summary.activeSession)
+    XCTAssertEqual(summary.summary?.completedCount, 1, "the one item played counts as done")
 
     // Optional-payload events crossing bincode (the absent-vs-present wire
     // hazard, #846): set then clear a score and the session notes.
@@ -495,6 +498,40 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.reorderBlock(groupId: groupId, newPosition: 1)))
 
     let after = try XCTUnwrap(try bridge.view().buildingSetlist)
+    XCTAssertEqual(after.blocks.map(\.pieceTitle), [nil, "Clair de Lune"])
+    XCTAssertEqual(after.blocks.last?.entries.map(\.id), block.entries.map(\.id))
+  }
+
+  /// `moveRelated` crosses the wire and swaps the block's exercises; the
+  /// piece still closes the block (#1957).
+  func testRealBridgeMoveRelatedSwapsTheBlocksExercises() throws {
+    let bridge = try bridgeBuildingABlockAndAStandalone()
+    let before = try XCTUnwrap(try bridge.view().buildingSetlist)
+    let block = try XCTUnwrap(before.blocks.first { $0.groupId != nil })
+    guard block.entries.count == 3 else {
+      return XCTFail("both linked exercises join the piece's block, got \(block.entries.count)")
+    }
+
+    _ = try bridge.update(.session(.moveRelated(entryId: block.entries[1].id, newPosition: 0)))
+
+    let after = try XCTUnwrap(try bridge.view().buildingSetlist)
+    XCTAssertNil(try bridge.view().error)
+    XCTAssertEqual(
+      after.blocks.first { $0.groupId == block.groupId }?.entries.map(\.id),
+      [block.entries[1].id, block.entries[0].id, block.entries[2].id])
+  }
+
+  /// `moveUnit` crosses the wire: named by one of its exercises, the whole
+  /// block moves past the standalone (#1957).
+  func testRealBridgeMoveUnitMovesTheWholeBlock() throws {
+    let bridge = try bridgeBuildingABlockAndAStandalone()
+    let before = try XCTUnwrap(try bridge.view().buildingSetlist)
+    let block = try XCTUnwrap(before.blocks.first)
+
+    _ = try bridge.update(.session(.moveUnit(entryId: block.entries[1].id, newPosition: 1)))
+
+    let after = try XCTUnwrap(try bridge.view().buildingSetlist)
+    XCTAssertNil(try bridge.view().error)
     XCTAssertEqual(after.blocks.map(\.pieceTitle), [nil, "Clair de Lune"])
     XCTAssertEqual(after.blocks.last?.entries.map(\.id), block.entries.map(\.id))
   }

@@ -116,6 +116,7 @@ pub(super) fn build_library_item_views(
         let ladder_is_keys =
             crate::domain::variant::ladder_is_all_keys(variants.iter().map(|v| v.label.as_str()));
         let shows_key = crate::domain::variant::shows_key_field(variants.len());
+        let solid_variation_count = variants.iter().filter(|v| v.is_solid).count();
 
         items.push(LibraryItemView {
             id: item.id.clone(),
@@ -153,6 +154,7 @@ pub(super) fn build_library_item_views(
             ladder_is_keys,
             photo_id: item.photo_id.clone(),
             shows_key,
+            solid_variation_count,
         });
     }
 
@@ -565,26 +567,17 @@ pub(super) fn sorted_order(items: &[LibraryItemView], sort: &LibrarySort) -> Vec
 }
 
 pub(super) fn matches_query(item: &LibraryItemView, query: &ListQuery) -> bool {
-    if let Some(ref item_type) = query.item_type {
-        if item.item_type != *item_type {
-            return false;
-        }
+    let scope = Scope {
+        kind: query.item_type.as_ref(),
+        priority_only: query.priority_only,
+        tags: &query.tags,
+    };
+    if !scope.admits(&item.item_type, item.priority, &item.tags) {
+        return false;
     }
 
     if let Some(ref key) = query.key {
         if item.key.as_deref() != Some(key.as_str()) {
-            return false;
-        }
-    }
-
-    // Multi-tag filter is a union (match ANY, case-insensitive), not an intersection.
-    if !query.tags.is_empty() {
-        let selected: Vec<String> = query.tags.iter().map(|t| t.to_lowercase()).collect();
-        let matches_any = item
-            .tags
-            .iter()
-            .any(|t| selected.contains(&t.trim().to_lowercase()));
-        if !matches_any {
             return false;
         }
     }
@@ -597,6 +590,33 @@ pub(super) fn matches_query(item: &LibraryItemView, query: &ListQuery) -> bool {
     }
 
     true
+}
+
+/// What the Library filter and the picker both narrow by before a search, so
+/// the two cannot disagree about which items a star, a type or a tag leaves.
+struct Scope<'a> {
+    kind: Option<&'a ItemKind>,
+    priority_only: bool,
+    tags: &'a [String],
+}
+
+impl Scope<'_> {
+    fn admits(&self, kind: &ItemKind, priority: bool, tags: &[String]) -> bool {
+        if self.kind.is_some_and(|k| k != kind) {
+            return false;
+        }
+        if self.priority_only && !priority {
+            return false;
+        }
+        // Multi-tag filter is a union (match ANY, case-insensitive), not an intersection.
+        if !self.tags.is_empty() {
+            let selected: Vec<String> = self.tags.iter().map(|t| t.to_lowercase()).collect();
+            return tags
+                .iter()
+                .any(|t| selected.contains(&t.trim().to_lowercase()));
+        }
+        true
+    }
 }
 
 // ── Picker candidates (#1653) ──
@@ -614,6 +634,27 @@ pub struct PickerCandidate {
     pub tags: Vec<String>,
     pub created_at: String,
     pub last_practiced_at: Option<String>,
+    pub kind: ItemKind,
+    pub priority: bool,
+}
+
+/// The picker's own narrowing, the same rule as the Library's `ListQuery`
+/// (#1999): an empty filter leaves every candidate.
+#[derive(Debug, Clone, Default)]
+pub struct PickerFilter {
+    pub kind: Option<ItemKind>,
+    pub priority_only: bool,
+    pub tags: Vec<String>,
+}
+
+impl PickerFilter {
+    fn scope(&self) -> Scope<'_> {
+        Scope {
+            kind: self.kind.as_ref(),
+            priority_only: self.priority_only,
+            tags: &self.tags,
+        }
+    }
 }
 
 impl PickerCandidate {
@@ -640,16 +681,15 @@ pub fn sort_and_filter_candidates(
     candidates: &[PickerCandidate],
     sort: &LibrarySort,
     search: &str,
+    filter: &PickerFilter,
 ) -> Vec<String> {
     let query = search.trim().to_lowercase();
-    let mut filtered: Vec<&PickerCandidate> = if query.is_empty() {
-        candidates.iter().collect()
-    } else {
-        candidates
-            .iter()
-            .filter(|c| candidate_matches(&c.as_candidate_ref(), &query))
-            .collect()
-    };
+    let scope = filter.scope();
+    let mut filtered: Vec<&PickerCandidate> = candidates
+        .iter()
+        .filter(|c| scope.admits(&c.kind, c.priority, &c.tags))
+        .filter(|c| query.is_empty() || candidate_matches(&c.as_candidate_ref(), &query))
+        .collect();
     filtered.sort_by(|a, b| compare_candidates(&a.as_candidate_ref(), &b.as_candidate_ref(), sort));
     filtered.into_iter().map(|c| c.id.clone()).collect()
 }
@@ -669,6 +709,166 @@ mod tests {
             tags: Vec::new(),
             created_at: created_at.to_string(),
             last_practiced_at: None,
+            kind: ItemKind::Piece,
+            priority: false,
+        }
+    }
+
+    fn scoped_candidates() -> Vec<PickerCandidate> {
+        let mut p1 = picker_candidate("p1", "Ballade", "2026-01-01");
+        p1.priority = true;
+        p1.tags = vec!["recital".to_string()];
+        let p2 = picker_candidate("p2", "Nocturne", "2026-01-02");
+        let mut e1 = picker_candidate("e1", "Arpeggios", "2026-01-03");
+        e1.kind = ItemKind::Exercise;
+        e1.priority = true;
+        e1.tags = vec!["Warm-up".to_string()];
+        let mut e2 = picker_candidate("e2", "Scales", "2026-01-04");
+        e2.kind = ItemKind::Exercise;
+        e2.tags = vec!["warm-up ".to_string()];
+        vec![p2, e2, p1, e1]
+    }
+
+    #[test]
+    fn sort_and_filter_candidates_scopes_by_kind_star_and_tags() {
+        let sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let warm_up = || vec!["WARM-UP".to_string()];
+        let cases: Vec<(PickerFilter, &[&str], &str)> = vec![
+            (
+                PickerFilter::default(),
+                &["e1", "p1", "p2", "e2"],
+                "no scope",
+            ),
+            (
+                PickerFilter {
+                    kind: Some(ItemKind::Exercise),
+                    ..Default::default()
+                },
+                &["e1", "e2"],
+                "exercises only",
+            ),
+            (
+                PickerFilter {
+                    kind: Some(ItemKind::Piece),
+                    ..Default::default()
+                },
+                &["p1", "p2"],
+                "pieces only",
+            ),
+            (
+                PickerFilter {
+                    priority_only: true,
+                    ..Default::default()
+                },
+                &["e1", "p1"],
+                "the star",
+            ),
+            (
+                PickerFilter {
+                    tags: warm_up(),
+                    ..Default::default()
+                },
+                &["e1", "e2"],
+                "a tag matches whatever its case or stray spaces",
+            ),
+            (
+                PickerFilter {
+                    kind: Some(ItemKind::Piece),
+                    priority_only: true,
+                    ..Default::default()
+                },
+                &["p1"],
+                "kind and star",
+            ),
+            (
+                PickerFilter {
+                    kind: Some(ItemKind::Exercise),
+                    priority_only: true,
+                    tags: warm_up(),
+                },
+                &["e1"],
+                "all three",
+            ),
+            (
+                PickerFilter {
+                    kind: Some(ItemKind::Piece),
+                    tags: warm_up(),
+                    ..Default::default()
+                },
+                &[],
+                "nothing in scope",
+            ),
+        ];
+        for (filter, expected, why) in cases {
+            let ids = sort_and_filter_candidates(&scoped_candidates(), &sort, "", &filter);
+            assert_eq!(ids, expected, "{why}");
+        }
+    }
+
+    #[test]
+    fn sort_and_filter_candidates_scope_and_search_combine() {
+        let filter = PickerFilter {
+            kind: Some(ItemKind::Exercise),
+            ..Default::default()
+        };
+        let ids = sort_and_filter_candidates(
+            &scoped_candidates(),
+            &LibrarySort::default(),
+            "scal",
+            &filter,
+        );
+        assert_eq!(ids, vec!["e2"]);
+    }
+
+    #[test]
+    fn the_library_scope_and_the_picker_scope_agree() {
+        let candidates = scoped_candidates();
+        let views: Vec<LibraryItemView> = candidates
+            .iter()
+            .map(|c| {
+                let mut view = LibraryItemView::fixture(&c.id, &c.title, c.kind.clone());
+                view.priority = c.priority;
+                view.tags = c.tags.clone();
+                view
+            })
+            .collect();
+        for kind in [None, Some(ItemKind::Piece), Some(ItemKind::Exercise)] {
+            for priority_only in [false, true] {
+                for tags in [
+                    vec![],
+                    vec!["warm-up".to_string()],
+                    vec!["RECITAL".to_string()],
+                ] {
+                    let query = ListQuery {
+                        item_type: kind.clone(),
+                        priority_only,
+                        tags: tags.clone(),
+                        ..Default::default()
+                    };
+                    let mut library: Vec<&str> = views
+                        .iter()
+                        .filter(|v| matches_query(v, &query))
+                        .map(|v| v.id.as_str())
+                        .collect();
+                    library.sort_unstable();
+                    let filter = PickerFilter {
+                        kind: kind.clone(),
+                        priority_only,
+                        tags,
+                    };
+                    let mut picker = sort_and_filter_candidates(
+                        &candidates,
+                        &LibrarySort::default(),
+                        "",
+                        &filter,
+                    );
+                    picker.sort_unstable();
+                    assert_eq!(library, picker, "{query:?}");
+                }
+            }
         }
     }
 
@@ -684,7 +884,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(ids, vec!["p3", "p1", "p2"], "ascending title order");
     }
@@ -701,7 +901,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -729,7 +929,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -747,7 +947,7 @@ mod tests {
             direction: SortDirection::Descending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -772,12 +972,12 @@ mod tests {
         };
 
         assert_eq!(
-            sort_and_filter_candidates(&candidates, &ascending, ""),
+            sort_and_filter_candidates(&candidates, &ascending, "", &PickerFilter::default()),
             vec!["b", "a"],
             "case-insensitive ascending: arpeggios before Scales"
         );
         assert_eq!(
-            sort_and_filter_candidates(&candidates, &descending, ""),
+            sort_and_filter_candidates(&candidates, &descending, "", &PickerFilter::default()),
             vec!["a", "b"],
             "case-insensitive descending: Scales before arpeggios"
         );
@@ -796,7 +996,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -817,7 +1017,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -837,7 +1037,7 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -854,7 +1054,7 @@ mod tests {
         ];
         let sort = LibrarySort::default();
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "   ");
+        let ids = sort_and_filter_candidates(&candidates, &sort, "   ", &PickerFilter::default());
 
         assert_eq!(ids.len(), 2, "whitespace-only search is no search");
     }
@@ -876,7 +1076,8 @@ mod tests {
             direction: SortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "debussy");
+        let ids =
+            sort_and_filter_candidates(&candidates, &sort, "debussy", &PickerFilter::default());
 
         assert_eq!(
             ids,
@@ -891,7 +1092,8 @@ mod tests {
         let candidates = vec![picker_candidate("p1", "Clair de Lune", "2026-01-01")];
         let sort = LibrarySort::default();
 
-        let ids = sort_and_filter_candidates(&candidates, &sort, "nonexistent");
+        let ids =
+            sort_and_filter_candidates(&candidates, &sort, "nonexistent", &PickerFilter::default());
 
         assert!(ids.is_empty());
     }
@@ -938,7 +1140,8 @@ mod tests {
             picker_fixture("p1", "Debussy Prelude", "2026-01-01", "practice notes"),
             picker_fixture("p3", "Chopin Ballade", "2026-01-02", "unrelated"),
         ];
-        let picker_ids = sort_and_filter_candidates(&candidates, &sort, "practice");
+        let picker_ids =
+            sort_and_filter_candidates(&candidates, &sort, "practice", &PickerFilter::default());
 
         assert_eq!(
             library_ids,

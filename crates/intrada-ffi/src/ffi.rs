@@ -3,7 +3,7 @@ use crux_core::{
     Core,
 };
 
-use crate::{Intrada, LibrarySort, SortDirection, SortField};
+use crate::{Intrada, ItemKind, LibrarySort, SortDirection, SortField};
 
 // Returned (not panicked) so the shell handles it per the no-`try!` contract —
 // the crux `counter` example panics but says to do this in production.
@@ -75,6 +75,8 @@ pub struct PickerCandidateArg {
     pub tags: Vec<String>,
     pub created_at: String,
     pub last_practiced_at: Option<String>,
+    pub kind: PickerKind,
+    pub priority: bool,
 }
 
 impl From<PickerCandidateArg> for crate::view::library::PickerCandidate {
@@ -87,6 +89,55 @@ impl From<PickerCandidateArg> for crate::view::library::PickerCandidate {
             tags: c.tags,
             created_at: c.created_at,
             last_practiced_at: c.last_practiced_at,
+            kind: c.kind.into(),
+            priority: c.priority,
+        }
+    }
+}
+
+/// `ItemKind`'s copy at the plain-call boundary, as `PickerSortField` is.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PickerKind {
+    Piece,
+    Exercise,
+}
+
+impl From<PickerKind> for ItemKind {
+    fn from(kind: PickerKind) -> Self {
+        match kind {
+            PickerKind::Piece => Self::Piece,
+            PickerKind::Exercise => Self::Exercise,
+        }
+    }
+}
+
+/// Exhaustive over `ItemKind`, so a new kind is a compile error here.
+impl From<ItemKind> for PickerKind {
+    fn from(kind: ItemKind) -> Self {
+        match kind {
+            ItemKind::Piece => Self::Piece,
+            ItemKind::Exercise => Self::Exercise,
+        }
+    }
+}
+
+/// The picker's star, tag and type narrowing, read by the same rule as the
+/// Library's filter (#1999).
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, Default)]
+pub struct PickerFilterArg {
+    pub kind: Option<PickerKind>,
+    pub priority_only: bool,
+    pub tags: Vec<String>,
+}
+
+impl From<PickerFilterArg> for crate::view::library::PickerFilter {
+    fn from(f: PickerFilterArg) -> Self {
+        Self {
+            kind: f.kind.map(Into::into),
+            priority_only: f.priority_only,
+            tags: f.tags,
         }
     }
 }
@@ -177,10 +228,16 @@ pub fn sort_and_filter_picker_candidates(
     candidates: Vec<PickerCandidateArg>,
     sort: PickerSortArg,
     search: String,
+    filter: PickerFilterArg,
 ) -> Vec<String> {
     let candidates: Vec<crate::view::library::PickerCandidate> =
         candidates.into_iter().map(Into::into).collect();
-    crate::view::library::sort_and_filter_candidates(&candidates, &sort.into(), &search)
+    crate::view::library::sort_and_filter_candidates(
+        &candidates,
+        &sort.into(),
+        &search,
+        &filter.into(),
+    )
 }
 
 /// The Add form has no saved exercise to read `LibraryItemView.shows_key`
@@ -223,6 +280,8 @@ mod tests {
                 tags: vec![],
                 created_at: "2026-01-01".to_string(),
                 last_practiced_at: None,
+                kind: PickerKind::Piece,
+                priority: false,
             },
             PickerCandidateArg {
                 id: "p2".to_string(),
@@ -232,6 +291,8 @@ mod tests {
                 tags: vec![],
                 created_at: "2026-01-02".to_string(),
                 last_practiced_at: None,
+                kind: PickerKind::Piece,
+                priority: false,
             },
         ];
         let sort = PickerSortArg {
@@ -239,7 +300,12 @@ mod tests {
             direction: PickerSortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_picker_candidates(candidates, sort, String::new());
+        let ids = sort_and_filter_picker_candidates(
+            candidates,
+            sort,
+            String::new(),
+            PickerFilterArg::default(),
+        );
 
         assert_eq!(
             ids,
@@ -258,15 +324,92 @@ mod tests {
             tags: vec![],
             created_at: "2026-01-01".to_string(),
             last_practiced_at: None,
+            kind: PickerKind::Piece,
+            priority: false,
         }];
         let sort = PickerSortArg {
             field: PickerSortField::Title,
             direction: PickerSortDirection::Ascending,
         };
 
-        let ids = sort_and_filter_picker_candidates(candidates, sort, "nonexistent".to_string());
+        let ids = sort_and_filter_picker_candidates(
+            candidates,
+            sort,
+            "nonexistent".to_string(),
+            PickerFilterArg::default(),
+        );
 
         assert!(ids.is_empty());
+    }
+
+    /// The filter crosses as FFI types and reaches the core's rule: every
+    /// `PickerKind` arm converts to the kind it names.
+    #[test]
+    fn sort_and_filter_picker_candidates_scopes_through_the_ffi_types() {
+        let candidate =
+            |id: &str, kind: PickerKind, priority: bool, tag: &str| PickerCandidateArg {
+                id: id.to_string(),
+                title: id.to_string(),
+                subtitle: String::new(),
+                notes: None,
+                tags: vec![tag.to_string()],
+                created_at: "2026-01-01".to_string(),
+                last_practiced_at: None,
+                kind,
+                priority,
+            };
+        let candidates = vec![
+            candidate("p1", PickerKind::Piece, true, "recital"),
+            candidate("p2", PickerKind::Piece, false, "recital"),
+            candidate("e1", PickerKind::Exercise, true, "warm-up"),
+            candidate("e2", PickerKind::Exercise, false, "Warm-up"),
+        ];
+        let sort = PickerSortArg {
+            field: PickerSortField::Title,
+            direction: PickerSortDirection::Ascending,
+        };
+        let cases: [(PickerFilterArg, &[&str]); 4] = [
+            (
+                PickerFilterArg {
+                    kind: Some(PickerKind::Piece),
+                    ..Default::default()
+                },
+                &["p1", "p2"],
+            ),
+            (
+                PickerFilterArg {
+                    kind: Some(PickerKind::Exercise),
+                    ..Default::default()
+                },
+                &["e1", "e2"],
+            ),
+            (
+                PickerFilterArg {
+                    priority_only: true,
+                    ..Default::default()
+                },
+                &["e1", "p1"],
+            ),
+            (
+                PickerFilterArg {
+                    tags: vec!["WARM-UP".to_string()],
+                    ..Default::default()
+                },
+                &["e1", "e2"],
+            ),
+        ];
+        for (filter, expected) in cases {
+            let ids = sort_and_filter_picker_candidates(
+                candidates.clone(),
+                sort,
+                String::new(),
+                filter.clone(),
+            );
+            assert_eq!(ids, expected, "{filter:?}");
+        }
+        for kind in [ItemKind::Piece, ItemKind::Exercise] {
+            assert_eq!(ItemKind::from(PickerKind::from(kind.clone())), kind);
+        }
     }
 
     /// Every `PickerSortField` and `PickerSortDirection` combination, driven
@@ -284,6 +427,8 @@ mod tests {
                 tags: vec![],
                 created_at: "2026-01-03".to_string(),
                 last_practiced_at: Some("2026-02-02".to_string()),
+                kind: PickerKind::Piece,
+                priority: false,
             },
             PickerCandidateArg {
                 id: "b".to_string(),
@@ -293,6 +438,8 @@ mod tests {
                 tags: vec![],
                 created_at: "2026-01-01".to_string(),
                 last_practiced_at: Some("2026-02-03".to_string()),
+                kind: PickerKind::Piece,
+                priority: false,
             },
             PickerCandidateArg {
                 id: "c".to_string(),
@@ -302,6 +449,8 @@ mod tests {
                 tags: vec![],
                 created_at: "2026-01-02".to_string(),
                 last_practiced_at: Some("2026-02-01".to_string()),
+                kind: PickerKind::Piece,
+                priority: false,
             },
         ];
 
@@ -335,7 +484,12 @@ mod tests {
                 field: field.into(),
                 direction: direction.into(),
             };
-            let ids = sort_and_filter_picker_candidates(candidates.clone(), sort, String::new());
+            let ids = sort_and_filter_picker_candidates(
+                candidates.clone(),
+                sort,
+                String::new(),
+                PickerFilterArg::default(),
+            );
             assert_eq!(
                 ids, expected,
                 "field {field:?} direction {direction:?} should order {expected:?}"

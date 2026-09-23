@@ -27,7 +27,8 @@ struct LibraryQueryFilterTests {
   func queryFiltersToTheMatchingTitle() throws {
     let bridge = try seededBridge()
 
-    _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
+    _ = try bridge.update(
+      .setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [], priorityOnly: false)))
 
     #expect(try bridge.view().visibleItems.map(\.title) == ["Hanon No. 1"])
   }
@@ -35,7 +36,8 @@ struct LibraryQueryFilterTests {
   @Test("clearing the query restores the full list")
   func clearingTheQueryRestoresTheFullList() throws {
     let bridge = try seededBridge()
-    _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
+    _ = try bridge.update(
+      .setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [], priorityOnly: false)))
 
     _ = try bridge.update(.setQuery(nil))
 
@@ -43,10 +45,30 @@ struct LibraryQueryFilterTests {
       Swift.Set(try bridge.view().visibleItems.map(\.title)) == ["Clair de Lune", "Hanon No. 1"])
   }
 
+  @Test("the star filter crosses the wire and leaves only priorities")
+  func theStarFilterLeavesOnlyPriorities() throws {
+    let bridge = try seededBridge()
+    let hanon = try #require(try bridge.view().items.first { $0.title == "Hanon No. 1" })
+    _ = try bridge.update(
+      .item(
+        .update(
+          id: hanon.id,
+          input: UpdateItem(
+            title: hanon.title, kind: hanon.itemType, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: nil, priority: true))))
+
+    _ = try bridge.update(
+      .setQuery(ListQuery(text: nil, itemType: nil, key: nil, tags: [], priorityOnly: true)))
+
+    #expect(try bridge.view().visibleItems.map(\.title) == ["Hanon No. 1"])
+    #expect(try bridge.view().activeQuery?.priorityOnly == true)
+  }
+
   @Test("a query leaves the whole library in items for the pickers")
   func aQueryLeavesTheWholeLibraryInItems() throws {
     let bridge = try seededBridge()
-    _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
+    _ = try bridge.update(
+      .setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [], priorityOnly: false)))
 
     #expect(try bridge.view().items.count == 2)
   }
