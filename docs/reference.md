@@ -246,6 +246,11 @@ on the core, and reading the spec and mockups properly.
 
 ## Why the native iOS CI is shaped the way it is (2026-09-03)
 
+**Update (2026-09-23, #1962):** everything below describes the rented
+`macos-26` path, which the self-hosted gate replaced for same-repo work
+(#1577) and which was then deleted, since fork pull requests are not
+supported. It stays as the record of what the rented runners measured.
+
 The native iOS gate fans out (#1207): **Native iOS: build** compiles once and
 uploads the built test products, the test jobs run against that artifact, and the
 fan-in job **Native iOS (build + test)** stays the required status check. Timed
@@ -342,8 +347,9 @@ What those numbers changed:
 ## The self-hosted iOS runner (2026-09-10, #1577)
 
 The iOS gate runs on a dedicated Mac for every same-repo push and pull request.
-Fork pull requests keep the four rented `macos-26` jobs, which is what stops
-untrusted code reaching the machine; #1636 covers proving that path still works.
+Fork pull requests are not supported (#1962): the gate never runs for one, so
+untrusted code never reaches the machine, and the required **Native iOS (build +
+test)** check fails for a fork pull request that touches the app.
 
 **The machine.** A MacBook Pro M4, 10 cores, 24GB, reachable on the home network
 as `Jons-MacBook-Pro-2.local`. Registered as repo runner `intrada-m4` with
@@ -405,8 +411,7 @@ That happened on 2026-09-15 (#1905): the machine moved to Xcode 27.0 and every
 push went red until the pin followed it. The self-hosted job has no formatter
 version check of its own, so the Xcode version assert pins its formatter; one
 cannot be added, because Xcode 27's bundled `swift format --version` prints
-`main` rather than a release number. `SWIFT_FORMAT_VERSION` in `ci.yml` binds
-only the rented fork build job, which stays on Xcode 26.6.
+`main` rather than a release number.
 
 **The agent restarts itself.** Its plist carries `KeepAlive`, so if the runner
 process dies launchd brings it straight back, verified by killing it and
@@ -450,9 +455,8 @@ which the host's `log show` does not hold: `xcrun simctl spawn <udid> log show
 --process SpringBoard`, and the line to look for is "Cannot launch application
 scene while it's application is being updated".
 
-**Cloned simulators are on in the self-hosted CI gate** only; the rented
-`native-ios-test-ui` job stays sequential on its 7GB runner, and so does the
-local full tier, which gave up clones on 2026-09-15 (#1480).
+**Cloned simulators are on in the self-hosted CI gate** only; the local full
+tier stays sequential, having given up clones on 2026-09-15 (#1480).
 Five at once had been saturating the machine enough that a UI test which
 silently skipped its own field-clearing under load started reddening main;
 #1642 fixed that test and turned clones back on in the self-hosted gate.

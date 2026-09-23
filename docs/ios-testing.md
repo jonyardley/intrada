@@ -271,14 +271,13 @@ warm workspace that machine exists for. The Release compile guard (`#if DEBUG`
 divergence, #1177) runs on pushes to main only, not on pull requests (#1651).
 Measured shape (2026-09-11 gate review, last 30 runs): build 19s, unit +
 snapshot 27s, UI 207s, gate median 339s (concurrency raised 4→6 on
-2026-09-14, #1824, since superseding this figure). Fork pull requests take the four
-rented `macos-26` jobs instead (**Native iOS: build**, **Native iOS: unit +
-snapshot**, the two **Native iOS: UI** slices), which is what keeps untrusted
-code off the machine; both paths report into **Native iOS (build + test)**,
-the fan-in required check, and **Snapshot Hygiene** runs alongside either. The
-self-hosted machine, its toolchain and its cache rules are written up in
+2026-09-14, #1824, since superseding this figure). Fork pull requests are not
+supported (#1962), which is what keeps untrusted code off the machine. The gate
+reports into **Native iOS (build + test)**, the required check, and **Snapshot
+Hygiene** runs alongside it. The self-hosted machine, its toolchain and its
+cache rules are written up in
 [`reference.md`](reference.md#the-self-hosted-ios-runner-2026-09-10-1577); the
-fanned-out rented path and its own measurements are in
+deleted rented path and its measurements are in
 [`reference.md`](reference.md#why-the-native-ios-ci-is-shaped-the-way-it-is-2026-09-03).
 If unit/snapshot/UI tests are green there, the local pty errors above were
 host-only.

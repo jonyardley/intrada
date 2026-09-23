@@ -1,6 +1,6 @@
-# GitHub evicts by LRU once a repo's Actions cache passes 10 GB, which silently
-# drops the 928 MB SwiftPM cache and the newest DerivedData entries and turns a
-# warm iOS build cold. Pruning per key family keeps the hot entries resident.
+# GitHub evicts by LRU once a repo's Actions cache passes 10 GB, which can
+# silently drop the newest entries and turn a warm build cold. Pruning per key
+# family keeps the hot entries resident.
 name: Cache Prune
 
 on:
@@ -46,16 +46,14 @@ jobs:
           failed=0
 
           prune_family() {
-            local prefix="$1" keep="$2" exclude="${3:-}"
+            local prefix="$1" keep="$2"
             local ranked="$work/ranked.tsv" surplus="$work/surplus.tsv"
 
             # A cache is restorable from its own ref or the default branch only, and a
             # restore resolves to the newest matching key, so exactly one entry needs a
             # guaranteed slot: the newest default-branch one, which every PR can reuse.
             # Older default-branch copies are dead weight, so age decides the rest.
-            awk -F'\t' -v p="$prefix" -v x="$exclude" '
-              index($5, p) == 1 && (x == "" || index($5, x) != 1)
-            ' "$all" \
+            awk -F'\t' -v p="$prefix" 'index($5, p) == 1' "$all" \
               | sort -t "$tab" -k2,2r \
               | awk -F'\t' -v d="$default_ref" '
                   {
@@ -97,19 +95,11 @@ jobs:
             done < "$1"
           }
 
-          # A subfamily lives under its parent's prefix, so it is matched first and
-          # excluded from the parent bucket: neither can starve the other.
-          prune_family "ios-dd-release-" 3
-          prune_family "ios-dd-" 3 "ios-dd-release-"
-          prune_family "ios-spm-" 2
-          prune_family "ios-bindings-" 3
-          # rust-cache never deletes its own entries either, it just relies on
-          # the same LRU: prefix restore plus the guaranteed default-branch
-          # slot keeps pull requests warm on two.
-          prune_family "native-ios-" 2
-          prune_family "native-" 2 "native-ios-"
+          # rust-cache never deletes its own entries, it just relies on the
+          # LRU: prefix restore plus the guaranteed default-branch slot keeps
+          # pull requests warm on two.
+          prune_family "native-" 2
           prune_family "clippy-" 2
-          prune_family "coverage-" 2
           prune_family "msrv-" 2
           prune_family "release-testflight-" 2
 
