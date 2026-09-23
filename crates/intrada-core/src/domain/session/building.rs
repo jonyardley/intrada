@@ -62,29 +62,6 @@ pub(super) fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
     units
 }
 
-/// True when every `group_id` occupies a single contiguous run: the block
-/// invariant a reorder must never break.
-#[cfg(test)]
-pub(super) fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
-    let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    let mut current: Option<&str> = None;
-    for entry in entries {
-        let g = entry.group_id.as_deref();
-        if g != current {
-            if let Some(prev) = current {
-                closed.insert(prev);
-            }
-            if let Some(g) = g {
-                if closed.contains(g) {
-                    return false;
-                }
-            }
-            current = g;
-        }
-    }
-    true
-}
-
 /// Clear the `group_id` of any block left without its anchor piece. A block
 /// only means "this piece's warm-up", so when the piece goes the related
 /// exercises become standalone (§7.4 dissolve).

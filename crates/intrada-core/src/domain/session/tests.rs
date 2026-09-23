@@ -7,6 +7,28 @@ use crate::app::Intrada;
 use crate::domain::item::Item;
 use crux_core::App;
 
+/// True when every `group_id` occupies a single contiguous run: the block
+/// invariant a reorder must never break.
+fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
+    let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut current: Option<&str> = None;
+    for entry in entries {
+        let g = entry.group_id.as_deref();
+        if g != current {
+            if let Some(prev) = current {
+                closed.insert(prev);
+            }
+            if let Some(g) = g {
+                if closed.contains(g) {
+                    return false;
+                }
+            }
+            current = g;
+        }
+    }
+    true
+}
+
 fn model_with_library() -> Model {
     let now = Utc::now();
     Model {
