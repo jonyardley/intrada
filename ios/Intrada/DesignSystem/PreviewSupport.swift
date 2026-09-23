@@ -458,8 +458,8 @@
   extension AnalyticsView {
     /// A deterministic analytics fixture for the Progress screen + snapshots.
     /// `scoreTrends` (all items' latest score) drives the dial mean (≈3.4);
-    /// `scoreChanges` (this week's movers) drive the Recent-mastery rows; weekly
-    /// `dailyTotals` roll up to the consistency bars (40/75/55/95/82).
+    /// `scoreChanges` (this week's movers) drive the Recent-mastery rows;
+    /// `weeklyMinutes` are the consistency bars (40/75/55/95/82).
     static var previewAnalytics: AnalyticsView {
       AnalyticsView(
         weeklySummary: WeeklySummary(
@@ -468,13 +468,6 @@
           timeDirection: .up, sessionsDirection: .up, itemsDirection: .up,
           hasPrevWeekData: true),
         streak: PracticeStreak(currentDays: 4),
-        dailyTotals: [
-          DailyPracticeTotal(date: "2026-04-29", minutes: 40),
-          DailyPracticeTotal(date: "2026-05-06", minutes: 75),
-          DailyPracticeTotal(date: "2026-05-13", minutes: 55),
-          DailyPracticeTotal(date: "2026-05-20", minutes: 95),
-          DailyPracticeTotal(date: "2026-05-28", minutes: 82),
-        ],
         topItems: [
           ItemRanking(
             itemId: "piece-1", itemTitle: "Clair de Lune", itemType: .piece,
