@@ -76,9 +76,9 @@ priority set:
   and two thirds of it bucketed on the per-item confidence and tempo targets
   this spec deletes. Replaced in #981 by ranking on `Staleness::overdue_key`,
   the same signal the Up next card uses.
-- **Per-item progress derivation** (`latest_score`, `latest_achieved_tempo`
-  over session data) → shows how a priority item is going. Already a
-  view-model computation; stays as-is.
+- **Per-item progress derivation** (`latest_score` over session data) →
+  shows how a priority item is going. Already a view-model computation;
+  stays as-is (`latest_achieved_tempo` was removed in #1948).
 
 ## How priority wires into the loop
 

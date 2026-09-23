@@ -243,6 +243,34 @@ fn set_chord_chart_rejects_a_non_piece_host() {
     assert!(model.last_error.is_some());
 }
 
+#[test]
+fn set_chord_chart_uses_the_piece_key() {
+    let mut model = model_with_piece_and_exercise();
+    if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+        p.key = Some("G".to_string());
+        p.modality = Some(Modality::Minor);
+    }
+
+    send(
+        &mut model,
+        ItemEvent::SetChordChart {
+            piece_id: "piece-1".to_string(),
+            raw_chart: "| Cm7 |".to_string(),
+        },
+    );
+
+    let chart = model
+        .items
+        .iter()
+        .find(|i| i.id == "piece-1")
+        .unwrap()
+        .chord_chart
+        .as_ref()
+        .unwrap();
+    assert_eq!(chart.key, "G");
+    assert_eq!(chart.modality, Modality::Minor);
+}
+
 // ── CommitScaffold ──
 
 use super::ScaffoldKind;

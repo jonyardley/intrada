@@ -95,7 +95,7 @@ keeps compiling — invariant 6):
   `SetlistBlockView { group_id: Option<String>, piece_title: Option<String>,
   related_count: usize, duration_display: String, entries: Vec<SetlistEntryView> }`
   (a standalone item = a one-entry block with `group_id: None`).
-- add `block_count: usize` to drive `"3 blocks · 5 items"`.
+- the block count is `blocks.len()` (a separate `block_count` was removed in #1948).
 - `SetlistEntryView` gains `group_id: Option<String>` for within-block affordances.
 
 The core computes block summaries; the shell renders. **Collapse state is UI-only**
