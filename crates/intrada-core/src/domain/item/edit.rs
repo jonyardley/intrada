@@ -79,7 +79,7 @@ pub(super) fn delete(model: &mut Model, id: String) -> Command<Effect, Event> {
 
     model.clear_error();
     Command::all([
-        crate::persistence::delete_item(id, chrono::Utc::now()),
+        crate::persistence::delete_item(model, id, chrono::Utc::now()),
         crux_core::render::render(),
     ])
 }

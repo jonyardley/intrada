@@ -41,7 +41,7 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
 
     model.clear_error();
     Command::all([
-        crate::persistence::save_item(item),
+        crate::persistence::save_item(model, item),
         crux_core::render::render(),
     ])
 }
@@ -108,7 +108,7 @@ pub(super) fn add_linked_exercise(
     model.clear_error();
 
     Command::all([
-        crate::persistence::save_items(vec![exercise, piece]),
+        crate::persistence::save_items(model, vec![exercise, piece]),
         crux_core::render::render(),
     ])
 }
@@ -259,7 +259,7 @@ pub(super) fn add_piece_in_full(
     let mut to_save = created;
     to_save.push(piece_item);
     Command::all([
-        crate::persistence::save_items(to_save),
+        crate::persistence::save_items(model, to_save),
         crux_core::render::render(),
     ])
 }

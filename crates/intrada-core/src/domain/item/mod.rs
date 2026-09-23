@@ -247,7 +247,7 @@ fn refuse(model: &mut Model, error: &LibraryError) -> Command<Effect, Event> {
 fn persist_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
     model.clear_error();
     Command::all([
-        crate::persistence::save_item(item),
+        crate::persistence::save_item(model, item),
         crux_core::render::render(),
     ])
 }

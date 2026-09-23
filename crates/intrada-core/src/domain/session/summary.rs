@@ -172,7 +172,7 @@ pub(super) fn save_session(model: &mut Model, now: DateTime<Utc>) -> Command<Eff
     model.saving_session = Some(practice_session.clone());
     model.clear_error();
     Command::all([
-        crate::persistence::save_session(practice_session),
+        crate::persistence::save_session(model, practice_session),
         crux_core::render::render(),
     ])
 }

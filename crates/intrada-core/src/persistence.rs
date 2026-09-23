@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::app::{Effect, Event};
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
+use crate::model::Model;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -48,30 +49,104 @@ impl Operation for PersistenceOperation {
     type Output = PersistenceOutput;
 }
 
-pub fn load_items() -> Command<Effect, Event> {
+/// What one list has out with the store, so a load that may predate an edit
+/// never replaces it (#2067, `specs/list-reload-race.md`).
+#[derive(Debug, Default)]
+pub struct ListSync {
+    writes_out: u32,
+    loads_out: u32,
+    stale: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Landed {
+    Apply,
+    Drop,
+    Reload,
+}
+
+impl ListSync {
+    fn write_sent(&mut self) {
+        self.writes_out += 1;
+        if self.loads_out > 0 {
+            self.stale = true;
+        }
+    }
+
+    fn load_sent(&mut self) {
+        self.loads_out += 1;
+    }
+
+    fn reload_due(&mut self) -> bool {
+        let due = self.stale && self.writes_out == 0 && self.loads_out == 0;
+        if due {
+            self.stale = false;
+        }
+        due
+    }
+
+    pub fn load_landed(&mut self) -> Landed {
+        self.loads_out = self.loads_out.saturating_sub(1);
+        if !self.stale && self.writes_out == 0 {
+            return Landed::Apply;
+        }
+        self.stale = true;
+        if self.reload_due() {
+            Landed::Reload
+        } else {
+            Landed::Drop
+        }
+    }
+
+    /// A load that brought back no list. Never asks again by itself: a broken
+    /// store would loop (#825).
+    pub fn load_ended(&mut self) {
+        self.loads_out = self.loads_out.saturating_sub(1);
+    }
+
+    /// True when the list must be loaded again now. A refused write needs the
+    /// rollback load, but only once nothing else is out to land over it.
+    pub fn write_settled(&mut self, refused: bool) -> bool {
+        self.writes_out = self.writes_out.saturating_sub(1);
+        self.stale |= refused;
+        self.reload_due()
+    }
+}
+
+pub fn load_items(model: &mut Model) -> Command<Effect, Event> {
+    model.items_sync.load_sent();
     Command::request_from_shell(PersistenceOperation::LoadItems).then_send(Event::StoreLoaded)
 }
 
-pub fn save_item(item: Item) -> Command<Effect, Event> {
+pub fn save_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
+    model.items_sync.write_sent();
     Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
 }
 
-pub fn save_items(items: Vec<Item>) -> Command<Effect, Event> {
+pub fn save_items(model: &mut Model, items: Vec<Item>) -> Command<Effect, Event> {
+    model.items_sync.write_sent();
     Command::request_from_shell(PersistenceOperation::SaveItems(items))
         .then_send(Event::StoreWritten)
 }
 
-pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
+pub fn delete_item(
+    model: &mut Model,
+    id: String,
+    deleted_at: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    model.items_sync.write_sent();
     Command::request_from_shell(PersistenceOperation::DeleteItem { id, deleted_at })
         .then_send(Event::StoreWritten)
 }
 
-pub fn load_sessions() -> Command<Effect, Event> {
+pub fn load_sessions(model: &mut Model) -> Command<Effect, Event> {
+    model.sessions_sync.load_sent();
     Command::request_from_shell(PersistenceOperation::LoadSessions)
         .then_send(Event::SessionsStoreLoaded)
 }
 
-pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
+pub fn save_session(model: &mut Model, session: PracticeSession) -> Command<Effect, Event> {
+    model.sessions_sync.write_sent();
     Command::request_from_shell(PersistenceOperation::SaveSession(session))
         .then_send(Event::SessionStoreWritten)
 }
@@ -80,7 +155,6 @@ pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
 mod tests {
     use super::*;
     use crate::domain::item::ItemKind;
-    use crate::model::Model;
     use crux_core::App;
 
     fn sample_item(id: &str) -> Item {
@@ -108,7 +182,7 @@ mod tests {
 
     #[test]
     fn load_items_requests_the_load_operation() {
-        let mut cmd = load_items();
+        let mut cmd = load_items(&mut Model::default());
         let op = cmd
             .effects()
             .find_map(|e| match e {
@@ -202,13 +276,16 @@ mod tests {
 
     #[test]
     fn save_item_requests_a_save_op() {
-        let mut cmd = save_item(sample_item("p1"));
+        let mut cmd = save_item(&mut Model::default(), sample_item("p1"));
         assert!(has_save(&mut cmd, "p1"));
     }
 
     #[test]
     fn save_items_requests_one_batch_op_with_all_rows() {
-        let mut cmd = save_items(vec![sample_item("a"), sample_item("b")]);
+        let mut cmd = save_items(
+            &mut Model::default(),
+            vec![sample_item("a"), sample_item("b")],
+        );
         let ids = cmd
             .effects()
             .find_map(|e| match e {
@@ -226,7 +303,11 @@ mod tests {
 
     #[test]
     fn delete_item_requests_a_delete_op() {
-        let mut cmd = delete_item("gone".to_string(), chrono::Utc::now());
+        let mut cmd = delete_item(
+            &mut Model::default(),
+            "gone".to_string(),
+            chrono::Utc::now(),
+        );
         assert!(has_delete(&mut cmd, "gone"));
     }
 
@@ -521,6 +602,141 @@ mod tests {
         assert!(has_persistence(&mut delete), "delete");
     }
 
+    // ── A load never overwrites a newer edit (#2067) ────────────────────
+
+    fn asks_for_items(cmd: &mut Command<Effect, Event>) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::Persistence(req) if req.operation == PersistenceOperation::LoadItems)
+        })
+    }
+
+    fn items_loaded(items: Vec<Item>) -> Event {
+        Event::StoreLoaded(PersistenceOutput::Items(items))
+    }
+
+    fn add(app: &crate::app::Intrada, model: &mut Model) -> String {
+        use crate::domain::item::ItemEvent;
+        let _ = app.update(Event::Item(ItemEvent::Add(create_item())), model);
+        model.items.last().expect("the added item").id.clone()
+    }
+
+    #[test]
+    fn a_load_out_when_an_edit_is_sent_is_dropped_and_asked_again_after_the_ack() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let id = add(&app, &mut model);
+
+        let mut landed = app.update(items_loaded(vec![]), &mut model);
+        assert_eq!(
+            model.items.len(),
+            1,
+            "the older list must not drop the edit"
+        );
+        assert!(!asks_for_items(&mut landed), "the write is still out");
+
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(
+            asks_for_items(&mut acked),
+            "ask again once the write settles"
+        );
+
+        let _ = app.update(items_loaded(vec![sample_item(&id)]), &mut model);
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].title, "Etude", "the fresh load applies");
+    }
+
+    #[test]
+    fn an_edit_acknowledged_before_the_older_load_lands_still_drops_that_load() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(!asks_for_items(&mut acked), "a load is still out");
+
+        let mut landed = app.update(items_loaded(vec![]), &mut model);
+        assert_eq!(model.items.len(), 1);
+        assert!(asks_for_items(&mut landed), "nothing is out, so ask again");
+    }
+
+    #[test]
+    fn a_load_landing_while_an_earlier_edit_is_unconfirmed_waits_for_it() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = add(&app, &mut model);
+        let _ = app.update(Event::StartApp, &mut model);
+
+        let mut landed = app.update(items_loaded(vec![]), &mut model);
+        assert_eq!(model.items.len(), 1);
+        assert!(!asks_for_items(&mut landed));
+
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(asks_for_items(&mut acked));
+    }
+
+    #[test]
+    fn a_refused_edit_while_a_load_is_out_rolls_back_after_that_load() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+
+        let mut refused = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
+        assert!(model.last_error.is_some());
+        assert!(
+            !asks_for_items(&mut refused),
+            "a load already out could land over the rollback"
+        );
+
+        let mut landed = app.update(items_loaded(vec![]), &mut model);
+        assert!(asks_for_items(&mut landed), "the rollback load goes now");
+
+        let _ = app.update(items_loaded(vec![]), &mut model);
+        assert!(model.items.is_empty(), "the refused add rolls back");
+    }
+
+    #[test]
+    fn two_loads_around_an_edit_both_drop_and_ask_once() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+        let _ = app.update(Event::StartApp, &mut model);
+
+        let mut first = app.update(items_loaded(vec![]), &mut model);
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(!asks_for_items(&mut first));
+        assert!(!asks_for_items(&mut acked), "the second load is still out");
+
+        let mut second = app.update(items_loaded(vec![]), &mut model);
+        assert_eq!(model.items.len(), 1);
+        assert!(asks_for_items(&mut second));
+    }
+
+    #[test]
+    fn a_failed_load_never_asks_again_but_the_edit_it_missed_does() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+
+        let mut failed = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+        assert!(model.last_error.is_some());
+        assert!(
+            !asks_for_items(&mut failed),
+            "a broken store must not loop (#825)"
+        );
+        assert_eq!(model.items.len(), 1);
+
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(
+            asks_for_items(&mut acked),
+            "the failed load is no longer out"
+        );
+    }
+
     // ── Sessions ────────────────────────────────────────────────────────
 
     fn sample_session(id: &str) -> PracticeSession {
@@ -539,14 +755,14 @@ mod tests {
 
     #[test]
     fn save_session_requests_a_save_op() {
-        let mut cmd = save_session(sample_session("s1"));
+        let mut cmd = save_session(&mut Model::default(), sample_session("s1"));
         assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
             if matches!(&req.operation, PersistenceOperation::SaveSession(s) if s.id == "s1"))));
     }
 
     #[test]
     fn load_sessions_requests_the_load_operation() {
-        let mut cmd = load_sessions();
+        let mut cmd = load_sessions(&mut Model::default());
         assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
             if req.operation == PersistenceOperation::LoadSessions)));
     }

@@ -157,7 +157,7 @@ pub(super) fn commit_scaffold(
     let mut batch = new_exercises;
     batch.push(piece);
     Command::all([
-        crate::persistence::save_items(batch),
+        crate::persistence::save_items(model, batch),
         crux_core::render::render(),
     ])
 }

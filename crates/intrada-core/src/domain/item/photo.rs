@@ -50,7 +50,7 @@ pub(super) fn set_photo(
 
     model.clear_error();
     Command::all([
-        crate::persistence::save_item(item),
+        crate::persistence::save_item(model, item),
         crux_core::render::render(),
     ])
 }

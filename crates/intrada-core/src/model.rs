@@ -66,6 +66,8 @@ pub struct Model {
     pub photo_recognition: PhotoRecognition,
     /// Filled at the end of `update` and only read by `view` (#1998).
     pub(crate) projections: Option<crate::view::cache::Projections>,
+    pub items_sync: crate::persistence::ListSync,
+    pub sessions_sync: crate::persistence::ListSync,
 }
 
 static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
