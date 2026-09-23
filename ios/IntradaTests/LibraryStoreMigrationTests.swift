@@ -352,22 +352,16 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
   func testV16PhotoIdRoundTripsAndClears() throws {
     let store = try LibraryStore.inMemory()
-    let item = Item(
-      id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-      tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
-      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil, variants: [], photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV", metre: nil)
+    let item = LibraryItemFixture.record(
+      title: "Nocturne", composer: "Chopin", photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")
     try store.save(item)
     XCTAssertEqual(try store.loadItems().first?.photoId, "01ARZ3NDEKTSV4RRFFQ69G5FAV")
 
     // A removal is an upsert with no photo, so the column has to clear rather
     // than keep the id the row already held.
     try store.save(
-      Item(
-        id: "p1", title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-        tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
-        createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:01:00Z", priority: false,
-        chordChart: nil, variants: [], photoId: nil, metre: nil))
+      LibraryItemFixture.record(
+        title: "Nocturne", composer: "Chopin", updatedAt: "2026-01-01T00:01:00Z"))
     XCTAssertNil(try store.loadItems().first?.photoId, "removing a photo must clear the column")
   }
 
@@ -402,11 +396,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let store = try LibraryStore.inMemory()
     let metre = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
     try store.save(
-      Item(
-        id: "p7", title: "Unsquare", kind: .piece, composer: nil, key: nil, modality: nil,
-        tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
-        createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-        chordChart: nil, variants: [], photoId: nil, metre: metre))
+      LibraryItemFixture.record(id: "p7", title: "Unsquare", metre: metre))
     XCTAssertEqual(try store.loadItems().first?.metre, metre)
   }
 
@@ -421,11 +411,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
           label: "A",
           bars: [Bar(chords: [ChartChord(symbol: symbol, beats: 4)])])
       ])
-    let item = Item(
-      id: "p3", title: "Autumn Leaves", kind: .piece, composer: nil, key: "G",
-      modality: .minor, tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
-      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: chart, variants: [], photoId: nil, metre: nil)
+    let item = LibraryItemFixture.record(
+      id: "p3", title: "Autumn Leaves", key: "G", modality: .minor, chordChart: chart)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
@@ -479,11 +466,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
   func testV6LinkedExerciseIdsRoundTrip() throws {
     let store = try LibraryStore.inMemory()
-    let item = Item(
-      id: "p2", title: "Étude", kind: .piece, composer: nil, key: nil, modality: nil,
-      tempo: nil, notes: nil, tags: [], linkedExerciseIds: ["e1", "e2"],
-      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil, variants: [], photoId: nil, metre: nil)
+    let item = LibraryItemFixture.record(
+      id: "p2", title: "Étude", linkedExerciseIds: ["e1", "e2"])
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)

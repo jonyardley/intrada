@@ -378,22 +378,12 @@ private struct PickerCopy {
       kind: .exercise,
       available: [
         .previewExercise,
-        LibraryItemView(
-          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
-          key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
-          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
-          ladderIsKeys: false,
-          photoId: nil, showsKey: true),
-        LibraryItemView(
-          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
-          key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
-          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [],
-          usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
-          ladderIsKeys: false,
-          photoId: nil, showsKey: true),
+        LibraryItemFixture.view(
+          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
+          modality: .major),
+        LibraryItemFixture.view(
+          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", key: "Db",
+          modality: .major),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _, _ in })

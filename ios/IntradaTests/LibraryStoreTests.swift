@@ -10,11 +10,10 @@ final class LibraryStoreTests: XCTestCase {
     _ id: String, title: String = "Etude", kind: ItemKind = .piece,
     createdAt: String = "2026-01-01T00:00:00Z"
   ) -> Item {
-    Item(
+    LibraryItemFixture.record(
       id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
-      tags: ["scale", "warmup"], linkedExerciseIds: [], createdAt: createdAt,
-      updatedAt: createdAt, priority: true, chordChart: nil, variants: [], photoId: nil, metre: nil)
+      tags: ["scale", "warmup"], createdAt: createdAt, priority: true)
   }
 
   func testSaveThenLoadRoundTrips() throws {

@@ -9,19 +9,6 @@ final class LibraryDetailAddExerciseUITests: XCTestCase {
     continueAfterFailure = false
   }
 
-  /// A covered stacked sheet stays in the tree but not hittable, so a shared
-  /// label (two "Required" fields, two "Done" buttons) needs this to disambiguate.
-  private func hittable(_ query: XCUIElementQuery, timeout: TimeInterval = 5) -> XCUIElement? {
-    let deadline = Date().addingTimeInterval(timeout)
-    repeat {
-      if let match = query.allElementsBoundByIndex.first(where: \.isHittable) {
-        return match
-      }
-      usleep(100_000)
-    } while Date() < deadline
-    return nil
-  }
-
   func testCreatingAndSelectingInThePickerBothLinkToThePiece() {
     let app = XCUIApplication()
     app.launchArguments = ["--seed-sample-data", "--disable-animations"]
@@ -43,12 +30,12 @@ final class LibraryDetailAddExerciseUITests: XCTestCase {
     createTrigger.tap()
 
     let requiredFields = app.textFields.matching(identifier: "Required")
-    let draftTitle = hittable(requiredFields)
+    let draftTitle = requiredFields.firstHittable()
     XCTAssertNotNil(draftTitle, "the draft exercise's title field")
     draftTitle?.tap()
     draftTitle?.typeText("Chromatic run")
     let doneButtons = app.buttons.matching(NSPredicate(format: "label == %@", "Done"))
-    hittable(doneButtons)?.tap()
+    doneButtons.firstHittable()?.tap()
 
     XCTAssertTrue(
       app.staticTexts["Chromatic run"].waitForExistence(timeout: 5),
