@@ -352,7 +352,7 @@ pub fn compute_daily_totals(
 }
 
 /// Minutes per ISO week, oldest first: the four whole weeks before this one,
-/// then this week so far. A 28-day window cut the oldest week short (#1940).
+/// then this week so far. Whole weeks, so the oldest bar is never a stub (#1940).
 pub fn compute_weekly_minutes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<u32> {
     let this_monday = clock.today.week(Weekday::Mon).first_day();
     let mut secs = [0u64; CONSISTENCY_WEEKS];
