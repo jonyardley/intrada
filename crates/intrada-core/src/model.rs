@@ -13,6 +13,7 @@ use crate::domain::session::{
 use crate::domain::variant::ladder_is_all_keys;
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
+use crate::practice_weeks::PracticeWeekView;
 use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedSession;
 
@@ -219,6 +220,8 @@ pub struct ViewModel {
     /// pre-filter so it stays the full vocabulary when the list is narrowed.
     pub available_composers: Vec<String>,
     pub sessions: Vec<PracticeSessionView>,
+    /// The Practice tab's week strip (#2046), oldest first and never empty.
+    pub practice_weeks: Vec<PracticeWeekView>,
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,

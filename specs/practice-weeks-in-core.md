@@ -79,10 +79,10 @@ Appended to `AnalyticsView`:
   this week's changes rather than the five listed under Recent mastery; ties go
   to the lower item id. `None` when nothing rose.
 - `mastery_change: Option<String>`: the line under the dial, "+0.7 this
-  week". The mean change of the items marked again this week (first marks have
-  no before, so they are left out), across all of them, rounded half up to one
-  decimal place. `None` when that mean is not above zero, so the green
-  climbing line only shows a real rise.
+  week". The mean change of the items whose mark moved this week (first marks
+  have no before, so they are left out), across all of them, rounded half up
+  to one decimal place. `None` when that rounds to nothing above zero, so the
+  green climbing line only shows a real rise.
 
 `score_changes` keeps its five rows; the unlimited list is internal.
 

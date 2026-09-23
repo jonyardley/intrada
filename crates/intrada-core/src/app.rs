@@ -434,6 +434,8 @@ impl Intrada {
             ),
         };
 
+        let practice_weeks = crate::practice_weeks::compute_practice_weeks(&model.sessions, clock);
+
         let (analytics, last_practised) = if model.sessions.is_empty() {
             (None, None)
         } else {
@@ -460,6 +462,7 @@ impl Intrada {
             available_tags,
             available_composers,
             sessions,
+            practice_weeks,
             active_session,
             building_setlist,
             summary,
@@ -5338,6 +5341,19 @@ mod tests {
         };
         model.practice_summaries = build_practice_summaries(&model.sessions);
         app.view(&model)
+    }
+
+    #[test]
+    fn view_carries_this_week_with_no_sessions_and_today_with_one() {
+        let empty = Intrada.view(&Model::default());
+        assert_eq!(empty.practice_weeks.len(), 1);
+        assert!(empty.practice_weeks[0].days.iter().any(|d| d.is_today));
+
+        let vm = step_view_model(vec![make_session("s-now", "ex-1", None, None)]);
+        let this_week = vm.practice_weeks.last().expect("this week");
+        let today = this_week.days.iter().find(|d| d.is_today).expect("today");
+        assert_eq!(today.session_ids, vec!["s-now"]);
+        assert_eq!(this_week.days[this_week.opening_day].date, today.date);
     }
 
     #[test]
