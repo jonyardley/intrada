@@ -58,14 +58,15 @@ struct LibraryScreen: View {
   }
 
   @ViewBuilder private var content: some View {
-    if displayedItems.isEmpty {
+    let rows = displayedItems
+    if rows.isEmpty {
       PlaceholderContent(
         systemImage: emptyIcon,
         message: emptyMessage)
     } else {
       ScrollView {
         VStack(spacing: IntradaSpacing.cardCompact) {
-          ForEach(Array(displayedItems.enumerated()), id: \.element.id) { index, item in
+          ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
             libraryRow(item)
               .fadeUp(min(index, 5))
           }

@@ -31,10 +31,12 @@
     private let lastPractised: LastPractisedView?
     private let upNext: SuggestedSession?
     private let recentlyPractisedIds: [String]
+    private let visibleIds: [String]?
     private let profile: ProfileView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
+      visibleIds: [String]? = nil,
       sessions: [PracticeSessionView] = [], practiceWeeks: [PracticeWeekView]? = nil,
       buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
@@ -53,6 +55,7 @@
       self.lastPractised = lastPractised
       self.upNext = upNext
       self.recentlyPractisedIds = recentlyPractisedIds
+      self.visibleIds = visibleIds
       self.profile = profile
     }
 
@@ -64,14 +67,15 @@
       var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
       viewModel.activeQuery = activeQuery
       let visible: [LibraryItemView]
-      if let kind = activeQuery?.itemType {
+      if let visibleIds {
+        visible = items.filter { visibleIds.contains($0.id) }
+      } else if let kind = activeQuery?.itemType {
         visible = items.filter { $0.itemType == kind }
       } else {
         visible = items
       }
       viewModel.items = items
       viewModel.visibleIds = visible.map(\.id)
-      // Type-filters items; callers pre-filter the list for text/tag queries.
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       // Derived from the whole library, never `visible`, so a fixture with a
@@ -119,12 +123,13 @@
     }
 
     /// Text-searched library for the revealed-search-bar snapshot: "clair"
-    /// matches Clair de Lune. The bridge serves the already-matched subset.
+    /// matches Clair de Lune.
     static var previewLibrarySearching: Store {
       Store(
         bridge: PreviewBridge(
-          items: [.previewPiece],
-          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: [])))
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: []),
+          visibleIds: [LibraryItemView.previewPiece.id]))
     }
 
     /// A store driven by the *real* core seeded with the canonical demo dataset
