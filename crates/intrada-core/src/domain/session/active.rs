@@ -1,6 +1,7 @@
 use super::plays::*;
 use super::*;
 use crate::app::{AppEffect, Effect, Event};
+use crate::domain::item::Item;
 use crate::model::Model;
 use crate::validation;
 use chrono::{DateTime, Utc};
@@ -47,10 +48,7 @@ pub(super) fn next_item(
             &reading,
             CompletionStatus::Completed,
         );
-        model.session_status = SessionStatus::Summary(summary);
-        model.last_error = None;
-        report_stamp(model, stamp);
-        return crux_core::render::render();
+        return finish(model, summary, stamp);
     }
 
     let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
@@ -65,19 +63,12 @@ pub(super) fn next_item(
         drop_incidental_play(entry);
     }
 
-    active.current_index += 1;
-    active.current_item_started_at = next_item_started_at;
-    if let Some(entry) = active.entries.get_mut(active.current_index) {
-        open_first_play(entry, &model.items, next_item_started_at);
-    }
+    advance(active, &model.items, next_item_started_at);
     model.last_error = None;
 
-    let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+    let persist = persist_active(active);
     report_stamp(model, stamp);
-    Command::all([
-        Command::notify_shell(save_effect).into(),
-        crux_core::render::render(),
-    ])
+    persist
 }
 
 pub(super) fn skip_item(model: &mut Model, now: DateTime<Utc>) -> Command<Effect, Event> {
@@ -116,23 +107,12 @@ pub(super) fn skip_item(model: &mut Model, now: DateTime<Utc>) -> Command<Effect
             completion_status: CompletionStatus::Completed,
             session_score: None,
         };
-        model.session_status = SessionStatus::Summary(summary);
-        model.last_error = None;
-        return crux_core::render::render();
+        return finish(model, summary, TempoStamp::NothingToKeep);
     }
 
-    active.current_index += 1;
-    active.current_item_started_at = now;
-    if let Some(entry) = active.entries.get_mut(active.current_index) {
-        open_first_play(entry, &model.items, now);
-    }
+    advance(active, &model.items, now);
     model.last_error = None;
-
-    let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-    Command::all([
-        Command::notify_shell(save_effect).into(),
-        crux_core::render::render(),
-    ])
+    persist_active(active)
 }
 
 pub(super) fn end_session_early(
@@ -152,10 +132,7 @@ pub(super) fn end_session_early(
         &reading,
         CompletionStatus::EndedEarly,
     );
-    model.session_status = SessionStatus::Summary(summary);
-    model.last_error = None;
-    report_stamp(model, stamp);
-    crux_core::render::render()
+    finish(model, summary, stamp)
 }
 
 pub(super) fn switch_variation(
@@ -208,12 +185,9 @@ pub(super) fn switch_variation(
         .push(VariationPlay::opened(variation_id, rep_target, now));
 
     model.last_error = None;
-    let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+    let persist = persist_active(active);
     report_stamp(model, stamp);
-    Command::all([
-        Command::notify_shell(save_effect).into(),
-        crux_core::render::render(),
-    ])
+    persist
 }
 
 pub(super) fn recover_session(
@@ -254,5 +228,20 @@ pub(super) fn recover_session(
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;
+    crux_core::render::render()
+}
+
+fn advance(active: &mut ActiveSession, items: &[Item], started_at: DateTime<Utc>) {
+    active.current_index += 1;
+    active.current_item_started_at = started_at;
+    if let Some(entry) = active.entries.get_mut(active.current_index) {
+        open_first_play(entry, items, started_at);
+    }
+}
+
+fn finish(model: &mut Model, summary: SummarySession, stamp: TempoStamp) -> Command<Effect, Event> {
+    model.session_status = SessionStatus::Summary(summary);
+    model.last_error = None;
+    report_stamp(model, stamp);
     crux_core::render::render()
 }

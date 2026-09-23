@@ -174,6 +174,10 @@ pub(super) fn record_rep(
     }
 
     model.last_error = None;
+    persist_active(active)
+}
+
+pub(super) fn persist_active(active: &ActiveSession) -> Command<Effect, Event> {
     Command::all([
         Command::notify_shell(AppEffect::SaveSessionInProgress(active.clone())).into(),
         crux_core::render::render(),
