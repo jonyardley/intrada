@@ -9,16 +9,16 @@ import SwiftUI
 /// One component, both directions (#1363): `kind` carries the copy and the
 /// type colour.
 ///
-/// The filter bar (star / sort / tag / search) drives *shell-local* state over
-/// the passed-in `available` list — the picker curates its own subset rather
+/// The filter bar (star / sort / tag / search) holds *shell-local* state rather
 /// than the core's shared Library `ListQuery`, so filtering here never disturbs
-/// the Library screen. Search and sort themselves are the core's (#1440, #1445, #1653).
+/// the Library screen. The core narrows `library` to `kind` and applies the
+/// star, tags, search and sort through the picker call (#1440, #1653, #1999).
 ///
 /// For exercises, the picker also offers creating one inline (#1616): a
 /// drafted exercise and a toggled selection hand back together on Done.
 struct LinkedItemPickerSheet: View {
   let kind: ItemKind
-  let available: [LibraryItemView]
+  let library: [LibraryItemView]
   let linkedIds: [String]
   let onApply: (Swift.Set<String>, [StagedExercise]) -> Void
 
@@ -37,16 +37,20 @@ struct LinkedItemPickerSheet: View {
   @FocusState private var searchFocused: Bool
 
   init(
-    kind: ItemKind, available: [LibraryItemView], linkedIds: [String],
+    kind: ItemKind, library: [LibraryItemView], linkedIds: [String],
     existingDrafts: [StagedExercise] = [],
     onApply: @escaping (Swift.Set<String>, [StagedExercise]) -> Void
   ) {
     self.kind = kind
-    self.available = available
+    self.library = library
     self.linkedIds = linkedIds
     self.onApply = onApply
     _selected = State(initialValue: Swift.Set(linkedIds))
     _drafts = State(initialValue: existingDrafts)
+  }
+
+  private var ofKind: [LibraryItemView] {
+    library.sortedAndFiltered(by: sort, search: "", filter: PickerFilterArg(kind: kind))
   }
 
   // Only an exercise is light enough to draft inline; a piece needs the full form.
@@ -58,12 +62,12 @@ struct LinkedItemPickerSheet: View {
       onDone: { onApply(selected, drafts) },
       leadingAction: { Button("Cancel") { dismiss() } },
       content: {
-        if available.isEmpty && !allowsCreate {
+        if ofKind.isEmpty && !allowsCreate {
           PlaceholderContent(
             systemImage: kind.iconName, message: copy.noneAtAll)
         } else {
           VStack(spacing: 0) {
-            if !available.isEmpty { filterBar }
+            if !ofKind.isEmpty { filterBar }
             selectedCount
             list
           }
@@ -80,7 +84,7 @@ struct LinkedItemPickerSheet: View {
   private var availableTags: [String] {
     var seen = Swift.Set<String>()
     var tags: [String] = []
-    for tag in available.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
+    for tag in ofKind.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
       tags.append(tag)
     }
     return tags.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
@@ -190,16 +194,9 @@ struct LinkedItemPickerSheet: View {
   // ── List ──
 
   private var filtered: [LibraryItemView] {
-    var items = available
-    if priorityOnly { items = items.filter(\.priority) }
-    if !selectedTags.isEmpty {
-      items = items.filter { exercise in
-        selectedTags.contains { tag in
-          exercise.tags.contains { $0.localizedCaseInsensitiveCompare(tag) == .orderedSame }
-        }
-      }
-    }
-    return items.sortedAndFiltered(by: sort, search: searchText)
+    library.sortedAndFiltered(
+      by: sort, search: searchText,
+      filter: PickerFilterArg(kind: kind, priorityOnly: priorityOnly, tags: selectedTags))
   }
 
   private var list: some View {
@@ -215,7 +212,7 @@ struct LinkedItemPickerSheet: View {
         }
         let rows = filtered
         if rows.isEmpty {
-          Text(available.isEmpty ? copy.noneAtAll : copy.noMatches)
+          Text(ofKind.isEmpty ? copy.noneAtAll : copy.noMatches)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -376,7 +373,7 @@ private struct PickerCopy {
   #Preview("Add or remove — one related") {
     LinkedItemPickerSheet(
       kind: .exercise,
-      available: [
+      library: [
         .previewExercise,
         LibraryItemFixture.view(
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
@@ -390,11 +387,11 @@ private struct PickerCopy {
   }
 
   #Preview("Empty") {
-    LinkedItemPickerSheet(kind: .exercise, available: [], linkedIds: [], onApply: { _, _ in })
+    LinkedItemPickerSheet(kind: .exercise, library: [], linkedIds: [], onApply: { _, _ in })
   }
 
   #Preview("Link a piece — from the exercise side") {
     LinkedItemPickerSheet(
-      kind: .piece, available: [.previewPiece], linkedIds: [], onApply: { _, _ in })
+      kind: .piece, library: [.previewPiece], linkedIds: [], onApply: { _, _ in })
   }
 #endif

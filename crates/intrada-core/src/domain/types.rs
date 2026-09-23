@@ -474,10 +474,6 @@ mod tests {
     #[test]
     fn block_grouping_session_events_round_trip_on_ffi_bincode_wire() {
         use crate::domain::session::SessionEvent;
-        assert_round_trips(SessionEvent::ReorderBlock {
-            group_id: "g1".to_string(),
-            new_position: 2,
-        });
         assert_round_trips(SessionEvent::KeepOnlyPiece {
             group_id: "g1".to_string(),
         });

@@ -259,7 +259,6 @@ final class SessionBridgeTests: XCTestCase {
               title: item.title, kind: item.itemType, composer: nil, key: nil, modality: nil,
               tempo: nil, notes: nil, tags: nil, priority: true))))
     }
-    XCTAssertTrue(try bridge.view().hasPriorities, "both items are starred")
     XCTAssertTrue(try bridge.view().showsPriorities, "starred with nothing under way")
 
     _ = try bridge.update(.session(.startBuildingWithPriorities(now: SessionClock.nowRFC3339())))
@@ -463,43 +462,6 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
     _ = try bridge.update(.session(.addToSetlist(itemId: try XCTUnwrap(ids["Arpeggios"]))))
     return bridge
-  }
-
-  /// The builder's nested drag lands as `reorderSetlist` aimed inside the block:
-  /// the related exercises swap and the piece still closes the block.
-  func testRealBridgeReorderInsideABlockSwapsItsExercises() throws {
-    let bridge = try bridgeBuildingABlockAndAStandalone()
-    let before = try XCTUnwrap(try bridge.view().buildingSetlist)
-    let block = try XCTUnwrap(before.blocks.first { $0.groupId != nil })
-    let related = block.entries.filter { $0.itemType == .exercise }
-    guard block.entries.count == 3 else {
-      return XCTFail("both linked exercises join the piece's block, got \(block.entries.count)")
-    }
-    let blockStart = try XCTUnwrap(before.entries.firstIndex { $0.id == related[0].id })
-
-    _ = try bridge.update(
-      .session(.reorderSetlist(entryId: related[1].id, newPosition: UInt64(blockStart))))
-
-    let after = try XCTUnwrap(try bridge.view().buildingSetlist)
-    let moved = try XCTUnwrap(after.blocks.first { $0.groupId == block.groupId })
-    XCTAssertEqual(moved.entries.map(\.id), [related[1].id, related[0].id, block.entries[2].id])
-    XCTAssertEqual(after.blocks.count, before.blocks.count, "the block stays whole")
-  }
-
-  /// A header drag lands as `reorderBlock`: the whole block moves past the
-  /// standalone and keeps its order.
-  func testRealBridgeReorderBlockMovesTheBlockWhole() throws {
-    let bridge = try bridgeBuildingABlockAndAStandalone()
-    let before = try XCTUnwrap(try bridge.view().buildingSetlist)
-    XCTAssertEqual(before.blocks.map(\.pieceTitle), ["Clair de Lune", nil])
-    let block = try XCTUnwrap(before.blocks.first)
-    let groupId = try XCTUnwrap(block.groupId)
-
-    _ = try bridge.update(.session(.reorderBlock(groupId: groupId, newPosition: 1)))
-
-    let after = try XCTUnwrap(try bridge.view().buildingSetlist)
-    XCTAssertEqual(after.blocks.map(\.pieceTitle), [nil, "Clair de Lune"])
-    XCTAssertEqual(after.blocks.last?.entries.map(\.id), block.entries.map(\.id))
   }
 
   /// `moveRelated` crosses the wire and swaps the block's exercises; the

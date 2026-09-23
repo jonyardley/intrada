@@ -731,64 +731,6 @@ fn ungroup_all_clears_every_group() {
 }
 
 #[test]
-fn reorder_block_moves_the_whole_unit() {
-    let mut m = linked_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "piece-P");
-    add(&mut m, "ex-C");
-    let g = group_of(&m, "piece-P").unwrap();
-    update(
-        &mut m,
-        Event::Session(SessionEvent::ReorderBlock {
-            group_id: g,
-            new_position: 1,
-        }),
-    );
-    assert_eq!(ids(&m), ["ex-C", "ex-A", "ex-B", "piece-P"]);
-}
-
-#[test]
-fn reorder_within_block_is_allowed() {
-    let mut m = linked_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "piece-P");
-    let ex_b = building_entries(&m)[1].id.clone();
-    update(
-        &mut m,
-        Event::Session(SessionEvent::ReorderSetlist {
-            entry_id: ex_b,
-            new_position: 0,
-        }),
-    );
-    assert!(m.last_error.is_none());
-    let e = building_entries(&m);
-    assert_eq!(ids(&m), ["ex-B", "ex-A", "piece-P"]);
-    assert!(e.iter().all(|x| x.group_id == e[0].group_id));
-}
-
-#[test]
-fn reorder_that_splits_a_block_is_rejected() {
-    let mut m = linked_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "ex-C");
-    add(&mut m, "piece-P");
-    let ex_c = building_entries(&m)[0].id.clone();
-    update(
-        &mut m,
-        Event::Session(SessionEvent::ReorderSetlist {
-            entry_id: ex_c,
-            new_position: 2,
-        }),
-    );
-    assert!(m.last_error.is_some(), "splitting move rejected");
-    assert_eq!(
-        ids(&m),
-        ["ex-C", "ex-A", "ex-B", "piece-P"],
-        "order unchanged"
-    );
-}
-
-#[test]
 fn building_view_projects_blocks_and_standalones() {
     let mut m = linked_model();
     update(&mut m, Event::Session(SessionEvent::StartBuilding));
@@ -826,37 +768,6 @@ fn two_adjacent_blocks_project_separately() {
     assert_eq!(b.blocks[0].related_count, 2);
     assert_eq!(b.blocks[1].piece_title.as_deref(), Some("Etude"));
     assert_eq!(b.blocks[1].related_count, 1);
-}
-
-#[test]
-fn standalone_can_move_between_two_blocks() {
-    let mut m = linked_model();
-    update(&mut m, Event::Session(SessionEvent::StartBuilding));
-    add(&mut m, "piece-P"); // G1: 0,1,2
-    add(&mut m, "piece-R"); // G2: 3,4
-    add(&mut m, "ex-D"); // standalone: 5
-    let ex_d = building_entries(&m)
-        .iter()
-        .find(|e| e.item_id == "ex-D")
-        .unwrap()
-        .id
-        .clone();
-    update(
-        &mut m,
-        Event::Session(SessionEvent::ReorderSetlist {
-            entry_id: ex_d,
-            new_position: 3,
-        }),
-    );
-    assert!(
-        m.last_error.is_none(),
-        "a standalone between blocks splits neither"
-    );
-    assert_eq!(
-        ids(&m),
-        ["ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R"]
-    );
-    assert!(groups_contiguous(building_entries(&m)));
 }
 
 // ── The builder's drag moves (#1957) ──
@@ -1219,56 +1130,6 @@ fn test_remove_from_setlist() {
         assert_eq!(b.entries.len(), 1);
         assert_eq!(b.entries[0].item_title, "Clair de Lune");
         assert_eq!(b.entries[0].position, 0); // Re-indexed
-    } else {
-        panic!("Expected Building state");
-    }
-}
-
-#[test]
-fn test_reorder_setlist() {
-    let mut model = model_with_library();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-1".to_string(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "piece-2".to_string(),
-        }),
-    );
-    update(
-        &mut model,
-        Event::Session(SessionEvent::AddToSetlist {
-            item_id: "exercise-1".to_string(),
-        }),
-    );
-
-    let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-        b.entries[2].id.clone() // exercise-1 at position 2
-    } else {
-        panic!("Expected Building state");
-    };
-
-    update(
-        &mut model,
-        Event::Session(SessionEvent::ReorderSetlist {
-            entry_id,
-            new_position: 0,
-        }),
-    );
-
-    assert!(model.last_error.is_none());
-    if let SessionStatus::Building(ref b) = model.session_status {
-        assert_eq!(b.entries[0].item_title, "C Major Scale");
-        assert_eq!(b.entries[1].item_title, "Moonlight Sonata");
-        assert_eq!(b.entries[2].item_title, "Clair de Lune");
-        assert_eq!(b.entries[0].position, 0);
-        assert_eq!(b.entries[1].position, 1);
-        assert_eq!(b.entries[2].position, 2);
     } else {
         panic!("Expected Building state");
     }

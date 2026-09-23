@@ -39,13 +39,13 @@ struct SessionBuilderScreen: View {
 
   // ── Row model ────────────────────────────────────────────────────────
 
-  fileprivate enum SegmentPosition {
+  enum SegmentPosition {
     case single, top, middle, bottom
   }
 
   /// Row ids are entry ulids — stable across removals (#1024); the header and
   /// add-related rows borrow their group's id.
-  private enum BuilderRow: Identifiable {
+  enum BuilderRow: Identifiable {
     case standalone(SetlistBlockView, SetlistEntryView)
     case header(SetlistBlockView, collapsed: Bool, position: SegmentPosition)
     case nested(SetlistBlockView, SetlistEntryView, localIndex: Int, position: SegmentPosition)
@@ -81,30 +81,100 @@ struct SessionBuilderScreen: View {
       case .standalone, .header: false
       }
     }
+
+    static func rows(
+      for blocks: [SetlistBlockView], collapsed collapsedGroups: Swift.Set<String>,
+      isEditing: Bool
+    ) -> [BuilderRow] {
+      var result: [BuilderRow] = []
+      for block in blocks {
+        guard let groupId = block.groupId else {
+          if let entry = block.entries.first { result.append(.standalone(block, entry)) }
+          continue
+        }
+        let collapsed = collapsedGroups.contains(groupId)
+        let related = block.entries.filter { $0.itemType == .exercise }
+        let childRows = collapsed ? 0 : related.count + (isEditing ? 0 : 1)
+        result.append(
+          .header(block, collapsed: collapsed, position: childRows > 0 ? .top : .single))
+        if !collapsed {
+          for (index, entry) in related.enumerated() {
+            let isLast = isEditing && index == related.count - 1
+            result.append(
+              .nested(block, entry, localIndex: index, position: isLast ? .bottom : .middle))
+          }
+          if !isEditing { result.append(.addRelated(block)) }
+        }
+      }
+      return result
+    }
+
+    /// What the List's single-row move asks the core for, or nil when the
+    /// drop changes nothing:
+    /// - a header/standalone row moves its whole unit to the unit slot the
+    ///   drop position implies (a drop inside another block clamps to its
+    ///   boundary);
+    /// - a nested exercise moves within its own block's related run.
+    static func move(in rows: [BuilderRow], from: Int, to destination: Int) -> BuilderMove? {
+      guard rows.indices.contains(from) else { return nil }
+      var remaining = rows
+      let moved = remaining.remove(at: from)
+      let slot = (from < destination ? destination - 1 : destination)
+        .clamped(to: 0...remaining.count)
+
+      switch moved {
+      case .standalone(let block, _), .header(let block, _, _):
+        // Dropping back among the unit's own remaining rows means "stay put".
+        if slot < remaining.count, remaining[slot].belongs(to: block) { return nil }
+        var target = remaining[..<slot].filter(\.startsUnit).count
+        // A drop INSIDE a foreign unit's span counts that unit's header as
+        // passed; when dragging upward the intent is "before that unit", so
+        // step back one, or swapping with the block above needs a
+        // pixel-precise drop on its header row.
+        if destination <= from, slot < remaining.count, !remaining[slot].startsUnit {
+          target = max(0, target - 1)
+        }
+        let currentUnit = rows[..<from].filter(\.startsUnit).count
+        guard target != currentUnit, let entryId = block.entries.first?.id else { return nil }
+        return .unit(entryId: entryId, to: target)
+      case .nested(let block, let entry, let localIndex, _):
+        // A drop outside the source block's own nested run is a no-op (the row
+        // snaps home): silently converting it into a within-block move would
+        // reorder siblings the user never touched.
+        let nestedIndices = remaining.indices.filter { index in
+          if case .nested(let b, _, _, _) = remaining[index] {
+            return b.groupId == block.groupId
+          }
+          return false
+        }
+        guard let first = nestedIndices.first, let last = nestedIndices.last,
+          (first...(last + 1)).contains(slot)
+        else { return nil }
+        let target = slot - first
+        guard target != localIndex else { return nil }
+        return .related(entryId: entry.id, to: target)
+      case .addRelated:
+        return nil
+      }
+    }
+  }
+
+  enum BuilderMove: Equatable {
+    case unit(entryId: String, to: Int)
+    case related(entryId: String, to: Int)
+
+    var event: Event {
+      switch self {
+      case .unit(let entryId, let to):
+        .session(.moveUnit(entryId: entryId, newPosition: UInt64(to)))
+      case .related(let entryId, let to):
+        .session(.moveRelated(entryId: entryId, newPosition: UInt64(to)))
+      }
+    }
   }
 
   private var rows: [BuilderRow] {
-    var result: [BuilderRow] = []
-    for block in blocks {
-      guard let groupId = block.groupId else {
-        if let entry = block.entries.first { result.append(.standalone(block, entry)) }
-        continue
-      }
-      let collapsed = collapsedGroups.contains(groupId)
-      let related = block.entries.filter { $0.itemType == .exercise }
-      let childRows = collapsed ? 0 : related.count + (isEditing ? 0 : 1)
-      result.append(
-        .header(block, collapsed: collapsed, position: childRows > 0 ? .top : .single))
-      if !collapsed {
-        for (index, entry) in related.enumerated() {
-          let isLast = isEditing && index == related.count - 1
-          result.append(
-            .nested(block, entry, localIndex: index, position: isLast ? .bottom : .middle))
-        }
-        if !isEditing { result.append(.addRelated(block)) }
-      }
-    }
-    return result
+    BuilderRow.rows(for: blocks, collapsed: collapsedGroups, isEditing: isEditing)
   }
 
   var body: some View {
@@ -555,105 +625,36 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  /// Moves `entry` to `toLocal` within `block`'s related-exercise run (never
-  /// past the anchor piece, which is always last in `block.entries`).
+  /// VoiceOver path for a related exercise's move within its block.
   private func moveExercise(
     _ entry: SetlistEntryView, toLocal destLocal: Int, in block: SetlistBlockView
   ) {
-    let related = block.entries.filter { $0.itemType == .exercise }
-    guard related.indices.contains(destLocal),
-      let localIndex = related.firstIndex(where: { $0.id == entry.id }),
-      destLocal != localIndex,
-      let blockStart = entries.firstIndex(where: { $0.id == related[0].id })
-    else { return }
-    store.send(
-      .session(.reorderSetlist(entryId: entry.id, newPosition: UInt64(blockStart + destLocal))),
-      onSuccess: .selection)
+    guard destLocal >= 0, destLocal < block.relatedCount else { return }
+    send(.related(entryId: entry.id, to: destLocal))
   }
 
   /// VoiceOver path for unit reorder (the pointer path is the List's native
   /// long-press drag on the header/standalone row).
   private func moveUnit(_ block: SetlistBlockView, by delta: Int) {
-    let unitBlocks = blocks
     guard
-      let from = unitBlocks.firstIndex(where: {
+      let from = blocks.firstIndex(where: {
         $0.entries.first?.id == block.entries.first?.id
       }),
-      unitBlocks.indices.contains(from + delta)
+      blocks.indices.contains(from + delta),
+      let entryId = block.entries.first?.id
     else { return }
-    sendUnitMove(block, toUnitIndex: from + delta)
+    send(.unit(entryId: entryId, to: from + delta))
   }
 
-  /// A block moves whole via `reorderBlock`; a standalone via `reorderSetlist`
-  /// aimed at the flat-entry index its new unit slot implies.
-  private func sendUnitMove(_ block: SetlistBlockView, toUnitIndex target: Int) {
-    if let groupId = block.groupId {
-      store.send(
-        .session(.reorderBlock(groupId: groupId, newPosition: UInt64(target))),
-        onSuccess: .selection)
-    } else if let entryId = block.entries.first?.id {
-      var reordered = blocks
-      guard let from = reordered.firstIndex(where: { $0.entries.first?.id == entryId }) else {
-        return
-      }
-      let moved = reordered.remove(at: from)
-      reordered.insert(moved, at: min(target, reordered.count))
-      let flatIds = reordered.flatMap { $0.entries.map(\.id) }
-      if let newIndex = flatIds.firstIndex(of: entryId) {
-        store.send(
-          .session(.reorderSetlist(entryId: entryId, newPosition: UInt64(newIndex))),
-          onSuccess: .selection)
-      }
-    }
-  }
-
-  /// Interprets the List's single-row move on the flattened rows:
-  /// - a header/standalone row moves its whole unit to the unit slot the drop
-  ///   position implies (a drop inside another block clamps to its boundary);
-  /// - a nested exercise clamps to its own block's related run.
   private func moveRows(from source: IndexSet, to destination: Int) {
-    let currentRows = rows
-    guard let from = source.first, currentRows.indices.contains(from) else { return }
-    let moved = currentRows[from]
-    var remaining = currentRows
-    remaining.remove(at: from)
-    let slot = (from < destination ? destination - 1 : destination)
-      .clamped(to: 0...remaining.count)
+    guard let from = source.first,
+      let move = BuilderRow.move(in: rows, from: from, to: destination)
+    else { return }
+    send(move)
+  }
 
-    switch moved {
-    case .standalone(let block, _), .header(let block, _, _):
-      // Dropping back among the unit's own remaining rows means "stay put".
-      if slot < remaining.count, remaining[slot].belongs(to: block) { return }
-      var target = remaining[..<slot].filter(\.startsUnit).count
-      // A drop INSIDE a foreign unit's span counts that unit's header as
-      // passed; when dragging upward the intent is "before that unit", so
-      // step back one — otherwise swapping with the block above needs a
-      // pixel-precise drop on its header row.
-      if destination <= from, slot < remaining.count, !remaining[slot].startsUnit {
-        target = max(0, target - 1)
-      }
-      let currentUnit = blocks.firstIndex { $0.entries.first?.id == block.entries.first?.id }
-      guard target != currentUnit else { return }
-      sendUnitMove(block, toUnitIndex: target)
-    case .nested(let block, let entry, let localIndex, _):
-      // A drop outside the source block's own nested run is a no-op (the row
-      // snaps home) — silently converting it into a within-block move would
-      // reorder siblings the user never touched.
-      let nestedIndices = remaining.indices.filter { index in
-        if case .nested(let b, _, _, _) = remaining[index] {
-          return b.groupId == block.groupId
-        }
-        return false
-      }
-      guard let first = nestedIndices.first, let last = nestedIndices.last,
-        (first...(last + 1)).contains(slot)
-      else { return }
-      let target = slot - first
-      guard target != localIndex else { return }
-      moveExercise(entry, toLocal: target, in: block)
-    case .addRelated:
-      break
-    }
+  private func send(_ move: BuilderMove) {
+    store.send(move.event, onSuccess: .selection)
   }
 
   private func cancel() {

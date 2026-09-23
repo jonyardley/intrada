@@ -39,7 +39,7 @@ struct LibraryAddScreen: View {
         ScanPageEntry(
           photoId: recognition?.photoId,
           status: recognition?.status ?? .idle,
-          readNothing: recognition?.draft.map(readNothing) ?? false,
+          readNothing: recognition?.readNothing ?? false,
           onCaptured: { store.send(.item(.readPhoto(photoId: $0))) })
       },
       sections: {
@@ -78,7 +78,7 @@ struct LibraryAddScreen: View {
     .sheet(isPresented: $choosingExercises) {
       LinkedItemPickerSheet(
         kind: .exercise,
-        available: store.viewModel?.items.filter { $0.itemType == .exercise } ?? [],
+        library: store.viewModel?.items ?? [],
         linkedIds: form.stagedExercises.compactMap(\.existingId),
         existingDrafts: form.stagedExercises.filter { $0.existingId == nil },
         onApply: applyChosen)
@@ -187,10 +187,6 @@ struct LibraryAddScreen: View {
   }
 
   private var recognition: PhotoRecognitionView? { store.viewModel?.photoRecognition }
-
-  private func readNothing(_ draft: PhotoDraft) -> Bool {
-    draft.title == nil && draft.composer == nil && draft.tempo == nil && draft.chartText == nil
-  }
 }
 
 #if DEBUG

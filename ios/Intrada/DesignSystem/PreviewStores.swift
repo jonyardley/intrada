@@ -80,7 +80,9 @@
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       // Derived from the whole library, never `visible`, so a fixture with a
       // filter on still reports what the core would report (#981).
-      viewModel.hasPriorities = items.contains { $0.priority }
+      viewModel.showsPriorities =
+        items.contains { $0.priority } && buildingSetlist == nil && activeSession == nil
+        && summary == nil
       viewModel.sessions = sessions
       if let practiceWeeks { viewModel.practiceWeeks = practiceWeeks }
       viewModel.buildingSetlist = buildingSetlist

@@ -2274,12 +2274,12 @@ mod tests {
         model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now)].into();
 
         assert!(
-            !app.view(&model).has_priorities,
+            !app.view(&model).shows_priorities,
             "nothing starred, so the button cannot be on screen"
         );
 
         model.items[0].priority = true;
-        assert!(app.view(&model).has_priorities);
+        assert!(app.view(&model).shows_priorities);
     }
 
     #[test]
@@ -2298,7 +2298,7 @@ mod tests {
         for starred in [false, true] {
             model.items[0].priority = starred;
             assert_eq!(
-                app.view(&model).has_priorities,
+                app.view(&model).shows_priorities,
                 !derive_priorities(&model, now).is_empty(),
                 "the flag and the event must agree, starred: {starred}"
             );
@@ -2324,7 +2324,7 @@ mod tests {
             "the filter really does hide the starred piece from the list"
         );
         assert!(
-            vm.has_priorities,
+            vm.shows_priorities,
             "the flag is derived before the filter, like up_next"
         );
     }

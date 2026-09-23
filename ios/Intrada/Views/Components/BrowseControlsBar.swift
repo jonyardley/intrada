@@ -8,9 +8,9 @@ import SwiftUI
 struct BrowseControlsBar: View {
   @Environment(Store.self) private var store
   private let elevated: Bool
-  // Opt-in leading "priorities only" star — only the Library passes it; the
-  // session builder reuses this bar without it.
-  private let starFilter: Binding<Bool>?
+  // Opt-in leading "priorities only" star: the Library and Add to session show
+  // it; the related-exercise sheet does not.
+  private let showsStarFilter: Bool
   // The related-exercise sheet is exercise-only, so a type menu there could
   // only empty its own list (#1103).
   private let showsTypeFilter: Bool
@@ -20,17 +20,18 @@ struct BrowseControlsBar: View {
   @FocusState private var searchFocused: Bool
 
   init(
-    elevated: Bool = false, previewSearch: String? = nil, starFilter: Binding<Bool>? = nil,
+    elevated: Bool = false, previewSearch: String? = nil, showsStarFilter: Bool = false,
     showsTypeFilter: Bool = true
   ) {
     self.elevated = elevated
-    self.starFilter = starFilter
+    self.showsStarFilter = showsStarFilter
     self.showsTypeFilter = showsTypeFilter
     _searchText = State(initialValue: previewSearch ?? "")
     _searchRevealed = State(initialValue: previewSearch != nil)
   }
 
   private var activeTags: [String] { store.viewModel?.activeQuery?.tags ?? [] }
+  private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
 
   private var filterBinding: Binding<LibraryFilter> {
     Binding(
@@ -103,22 +104,22 @@ struct BrowseControlsBar: View {
   }
 
   @ViewBuilder private var starButton: some View {
-    if let starFilter {
+    if showsStarFilter {
       Button {
-        starFilter.wrappedValue.toggle()
+        applyQuery(
+          kind: store.viewModel?.activeQuery?.itemType, text: searchText, tags: activeTags,
+          priorityOnly: !priorityOnly)
       } label: {
-        Image(systemName: starFilter.wrappedValue ? "star.fill" : "star")
+        Image(systemName: priorityOnly ? "star.fill" : "star")
           .font(IntradaFont.tab)
-          .foregroundStyle(
-            starFilter.wrappedValue ? IntradaColor.accent : IntradaColor.inkFaintIcon
-          )
+          .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaintIcon)
           .padding(.vertical, 6)
           .padding(.horizontal, 10)
           .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Show priorities only")
-      .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
+      .accessibilityAddTraits(priorityOnly ? [.isSelected] : [])
     }
   }
 
@@ -176,24 +177,26 @@ struct BrowseControlsBar: View {
     withAnimation(IntradaMotion.standard) { searchRevealed = false }
   }
 
-  // Change one dimension while preserving the others, so the three filters
-  // (type / search / tags) don't reset each other.
+  // Change one dimension while preserving the others, so the four filters
+  // (star / type / search / tags) don't reset each other.
   private func sendQuery(kind: ItemKind?, text: String) {
-    applyQuery(kind: kind, text: text, tags: activeTags)
+    applyQuery(kind: kind, text: text, tags: activeTags, priorityOnly: priorityOnly)
   }
 
   private func sendTagFilter(_ tags: [String]) {
-    applyQuery(kind: store.viewModel?.activeQuery?.itemType, text: searchText, tags: tags)
+    applyQuery(
+      kind: store.viewModel?.activeQuery?.itemType, text: searchText, tags: tags,
+      priorityOnly: priorityOnly)
   }
 
-  private func applyQuery(kind: ItemKind?, text: String, tags: [String]) {
+  private func applyQuery(kind: ItemKind?, text: String, tags: [String], priorityOnly: Bool) {
     let trimmed = text.trimmingCharacters(in: .whitespaces)
     let query =
-      (kind == nil && trimmed.isEmpty && tags.isEmpty)
+      (kind == nil && trimmed.isEmpty && tags.isEmpty && !priorityOnly)
       ? nil
       : ListQuery(
         text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags,
-        priorityOnly: false)
+        priorityOnly: priorityOnly)
     store.send(.setQuery(query))
   }
 }

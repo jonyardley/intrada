@@ -26,7 +26,7 @@ struct SessionSummaryScreen: View {
         ScrollView {
           VStack(alignment: .leading, spacing: IntradaSpacing.section) {
             headline(summary).fadeUp(0)
-            if let toast = topMover(summary) {
+            if let toast = summary.topMover {
               MasteryDeltaToast(
                 title: "\(toast.itemTitle) moved up",
                 subtitle: nil,
@@ -72,18 +72,8 @@ struct SessionSummaryScreen: View {
   }
 
   private func headlineSubtitle(_ summary: SummaryView) -> String {
-    let done = summary.entries.filter { $0.status == .completed }.count
-    let base = "\(done) of \(summary.entries.count)"
+    let base = "\(summary.completedCount) of \(summary.entries.count)"
     return summary.completionStatus == .endedEarly ? "\(base) · ended early" : base
-  }
-
-  private func topMover(_ summary: SummaryView) -> ScoreChange? {
-    guard let changes = store.viewModel?.analytics?.scoreChanges else { return nil }
-    let titles = Swift.Set(summary.entries.map(\.itemTitle))
-    return
-      changes
-      .filter { titles.contains($0.itemTitle) && $0.delta > 0 }
-      .max { $0.delta < $1.delta }
   }
 
   // ── Recap ──
