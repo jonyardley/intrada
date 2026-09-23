@@ -195,7 +195,7 @@ pub fn compute_analytics(
     item_views: &[LibraryItemView],
     clock: LocalClock,
 ) -> AnalyticsView {
-    let changes = all_score_changes(sessions, clock);
+    let changes = compute_score_changes(sessions, clock);
     AnalyticsView {
         weekly_summary: compute_weekly_summary(sessions, clock),
         streak: compute_streak(sessions, clock),
@@ -484,15 +484,9 @@ pub fn compute_neglected_items(
     neglected.into_iter().map(|(_, item)| item).collect()
 }
 
-/// This week's latest score vs the latest before it, per item. Up to 5, largest
-/// absolute delta first.
+/// This week's latest score vs the latest before it, per item, largest absolute
+/// delta first. Every item: the Progress screen lists the first few.
 pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<ScoreChange> {
-    let mut changes = all_score_changes(sessions, clock);
-    changes.truncate(SCORE_CHANGES_LIMIT);
-    changes
-}
-
-fn all_score_changes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<ScoreChange> {
     let today_iso_week = clock.today.iso_week();
 
     let mut this_week: HashMap<String, (u8, NaiveDate, String)> = HashMap::new();
@@ -556,8 +550,6 @@ fn all_score_changes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<Sco
     changes
 }
 
-/// The Progress dial: every library item's latest mark, not only the recently
-/// marked ones; 0 until something is marked.
 pub fn compute_overall_mastery(item_views: &[LibraryItemView]) -> f64 {
     let marks: Vec<f64> = item_views
         .iter()
@@ -1163,8 +1155,8 @@ mod tests {
             (
                 "a tie goes to the lower id",
                 vec![
-                    change("b", Some(3), 5),
                     change("a", Some(4), 6),
+                    change("b", Some(3), 5),
                     change("c", Some(4), 5),
                 ],
                 Some("a"),
@@ -1853,7 +1845,14 @@ mod tests {
             make_session("s2", today, 4200, this_entries),
         ];
 
-        let changes = compute_score_changes(&sessions, clock(today));
+        let changes = compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            &[],
+            clock(today),
+        )
+        .score_changes;
         assert_eq!(changes.len(), 5);
         // Should be sorted by largest absolute delta
         assert!(changes[0].delta.unsigned_abs() >= changes[1].delta.unsigned_abs());

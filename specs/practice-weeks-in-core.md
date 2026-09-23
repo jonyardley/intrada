@@ -110,8 +110,12 @@ Test first, as Rust tables over `LocalClock`:
   half-up rounding.
 - A bincode round trip of every new type on the FFI wire (#846).
 
-Swift: the Practice snapshots stay identical; the Progress snapshot is
-re-recorded for the new line only.
+Swift: the Practice and Progress snapshots are re-recorded. The snapshot host
+reads the week from a fixture pinned to `previewReferenceDate`, since the core
+cannot be told what "now" is, and the headings change: they are now relative
+to that pinned Sunday and always British English ("Monday 25 May", where the
+US-English host printed "Monday, May 25"). The core writes every date in
+British English, so a phone set to a US region sees the same.
 
 ## Out of scope
 

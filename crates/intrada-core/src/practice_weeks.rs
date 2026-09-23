@@ -386,6 +386,14 @@ mod tests {
     }
 
     #[test]
+    fn a_single_digit_day_has_no_leading_zero() {
+        let week = &compute_practice_weeks(&[], clock(day(2026, 6, 3), 0))[0];
+        assert_eq!(week.days[0].full_date, "Monday 1 June");
+        assert_eq!(week.days[0].day_number, 1);
+        assert_eq!(week.days[0].date, "2026-06-01");
+    }
+
+    #[test]
     fn the_strip_agrees_with_the_weekly_summary() {
         // Near-midnight sessions either side of both week boundaries, at BST.
         let sessions = vec![
