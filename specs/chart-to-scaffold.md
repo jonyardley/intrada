@@ -31,7 +31,7 @@ A jazz standard is not practised, it is *built* (VISION.md → Piece Scaffolding
 sequence: learn the melody, shells in each inversion, guide-tone lines, scales
 down to each chord tone on every change, constrained improvisation. Today the
 user hand-creates every one of those exercises and links them by hand
-([piece-linked-exercises.md](piece-linked-exercises.md)) — tedious, and it
+([exercise-linking-origins.md](exercise-linking-origins.md)), which is tedious, and it
 assumes theory knowledge many learners are still acquiring. Yet the whole
 curriculum is *derivable from the changes*: given the chord progression, the
 exercises and their key-aware content follow by rule.
@@ -61,7 +61,7 @@ exactly like hand-made ones.
   separate, bigger bet (#1098 theme 5).
 - **No re-harmonisation or analysis surface.** We parse the chart to generate;
   we don't offer a chord-analysis view of its own.
-- **Online/web out of scope** (see Deferred), same as piece-linked-exercises.
+- **Online/web out of scope** (see Deferred), same as linked exercises (#1015).
 
 ## Key decisions
 
@@ -174,7 +174,7 @@ preview stays, nothing is half-committed.
 - All theory/derivation/reconciliation is core Rust, shareable to Android
   (invariant 4) — no generation logic in Swift.
 - **Invariant 6 (both modes) consciously deferred** for the new handlers, as
-  with piece-linked-exercises: implement + test `local_first` now; the online
+  with linked exercises (#1015): implement + test `local_first` now; the online
   branch lands with the Deferred web/API work. New events must still compile
   against existing online plumbing.
 
@@ -186,7 +186,7 @@ preview stays, nothing is half-committed.
 - **Scaffold preview** sheet: the derived exercises as selectable rows (title +
   key + one-line rationale + a duplicate/"already linked" flag), a fallback
   badge on any spec that hit the arpeggio fallback, and a sticky **"Add N
-  exercises"** commit button (mirrors piece-linked-exercises' Picker A). Nothing
+  exercises"** commit button (mirrors the linked exercises picker, #1015). Nothing
   is created until commit; deselect/edit before committing.
 - After commit, the exercises appear in the existing **Linked exercises**
   section — no new tracking surface.

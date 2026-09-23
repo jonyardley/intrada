@@ -1,10 +1,10 @@
 # Practice variations, and the record of what you played
 
 > Tier 3 spec. Issue [#1739], milestone v0.13.0. **Supersedes decisions 4 and 5
-> of [`exercise-variants.md`](exercise-variants.md)**: the ladder and its
+> of the #1083 spec**: the ladder and its
 > current rung go, and a session's record of one item stops being a single
-> slot. That document stays as the record of the mechanism that shipped in
-> #1112 and #1118.
+> slot. The decisions that still hold from the mechanism that shipped in
+> #1112 and #1118 are in [`exercise-linking-origins.md`](exercise-linking-origins.md).
 >
 > **Language.** On screen a variation is a "variation", never a step (#1733),
 > and a repetition is a "repetition", never a pass (#1735). The core type keeps
