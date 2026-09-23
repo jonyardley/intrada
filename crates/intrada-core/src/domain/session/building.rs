@@ -1,6 +1,6 @@
 use super::plays::*;
 use super::*;
-use crate::app::{AppEffect, Effect, Event};
+use crate::app::{Effect, Event};
 use crate::domain::item::ItemKind;
 use crate::error::LibraryError;
 use crate::model::Model;
@@ -124,24 +124,8 @@ pub(super) fn set_entry_intention(
     entry_id: String,
     intention: Option<String>,
 ) -> Command<Effect, Event> {
-    let SessionStatus::Building(ref mut building) = model.session_status else {
-        // No-op when not in Building state
-        return crux_core::render::render();
-    };
-
-    if let Err(e) = validation::validate_intention(&intention) {
-        model.raise_error(e.to_string());
-        return crux_core::render::render();
-    }
-
-    let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
-        return crux_core::render::render();
-    };
-
-    entry.intention = intention;
-    model.last_error = None;
-    crux_core::render::render()
+    let check = validation::validate_intention(&intention);
+    set_planned(model, &entry_id, check, |entry| entry.intention = intention)
 }
 
 pub(super) fn set_entry_variant(
@@ -181,26 +165,10 @@ pub(super) fn set_rep_target(
     entry_id: String,
     target: Option<u8>,
 ) -> Command<Effect, Event> {
-    let SessionStatus::Building(ref mut building) = model.session_status else {
-        // No-op when not in Building state
-        return crux_core::render::render();
-    };
-
-    if let Some(t) = target {
-        if let Err(e) = validation::validate_rep_target(&Some(t)) {
-            model.raise_error(e.to_string());
-            return crux_core::render::render();
-        }
-    }
-
-    let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
-        return crux_core::render::render();
-    };
-
-    entry.planned_rep_target = target;
-    model.last_error = None;
-    crux_core::render::render()
+    let check = validation::validate_rep_target(&target);
+    set_planned(model, &entry_id, check, |entry| {
+        entry.planned_rep_target = target;
+    })
 }
 
 pub(super) fn set_entry_duration(
@@ -208,12 +176,24 @@ pub(super) fn set_entry_duration(
     entry_id: String,
     duration_secs: Option<u32>,
 ) -> Command<Effect, Event> {
+    let check = validation::validate_planned_duration(&duration_secs);
+    set_planned(model, &entry_id, check, |entry| {
+        entry.planned_duration_secs = duration_secs;
+    })
+}
+
+fn set_planned(
+    model: &mut Model,
+    entry_id: &str,
+    check: Result<(), LibraryError>,
+    apply: impl FnOnce(&mut SetlistEntry),
+) -> Command<Effect, Event> {
     let SessionStatus::Building(ref mut building) = model.session_status else {
-        // No-op when not in Building state
+        model.raise_error("An entry can only be planned while building".to_string());
         return crux_core::render::render();
     };
 
-    if let Err(e) = validation::validate_planned_duration(&duration_secs) {
+    if let Err(e) = check {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -223,7 +203,7 @@ pub(super) fn set_entry_duration(
         return crux_core::render::render();
     };
 
-    entry.planned_duration_secs = duration_secs;
+    apply(entry);
     model.last_error = None;
     crux_core::render::render()
 }
@@ -610,14 +590,10 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         open_first_play(entry, &model.items, now);
     }
 
-    let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+    let persist = persist_active(&active);
     model.session_status = SessionStatus::Active(active);
     model.last_error = None;
-
-    Command::all([
-        Command::notify_shell(save_effect).into(),
-        crux_core::render::render(),
-    ])
+    persist
 }
 
 pub(super) fn cancel_building(model: &mut Model) -> Command<Effect, Event> {

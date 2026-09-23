@@ -4919,26 +4919,6 @@ fn test_set_rep_target_flows_to_active() {
     assert_eq!(play_of(entry).rep_target_reached, None);
 }
 
-#[test]
-fn test_set_rep_target_no_op_outside_building() {
-    let (mut model, _now) = model_with_active_session_and_rep(5);
-
-    // SetRepTarget should no-op in Active state
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetRepTarget {
-            entry_id: "whatever".to_string(),
-            target: Some(10),
-        }),
-    );
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_target, Some(5)); // unchanged
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
 // --- Rep History Tests (US1) ---
 
 #[test]
@@ -6018,4 +5998,243 @@ fn switch_variation_and_the_play_id_events_round_trip_on_the_bincode_wire() {
             click: None,
         },
     ));
+}
+// ── Crash-recovery saves (#1997) ───────────────────────────────────
+
+fn recovery_saves(cmd: &mut Command<Effect, Event>) -> Vec<ActiveSession> {
+    cmd.effects()
+        .filter_map(|e| match e {
+            Effect::App(req) => match req.operation {
+                AppEffect::SaveSessionInProgress(ref active) => Some(active.clone()),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
+}
+
+fn run(model: &mut Model, event: Event) -> Vec<ActiveSession> {
+    let mut cmd = Intrada.update(event, model);
+    recovery_saves(&mut cmd)
+}
+
+fn assert_saved_what_is_active(saves: &[ActiveSession], model: &Model) {
+    let SessionStatus::Active(ref active) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    assert_eq!(saves, std::slice::from_ref(active));
+}
+
+#[test]
+fn starting_a_session_saves_the_recovery_copy() {
+    let mut model = model_with_library();
+    update(&mut model, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut model,
+        Event::Session(SessionEvent::AddToSetlist {
+            item_id: "piece-1".to_string(),
+        }),
+    );
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::StartSession { now: Utc::now() }),
+    );
+
+    assert_saved_what_is_active(&saves, &model);
+}
+
+#[test]
+fn moving_to_the_next_item_saves_the_recovery_copy() {
+    let (mut model, start) = model_with_active_session(2);
+    let now = start + chrono::Duration::seconds(30);
+    let next_started = now + chrono::Duration::seconds(5);
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now,
+            next_item_started_at: next_started,
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_saved_what_is_active(&saves, &model);
+    assert_eq!(saves[0].current_index, 1);
+    assert_eq!(saves[0].current_item_started_at, next_started);
+    assert_eq!(saves[0].entries[0].status, EntryStatus::Completed);
+}
+
+#[test]
+fn skipping_an_item_saves_the_recovery_copy() {
+    let (mut model, start) = model_with_active_session(2);
+    let now = start + chrono::Duration::seconds(30);
+
+    let saves = run(&mut model, Event::Session(SessionEvent::SkipItem { now }));
+
+    assert_saved_what_is_active(&saves, &model);
+    assert_eq!(saves[0].current_index, 1);
+    assert_eq!(saves[0].current_item_started_at, now);
+    assert_eq!(saves[0].entries[0].status, EntryStatus::Skipped);
+}
+
+#[test]
+fn switching_variation_saves_the_recovery_copy() {
+    let (mut model, now) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::SwitchVariation {
+            entry_id,
+            variation_id: Some("v-d".to_string()),
+            now: now + chrono::Duration::seconds(20),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_saved_what_is_active(&saves, &model);
+    let open = saves[0].entries[0].open_play().expect("a play is open");
+    assert_eq!(open.variation_id.as_deref(), Some("v-d"));
+}
+
+#[test]
+fn a_repetition_saves_the_recovery_copy() {
+    let (mut model, now) = model_with_active_session_and_rep(5);
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::RepGotIt {
+            now: now + chrono::Duration::seconds(3),
+        }),
+    );
+
+    assert_saved_what_is_active(&saves, &model);
+    assert_eq!(play_of(&saves[0].entries[0]).rep_count, Some(1));
+}
+
+#[test]
+fn finishing_a_session_saves_no_recovery_copy() {
+    let finishes: [fn(DateTime<Utc>) -> Event; 3] = [
+        |now| {
+            Event::Session(SessionEvent::NextItem {
+                now,
+                next_item_started_at: now,
+                reading: TempoReading::silent(),
+            })
+        },
+        |now| Event::Session(SessionEvent::SkipItem { now }),
+        |now| {
+            Event::Session(SessionEvent::EndSessionEarly {
+                now,
+                reading: TempoReading::silent(),
+            })
+        },
+    ];
+    for finish in finishes {
+        let (mut model, start) = model_with_active_session(1);
+        let saves = run(&mut model, finish(start + chrono::Duration::seconds(30)));
+        assert!(saves.is_empty());
+        assert!(matches!(model.session_status, SessionStatus::Summary(_)));
+    }
+}
+
+#[test]
+fn skipping_the_last_item_drops_the_play_that_recorded_nothing() {
+    let (mut model, start) = model_with_active_session(2);
+    let t1 = start + chrono::Duration::seconds(30);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: t1,
+            next_item_started_at: t1,
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SkipItem {
+            now: t1 + chrono::Duration::seconds(40),
+        }),
+    );
+
+    let SessionStatus::Summary(ref summary) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    let skipped = &summary.entries[1];
+    assert_eq!(skipped.status, EntryStatus::Skipped);
+    assert_eq!(skipped.duration_secs, 0);
+    assert!(skipped.plays.is_empty());
+    assert_eq!(summary.entries[0].status, EntryStatus::Completed);
+}
+
+#[test]
+fn skipping_the_last_item_clears_the_tempo_of_a_play_that_survives() {
+    let (mut model, start) = model_with_active_session_and_rep(5);
+    let t1 = start + chrono::Duration::seconds(30);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: t1,
+            next_item_started_at: t1,
+            reading: TempoReading::silent(),
+        }),
+    );
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RepGotIt { now: t1 }),
+    );
+    if let SessionStatus::Active(ref mut active) = model.session_status {
+        let play = active.entries[1].open_play_mut().expect("a play is open");
+        play.achieved_tempo = Some(96);
+    }
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SkipItem {
+            now: t1 + chrono::Duration::seconds(40),
+        }),
+    );
+
+    let SessionStatus::Summary(ref summary) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    let play = play_of(&summary.entries[1]);
+    assert_eq!(play.rep_count, Some(1));
+    assert_eq!(play.achieved_tempo, None);
+    assert_eq!(play.click_pattern, None);
+}
+
+#[test]
+fn planning_setters_are_refused_outside_building() {
+    let setters: [fn(String) -> Event; 3] = [
+        |entry_id| {
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: Some("Slow hands".to_string()),
+            })
+        },
+        |entry_id| {
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id,
+                target: Some(10),
+            })
+        },
+        |entry_id| {
+            Event::Session(SessionEvent::SetEntryDuration {
+                entry_id,
+                duration_secs: Some(600),
+            })
+        },
+    ];
+    for setter in setters {
+        let (mut model, _) = model_with_active_session(1);
+        let before = active_entry(&model, 0).clone();
+
+        update(&mut model, setter(before.id.clone()));
+
+        assert!(model.last_error.is_some());
+        assert_eq!(active_entry(&model, 0), &before);
+    }
 }
