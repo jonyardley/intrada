@@ -61,7 +61,7 @@ struct AnalyticsScreen: View {
     let weeks = weeklyBuckets(analytics)
     let maxMinutes = weeks.map(\.minutes).max() ?? 0
     return VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "This month", trailing: "best week · \(maxMinutes)m")
+      SectionHeader(title: "Last five weeks", trailing: "best week · \(maxMinutes)m")
       ConsistencyBars(weeks: weeks)
     }
   }

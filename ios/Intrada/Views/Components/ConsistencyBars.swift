@@ -8,7 +8,7 @@ struct ConsistencyWeek: Identifiable {
   var isCurrent: Bool = false
 }
 
-/// Weekly practice-minutes bars — comeback, not streak (no counter). The current
+/// Weekly practice-minutes bars: comeback, not streak (no counter). The current
 /// week is accented; bars grow from the baseline (`barGrow`, staggered) on appear,
 /// settling to final height instantly under Reduce Motion.
 struct ConsistencyBars: View {
@@ -49,11 +49,24 @@ struct ConsistencyBars: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-          "\(week.label): \(week.minutes) minutes\(week.isCurrent ? ", this week" : "")")
+          Self.spokenLabel(index: index, count: weeks.count, minutes: week.minutes))
       }
     }
     .frame(height: maxBarHeight + 18, alignment: .bottom)
     .onAppear { grown = true }
+  }
+
+  static func spokenLabel(index: Int, count: Int, minutes: Int) -> String {
+    let when = spokenWhen(weeksAgo: count - 1 - index)
+    return "\(when): \(minutes) \(minutes == 1 ? "minute" : "minutes")"
+  }
+
+  static func spokenWhen(weeksAgo: Int) -> String {
+    switch weeksAgo {
+    case ...0: "This week"
+    case 1: "Last week"
+    default: "\(weeksAgo) weeks ago"
+    }
   }
 
   private func barHeight(for week: ConsistencyWeek) -> CGFloat {
