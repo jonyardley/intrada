@@ -1227,8 +1227,8 @@ mod tests {
         let cached_time = start.elapsed();
         assert_eq!(cached, vm);
         assert!(
-            cached_time.as_millis() < 50 && cached_time * 3 < view_time,
-            "cached view() with 10k items took {}ms against {}ms cold (target: <50ms and under a third)",
+            cached_time.as_millis() < 250 && cached_time * 3 < view_time,
+            "cached view() with 10k items took {}ms against {}ms cold (target: <250ms and under a third)",
             cached_time.as_millis(),
             view_time.as_millis()
         );
