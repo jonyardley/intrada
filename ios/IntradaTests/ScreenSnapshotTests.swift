@@ -227,10 +227,12 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreen() {
-    // Pin the date: the refreshed empty state shows the (live) week strip, so an
-    // unfixed `Date()` would shift the week day-to-day and flake.
+    // Pin the week: the empty state still shows the strip, and the live core's
+    // week would shift day-to-day and flake.
     assertSnapshot(
-      of: host(PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)), as: config)
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPracticeEmpty), as: config)
   }
 
   func testPracticeScreenPopulated() {
@@ -343,13 +345,11 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreenQuietDay() {
-    // Open on Monday — a day with no practice — to lock the per-day empty state.
-    let monday = PracticeWeek.days(
-      containing: PracticeSessionView.previewReferenceDate, calendar: PreviewCalendar.utc)[0]
+    // Open on Monday, a day with no practice, to lock the per-day empty state.
     assertSnapshot(
       of: host(
         PracticeScreen(
-          referenceDate: PracticeSessionView.previewReferenceDate, selectedDay: monday),
+          referenceDate: PracticeSessionView.previewReferenceDate, selectedDay: "2026-05-25"),
         store: .previewPractice), as: config)
   }
 
@@ -904,7 +904,7 @@ final class ScreenSnapshotTests: XCTestCase {
   func testMasteryHeroCardAccessibilitySize() {
     let hero = ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, monthDelta: 1.2, itemsCovered: 5)
+      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
         .padding(16)
     }
     .dynamicTypeSize(.accessibility5)

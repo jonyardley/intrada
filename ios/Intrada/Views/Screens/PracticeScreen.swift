@@ -3,14 +3,13 @@ import SwiftUI
 
 struct PracticeScreen: View {
   @Environment(Store.self) private var store
-  @Environment(\.calendar) private var calendar
-  @Environment(\.locale) private var locale
   @Environment(\.marker) private var marker
 
-  // Injected so the weeks + auto-selection are deterministic in snapshots;
+  // Injected so the recovery card's date is deterministic in snapshots;
   // production uses "now".
   private let referenceDate: Date
-  @State private var selectedDay: Date?
+  /// The tapped day's `date` key; nil lets the week open on its own day.
+  @State private var selectedDay: String?
   @State private var weekIndexOverride: Int?
   // Shell state by decision 9 of specs/up-next-card.md: dismissal lasts the app
   // run, has no domain consequence and is deliberately not persisted.
@@ -26,7 +25,7 @@ struct PracticeScreen: View {
 
   #if DEBUG
     /// Snapshot seed: open on a specific day (e.g. a quiet one) without a tap.
-    init(referenceDate: Date, selectedDay: Date) {
+    init(referenceDate: Date, selectedDay: String) {
       self.referenceDate = referenceDate
       _selectedDay = State(initialValue: selectedDay)
     }
@@ -40,24 +39,23 @@ struct PracticeScreen: View {
   #endif
 
   private var sessions: [PracticeSessionView] { store.viewModel?.sessions ?? [] }
-  private var weeks: [[Date]] {
-    PracticeWeek.weeks(forSessions: sessions, referenceDate: referenceDate, calendar: calendar)
-  }
-  private var practiceDays: Swift.Set<Date> {
-    PracticeWeek.practiceDays(from: sessions, calendar: calendar)
-  }
+  private var weeks: [PracticeWeekView] { store.viewModel?.practiceWeeks ?? [] }
   // Defaults to the last (current) week; a swipe overrides it.
   private var effectiveWeekIndex: Int {
-    min(weekIndexOverride ?? (weeks.count - 1), weeks.count - 1)
+    max(0, min(weekIndexOverride ?? (weeks.count - 1), weeks.count - 1))
   }
-  private var selectedWeek: [Date] { weeks[effectiveWeekIndex] }
-  private var effectiveSelection: Date {
-    selectedDay
-      ?? PracticeWeek.selectedDay(
-        forWeek: selectedWeek, today: referenceDate, practiceDays: practiceDays, calendar: calendar)
+  private var selectedWeek: PracticeWeekView? {
+    weeks.indices.contains(effectiveWeekIndex) ? weeks[effectiveWeekIndex] : nil
+  }
+  private var effectiveSelection: PracticeDayView? {
+    guard let week = selectedWeek else { return nil }
+    if let tapped = week.days.first(where: { $0.date == selectedDay }) { return tapped }
+    let opening = Int(week.openingDay)
+    return week.days.indices.contains(opening) ? week.days[opening] : week.days.last
   }
   private var daySessions: [PracticeSessionView] {
-    PracticeWeek.sessions(on: effectiveSelection, from: sessions, calendar: calendar)
+    let ids = effectiveSelection?.sessionIds ?? []
+    return ids.compactMap { id in sessions.first { $0.id == id } }
   }
 
   var body: some View {
@@ -282,8 +280,7 @@ struct PracticeScreen: View {
   // MARK: - (1) This week
 
   private var thisWeek: some View {
-    let count = PracticeWeek.practisedCount(
-      inWeek: selectedWeek, practiceDays: practiceDays, calendar: calendar)
+    let count = Int(selectedWeek?.practisedDays ?? 0)
     return VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(
         title: "This week",
@@ -297,11 +294,11 @@ struct PracticeScreen: View {
   @ViewBuilder private var weekStrips: some View {
     Group {
       if UITestFlags.animationsDisabled {
-        weekStripView(selectedWeek)
+        weekStripView(selectedWeek?.days ?? [])
       } else {
         TabView(selection: weekBinding) {
-          ForEach(Array(weeks.enumerated()), id: \.offset) { index, days in
-            weekStripView(days).tag(index)
+          ForEach(Array(weeks.enumerated()), id: \.offset) { index, week in
+            weekStripView(week.days).tag(index)
           }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
@@ -313,12 +310,10 @@ struct PracticeScreen: View {
     }
   }
 
-  private func weekStripView(_ days: [Date]) -> some View {
+  private func weekStripView(_ days: [PracticeDayView]) -> some View {
     WeekStrip(
-      days: days, today: referenceDate, practiceDays: practiceDays,
-      selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
-      calendar: calendar
-    )
+      days: days,
+      selected: Binding(get: { effectiveSelection?.date ?? "" }, set: { selectedDay = $0 }))
   }
 
   // MARK: - (2) Selected day
@@ -338,9 +333,7 @@ struct PracticeScreen: View {
     return isFutureSelection ? "Yet to come" : "Rest day"
   }
 
-  private var isFutureSelection: Bool {
-    calendar.startOfDay(for: effectiveSelection) > calendar.startOfDay(for: referenceDate)
-  }
+  private var isFutureSelection: Bool { effectiveSelection?.isFuture ?? false }
 
   @ViewBuilder private var dayContent: some View {
     if daySessions.isEmpty {
@@ -383,15 +376,7 @@ struct PracticeScreen: View {
     )
   }
 
-  private var dayLabel: String {
-    if calendar.isDateInToday(effectiveSelection) { return "Today" }
-    if calendar.isDateInYesterday(effectiveSelection) { return "Yesterday" }
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.locale = locale  // env locale, not Locale.current (see SessionCard)
-    formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-    return formatter.string(from: effectiveSelection)
-  }
+  private var dayLabel: String { effectiveSelection?.heading ?? "" }
 
   // Swiping to another week clears the day selection so that week auto-selects
   // its own day (most recent practice, or its last day).
