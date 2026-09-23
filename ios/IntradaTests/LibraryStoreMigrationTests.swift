@@ -439,42 +439,19 @@ final class LibraryStoreMigrationTests: XCTestCase {
       "an old chart row must not lose its chords")
   }
 
-  func testV11BuiltSessionTablesArriveWithV10DataIntact() throws {
-    let queue = try DatabaseQueue()  // in-memory
-
-    // A device that stopped at v10, with real rows in the tables that exist there.
-    try LibraryStore.migrator.migrate(queue, upTo: "v10_coach_records")
-    try queue.write { db in
-      try db.execute(
-        sql: """
-          INSERT INTO item (id, title, kind, tags, created_at, updated_at)
-          VALUES ('i1', 'Alice in Wonderland', 'piece', '[]',
-                  '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
-          """)
-      try db.execute(
-        sql: """
-          INSERT INTO block_record (id, node, drill, gate, level_tempo_bpm, level_click_level,
-            circle, mode, started_at, ended_at, attempts, reps_after_gate, active_ms,
-            escalation_fired, exit, updated_at)
-          VALUES ('b1', 'n', 'd', 'g', 72, 'every_beat', 'hands', 'keys',
-                  '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', '[]', 0, 60000, '[]',
-                  'gate_passed', '2026-01-01T00:01:00Z')
-          """)
-    }
-
-    // The remaining chain must run cleanly from v10.
+  // The v11 and v12 tests asserted on tables only the coach read, removed in #1344.
+  func testEveryTableCarriesTheSyncColumns() throws {
+    let queue = try DatabaseQueue()
     try LibraryStore.migrator.migrate(queue)
-
     try queue.read { db in
-      XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM item"), 1)
-      XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM block_record"), 1)
-      for table in [
-        "user_drill", "journal_item", "built_session", "play_through", "reflection", "feel_entry",
-      ] {
-        XCTAssertTrue(try db.tableExists(table), "\(table) must exist after v11")
-        XCTAssertEqual(
-          try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table)"), 0,
-          "\(table) starts empty on upgrade")
+      let tables = try String.fetchAll(
+        db,
+        sql: """
+          SELECT name FROM sqlite_master
+          WHERE type = 'table' AND name NOT GLOB 'sqlite_*' AND name != 'grdb_migrations'
+          """)
+      XCTAssertTrue(tables.contains("item"), "the query must reach the live tables; got \(tables)")
+      for table in tables {
         let columns = try db.columns(in: table).map(\.name)
         XCTAssertTrue(columns.contains("updated_at"), "\(table) is sync-ready (invariant 2)")
         XCTAssertTrue(columns.contains("deleted_at"), "\(table) carries a tombstone (invariant 2)")
@@ -494,40 +471,4 @@ final class LibraryStoreMigrationTests: XCTestCase {
       "linked_exercise_ids must round-trip through JSON storage intact")
   }
 
-  /// #1256: `block_record.origin` arrives with built sessions. A record written
-  /// before they existed can only have been the planner's, so it must come
-  /// through as `authored` — the value the mastery rebuild reads to decide
-  /// whether a block's taps were ever evidence (decision 17). Get this wrong
-  /// and every historic block silently stops counting.
-  func testV12BackfillsBlockOriginOnRecordsWrittenBeforeBuiltSessions() throws {
-    let queue = try DatabaseQueue()
-    try LibraryStore.migrator.migrate(queue, upTo: "v11_built_session")
-    try queue.write { db in
-      try db.execute(
-        sql: """
-          INSERT INTO block_record
-            (id, node, drill, gate, level_tempo_bpm, level_click_level, circle, mode,
-             started_at, ended_at, attempts, attempts_to_pass, gate_opened_at_attempt,
-             reps_after_gate, active_ms, escalation_fired, exit, updated_at, deleted_at)
-          VALUES ('b1','rootless-a-b','shell-voicings','rootless-under-melody',92,'two_and_four',
-            'hands','keys','2026-08-04T10:00:00Z','2026-08-04T10:00:30Z','[]',3,3,0,30000,'[]',
-            'gate_passed','2026-08-04T10:00:30Z',NULL)
-          """)
-    }
-
-    try LibraryStore.migrator.migrate(queue)
-
-    try queue.read { db in
-      XCTAssertEqual(
-        try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM block_record"), 1,
-        "the historic record survives the upgrade")
-      XCTAssertEqual(
-        try String.fetchOne(db, sql: "SELECT origin FROM block_record WHERE id = 'b1'"),
-        "authored",
-        "a record from before built sessions is the planner's backfill")
-      XCTAssertEqual(
-        try String.fetchOne(db, sql: "SELECT node FROM block_record WHERE id = 'b1'"),
-        "rootless-a-b", "the rest of the row is untouched")
-    }
-  }
 }
