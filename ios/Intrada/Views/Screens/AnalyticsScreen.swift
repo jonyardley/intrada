@@ -16,7 +16,7 @@ struct AnalyticsScreen: View {
     if let analytics {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-          if let mover = topMover(analytics) {
+          if let mover = analytics.topMover {
             MasteryDeltaToast(
               title: "Mastery up", subtitle: mover.itemTitle,
               was: Int(mover.previousScore ?? 0), now: Int(mover.currentScore)
@@ -50,8 +50,8 @@ struct AnalyticsScreen: View {
 
   private func heroCard(_ analytics: AnalyticsView) -> some View {
     MasteryHeroCard(
-      mastery: overallMastery(analytics),
-      monthDelta: avgDelta(analytics),
+      mastery: analytics.overallMastery,
+      change: analytics.masteryChange,
       itemsCovered: Int(analytics.weeklySummary.itemsCovered))
   }
 
@@ -99,24 +99,6 @@ struct AnalyticsScreen: View {
     let m = summary.totalMinutes % 60
     let duration = h == 0 ? "\(m)m" : "\(h)h \(m)m"
     return "\(summary.sessionCount) sessions · \(duration) this week"
-  }
-
-  private func overallMastery(_ analytics: AnalyticsView) -> Double {
-    let trends = analytics.scoreTrends
-    guard !trends.isEmpty else { return 0 }
-    let total = trends.reduce(0.0) { $0 + Double($1.latestScore) }
-    return total / Double(trends.count)
-  }
-
-  private func topMover(_ analytics: AnalyticsView) -> ScoreChange? {
-    analytics.scoreChanges.filter { $0.delta > 0 }.max { $0.delta < $1.delta }
-  }
-
-  private func avgDelta(_ analytics: AnalyticsView) -> Double {
-    let changes = analytics.scoreChanges
-    guard !changes.isEmpty else { return 0 }
-    let total = changes.reduce(0.0) { $0 + Double($1.delta) }
-    return max(0, total / Double(changes.count))
   }
 
   private func weeklyBuckets(_ analytics: AnalyticsView) -> [ConsistencyWeek] {

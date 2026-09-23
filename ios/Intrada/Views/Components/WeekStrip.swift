@@ -6,23 +6,13 @@ import SwiftUI
 /// open). Today is marked with a ring, the selected day with a fill, practised
 /// days carry a dot, and not-yet days dim.
 struct WeekStrip: View {
-  let days: [Date]
-  let today: Date
-  let practiceDays: Swift.Set<Date>
-  @Binding var selected: Date
-  let calendar: Calendar
+  let days: [PracticeDayView]
+  @Binding var selected: String
 
   var body: some View {
     HStack(spacing: 4) {
-      ForEach(days, id: \.self) { day in
-        WeekDayCell(
-          day: day,
-          isToday: calendar.isDate(day, inSameDayAs: today),
-          isSelected: calendar.isDate(day, inSameDayAs: selected),
-          isFuture: calendar.startOfDay(for: day) > calendar.startOfDay(for: today),
-          hasPractice: practiceDays.contains(calendar.startOfDay(for: day)),
-          calendar: calendar
-        ) { selected = day }
+      ForEach(days, id: \.date) { day in
+        WeekDayCell(day: day, isSelected: day.date == selected) { selected = day.date }
       }
     }
     .background(
@@ -42,26 +32,24 @@ struct WeekStripHeightKey: PreferenceKey {
 }
 
 private struct WeekDayCell: View {
-  let day: Date
-  let isToday: Bool
+  let day: PracticeDayView
   let isSelected: Bool
-  let isFuture: Bool
-  let hasPractice: Bool
-  let calendar: Calendar
   let onTap: () -> Void
-  @Environment(\.locale) private var locale
   // Scales with Dynamic Type, capped so seven days still fit the screen (#1730).
   @ScaledMetric(relativeTo: .caption) private var dayCircleDiameter: CGFloat = 32
   private var cappedDayCircleDiameter: CGFloat { min(dayCircleDiameter, 36) }
 
+  private var hasPractice: Bool { !day.sessionIds.isEmpty }
+
   var body: some View {
     Button(action: onTap) {
       VStack(spacing: 5) {
-        Text(weekdayInitial)
+        Text(day.weekdayInitial)
           .font(IntradaFont.micro)
-          .fontWeight(isSelected || isToday ? .semibold : .regular)
-          .foregroundStyle(isSelected || isToday ? IntradaColor.accent : IntradaColor.inkSecondary)
-        Text(dayNumber)
+          .fontWeight(isSelected || day.isToday ? .semibold : .regular)
+          .foregroundStyle(
+            isSelected || day.isToday ? IntradaColor.accent : IntradaColor.inkSecondary)
+        Text(String(day.dayNumber))
           .font(IntradaFont.metaMedium)
           .foregroundStyle(dayNumberColor)
           .lineLimit(1)
@@ -70,7 +58,7 @@ private struct WeekDayCell: View {
           .background(isSelected ? IntradaColor.accent : .clear, in: Circle())
           .overlay(
             Circle().strokeBorder(
-              IntradaColor.accent, lineWidth: isToday && !isSelected ? 1.5 : 0)
+              IntradaColor.accent, lineWidth: day.isToday && !isSelected ? 1.5 : 0)
           )
         Circle()
           .fill(hasPractice ? IntradaColor.accent : .clear)
@@ -86,48 +74,24 @@ private struct WeekDayCell: View {
 
   private var dayNumberColor: Color {
     if isSelected { return IntradaColor.onAccent }
-    return isFuture ? IntradaColor.futureDay : IntradaColor.ink
-  }
-
-  private var dayNumber: String {
-    String(calendar.component(.day, from: day))
-  }
-
-  private var weekdayInitial: String {
-    let formatter = DateFormatter()
-    formatter.locale = locale
-    formatter.calendar = calendar
-    formatter.setLocalizedDateFormatFromTemplate("EEEEE")
-    return formatter.string(from: day)
+    return day.isFuture ? IntradaColor.futureDay : IntradaColor.ink
   }
 
   private var accessibilityLabel: String {
-    let formatter = DateFormatter()
-    formatter.locale = locale
-    formatter.calendar = calendar
-    formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-    var label = formatter.string(from: day)
-    if isToday { label = "Today, \(label)" }
-    label += hasPractice ? ", practised" : ", no practice"
-    return label
+    let label = day.isToday ? "Today, \(day.fullDate)" : day.fullDate
+    return label + (hasPractice ? ", practised" : ", no practice")
   }
 }
 
 #if DEBUG
   #Preview {
     struct Harness: View {
-      @State private var selected = Calendar.current.startOfDay(for: .now)
+      @State private var selected = PracticeWeekView.previewWeek.days[5].date
       var body: some View {
-        let cal = Calendar.current
-        let week = PracticeWeek.days(containing: .now, calendar: cal)
-        return ZStack {
+        ZStack {
           PaperBackground()
-          WeekStrip(
-            days: week, today: .now,
-            practiceDays: Swift.Set([week[1], week[3]]),
-            selected: $selected, calendar: cal
-          )
-          .padding(IntradaSpacing.card)
+          WeekStrip(days: PracticeWeekView.previewWeek.days, selected: $selected)
+            .padding(IntradaSpacing.card)
         }
       }
     }

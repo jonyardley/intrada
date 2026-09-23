@@ -81,6 +81,7 @@
     private let items: [LibraryItemView]
     private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
+    private let practiceWeeks: [PracticeWeekView]?
     private let buildingSetlist: BuildingSetlistView?
     private let activeSession: ActiveSessionView?
     private let summary: SummaryView?
@@ -93,7 +94,8 @@
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
-      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
+      sessions: [PracticeSessionView] = [], practiceWeeks: [PracticeWeekView]? = nil,
+      buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
       upNext: SuggestedSession? = nil, recentlyPractised: [LibraryItemView] = [],
@@ -102,6 +104,7 @@
       self.items = items
       self.activeQuery = activeQuery
       self.sessions = sessions
+      self.practiceWeeks = practiceWeeks
       self.buildingSetlist = buildingSetlist
       self.activeSession = activeSession
       self.summary = summary
@@ -135,6 +138,7 @@
       // filter on still reports what the core would report (#981).
       viewModel.hasPriorities = items.contains { $0.priority }
       viewModel.sessions = sessions
+      if let practiceWeeks { viewModel.practiceWeeks = practiceWeeks }
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
@@ -150,6 +154,10 @@
   extension Store {
     /// A deterministic, offline store for `#Preview` blocks.
     static var preview: Store { Store(bridge: PreviewBridge()) }
+
+    static var previewPracticeEmpty: Store {
+      Store(bridge: PreviewBridge(practiceWeeks: [.previewEmptyWeek]))
+    }
 
     /// A cellist called Jon on coral, greeted in the morning (#1692).
     static var previewProfile: Store {
@@ -210,7 +218,7 @@
     static var previewPractice: Store {
       Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday))
     }
 
@@ -218,7 +226,7 @@
     static var previewPracticeProfile: Store {
       Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday, profile: .previewCellist))
     }
 
@@ -226,7 +234,7 @@
     static var previewPracticeSuggestion: Store {
       Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday, upNext: .previewStarred))
     }
 
@@ -236,7 +244,7 @@
       Store(
         bridge: PreviewBridge(
           items: [starred(.previewPiece), .previewMinimal],
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday))
     }
 
@@ -246,7 +254,7 @@
       Store(
         bridge: PreviewBridge(
           items: [starred(.previewPiece), .previewMinimal],
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday, upNext: .previewStarred))
     }
 
@@ -255,7 +263,7 @@
     static var previewPracticeRecovery: Store {
       let store = Store(
         bridge: PreviewBridge(
-          sessions: [.previewCompleted, .previewEndedEarly],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
           lastPractised: .previewYesterday))
       store.recoverableSession = ActiveSession(
         id: "recover-1",
@@ -457,7 +465,6 @@
 
   extension AnalyticsView {
     /// A deterministic analytics fixture for the Progress screen + snapshots.
-    /// `scoreTrends` (all items' latest score) drives the dial mean (≈3.4);
     /// `scoreChanges` (this week's movers) drive the Recent-mastery rows;
     /// `weeklyMinutes` are the consistency bars (40/75/55/95/82).
     static var previewAnalytics: AnalyticsView {
@@ -472,13 +479,6 @@
           ItemRanking(
             itemId: "piece-1", itemTitle: "Clair de Lune", itemType: .piece,
             totalMinutes: 180, sessionCount: 9)
-        ],
-        scoreTrends: [
-          scoreTrend("piece-1", "Clair de Lune", 4),
-          scoreTrend("exercise-1", "Hanon No. 1", 4),
-          scoreTrend("piece-2", "Gymnopédie No. 1", 3),
-          scoreTrend("piece-3", "Nocturne Op. 9", 3),
-          scoreTrend("exercise-2", "Major Scales", 3),
         ],
         neglectedItems: [],
         scoreChanges: [
@@ -505,13 +505,33 @@
           currentScore: 3, delta: 1, isNew: false),
         masteryChange: "+1.0 this week")
     }
+  }
 
-    private static func scoreTrend(_ id: String, _ title: String, _ latest: UInt8)
-      -> ItemScoreTrend
+  extension PracticeWeekView {
+    /// The core's week of 25 May on `previewReferenceDate`: sessions Thursday
+    /// and Saturday, opening on Saturday, the latest practice before today.
+    static var previewWeek: PracticeWeekView {
+      mayWeek(sessions: ["2026-05-28": ["session-2"], "2026-05-30": ["session-1"]], openingDay: 5)
+    }
+
+    static var previewEmptyWeek: PracticeWeekView { mayWeek(sessions: [:], openingDay: 6) }
+
+    private static func mayWeek(sessions: [String: [String]], openingDay: UInt64)
+      -> PracticeWeekView
     {
-      ItemScoreTrend(
-        itemId: id, itemTitle: title,
-        scores: [ScorePoint(date: "2026-05-30", score: latest)], latestScore: latest)
+      let weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      let days = weekdays.enumerated().map { index, weekday in
+        let dayNumber = 25 + index
+        let date = "2026-05-\(dayNumber)"
+        let fullDate = "\(weekday) \(dayNumber) May"
+        let heading = index == 6 ? "Today" : index == 5 ? "Yesterday" : fullDate
+        return PracticeDayView(
+          date: date, weekdayInitial: String(weekday.prefix(1)), dayNumber: UInt32(dayNumber),
+          fullDate: fullDate, heading: heading, isToday: index == 6, isFuture: false,
+          sessionIds: sessions[date] ?? [])
+      }
+      return PracticeWeekView(
+        days: days, practisedDays: UInt64(sessions.count), openingDay: openingDay)
     }
   }
 
@@ -929,10 +949,8 @@
   }
 
   extension PracticeSessionView {
-    /// Sunday 31 May 2026 (noon UTC) — same Mon–Sun week as the fixtures below
-    /// (Thu 28th, Sat 30th). "Today" has no practice, so the screen auto-selects
-    /// the most recent earlier practice day (Sat 30th), exercising both the
-    /// today-ring and selected-fill states deterministically.
+    /// Sunday 31 May 2026 (noon UTC), the "today" `PracticeWeekView.previewWeek`
+    /// is read on: the same week as the sessions below (Thursday 28th, Saturday 30th).
     static var previewReferenceDate: Date {
       var components = DateComponents()
       components.year = 2026

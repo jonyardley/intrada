@@ -73,7 +73,6 @@ pub struct AnalyticsView {
     pub weekly_summary: WeeklySummary,
     pub streak: PracticeStreak,
     pub top_items: Vec<ItemRanking>,
-    pub score_trends: Vec<ItemScoreTrend>,
     pub neglected_items: Vec<NeglectedItem>,
     pub score_changes: Vec<ScoreChange>,
     pub variation_coverage: Vec<VariationCoverageView>,
@@ -117,22 +116,6 @@ pub struct ItemRanking {
     pub item_type: ItemKind,
     pub total_minutes: u32,
     pub session_count: usize,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ItemScoreTrend {
-    pub item_id: String,
-    pub item_title: String,
-    pub scores: Vec<ScorePoint>,
-    pub latest_score: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct ScorePoint {
-    pub date: String,
-    pub score: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -200,7 +183,6 @@ pub fn compute_analytics(
         weekly_summary: compute_weekly_summary(sessions, clock),
         streak: compute_streak(sessions, clock),
         top_items: compute_top_items(sessions),
-        score_trends: compute_score_trends(sessions, clock),
         neglected_items: compute_neglected_items(summaries, items, clock),
         score_changes: changes.iter().take(SCORE_CHANGES_LIMIT).cloned().collect(),
         variation_coverage: compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT),
@@ -388,63 +370,6 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
     rankings.sort_by_key(|r| (Reverse(r.total_minutes), r.item_id.clone()));
     rankings.truncate(10);
     rankings
-}
-
-/// The 5 most recently scored items, each with a chronological score series.
-pub fn compute_score_trends(
-    sessions: &[PracticeSession],
-    clock: LocalClock,
-) -> Vec<ItemScoreTrend> {
-    let mut scored: HashMap<String, (String, Vec<(NaiveDate, u8)>)> = HashMap::new();
-
-    for session in sessions {
-        let session_date = clock.day_of(session.started_at);
-        for entry in &session.entries {
-            if let Some(score) = entry.score_summary() {
-                let record = scored
-                    .entry(entry.item_id.clone())
-                    .or_insert_with(|| (entry.item_title.clone(), Vec::new()));
-                record.1.push((session_date, score));
-            }
-        }
-    }
-
-    if scored.is_empty() {
-        return Vec::new();
-    }
-
-    let mut trends: Vec<ItemScoreTrend> = scored
-        .into_iter()
-        .map(|(item_id, (title, mut score_points))| {
-            score_points.sort_by_key(|(date, _)| *date);
-
-            let latest_score = score_points.last().map(|(_, s)| *s).unwrap_or(0);
-
-            let scores = score_points
-                .iter()
-                .map(|(date, score)| ScorePoint {
-                    date: date.format("%Y-%m-%d").to_string(),
-                    score: *score,
-                })
-                .collect();
-
-            ItemScoreTrend {
-                item_id,
-                item_title: title,
-                scores,
-                latest_score,
-            }
-        })
-        .collect();
-
-    trends.sort_by(|a, b| {
-        let a_latest = a.scores.last().map(|s| s.date.as_str()).unwrap_or("");
-        let b_latest = b.scores.last().map(|s| s.date.as_str()).unwrap_or("");
-        b_latest.cmp(a_latest)
-    });
-
-    trends.truncate(5);
-    trends
 }
 
 /// Items the library has left behind: never practised, or past the return
@@ -1368,120 +1293,6 @@ mod tests {
         assert!(ranking.is_empty());
     }
 
-    // ── Score Trends Tests ────────────────────────────────────────────
-
-    #[test]
-    fn test_score_trends_basic() {
-        // 3 sessions scoring the same item with 2, 3, 4
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let d1 = today - chrono::Duration::days(2);
-        let d2 = today - chrono::Duration::days(1);
-        let d3 = today;
-
-        let sessions = vec![
-            make_session(
-                "s1",
-                d1,
-                1800,
-                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(2))],
-            ),
-            make_session(
-                "s2",
-                d2,
-                1800,
-                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(3))],
-            ),
-            make_session(
-                "s3",
-                d3,
-                1800,
-                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4))],
-            ),
-        ];
-
-        let trends = compute_score_trends(&sessions, clock(today));
-        assert_eq!(trends.len(), 1);
-        assert_eq!(trends[0].item_id, "p1");
-        assert_eq!(trends[0].latest_score, 4);
-        assert_eq!(trends[0].scores.len(), 3);
-        // Chronological order
-        assert_eq!(trends[0].scores[0].score, 2);
-        assert_eq!(trends[0].scores[1].score, 3);
-        assert_eq!(trends[0].scores[2].score, 4);
-    }
-
-    #[test]
-    fn test_score_trends_max_5_items() {
-        // 8 items scored → only 5 most recently scored returned
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-
-        let entries: Vec<SetlistEntry> = (0..8)
-            .map(|i| {
-                make_entry(
-                    &format!("item{i}"),
-                    &format!("Item {i}"),
-                    ItemKind::Piece,
-                    900,
-                    Some(3),
-                )
-            })
-            .collect();
-
-        // Create sessions on different days so each item has a different "most recent" date
-        let sessions: Vec<PracticeSession> = (0..8)
-            .map(|i| {
-                let date = today - chrono::Duration::days(i);
-                make_session(
-                    &format!("s{i}"),
-                    date,
-                    900,
-                    vec![entries[i as usize].clone()],
-                )
-            })
-            .collect();
-
-        let trends = compute_score_trends(&sessions, clock(today));
-        assert_eq!(trends.len(), 5);
-        // Most recent first: item0 (today), item1 (yesterday), ...
-        assert_eq!(trends[0].item_id, "item0");
-        assert_eq!(trends[4].item_id, "item4");
-    }
-
-    #[test]
-    fn test_score_trends_excludes_unscored() {
-        // mix of scored and unscored entries
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-
-        let sessions = vec![make_session(
-            "s1",
-            today,
-            3600,
-            vec![
-                make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4)), // scored
-                make_entry("p2", "Etude", ItemKind::Piece, 1800, None),     // unscored
-            ],
-        )];
-
-        let trends = compute_score_trends(&sessions, clock(today));
-        assert_eq!(trends.len(), 1);
-        assert_eq!(trends[0].item_id, "p1");
-    }
-
-    #[test]
-    fn test_score_trends_empty() {
-        // sessions with no scored entries
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let sessions = vec![make_session(
-            "s1",
-            today,
-            1800,
-            vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
-        )];
-
-        let trends = compute_score_trends(&sessions, clock(today));
-        assert!(trends.is_empty());
-    }
-
     // ── Neglected Items Tests ─────────────────────────────────────────
 
     fn make_item(id: &str, title: &str) -> Item {
@@ -1968,7 +1779,6 @@ mod tests {
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.top_items.len(), 1);
-        assert_eq!(analytics.score_trends.len(), 1);
     }
 
     // ── Variation coverage (#1762) ───────────────────────────────────
@@ -2173,7 +1983,6 @@ mod tests {
         assert_eq!(analytics.weekly_summary.total_minutes, 10);
         assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.top_items.len(), 1);
-        assert_eq!(analytics.score_trends.len(), 1);
     }
 
     // ── Local day boundary (#1330) ───────────────────────────────────
@@ -2312,21 +2121,6 @@ mod tests {
             bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
         );
         assert_eq!(neglected[0].days_since_practice, Some(13));
-    }
-
-    #[test]
-    fn score_trend_dates_use_local_day() {
-        let sessions = vec![make_session_at(
-            "s1",
-            utc_instant(2026, 8, 13, 23, 30),
-            600,
-            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(6))],
-        )];
-        let trends = compute_score_trends(
-            &sessions,
-            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
-        );
-        assert_eq!(trends[0].scores[0].date, "2026-08-14");
     }
 
     // ── Last practised ───────────────────────────────────────────────

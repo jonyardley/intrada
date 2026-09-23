@@ -4,7 +4,7 @@ import SwiftUI
 /// column beside it left the eyebrow too narrow for its own first word (#1471).
 struct MasteryHeroCard: View {
   let mastery: Double
-  let monthDelta: Double
+  let change: String?
   let itemsCovered: Int
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -38,12 +38,14 @@ struct MasteryHeroCard: View {
   private var summary: some View {
     VStack(alignment: .leading, spacing: 6) {
       Eyebrow("Overall mastery")
-      HStack(spacing: 5) {
-        Image(systemName: "chart.line.uptrend.xyaxis")
-        Text("+\(monthDelta, specifier: "%.1f") this month")
+      if let change {
+        HStack(spacing: 5) {
+          Image(systemName: "chart.line.uptrend.xyaxis")
+          Text(change)
+        }
+        .font(IntradaFont.metaMedium)
+        .foregroundStyle(IntradaColor.success)
       }
-      .font(IntradaFont.metaMedium)
-      .foregroundStyle(IntradaColor.success)
       Text("Climbing steadily across \(itemsCovered) pieces.")
         .font(IntradaFont.meta)
         .foregroundStyle(IntradaColor.inkSecondary)
@@ -55,7 +57,7 @@ struct MasteryHeroCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, monthDelta: 1.2, itemsCovered: 5)
+      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
         .padding(IntradaSpacing.card)
     }
   }
@@ -63,7 +65,7 @@ struct MasteryHeroCard: View {
   #Preview("Accessibility size") {
     ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, monthDelta: 1.2, itemsCovered: 5)
+      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
         .padding(IntradaSpacing.card)
     }
     .dynamicTypeSize(.accessibility3)
