@@ -49,8 +49,7 @@ fn trimmed_nonempty(value: Option<String>) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Trimmed, blanks dropped, one per case-folded value in first-seen casing: so
-/// "Jazz" and "jazz" are one tag when stored and one in the library's lists.
+/// One tag per spelling whatever its case, when stored and when listed (#898).
 pub(crate) fn distinct_ignoring_case<S: AsRef<str>>(
     values: impl IntoIterator<Item = S>,
 ) -> Vec<String> {

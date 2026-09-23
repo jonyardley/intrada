@@ -2547,6 +2547,22 @@ mod tests {
     }
 
     #[test]
+    fn a_tag_saved_with_stray_spaces_still_answers_its_chip() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+        let mut old = make_item("p1", "Old", ItemKind::Piece, now);
+        old.tags = vec!["jazz ".to_string()];
+        model.items = vec![old];
+        let chip = app.view(&model).available_tags[0].clone();
+        model.active_query = Some(ListQuery {
+            tags: vec![chip],
+            ..Default::default()
+        });
+        assert_eq!(app.view(&model).items.len(), 1);
+    }
+
+    #[test]
     fn view_exposes_active_query() {
         let app = Intrada;
         let mut model = Model::default();
