@@ -128,4 +128,13 @@ mod tests {
             "same gap, so case-insensitive title order decides, not library order or id"
         );
     }
+
+    #[test]
+    fn an_equal_gap_and_title_falls_back_to_id() {
+        let library = vec![
+            starred("b", "Aria", Some(30)),
+            starred("a", "Aria", Some(30)),
+        ];
+        assert_eq!(ordered_ids(&library), ["a", "b"]);
+    }
 }

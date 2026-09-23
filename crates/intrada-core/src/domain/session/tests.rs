@@ -4922,6 +4922,68 @@ fn test_set_rep_target_flows_to_active() {
     assert_eq!(play_of(entry).rep_target_reached, None);
 }
 
+// ── SetEntryDuration (Building phase) tests ──────────────────────
+
+fn building_with_one_entry() -> (Model, String) {
+    let mut model = model_with_library();
+    update(&mut model, Event::Session(SessionEvent::StartBuilding));
+    add(&mut model, "piece-1");
+    let entry_id = building_entries(&model)[0].id.clone();
+    (model, entry_id)
+}
+
+fn set_duration(model: &mut Model, entry_id: &str, duration_secs: Option<u32>) {
+    update(
+        model,
+        Event::Session(SessionEvent::SetEntryDuration {
+            entry_id: entry_id.to_string(),
+            duration_secs,
+        }),
+    );
+}
+
+#[test]
+fn set_entry_duration_lands_at_either_bound() {
+    let (mut model, entry_id) = building_with_one_entry();
+    assert_eq!(building_entries(&model)[0].planned_duration_secs, None);
+
+    set_duration(&mut model, &entry_id, Some(60));
+    assert!(model.last_error.is_none());
+    assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(60));
+
+    set_duration(&mut model, &entry_id, Some(3600));
+    assert!(model.last_error.is_none());
+    assert_eq!(
+        building_entries(&model)[0].planned_duration_secs,
+        Some(3600)
+    );
+}
+
+#[test]
+fn set_entry_duration_outside_the_range_is_refused_and_keeps_the_plan() {
+    for out_of_range in [0, 59, 3601] {
+        let (mut model, entry_id) = building_with_one_entry();
+        set_duration(&mut model, &entry_id, Some(600));
+
+        set_duration(&mut model, &entry_id, Some(out_of_range));
+
+        assert!(model.last_error.is_some(), "{out_of_range} was accepted");
+        assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(600));
+    }
+}
+
+#[test]
+fn set_entry_duration_none_clears_the_plan() {
+    let (mut model, entry_id) = building_with_one_entry();
+    set_duration(&mut model, &entry_id, Some(600));
+    assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(600));
+
+    set_duration(&mut model, &entry_id, None);
+
+    assert!(model.last_error.is_none());
+    assert_eq!(building_entries(&model)[0].planned_duration_secs, None);
+}
+
 // --- Rep History Tests (US1) ---
 
 #[test]
