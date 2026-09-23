@@ -26,35 +26,9 @@ impl Intrada {
         let mut items = build_library_item_views(model, &item_index);
 
         // Computed before the filter so the vocabulary stays stable as the
-        // filter narrows. Case-insensitive dedupe, first-seen casing.
-        let available_tags = {
-            let mut seen = std::collections::HashSet::new();
-            let mut tags: Vec<String> = Vec::new();
-            for item in &items {
-                for tag in &item.tags {
-                    if seen.insert(tag.to_lowercase()) {
-                        tags.push(tag.clone());
-                    }
-                }
-            }
-            tags.sort_by_key(|t| t.to_lowercase());
-            tags
-        };
-
-        // Like available_tags: whole-library vocabulary computed before the
-        // filter, so a narrowed list can't collapse the pool. Case-folded dedupe.
-        let available_composers = {
-            let mut seen = std::collections::HashSet::new();
-            let mut composers: Vec<String> = Vec::new();
-            for item in &items {
-                let composer = item.subtitle.trim();
-                if !composer.is_empty() && seen.insert(composer.to_lowercase()) {
-                    composers.push(composer.to_string());
-                }
-            }
-            composers.sort_by_key(|c| c.to_lowercase());
-            composers
-        };
+        // filter narrows (#851).
+        let available_tags = vocabulary(items.iter().flat_map(|i| &i.tags));
+        let available_composers = vocabulary(items.iter().map(|i| &i.subtitle));
 
         // view() reads the clock: the local day and the greeting's hour (#1694).
         let now = chrono::Utc::now();
@@ -223,6 +197,12 @@ impl Intrada {
             limits: LimitsView::default(),
         }
     }
+}
+
+fn vocabulary<S: AsRef<str>>(values: impl IntoIterator<Item = S>) -> Vec<String> {
+    let mut words = crate::validation::distinct_ignoring_case(values);
+    words.sort_by_key(|w| w.to_lowercase());
+    words
 }
 
 fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecognitionView {

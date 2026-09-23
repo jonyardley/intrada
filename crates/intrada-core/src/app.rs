@@ -186,7 +186,7 @@ impl Intrada {
                 PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     crux_core::render::render()
                 }
             },
@@ -198,7 +198,7 @@ impl Intrada {
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     persistence::load_items()
                 }
             },
@@ -210,7 +210,7 @@ impl Intrada {
                 }
                 PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     crux_core::render::render()
                 }
             },
@@ -222,7 +222,7 @@ impl Intrada {
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 PersistenceOutput::Failed => crate::domain::session::save_refused(model)
                     .unwrap_or_else(|| {
-                        model.surface_error("Couldn't access local storage.");
+                        model.surface_storage_error();
                         persistence::load_sessions()
                     }),
             },
@@ -2531,6 +2531,22 @@ mod tests {
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Tagged");
+    }
+
+    #[test]
+    fn a_tag_saved_with_stray_spaces_still_answers_its_chip() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+        let mut old = make_item("p1", "Old", ItemKind::Piece, now);
+        old.tags = vec!["jazz ".to_string()];
+        model.items = vec![old];
+        let chip = app.view(&model).available_tags[0].clone();
+        model.active_query = Some(ListQuery {
+            tags: vec![chip],
+            ..Default::default()
+        });
+        assert_eq!(app.view(&model).items.len(), 1);
     }
 
     #[test]

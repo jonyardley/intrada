@@ -577,7 +577,7 @@ pub(super) fn apply_query_filter(
                 let matches_any = item
                     .tags
                     .iter()
-                    .any(|t| selected.contains(&t.to_lowercase()));
+                    .any(|t| selected.contains(&t.trim().to_lowercase()));
                 if !matches_any {
                     return false;
                 }

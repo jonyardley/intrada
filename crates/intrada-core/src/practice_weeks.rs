@@ -46,7 +46,7 @@ pub fn compute_practice_weeks(
     let mut by_day: HashMap<NaiveDate, Vec<&PracticeSession>> = HashMap::new();
     for session in sessions {
         by_day
-            .entry(clock.day_of(session.started_at))
+            .entry(clock.session_day(session))
             .or_default()
             .push(session);
     }

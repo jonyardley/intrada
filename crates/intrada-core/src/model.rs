@@ -108,6 +108,10 @@ impl Model {
         self.last_error = Some(msg);
     }
 
+    pub fn surface_storage_error(&mut self) {
+        self.surface_error("Couldn't access local storage.");
+    }
+
     /// Leaves the dismiss mute alone: only an acknowledged write lifts it (#1936).
     pub fn clear_error(&mut self) {
         self.last_error = None;
