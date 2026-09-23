@@ -8,7 +8,7 @@ rust-version.workspace = true
 [features]
 # Enables facet reflection on the FFI-boundary types so the native iOS
 # bridge's typegen (crux_core::type_generation::facet) can emit Swift types.
-# Gated so the default web/api builds are unaffected.
+# Gated so only the `codegen` binary pulls in facet; the app's static library does not.
 facet_typegen = ["dep:facet", "crux_core/facet_typegen"]
 
 [dependencies]

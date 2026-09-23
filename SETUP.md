@@ -12,7 +12,7 @@ swapped without code changes.
 
 | Surface | Sentry platform | DSN delivery |
 |---------|----------------|--------------|
-| Native iOS | Swift | `SENTRY_DSN_NATIVE` env var, baked in via `xcodegen` at build time (see CLAUDE.md → Environment Variables) |
+| Native iOS | Swift | `SENTRY_DSN_NATIVE` env var, baked in via `xcodegen` at build time (see [`docs/reference.md`, Environment variables](docs/reference.md#environment-variables)) |
 
 Each event is tagged with `environment = development | production` (determined
 at runtime), and `release = $GIT_SHA` when set at build time. Performance

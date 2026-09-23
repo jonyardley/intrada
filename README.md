@@ -103,6 +103,10 @@ specs/                # Design specs for major features
 | Document | Purpose |
 |----------|---------|
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines and architecture; path-scoped rules in `.claude/rules/`, workflow skills in `.claude/skills/` |
+| [`docs/reference.md`](docs/reference.md) | The how and why behind CLAUDE.md: commands, environment variables, gotchas in full |
+| [`docs/ios-testing.md`](docs/ios-testing.md) | Building, running, snapshot-testing and UI-testing the app on the simulator |
+| [`docs/worktrees.md`](docs/worktrees.md) | One session per worktree: what claims a checkout and what that stops |
+| [`specs/README.md`](specs/README.md) | Which specs are live and which are records of shipped behaviour |
 | [`docs/where-we-are.md`](docs/where-we-are.md) | Which release and phase we are on — hand-written, changed when they change |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |

@@ -73,7 +73,7 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → 
    bridge as generated bincode. Never hand-edit `ios/generated/`; fix the Rust type and
    regenerate.
 
-- **Validation** lives in `intrada-core/src/validation.rs`.
+- **Validation** lives in `crates/intrada-core/src/validation.rs`.
 - **Mutate response**: writes commit locally, no refetch. Temp-id for new entities,
   `*Updated { entity }`, `DeleteConfirmed`.
 - **Swift**: an `@Observable @MainActor` store, not `ObservableObject`; effect handlers run
@@ -148,7 +148,7 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
 **Domain-sensitivity override**: auth, the bridge contract, DB schema or migrations go up at
 least one tier and onto the sensitive surfaces. **A phase that introduces a bridge shape, a
 migration, or a change inside the `ActiveSession` blob graph ships as two PRs, core first,
-screens in the same working session**, or the core PR waits (#1348, #1374); spanning core
+screens in the same working session**, or the core PR waits (#1374); spanning core
 and screens is not itself the trigger. Review the core PR before the screens.
 
 **Two strikes, then a decision** (#1890): two corrections on one point stop the change and ask

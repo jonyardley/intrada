@@ -1,10 +1,10 @@
 set dotenv-load
 
-# Default: show available commands
+[doc("Show the available recipes")]
 default:
     @just --list
 
-# Type-check only (no codegen) — fastest feedback for "does it compile?"
+[doc("Type-check the workspace without codegen, the fastest compile check")]
 check-fast:
     cargo check --workspace
 
@@ -13,18 +13,19 @@ check-fast:
 # (CI adds --profile ci for junit output only; assertions are identical.)
 # Doc tests dropped (#1198): they compiled three crates to run zero tests —
 # revisit if doc tests ever exist.
+[doc("Run the Rust tests with nextest, as CI's test job does")]
 test:
     cargo nextest run --workspace
 
-# Clippy with -D warnings: same targets as CI's `clippy` job.
+[doc("Run clippy with warnings as errors, as CI's clippy job does")]
 lint:
     cargo clippy --workspace --all-targets -- -D warnings
 
-# Format code
+[doc("Format the Rust code")]
 fmt:
     cargo fmt --all
 
-# Format check only (what CI's fmt job runs)
+[doc("Check Rust formatting, as CI's fmt job does")]
 fmt-check:
     cargo fmt --all -- --check
 
@@ -32,6 +33,7 @@ fmt-check:
 # rather than pinning it again here, installs that toolchain if it is absent
 # (CI does this via dtolnay/rust-toolchain), then checks against it.
 # Local green must mean CI green: keep this command in lockstep with ci.yml.
+[doc("Check the workspace against the minimum supported Rust version, as CI does")]
 msrv:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -42,6 +44,7 @@ msrv:
 # Coverage report via nextest: same as CI's `coverage` job (minus the
 # Codecov upload, which needs a CI-only token).
 # Local green must mean CI green: keep these flags in lockstep with ci.yml.
+[doc("Write a Rust coverage report to codecov.json, as CI's coverage job does")]
 coverage:
     cargo llvm-cov nextest --workspace --codecov --output-path codecov.json
 
@@ -55,6 +58,7 @@ coverage:
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, the script self-tests and the release-name and faint-ink checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -100,16 +104,17 @@ hygiene:
     [ "$fail" -eq 0 ] && echo "✓ hygiene (${#checks[@]} checks, parallel)"
     exit "$fail"
 
-# Print what's in flight, read from GitHub: open PRs, claimed issues, recent merges.
+[doc("Show what is in flight: open PRs, claimed issues, epics and recent merges")]
 status:
     ./scripts/generate-status.sh
 
-# Move an issue's board Status (project 2, view 7): just project-status 1565 "In progress"
+[doc("Move an issue on the project board, e.g. just project-status 1565 \"In progress\"")]
 project-status issue status:
     ./scripts/project-status.sh {{issue}} "{{status}}"
 
 # Before-and-after markdown for every snapshot reference this branch changed,
 # ready to paste under "What it looks like" in a PR body (#1631).
+[doc("Print before-and-after markdown for the snapshot references this branch changed")]
 pr-visuals:
     ./scripts/pr-visuals.sh
 
@@ -118,22 +123,25 @@ pr-visuals:
 # or an open PR already references it (#1702). Two or more merged PRs already
 # referencing the issue refuses a third fix without a named decision:
 # just claim 1650 "the approach is wrong because X" (#1890).
+[doc("Claim an issue before building it, refusing if someone already has")]
 claim number decision="":
     bash scripts/claim-issue.sh "{{number}}" "{{decision}}"
 
 # Print the opener for the next session, so finishing a unit and clearing
 # costs a paste rather than a retelling (#1986). The issue number defaults to
 # the one in the title of an open PR on this branch.
+[doc("Print the opener for the next session")]
 handover number="":
     bash scripts/handover.sh "{{number}}"
 
 # Put issues under an epic as GitHub sub-issues, in the working order given:
 # just epic-add 1967 1934 1935 (#1968). Refuses an issue another epic holds.
+[doc("Put issues under an epic as sub-issues, in working order")]
 [positional-arguments]
 epic-add parent +children:
     bash scripts/epic-add.sh "$@"
 
-# The same, taking issues from whichever epic holds them now.
+[doc("Move issues under an epic from whichever epic holds them now")]
 [positional-arguments]
 epic-move parent +children:
     bash scripts/epic-add.sh --move "$@"
@@ -143,12 +151,14 @@ epic-move parent +children:
 # just re-splits a variadic parameter on whitespace, which breaks on a title
 # containing "(#42)", so title and body are named and quoted; any extra flags
 # (e.g. --draft) must be simple, space-free tokens.
+[doc("Open a PR, refusing when an issue in the title has no claim for this branch")]
 pr-open title body *flags:
     bash scripts/pr-open.sh --title {{quote(title)}} --body {{quote(body)}} {{flags}}
 
 # Check everything (fmt, then lint+test+hygiene overlapped). Mirrors the iOS
 # test-tier green-stamp (#1200): skips on a clean, already-green HEAD (#1204).
 # Delete `target/.check-stamp` to force a re-run.
+[doc("Run the Rust gate: fmt, lint, test and hygiene; skips an unchanged green HEAD")]
 check:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -186,14 +196,15 @@ check:
         echo "$sha" > "$stamp"
     fi
 
-# Alias for check — catches errors before the 3-min CI roundtrip
+[doc("Alias for check")]
 pre-push: check
 
-# Full gate: Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
+# Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
 # Plain `just check` stays Rust-only for fast Rust-only iterations. Runs the
 # fast `ios-test` tier only; `ship` and CI additionally gate on
 # `ios-test-full` (XCUITests too) before merge — see #1198.
+[doc("Run check plus the fast iOS tier (unit and snapshot tests, no XCUITests)")]
 check-all: check ios-test
 
 # ─────────────────────────────────────────────
@@ -207,6 +218,7 @@ check-all: check ios-test
 # fresh worktree from ~5-10 min cold to close to what the main checkout pays
 # warm. Refuses a name that sanitises to the same simulator name as an
 # existing worktree (the foo/foo.1 collision documented in ios-testing.md).
+[doc("Create a worktree from fresh origin/main, seeded with the main checkout's warm caches")]
 [group('Worktrees')]
 worktree-new name:
     #!/usr/bin/env bash
@@ -308,6 +320,7 @@ worktree-new name:
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
 # then removes the worktree via git. Run from any checkout; leaves the
 # branch itself intact (delete separately once merged).
+[doc("Remove a worktree and its snapshot simulator, keeping the branch")]
 [group('Worktrees')]
 worktree-rm name:
     #!/usr/bin/env bash
@@ -325,6 +338,7 @@ worktree-rm name:
 # Claude Code session holding its lease. A worktree sitting at main with no
 # commits is not evidence that it is free: uncommitted work looks identical
 # from the outside, and only the lease says whether a session is inside.
+[doc("List this repo's worktrees with branch, uncommitted files and lease holder")]
 [group('Worktrees')]
 worktrees:
     #!/usr/bin/env bash
@@ -345,6 +359,7 @@ worktrees:
 # all-digit argument is the day count (default 7); anything else (e.g.
 # --quality, --brief) passes straight through to usage-report.py, in either
 # order: `just usage 14 --quality` and `just usage --quality 14` both work.
+[doc("Report Claude Code usage from this machine's transcripts at API prices")]
 usage *args:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -384,6 +399,7 @@ usage *args:
 # `references` still finds nothing: a sourcekit-lsp limitation here, not a
 # missing path, so finding callers of a Swift symbol stays a grep job.
 # One-time per machine and per worktree that wants Swift.
+[doc("Set up rust-analyzer and Swift language server diagnostics, once per machine and worktree")]
 lsp-setup: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
@@ -415,13 +431,13 @@ lsp-setup: _ios-sync
 # unchanged; verified it also invalidates on a changed SENTRY_DSN_NATIVE, so
 # it's safe on every call site here.
 
-# Open the app in Xcode (regenerates bindings first if the core changed).
+[doc("Open the app in Xcode, regenerating bindings if the core changed")]
 [group('iOS')]
 ios: _ios-sync
     cd ios && xcodegen generate --use-cache
     xed ios/Intrada.xcodeproj
 
-# Build + launch on a simulator and screenshot (regen if the core changed).
+[doc("Build, launch on a simulator and screenshot, regenerating bindings if the core changed")]
 [group('iOS')]
 ios-run: _ios-sync
     cd ios && xcodegen generate --use-cache
@@ -430,11 +446,12 @@ ios-run: _ios-sync
 # Stream the app's logs from the booted simulator, filtered to our subsystem —
 # drops the UIKit/keyboard/gesture noise so first-party signal is visible.
 # `report(_:)` (Core/Logging.swift) logs swallowed FFI errors here (#846 class).
+[doc("Stream the app's own logs from the booted simulator")]
 [group('iOS')]
 ios-logs:
     xcrun simctl spawn booted log stream --predicate 'subsystem == "com.intrada.native"'
 
-# Force a full regenerate of both Swift packages + refresh the change-stamp.
+[doc("Force a full regenerate of both Swift packages and refresh the change stamp")]
 [group('iOS')]
 ios-gen: ios-typegen (ios-package "debug")
     @mkdir -p ios/generated
@@ -445,6 +462,7 @@ ios-gen: ios-typegen (ios-package "debug")
 # Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
 # (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
 # one-time `fastlane match appstore` bootstrap. See specs/ios-testflight-cicd.md.
+[doc("Build a signed Release app and upload it to TestFlight")]
 [group('iOS')]
 testflight: ios-typegen (ios-package "release")
     cd ios && xcodegen generate --use-cache
@@ -454,6 +472,7 @@ testflight: ios-typegen (ios-package "release")
 # Losslessly shrink snapshot references — drops Xcode's redundant all-opaque
 # alpha channel (keeps pixels + sRGB), ~75% smaller. Run after (re)recording
 # snapshots, before committing. CI's Snapshot Hygiene job enforces this.
+[doc("Losslessly shrink snapshot references before committing")]
 [group('iOS')]
 ios-snapshots-optimize:
     find ios/IntradaTests/__Snapshots__ -name '*.png' -exec oxipng -o max --quiet {} +
@@ -470,6 +489,7 @@ ios-snapshots-optimize:
 # `filter` is anything `-only-testing:` accepts, minus the target prefix:
 #   just ios-snapshots-record SessionSummarySnapshotTests/testReflectionSheet
 #   just ios-snapshots-record SessionSummarySnapshotTests   # the whole class
+[doc("Re-record the snapshot references matching a test filter, then optimise and check")]
 [group('iOS')]
 ios-snapshots-record filter: _ios-sync
     #!/usr/bin/env bash
@@ -505,19 +525,19 @@ ios-snapshots-record filter: _ios-sync
     [ -z "$written" ] || printf '%s\n' "$written" | tr '\n' '\0' | xargs -0 oxipng -o max --quiet
     just ios-snapshots-check
 
-# Orphan + size-ceiling check on snapshot references (same as CI).
+[doc("Check snapshot references for orphans and size, as CI does")]
 [group('iOS')]
 ios-snapshots-check:
     bash scripts/check-snapshots.sh
 
 # ios/generated is excluded from both fmt recipes: generated bindings, never
 # hand-edited, so never formatted. Toolchain-bundled swift-format, default config.
-# Format the hand-written Swift trees in place (fixes what ios-fmt-check flags).
+[doc("Format the hand-written Swift in place")]
 [group('iOS')]
 ios-fmt:
     swift format --in-place --recursive --parallel ios/Intrada ios/IntradaTests ios/IntradaUITests
 
-# Swift formatting check, lint mode (same as CI). Run before pushing ios/** changes.
+[doc("Check Swift formatting, as CI does; run before pushing ios changes")]
 [group('iOS')]
 ios-fmt-check:
     swift format lint --strict --recursive --parallel ios/Intrada ios/IntradaTests ios/IntradaUITests
@@ -530,11 +550,13 @@ ios-fmt-check:
 # run `ios-test-full` before merge, so nothing merges without the UI tier.
 # Regenerates bindings first if the core changed. The device pin must match
 # the recorded snapshot references (renderer-specific).
+[doc("Run the fast iOS tier: unit and snapshot tests, no XCUITests")]
 [group('iOS')]
 ios-test: _ios-sync (_ios-test-run "fast")
 
 # Full gate: IntradaTests + IntradaUITests. What `ship` and CI run before
 # merge — see #1198.
+[doc("Run the full iOS tier with XCUITests, the merge gate")]
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
 
@@ -543,6 +565,7 @@ ios-test-full: _ios-sync (_ios-test-run "full")
 # Takes the same machine-wide lock as `_ios-test-run` (#1622): this is a UI
 # test entry point too, and can run concurrently with another worktree's
 # full-tier run.
+[doc("Rebuild and run one XCUITest class")]
 [group('iOS')]
 ios-test-ui-class class: _ios-sync
     #!/usr/bin/env bash
@@ -562,6 +585,7 @@ ios-test-ui-class class: _ios-sync
 # every Debug-only PR gate and then fails `just testflight` / the release lane
 # nobody runs per-PR (#1177). Separate derivedDataPath from the Debug test
 # build so it can't disturb the products `_ios-build-for-testing` uploads.
+[doc("Compile a Release build without signing or tests, to catch Debug-only code")]
 [group('iOS')]
 ios-build-release: _ios-sync
     #!/usr/bin/env bash
@@ -816,6 +840,7 @@ _ios-test-sim-udid:
 # Delete THIS worktree's snapshot sim (created by `ios-test`). Only ever removes
 # the device named for the current worktree — never another worktree's or the
 # main checkout's, and never a global reset (see the shared-simulator rule).
+[doc("Delete this worktree's snapshot simulator, and only that one")]
 [group('iOS')]
 ios-test-sim-clean:
     #!/usr/bin/env bash
@@ -831,7 +856,7 @@ ios-test-sim-clean:
         echo "✓ no sim named $name — nothing to clean"
     fi
 
-# Facet typegen → ios/generated/SharedTypes (Event/Effect/ViewModel + bincode).
+[doc("Generate the Swift types into ios/generated/SharedTypes with facet")]
 [group('iOS')]
 ios-typegen:
     # Pre-clean so a renamed/removed core type can't leave an orphan Swift file
@@ -839,7 +864,7 @@ ios-typegen:
     rm -rf ios/generated/SharedTypes
     RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir ios/generated
 
-# cargo-swift → ios/generated/IntradaCoreFFI (CoreFFI + RustFramework.xcframework).
+[doc("Build the Rust core into ios/generated/IntradaCoreFFI with cargo-swift")]
 [group('iOS')]
 ios-package profile="debug":
     #!/usr/bin/env bash
