@@ -58,7 +58,7 @@ coverage:
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links and script self-tests")]
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, the script self-tests and the release-name and faint-ink checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -104,7 +104,7 @@ hygiene:
     [ "$fail" -eq 0 ] && echo "✓ hygiene (${#checks[@]} checks, parallel)"
     exit "$fail"
 
-[doc("Show what is in flight: open PRs, claimed issues and recent merges")]
+[doc("Show what is in flight: open PRs, claimed issues, epics and recent merges")]
 status:
     ./scripts/generate-status.sh
 
@@ -199,7 +199,7 @@ check:
 [doc("Alias for check")]
 pre-push: check
 
-# Full gate: Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
+# Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
 # Plain `just check` stays Rust-only for fast Rust-only iterations. Runs the
 # fast `ios-test` tier only; `ship` and CI additionally gate on
@@ -399,7 +399,7 @@ usage *args:
 # `references` still finds nothing: a sourcekit-lsp limitation here, not a
 # missing path, so finding callers of a Swift symbol stays a grep job.
 # One-time per machine and per worktree that wants Swift.
-[doc("Set up Swift language server diagnostics, once per machine and worktree")]
+[doc("Set up rust-analyzer and Swift language server diagnostics, once per machine and worktree")]
 lsp-setup: _ios-sync
     #!/usr/bin/env bash
     set -euo pipefail
@@ -462,7 +462,7 @@ ios-gen: ios-typegen (ios-package "debug")
 # Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
 # (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
 # one-time `fastlane match appstore` bootstrap. See specs/ios-testflight-cicd.md.
-[doc("Build a signed Release build and upload it to TestFlight")]
+[doc("Build a signed Release app and upload it to TestFlight")]
 [group('iOS')]
 testflight: ios-typegen (ios-package "release")
     cd ios && xcodegen generate --use-cache

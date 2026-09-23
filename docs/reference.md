@@ -504,8 +504,8 @@ once.
   the path.
 - **projection / derived** — computed from existing session history; no new
   stored data.
-- **shell-dead** — core code no Swift screen calls any more; a deletion
-  candidate (the #1348 pattern).
+- **shell-dead**: core code no Swift screen calls any more; a deletion
+  candidate (the #1374 pattern).
 - **harness**, the machinery around the model: rules, skills, agents, hooks,
   settings, the recipes agents drive, and memory. Every change to it gets a row
   in [`harness-log.md`](harness-log.md).
