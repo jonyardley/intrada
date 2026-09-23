@@ -14,7 +14,10 @@ wired from the first build.
 - **Surface, don't swallow, at every layer.** Every `ViewModel.error` has a UI
   surface. Optimistic UI reconciles with the core's confirmed outcome: never
   fire a success haptic or dismiss a sheet before the core confirms (re-read
-  `viewModel.error` after `store.send`; see `LibraryAddScreen.add`).
+  `viewModel.error` after `store.send`; see `LibraryAddScreen.add`). A send
+  confirms that the core accepted the event; disk work runs later off the main
+  thread, so a failed write arrives on the banner and the core rolls back
+  (#2004). Saving a practice session still waits for the disk (#974).
 - **A stated invariant is an enforced invariant.** Back each offline-first
   invariant with a test and a CI gate; prose plus an opt-in local hook is
   effectively off.

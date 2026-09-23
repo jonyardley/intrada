@@ -138,8 +138,9 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
     }
   }
 
-  // Don't celebrate or dismiss until the core confirms: a validation reject or
-  // failed local write surfaces in viewModel.error, which we keep on screen.
+  // Don't celebrate or dismiss until the core confirms: a validation reject
+  // surfaces in viewModel.error, which we keep on screen. A failed disk write
+  // arrives later on the banner (#2004).
   private func confirm() {
     form.formError = nil
     form.clearFault()

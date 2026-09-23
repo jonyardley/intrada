@@ -85,12 +85,13 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(bridge.emptyResolved.isEmpty, "app effect must not be resolved")
   }
 
-  func testPersistenceLoadResolvesFromStore() {
+  func testPersistenceLoadResolvesFromStore() async {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 8, effect: .persistence(.loadItems))] }
     let store = Store(bridge: bridge)
 
     store.send(.setQuery(nil))
+    await store.settle()
 
     XCTAssertEqual(bridge.persistenceResolved.first?.id, 8)
     guard case .items(let items) = bridge.persistenceResolved.first?.output else {
@@ -116,7 +117,7 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(bridge.recognitionResolved.first?.output, .failed)
   }
 
-  func testPersistenceWriteFailureResolvesFailed() {
+  func testPersistenceWriteFailureResolvesFailed() async {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 9, effect: .persistence(.saveItem(LibraryItemFixture.record())))]
@@ -124,6 +125,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let store = Store(bridge: bridge, store: FailingStore())
 
     store.send(.setQuery(nil))
+    await store.settle()
 
     XCTAssertEqual(
       bridge.persistenceResolved.first?.output, .failed,
@@ -362,7 +364,7 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.viewModel, "a thrown view() should leave nil (loading state), not crash")
   }
 
-  func testResolveChainedRenderRefreshesView() {
+  func testResolveChainedRenderRefreshesView() async {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 4, effect: .persistence(.loadItems))] }
     bridge.resolveHandler = { _ in [Request(id: 2, effect: .render(RenderOperation()))] }
@@ -374,6 +376,7 @@ final class StoreEffectLoopTests: XCTestCase {
       return vm
     }
     store.send(.setQuery(nil))
+    await store.settle()
 
     XCTAssertEqual(
       store.viewModel?.error, "post-resolve", "render from a resolve should refresh view")

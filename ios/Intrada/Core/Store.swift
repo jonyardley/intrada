@@ -37,6 +37,7 @@ final class Store {
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
   private let sortDefaults: UserDefaults
+  private var diskTail: Task<Void, Never>?
 
   init(
     bridge: CoreBridge = LiveBridge(),
@@ -68,8 +69,7 @@ final class Store {
         // notify_shell effect: fire-and-forget, must not be resolved (#882).
         handleAppEffect(appEffect)
       case .persistence(let operation):
-        let output = persistenceOutput(for: operation)
-        process(bridged { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
+        enqueueDiskJob(operation, id: request.id)
       case .recognition(let operation):
         Task { await self.handleRecognition(operation, id: request.id) }
       }
@@ -83,6 +83,28 @@ final class Store {
       output = await PageReader.read(photoId: photoId)
     }
     process(bridged { try bridge.resolve(id, recognitionOutput: output) } ?? [])
+  }
+
+  /// One job at a time, in the order the core asked: a load sent after a save
+  /// must see the saved row.
+  private func enqueueDiskJob(_ operation: PersistenceOperation, id: UInt32) {
+    let previous = diskTail
+    let job = DiskJob(store: store, operation: operation)
+    diskTail = Task {
+      await previous?.value
+      let result = await Task.detached(priority: .userInitiated) { job.run() }.value
+      if let error = result.error { report(error, "persistence") }
+      process(bridged { try bridge.resolve(id, persistenceOutput: result.output) } ?? [])
+    }
+  }
+
+  /// Waits until no disk job is queued, including jobs the core chains from a
+  /// resolve while this waits.
+  func settle() async {
+    while let tail = diskTail {
+      await tail.value
+      if diskTail == tail { diskTail = nil }
+    }
   }
 
   private func refreshView() {
@@ -165,32 +187,6 @@ final class Store {
     send(.profile(.loaded(profile)))
   }
 
-  /// Failure (or no store) → `.failed` so the core surfaces it, not a phantom ack (#816).
-  private func persistenceOutput(for operation: PersistenceOperation) -> PersistenceOutput {
-    guard let store else { return .failed }
-    do {
-      switch operation {
-      case .loadItems: return .items(try store.loadItems())
-      case .saveItem(let item):
-        try store.save(item)
-        return .ack
-      case .saveItems(let items):
-        try store.save(items)
-        return .ack
-      case .deleteItem(let id, let deletedAt):
-        try store.delete(id: id, deletedAt: deletedAt)
-        return .ack
-      case .loadSessions: return .sessions(try store.loadSessions())
-      case .saveSession(let session):
-        try store.saveSession(session)
-        return .ack
-      }
-    } catch {
-      report(error, "persistence")
-      return .failed
-    }
-  }
-
   // A bridge failure means a serialization/protocol break (e.g. stale bindings
   // vs a regenerated core) — unrecoverable at runtime, so report it rather than
   // swallow it silently, and fail soft.
@@ -217,6 +213,35 @@ final class Store {
       report(error, panicked ? "core-panic" : "bridge")
       if panicked || consecutiveBridgeFailures >= 2 { halted = true }
       return nil
+    }
+  }
+}
+
+/// Generated bridge types are value types without a `Sendable` conformance.
+private struct DiskJob: @unchecked Sendable {
+  let store: (any ItemStore)?
+  let operation: PersistenceOperation
+
+  struct Outcome: @unchecked Sendable {
+    let output: PersistenceOutput
+    let error: Error?
+  }
+
+  /// Failure (or no store) → `.failed` so the core surfaces it, not a phantom ack (#816).
+  func run() -> Outcome {
+    guard let store else { return Outcome(output: .failed, error: nil) }
+    do {
+      switch operation {
+      case .loadItems: return Outcome(output: .items(try store.loadItems()), error: nil)
+      case .saveItem(let item): try store.save(item)
+      case .saveItems(let items): try store.save(items)
+      case .deleteItem(let id, let deletedAt): try store.delete(id: id, deletedAt: deletedAt)
+      case .loadSessions: return Outcome(output: .sessions(try store.loadSessions()), error: nil)
+      case .saveSession(let session): try store.saveSession(session)
+      }
+      return Outcome(output: .ack, error: nil)
+    } catch {
+      return Outcome(output: .failed, error: error)
     }
   }
 }
