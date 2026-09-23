@@ -504,7 +504,8 @@
             itemId: "exercise-2", title: LibraryItemView.previewExerciseWithVariations.title,
             solid: 1, total: 3),
           VariationCoverageView(itemId: "exercise-3", title: "Chromatic run", solid: 4, total: 12),
-        ])
+        ],
+        weeklyMinutes: [40, 75, 55, 95, 82])
     }
 
     private static func scoreTrend(_ id: String, _ title: String, _ latest: UInt8)

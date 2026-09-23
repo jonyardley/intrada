@@ -4,7 +4,7 @@
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::item::{Item, ItemKind};
@@ -15,6 +15,8 @@ use crate::staleness;
 /// Rows on the Progress screen's Variations section; past this a large
 /// library takes the screen over (#1762).
 const VARIATION_COVERAGE_LIMIT: usize = 5;
+
+const CONSISTENCY_WEEKS: usize = 5;
 
 // ── Analytics View Model Types ───────────────────────────────────────
 
@@ -73,6 +75,7 @@ pub struct AnalyticsView {
     pub neglected_items: Vec<NeglectedItem>,
     pub score_changes: Vec<ScoreChange>,
     pub variation_coverage: Vec<VariationCoverageView>,
+    pub weekly_minutes: Vec<u32>,
 }
 
 /// Aggregated stats for the current and previous ISO weeks (Monday–Sunday).
@@ -199,6 +202,7 @@ pub fn compute_analytics(
         neglected_items: compute_neglected_items(summaries, items, clock),
         score_changes: compute_score_changes(sessions, clock),
         variation_coverage: compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT),
+        weekly_minutes: compute_weekly_minutes(sessions, clock),
     }
 }
 
@@ -345,6 +349,27 @@ pub fn compute_daily_totals(
             }
         })
         .collect()
+}
+
+/// Minutes per ISO week, oldest first: the four whole weeks before this one,
+/// then this week so far. Whole weeks, so the oldest bar is never a stub (#1940).
+pub fn compute_weekly_minutes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<u32> {
+    let this_monday = clock.today.week(Weekday::Mon).first_day();
+    let mut secs = [0u64; CONSISTENCY_WEEKS];
+    for session in sessions {
+        let monday = clock
+            .day_of(session.started_at)
+            .week(Weekday::Mon)
+            .first_day();
+        let weeks_ago = (this_monday - monday).num_weeks();
+        if let Some(weeks_ago) = usize::try_from(weeks_ago)
+            .ok()
+            .filter(|w| *w < CONSISTENCY_WEEKS)
+        {
+            secs[CONSISTENCY_WEEKS - 1 - weeks_ago] += session.total_duration_secs;
+        }
+    }
+    secs.iter().map(|s| (s / 60) as u32).collect()
 }
 
 /// Top 10 items by total time practised.
@@ -1034,6 +1059,65 @@ mod tests {
         let totals = compute_daily_totals(&[], clock(today));
         assert_eq!(totals.len(), 28);
         assert!(totals.iter().all(|t| t.minutes == 0));
+    }
+
+    // ── Weekly minutes (#1940) ────────────────────────────────────────
+
+    #[test]
+    fn weekly_minutes_are_five_whole_weeks_whatever_the_weekday() {
+        let sessions = vec![
+            make_session("before-window", day(2026, 8, 23), 600, vec![]),
+            make_session("oldest-monday", day(2026, 8, 24), 1200, vec![]),
+            make_session("oldest-sunday", day(2026, 8, 30), 300, vec![]),
+            make_session("last-week", day(2026, 9, 14), 1800, vec![]),
+            make_session("this-monday", day(2026, 9, 21), 2400, vec![]),
+            make_session("next-week", day(2026, 9, 28), 3000, vec![]),
+        ];
+        for today in [day(2026, 9, 21), day(2026, 9, 23), day(2026, 9, 27)] {
+            assert_eq!(
+                compute_weekly_minutes(&sessions, clock(today)),
+                vec![25, 0, 0, 30, 40],
+                "today {today}"
+            );
+        }
+    }
+
+    #[test]
+    fn weekly_minutes_with_no_sessions_are_five_zeros() {
+        assert_eq!(
+            compute_weekly_minutes(&[], clock(day(2026, 9, 23))),
+            vec![0; 5]
+        );
+    }
+
+    #[test]
+    fn weekly_minutes_end_on_the_weekly_summary_weeks() {
+        // 90 seconds twice is 3 minutes a week; floored day by day it is 2.
+        let sessions = vec![
+            make_session("s1", day(2026, 9, 14), 90, vec![]),
+            make_session("s2", day(2026, 9, 16), 90, vec![]),
+            make_session("s3", day(2026, 9, 21), 90, vec![]),
+            make_session("s4", day(2026, 9, 22), 90, vec![]),
+        ];
+        let analytics = compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            &[],
+            clock(day(2026, 9, 23)),
+        );
+        let weekly = &analytics.weekly_minutes;
+        assert_eq!(weekly[3..], [3, 3]);
+        assert_eq!(weekly[3], analytics.weekly_summary.prev_total_minutes);
+        assert_eq!(weekly[4], analytics.weekly_summary.total_minutes);
+    }
+
+    #[test]
+    fn analytics_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(AnalyticsView {
+            weekly_minutes: vec![25, 0, 0, 30, 40],
+            ..AnalyticsView::default()
+        });
     }
 
     // ── Top Items Tests ───────────────────────────────────────────────
@@ -2068,6 +2152,21 @@ mod tests {
         );
         assert_eq!(summary.session_count, 1);
         assert_eq!(summary.prev_session_count, 0);
+    }
+
+    #[test]
+    fn weekly_minutes_count_sunday_midnight_window_in_new_week() {
+        let sessions = vec![make_session_at(
+            "s1",
+            utc_instant(2026, 8, 9, 23, 30),
+            1800,
+            vec![],
+        )];
+        let weekly = compute_weekly_minutes(
+            &sessions,
+            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 10).unwrap()),
+        );
+        assert_eq!(weekly, vec![0, 0, 0, 0, 30]);
     }
 
     #[test]
