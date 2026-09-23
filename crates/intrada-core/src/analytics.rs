@@ -69,7 +69,6 @@ pub struct VariationCoverageView {
 pub struct AnalyticsView {
     pub weekly_summary: WeeklySummary,
     pub streak: PracticeStreak,
-    pub daily_totals: Vec<DailyPracticeTotal>,
     pub top_items: Vec<ItemRanking>,
     pub score_trends: Vec<ItemScoreTrend>,
     pub neglected_items: Vec<NeglectedItem>,
@@ -98,13 +97,6 @@ pub struct WeeklySummary {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeStreak {
     pub current_days: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct DailyPracticeTotal {
-    pub date: String,
-    pub minutes: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -196,7 +188,6 @@ pub fn compute_analytics(
     AnalyticsView {
         weekly_summary: compute_weekly_summary(sessions, clock),
         streak: compute_streak(sessions, clock),
-        daily_totals: compute_daily_totals(sessions, clock),
         top_items: compute_top_items(sessions),
         score_trends: compute_score_trends(sessions, clock),
         neglected_items: compute_neglected_items(summaries, items, clock),
@@ -325,30 +316,6 @@ pub fn compute_streak(sessions: &[PracticeSession], clock: LocalClock) -> Practi
     PracticeStreak {
         current_days: streak,
     }
-}
-
-/// Returns exactly 28 entries, oldest first (today − 27 days through today).
-pub fn compute_daily_totals(
-    sessions: &[PracticeSession],
-    clock: LocalClock,
-) -> Vec<DailyPracticeTotal> {
-    let mut secs_by_date: HashMap<NaiveDate, u64> = HashMap::new();
-    for session in sessions {
-        let date = clock.day_of(session.started_at);
-        *secs_by_date.entry(date).or_default() += session.total_duration_secs;
-    }
-
-    (0..28)
-        .rev()
-        .map(|days_ago| {
-            let date = clock.today - chrono::Duration::days(days_ago);
-            let minutes = (secs_by_date.get(&date).copied().unwrap_or(0) / 60) as u32;
-            DailyPracticeTotal {
-                date: date.format("%Y-%m-%d").to_string(),
-                minutes,
-            }
-        })
-        .collect()
 }
 
 /// Minutes per ISO week, oldest first: the four whole weeks before this one,
@@ -1004,61 +971,6 @@ mod tests {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let streak = compute_streak(&[], clock(today));
         assert_eq!(streak.current_days, 0);
-    }
-
-    // ── Daily Totals Tests ────────────────────────────────────────────
-
-    #[test]
-    fn test_daily_totals_28_days() {
-        // sessions across 5 different days within past 28 days
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-
-        let sessions = vec![
-            make_session("s1", today, 1800, vec![]), // 30 min
-            make_session("s2", today - chrono::Duration::days(1), 2700, vec![]), // 45 min
-            make_session("s3", today - chrono::Duration::days(5), 600, vec![]), // 10 min
-            make_session("s4", today - chrono::Duration::days(10), 3600, vec![]), // 60 min
-            make_session("s5", today - chrono::Duration::days(27), 900, vec![]), // 15 min (oldest in range)
-        ];
-
-        let totals = compute_daily_totals(&sessions, clock(today));
-        assert_eq!(totals.len(), 28);
-
-        assert_eq!(totals[0].date, "2026-01-22"); // 27 days ago
-        assert_eq!(totals[0].minutes, 15); // s5
-
-        assert_eq!(totals[27].date, "2026-02-18"); // today
-        assert_eq!(totals[27].minutes, 30); // s1
-
-        assert_eq!(totals[26].minutes, 45); // yesterday
-        assert_eq!(totals[22].minutes, 10); // 5 days ago
-        assert_eq!(totals[17].minutes, 60); // 10 days ago
-
-        assert_eq!(totals[25].minutes, 0); // 2 days ago, no session
-    }
-
-    #[test]
-    fn test_daily_totals_multiple_sessions_same_day() {
-        // 3 sessions on the same day
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-
-        let sessions = vec![
-            make_session("s1", today, 1800, vec![]), // 30 min
-            make_session("s2", today, 1200, vec![]), // 20 min
-            make_session("s3", today, 600, vec![]),  // 10 min
-        ];
-
-        let totals = compute_daily_totals(&sessions, clock(today));
-        assert_eq!(totals[27].minutes, 60); // 30 + 20 + 10
-    }
-
-    #[test]
-    fn test_daily_totals_empty() {
-        // empty sessions → 28 entries all 0
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let totals = compute_daily_totals(&[], clock(today));
-        assert_eq!(totals.len(), 28);
-        assert!(totals.iter().all(|t| t.minutes == 0));
     }
 
     // ── Weekly minutes (#1940) ────────────────────────────────────────
@@ -1831,7 +1743,6 @@ mod tests {
         );
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.streak.current_days, 1);
-        assert_eq!(analytics.daily_totals.len(), 28);
         assert_eq!(analytics.top_items.len(), 1);
         assert_eq!(analytics.score_trends.len(), 1);
     }
@@ -2095,30 +2006,6 @@ mod tests {
         let c = LocalClock::from_now(utc_instant(2026, 8, 13, 23, 30), 60);
         assert_eq!(c.today, NaiveDate::from_ymd_opt(2026, 8, 14).unwrap());
         assert_eq!(c.utc_offset_minutes, 60);
-    }
-
-    #[test]
-    fn daily_totals_attribute_midnight_window_session_to_local_day() {
-        let sessions = vec![make_session_at(
-            "s1",
-            utc_instant(2026, 8, 13, 23, 30),
-            1200,
-            vec![],
-        )];
-        let totals = compute_daily_totals(
-            &sessions,
-            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
-        );
-
-        let minutes_on = |date: &str| {
-            totals
-                .iter()
-                .find(|t| t.date == date)
-                .map(|t| t.minutes)
-                .expect("day in 28-day window")
-        };
-        assert_eq!(minutes_on("2026-08-14"), 20);
-        assert_eq!(minutes_on("2026-08-13"), 0);
     }
 
     #[test]

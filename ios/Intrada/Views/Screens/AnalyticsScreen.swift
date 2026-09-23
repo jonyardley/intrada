@@ -3,7 +3,6 @@ import SwiftUI
 
 struct AnalyticsScreen: View {
   @Environment(Store.self) private var store
-  @Environment(\.calendar) private var calendar
 
   private var analytics: AnalyticsView? { store.viewModel?.analytics }
 
@@ -120,34 +119,13 @@ struct AnalyticsScreen: View {
     return max(0, total / Double(changes.count))
   }
 
-  // Roll the per-day totals into Monday-anchored weekly buckets, keeping the most
-  // recent five and labelling the last "Now".
   private func weeklyBuckets(_ analytics: AnalyticsView) -> [ConsistencyWeek] {
-    let parser = DateFormatter()
-    parser.calendar = calendar
-    parser.locale = Locale(identifier: "en_US_POSIX")
-    parser.timeZone = TimeZone(identifier: "UTC")
-    parser.dateFormat = "yyyy-MM-dd"
-
-    var weekCalendar = calendar
-    weekCalendar.firstWeekday = 2
-    if let utc = TimeZone(identifier: "UTC") { weekCalendar.timeZone = utc }
-
-    var totals: [Date: Int] = [:]
-    for daily in analytics.dailyTotals {
-      guard let date = parser.date(from: daily.date),
-        let interval = weekCalendar.dateInterval(of: .weekOfYear, for: date)
-      else { continue }
-      totals[interval.start, default: 0] += Int(daily.minutes)
-    }
-
-    let ordered = totals.sorted { $0.key < $1.key }.suffix(5)
-    let lastIndex = ordered.count - 1
-    return ordered.enumerated().map { idx, entry in
+    let lastIndex = analytics.weeklyMinutes.count - 1
+    return analytics.weeklyMinutes.enumerated().map { idx, minutes in
       let isCurrent = idx == lastIndex
       return ConsistencyWeek(
         label: isCurrent ? "Now" : "W\(idx + 1)",
-        minutes: entry.value,
+        minutes: Int(minutes),
         isCurrent: isCurrent)
     }
   }
