@@ -60,7 +60,7 @@ contract.
 | Spec | Scope |
 |---|---|
 | [`chart-to-scaffold.md`](chart-to-scaffold.md) | Chord-chart parsing and scaffold derivation (`domain/chart.rs`). Phase C shipped in PR #1111. The twelve-key ladder originally scoped inside it is still open as #1107, and that issue records that the steps mechanism it needs has since shipped, so the old #1083 blocker is gone |
-| [`exercise-linking-origins.md`](exercise-linking-origins.md) | How exercises came to be linked to pieces and to have variations: the decisions that still hold from #1015, the #1026 to #1036 screen work and #1083, folded from four earlier specs (#1959). Read `exercise-variations.md`, `exercise-relations.md` and `piece-related-exercises.md` for current behaviour |
+| [`exercise-linking-origins.md`](exercise-linking-origins.md) | How exercises came to be linked to pieces and to have variations: the decisions that still hold from #1015, the #1026 to #1043 screen work and #1083, folded from four earlier specs (#1959). Read `exercise-variations.md`, `exercise-relations.md` and `piece-related-exercises.md` for current behaviour |
 | [`session-block-grouping.md`](session-block-grouping.md) | Grouping and reordering blocks in the builder (`group_id`, `UngroupBlock`). Shipped via #1022, which the spec itself does not cite |
 | [`track-exercises-per-piece/`](track-exercises-per-piece/) | Per-piece exercise tracking |
 | [`native-player.md`](native-player.md) · [`native-ios-player.md`](native-ios-player.md) | The Focus Player, as two sequential phases (#932 spine, #948 persistence) |

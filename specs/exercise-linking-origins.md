@@ -21,7 +21,7 @@ landed (`git log --diff-filter=D -- specs/<name>.md`):
 |---|---|---|
 | `piece-linked-exercises.md` | A piece carries an ordered list of exercises, each showing its latest score | #1015, committed as a spec in #1090 |
 | `piece-linked-exercises-design-brief.md` | The design brief for the above, and the first score ring (#1009) | #1015 |
-| `related-exercises-redesign.md` | Matching the iOS screens to the finished design, in six phases | #1026, #1030, #1036 and the phase PRs after them |
+| `related-exercises-redesign.md` | Matching the iOS screens to the finished design, in six phases | #1026, #1030, #1036, #1038, #1041, #1042, #1043 |
 | `exercise-variants.md` | An exercise owning an ordered list of variations, each scored on its own (#1083) | #1112 (schema), #1118 (mechanism) |
 
 The mocks the first three drew from stay in [`../design/`](../design/)
@@ -51,15 +51,18 @@ it, so there was no way to see how each drill for a piece was going.
    "Related to" breadcrumb, and is now the "Used in" list
    ([`exercise-relations.md`](exercise-relations.md)).
 
-## The screens catching up with the design (#1026 to #1036)
+## The screens catching up with the design (#1026 to #1043)
 
 Every decision here took the path with no migration, because on the device the
 store is the only copy of the data: a genre is a tag, not a field; the recent
 sessions list shows score, date and trend with no note line; the reflection
 sheet is a score selector and a note, with no live ring. The one bridge write
 the work added from Swift, `updateEntryNotes`, got a `LiveBridge` round trip
-(#846). Its decision 3, dropping the per-exercise "include today" toggle, was
-later overturned (`docs/design-principles.md`, #1101).
+(#846). The work also dropped the per-exercise "include today" toggle; that
+was later overturned (`docs/design-principles.md`, #1101). On iPad the library
+is a hand-built split rather than `NavigationSplitView`, because the custom
+scrolling library does not fit its `List(selection:)` model, and building it
+by hand left the iPhone layout and its snapshots unchanged.
 
 ## Variations on an exercise (#1083)
 
@@ -73,7 +76,9 @@ mechanism, no code per preset.
    two edits to different variations never conflict as a whole item.
 2. **No hard deletes, and tombstones stay in the model.** The core owns
    reconciliation and the shell never diffs child rows; a session entry that
-   names a removed variation still finds its label. Positions are unique only
+   names a removed variation still finds its label. So the store loads
+   tombstoned rows too: filtering them out on load (as #1112 first did) would
+   make a re-added variation lose its history. Positions are unique only
    among live variations, never across tombstones.
 3. **The whole list is written at once and reconciled by label**,
    case-insensitively: a match keeps its id and its history, a removed label

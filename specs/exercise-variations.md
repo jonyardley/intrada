@@ -1,7 +1,7 @@
 # Practice variations, and the record of what you played
 
-> Tier 3 spec. Issue [#1739], milestone v0.13.0. **Supersedes decisions 4 and 5
-> of the #1083 spec**: the ladder and its
+> Tier 3 spec. Issue [#1739], milestone v0.13.0. **Supersedes the current rung
+> and the one-score session entry of #1083**: the ladder and its
 > current rung go, and a session's record of one item stops being a single
 > slot. The decisions that still hold from the mechanism that shipped in
 > #1112 and #1118 are in [`exercise-linking-origins.md`](exercise-linking-origins.md).
