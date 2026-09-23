@@ -72,8 +72,8 @@ struct RepCounter: View {
       }
     } else {
       HStack(spacing: IntradaSpacing.controlGap) {
-        gotIt
         notQuite(title: "Not quite")
+        gotIt
       }
     }
   }
