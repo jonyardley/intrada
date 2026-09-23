@@ -17,12 +17,9 @@ main while its reviewer was still thinking.
   or spanning files, takes the full agent.
 - **`reviewer` is pinned to Opus 5.5 high**, briefed with the worktree and the
   issue so it checks the diff against done looks like. Tier 1 and screens-only
-  diffs take the pin, which is no reason to skip review (#1665). A diff touching
-  `crates/intrada-ffi`, `ios/generated/`, `ios/Intrada/Core/LibraryStore.swift`
-  (the only migration registration site), `ActiveSession` or auth spawns
-  `reviewer` with `model: fable` instead: check with
-  `git diff --stat origin/main...HEAD | grep -E 'intrada-ffi|ios/generated|LibraryStore.swift|domain/session/'`,
-  not the tier the author claimed.
+  diffs take the pin, which is no reason to skip review (#1665). A diff on a
+  sensitive surface takes the same pin: Fable was retired 2026-09-23 (#2044),
+  so no review lifts the model.
 
 **The reviewer never waits, and the lead posts the comment.** Brief it to
 report and yield: no `gh pr comment`, no holding for a PR number, since no PR

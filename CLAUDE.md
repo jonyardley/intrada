@@ -146,7 +146,7 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   of 100 to 200 lines riding as the first commit of Phase A, never its own PR.
 
 **Domain-sensitivity override**: auth, the bridge contract, DB schema or migrations go up at
-least one tier and onto the Fable list. **A phase that introduces a bridge shape, a
+least one tier and onto the sensitive surfaces list. **A phase that introduces a bridge shape, a
 migration, or a change inside the `ActiveSession` blob graph ships as two PRs, core first,
 screens in the same working session**, or the core PR waits (#1348, #1374); spanning core
 and screens is not itself the trigger. Review the core PR before the screens.
