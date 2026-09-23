@@ -159,6 +159,12 @@ impl LocalClock {
         self.local(instant).date()
     }
 
+    /// The day a session counts for. Every session is read at today's offset,
+    /// not the one it was played at (#1379), so the fix belongs here.
+    pub fn session_day(&self, session: &PracticeSession) -> NaiveDate {
+        self.day_of(session.started_at)
+    }
+
     /// The user-local hour (0 to 23) of a UTC instant.
     pub fn hour_of(&self, instant: DateTime<Utc>) -> u32 {
         self.local(instant).hour()
@@ -238,7 +244,7 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], clock: LocalClock) -
     let mut prev_item_ids: HashSet<String> = HashSet::new();
 
     for session in sessions {
-        let session_date = clock.day_of(session.started_at);
+        let session_date = clock.session_day(session);
         let session_week = session_date.iso_week();
 
         if session_week == today_iso_week {
@@ -293,10 +299,7 @@ pub fn compute_streak(sessions: &[PracticeSession], clock: LocalClock) -> Practi
         return PracticeStreak { current_days: 0 };
     }
 
-    let session_dates: HashSet<NaiveDate> = sessions
-        .iter()
-        .map(|s| clock.day_of(s.started_at))
-        .collect();
+    let session_dates: HashSet<NaiveDate> = sessions.iter().map(|s| clock.session_day(s)).collect();
 
     let mut current = clock.today;
     if !session_dates.contains(&current) {
@@ -320,10 +323,7 @@ pub fn compute_weekly_minutes(sessions: &[PracticeSession], clock: LocalClock) -
     let this_monday = clock.today.week(Weekday::Mon).first_day();
     let mut secs = [0u64; CONSISTENCY_WEEKS];
     for session in sessions {
-        let monday = clock
-            .day_of(session.started_at)
-            .week(Weekday::Mon)
-            .first_day();
+        let monday = clock.session_day(session).week(Weekday::Mon).first_day();
         let weeks_ago = (this_monday - monday).num_weeks();
         if let Some(weeks_ago) = usize::try_from(weeks_ago)
             .ok()
@@ -418,7 +418,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
     let mut prev: HashMap<String, (u8, NaiveDate)> = HashMap::new();
 
     for session in sessions {
-        let session_date = clock.day_of(session.started_at);
+        let session_date = clock.session_day(session);
         for entry in &session.entries {
             if let Some(score) = entry.score_summary() {
                 if session_date.iso_week() == today_iso_week {
@@ -533,7 +533,7 @@ pub fn compute_last_practised(
         .iter()
         .max_by_key(|e| (e.duration_secs, Reverse(e.position)))?;
 
-    let (relative_day, in_sentence) = relative_day(clock.day_of(session.started_at), clock.today);
+    let (relative_day, in_sentence) = relative_day(clock.session_day(session), clock.today);
     Some(LastPractisedView {
         item_title: headline.item_title.clone(),
         relative_day,

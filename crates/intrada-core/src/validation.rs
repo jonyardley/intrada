@@ -49,15 +49,17 @@ fn trimmed_nonempty(value: Option<String>) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-fn normalize_tags(tags: Vec<String>) -> Vec<String> {
-    // Case-insensitive dedupe keeping first-seen casing, matching the
-    // available_tags vocabulary, so create/update can't store "Jazz" and
-    // "jazz" as two tags.
+/// Trimmed, blanks dropped, one per case-folded value in first-seen casing: so
+/// "Jazz" and "jazz" are one tag when stored and one in the library's lists.
+pub(crate) fn distinct_ignoring_case<S: AsRef<str>>(
+    values: impl IntoIterator<Item = S>,
+) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
-    tags.into_iter()
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty())
-        .filter(|t| seen.insert(t.to_lowercase()))
+    values
+        .into_iter()
+        .map(|v| v.as_ref().trim().to_string())
+        .filter(|v| !v.is_empty())
+        .filter(|v| seen.insert(v.to_lowercase()))
         .collect()
 }
 
@@ -71,7 +73,7 @@ pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
     input.key = trimmed_nonempty(input.key);
     input.notes = trimmed_nonempty(input.notes);
     input.tempo = normalize_tempo(input.tempo);
-    input.tags = normalize_tags(input.tags);
+    input.tags = distinct_ignoring_case(input.tags);
     input.variant_labels = normalize_variant_labels(input.variant_labels);
     input
 }
@@ -82,7 +84,7 @@ pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
     input.key = input.key.map(trimmed_nonempty);
     input.notes = input.notes.map(trimmed_nonempty);
     input.tempo = input.tempo.map(normalize_tempo);
-    input.tags = input.tags.map(normalize_tags);
+    input.tags = input.tags.map(distinct_ignoring_case);
     input
 }
 
@@ -630,6 +632,21 @@ mod tests {
         assert_eq!(out.notes, None, "whitespace-only notes collapses to None");
         assert_eq!(out.tempo, None, "blank marking + no bpm drops the tempo");
         assert_eq!(out.tags, vec!["warm-up".to_string(), "scales".to_string()]);
+    }
+
+    #[test]
+    fn distinct_ignoring_case_reads_what_a_musician_types() {
+        let cases: &[(&[&str], &[&str])] = &[
+            (&[], &[]),
+            (&["", "   "], &[]),
+            (&["Jazz", "jazz", " JAZZ "], &["Jazz"]),
+            (&[" jazz", "Jazz"], &["jazz"]),
+            (&["Bach ", "bach", "Chopin"], &["Bach", "Chopin"]),
+            (&["scales", "warm-up", "Scales"], &["scales", "warm-up"]),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(distinct_ignoring_case(input.iter()), *expected, "{input:?}");
+        }
     }
 
     #[test]

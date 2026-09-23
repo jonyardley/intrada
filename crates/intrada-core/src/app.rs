@@ -188,7 +188,7 @@ impl Intrada {
                 PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     crux_core::render::render()
                 }
             },
@@ -200,7 +200,7 @@ impl Intrada {
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     persistence::load_items()
                 }
             },
@@ -212,7 +212,7 @@ impl Intrada {
                 }
                 PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_storage_error();
                     crux_core::render::render()
                 }
             },
@@ -224,7 +224,7 @@ impl Intrada {
                 PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 PersistenceOutput::Failed => crate::domain::session::save_refused(model)
                     .unwrap_or_else(|| {
-                        model.surface_error("Couldn't access local storage.");
+                        model.surface_storage_error();
                         persistence::load_sessions()
                     }),
             },
