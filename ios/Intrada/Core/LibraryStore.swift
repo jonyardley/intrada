@@ -3,7 +3,7 @@ import GRDB
 import SharedTypes
 
 /// Persistence ops the Store resolves against — a protocol so tests can inject a failing fake (#816).
-protocol ItemStore {
+protocol ItemStore: Sendable {
   func loadItems() throws -> [Item]
   func save(_ item: Item) throws
   /// Upsert a batch in one transaction — all rows land or none do (#1106).
@@ -18,10 +18,6 @@ protocol ItemStore {
 /// **sync-agnostic**: every row carries `updated_at` + a soft-delete tombstone
 /// so a later sync engine (custom LWW or Automerge) can sit on top without a
 /// migration (see specs/native-ios.md "Sync engine").
-///
-/// Calls are synchronous; the dataset is single-user and tiny, so GRDB's own
-/// serialization is enough and an off-main hop isn't worth the Sendable dance
-/// against the non-Sendable generated `Item`. Revisit if data volume grows.
 final class LibraryStore: ItemStore {
   private let dbQueue: DatabaseQueue
 
