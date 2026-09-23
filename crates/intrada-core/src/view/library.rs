@@ -552,47 +552,51 @@ pub(super) fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySo
     items.sort_by(|a, b| compare_candidates(&a.as_candidate_ref(), &b.as_candidate_ref(), sort));
 }
 
-pub(super) fn apply_query_filter(
-    items: Vec<LibraryItemView>,
-    query: &ListQuery,
-) -> Vec<LibraryItemView> {
-    items
-        .into_iter()
-        .filter(|item| {
-            if let Some(ref item_type) = query.item_type {
-                if item.item_type != *item_type {
-                    return false;
-                }
-            }
+pub(super) fn sorted_order(items: &[LibraryItemView], sort: &LibrarySort) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..items.len()).collect();
+    order.sort_by(|&a, &b| {
+        compare_candidates(
+            &items[a].as_candidate_ref(),
+            &items[b].as_candidate_ref(),
+            sort,
+        )
+    });
+    order
+}
 
-            if let Some(ref key) = query.key {
-                if item.key.as_deref() != Some(key.as_str()) {
-                    return false;
-                }
-            }
+pub(super) fn matches_query(item: &LibraryItemView, query: &ListQuery) -> bool {
+    if let Some(ref item_type) = query.item_type {
+        if item.item_type != *item_type {
+            return false;
+        }
+    }
 
-            // Multi-tag filter is a union (match ANY, case-insensitive), not an intersection.
-            if !query.tags.is_empty() {
-                let selected: Vec<String> = query.tags.iter().map(|t| t.to_lowercase()).collect();
-                let matches_any = item
-                    .tags
-                    .iter()
-                    .any(|t| selected.contains(&t.trim().to_lowercase()));
-                if !matches_any {
-                    return false;
-                }
-            }
+    if let Some(ref key) = query.key {
+        if item.key.as_deref() != Some(key.as_str()) {
+            return false;
+        }
+    }
 
-            if let Some(ref text) = query.text {
-                let text_lower = text.to_lowercase();
-                if !candidate_matches(&item.as_candidate_ref(), &text_lower) {
-                    return false;
-                }
-            }
+    // Multi-tag filter is a union (match ANY, case-insensitive), not an intersection.
+    if !query.tags.is_empty() {
+        let selected: Vec<String> = query.tags.iter().map(|t| t.to_lowercase()).collect();
+        let matches_any = item
+            .tags
+            .iter()
+            .any(|t| selected.contains(&t.trim().to_lowercase()));
+        if !matches_any {
+            return false;
+        }
+    }
 
-            true
-        })
-        .collect()
+    if let Some(ref text) = query.text {
+        let text_lower = text.to_lowercase();
+        if !candidate_matches(&item.as_candidate_ref(), &text_lower) {
+            return false;
+        }
+    }
+
+    true
 }
 
 // ── Picker candidates (#1653) ──
@@ -893,10 +897,10 @@ mod tests {
     }
 
     #[test]
-    fn sort_library_items_and_apply_query_filter_agree_with_sort_and_filter_candidates() {
+    fn the_library_order_and_filter_agree_with_sort_and_filter_candidates() {
         // Two items share both title and created_at, so the id tiebreak has to
         // fire on both paths, and a third item is excluded by the text query
-        // built directly through apply_query_filter: this fails if either path
+        // built directly through matches_query: this fails if either path
         // stops sharing the comparator or the predicate (#1653).
         let library_fixture = |id: &str, title: &str, created_at: &str, subtitle: &str| {
             let mut view = LibraryItemView::fixture(id, title, ItemKind::Piece);
@@ -904,7 +908,7 @@ mod tests {
             view.subtitle = subtitle.to_string();
             view
         };
-        let mut library_items = vec![
+        let library_items = vec![
             library_fixture("p2", "Debussy Prelude", "2026-01-01", "practice notes"),
             library_fixture("p1", "Debussy Prelude", "2026-01-01", "practice notes"),
             library_fixture("p3", "Chopin Ballade", "2026-01-02", "unrelated"),
@@ -913,15 +917,16 @@ mod tests {
             field: SortField::Title,
             direction: SortDirection::Ascending,
         };
-        library_items = apply_query_filter(
-            library_items,
-            &ListQuery {
-                text: Some("practice".to_string()),
-                ..Default::default()
-            },
-        );
-        sort_library_items(&mut library_items, &sort);
-        let library_ids: Vec<String> = library_items.iter().map(|i| i.id.clone()).collect();
+        let query = ListQuery {
+            text: Some("practice".to_string()),
+            ..Default::default()
+        };
+        let library_ids: Vec<String> = sorted_order(&library_items, &sort)
+            .into_iter()
+            .map(|i| &library_items[i])
+            .filter(|i| matches_query(i, &query))
+            .map(|i| i.id.clone())
+            .collect();
 
         let picker_fixture = |id: &str, title: &str, created_at: &str, subtitle: &str| {
             let mut candidate = picker_candidate(id, title, created_at);

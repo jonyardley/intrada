@@ -66,8 +66,7 @@ filters in Swift stay until #1999.
 
 ## The two PRs
 
-Core: the cache, the two id lists appended to `ViewModel`, regenerated
-bindings. `items`, `all_items` and `recently_practised` are unchanged, so the
+Core: the cache and the two id lists appended to `ViewModel`. `items`, `all_items` and `recently_practised` are unchanged, so the
 app builds and behaves as before.
 
 Screens: the Library screen and the split view render `visible_ids` looked up

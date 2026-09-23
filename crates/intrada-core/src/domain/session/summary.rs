@@ -204,7 +204,8 @@ pub(crate) fn save_acknowledged(model: &mut Model) -> Command<Effect, Event> {
     let still_open =
         matches!(&model.session_status, SessionStatus::Summary(s) if s.id == session.id);
     model.sessions.push(session);
-    model.practice_summaries = crate::view::library::build_practice_summaries(&model.sessions);
+    model.practice_summaries =
+        crate::view::library::build_practice_summaries(&model.sessions).into();
     if !still_open {
         return crux_core::render::render();
     }
