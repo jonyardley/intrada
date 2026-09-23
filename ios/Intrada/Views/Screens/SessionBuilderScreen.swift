@@ -127,7 +127,9 @@ struct SessionBuilderScreen: View {
     .navigationBarBackButtonHidden(true)
     .sheet(isPresented: $addingItems) { AddToSessionSheet().environment(store) }
     .sheet(item: $configuringEntry) { target in
-      EntrySettingsSheet(entry: target.entry).environment(store)
+      if let limits = store.viewModel?.limits {
+        EntrySettingsSheet(entry: target.entry, limits: limits).environment(store)
+      }
     }
     .sheet(item: $addingExerciseTarget) { target in
       AddRelatedExerciseSheet(groupId: target.id).environment(store)

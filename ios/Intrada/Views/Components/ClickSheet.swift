@@ -7,6 +7,7 @@ import SwiftUI
 struct ClickSheet: View {
   let click: ClickController
   let bpm: Int
+  let limits: LimitsView
 
   @State private var choice: MetreChoice
   @State private var beats: Int
@@ -24,9 +25,10 @@ struct ClickSheet: View {
     case other
   }
 
-  init(click: ClickController, bpm: Int) {
+  init(click: ClickController, bpm: Int, limits: LimitsView) {
     self.click = click
     self.bpm = bpm
+    self.limits = limits
     let metre = click.metre
     _choice = State(initialValue: Self.presets.contains(metre) ? .metre(metre) : .other)
     _beats = State(initialValue: Int(metre.beats))
@@ -98,11 +100,15 @@ struct ClickSheet: View {
     }
   }
 
+  var beatsRange: ClosedRange<Int> { Int(limits.metreBeatsMin)...Int(limits.metreBeatsMax) }
+
+  var unitOptions: [UInt8] { limits.metreUnits }
+
   private var otherSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.row) {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Eyebrow("Beats in the bar")
-        Stepper(value: $beats, in: 2...12) {
+        Stepper(value: $beats, in: beatsRange) {
           Text("\(beats)")
             .font(IntradaFont.scoreNumeral(24))
             .monospacedDigit()
@@ -116,7 +122,7 @@ struct ClickSheet: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Eyebrow("Beat value")
         SegmentedPills(
-          options: [UInt8(2), 4, 8],
+          options: unitOptions,
           selection: Binding(
             get: { unit },
             set: {
