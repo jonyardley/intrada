@@ -98,10 +98,12 @@ impl ListSync {
         }
     }
 
-    /// A load that brought back no list. Never asks again by itself: a broken
-    /// store would loop (#825).
-    pub fn load_ended(&mut self) {
+    /// A load that brought back no list. Asks again only for an edit it may
+    /// have missed; the stale mark is cleared as that load goes, so a broken
+    /// store fails it once and stops (#825).
+    fn load_ended(&mut self) -> bool {
         self.loads_out = self.loads_out.saturating_sub(1);
+        self.reload_due()
     }
 
     /// True when the list must be loaded again now. A refused write needs the
@@ -110,6 +112,25 @@ impl ListSync {
         self.writes_out = self.writes_out.saturating_sub(1);
         self.stale |= refused;
         self.reload_due()
+    }
+}
+
+pub fn items_load_ended(model: &mut Model, then: Command<Effect, Event>) -> Command<Effect, Event> {
+    if model.items_sync.load_ended() {
+        Command::all([then, load_items(model)])
+    } else {
+        then
+    }
+}
+
+pub fn sessions_load_ended(
+    model: &mut Model,
+    then: Command<Effect, Event>,
+) -> Command<Effect, Event> {
+    if model.sessions_sync.load_ended() {
+        Command::all([then, load_sessions(model)])
+    } else {
+        then
     }
 }
 
@@ -735,6 +756,39 @@ mod tests {
             asks_for_items(&mut acked),
             "the failed load is no longer out"
         );
+    }
+
+    #[test]
+    fn a_refused_edit_still_rolls_back_when_the_load_out_fails() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+        let _ = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
+
+        let mut failed = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+        assert!(
+            asks_for_items(&mut failed),
+            "the refused add must roll back"
+        );
+
+        let mut again = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+        assert!(
+            !asks_for_items(&mut again),
+            "a broken store must not loop (#825)"
+        );
+    }
+
+    #[test]
+    fn a_load_answered_with_no_list_is_no_longer_out() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::StartApp, &mut model);
+        let _ = add(&app, &mut model);
+        let _ = app.update(Event::StoreLoaded(PersistenceOutput::Ack), &mut model);
+
+        let mut acked = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(asks_for_items(&mut acked));
     }
 
     // ── Sessions ────────────────────────────────────────────────────────

@@ -191,13 +191,11 @@ impl Intrada {
                     persistence::Landed::Reload => persistence::load_items(model),
                 },
                 PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => {
-                    model.items_sync.load_ended();
-                    Command::done()
+                    persistence::items_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
-                    model.items_sync.load_ended();
                     model.surface_storage_error();
-                    crux_core::render::render()
+                    persistence::items_load_ended(model, crux_core::render::render())
                 }
             },
             Event::StoreWritten(output) => {
@@ -231,13 +229,11 @@ impl Intrada {
                     persistence::Landed::Reload => persistence::load_sessions(model),
                 },
                 PersistenceOutput::Items(_) | PersistenceOutput::Ack => {
-                    model.sessions_sync.load_ended();
-                    Command::done()
+                    persistence::sessions_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
-                    model.sessions_sync.load_ended();
                     model.surface_storage_error();
-                    crux_core::render::render()
+                    persistence::sessions_load_ended(model, crux_core::render::render())
                 }
             },
             Event::SessionStoreWritten(output) => {

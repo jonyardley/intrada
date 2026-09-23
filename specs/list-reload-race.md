@@ -43,9 +43,10 @@ The rules:
    straight away, then settles like any other answer. The rollback reload
    therefore waits for every write still out, and a load already out cannot
    land over it.
-5. **A load that fails** counts as answered and never asks again by itself,
-   so a broken store cannot loop (#825). A later write that settles picks the
-   stale mark back up.
+5. **A load that fails** counts as answered, then follows rule 3: it asks
+   again only when an edit it may have missed is stale. Rule 3 clears the mark
+   as the new load goes, so a broken store fails that load once and stops
+   (#825): at most one extra load per edit.
 
 Dropping a result while a write is out is stricter than it needs to be when
 the app runs disk jobs in order, as #2068 does: a write sent before the load
@@ -91,7 +92,9 @@ In `persistence.rs`, each driven through `App::update`:
   one;
 - a refused write with nothing out: reloads at once, as before;
 - two loads out at once around a write: neither applies, one reload;
-- a failed load with a write out: no reload from the failure itself;
+- a failed load with a write out: no reload until the write settles;
+- a refused write whose load out then fails: the rollback still goes, once;
+- a load answered with no list (failed, or the wrong kind): no longer out;
 - the same first case for practice history;
 - no write or load out: a result applies as before.
 
