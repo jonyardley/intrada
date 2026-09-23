@@ -1,6 +1,7 @@
 use super::plays::*;
 use super::*;
 use crate::app::{AppEffect, Effect, Event};
+use crate::domain::item::Item;
 use crate::model::Model;
 use crate::validation;
 use chrono::{DateTime, Utc};
@@ -227,5 +228,20 @@ pub(super) fn recover_session(
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;
+    crux_core::render::render()
+}
+
+fn advance(active: &mut ActiveSession, items: &[Item], started_at: DateTime<Utc>) {
+    active.current_index += 1;
+    active.current_item_started_at = started_at;
+    if let Some(entry) = active.entries.get_mut(active.current_index) {
+        open_first_play(entry, items, started_at);
+    }
+}
+
+fn finish(model: &mut Model, summary: SummarySession, stamp: TempoStamp) -> Command<Effect, Event> {
+    model.session_status = SessionStatus::Summary(summary);
+    model.last_error = None;
+    report_stamp(model, stamp);
     crux_core::render::render()
 }

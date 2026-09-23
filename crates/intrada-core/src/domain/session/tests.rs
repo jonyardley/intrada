@@ -5999,6 +5999,7 @@ fn switch_variation_and_the_play_id_events_round_trip_on_the_bincode_wire() {
         },
     ));
 }
+
 // ── Crash-recovery saves (#1997) ───────────────────────────────────
 
 fn recovery_saves(cmd: &mut Command<Effect, Event>) -> Vec<ActiveSession> {
@@ -6188,6 +6189,7 @@ fn skipping_the_last_item_clears_the_tempo_of_a_play_that_survives() {
     if let SessionStatus::Active(ref mut active) = model.session_status {
         let play = active.entries[1].open_play_mut().expect("a play is open");
         play.achieved_tempo = Some(96);
+        play.click_pattern = Some(seven_eight_on_group_starts());
     }
 
     update(

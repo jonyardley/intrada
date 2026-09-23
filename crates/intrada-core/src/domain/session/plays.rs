@@ -184,25 +184,6 @@ pub(super) fn persist_active(active: &ActiveSession) -> Command<Effect, Event> {
     ])
 }
 
-pub(super) fn advance(active: &mut ActiveSession, items: &[Item], started_at: DateTime<Utc>) {
-    active.current_index += 1;
-    active.current_item_started_at = started_at;
-    if let Some(entry) = active.entries.get_mut(active.current_index) {
-        open_first_play(entry, items, started_at);
-    }
-}
-
-pub(super) fn finish(
-    model: &mut Model,
-    summary: SummarySession,
-    stamp: TempoStamp,
-) -> Command<Effect, Event> {
-    model.session_status = SessionStatus::Summary(summary);
-    model.last_error = None;
-    report_stamp(model, stamp);
-    crux_core::render::render()
-}
-
 /// Find an entry by id in Active *or* Summary phase, so the mid-session
 /// reflection sheet can write per-entry data before the summary screen.
 pub(super) fn entry_for_update_mut<'a>(
