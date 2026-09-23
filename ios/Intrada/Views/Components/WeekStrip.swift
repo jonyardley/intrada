@@ -8,7 +8,6 @@ import SwiftUI
 /// the core's (#2046).
 struct WeekStrip: View {
   let days: [PracticeDayView]
-  /// The selected day's `date` key.
   @Binding var selected: String
 
   var body: some View {

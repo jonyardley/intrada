@@ -349,7 +349,8 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(
       of: host(
         PracticeScreen(
-          referenceDate: PracticeSessionView.previewReferenceDate, selectedDay: "2026-05-25"),
+          referenceDate: PracticeSessionView.previewReferenceDate,
+          selectedDay: PracticeWeekView.previewWeek.days[0].date),
         store: .previewPractice), as: config)
   }
 

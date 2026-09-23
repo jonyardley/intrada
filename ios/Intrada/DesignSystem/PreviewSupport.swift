@@ -509,9 +509,8 @@
   }
 
   extension PracticeWeekView {
-    /// The core's week of 25 May 2026 read on `previewReferenceDate` (Sunday
-    /// 31st): `previewEndedEarly` on Thursday, `previewCompleted` on Saturday,
-    /// opening on Saturday as the most recent practice day before today.
+    /// The core's week of 25 May on `previewReferenceDate`: sessions Thursday
+    /// and Saturday, opening on Saturday, the latest practice before today.
     static var previewWeek: PracticeWeekView {
       mayWeek(sessions: ["2026-05-28": ["session-2"], "2026-05-30": ["session-1"]], openingDay: 5)
     }
@@ -952,10 +951,8 @@
   }
 
   extension PracticeSessionView {
-    /// Sunday 31 May 2026 (noon UTC) — same Mon–Sun week as the fixtures below
-    /// (Thu 28th, Sat 30th). "Today" has no practice, so the screen auto-selects
-    /// the most recent earlier practice day (Sat 30th), exercising both the
-    /// today-ring and selected-fill states deterministically.
+    /// Sunday 31 May 2026 (noon UTC), the "today" `PracticeWeekView.previewWeek`
+    /// is read on: the same week as the sessions below (Thursday 28th, Saturday 30th).
     static var previewReferenceDate: Date {
       var components = DateComponents()
       components.year = 2026
