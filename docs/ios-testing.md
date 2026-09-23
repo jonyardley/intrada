@@ -113,7 +113,7 @@ UDID=$(xcrun simctl create snap "iPhone 16" "iOS26.5")
 # Run / record (a missing reference auto-records and "fails" the first run)
 xcodebuild test -project ios/Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
   -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO \
-  -only-testing:IntradaTests/ScreenSnapshotTests/testLibraryScreen
+  -only-testing:IntradaTests/LibrarySnapshotTests/testLibraryScreen
 
 # After recording: optimise (drops Xcode's opaque alpha, ~75% smaller) and re-run
 just ios-snapshots-optimize

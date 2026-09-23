@@ -35,13 +35,13 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   anything with a dependency bump).
 - **Shell serialisation points.** These four govern every screen, so a
   shell-only stream that touches one of them serialises with every other
-  live stream, core or shell: `ios/IntradaTests/ScreenSnapshotTests.swift`,
+  live stream, core or shell: `ios/IntradaTests/SnapshotTestCase.swift`,
   the preview fixtures in `ios/Intrada/DesignSystem/` (`PreviewStores.swift`,
   `LibraryPreviewFixtures.swift`, `SessionPreviewFixtures.swift`),
   `ios/Intrada/DesignSystem/Theme.swift`, `ios/project.yml`.
 - **Shell serialisation is common, not rare.** In the last 60 commits on
   `origin/main`, 17 touched only `ios/` and no crate; 8 of those 17 also
-  touched `ios/IntradaTests/ScreenSnapshotTests.swift`, and 2 touched
+  touched `ios/IntradaTests/ScreenSnapshotTests.swift` (one file before #2003 split it), and 2 touched
   `ios/Intrada/DesignSystem/Theme.swift`. Check the four files above before
   assuming two shell-only streams are independent: about half the time they
   are not.
