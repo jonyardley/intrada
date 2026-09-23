@@ -184,7 +184,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   func testAddRelatedExerciseSheet() {
     assertSnapshot(
       of: host(
-        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGrouped),
+        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGroupedRelatedSheet),
       as: config)
   }
 

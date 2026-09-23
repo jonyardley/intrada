@@ -20,7 +20,7 @@
   final class PreviewBridge: CoreBridge {
     private let core = CoreFfi()
     private let items: [LibraryItemView]
-    private var activeQuery: ListQuery?
+    private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
     private let practiceWeeks: [PracticeWeekView]?
     private let buildingSetlist: BuildingSetlistView?
@@ -59,11 +59,7 @@
       self.profile = profile
     }
 
-    func update(_ event: Event) throws -> [Request] {
-      guard case .setQuery(let query) = event else { return [] }
-      activeQuery = query
-      return [Request(id: 0, effect: .render(RenderOperation()))]
-    }
+    func update(_ event: Event) throws -> [Request] { [] }
     func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
     func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
     func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
@@ -306,6 +302,31 @@
       return Store(
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: block + [.previewStandaloneExercise],
+            itemCount: 4,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
+                durationDisplay: "12 min", entries: block),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewStandaloneExercise]),
+            ],
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
+    }
+
+    /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
+    /// sheet's own scope has narrowed the query to exercises (#1999).
+    static var previewBuildingGroupedRelatedSheet: Store {
+      let block: [SetlistEntryView] = [
+        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
+      ]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(
+            text: nil, itemType: .exercise, key: nil, tags: [], priorityOnly: false),
           buildingSetlist: BuildingSetlistView(
             entries: block + [.previewStandaloneExercise],
             itemCount: 4,
