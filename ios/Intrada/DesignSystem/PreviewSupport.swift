@@ -155,7 +155,6 @@
     /// A deterministic, offline store for `#Preview` blocks.
     static var preview: Store { Store(bridge: PreviewBridge()) }
 
-    /// Practice home with no sessions, on the pinned week rather than the live one.
     static var previewPracticeEmpty: Store {
       Store(bridge: PreviewBridge(practiceWeeks: [.previewEmptyWeek]))
     }
@@ -515,7 +514,6 @@
       mayWeek(sessions: ["2026-05-28": ["session-2"], "2026-05-30": ["session-1"]], openingDay: 5)
     }
 
-    /// The same week with nothing practised, opening on today.
     static var previewEmptyWeek: PracticeWeekView { mayWeek(sessions: [:], openingDay: 6) }
 
     private static func mayWeek(sessions: [String: [String]], openingDay: UInt64)

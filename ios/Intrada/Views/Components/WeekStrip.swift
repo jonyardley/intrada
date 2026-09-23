@@ -1,11 +1,10 @@
 import SharedTypes
 import SwiftUI
 
-/// The week picker: a Monday to Sunday row that *selects a day*; the screen renders that
+/// The week picker — a Mon–Sun row that *selects a day*; the screen renders that
 /// day's sessions below. A day is always selected (the screen auto-selects on
 /// open). Today is marked with a ring, the selected day with a fill, practised
-/// days carry a dot, and not-yet days dim. The days, and which is today, are
-/// the core's (#2046).
+/// days carry a dot, and not-yet days dim.
 struct WeekStrip: View {
   let days: [PracticeDayView]
   @Binding var selected: String

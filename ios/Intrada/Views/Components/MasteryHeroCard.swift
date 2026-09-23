@@ -4,7 +4,6 @@ import SwiftUI
 /// column beside it left the eyebrow too narrow for its own first word (#1471).
 struct MasteryHeroCard: View {
   let mastery: Double
-  /// The core's `+0.7 this week`; nil hides the line.
   let change: String?
   let itemsCovered: Int
 

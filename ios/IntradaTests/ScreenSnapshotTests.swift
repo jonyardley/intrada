@@ -345,7 +345,7 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreenQuietDay() {
-    // Open on Monday, a day with no practice, to lock the per-day empty state.
+    // Open on Monday — a day with no practice — to lock the per-day empty state.
     assertSnapshot(
       of: host(
         PracticeScreen(
