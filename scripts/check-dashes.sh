@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Flag em dashes and en dashes added to prose or comments.
+# Flag em dashes and en dashes added to prose or comments, not string literals.
 # See CLAUDE.md Conventions: house style is plain British English with neither.
 # This gates the rule on changed lines only, the same diff-scoped way
 # check-comment-density.sh works, so it binds new content without rewriting a
@@ -57,9 +57,19 @@ found=0
 report=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  hits=$(git diff "$range" -- "$f" \
-    | grep -E '^\+' | grep -vE '^\+\+\+' \
-    | grep -E "$dash_re" || true)
+  added=$(git diff "$range" -- "$f" | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+  case "$f" in
+    # A string literal in code is data, often the core's own output (the dash
+    # it shows for an empty duration), and changing it moves snapshot references.
+    *.swift | *.rs)
+      hits=$(printf '%s\n' "$added" | perl -ne '
+        my $code = $_;
+        $code =~ s/"(?:[^"\\]|\\.)*"//g unless $code =~ m{^\+\s*//};
+        print if $code =~ /\xe2\x80[\x93\x94]/;
+      ')
+      ;;
+    *) hits=$(printf '%s\n' "$added" | grep -E "$dash_re" || true) ;;
+  esac
   if [ -n "$hits" ]; then
     found=1
     report="$report"$'\n'"  $f:"$'\n'"$(printf '%s\n' "$hits" | sed 's/^/    /')"

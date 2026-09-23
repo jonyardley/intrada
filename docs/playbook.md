@@ -27,13 +27,13 @@ a cold start for an answer `just status` already prints (#1836).
 ## Which model
 
 The rung is not where the money is; context length is (#1985). Set the model
-once, at the start, and leave effort alone off the Fable list.
+once, at the start, and leave effort alone off the sensitive surfaces.
 
 | Work | Model | Who sets it |
 |---|---|---|
 | The lead: everything with judgement in it | Opus 5.5 medium | `.claude/settings.json`, on open |
-| The Fable list: the bridge, a migration, the crash-recovery blob, auth | Opus 5.5 high until 2026-10-07 (#2044, #2052) | You: `/effort high` before the first line, and `/effort medium` back when that work ends |
-| `reviewer` | Opus 5.5 high, Fable 5.1 on a sensitive diff | Pinned in the agent definition; `/ship` lifts it |
+| The sensitive surfaces: the bridge, a migration, the crash-recovery blob, auth | Opus 5.5 high (#2044, #2052) | You: `/effort high` before the first line, and `/effort medium` back when that work ends |
+| `reviewer` | Opus 5.5 high, sensitive diffs included | Pinned in the agent definition |
 | `task` | Opus 5.5 medium until 2026-10-07 (#2044) | Pinned in the agent definition |
 | `test-runner` | Haiku 4.5 low | Pinned in the agent definition |
 | A one-off thinking question | Your call | You |
