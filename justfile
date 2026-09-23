@@ -647,9 +647,9 @@ _ios-inputs-fingerprint:
 
 # Regenerate the Xcode project and build the test products (app + .xctest
 # bundles) for THIS worktree's pinned iPhone 16 / iOS 26.5 sim, without
-# running anything. Shared by `_ios-test-run` (local) and CI's
-# `native-ios-build` job (#1207) — the xcodebuild invocation lives in exactly
-# one place so CI and local dev can't drift apart.
+# running anything. Shared by `_ios-test-run` (local) and CI's self-hosted
+# gate (#1207): the xcodebuild invocation lives in exactly one place so CI and
+# local dev can't drift apart.
 # No `--use-cache` here: the cache key is project.yml, which a new Swift file
 # doesn't change, so a newly added test file silently never joins the target
 # and the suite goes green without ever running it (#1456).
@@ -670,26 +670,19 @@ _ios-build-for-testing:
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
-    # Written last, so it only exists for a build that actually succeeded, and
-    # inside Build/Products so it travels with CI's test-products artifact.
-    # Not a dotfile: `actions/upload-artifact` defaults `include-hidden-files`
-    # to false, so a leading dot silently drops it from that artifact and every
-    # CI test job then sees an unstamped build and refuses (#1530).
+    # Written last, so it only exists for a build that actually succeeded (#1530).
     just _ios-inputs-fingerprint > build/dd/Build/Products/ios-inputs.sha256
 
 # Run already-built tests against THIS worktree's sim, without rebuilding.
 # Driven by the `.xctestrun` the build wrote rather than `-project`/`-scheme`:
-# it already names the bundles and their platform, so CI's test jobs need no
-# Xcode project, no generated bindings and no resolved SwiftPM checkout (~30s
-# and a 928MB cache restore each).
+# it already names the bundles and their platform.
 # `filters` is a space-separated list of xcodebuild `-only-testing:` /
 # `-skip-testing:` flags, or "" to run everything the built products contain;
 # `retry` is "1" to add the relaunch-on-crash flags (#1203), else "0";
 # `parallel` is "1" to clone simulators and run test classes concurrently,
 # else "0". Shared by `_ios-test-run` (local, everything in one call),
-# `ios-test-ui-class` and `ios-snapshots-record`, and CI's fanned-out
-# `native-ios-test-unit` / `native-ios-test-ui` jobs (#1207), which slice the
-# suite so a crash in one slice can't take the others down with it.
+# `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
+# which runs the unit and UI tiers as separate steps (#1207).
 [private]
 _ios-test-without-building filters retry parallel="0":
     #!/usr/bin/env bash
@@ -724,14 +717,12 @@ _ios-test-without-building filters retry parallel="0":
     fi
     # Cloned simulators are opt-in per caller, defaulting off: a clone's test
     # runner hits "Application failed preflight checks (Busy)" under memory
-    # pressure, which reds the gate for no test reason, and a rented 7GB
-    # runner has too little to hold more than one. Six measured on the
+    # pressure, which reds the gate for no test reason. Six measured on the
     # self-hosted M4 over ten runs (#1824): UI step 175s median against 280s
     # at four, no preflight failures, so the self-hosted CI gate opts in at
-    # six. The rented `native-ios-test-ui` job stays sequential at 7GB, and so
-    # does the local full tier since #1480. #1642 fixed the rename test that
-    # used to silently skip its own field-clearing under clone load and
-    # reddened main; both CI paths still keep the job fan-out.
+    # six. The local full tier stays sequential since #1480. #1642 fixed the
+    # rename test that used to silently skip its own field-clearing under
+    # clone load and reddened main.
     flags=()
     if [ "{{parallel}}" = "1" ]; then
         flags+=(-parallel-testing-enabled YES -maximum-concurrent-test-simulator-destinations 6)
