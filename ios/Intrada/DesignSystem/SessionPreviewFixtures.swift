@@ -100,7 +100,7 @@
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
     }
 
-    /// All three per-entry settings set — the "populated" `EntrySettingsSheet` snapshot.
+    /// All three per-entry settings set: the "populated" `EntrySettingsSheet` snapshot.
     static var previewGroupedScalesConfigured: SetlistEntryView {
       var e = previewGroupedScales
       e.intention = "Even RH over the LH arpeggios"
@@ -135,7 +135,7 @@
   }
 
   // Reason strings below are copies of the core's, per the table in
-  // specs/up-next-card.md decision 6 — reword there and these go stale silently.
+  // specs/up-next-card.md decision 6: reword there and these go stale silently.
   extension SuggestedSession {
     /// The mock's case: starred and cold, one drill unmarked, one on a variation.
     static var previewStarred: SuggestedSession {
@@ -160,7 +160,7 @@
         estimatedMinutes: 15)
     }
 
-    /// Unstarred and untouched — the longest copy the card has to fit.
+    /// Unstarred and untouched: the longest copy the card has to fit.
     static var previewFresh: SuggestedSession {
       SuggestedSession(
         pieceId: "piece-2", pieceTitle: "Prelude in C", pieceSubtitle: nil,
@@ -192,7 +192,7 @@
     }
 
     /// Fixed past dates (not "now") so the card renders a deterministic absolute
-    /// date — reusable from snapshot tests as well as the canvas.
+    /// date, reusable from snapshot tests as well as the canvas.
     static var previewCompleted: PracticeSessionView {
       PracticeSessionView(
         id: "session-1", startedAt: "2026-05-30T09:00:00Z", finishedAt: "2026-05-30T09:32:00Z",

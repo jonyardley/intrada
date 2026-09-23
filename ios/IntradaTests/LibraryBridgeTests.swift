@@ -45,7 +45,7 @@ final class LibraryBridgeTests: XCTestCase {
   }
 
   /// Real-bridge wire pin (#846, #1467): a `Bool` that never made it across
-  /// reads as `false`, so the row would say "steps" about a ladder of keys —
+  /// reads as `false`, so the row would say "steps" about a ladder of keys,
   /// no crash, no error, just the wrong noun.
   func testRealBridgeLadderIsKeysCrossesTheWire() throws {
     let bridge = LiveBridge()
@@ -337,7 +337,7 @@ final class LibraryBridgeTests: XCTestCase {
   }
 
   /// but returns a nested `ChordChart` + `ScaffoldPreviewView` across the bincode
-  /// wire — a shape a stub bridge can't exercise. A bad chart must surface an
+  /// wire, a shape a stub bridge can't exercise. A bad chart must surface an
   /// error and never store a partial.
   func testRealBridgeSetChordChartDerivesScaffoldPreview() throws {
     let bridge = LiveBridge()
@@ -370,8 +370,8 @@ final class LibraryBridgeTests: XCTestCase {
       "a failed parse never overwrites the stored chart")
   }
 
-  /// Real-bridge commit (#1106): `CommitScaffold` carries a `Vec<ScaffoldKind>`
-  /// — round-trip it through the live bincode bridge so the write payload can't
+  /// Real-bridge commit (#1106): `CommitScaffold` carries a `Vec<ScaffoldKind>`:
+  /// round-trip it through the live bincode bridge so the write payload can't
   /// silently misalign (#846), and assert the core materialises + links the
   /// selected exercises.
   func testRealBridgeCommitScaffoldLinksExercises() throws {
@@ -397,7 +397,7 @@ final class LibraryBridgeTests: XCTestCase {
     let titles = Swift.Set(piece.linkedExercises.map(\.title))
     XCTAssertTrue(titles.contains("Shells") && titles.contains("Guide-tone lines"))
 
-    // Re-committing the same kinds dedups — no duplicate exercises.
+    // Re-committing the same kinds dedups: no duplicate exercises.
     _ = try bridge.update(.item(.commitScaffold(pieceId: id, kinds: [.shells])))
     let reran = try bridge.view()
     let shells = reran.items.filter { $0.title == "Shells" }
@@ -542,7 +542,7 @@ final class LibraryBridgeTests: XCTestCase {
   }
 
   /// Real-bridge priority toggle (#763): the star sends an UpdateItem with every
-  /// optional field "no change" (outer nil) and only `priority` set — a different
+  /// optional field "no change" (outer nil) and only `priority` set, a different
   /// bincode shape than the full edit, so round-trip it through the live bridge to
   /// catch an absent-vs-present wire break (#846).
   func testRealBridgePriorityToggleAppliesToViewModel() throws {

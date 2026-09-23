@@ -27,7 +27,7 @@ wired from the first build.
 - **Bridge-crossing types get a real round-trip test before a screen reads
   them.** Extend the Rust `assert_round_trips` helper to every new payload; a
   stub-bridge test cannot catch a bincode wire break (#846). `LiveBridge` in
-  `StoreEffectLoopTests` is the real-bridge harness.
+  `LibraryBridgeTests` and `SessionBridgeTests` is the real-bridge harness.
 
 ## Snapshot hygiene (`ios/IntradaTests/__Snapshots__`)
 

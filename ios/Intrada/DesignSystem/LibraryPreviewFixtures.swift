@@ -118,7 +118,7 @@
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true)
     }
 
-    /// A charted piece — exercises the chord-chart card (parsed grid + preview).
+    /// A charted piece: exercises the chord-chart card (parsed grid + preview).
     static var previewCharted: LibraryItemView {
       func chord(_ raw: String, _ root: UInt8, _ q: ChordQuality) -> ChartChord {
         ChartChord(
@@ -150,7 +150,7 @@
     static var previewMinimal: LibraryItemView { LibraryItemFixture.view() }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
-    /// one unrated) — for the linked-exercises section snapshots.
+    /// one unrated), for the linked-exercises section snapshots.
     static var previewDetailWithLinkedExercises: LibraryItemView {
       LibraryItemView(
         id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
@@ -346,7 +346,7 @@
         }, ladderIsKeys: false, photoId: nil, showsKey: false)
     }
 
-    /// A piece with no linked exercises — for the empty-state snapshot.
+    /// A piece with no linked exercises, for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(
         id: "piece-4", itemType: .piece, title: "Gymnopédie No. 1", subtitle: "Erik Satie",

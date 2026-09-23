@@ -215,7 +215,7 @@ final class SessionBridgeTests: XCTestCase {
   }
 
   /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing
-  /// write — round-trip it through the real bincode bridge (#846).
+  /// write, round-trip it through the real bincode bridge (#846).
   func testRealBridgePractiseThisSeedsBuilder() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp)
@@ -323,7 +323,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.plays.last?.score,
       "clearing a score round-trips")
-    // Per-entry notes — the hand-off reflection sheet's write, never previously
+    // Per-entry notes: the hand-off reflection sheet's write, never previously
     // sent from Swift (#846). Round-trip set + clear through the live bridge.
     _ = try bridge.update(
       .session(.updateEntryNotes(entryId: entryId, notes: "RH evenness better at 96")))
@@ -333,7 +333,7 @@ final class SessionBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.notes, "clearing an entry note round-trips")
-    // Achieved tempo — the hand-off sheet's TempoStepper write, never previously
+    // Achieved tempo: the hand-off sheet's TempoStepper write, never previously
     // sent from Swift (#846). Round-trip set + clear through the live bridge.
     _ = try bridge.update(
       .session(
@@ -366,7 +366,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(saved.activeSession)
     XCTAssertNil(saved.error, "a clean save surfaces no error")
 
-    // Crash recovery — RecoverSession (with its new `now` re-anchor field) has
+    // Crash recovery: RecoverSession (with its new `now` re-anchor field) has
     // never crossed the live bridge from Swift before (#846, #962). The stale
     // anchor must come back re-anchored to the `now` we send.
     let blobEntry = SetlistEntry(
@@ -469,7 +469,9 @@ final class SessionBridgeTests: XCTestCase {
     let before = try XCTUnwrap(try bridge.view().buildingSetlist)
     let block = try XCTUnwrap(before.blocks.first { $0.groupId != nil })
     let related = block.entries.filter { $0.itemType == .exercise }
-    XCTAssertEqual(related.count, 2, "both linked exercises join the block")
+    guard block.entries.count == 3 else {
+      return XCTFail("both linked exercises join the piece's block, got \(block.entries.count)")
+    }
     let blockStart = try XCTUnwrap(before.entries.firstIndex { $0.id == related[0].id })
 
     _ = try bridge.update(

@@ -4,7 +4,7 @@
   import SharedTypes
 
   /// A fixed Gregorian/UTC calendar so date-derived UI (the week strip) renders
-  /// identically on any host — pair it with `previewReferenceDate` in previews
+  /// identically on any host; pair it with `previewReferenceDate` in previews
   /// and pin it via `.environment(\.calendar, PreviewCalendar.utc)` in snapshot hosts.
   enum PreviewCalendar {
     static var utc: Calendar {
@@ -15,7 +15,7 @@
   }
 
   /// Offline bridge for Xcode previews: serves the core's initial (empty)
-  /// ViewModel — optionally seeded with library items — and emits no effects,
+  /// ViewModel, optionally seeded with library items, and emits no effects,
   /// so store-backed screens render in the canvas without FFI networking.
   final class PreviewBridge: CoreBridge {
     private let core = CoreFfi()
@@ -132,7 +132,7 @@
     /// (`Event.loadSampleData` → `sample_items()`). Render-only, so it completes
     /// synchronously and offline. Use in screen previews: same data as the CI
     /// screenshot, and the filter pills actually work in the canvas.
-    /// Not for snapshot tests — `sample_items()` stamps wall-clock timestamps.
+    /// Not for snapshot tests: `sample_items()` stamps wall-clock timestamps.
     static var previewSeeded: Store {
       let store = Store()
       store.send(.loadSampleData)
@@ -155,7 +155,7 @@
     }
 
     /// Practice home with deterministic sessions (fixed past dates) for the
-    /// populated-state snapshot — covers both completed + ended-early cards.
+    /// populated-state snapshot, covers both completed + ended-early cards.
     static var previewPractice: Store {
       Store(
         bridge: PreviewBridge(
@@ -199,7 +199,7 @@
           lastPractised: .previewYesterday, upNext: .previewStarred))
     }
 
-    /// Practice home with a crash-recovery blob pending (#962) — drives the
+    /// Practice home with a crash-recovery blob pending (#962), drives the
     /// Resume / Discard prompt above the hero.
     static var previewPracticeRecovery: Store {
       let store = Store(
@@ -267,7 +267,7 @@
     }
 
     /// Same as `previewBuildingRecentlyPractised`, but with the type filter set
-    /// to exercises — the section must not survive an active filter (#1362).
+    /// to exercises, the section must not survive an active filter (#1362).
     static var previewBuildingRecentlyPractisedFiltered: Store {
       Store(
         bridge: PreviewBridge(
@@ -280,7 +280,7 @@
     }
 
     /// Session builder with a block (a piece + 2 related) above a standalone
-    /// item — the grouped-state preview + snapshot.
+    /// item, the grouped-state preview + snapshot.
     static var previewBuildingGrouped: Store {
       let block: [SetlistEntryView] = [
         .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
@@ -304,7 +304,7 @@
     }
 
     /// Session builder where one of the block's related exercises is also in
-    /// the library — the added state of the add-related sheet (#1103).
+    /// the library, the added state of the add-related sheet (#1103).
     static var previewBuildingGroupedAdded: Store {
       let block: [SetlistEntryView] = [.previewGroupedScales, .previewGroupedPiece]
       return Store(
@@ -327,7 +327,7 @@
       Store(bridge: PreviewBridge(activeSession: .previewActive))
     }
 
-    /// Player Focus — an exercise with an active rep counter.
+    /// Player Focus: an exercise with an active rep counter.
     static var previewActiveLongSession: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActiveLongSession))
     }
@@ -354,7 +354,7 @@
       Store(bridge: PreviewBridge(summary: .previewSummaryVariations))
     }
 
-    /// Player Summary — ended early, so the unreached item shows not-attempted.
+    /// Player Summary: ended early, so the unreached item shows not-attempted.
     static var previewSummaryEndedEarly: Store {
       Store(bridge: PreviewBridge(summary: .previewSummaryEndedEarly))
     }
@@ -385,7 +385,7 @@
       Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
     }
 
-    /// Detail view: piece with no linked exercises — shows the empty state.
+    /// Detail view: piece with no linked exercises, shows the empty state.
     static var previewDetailLinkedEmpty: Store {
       Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
     }

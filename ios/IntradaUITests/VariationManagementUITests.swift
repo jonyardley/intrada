@@ -5,7 +5,7 @@ import XCTest
 /// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
 /// in that order; see `app.rs`'s `LoadSampleData` seed).
 ///
-/// Removing a variation moved to `StoreEffectLoopTests` (#1825): plain taps, no keyboard.
+/// Removing a variation moved to `LibraryBridgeTests` (#1825): plain taps, no keyboard.
 @MainActor
 final class VariationManagementUITests: XCTestCase {
   override func setUp() {

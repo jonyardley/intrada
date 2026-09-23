@@ -127,8 +127,8 @@ final class SessionBuilderUITests: XCTestCase {
   }
 
   /// Grouped block, end to end: link exercises to a piece, add the piece (block
-  /// forms), then tap a nested row to open its settings. The nested reorder is
-  /// pinned against the core in `SessionBridgeTests` (#2003).
+  /// forms), then tap a nested row to open its settings. The core's side of a
+  /// nested reorder is pinned in `SessionBridgeTests` (#2003).
   func testNestedRowTapOpensEntrySettings() {
     let app = launchSeeded()
 
