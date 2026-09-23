@@ -498,7 +498,12 @@
             solid: 1, total: 3),
           VariationCoverageView(itemId: "exercise-3", title: "Chromatic run", solid: 4, total: 12),
         ],
-        weeklyMinutes: [40, 75, 55, 95, 82])
+        weeklyMinutes: [40, 75, 55, 95, 82],
+        overallMastery: 3.4,
+        topMover: ScoreChange(
+          itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
+          currentScore: 3, delta: 1, isNew: false),
+        masteryChange: "+1.0 this week")
     }
 
     private static func scoreTrend(_ id: String, _ title: String, _ latest: UInt8)

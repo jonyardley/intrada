@@ -18,6 +18,9 @@ const VARIATION_COVERAGE_LIMIT: usize = 5;
 
 const CONSISTENCY_WEEKS: usize = 5;
 
+/// Rows under Recent mastery on the Progress screen.
+const SCORE_CHANGES_LIMIT: usize = 5;
+
 // ── Analytics View Model Types ───────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -75,6 +78,13 @@ pub struct AnalyticsView {
     pub score_changes: Vec<ScoreChange>,
     pub variation_coverage: Vec<VariationCoverageView>,
     pub weekly_minutes: Vec<u32>,
+    /// The mean latest mark of every library item that has one (#2046).
+    pub overall_mastery: f64,
+    /// This week's largest rise, found across every change rather than the
+    /// few in `score_changes`.
+    pub top_mover: Option<ScoreChange>,
+    /// The line under the dial, `+0.7 this week`; `None` unless the week rose.
+    pub mastery_change: Option<String>,
 }
 
 /// Aggregated stats for the current and previous ISO weeks (Monday–Sunday).
@@ -185,15 +195,19 @@ pub fn compute_analytics(
     item_views: &[LibraryItemView],
     clock: LocalClock,
 ) -> AnalyticsView {
+    let changes = compute_score_changes(sessions, clock);
     AnalyticsView {
         weekly_summary: compute_weekly_summary(sessions, clock),
         streak: compute_streak(sessions, clock),
         top_items: compute_top_items(sessions),
         score_trends: compute_score_trends(sessions, clock),
         neglected_items: compute_neglected_items(summaries, items, clock),
-        score_changes: compute_score_changes(sessions, clock),
+        score_changes: changes.iter().take(SCORE_CHANGES_LIMIT).cloned().collect(),
         variation_coverage: compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT),
         weekly_minutes: compute_weekly_minutes(sessions, clock),
+        overall_mastery: compute_overall_mastery(item_views),
+        top_mover: top_mover(&changes),
+        mastery_change: mastery_change(&changes),
     }
 }
 
@@ -470,8 +484,8 @@ pub fn compute_neglected_items(
     neglected.into_iter().map(|(_, item)| item).collect()
 }
 
-/// This week's latest score vs the latest before it, per item. Up to 5, largest
-/// absolute delta first.
+/// This week's latest score vs the latest before it, per item, largest absolute
+/// delta first. Every item: the Progress screen lists the first few.
 pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) -> Vec<ScoreChange> {
     let today_iso_week = clock.today.iso_week();
 
@@ -533,9 +547,44 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
     }
 
     changes.sort_by_key(|c| (Reverse(c.delta.unsigned_abs()), c.item_id.clone()));
-
-    changes.truncate(5);
     changes
+}
+
+pub fn compute_overall_mastery(item_views: &[LibraryItemView]) -> f64 {
+    let marks: Vec<f64> = item_views
+        .iter()
+        .filter_map(|i| i.practice.as_ref()?.latest_score)
+        .map(f64::from)
+        .collect();
+    if marks.is_empty() {
+        return 0.0;
+    }
+    marks.iter().sum::<f64>() / marks.len() as f64
+}
+
+fn top_mover(changes: &[ScoreChange]) -> Option<ScoreChange> {
+    changes
+        .iter()
+        .filter(|c| c.delta > 0)
+        .max_by_key(|c| (c.delta, Reverse(&c.item_id)))
+        .cloned()
+}
+
+/// The mean change of the items whose mark moved this week, in tenths rounded
+/// half up. A first mark has no before, so it is not a change of zero.
+fn mastery_change(changes: &[ScoreChange]) -> Option<String> {
+    let deltas: Vec<i32> = changes
+        .iter()
+        .filter(|c| !c.is_new)
+        .map(|c| i32::from(c.delta))
+        .collect();
+    let count = deltas.len() as i32;
+    let sum: i32 = deltas.iter().sum();
+    if sum <= 0 {
+        return None;
+    }
+    let tenths = (sum * 20 + count) / (count * 2);
+    (tenths > 0).then(|| format!("+{}.{} this week", tenths / 10, tenths % 10))
 }
 
 // ── Last practised ───────────────────────────────────────────────────
@@ -1028,8 +1077,176 @@ mod tests {
     fn analytics_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(AnalyticsView {
             weekly_minutes: vec![25, 0, 0, 30, 40],
+            overall_mastery: 6.5,
+            top_mover: Some(change("a", Some(3), 5)),
+            mastery_change: Some("+0.7 this week".to_string()),
             ..AnalyticsView::default()
         });
+    }
+
+    // ── Progress headline numbers ─────────────────────────────────────
+
+    fn change(item_id: &str, previous: Option<u8>, current: u8) -> ScoreChange {
+        ScoreChange {
+            item_id: item_id.to_string(),
+            item_title: item_id.to_string(),
+            previous_score: previous,
+            current_score: current,
+            delta: previous.map_or(0, |p| current as i8 - p as i8),
+            is_new: previous.is_none(),
+        }
+    }
+
+    fn marked(id: &str, latest: Option<u8>) -> LibraryItemView {
+        LibraryItemView {
+            practice: Some(ItemPracticeSummary {
+                latest_score: latest,
+                ..ItemPracticeSummary::fixture()
+            }),
+            ..LibraryItemView::fixture(id, id, ItemKind::Piece)
+        }
+    }
+
+    #[test]
+    fn overall_mastery_is_the_mean_latest_mark_of_every_marked_item() {
+        let cases: [(&str, Vec<LibraryItemView>, f64); 5] = [
+            ("empty library", vec![], 0.0),
+            (
+                "nothing marked",
+                vec![marked("a", None), marked("b", None)],
+                0.0,
+            ),
+            (
+                "never practised",
+                vec![LibraryItemView::fixture("a", "a", ItemKind::Piece)],
+                0.0,
+            ),
+            ("one mark", vec![marked("a", Some(7))], 7.0),
+            (
+                "a sixth item counts",
+                ["a", "b", "c", "d", "e", "f"]
+                    .iter()
+                    .zip([7, 6, 8, 5, 9, 4])
+                    .map(|(id, m)| marked(id, Some(m)))
+                    .chain([marked("g", None)])
+                    .collect(),
+                6.5,
+            ),
+        ];
+        for (name, items, expected) in cases {
+            assert_eq!(compute_overall_mastery(&items), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_top_mover_is_the_largest_rise() {
+        let cases: [(&str, Vec<ScoreChange>, Option<&str>); 5] = [
+            ("no changes", vec![], None),
+            (
+                "only falls and first marks",
+                vec![change("a", Some(5), 3), change("b", None, 6)],
+                None,
+            ),
+            (
+                "a rise among falls",
+                vec![change("a", Some(8), 5), change("b", Some(4), 5)],
+                Some("b"),
+            ),
+            (
+                "a tie goes to the lower id",
+                vec![
+                    change("a", Some(4), 6),
+                    change("b", Some(3), 5),
+                    change("c", Some(4), 5),
+                ],
+                Some("a"),
+            ),
+            ("a first mark alone", vec![change("a", None, 9)], None),
+        ];
+        for (name, changes, expected) in cases {
+            let mover = top_mover(&changes);
+            assert_eq!(
+                mover.as_ref().map(|c| c.item_id.as_str()),
+                expected,
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_mastery_change_line_is_the_mean_change_rounded_half_up() {
+        let from = |deltas: &[i8]| -> Vec<ScoreChange> {
+            deltas
+                .iter()
+                .enumerate()
+                .map(|(i, d)| change(&format!("i{i}"), Some(5), (5 + d) as u8))
+                .collect()
+        };
+        let mut with_first_mark = from(&[1, 1]);
+        with_first_mark.push(change("new", None, 4));
+        let mut barely_up = vec![1; 11];
+        barely_up.extend([-1; 10]);
+
+        let cases: [(&str, Vec<ScoreChange>, Option<&str>); 9] = [
+            ("no changes", vec![], None),
+            ("first marks only", vec![change("new", None, 4)], None),
+            (
+                "a first mark is left out",
+                with_first_mark,
+                Some("+1.0 this week"),
+            ),
+            ("a third", from(&[1, 1, -1]), Some("+0.3 this week")),
+            (
+                "a half rounds up",
+                from(&[1, 1, 1, -2]),
+                Some("+0.3 this week"),
+            ),
+            ("two thirds", from(&[3, 3, 2]), Some("+2.7 this week")),
+            ("level", from(&[1, -1]), None),
+            ("a fall", from(&[-2]), None),
+            ("up by less than a tenth", from(&barely_up), None),
+        ];
+        for (name, changes, expected) in cases {
+            assert_eq!(mastery_change(&changes).as_deref(), expected, "{name}");
+        }
+    }
+
+    /// Six items marked last week and again this week; `before` and `after`
+    /// are their marks, items `a` to `f`.
+    fn six_item_analytics(before: [u8; 6], after: [u8; 6]) -> AnalyticsView {
+        let ids = ["a", "b", "c", "d", "e", "f"];
+        let entries = |marks: [u8; 6]| -> Vec<SetlistEntry> {
+            ids.iter()
+                .zip(marks)
+                .map(|(id, m)| make_entry(id, id, ItemKind::Piece, 300, Some(m)))
+                .collect()
+        };
+        let sessions = vec![
+            make_session("last-week", day(2026, 9, 15), 1800, entries(before)),
+            make_session("this-week", day(2026, 9, 22), 1800, entries(after)),
+        ];
+        compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            &[],
+            clock(day(2026, 9, 23)),
+        )
+    }
+
+    #[test]
+    fn the_headline_numbers_read_every_change_not_the_five_listed() {
+        // Five items up by one and `f` up by four: the five rows hold `f` and
+        // four of the others, averaging 1.6; all six average 1.5.
+        let rising = six_item_analytics([5, 5, 5, 5, 5, 3], [6, 6, 6, 6, 6, 7]);
+        assert_eq!(rising.score_changes.len(), 5);
+        assert_eq!(rising.mastery_change.as_deref(), Some("+1.5 this week"));
+
+        // Five items down by three push `f`, up by one, off the five rows.
+        let falling = six_item_analytics([8, 8, 8, 8, 8, 5], [5, 5, 5, 5, 5, 6]);
+        assert!(falling.score_changes.iter().all(|c| c.item_id != "f"));
+        assert_eq!(falling.top_mover.map(|c| c.item_id), Some("f".to_string()));
+        assert_eq!(falling.mastery_change, None);
     }
 
     // ── Top Items Tests ───────────────────────────────────────────────
@@ -1628,7 +1845,14 @@ mod tests {
             make_session("s2", today, 4200, this_entries),
         ];
 
-        let changes = compute_score_changes(&sessions, clock(today));
+        let changes = compute_analytics(
+            &sessions,
+            &[],
+            &crate::app::build_practice_summaries(&sessions),
+            &[],
+            clock(today),
+        )
+        .score_changes;
         assert_eq!(changes.len(), 5);
         // Should be sorted by largest absolute delta
         assert!(changes[0].delta.unsigned_abs() >= changes[1].delta.unsigned_abs());
