@@ -27,7 +27,7 @@ struct StoreDiskQueueTests {
     bridge.updateHandler = { event in
       next += 1
       if case .setQuery = event {
-        return [Request(id: next, effect: .persistence(.saveItem(StoreEffectLoopTests.sampleItem)))]
+        return [Request(id: next, effect: .persistence(.saveItem(LibraryItemFixture.record())))]
       }
       return [Request(id: next, effect: .persistence(.loadItems))]
     }
@@ -46,7 +46,7 @@ struct StoreDiskQueueTests {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [
-        Request(id: 1, effect: .persistence(.saveItem(StoreEffectLoopTests.sampleItem))),
+        Request(id: 1, effect: .persistence(.saveItem(LibraryItemFixture.record()))),
         Request(id: 2, effect: .persistence(.loadItems)),
         Request(id: 3, effect: .persistence(.loadSessions)),
       ]
