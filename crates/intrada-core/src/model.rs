@@ -256,13 +256,8 @@ pub enum FormErrorField {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ViewModel {
+    /// The whole library in sort order; the filter is `visible_ids` (#1998).
     pub items: Vec<LibraryItemView>,
-    /// `items`, unfiltered by `active_query` — for pickers that curate their
-    /// own subset rather than mirroring the Library screen's filter (#1484).
-    pub all_items: Vec<LibraryItemView>,
-    /// Up to 5 items with practice history, most recently practised first,
-    /// for the builder's "Recently practised" quick-add section (#1362).
-    pub recently_practised: Vec<LibraryItemView>,
     /// Active filter, mirrored so the shell's pill reads one source of truth (#792).
     pub active_query: Option<ListQuery>,
     /// Active sort, mirrored so the shell's menu reads one source of truth.
@@ -306,7 +301,8 @@ pub struct ViewModel {
     pub limits: LimitsView,
     /// Ids of the rows `active_query` leaves showing, in sort order.
     pub visible_ids: Vec<String>,
-    /// Ids of `recently_practised`, most recent first.
+    /// Up to 5 items with practice history, most recently practised first,
+    /// for the builder's "Recently practised" quick-add section (#1362).
     pub recently_practised_ids: Vec<String>,
 }
 

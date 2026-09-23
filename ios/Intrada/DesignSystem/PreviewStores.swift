@@ -30,16 +30,18 @@
     private let analytics: AnalyticsView?
     private let lastPractised: LastPractisedView?
     private let upNext: SuggestedSession?
-    private let recentlyPractised: [LibraryItemView]
+    private let recentlyPractisedIds: [String]
+    private let visibleIds: [String]?
     private let profile: ProfileView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
+      visibleIds: [String]? = nil,
       sessions: [PracticeSessionView] = [], practiceWeeks: [PracticeWeekView]? = nil,
       buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
-      upNext: SuggestedSession? = nil, recentlyPractised: [LibraryItemView] = [],
+      upNext: SuggestedSession? = nil, recentlyPractisedIds: [String] = [],
       profile: ProfileView? = nil
     ) {
       self.items = items
@@ -52,7 +54,8 @@
       self.analytics = analytics
       self.lastPractised = lastPractised
       self.upNext = upNext
-      self.recentlyPractised = recentlyPractised
+      self.recentlyPractisedIds = recentlyPractisedIds
+      self.visibleIds = visibleIds
       self.profile = profile
     }
 
@@ -64,15 +67,15 @@
       var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
       viewModel.activeQuery = activeQuery
       let visible: [LibraryItemView]
-      if let kind = activeQuery?.itemType {
+      if let visibleIds {
+        visible = items.filter { visibleIds.contains($0.id) }
+      } else if let kind = activeQuery?.itemType {
         visible = items.filter { $0.itemType == kind }
       } else {
         visible = items
       }
-      viewModel.items = visible
-      // The unfiltered set the pickers read, as the core projects it (#1484).
-      viewModel.allItems = items
-      // Type-filters items; callers pre-filter the list for text/tag queries.
+      viewModel.items = items
+      viewModel.visibleIds = visible.map(\.id)
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       // Derived from the whole library, never `visible`, so a fixture with a
@@ -86,7 +89,7 @@
       if let analytics { viewModel.analytics = analytics }
       viewModel.lastPractised = lastPractised
       viewModel.upNext = upNext
-      viewModel.recentlyPractised = recentlyPractised
+      viewModel.recentlyPractisedIds = recentlyPractisedIds
       if let profile { viewModel.profile = profile }
       return viewModel
     }
@@ -120,12 +123,13 @@
     }
 
     /// Text-searched library for the revealed-search-bar snapshot: "clair"
-    /// matches Clair de Lune. The bridge serves the already-matched subset.
+    /// matches Clair de Lune.
     static var previewLibrarySearching: Store {
       Store(
         bridge: PreviewBridge(
-          items: [.previewPiece],
-          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: [])))
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: []),
+          visibleIds: [LibraryItemView.previewPiece.id]))
     }
 
     /// A store driven by the *real* core seeded with the canonical demo dataset
@@ -262,7 +266,9 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
-          recentlyPractised: [.previewPiece, .previewExercise]))
+          recentlyPractisedIds: [
+            LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
+          ]))
     }
 
     /// Same as `previewBuildingRecentlyPractised`, but with the type filter set
@@ -270,12 +276,14 @@
     static var previewBuildingRecentlyPractisedFiltered: Store {
       Store(
         bridge: PreviewBridge(
-          items: [.previewExercise],
+          items: [.previewPiece, .previewExercise],
           activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
-          recentlyPractised: [.previewPiece, .previewExercise]))
+          recentlyPractisedIds: [
+            LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
+          ]))
     }
 
     /// Session builder with a block (a piece + 2 related) above a standalone

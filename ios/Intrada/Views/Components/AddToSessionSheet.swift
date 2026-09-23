@@ -8,11 +8,13 @@ struct AddToSessionSheet: View {
   @Environment(Store.self) private var store
   @State private var starFilter = false
 
-  private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
   private var displayedItems: [LibraryItemView] {
-    starFilter ? items.filter(\.priority) : items
+    starFilter ? visibleItems.filter(\.priority) : visibleItems
   }
-  private var recentlyPractised: [LibraryItemView] { store.viewModel?.recentlyPractised ?? [] }
+  private var recentlyPractised: [LibraryItemView] {
+    store.viewModel?.recentlyPractisedItems ?? []
+  }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
   private var entryByItem: [String: String] {
     Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
@@ -29,7 +31,8 @@ struct AddToSessionSheet: View {
   }
 
   @ViewBuilder private var library: some View {
-    if displayedItems.isEmpty {
+    let rows = displayedItems
+    if rows.isEmpty {
       PlaceholderContent(systemImage: emptyIcon, message: emptyMessage)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else {
@@ -41,7 +44,7 @@ struct AddToSessionSheet: View {
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
           LazyVStack(spacing: IntradaSpacing.cardCompact) {
-            ForEach(displayedItems, id: \.id) { libraryRow($0) }
+            ForEach(rows, id: \.id) { libraryRow($0) }
           }
         }
         .padding(IntradaSpacing.card)
@@ -96,7 +99,7 @@ struct AddToSessionSheet: View {
   }
 
   private var emptyMessage: String {
-    if starFilter && !items.isEmpty {
+    if starFilter && !visibleItems.isEmpty {
       return "No priorities yet. Swipe a row to add it to priorities."
     }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {

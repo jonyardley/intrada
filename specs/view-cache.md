@@ -59,10 +59,12 @@ pub struct ViewModel {
 }
 ```
 
-Every picker reads `items`. Today three of them (Add to session, Add related
-exercise, the entry settings variation list) read the filtered list, so a
-Library search hides their rows; this fixes that. Their own type and priority
-filters in Swift stay until #1999.
+The detail and add screens' link pickers and the entry settings variation list
+read `items`, so a Library search can no longer empty them. Add to session and
+Add related exercise read `visible_ids`: their own search bar writes the shared
+`ListQuery`, which they clear on open and restore on dismiss (#1440), so a
+Library search never reaches them. Their own type and priority filters in Swift
+stay until #1999.
 
 ## The two PRs
 
@@ -71,7 +73,7 @@ app builds and behaves as before.
 
 Screens: the Library screen and the split view render `visible_ids` looked up
 in the library, the builder's quick-add reads `recently_practised_ids`, the
-pickers read the whole library. Then `items` becomes the whole library, and
+pickers read as above. Then `items` becomes the whole library, and
 `all_items` and the `recently_practised` rows are deleted from the core.
 
 ## Tests

@@ -29,7 +29,7 @@ struct LibraryQueryFilterTests {
 
     _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
 
-    #expect(try bridge.view().items.map(\.title) == ["Hanon No. 1"])
+    #expect(try bridge.view().visibleItems.map(\.title) == ["Hanon No. 1"])
   }
 
   @Test("clearing the query restores the full list")
@@ -40,27 +40,24 @@ struct LibraryQueryFilterTests {
     _ = try bridge.update(.setQuery(nil))
 
     #expect(
-      Swift.Set(try bridge.view().items.map(\.title)) == ["Clair de Lune", "Hanon No. 1"])
+      Swift.Set(try bridge.view().visibleItems.map(\.title)) == ["Clair de Lune", "Hanon No. 1"])
   }
 
-  @Test("the visible ids cross the wire and name the filtered rows")
-  func visibleIdsCrossTheWire() throws {
+  @Test("a query leaves the whole library in items for the pickers")
+  func aQueryLeavesTheWholeLibraryInItems() throws {
     let bridge = try seededBridge()
     _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
 
-    let view = try bridge.view()
-    #expect(view.visibleIds == view.items.map(\.id))
-    #expect(view.visibleIds.count == 1)
-    #expect(view.allItems.count == 2)
+    #expect(try bridge.view().items.count == 2)
   }
 
-  @Test("the recently practised ids cross the wire and name the recent rows")
+  @Test("the recently practised ids cross the wire and name library rows")
   func recentlyPractisedIdsCrossTheWire() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.loadSampleData)
 
     let view = try bridge.view()
     #expect(!view.recentlyPractisedIds.isEmpty)
-    #expect(view.recentlyPractisedIds == view.recentlyPractised.map(\.id))
+    #expect(view.recentlyPractisedItems.map(\.id) == view.recentlyPractisedIds)
   }
 }
