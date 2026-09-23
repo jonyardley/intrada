@@ -13,10 +13,10 @@ drops a write, or destroys the only copy of a user's data. Never spell out an
 exploitable gap in a public PR body: say a gap exists and route the detail to
 Jon. Before editing:
 
-1. **Work it on Fable.** This surface is on the Fable list in
-   `docs/working-with-agents.md`: Fable 5.1 at `high` decides the shape and
-   builds it. Check with `/model` and `/effort`, and switch before the first
-   edit.
+1. **Work it on the Fable list's rung.** This surface is on the Fable list in
+   `docs/working-with-agents.md`: until 2026-10-07 that is Opus 5.5 at `xhigh`
+   (#2044), which decides the shape and builds it. Check with `/model` and
+   `/effort`, and switch before the first edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
    starts**, not only at the end, spawned with `model: fable`; its definition
    pins Opus.

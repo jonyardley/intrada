@@ -31,9 +31,10 @@ once, at the start, and leave effort alone.
 
 | Work | Model | Who sets it |
 |---|---|---|
-| The lead: everything with judgement in it | Opus 5 high | `.claude/settings.json`, on open |
-| The Fable list: the bridge, a migration, the crash-recovery blob, auth | Fable 5.1 high | You: `/model fable` then `/effort high` before the first line, and `/model opus` back when that work ends |
-| `reviewer` and `task` | Opus 5 high | Pinned in the agent definition |
+| The lead: everything with judgement in it | Opus 5.5 high | `.claude/settings.json`, on open |
+| The Fable list: the bridge, a migration, the crash-recovery blob, auth | Opus 5.5 xhigh until 2026-10-07 (#2044) | You: `/effort xhigh` before the first line, and `/effort high` back when that work ends |
+| `reviewer` | Opus 5.5 high, Fable 5.1 on a sensitive diff | Pinned in the agent definition; `/ship` lifts it |
+| `task` | Opus 5.5 medium until 2026-10-07 (#2044) | Pinned in the agent definition |
 | `test-runner` | Haiku 4.5 low | Pinned in the agent definition |
 | A one-off thinking question | Your call | You |
 
