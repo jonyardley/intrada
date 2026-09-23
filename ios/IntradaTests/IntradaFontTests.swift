@@ -15,16 +15,23 @@ struct IntradaFontTests {
   }
 
   @Test(arguments: [
-    IntradaFont.Hanken.medium, IntradaFont.Hanken.semibold, IntradaFont.Hanken.bold,
+    (IntradaFont.Hanken.regular, UIFont.Weight.regular.rawValue),
+    (IntradaFont.Hanken.medium, UIFont.Weight.medium.rawValue),
+    (IntradaFont.Hanken.semibold, UIFont.Weight.semibold.rawValue),
+    (IntradaFont.Hanken.bold, UIFont.Weight.bold.rawValue),
   ])
-  func weightedFaceIsHeavierThanRegular(_ name: String) throws {
+  func faceCarriesItsWeight(_ name: String, weight: CGFloat) throws {
     IntradaFonts.register()
-    let regular = try #require(UIFont(name: IntradaFont.Hanken.regular, size: 16))
-    let weighted = try #require(UIFont(name: name, size: 16))
-    #expect(width("Clair de Lune", in: weighted) > width("Clair de Lune", in: regular))
+    let font = try #require(UIFont(name: name, size: 16))
+    let traits = font.fontDescriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any]
+    let actual = try #require(traits?[.weight] as? CGFloat)
+    let nearest = Self.namedWeights.min { abs($0 - actual) < abs($1 - actual) }
+    #expect(nearest == weight)
   }
 
-  private func width(_ text: String, in font: UIFont) -> CGFloat {
-    (text as NSString).size(withAttributes: [.font: font]).width
-  }
+  /// A bundled face reports its OS/2 class, which sits near a named weight
+  /// rather than on it.
+  private static let namedWeights = [
+    UIFont.Weight.light, .regular, .medium, .semibold, .bold, .heavy,
+  ].map(\.rawValue)
 }

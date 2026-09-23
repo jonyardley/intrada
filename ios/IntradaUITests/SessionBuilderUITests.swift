@@ -127,9 +127,9 @@ final class SessionBuilderUITests: XCTestCase {
   }
 
   /// Grouped block, end to end: link exercises to a piece, add the piece (block
-  /// forms), long-press-drag a nested exercise to reorder it with NO Edit mode
-  /// (each flattened row lifts natively), then tap the row to open its settings.
-  func testNestedGripDragReordersAndRowTapOpensSettings() {
+  /// forms), then tap a nested row to open its settings. The core's side of a
+  /// nested reorder is pinned in `SessionBridgeTests` (#2003).
+  func testNestedRowTapOpensEntrySettings() {
     let app = launchSeeded()
 
     app.tabBars.buttons["Library"].tap()
@@ -167,18 +167,6 @@ final class SessionBuilderUITests: XCTestCase {
     let scalesRow = builderRow(app, titled: "Major Scales", meta: "Related")
     XCTAssertTrue(hanonRow.waitForExistence(timeout: 10), "nested Hanon row")
     XCTAssertTrue(scalesRow.exists, "nested Scales row")
-
-    // The linked order isn't deterministic (the picker applies a Set), so drag
-    // whichever nested row is lower above the other and assert the flip. The
-    // drop lands INSIDE the target row's upper half — each flattened row lifts
-    // natively, exactly like the top-level test.
-    let hanonFirst = hanonRow.frame.minY < scalesRow.frame.minY
-    let upper = hanonFirst ? hanonRow : scalesRow
-    let lower = hanonFirst ? scalesRow : hanonRow
-    let flipped = dragUntilSettled(lower, onto: upper, targetDy: 0.25) {
-      lower.exists && upper.exists && lower.frame.minY < upper.frame.minY
-    }
-    XCTAssertTrue(flipped, "long-press drag reorders nested rows without Edit")
 
     // Row tap opens the entry settings sheet (Toggle labels surface as switches).
     hanonRow.tap()

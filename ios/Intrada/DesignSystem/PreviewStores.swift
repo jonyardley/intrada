@@ -1,0 +1,414 @@
+#if DEBUG
+  import Foundation
+  import IntradaCoreFFI
+  import SharedTypes
+
+  /// A fixed Gregorian/UTC calendar so date-derived UI (the week strip) renders
+  /// identically on any host; pair it with `previewReferenceDate` in previews
+  /// and pin it via `.environment(\.calendar, PreviewCalendar.utc)` in snapshot hosts.
+  enum PreviewCalendar {
+    static var utc: Calendar {
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+      return calendar
+    }
+  }
+
+  /// Offline bridge for Xcode previews: serves the core's initial (empty)
+  /// ViewModel, optionally seeded with library items, and emits no effects,
+  /// so store-backed screens render in the canvas without FFI networking.
+  final class PreviewBridge: CoreBridge {
+    private let core = CoreFfi()
+    private let items: [LibraryItemView]
+    private let activeQuery: ListQuery?
+    private let sessions: [PracticeSessionView]
+    private let practiceWeeks: [PracticeWeekView]?
+    private let buildingSetlist: BuildingSetlistView?
+    private let activeSession: ActiveSessionView?
+    private let summary: SummaryView?
+
+    private let analytics: AnalyticsView?
+    private let lastPractised: LastPractisedView?
+    private let upNext: SuggestedSession?
+    private let recentlyPractised: [LibraryItemView]
+    private let profile: ProfileView?
+
+    init(
+      items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
+      sessions: [PracticeSessionView] = [], practiceWeeks: [PracticeWeekView]? = nil,
+      buildingSetlist: BuildingSetlistView? = nil,
+      activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
+      analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
+      upNext: SuggestedSession? = nil, recentlyPractised: [LibraryItemView] = [],
+      profile: ProfileView? = nil
+    ) {
+      self.items = items
+      self.activeQuery = activeQuery
+      self.sessions = sessions
+      self.practiceWeeks = practiceWeeks
+      self.buildingSetlist = buildingSetlist
+      self.activeSession = activeSession
+      self.summary = summary
+      self.analytics = analytics
+      self.lastPractised = lastPractised
+      self.upNext = upNext
+      self.recentlyPractised = recentlyPractised
+      self.profile = profile
+    }
+
+    func update(_ event: Event) throws -> [Request] { [] }
+    func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
+    func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
+    func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
+    func view() throws -> ViewModel {
+      var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
+      viewModel.activeQuery = activeQuery
+      let visible: [LibraryItemView]
+      if let kind = activeQuery?.itemType {
+        visible = items.filter { $0.itemType == kind }
+      } else {
+        visible = items
+      }
+      viewModel.items = visible
+      // The unfiltered set the pickers read, as the core projects it (#1484).
+      viewModel.allItems = items
+      // Type-filters items; callers pre-filter the list for text/tag queries.
+      viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
+      viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
+      // Derived from the whole library, never `visible`, so a fixture with a
+      // filter on still reports what the core would report (#981).
+      viewModel.hasPriorities = items.contains { $0.priority }
+      viewModel.sessions = sessions
+      if let practiceWeeks { viewModel.practiceWeeks = practiceWeeks }
+      viewModel.buildingSetlist = buildingSetlist
+      viewModel.activeSession = activeSession
+      viewModel.summary = summary
+      if let analytics { viewModel.analytics = analytics }
+      viewModel.lastPractised = lastPractised
+      viewModel.upNext = upNext
+      viewModel.recentlyPractised = recentlyPractised
+      if let profile { viewModel.profile = profile }
+      return viewModel
+    }
+  }
+
+  extension Store {
+    /// A deterministic, offline store for `#Preview` blocks.
+    static var preview: Store { Store(bridge: PreviewBridge()) }
+
+    static var previewPracticeEmpty: Store {
+      Store(bridge: PreviewBridge(practiceWeeks: [.previewEmptyWeek]))
+    }
+
+    /// A cellist called Jon on coral, greeted in the morning (#1692).
+    static var previewProfile: Store {
+      Store(bridge: PreviewBridge(profile: .previewCellist))
+    }
+
+    /// An offline store with curated sample items (specific edge cases).
+    /// Used by snapshot tests where the exact data must be deterministic.
+    static var previewLibrary: Store {
+      Store(bridge: PreviewBridge(items: [.previewPiece, .previewExercise, .previewMinimal]))
+    }
+
+    /// Pieces-filtered library for the filtered-state snapshot (#792).
+    static var previewLibraryFiltered: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(text: nil, itemType: .piece, key: nil, tags: [])))
+    }
+
+    /// Text-searched library for the revealed-search-bar snapshot: "clair"
+    /// matches Clair de Lune. The bridge serves the already-matched subset.
+    static var previewLibrarySearching: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece],
+          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: [])))
+    }
+
+    /// A store driven by the *real* core seeded with the canonical demo dataset
+    /// (`Event.loadSampleData` → `sample_items()`). Render-only, so it completes
+    /// synchronously and offline. Use in screen previews: same data as the CI
+    /// screenshot, and the filter pills actually work in the canvas.
+    /// Not for snapshot tests: `sample_items()` stamps wall-clock timestamps.
+    static var previewSeeded: Store {
+      let store = Store()
+      store.send(.loadSampleData)
+      return store
+    }
+
+    /// Library with a populated Priorities section (2 starred, 1 not) for the
+    /// pinned-section snapshot. Injected directly so priority + ids are stable.
+    static var previewLibraryPriorities: Store {
+      Store(
+        bridge: PreviewBridge(items: [
+          starred(.previewPiece), starred(.previewExercise), .previewMinimal,
+        ]))
+    }
+
+    private static func starred(_ item: LibraryItemView) -> LibraryItemView {
+      var copy = item
+      copy.priority = true
+      return copy
+    }
+
+    /// Practice home with deterministic sessions (fixed past dates) for the
+    /// populated-state snapshot, covers both completed + ended-early cards.
+    static var previewPractice: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday))
+    }
+
+    /// The Practice home as a named cellist sees it: greeted, with the badge (#1694).
+    static var previewPracticeProfile: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday, profile: .previewCellist))
+    }
+
+    /// Practice home with something to suggest (#1082).
+    static var previewPracticeSuggestion: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday, upNext: .previewStarred))
+    }
+
+    /// Practice home with something starred, so the priorities route shows
+    /// under the ordinary hero (#981).
+    static var previewPracticePriorities: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [starred(.previewPiece), .previewMinimal],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday))
+    }
+
+    /// A suggestion and a starred library together: the one layout where two
+    /// secondary actions stack under a single primary (#981).
+    static var previewPracticeSuggestionPriorities: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [starred(.previewPiece), .previewMinimal],
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday, upNext: .previewStarred))
+    }
+
+    /// Practice home with a crash-recovery blob pending (#962), drives the
+    /// Resume / Discard prompt above the hero.
+    static var previewPracticeRecovery: Store {
+      let store = Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly], practiceWeeks: [.previewWeek],
+          lastPractised: .previewYesterday))
+      store.recoverableSession = ActiveSession(
+        id: "recover-1",
+        entries: [
+          SetlistEntry(
+            id: "re1", itemId: "i1", itemTitle: "Scales · D♭ major", itemType: .exercise,
+            position: 0, durationSecs: 180, status: .completed,
+            notes: nil, intention: nil, plannedDurationSecs: nil,
+            groupId: nil, plannedVariationId: nil, plannedRepTarget: nil,
+            plays: [
+              VariationPlay(
+                id: "re1-p1", variationId: nil, startedAt: "2026-06-16T08:59:00Z",
+                seconds: 180, repTarget: nil, repCount: nil, repTargetReached: nil,
+                repHistory: nil, achievedTempo: nil, clickPattern: nil,
+                score: nil)
+            ]),
+          SetlistEntry(
+            id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
+            position: 1, durationSecs: 0, status: .notAttempted,
+            notes: nil, intention: nil, plannedDurationSecs: nil,
+            groupId: nil, plannedVariationId: nil, plannedRepTarget: nil, plays: []),
+        ],
+        currentIndex: 1,
+        currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z")
+      return store
+    }
+
+    /// Session builder mid-assembly: a non-empty setlist for the populated-state
+    /// preview + snapshot. Injected directly (deterministic, offline) rather than
+    /// driven through the core, whose ulids/timestamps aren't snapshot-stable.
+    static var previewBuilding: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [.previewPiece, .previewExercise],
+            itemCount: 2,
+            blocks: [
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewPiece]),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewExercise]),
+            ],
+            blockCount: 2,
+            totalDurationDisplay: nil, totalDurationSummary: nil)))
+    }
+
+    /// Session builder's add-items sheet with a "Recently practised" quick-add
+    /// section (#1362), independent of `previewBuilding`'s own items/setlist.
+    static var previewBuildingRecentlyPractised: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            totalDurationDisplay: nil, totalDurationSummary: nil),
+          recentlyPractised: [.previewPiece, .previewExercise]))
+    }
+
+    /// Same as `previewBuildingRecentlyPractised`, but with the type filter set
+    /// to exercises, the section must not survive an active filter (#1362).
+    static var previewBuildingRecentlyPractisedFiltered: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewExercise],
+          activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            totalDurationDisplay: nil, totalDurationSummary: nil),
+          recentlyPractised: [.previewPiece, .previewExercise]))
+    }
+
+    /// Session builder with a block (a piece + 2 related) above a standalone
+    /// item, the grouped-state preview + snapshot.
+    static var previewBuildingGrouped: Store {
+      let block: [SetlistEntryView] = [
+        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
+      ]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: block + [.previewStandaloneExercise],
+            itemCount: 4,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
+                durationDisplay: "12 min", entries: block),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewStandaloneExercise]),
+            ],
+            blockCount: 2,
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
+    }
+
+    /// Session builder where one of the block's related exercises is also in
+    /// the library, the added state of the add-related sheet (#1103).
+    static var previewBuildingGroupedAdded: Store {
+      let block: [SetlistEntryView] = [.previewGroupedScales, .previewGroupedPiece]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewScales, .previewExercise],
+          buildingSetlist: BuildingSetlistView(
+            entries: block,
+            itemCount: 2,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
+                durationDisplay: "12 min", entries: block)
+            ],
+            blockCount: 1,
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
+    }
+
+    /// Player Focus: a piece mid-session, no reps.
+    static var previewActive: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActive))
+    }
+
+    /// Player Focus: an exercise with an active rep counter.
+    static var previewActiveLongSession: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActiveLongSession))
+    }
+
+    static var previewActiveReps: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
+    }
+
+    /// Player Focus: an exercise with variations, so the picker chip shows
+    /// what is being practised right now (#1739).
+    static var previewActiveVariations: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewExerciseWithVariations], activeSession: .previewActiveVariations))
+    }
+
+    static var previewSummary: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummary, analytics: .previewAnalytics))
+    }
+
+    /// Player Summary: one exercise practised across three keys, so each gets
+    /// its own mark (#1739 decision 10).
+    static var previewSummaryVariations: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummaryVariations))
+    }
+
+    /// Player Summary: ended early, so the unreached item shows not-attempted.
+    static var previewSummaryEndedEarly: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummaryEndedEarly))
+    }
+
+    /// Progress: a populated analytics view (dial, consistency, recent
+    /// mastery) plus two practised exercises with variations, so the coverage
+    /// section renders (#1739).
+    static var previewProgress: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [
+            scored(.previewExerciseWithVariations, 7),
+            scored(.previewExerciseWithTwelveVariations, 6),
+          ],
+          analytics: .previewAnalytics))
+    }
+
+    /// Library where rows carry a mastery score, so the trailing meters fill.
+    static var previewLibraryMastery: Store {
+      Store(
+        bridge: PreviewBridge(items: [
+          scored(.previewPiece, 4), scored(.previewExercise, 3), .previewMinimal,
+        ]))
+    }
+
+    /// Detail view: piece with 3 linked exercises (varied scores, one unrated).
+    static var previewDetailLinkedPopulated: Store {
+      Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    }
+
+    /// Detail view: piece with no linked exercises, shows the empty state.
+    static var previewDetailLinkedEmpty: Store {
+      Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
+    }
+
+    /// Detail view: exercise linked to 2 pieces it has never been practised with.
+    static var previewExerciseLinkedOnlyStore: Store {
+      Store(bridge: PreviewBridge(items: [.previewExerciseLinkedOnly]))
+    }
+
+    private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
+      var copy = item
+      copy.practice = ItemPracticeSummary.fixture(
+        sessionCount: 8, totalMinutes: 120, latestScore: score, scoreHistory: [],
+        latestTempo: nil, lastPracticedAt: "2026-05-30T09:00:00Z")
+      return copy
+    }
+  }
+
+  extension ProfileView {
+    static var previewCellist: ProfileView {
+      ProfileView(
+        name: "Jon", instrument: "Cello", suggestedIcon: .cello, icon: .cello, colour: .coral,
+        greeting: "Morning, Jon")
+    }
+  }
+#endif

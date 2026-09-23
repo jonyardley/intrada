@@ -173,7 +173,7 @@ and everything they contain):
   combined with non-trailing fields — anything assuming "absent" versus "present"
   semantics. bincode has no "absent".
 - **Stub-bridge tests can't catch this.** Cover bridge-crossing types with a
-  *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`) that drives
+  *real*-bridge round-trip (`LiveBridge` in `LibraryBridgeTests` or `SessionBridgeTests`) that drives
   the actual Swift↔Rust bincode serialization. See
   `testRealBridgeEditAppliesToViewModel`.
 

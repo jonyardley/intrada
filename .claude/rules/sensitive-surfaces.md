@@ -31,7 +31,7 @@ The hazards, by file:
   and `skip_serializing_if` on a non-trailing field produce a silent no-op,
   not a crash (#846). Branch on `Deserializer::is_human_readable()` for
   JSON-only behaviour, and cover the type with a real-bridge round-trip
-  (`LiveBridge` in `StoreEffectLoopTests`).
+  (`LiveBridge` in `LibraryBridgeTests` or `SessionBridgeTests`).
 - **`ios/generated/`.** Never hand-edit. Fix the Rust type and regenerate.
   UniFFI output fails under Swift 6.2 `MainActor`-default isolation
   (uniffi-rs#2818); the build recipe keeps the package non-MainActor-defaulted.
