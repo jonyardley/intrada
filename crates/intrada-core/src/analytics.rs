@@ -177,6 +177,7 @@ impl LocalClock {
 
 // ── Computation Functions ────────────────────────────────────────────
 
+#[cfg(test)]
 pub fn compute_analytics(
     sessions: &[PracticeSession],
     items: &[Item],

@@ -11,7 +11,7 @@ extension Array where Element == LibraryItemView {
         id: item.id, title: item.title, subtitle: item.subtitle, notes: item.notes,
         tags: item.tags, createdAt: item.createdAt,
         lastPracticedAt: item.practice?.lastPracticedAt,
-        kind: item.itemType == .piece ? .piece : .exercise, priority: item.priority)
+        kind: PickerKind(item.itemType), priority: item.priority)
     }
     let orderedIds = sortAndFilterPickerCandidates(
       candidates: candidates, sort: sort.pickerSortArg, search: search,
@@ -35,5 +35,14 @@ extension LibrarySort {
       case .descending: .descending
       }
     return PickerSortArg(field: field, direction: direction)
+  }
+}
+
+extension PickerKind {
+  init(_ kind: ItemKind) {
+    switch kind {
+    case .piece: self = .piece
+    case .exercise: self = .exercise
+    }
   }
 }

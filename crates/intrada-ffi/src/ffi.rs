@@ -95,7 +95,8 @@ impl From<PickerCandidateArg> for crate::view::library::PickerCandidate {
     }
 }
 
-/// `ItemKind`'s copy at the plain-call boundary, as `PickerSortField` is.
+/// The core stays UniFFI-agnostic, so the kind crosses the plain call as its
+/// own enum.
 #[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PickerKind {

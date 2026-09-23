@@ -154,7 +154,6 @@ pub struct ListQuery {
     /// Empty vec means "no filter". Avoids `Option<Vec<T>>` which
     /// serde-reflection (used by Crux typegen) cannot handle.
     pub tags: Vec<String>,
-    /// The star filter: only items marked as a priority.
     pub priority_only: bool,
 }
 

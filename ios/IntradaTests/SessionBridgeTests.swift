@@ -521,6 +521,26 @@ final class SessionBridgeTests: XCTestCase {
       [block.entries[1].id, block.entries[0].id, block.entries[2].id])
   }
 
+  /// `entryVariations` is a new struct on the wire; the entry settings sheet
+  /// reads its variations from it (#1957).
+  func testRealBridgeBuilderEntryCarriesItsVariations() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "G"]))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
+
+    let building = try XCTUnwrap(try bridge.view().buildingSetlist)
+    let entryId = try XCTUnwrap(building.entries.first?.id)
+    XCTAssertEqual(building.entryVariations.map(\.entryId), [entryId])
+    XCTAssertEqual(building.entryVariations.first?.variations.map(\.label), ["C", "G"])
+  }
+
   /// `moveUnit` crosses the wire: named by one of its exercises, the whole
   /// block moves past the standalone (#1957).
   func testRealBridgeMoveUnitMovesTheWholeBlock() throws {

@@ -2406,7 +2406,7 @@ mod tests {
     }
 
     #[test]
-    fn the_builder_carries_each_entrys_variations() {
+    fn the_builder_carries_the_variations_of_each_entry() {
         use crate::domain::session::SessionEvent;
         let app = Intrada;
         let now = chrono::Utc::now();
@@ -2761,7 +2761,7 @@ mod tests {
         let mut starred_piece = make_item("p1", "Clair de Lune", ItemKind::Piece, now);
         starred_piece.priority = true;
         starred_piece.tags = vec!["recital".to_string()];
-        let plain_piece = make_item("p2", "Clair Obscur", ItemKind::Piece, now);
+        let plain_piece = make_item("p2", "Clair Nocturne", ItemKind::Piece, now);
         let mut starred_exercise = make_item("e1", "Clair scales", ItemKind::Exercise, now);
         starred_exercise.priority = true;
         model.items = vec![starred_piece, plain_piece, starred_exercise].into();

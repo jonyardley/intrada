@@ -499,7 +499,6 @@ pub struct LibraryItemView {
     /// `serde(default)`, matching `ladder_is_keys`: the bridge is positional
     /// bincode, where a default is never read (#846).
     pub shows_key: bool,
-    /// How many of `variants` are solid.
     pub solid_variation_count: usize,
 }
 

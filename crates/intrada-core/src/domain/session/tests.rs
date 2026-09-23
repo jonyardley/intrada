@@ -964,6 +964,8 @@ fn move_unit_moves_the_unit_holding_the_entry() {
             .iter()
             .map(|e| (e.item_id.clone(), e.group_id.clone()))
             .collect();
+        move_unit(&mut m, "ex-nowhere", 0);
+        assert!(m.last_error.is_some(), "a refused move first");
         move_unit(&mut m, item_id, *new_position);
         assert!(
             m.last_error.is_none(),
@@ -1004,6 +1006,8 @@ fn move_related_moves_an_exercise_within_its_block() {
     ];
     for (item_id, new_position, expected_block) in cases {
         let mut m = four_unit_model();
+        move_related(&mut m, "piece-P", 0);
+        assert!(m.last_error.is_some(), "a refused move first");
         move_related(&mut m, item_id, *new_position);
         assert!(
             m.last_error.is_none(),
