@@ -169,14 +169,71 @@ final class LibraryStoreMigrationTests: XCTestCase {
     try queue.read { db in
       let row = try Row.fetchOne(db, sql: "SELECT entries FROM session WHERE id='s2'")!
       let entries: String = row["entries"]
-      // Score 5 × 2 = 10 — at the clamp boundary.
-      XCTAssertTrue(entries.contains("\"score\":10"), "score 5 must clamp to 10 after ×2 rescale")
-      // The notes field on entry e1 must survive the decode→re-encode round-trip.
-      XCTAssertTrue(
-        entries.contains("\"notes\":\"keep\""), "notes field must survive blob re-encode")
-      // Entry e2 had no score key — must still have no score after rescale.
+      XCTAssertTrue(entries.contains("\"score\":10"), "score 5 must rescale ×2 to 10")
+      XCTAssertTrue(entries.contains("\"notes\":\"keep\""), "notes must survive the rescale")
+      // Entry e2 had no score key, so it must still have no score after the rescale.
       XCTAssertFalse(entries.contains("\"score\":0"), "null-score entry must not gain a zero score")
     }
+  }
+
+  // #1947: the rescale must not depend on today's entry codec, which gains
+  // required fields that a pre-v5 row never had.
+  func testV5RescalesAnEntryTodaysCodecCannotDecode() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v3_session")
+    try queue.write { db in
+      try insertV3Session(db, id: "s1", entries: #"[{"id":"e1","score":3,"legacyKey":"x"}]"#)
+    }
+
+    try LibraryStore.migrator.migrate(queue)
+
+    let entries = try storedEntries(queue, id: "s1")
+    XCTAssertEqual(entries.count, 1)
+    XCTAssertEqual(entries.first?["score"] as? Int, 6)
+    XCTAssertEqual(entries.first?["legacyKey"] as? String, "x")
+    XCTAssertNil(entries.first?["itemId"], "the rescale must not add fields the row never had")
+  }
+
+  func testV5LeavesAnUnreadableRowAloneAndRescalesTheRest() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v3_session")
+    try queue.write { db in
+      try insertV3Session(db, id: "bad", entries: "not json")
+      try insertV3Session(db, id: "object", entries: #"{"a":{"score":3}}"#)
+      try insertV3Session(
+        db, id: "good", entries: #"[{"id":"e1","score":2},{"id":"e2","score":4}]"#)
+    }
+
+    try LibraryStore.migrator.migrate(queue)
+
+    try queue.read { db in
+      XCTAssertEqual(
+        try String.fetchOne(db, sql: "SELECT entries FROM session WHERE id = 'bad'"), "not json")
+      XCTAssertEqual(
+        try String.fetchOne(db, sql: "SELECT entries FROM session WHERE id = 'object'"),
+        #"{"a":{"score":3}}"#)
+    }
+    let good = try storedEntries(queue, id: "good")
+    XCTAssertEqual(good.map { $0["id"] as? String }, ["e1", "e2"])
+    XCTAssertEqual(good.map { $0["score"] as? Int }, [4, 8])
+  }
+
+  private func insertV3Session(_ db: Database, id: String, entries: String) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+          completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
+        VALUES (?, '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', 60, 'completed', NULL, NULL,
+          ?, '2026-01-01T00:00:00Z', NULL)
+        """, arguments: [id, entries])
+  }
+
+  private func storedEntries(_ queue: DatabaseQueue, id: String) throws -> [[String: Any]] {
+    let json = try queue.read { db in
+      try String.fetchOne(db, sql: "SELECT entries FROM session WHERE id = ?", arguments: [id])
+    }
+    let parsed = try JSONSerialization.jsonObject(with: Data(try XCTUnwrap(json).utf8))
+    return try XCTUnwrap(parsed as? [[String: Any]])
   }
 
   // ── v6: linked_exercise_ids ───────────────────────────────────────────

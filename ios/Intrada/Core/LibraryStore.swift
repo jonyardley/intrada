@@ -221,21 +221,37 @@ final class LibraryStore: ItemStore {
     migrator.registerMigration("v4_session_score") { db in
       try db.execute(sql: "ALTER TABLE session ADD COLUMN session_score INTEGER")
     }
+    // Rescales in SQL, never through StoredEntry: decoding with today's codec
+    // changed this shipped migration whenever the codec did (#1947). One
+    // json_set per score, since json_group_array does not promise array order.
     migrator.registerMigration("v5_rescale_entry_scores") { db in
-      let rows = try Row.fetchAll(db, sql: "SELECT id, entries FROM session")
+      let rows = try Row.fetchAll(
+        db,
+        sql: """
+          SELECT id, entries,
+            CASE WHEN json_valid(entries) THEN json_type(entries) END = 'array' AS readable
+          FROM session
+          """)
       for row in rows {
         let id: String = row["id"]
-        let json: String = row["entries"]
-        guard var dtos = try? JSONDecoder().decode([StoredEntry].self, from: Data(json.utf8))
-        else { continue }
-        for i in dtos.indices {
-          if let s = dtos[i].score { dtos[i].score = UInt8(min(10, Int(s) * 2)) }
+        let entries: String = row["entries"]
+        guard row["readable"] as Bool? == true else {
+          report(StoredCodecError(field: "entries"), "LibraryStore v5 rescale")
+          continue
         }
-        guard let data = try? JSONEncoder().encode(dtos),
-          let rescaled = String(data: data, encoding: .utf8)
-        else { continue }
-        try db.execute(
-          sql: "UPDATE session SET entries = ? WHERE id = ?", arguments: [rescaled, id])
+        let scorePaths = try String.fetchAll(
+          db,
+          sql: """
+            SELECT fullkey || '.score' FROM json_each(?)
+            WHERE json_type(?, fullkey || '.score') = 'integer'
+            """, arguments: [entries, entries])
+        for path in scorePaths {
+          try db.execute(
+            sql: """
+              UPDATE session SET entries = json_set(entries, ?, min(10, json_extract(entries, ?) * 2))
+              WHERE id = ?
+              """, arguments: [path, path, id])
+        }
       }
     }
     migrator.registerMigration("v6_item_linked_exercises") { db in
@@ -735,8 +751,7 @@ final class LibraryStore: ItemStore {
   /// The per-play fields below `plannedDurationSecs` are LEGACY: every row
   /// written before #1739 carries them at entry level and has no `plays`, and
   /// `decodeEntries` folds them into one play. Nothing writes them any more,
-  /// and nothing on device is rewritten (#1739 decision 8). The v5 migration
-  /// still reads `score`, which is why it stays.
+  /// and nothing on device is rewritten (#1739 decision 8).
   private struct StoredEntry: Codable {
     var id: String
     var itemId: String
