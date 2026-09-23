@@ -496,11 +496,14 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(states), as: config)
   }
 
-  func testClickSheetIrregularMetre() {
+  func testClickSheetIrregularMetre() throws {
     let click = ClickController()
     click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]))
     click.apply(.groupStarts)
-    assertSnapshot(of: host(ClickSheet(click: click, bpm: 168)), as: config)
+    let store = Store(bridge: StubBridge())
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
   /// The sounding row is the tight one, so it is the state that has to reflow.
@@ -1413,16 +1416,20 @@ final class ScreenSnapshotTests: XCTestCase {
       as: config)
   }
 
-  func testEntrySettingsSheetEmpty() {
+  func testEntrySettingsSheetEmpty() throws {
+    let store = Store.previewBuildingGrouped
+    let limits = try XCTUnwrap(store.viewModel?.limits)
     assertSnapshot(
-      of: host(EntrySettingsSheet(entry: .previewGroupedScales), store: .previewBuildingGrouped),
+      of: host(EntrySettingsSheet(entry: .previewGroupedScales, limits: limits), store: store),
       as: config)
   }
 
-  func testEntrySettingsSheetPopulated() {
+  func testEntrySettingsSheetPopulated() throws {
+    let store = Store.previewBuildingGrouped
+    let limits = try XCTUnwrap(store.viewModel?.limits)
     assertSnapshot(
       of: host(
-        EntrySettingsSheet(entry: .previewGroupedScalesConfigured), store: .previewBuildingGrouped
+        EntrySettingsSheet(entry: .previewGroupedScalesConfigured, limits: limits), store: store
       ), as: config)
   }
 

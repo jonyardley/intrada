@@ -51,7 +51,9 @@ struct FocusPlayerScreen: View {
       .interactiveDismissDisabled()
     }
     .sheet(isPresented: $configuringClick) {
-      ClickSheet(click: click, bpm: click.bpm)
+      if let limits = store.viewModel?.limits {
+        ClickSheet(click: click, bpm: click.bpm, limits: limits)
+      }
     }
     .sheet(isPresented: $switchingVariation) {
       if let active {

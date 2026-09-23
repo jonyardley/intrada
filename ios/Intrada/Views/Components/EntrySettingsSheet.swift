@@ -6,6 +6,7 @@ import SwiftUI
 /// change (no separate Save), matching the `SessionSummaryScreen` notes idiom.
 struct EntrySettingsSheet: View {
   let entry: SetlistEntryView
+  let limits: LimitsView
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
 
@@ -22,18 +23,25 @@ struct EntrySettingsSheet: View {
     store.viewModel?.items.first(where: { $0.id == entry.itemId })?.variants ?? []
   }
 
-  // Mirrors crates/intrada-core/src/validation.rs MIN/MAX_REP_TARGET and
-  // DEFAULT_REP_TARGET.
-  private let repTargetRange = 3...10
-  private let defaultRepTarget = 10
-  // Mirrors MIN/MAX_PLANNED_DURATION_SECS (60–3600s), in whole minutes.
-  private let durationRange = 1...60
+  var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }
 
-  init(entry: SetlistEntryView) {
+  /// The core states the bound in seconds and the stepper offers whole minutes,
+  /// so both ends round inwards: a bound the stepper cannot land on exactly
+  /// would otherwise offer a minute the core refuses.
+  var durationRange: ClosedRange<Int> {
+    Int((limits.plannedDurationMinSecs + 59) / 60)...Int(limits.plannedDurationMaxSecs / 60)
+  }
+
+  static func initialRepTarget(for entry: SetlistEntryView, limits: LimitsView) -> Int {
+    Int(entry.plannedRepTarget ?? limits.repTargetDefault)
+  }
+
+  init(entry: SetlistEntryView, limits: LimitsView) {
     self.entry = entry
+    self.limits = limits
     _intention = State(initialValue: entry.intention ?? "")
     _tracksReps = State(initialValue: entry.plannedRepTarget != nil)
-    _repTarget = State(initialValue: Int(entry.plannedRepTarget ?? UInt8(defaultRepTarget)))
+    _repTarget = State(initialValue: Self.initialRepTarget(for: entry, limits: limits))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
     _plannedMinutes = State(initialValue: Int((entry.plannedDurationSecs ?? 360) / 60))
     _variantId = State(initialValue: entry.plannedVariationId)
@@ -182,9 +190,12 @@ struct EntrySettingsSheet: View {
 
 #if DEBUG
   #Preview("Entry settings") {
+    let store = Store.previewBuildingGrouped
     Color.black.opacity(0.2).ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
-        EntrySettingsSheet(entry: .previewGroupedScales).environment(Store.previewBuildingGrouped)
+        if let limits = store.viewModel?.limits {
+          EntrySettingsSheet(entry: .previewGroupedScales, limits: limits).environment(store)
+        }
       }
   }
 #endif
