@@ -138,9 +138,10 @@ impl Intrada {
     fn handle_event(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             // ── Lifecycle ────────────────────────────────────────────
-            Event::StartApp => {
-                Command::all([persistence::load_items(), persistence::load_sessions()])
-            }
+            Event::StartApp => Command::all([
+                persistence::load_items(model),
+                persistence::load_sessions(model),
+            ]),
             Event::SetUtcOffset { minutes } => {
                 model.utc_offset_minutes = minutes;
                 crux_core::render::render()
@@ -181,53 +182,85 @@ impl Intrada {
 
             // ── Local-first persistence ──────────────────────────────
             Event::StoreLoaded(output) => match output {
-                PersistenceOutput::Items(items) => {
-                    model.items = items.into();
-                    crux_core::render::render()
+                PersistenceOutput::Items(items) => match model.items_sync.load_landed() {
+                    persistence::Landed::Apply => {
+                        model.items = items.into();
+                        crux_core::render::render()
+                    }
+                    persistence::Landed::Drop => Command::done(),
+                    persistence::Landed::Reload => persistence::load_items(model),
+                },
+                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => {
+                    persistence::items_load_ended(model, Command::done())
                 }
-                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
-                // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_storage_error();
-                    crux_core::render::render()
+                    persistence::items_load_ended(model, crux_core::render::render())
                 }
             },
-            Event::StoreWritten(output) => match output {
-                PersistenceOutput::Ack => {
-                    model.record_ack();
-                    Command::done()
-                }
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
-                // Failed write → reload to roll back the un-persisted change (#825).
-                PersistenceOutput::Failed => {
-                    model.surface_storage_error();
-                    persistence::load_items()
-                }
-            },
-            Event::SessionsStoreLoaded(output) => match output {
-                PersistenceOutput::Sessions(sessions) => {
-                    model.sessions = sessions.into();
-                    model.practice_summaries = build_practice_summaries(&model.sessions).into();
-                    crux_core::render::render()
-                }
-                PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Failed => {
-                    model.surface_storage_error();
-                    crux_core::render::render()
-                }
-            },
-            Event::SessionStoreWritten(output) => match output {
-                PersistenceOutput::Ack => {
-                    model.record_ack();
-                    crate::domain::session::save_acknowledged(model)
-                }
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
-                PersistenceOutput::Failed => crate::domain::session::save_refused(model)
-                    .unwrap_or_else(|| {
+            Event::StoreWritten(output) => {
+                let refused = matches!(output, PersistenceOutput::Failed);
+                let shown = match output {
+                    PersistenceOutput::Ack => {
+                        model.record_ack();
+                        Command::done()
+                    }
+                    PersistenceOutput::Failed => {
                         model.surface_storage_error();
-                        persistence::load_sessions()
-                    }),
+                        crux_core::render::render()
+                    }
+                    PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                };
+                // A refused write reloads to roll back the un-persisted change (#825).
+                if model.items_sync.write_settled(refused) {
+                    Command::all([shown, persistence::load_items(model)])
+                } else {
+                    shown
+                }
+            }
+            Event::SessionsStoreLoaded(output) => match output {
+                PersistenceOutput::Sessions(sessions) => match model.sessions_sync.load_landed() {
+                    persistence::Landed::Apply => {
+                        model.sessions = sessions.into();
+                        model.practice_summaries = build_practice_summaries(&model.sessions).into();
+                        crux_core::render::render()
+                    }
+                    persistence::Landed::Drop => Command::done(),
+                    persistence::Landed::Reload => persistence::load_sessions(model),
+                },
+                PersistenceOutput::Items(_) | PersistenceOutput::Ack => {
+                    persistence::sessions_load_ended(model, Command::done())
+                }
+                PersistenceOutput::Failed => {
+                    model.surface_storage_error();
+                    persistence::sessions_load_ended(model, crux_core::render::render())
+                }
             },
+            Event::SessionStoreWritten(output) => {
+                let (settled, roll_back) = match output {
+                    PersistenceOutput::Ack => {
+                        model.record_ack();
+                        (crate::domain::session::save_acknowledged(model), false)
+                    }
+                    PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => {
+                        (Command::done(), false)
+                    }
+                    PersistenceOutput::Failed => {
+                        match crate::domain::session::save_refused(model) {
+                            Some(handed_back) => (handed_back, false),
+                            None => {
+                                model.surface_storage_error();
+                                (crux_core::render::render(), true)
+                            }
+                        }
+                    }
+                };
+                if model.sessions_sync.write_settled(roll_back) {
+                    Command::all([settled, persistence::load_sessions(model)])
+                } else {
+                    settled
+                }
+            }
 
             // ── On-device recognition ────────────────────────────────
             Event::PhotoRead { photo_id, output } => {

@@ -6243,3 +6243,61 @@ fn planning_setters_are_refused_outside_building() {
         assert_eq!(active_entry(&model, 0), &before);
     }
 }
+
+// --- A history load never overwrites a newer save (#2067) ---
+
+#[test]
+fn a_history_load_out_when_a_save_is_acknowledged_is_dropped_and_asked_again() {
+    let mut model = model_with_summary();
+    update(&mut model, Event::StartApp);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+    );
+    update(
+        &mut model,
+        Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
+    );
+    assert_eq!(model.sessions.len(), 1);
+
+    let mut landed = Intrada.update(
+        Event::SessionsStoreLoaded(crate::persistence::PersistenceOutput::Sessions(vec![])),
+        &mut model,
+    );
+    assert_eq!(
+        model.sessions.len(),
+        1,
+        "the older history must not drop the saved practice"
+    );
+    assert!(landed
+        .effects()
+        .any(|e| matches!(e, Effect::Persistence(req)
+        if req.operation == crate::persistence::PersistenceOperation::LoadSessions)));
+}
+
+#[test]
+fn a_history_load_that_brings_back_no_list_is_no_longer_out() {
+    use crate::persistence::{PersistenceOperation, PersistenceOutput};
+    for (arm, no_list) in [
+        ("failed", PersistenceOutput::Failed),
+        ("stray ack", PersistenceOutput::Ack),
+    ] {
+        let mut model = model_with_summary();
+        update(&mut model, Event::StartApp);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+        update(&mut model, Event::SessionsStoreLoaded(no_list));
+
+        let mut acked = Intrada.update(
+            Event::SessionStoreWritten(PersistenceOutput::Ack),
+            &mut model,
+        );
+        assert!(
+            acked.effects().any(|e| matches!(e, Effect::Persistence(req)
+                if req.operation == PersistenceOperation::LoadSessions)),
+            "{arm}"
+        );
+    }
+}

@@ -260,6 +260,7 @@ mod tests {
         ];
 
         for (what, event) in steps {
+            let wrote = matches!(event, Event::Item(_));
             let before = build_view_at(&model, now);
             send(&mut model, event);
             assert_ne!(
@@ -268,6 +269,10 @@ mod tests {
                 "{what} changes nothing"
             );
             assert_current(&mut model, what);
+            if wrote {
+                // A load landing over an unconfirmed edit is dropped (#2067).
+                send(&mut model, Event::StoreWritten(PersistenceOutput::Ack));
+            }
         }
     }
 
