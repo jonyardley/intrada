@@ -2,7 +2,7 @@
 
 > **Scope:** this documents the **Leptos web shell** design system (dark
 > glassmorphism, oklch tokens in `crates/intrada-web/input.css`). The web shell
-> is **paused** — treat this as maintenance-only reference.
+> was deleted in 2026-07 (#1133), so treat this as a historical record only.
 >
 > For the **active native iOS** design system ("Paper & Score", light theme),
 > see [`docs/design-workflow.md`](../docs/design-workflow.md) and

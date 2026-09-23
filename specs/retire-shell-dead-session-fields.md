@@ -76,7 +76,7 @@ payload: removing them from the core first would break the Swift build.
 
 ## What stays
 
-- The five columns in the on-device `session` table, and any text Jon typed
+- The four columns in the on-device `session` table, and any text Jon typed
   into the reflection boxes between June and August. Invisible since #1368,
   untouched by this change, recoverable with `sqlite3` if ever wanted.
 - Migrations `v3_session`, `v7_session_reflections` and `v15_reflection_steer`

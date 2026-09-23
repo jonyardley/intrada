@@ -117,12 +117,12 @@ exactly as it does today.
    another. Ranking on the mark the row will *show* is one rule rather than
    two: the row the card puts first is always the row whose reason says why.
 
-5. **A laddered exercise brings its current step.** Where an exercise has a
-   step ladder, the suggestion carries the `is_current` step (the first rung not
-   yet solid) as `variant_id` + `variant_label`, and the seeding event
-   attributes the entry to it. Its reason and mark then read from the step, not
-   the exercise. A fully solid ladder has no current step; the exercise rides
-   along unattributed.
+5. **An exercise with variations brings its first unsolid one.** Where an
+   exercise has variations, the suggestion carries the first one not yet
+   solid (`is_solid` on `VariantView`) as `variant_id` + `variant_label`, and
+   the seeding event attributes the entry to it. Its reason and mark then read
+   from the variation, not the exercise. Where every variation is solid there
+   is none to carry; the exercise rides along unattributed.
 
 6. **Reasons are core-owned strings.** The shell renders, never composes.
    `SuggestedSession.priority` rides alongside for the same reason: the card
