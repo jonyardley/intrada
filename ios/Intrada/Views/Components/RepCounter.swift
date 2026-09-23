@@ -3,7 +3,7 @@ import SwiftUI
 /// Resident and ignorable (T19). The full set of slots is drawn from the start,
 /// empty ones outlined, so the row says what is left rather than growing as it
 /// fills (#1735). Not quite stays tappable at zero because the core records a
-/// miss there.
+/// miss there, and at the target because a miss steps the count back (#1507).
 struct RepCounter: View {
   let count: Int
   let slots: Int
@@ -72,8 +72,8 @@ struct RepCounter: View {
       }
     } else {
       HStack(spacing: IntradaSpacing.controlGap) {
-        gotIt
         notQuite(title: "Not quite")
+        gotIt
       }
     }
   }
@@ -92,7 +92,7 @@ struct RepCounter: View {
     repButton(
       title: title, icon: "xmark", fg: IntradaColor.repMissedFg,
       bg: IntradaColor.repMissedBg, border: IntradaColor.slotOutline,
-      disabled: reached, action: onNotQuite
+      disabled: false, action: onNotQuite
     )
     .accessibilityLabel(title)
     .accessibilityHint("Takes one repetition off")

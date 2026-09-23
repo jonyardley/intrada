@@ -798,7 +798,9 @@ fn record_rep(model: &mut Model, action: RepAction, now: DateTime<Utc>) -> Comma
     let Some(play) = entry.open_play_mut() else {
         return crux_core::render::render();
     };
-    if play.rep_target_reached == Some(true) {
+    // A miss at the target steps the count back so an accidental tap can be
+    // corrected and re-earned (#1507).
+    if play.rep_target_reached == Some(true) && action == RepAction::Success {
         return crux_core::render::render();
     }
 
@@ -6348,23 +6350,27 @@ mod tests {
     }
 
     #[test]
-    fn test_rep_missed_frozen_after_target_reached() {
+    fn test_rep_missed_at_target_steps_back_and_can_be_re_earned() {
         let (mut model, _now) = model_with_active_session_and_rep(3);
-
-        // Reach target
         for _ in 0..3 {
             update(&mut model, got_it());
         }
 
-        // Miss should not decrement after target reached
         update(&mut model, missed());
 
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(play_of(&a.entries[0]).rep_count, Some(3));
-            assert_eq!(play_of(&a.entries[0]).rep_target_reached, Some(true));
-        } else {
-            panic!("Expected Active state");
-        }
+        let entry = active_entry(&model, 0);
+        assert_eq!(play_of(entry).rep_count, Some(2));
+        assert_eq!(play_of(entry).rep_target_reached, Some(false));
+        assert_eq!(
+            actions(entry).map(|a| a.last().copied()),
+            Some(Some(RepAction::Missed))
+        );
+
+        update(&mut model, got_it());
+
+        let entry = active_entry(&model, 0);
+        assert_eq!(play_of(entry).rep_count, Some(3));
+        assert_eq!(play_of(entry).rep_target_reached, Some(true));
     }
 
     #[test]
