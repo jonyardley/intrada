@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -23,8 +25,8 @@ pub struct Model {
     /// Turns UTC instants into user-local days for analytics (#1330); 0 until
     /// the shell reports, which degrades to the old UTC day boundary.
     pub utc_offset_minutes: i32,
-    pub items: Vec<Item>,
-    pub sessions: Vec<PracticeSession>,
+    pub items: Tracked<Vec<Item>>,
+    pub sessions: Tracked<Vec<PracticeSession>>,
     pub session_status: SessionStatus,
     /// The finished practice whose write is with the store. Pushed into
     /// `sessions` only when the store acknowledges it; a failure hands it
@@ -45,7 +47,7 @@ pub struct Model {
     /// store acknowledges ([`Model::record_ack`]), not by an optimistic
     /// mutation, since only the store can say it has recovered (#346, #1936).
     pub error_muted: bool,
-    pub practice_summaries: HashMap<String, ItemPracticeSummary>,
+    pub practice_summaries: Tracked<HashMap<String, ItemPracticeSummary>>,
     /// Device data, not account data (`specs/profile.md`).
     pub profile: Profile,
     /// Bumped each time an error is raised or surfaced, never because one is
@@ -62,6 +64,63 @@ pub struct Model {
     /// it, the user edits it, and `DiscardPhotoDraft` clears it. Never written
     /// to an item without that confirmation (spec non-goal "no silent write").
     pub photo_recognition: PhotoRecognition,
+    /// Filled at the end of `update` and only read by `view` (#1998).
+    pub(crate) projections: Option<crate::view::cache::Projections>,
+}
+
+static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
+
+/// Every mutable access takes a new revision from one process-wide counter, so
+/// no handler can change what the view cache read without it seeing (#1998).
+#[derive(Debug)]
+pub struct Tracked<T> {
+    value: T,
+    revision: u64,
+}
+
+impl<T> Tracked<T> {
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+}
+
+impl<T> From<T> for Tracked<T> {
+    fn from(value: T) -> Self {
+        Tracked {
+            value,
+            revision: NEXT_REVISION.fetch_add(1, Ordering::Relaxed),
+        }
+    }
+}
+
+impl<T: Default> Default for Tracked<T> {
+    fn default() -> Self {
+        T::default().into()
+    }
+}
+
+impl<T> Deref for Tracked<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T> DerefMut for Tracked<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.revision = NEXT_REVISION.fetch_add(1, Ordering::Relaxed);
+        &mut self.value
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Tracked<Vec<T>> {
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.value.iter()
+    }
 }
 
 /// Model-side recognition state. The view projection is
@@ -243,6 +302,10 @@ pub struct ViewModel {
     /// What the last photographed page was read into, for the confirm surface.
     pub photo_recognition: PhotoRecognitionView,
     pub limits: LimitsView,
+    /// Ids of the rows `active_query` leaves showing, in sort order.
+    pub visible_ids: Vec<String>,
+    /// Ids of `recently_practised`, most recent first.
+    pub recently_practised_ids: Vec<String>,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a

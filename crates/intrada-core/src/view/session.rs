@@ -1058,7 +1058,8 @@ mod tests {
                 variants: vec![],
                 photo_id: None,
                 metre: None,
-            }],
+            }]
+            .into(),
             ..Default::default()
         };
 

@@ -51,7 +51,7 @@ fn make_exercise(id: &str) -> Item {
 
 fn model_with_piece_and_exercise() -> Model {
     Model {
-        items: vec![make_piece("piece-1"), make_exercise("ex-1")],
+        items: vec![make_piece("piece-1"), make_exercise("ex-1")].into(),
         ..Default::default()
     }
 }

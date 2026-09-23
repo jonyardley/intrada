@@ -123,7 +123,7 @@ mod tests {
     fn store_loaded_items_replaces_model_items() {
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("stale")],
+            items: vec![sample_item("stale")].into(),
             ..Default::default()
         };
         let _ = app.update(
@@ -172,7 +172,7 @@ mod tests {
     fn store_loaded_ack_leaves_items_untouched() {
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("keep")],
+            items: vec![sample_item("keep")].into(),
             ..Default::default()
         };
         let _ = app.update(Event::StoreLoaded(PersistenceOutput::Ack), &mut model);
@@ -234,7 +234,7 @@ mod tests {
     fn delete_stamps_the_delete_instant() {
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("p1")],
+            items: vec![sample_item("p1")].into(),
             ..Default::default()
         };
         let before = chrono::Utc::now();
@@ -296,7 +296,7 @@ mod tests {
         use crate::domain::types::UpdateItem;
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("p1")],
+            items: vec![sample_item("p1")].into(),
             ..Default::default()
         };
         let input = UpdateItem {
@@ -325,7 +325,7 @@ mod tests {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("p1")],
+            items: vec![sample_item("p1")].into(),
             ..Default::default()
         };
         let mut cmd = app.update(
@@ -344,7 +344,7 @@ mod tests {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
         let mut model = Model {
-            items: vec![sample_item("p1")],
+            items: vec![sample_item("p1")].into(),
             ..Default::default()
         };
         let mut cmd = app.update(
@@ -555,7 +555,7 @@ mod tests {
     fn sessions_store_loaded_replaces_model_sessions() {
         let app = crate::app::Intrada;
         let mut model = Model {
-            sessions: vec![sample_session("stale")],
+            sessions: vec![sample_session("stale")].into(),
             ..Default::default()
         };
         let _ = app.update(

@@ -68,7 +68,8 @@ fn model_with_library() -> Model {
                 photo_id: None,
                 metre: None,
             },
-        ],
+        ]
+        .into(),
         ..Default::default()
     }
 }
@@ -110,7 +111,8 @@ fn linked_model() -> Model {
             mk("ex-B", "Arpeggios", ItemKind::Exercise, &[]),
             mk("ex-C", "Sight-reading", ItemKind::Exercise, &[]),
             mk("ex-D", "Trills", ItemKind::Exercise, &[]),
-        ],
+        ]
+        .into(),
         ..Default::default()
     }
 }
@@ -241,7 +243,7 @@ fn suggestion_model() -> Model {
     let mut m = linked_model();
     // Pin the anchor so these tests assert the seeding, not the ranking
     // (which `suggestion.rs` covers).
-    for item in &mut m.items {
+    for item in m.items.iter_mut() {
         if item.id == "piece-P" {
             item.priority = true;
         }
@@ -274,7 +276,7 @@ fn start_building_from_suggestion_seeds_the_derived_block() {
 #[test]
 fn start_building_from_suggestion_caps_the_block_at_three_items() {
     let mut m = suggestion_model();
-    for item in &mut m.items {
+    for item in m.items.iter_mut() {
         if item.id == "piece-P" {
             item.linked_exercise_ids = vec![
                 "ex-A".to_string(),
@@ -321,7 +323,7 @@ fn start_building_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
 fn start_building_from_suggestion_attributes_the_current_step() {
     let mut m = suggestion_model();
     let step_id = "v-C".to_string();
-    for item in &mut m.items {
+    for item in m.items.iter_mut() {
         if item.id == "ex-A" {
             item.variants = vec![crate::domain::variant::Variant {
                 id: step_id.clone(),
@@ -377,7 +379,7 @@ fn prepare_reflection_round_trips_on_ffi_bincode_wire() {
 // ── "Practise your priorities" (#981) ────────────────────────────
 
 fn star(model: &mut Model, starred: &[&str]) {
-    for item in &mut model.items {
+    for item in model.items.iter_mut() {
         if starred.contains(&item.id.as_str()) {
             item.priority = true;
         }

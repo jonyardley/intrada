@@ -42,4 +42,25 @@ struct LibraryQueryFilterTests {
     #expect(
       Swift.Set(try bridge.view().items.map(\.title)) == ["Clair de Lune", "Hanon No. 1"])
   }
+
+  @Test("the visible ids cross the wire and name the filtered rows")
+  func visibleIdsCrossTheWire() throws {
+    let bridge = try seededBridge()
+    _ = try bridge.update(.setQuery(ListQuery(text: "hanon", itemType: nil, key: nil, tags: [])))
+
+    let view = try bridge.view()
+    #expect(view.visibleIds == view.items.map(\.id))
+    #expect(view.visibleIds.count == 1)
+    #expect(view.allItems.count == 2)
+  }
+
+  @Test("the recently practised ids cross the wire and name the recent rows")
+  func recentlyPractisedIdsCrossTheWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.loadSampleData)
+
+    let view = try bridge.view()
+    #expect(!view.recentlyPractisedIds.isEmpty)
+    #expect(view.recentlyPractisedIds == view.recentlyPractised.map(\.id))
+  }
 }

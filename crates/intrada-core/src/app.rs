@@ -124,7 +124,9 @@ impl App for Intrada {
         // Before the handler, not after: a target only ever belongs to the
         // error the event in hand reported (#1595).
         model.last_error_target = None;
-        self.handle_event(event, model)
+        let command = self.handle_event(event, model);
+        crate::view::cache::refresh(model, chrono::Utc::now());
+        command
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -144,9 +146,9 @@ impl Intrada {
                 crux_core::render::render()
             }
             Event::LoadSampleData => {
-                model.items = crate::sample::sample_items();
-                model.sessions = crate::sample::sample_sessions();
-                model.practice_summaries = build_practice_summaries(&model.sessions);
+                model.items = crate::sample::sample_items().into();
+                model.sessions = crate::sample::sample_sessions().into();
+                model.practice_summaries = build_practice_summaries(&model.sessions).into();
                 model.last_error = None;
                 crux_core::render::render()
             }
@@ -180,7 +182,7 @@ impl Intrada {
             // ── Local-first persistence ──────────────────────────────
             Event::StoreLoaded(output) => match output {
                 PersistenceOutput::Items(items) => {
-                    model.items = items;
+                    model.items = items.into();
                     crux_core::render::render()
                 }
                 PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
@@ -204,8 +206,8 @@ impl Intrada {
             },
             Event::SessionsStoreLoaded(output) => match output {
                 PersistenceOutput::Sessions(sessions) => {
-                    model.sessions = sessions;
-                    model.practice_summaries = build_practice_summaries(&model.sessions);
+                    model.sessions = sessions.into();
+                    model.practice_summaries = build_practice_summaries(&model.sessions).into();
                     crux_core::render::render()
                 }
                 PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
@@ -465,7 +467,7 @@ mod tests {
             metre: None,
         };
         let model = Model {
-            items: vec![item],
+            items: vec![item].into(),
             ..Model::default()
         };
 
@@ -569,7 +571,8 @@ mod tests {
                     photo_id: None,
                     metre: None,
                 },
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -843,7 +846,8 @@ mod tests {
             mk("a", "Bebop", &["jazz"]),
             mk("b", "Nocturne", &["classical"]),
             mk("c", "Riff", &["rock"]),
-        ];
+        ]
+        .into();
         // "studying classical and jazz" → the union, not the (empty) intersection.
         model.active_query = Some(ListQuery {
             tags: vec!["classical".to_string(), "jazz".to_string()],
@@ -885,7 +889,7 @@ mod tests {
             photo_id: None,
             metre: None,
         };
-        model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
+        model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])].into();
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
         // whole vocabulary, independent of the active filter.
         model.active_query = Some(ListQuery {
@@ -929,7 +933,8 @@ mod tests {
             mk("p3", ItemKind::Piece, Some("chopin")),
             mk("p4", ItemKind::Piece, Some("  Ravel  ")),
             mk("e1", ItemKind::Exercise, None),
-        ];
+        ]
+        .into();
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
             ..Default::default()
@@ -1192,7 +1197,7 @@ mod tests {
                 session_score: None,
             });
         }
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let session_populate_time = start.elapsed();
         assert!(
             session_populate_time.as_millis() < 200,
@@ -1215,9 +1220,23 @@ mod tests {
             view_time.as_millis()
         );
 
-        // Benchmark: add one more item with 10k existing
+        // The render every tap pays once the cache is filled (#1998).
+        crate::view::cache::refresh(&mut model, chrono::Utc::now());
         let start = std::time::Instant::now();
-        let _cmd = app.update(
+        let cached = app.view(&model);
+        let cached_time = start.elapsed();
+        assert_eq!(cached, vm);
+        assert!(
+            cached_time.as_millis() < 250 && cached_time * 3 < view_time,
+            "cached view() with 10k items took {}ms against {}ms cold (target: <250ms and under a third)",
+            cached_time.as_millis(),
+            view_time.as_millis()
+        );
+
+        // Benchmark: add one more item with 10k existing. The handler alone:
+        // `update` also rebuilds the view cache, bounded below (#1998).
+        let start = std::time::Instant::now();
+        let _cmd = app.handle_event(
             Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
                 title: "New Piece".to_string(),
                 kind: ItemKind::Piece,
@@ -1242,7 +1261,7 @@ mod tests {
 
         // Benchmark: delete item with 10k existing
         let start = std::time::Instant::now();
-        let _cmd = app.update(
+        let _cmd = app.handle_event(
             Event::Item(ItemEvent::Delete {
                 id: "p00042".to_string(),
             }),
@@ -1254,6 +1273,15 @@ mod tests {
             delete_time.as_millis() < 100,
             "Deleting item with 10k existing took {}ms (target: <100ms)",
             delete_time.as_millis()
+        );
+
+        let start = std::time::Instant::now();
+        crate::view::cache::refresh(&mut model, chrono::Utc::now());
+        let rebuild_time = start.elapsed();
+        assert!(
+            rebuild_time.as_millis() < 1000,
+            "Rebuilding the view cache with 10k items took {}ms (target: <1000ms)",
+            rebuild_time.as_millis()
         );
     }
 
@@ -1303,7 +1331,7 @@ mod tests {
             photo_id: None,
             metre: None,
         };
-        model.items = vec![p1, p2];
+        model.items = vec![p1, p2].into();
 
         // Create a completed session with two entries
         use crate::domain::session::{
@@ -1363,7 +1391,7 @@ mod tests {
                 },
             ],
         });
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
 
         let vm = app.view(&model);
         let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
@@ -1478,7 +1506,7 @@ mod tests {
             }],
         });
 
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1556,7 +1584,7 @@ mod tests {
             }],
         });
 
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1650,7 +1678,7 @@ mod tests {
             ],
         });
 
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1722,7 +1750,7 @@ mod tests {
             }],
         });
 
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -2055,7 +2083,7 @@ mod tests {
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
         piece.linked_exercise_ids = vec!["ex1".to_string()];
-        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
 
         let up_next = app.view(&model).up_next.expect("a suggestion");
         assert_eq!(up_next.piece_id, "p1");
@@ -2076,7 +2104,7 @@ mod tests {
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
         piece.linked_exercise_ids = vec!["ex1".to_string()];
-        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
         // Filtering the library to exercises hides the anchor piece from the
         // list; the suggestion is derived pre-filter and must survive it.
         model.active_query = Some(ListQuery {
@@ -2104,7 +2132,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Sonata", ItemKind::Piece, now),
             make_item("ex1", "Scales", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
             ..Default::default()
@@ -2138,9 +2167,9 @@ mod tests {
                 deleted_at: None,
             })
             .collect();
-        model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now), scales];
-        model.sessions = vec![make_session("s1", "ex1", Some(8), None)];
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now), scales].into();
+        model.sessions = vec![make_session("s1", "ex1", Some(8), None)].into();
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Piece),
             ..Default::default()
@@ -2171,7 +2200,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Sonata", ItemKind::Piece, now),
             make_item("ex1", "Scales", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
 
         assert!(
             app.view(&model).up_next.is_none(),
@@ -2184,7 +2214,7 @@ mod tests {
         let app = Intrada;
         let mut model = Model::default();
         let now = chrono::Utc::now();
-        model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now)];
+        model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now)].into();
 
         assert!(
             !app.view(&model).has_priorities,
@@ -2205,7 +2235,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Sonata", ItemKind::Piece, now),
             make_item("ex1", "Scales", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
 
         for starred in [false, true] {
             model.items[0].priority = starred;
@@ -2224,7 +2255,7 @@ mod tests {
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
         piece.priority = true;
-        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)];
+        model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
             ..Default::default()
@@ -2247,7 +2278,7 @@ mod tests {
         // which can hold the clock still.
         let app = Intrada;
         let model = Model {
-            sessions: vec![make_session("s1", "item-1", None, None)],
+            sessions: vec![make_session("s1", "item-1", None, None)].into(),
             ..Default::default()
         };
         let last = app
@@ -2268,7 +2299,8 @@ mod tests {
             make_item("a", "Old", ItemKind::Piece, t1),
             make_item("c", "Newest", ItemKind::Exercise, t3),
             make_item("b", "Middle", ItemKind::Piece, t2),
-        ];
+        ]
+        .into();
         let vm = app.view(&model);
         assert_eq!(vm.items[0].title, "Newest");
         assert_eq!(vm.items[1].title, "Middle");
@@ -2296,7 +2328,8 @@ mod tests {
             make_item("a", "Sonata", ItemKind::Piece, now),
             make_item("b", "etude", ItemKind::Piece, now), // lowercase: case-insensitive
             make_item("c", "Ballade", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         model.active_sort = LibrarySort {
             field: SortField::Title,
             direction: SortDirection::Ascending,
@@ -2315,7 +2348,8 @@ mod tests {
             make_item("a", "Waltz", ItemKind::Piece, now),
             make_item("b", "\u{c9}tude", ItemKind::Piece, now),
             make_item("c", "Ballade", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         model.active_sort = LibrarySort {
             field: SortField::Title,
             direction: SortDirection::Ascending,
@@ -2335,7 +2369,8 @@ mod tests {
         model.items = vec![
             make_item("a", "Etudes", ItemKind::Piece, now),
             make_item("b", "\u{c9}tude", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         model.active_sort = LibrarySort {
             field: SortField::Title,
             direction: SortDirection::Ascending,
@@ -2353,7 +2388,8 @@ mod tests {
         model.items = vec![
             make_item("a", "Stale", ItemKind::Piece, now),
             make_item("b", "Fresh", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
         set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
         model.active_sort = LibrarySort {
@@ -2373,7 +2409,8 @@ mod tests {
         model.items = vec![
             make_item("a", "Practiced", ItemKind::Piece, now),
             make_item("b", "NeverPractised", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         set_last_practiced(&mut model, "a", now - chrono::Duration::days(2));
         // "b" has no practice summary -> never practised.
 
@@ -2404,7 +2441,8 @@ mod tests {
             make_item("a", "Stale", ItemKind::Piece, now),
             make_item("b", "Fresh", ItemKind::Exercise, now),
             make_item("c", "NeverPractised", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
         set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
 
@@ -2445,7 +2483,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Sonata", ItemKind::Piece, now),
             make_item("ex1", "Scales", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
         set_last_practiced(&mut model, "p1", now - chrono::Duration::days(1));
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
@@ -2467,7 +2506,8 @@ mod tests {
         model.items = vec![
             make_item("a", "Old", ItemKind::Piece, t1),
             make_item("b", "New", ItemKind::Piece, t2),
-        ];
+        ]
+        .into();
         let vm = app.view(&model); // default active_sort
         assert_eq!(vm.items[0].title, "New");
         assert_eq!(vm.items[1].title, "Old");
@@ -2481,7 +2521,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Piece One", ItemKind::Piece, now),
             make_item("e1", "Exercise One", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
             key: None,
@@ -2501,7 +2542,8 @@ mod tests {
         model.items = vec![
             make_item("p1", "Clair de Lune", ItemKind::Piece, now),
             make_item("p2", "Moonlight Sonata", ItemKind::Piece, now),
-        ];
+        ]
+        .into();
         model.active_query = Some(ListQuery {
             item_type: None,
             key: None,
@@ -2521,7 +2563,7 @@ mod tests {
         let mut tagged = make_item("p1", "Tagged", ItemKind::Piece, now);
         tagged.tags = vec!["Warm-up".to_string(), "Scales".to_string()];
         let untagged = make_item("p2", "Untagged", ItemKind::Piece, now);
-        model.items = vec![tagged, untagged];
+        model.items = vec![tagged, untagged].into();
         model.active_query = Some(ListQuery {
             item_type: None,
             key: None,
@@ -2540,7 +2582,7 @@ mod tests {
         let now = chrono::Utc::now();
         let mut old = make_item("p1", "Old", ItemKind::Piece, now);
         old.tags = vec!["jazz ".to_string()];
-        model.items = vec![old];
+        model.items = vec![old].into();
         let chip = app.view(&model).available_tags[0].clone();
         model.active_query = Some(ListQuery {
             tags: vec![chip],
@@ -2581,7 +2623,8 @@ mod tests {
             make_item("p1", "Piece One", ItemKind::Piece, now),
             make_item("p2", "Piece Two", ItemKind::Piece, now),
             make_item("e1", "Exercise One", ItemKind::Exercise, now),
-        ];
+        ]
+        .into();
 
         let vm = app.view(&model);
         assert_eq!(vm.visible_pieces, 2);
@@ -2636,7 +2679,8 @@ mod tests {
                 session_notes: None,
                 session_score: None,
             },
-        ];
+        ]
+        .into();
         let vm = app.view(&model);
         assert_eq!(vm.sessions[0].id, "s2");
         assert_eq!(vm.sessions[1].id, "s1");
@@ -2918,7 +2962,8 @@ mod tests {
                 variants: vec![],
                 photo_id: None,
                 metre: None,
-            }],
+            }]
+            .into(),
             ..Model::default()
         };
 
@@ -2989,7 +3034,8 @@ mod tests {
                 variants: vec![],
                 photo_id: None,
                 metre: None,
-            }],
+            }]
+            .into(),
             ..Model::default()
         };
 
@@ -3057,7 +3103,8 @@ mod tests {
                 variants: vec![],
                 photo_id: None,
                 metre: None,
-            }],
+            }]
+            .into(),
             ..Model::default()
         };
 
@@ -3131,7 +3178,7 @@ mod tests {
             metre: None,
         };
         let model = Model {
-            items: vec![piece, ex],
+            items: vec![piece, ex].into(),
             ..Model::default()
         };
         let vm = app.view(&model);
@@ -3244,7 +3291,8 @@ mod tests {
                     photo_id: None,
                     metre: None,
                 },
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -3295,7 +3343,7 @@ mod tests {
         piece.linked_exercise_ids = vec!["ex-1".to_string()];
 
         let model = Model {
-            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             ..Default::default()
         };
 
@@ -3325,7 +3373,8 @@ mod tests {
             items: vec![
                 ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven")),
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             sessions: vec![ctx_session(
                 "s1",
                 now,
@@ -3333,7 +3382,8 @@ mod tests {
                     ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
                     ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
                 ],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3356,7 +3406,7 @@ mod tests {
         piece.linked_exercise_ids = vec!["ex-1".to_string()];
 
         let model = Model {
-            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![ctx_session(
                 "s1",
                 now,
@@ -3364,7 +3414,8 @@ mod tests {
                     ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
                     ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
                 ],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3397,7 +3448,8 @@ mod tests {
                 zeta,
                 alpha,
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             sessions: vec![
                 ctx_session(
                     "s-old",
@@ -3432,7 +3484,8 @@ mod tests {
                         ),
                     ],
                 ),
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -3464,7 +3517,8 @@ mod tests {
                 piece,
                 ctx_item("other-piece", "Nocturne", ItemKind::Piece, None),
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
         let index: std::collections::HashMap<&str, &crate::domain::item::Item> =
@@ -3490,7 +3544,8 @@ mod tests {
             items: vec![
                 linked_only,
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             // "p-gone" is practised and recent, but no longer in the library.
             sessions: vec![ctx_session(
                 "s-gone",
@@ -3499,7 +3554,8 @@ mod tests {
                     ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(9), Some("g1")),
                     ctx_entry("p-gone", "Deleted piece", ItemKind::Piece, None, Some("g1")),
                 ],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3604,7 +3660,7 @@ mod tests {
             ..VariationPlay::fixture()
         });
         let model = Model {
-            items: vec![exercise_with_variants("ex-1", &["C", "G"])],
+            items: vec![exercise_with_variants("ex-1", &["C", "G"])].into(),
             session_status: SessionStatus::Active(crate::domain::session::ActiveSession {
                 id: "as1".to_string(),
                 entries: vec![entry],
@@ -3757,7 +3813,8 @@ mod tests {
             items: vec![
                 ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven")),
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             sessions: vec![
                 // s1 (earliest): ex-1 scored 4 in block g1 with piece P.
                 ctx_session(
@@ -3789,7 +3846,8 @@ mod tests {
                         None,
                     )],
                 ),
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -3832,7 +3890,7 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![ctx_session(
                 "s1",
                 now,
@@ -3843,7 +3901,8 @@ mod tests {
                     Some(5),
                     Some("orphan-group"),
                 )],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3868,7 +3927,8 @@ mod tests {
             items: vec![
                 ctx_item("P", "Sonata No. 14", ItemKind::Piece, Some("Beethoven")),
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
-            ],
+            ]
+            .into(),
             sessions: vec![ctx_session(
                 "s1",
                 now,
@@ -3876,7 +3936,8 @@ mod tests {
                     ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(6), Some("g1")),
                     ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
                 ],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3900,7 +3961,7 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![ctx_session(
                 "s1",
                 now,
@@ -3908,7 +3969,8 @@ mod tests {
                     ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(5), Some("g1")),
                     ctx_entry("P", "Autumn Leaves", ItemKind::Piece, None, Some("g1")),
                 ],
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -3938,7 +4000,7 @@ mod tests {
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, None);
         piece.linked_exercise_ids = vec!["ex-1".to_string()];
         let model = Model {
-            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![
                 ctx_session(
                     "s1",
@@ -3959,7 +4021,8 @@ mod tests {
                         None,
                     )],
                 ),
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -3997,7 +4060,7 @@ mod tests {
         )];
 
         let mut local = Model {
-            items,
+            items: items.into(),
             ..Default::default()
         };
         let _ = app.update(
@@ -4066,7 +4129,8 @@ mod tests {
                     photo_id: None,
                     metre: None,
                 },
-            ],
+            ]
+            .into(),
             ..Default::default()
         };
 
@@ -4158,11 +4222,11 @@ mod tests {
     fn step_view_model(sessions: Vec<PracticeSession>) -> ViewModel {
         let app = Intrada;
         let mut model = Model {
-            items: vec![laddered_exercise("ex-1")],
-            sessions,
+            items: vec![laddered_exercise("ex-1")].into(),
+            sessions: sessions.into(),
             ..Default::default()
         };
-        model.practice_summaries = build_practice_summaries(&model.sessions);
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
         app.view(&model)
     }
 
@@ -4262,7 +4326,7 @@ mod tests {
         let mut exercise = laddered_exercise("ex-1");
         exercise.variants[0].label = "Hands together".to_string();
         let model = Model {
-            items: vec![exercise],
+            items: vec![exercise].into(),
             ..Default::default()
         };
 
@@ -4283,7 +4347,7 @@ mod tests {
             .unwrap();
         tombstoned.label = "Hands together".to_string();
         let model = Model {
-            items: vec![exercise],
+            items: vec![exercise].into(),
             ..Default::default()
         };
 
@@ -4301,7 +4365,8 @@ mod tests {
                 "Clair de Lune",
                 ItemKind::Piece,
                 chrono::Utc::now(),
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -4314,7 +4379,7 @@ mod tests {
     fn view_an_exercise_with_live_variations_hides_the_key_field() {
         let app = Intrada;
         let model = Model {
-            items: vec![laddered_exercise("ex-1")],
+            items: vec![laddered_exercise("ex-1")].into(),
             ..Default::default()
         };
 
@@ -4335,7 +4400,8 @@ mod tests {
                 "Shells",
                 ItemKind::Exercise,
                 chrono::Utc::now(),
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -4353,7 +4419,8 @@ mod tests {
                 "Clair de Lune",
                 ItemKind::Piece,
                 chrono::Utc::now(),
-            )],
+            )]
+            .into(),
             ..Default::default()
         };
 
@@ -4372,7 +4439,7 @@ mod tests {
             v.deleted_at = Some(chrono::Utc::now());
         }
         let model = Model {
-            items: vec![exercise],
+            items: vec![exercise].into(),
             ..Default::default()
         };
 
