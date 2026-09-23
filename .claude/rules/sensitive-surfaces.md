@@ -18,8 +18,7 @@ Jon. Before editing:
    (#2044, #2052), which decides the shape and builds it. Check with `/effort`
    and switch before the first edit.
 2. **Pair the `reviewer` agent on the core diff before the screens half
-   starts**, not only at the end, on its Opus pin (Fable retired 2026-09-23,
-   #2044).
+   starts**, not only at the end, on its Opus pin.
 3. **Domain-sensitivity override.** This work goes up at least one tier in
    ceremony, and a change to a bridge shape, a migration or the blob graph
    ships as two PRs: core first, screens in the same working session, or the

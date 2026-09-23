@@ -163,27 +163,26 @@ review (step 6) is `reviewer` on its usual Opus pin, paired from the core diff:
 Narrowed on 2026-09-17 (#1985) from four standing categories to one, with the
 other three following the work instead of triggering on their own. Over the
 fortnight to that date Fable took 32% of the spend on 20% of the turns, and 687
-of those turns ran at `xhigh` or `medium` against a pin of `high`. What the
-rate buys is judgement where being wrong is silent, so the list is the four
-silent-failure surfaces and nothing else.
+of those turns ran at `xhigh` or `medium` against a pin of `high`. The extra
+care (`high` effort, a tier up, a paired reviewer) buys judgement where being
+wrong is silent, so the list is the four silent-failure surfaces and nothing
+else.
 
 **The Opus 5.5 trial (#2044), as first run.** Opus 5.5 arrived on 2026-09-23 at $4 / $20
 against Opus 5's $5 / $25, and the lead moved to it without a decision because
 the repo setting names the `opus` alias. Anthropic's notes say it thinks more
 per turn at each effort than Opus 5, and that its `medium` beats Opus 5's
-`high` on coding; neither is measured here yet. So for a fortnight the Fable
-list runs on Opus 5.5 `xhigh` and `task` on `medium`, with the lead at `high`
-as the control. A Fable review that finds a Blocker the Opus 5.5 build missed
-puts that surface back on Fable; two such misses end the trial. Read at
-2026-09-27 and decided at 2026-10-07 in [`harness-log.md`](harness-log.md).
-On the same day #2052 moved the lead to `medium` and the Fable list to `high`,
-on Anthropic's `medium` claim and this repo's finding that Opus effort barely
-tracks cost: the trial gives up its `high` control and now asks whether Opus
-5.5 `high` on a sensitive surface gets past the Fable review.
+`high` on coding; neither was measured here yet. So for a fortnight the Fable
+list was to run on Opus 5.5 `xhigh` and `task` on `medium`, with the lead at
+`high` as the control, and a Fable review finding a Blocker the Opus 5.5 build
+missed would put that surface back on Fable. The same day #2052 moved the lead
+to `medium` and the list to `high`, on Anthropic's `medium` claim and this
+repo's finding that Opus effort barely tracks cost.
 
 **Fable retired (2026-09-23, #2044).** The same day Jon retired Fable from
 every role, the review of a sensitive diff included, to see how the repo does
-on Opus alone. The read stays at 2026-10-07 with `just usage 14 --quality`; a
+on Opus alone. The trial's stop rule ended with it, since it needed a Fable
+review to count a miss. The read stays at 2026-10-07 with `just usage 14 --quality`; a
 Blocker found after merge on a sensitive surface counts as a miss, and is the
 evidence for bringing a second model back ([`harness-log.md`](harness-log.md)).
 
@@ -206,9 +205,8 @@ note. On Opus effort barely tracks cost, and Opus 5.5 `medium` is claimed to
 beat Opus 5 `high` on coding, so the lead sits at `medium` (#2052). Tiers map the same way: Tier 1 is a fix you would just do, Tier 2 a
 ticket with a plan attached, Tier 3 a design note before anyone builds.
 
-Effort does not follow a model switch, so a session that changes rung sets
-`/effort` as well as `/model`. Both change the running session, and both
-persist to settings unless chosen as session-only. Fast mode (Opus only) is
+With one judgement model left, a rung change is `/effort` alone. It changes the running session, and it
+persists to settings unless chosen as session-only. Fast mode (Opus only) is
 twice the standard rate, $8 / $40 on Opus 5.5: use it when interactive latency
 genuinely matters, never as an economy measure.
 
@@ -246,16 +244,11 @@ Four things follow, and the rungs above are shaped by them:
   predicts. `xhigh` costs about a sixth more than `high` and returns no faster
   in the median, so from 2026-09-17 the lead sat at `high` (#1985), where
   `task` and `reviewer` already were, until #2052 moved it to `medium`.
-- **On Fable, effort is the bill.** `xhigh` costs half as much again per turn
-  as `high` and lengthens the slow tail by three quarters. It is also the rung
-  the pin does not hold: 687 turns ran at `xhigh` or `medium` in the fortnight,
-  against a documented `high`. Dropping the lead to `high` fixes half of that
-  by itself, because effort does not follow a `/model` switch: a bare
-  `/model fable` used to inherit the lead's `xhigh` and now inherits the
-  lead's effort, `medium` since #2052, so `/effort high` goes with it.
-  The 219 `medium` turns stay unexplained, and nothing enforces the pin. Fable
-  at every measured effort is slower than Opus at every measured effort: use it
-  where deliberation pays, not on interactive back-and-forth.
+- **On Fable, effort was the bill.** `xhigh` cost half as much again per turn
+  as `high` and lengthened the slow tail by three quarters, and 687 turns ran
+  at `xhigh` or `medium` in the fortnight against a documented `high`. Fable at
+  every measured effort was slower than Opus at every measured effort, one
+  reason it was retired (#2044).
 - **The rung is not where the money is.** Cache writes were $417, 37% of the
   fortnight, and 123 cold turns (a context past 50k re-sent at write price
   after an idle gap) cost $199 on their own. 42% of text reads repeated a file
@@ -420,7 +413,7 @@ Opener for the first session:
 Claim #1512 and stop if a PR already exists. Plan comment first, and do not
 write code this session beyond the contract.
 
-This changes the bridge contract, so switch to Opus 5.5 high (it is on the
+This changes the bridge contract, so run `/effort high` (it is on the
 sensitive surfaces) before you decide anything. Pin the ViewModel shape that projects MIN_METRE_BEATS/MAX_METRE_BEATS
 and the rep-target bound, and write it into the issue before either side is
 wired. A refused write with nothing on screen is the failure the offline-first
@@ -571,8 +564,7 @@ job.
 `reviewer` is pinned to Opus 5.5 `high`, a peer who reads the diff, not the
 description. It reads the issue named in its brief and checks the diff
 delivers the plan comment's done looks like before anything else. No diff
-lifts it: the sensitive surfaces took a Fable review until 2026-09-23, when
-Fable was retired (#2044).
+lifts it (#2044).
 
 It reports and yields: no GitHub writes, no waiting for a PR number, because
 the review runs before the push (2026-09-07: one review parked 35 minutes, one
