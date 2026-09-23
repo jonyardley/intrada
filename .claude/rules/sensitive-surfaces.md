@@ -22,7 +22,7 @@ Jon. Before editing:
 3. **Domain-sensitivity override.** This work goes up at least one tier in
    ceremony, and a change to a bridge shape, a migration or the blob graph
    ships as two PRs: core first, screens in the same working session, or the
-   core PR waits (a merged core PR with no caller is shell-dead, #1348, #1374).
+   core PR waits (a merged core PR with no caller is shell-dead, #1374).
 
 The hazards, by file:
 
