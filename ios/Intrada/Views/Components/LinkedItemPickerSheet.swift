@@ -50,14 +50,12 @@ struct LinkedItemPickerSheet: View {
     _drafts = State(initialValue: existingDrafts)
   }
 
-  private var ofKind: [LibraryItemView] {
-    library.sortedAndFiltered(by: sort, search: "", filter: PickerFilterArg(kind: kind))
-  }
-
   // Only an exercise is light enough to draft inline; a piece needs the full form.
   private var allowsCreate: Bool { kind == .exercise }
 
   var body: some View {
+    let ofKind = library.sortedAndFiltered(
+      by: sort, search: "", filter: PickerFilterArg(kind: kind))
     BottomSheet(
       title: copy.sheetTitle,
       onDone: { onApply(selected, drafts) },
@@ -68,9 +66,9 @@ struct LinkedItemPickerSheet: View {
             systemImage: kind.iconName, message: copy.noneAtAll)
         } else {
           VStack(spacing: 0) {
-            if !ofKind.isEmpty { filterBar }
+            if !ofKind.isEmpty { filterBar(availableTags: Self.tags(in: ofKind)) }
             selectedCount
-            list
+            list(hasAnyOfKind: !ofKind.isEmpty)
           }
         }
       }
@@ -82,16 +80,16 @@ struct LinkedItemPickerSheet: View {
 
   // ── Filter bar ──
 
-  private var availableTags: [String] {
+  private static func tags(in items: [LibraryItemView]) -> [String] {
     var seen = Swift.Set<String>()
     var tags: [String] = []
-    for tag in ofKind.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
+    for tag in items.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
       tags.append(tag)
     }
     return tags.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
-  private var filterBar: some View {
+  private func filterBar(availableTags: [String]) -> some View {
     VStack(spacing: 0) {
       // zIndex keeps the header above the revealed search bar so the bar slides
       // out from *under* it rather than ghosting over it (Design System Rules →
@@ -200,7 +198,7 @@ struct LinkedItemPickerSheet: View {
       filter: PickerFilterArg(kind: kind, priorityOnly: priorityOnly, tags: selectedTags))
   }
 
-  private var list: some View {
+  private func list(hasAnyOfKind: Bool) -> some View {
     ScrollView {
       VStack(spacing: 0) {
         if allowsCreate {
@@ -213,7 +211,7 @@ struct LinkedItemPickerSheet: View {
         }
         let rows = filtered
         if rows.isEmpty {
-          Text(ofKind.isEmpty ? copy.noneAtAll : copy.noMatches)
+          Text(hasAnyOfKind ? copy.noMatches : copy.noneAtAll)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)

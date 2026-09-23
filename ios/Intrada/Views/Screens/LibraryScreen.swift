@@ -131,16 +131,20 @@ struct LibraryScreen: View {
 
   private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
 
+  private var hasNoPriorities: Bool {
+    priorityOnly && !(store.viewModel?.items.isEmpty ?? true)
+  }
+
   private var emptyIcon: String {
     if isSearching { return "magnifyingglass" }
-    return priorityOnly ? "star" : "books.vertical"
+    return hasNoPriorities ? "star" : "books.vertical"
   }
 
   private var emptyMessage: String {
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
     }
-    if priorityOnly {
+    if hasNoPriorities {
       return "No priorities yet. Swipe a row to add it to priorities."
     }
     switch LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) {

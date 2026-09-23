@@ -1,4 +1,5 @@
 import Foundation
+import IntradaCoreFFI
 import SharedTypes
 import Testing
 
@@ -10,6 +11,8 @@ import Testing
 /// comparator and the search predicate themselves are tested in Rust
 /// (`sort_and_filter_candidates`).
 struct LibraryItemPickerSortTests {
+  private static let noFilter = PickerFilterArg(kind: nil, priorityOnly: false, tags: [])
+
   private static func exercise(
     id: String, title: String = "Hanon No. 1", subtitle: String = "Charles-Louis",
     notes: String? = "left hand only", tags: [String] = ["warm-up"], createdAt: String = "",
@@ -35,11 +38,11 @@ struct LibraryItemPickerSortTests {
 
     #expect(
       items.sortedAndFiltered(
-        by: LibrarySort(field: .title, direction: .ascending), search: ""
+        by: LibrarySort(field: .title, direction: .ascending), search: "", filter: Self.noFilter
       ).map(\.id) == ["b", "a"])
     #expect(
       items.sortedAndFiltered(
-        by: LibrarySort(field: .title, direction: .descending), search: ""
+        by: LibrarySort(field: .title, direction: .descending), search: "", filter: Self.noFilter
       ).map(\.id) == ["a", "b"])
   }
 
@@ -53,11 +56,12 @@ struct LibraryItemPickerSortTests {
 
     #expect(
       items.sortedAndFiltered(
-        by: LibrarySort(field: .dateAdded, direction: .ascending), search: ""
+        by: LibrarySort(field: .dateAdded, direction: .ascending), search: "", filter: Self.noFilter
       ).map(\.id) == ["b", "c", "a"])
     #expect(
       items.sortedAndFiltered(
-        by: LibrarySort(field: .dateAdded, direction: .descending), search: ""
+        by: LibrarySort(field: .dateAdded, direction: .descending), search: "",
+        filter: Self.noFilter
       ).map(\.id) == ["a", "c", "b"])
   }
 
@@ -69,7 +73,8 @@ struct LibraryItemPickerSortTests {
     ]
 
     let result = items.sortedAndFiltered(
-      by: LibrarySort(field: .lastPracticed, direction: .ascending), search: "")
+      by: LibrarySort(field: .lastPracticed, direction: .ascending), search: "",
+      filter: Self.noFilter)
 
     #expect(result.map(\.id) == ["b", "a"], "never practised sorts before a practised item")
   }
@@ -81,7 +86,7 @@ struct LibraryItemPickerSortTests {
     let items = [Self.exercise(id: "a")]
 
     let result = items.sortedAndFiltered(
-      by: LibrarySort(field: .title, direction: .ascending), search: text)
+      by: LibrarySort(field: .title, direction: .ascending), search: text, filter: Self.noFilter)
 
     #expect(result.map(\.id) == ["a"])
   }
@@ -91,7 +96,8 @@ struct LibraryItemPickerSortTests {
     let items = [Self.exercise(id: "a")]
 
     let result = items.sortedAndFiltered(
-      by: LibrarySort(field: .title, direction: .ascending), search: "Debussy")
+      by: LibrarySort(field: .title, direction: .ascending), search: "Debussy",
+      filter: Self.noFilter)
 
     #expect(result.isEmpty)
   }
@@ -101,8 +107,21 @@ struct LibraryItemPickerSortTests {
     let items = [Self.exercise(id: "a"), Self.exercise(id: "b", title: "Scales")]
 
     let result = items.sortedAndFiltered(
-      by: LibrarySort(field: .title, direction: .ascending), search: "   ")
+      by: LibrarySort(field: .title, direction: .ascending), search: "   ", filter: Self.noFilter)
 
     #expect(result.count == 2)
+  }
+
+  @Test("a kind filter keeps only that kind")
+  func kindFilterKeepsOnlyThatKind() {
+    var piece = LibraryItemView.previewPiece
+    piece.id = "piece"
+    let items = [piece, Self.exercise(id: "exercise")]
+
+    let result = items.sortedAndFiltered(
+      by: LibrarySort(field: .title, direction: .ascending), search: "",
+      filter: PickerFilterArg(kind: .exercise))
+
+    #expect(result.map(\.id) == ["exercise"])
   }
 }

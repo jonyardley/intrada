@@ -109,12 +109,8 @@ struct SessionBuilderScreen: View {
       return result
     }
 
-    /// What the List's single-row move asks the core for, or nil when the
-    /// drop changes nothing:
-    /// - a header/standalone row moves its whole unit to the unit slot the
-    ///   drop position implies (a drop inside another block clamps to its
-    ///   boundary);
-    /// - a nested exercise moves within its own block's related run.
+    /// The move a List drop asks the core for (#1957), or nil when it changes
+    /// nothing.
     static func move(in rows: [BuilderRow], from: Int, to destination: Int) -> BuilderMove? {
       guard rows.indices.contains(from) else { return nil }
       var remaining = rows

@@ -5,6 +5,9 @@
 > restored session builder. Describes shipped behaviour; verify against the
 > code before extending.
 
+> The reorder events described here were replaced by `MoveUnit` and
+> `MoveRelated` in #1957; see `specs/shell-rules-in-core.md`.
+
 > Tier 3 (Crux core + FFI bridge + local persistence). Status: **shipped**.
 > Core and persistence landed as Phase A in #1022, which shipped no builder UI;
 > the UI followed later, and `SessionBuilderScreen.swift` now carries both

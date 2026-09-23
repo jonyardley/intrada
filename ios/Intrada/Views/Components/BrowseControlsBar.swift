@@ -8,8 +8,7 @@ import SwiftUI
 struct BrowseControlsBar: View {
   @Environment(Store.self) private var store
   private let elevated: Bool
-  // Opt-in leading "priorities only" star: the Library and Add to session show
-  // it; the related-exercise sheet does not.
+  // Opt-in leading "priorities only" star.
   private let showsStarFilter: Bool
   // The related-exercise sheet is exercise-only, so a type menu there could
   // only empty its own list (#1103).

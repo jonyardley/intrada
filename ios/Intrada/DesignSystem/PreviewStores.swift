@@ -20,7 +20,7 @@
   final class PreviewBridge: CoreBridge {
     private let core = CoreFfi()
     private let items: [LibraryItemView]
-    private let activeQuery: ListQuery?
+    private var activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
     private let practiceWeeks: [PracticeWeekView]?
     private let buildingSetlist: BuildingSetlistView?
@@ -59,7 +59,11 @@
       self.profile = profile
     }
 
-    func update(_ event: Event) throws -> [Request] { [] }
+    func update(_ event: Event) throws -> [Request] {
+      guard case .setQuery(let query) = event else { return [] }
+      activeQuery = query
+      return [Request(id: 0, effect: .render(RenderOperation()))]
+    }
     func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
     func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
     func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
@@ -69,10 +73,12 @@
       let visible: [LibraryItemView]
       if let visibleIds {
         visible = items.filter { visibleIds.contains($0.id) }
-      } else if let kind = activeQuery?.itemType {
-        visible = items.filter { $0.itemType == kind }
       } else {
-        visible = items
+        let kind = activeQuery?.itemType
+        let priorityOnly = activeQuery?.priorityOnly ?? false
+        visible = items.filter { item in
+          (kind.map { item.itemType == $0 } ?? true) && (!priorityOnly || item.priority)
+        }
       }
       viewModel.items = items
       viewModel.visibleIds = visible.map(\.id)

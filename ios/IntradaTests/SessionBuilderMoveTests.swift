@@ -51,6 +51,7 @@ struct SessionBuilderMoveTests {
     "a drop that changes nothing sends nothing",
     arguments: [
       (1, 3, "a header dropped among its own exercises stays put"),
+      (1, 1, "a header dropped at its own place stays put"),
       (2, 0, "a related exercise dropped outside its block snaps home"),
       (2, 2, "a related exercise dropped where it was"),
       (0, 0, "a standalone dropped where it was"),
