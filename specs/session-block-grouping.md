@@ -128,7 +128,7 @@ The core computes block summaries; the shell renders. **Collapse state is UI-onl
 - **Default = bring related**; "just the piece" is the escape hatch (matches design).
 - **Removing a row never unlinks** — the relation lives on the item.
 - **Collapse is UI-only**; block structure + summaries are core-projected.
-- **Additive ViewModel** (`entries` retained), since three screens still read the flat list.
+- **Additive ViewModel** (`entries` retained), since the builder and two sheets still read the flat list.
 
 ## 6. Phasing
 

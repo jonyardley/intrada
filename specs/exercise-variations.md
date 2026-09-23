@@ -216,7 +216,7 @@ PracticeSession
   sheet's rows (the picker it replaces left the sheet in Phase A, since
   decision 5 takes `SetEntryVariant` out of Active), the Progress screen's
   per-variation surface, and the #1733 and #1735 renames folded in. Same
-  working session as Phase A (#1348, #1374).
+  working session as Phase A (#1374).
 - **Phase C, the unblocked, and what Phase B left.** #1478 (a variation typed
   "E flat major" reads as a key) and #1464 (the exercise detail screen says
   Steps), plus the two Phase B found on the same surface: #1761 (a tempo

@@ -62,7 +62,7 @@ This spec adds the third.
    [`notice-channel/design/notice-banner.html`](notice-channel/design/notice-banner.html),
    rendered where the red one is in `RootView` and `PlayerHost`, the haptic
    left as it is since `errorSeq` does not move) ships after the core PR merges,
-   in the same working session (#1348, #1374). Design principle T30 records
+   in the same working session (#1374). Design principle T30 records
    the two tones.
 
 ## Copy

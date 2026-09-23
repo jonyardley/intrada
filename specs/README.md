@@ -34,6 +34,7 @@ Accurate about how the app works or is being built now.
 | [`up-next-card.md`](up-next-card.md) | The "Up next" suggestion on the Practice tab (`compute_up_next` in `suggestion.rs`) |
 | [`getting-cold-signal.md`](getting-cold-signal.md) | Weighting the "not practised in a while" signal by how well learned a piece is (`staleness.rs`) |
 | [`api-removal.md`](api-removal.md) | The 2026-09-12 decision to remove the API and the sync, account and MCP-token client code (#1746, #1749); what went, what stays, what Jon tears down by hand |
+| [`retire-shell-dead-session-fields.md`](retire-shell-dead-session-fields.md) | Removing the session intention, time target and the three reflection boxes nothing could set any more (#1766, #1374). Shipped in #1770 and #1780; the four columns (the intention and the three reflection boxes) stay, unread, in the on-device `session` table |
 | [`profile.md`](profile.md) | The musician's name, instrument, icon and highlighter colour, held on the device (`domain/profile.rs`, `AppEffect::SaveProfile`). Shipped across #1691 and #1692 |
 | [`one-pass-create.md`](one-pass-create.md) | Adding a piece with its chord chart and exercises in one save (`ItemEvent::AddPieceInFull`, sent from `LibraryAddScreen.swift`). Core in #1591, screens in #1596 |
 | [`picker-core-sort.md`](picker-core-sort.md) | The linked-item picker sheet's sort and search calling into the core (`sort_and_filter_candidates` in `app.rs`, `sort_and_filter_picker_candidates` in `intrada-ffi`). Core in #1662, screens and the Swift copies deleted in #1664 |
@@ -52,7 +53,7 @@ Accurate about how the app works or is being built now.
 
 ## Shipped record, verify against the code before extending
 
-Builder-era specs whose surfaces returned with the restored session builder.
+Builder-era specs whose surfaces returned with the restored session builder, and specs shipped with their later phases parked.
 Treat them as history of how the behaviour came to be, not as an implementation
 contract.
 
@@ -66,8 +67,7 @@ contract.
 | [`track-exercises-per-piece/`](track-exercises-per-piece/) | Per-piece exercise tracking |
 | [`native-player.md`](native-player.md) · [`native-ios-player.md`](native-ios-player.md) | The Focus Player, as two sequential phases (#932 spine, #948 persistence) |
 | [`priority-items.md`](priority-items.md) | Priority items replacing Goals in the Plan layer. Landed across #739 and #769, with #981 as its slice 2 |
-| [`piece-from-photo.md`](piece-from-photo.md) | Adding a piece from a photograph of the page. Phases A, B and C shipped (#1443, #1449, #1455, #1476). Phase D, a chord chart from a photo (#1387), is parked with every other chord chart issue in epic #2025 |
-| [`retire-shell-dead-session-fields.md`](retire-shell-dead-session-fields.md) | Removing the session intention, time target and the three reflection boxes nothing could set any more (#1766, #1374). Shipped in #1770 and #1780; the five columns stay, unread, in the on-device `session` table |
+| [`piece-from-photo.md`](piece-from-photo.md) | Adding a piece from a photograph of the page. Phases A, B and C shipped (#1443, #1449, #1455, #1457, #1469, #1476). Phase D, a chord chart from a photo (#1387), is parked with every other chord chart issue in epic #2025 |
 
 ## Historical, do not implement from these
 
