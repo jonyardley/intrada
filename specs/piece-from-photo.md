@@ -113,7 +113,7 @@ in principle and is real research. We are not betting the feature on it.
    their photo.
 3. **A new `Item` field does not touch the crash-recovery blob.**
    `SetlistEntry` denormalises item fields rather than embedding `Item`
-   ([`session.rs:56`](../crates/intrada-core/src/domain/session.rs)), so
+   ([`session/mod.rs`](../crates/intrada-core/src/domain/session/mod.rs)), so
    `ActiveSession` is unaffected and the #1223 class of trap does not apply
    here. Verified, and worth re-verifying if that ever changes.
 4. **Recognition is an `Effect`, not Swift logic.** The shell owns the
