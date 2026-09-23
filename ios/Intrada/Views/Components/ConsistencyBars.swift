@@ -49,11 +49,19 @@ struct ConsistencyBars: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-          "\(week.label): \(week.minutes) minutes\(week.isCurrent ? ", this week" : "")")
+          "\(Self.spokenWhen(weeksAgo: weeks.count - 1 - index)): \(week.minutes) minutes")
       }
     }
     .frame(height: maxBarHeight + 18, alignment: .bottom)
     .onAppear { grown = true }
+  }
+
+  static func spokenWhen(weeksAgo: Int) -> String {
+    switch weeksAgo {
+    case ...0: "This week"
+    case 1: "Last week"
+    default: "\(weeksAgo) weeks ago"
+    }
   }
 
   private func barHeight(for week: ConsistencyWeek) -> CGFloat {
