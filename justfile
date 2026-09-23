@@ -468,8 +468,8 @@ ios-snapshots-optimize:
 # change — five rounds of it is most of what made #1256 Phase B feel long.
 #
 # `filter` is anything `-only-testing:` accepts, minus the target prefix:
-#   just ios-snapshots-record ScreenSnapshotTests/testComposeSheetFirstUse
-#   just ios-snapshots-record ScreenSnapshotTests   # the whole class
+#   just ios-snapshots-record SessionSummarySnapshotTests/testReflectionSheet
+#   just ios-snapshots-record SessionSummarySnapshotTests   # the whole class
 [group('iOS')]
 ios-snapshots-record filter: _ios-sync
     #!/usr/bin/env bash

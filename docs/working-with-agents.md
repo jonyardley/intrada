@@ -354,7 +354,7 @@ Tier 1. One file, no bridge, no schema, no auth, so no override applies.
    say so rather than widening the change silently.
 4. Re-record the three affected references in one pass, then verify:
    ```bash
-   just ios-snapshots-record ScreenSnapshotTests/testReflectionSheet
+   just ios-snapshots-record SessionSummarySnapshotTests/testReflectionSheet
    just ios-fmt-check && just ios-test
    ```
    Recording is delete-then-run-twice by design, so a first-run failure is
