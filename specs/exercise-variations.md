@@ -11,9 +11,9 @@
 > the name `Variant` it already has; renaming a Rust type buys nothing and
 > costs a diff across every call site.
 >
-> **Scope:** `intrada-core` and native iOS. The API keeps compiling; plays are
-> local-first only until the sync engine, exactly as `variant_id` and
-> `group_id` are (invariant 6 consciously scoped).
+> **Scope:** `intrada-core` and native iOS. Plays live on the device only, as
+> `variant_id` and `group_id` do. The API and its server were deleted on
+> 2026-09-12 (#1746), so there is no server side to keep compiling.
 
 [#1739]: https://github.com/jonyardley/intrada/issues/1739
 
@@ -110,8 +110,7 @@ PracticeSession
    per-entry fields into one synthesised play, and a skipped row folds into
    none. Rust never decodes that JSON, so a serde shim there would be dead
    code that passed its own tests and never ran. Nothing on device is
-   rewritten and no GRDB migration lands. The API's flat columns fold the same
-   way on read, in `intrada-api/src/db/sessions.rs`. The crash-recovery blob
+   rewritten and no GRDB migration lands. The crash-recovery blob
    is positional bincode, where a removed field cannot be defaulted, so
    `Store.sessionInProgressKey` bumps to `v3` **in the same PR as the shape
    change**: one resume prompt is lost across the upgrade, as with `group_id`
@@ -209,9 +208,9 @@ PracticeSession
 - **Phase A, core.** This spec as the first commit, then the types, events,
   validation, derivation and ViewModel projections, plus the
   `sessionInProgressKey` bump. Because the fold lives in the shell and the
-  removed fields are read by screens and by the API, Phase A also carries the
-  Swift persistence codec, the API's column fold, and the mechanical read-site
-  edits that keep the app and the server compiling. No new UI. One PR,
+  removed fields are read by screens, Phase A also carries the Swift
+  persistence codec and the mechanical read-site edits that keep the app
+  compiling. No new UI. One PR,
   reviewed before Phase B starts.
 - **Phase B, screens.** The player's variation picker, the item-complete
   sheet's rows (the picker it replaces left the sheet in Phase A, since

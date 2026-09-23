@@ -1,9 +1,11 @@
 # Reflection loop — Phase 1 core model
 
-> **⚠️ Historical record.** Parked by the 2026-07 coach pivot, which was
-> reversed on 2026-08-13 (#1344); the surface it describes returned with the
-> restored session builder. Describes shipped behaviour; verify against the
-> code before extending.
+> **Historical record.** The three fields and `UpdateSessionReflection` below
+> shipped with the core, and the boxes on Session Complete (#1079). The
+> v0.7.0 audit took the boxes off the screen (#1368), and #1766 then removed
+> the fields and the event from the core and the bridge
+> (`retire-shell-dead-session-fields.md`). They survive only as unread columns
+> in the on-device `session` table. Do not implement from this.
 
 > Tier 3 spec, riding with the first implementation PR per the workflow.
 > Design inputs: `design/BRIEF` (design/briefs/2026-07-reflection-and-narrative.md),
@@ -54,7 +56,8 @@ one string is write-only prose downstream.
 - **Online path deferred**: the API's `SaveSessionRequest` ignores unknown
   JSON fields, so online mode keeps working but does not persist
   reflections server-side. Tracked as a sync-parity issue (same family as
-  #842/#1021); acceptable while web is paused and sync is future work.
+  #842/#1021); acceptable at the time. The web shell (2026-07) and the API (#1746) have
+  since been deleted.
 - **Session-level, not per-entry**: per-entry reflection already exists
   (entry notes/score/tempo). These three answer for the session as a whole.
 

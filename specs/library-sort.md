@@ -1,8 +1,8 @@
 # Library Sort — toolbar sort control
 
 > Tier 3 (Crux core + FFI bridge change + a new persisted singleton). Spec
-> rides with the implementation branch per CLAUDE.md. Native iOS only — the
-> Leptos/Tauri shells are paused, so no web UI work here.
+> rides with the implementation branch per CLAUDE.md. Native iOS only: the
+> Leptos and Tauri shells were deleted in 2026-07, so there is no web UI.
 
 ## Problem
 

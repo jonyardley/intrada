@@ -88,8 +88,8 @@ through every phase and the GRDB schema; rejected.)
 
 ### 4.3 ViewModel projection
 
-Extend `BuildingSetlistView` additively (keep `entries` so the paused web shell
-keeps compiling — invariant 6):
+Extend `BuildingSetlistView` additively (keep `entries`, which the session
+builder, the add-to-session sheet and the add-related-exercise sheet still read):
 
 - add `blocks: Vec<SetlistBlockView>` where
   `SetlistBlockView { group_id: Option<String>, piece_title: Option<String>,
@@ -128,7 +128,7 @@ The core computes block summaries; the shell renders. **Collapse state is UI-onl
 - **Default = bring related**; "just the piece" is the escape hatch (matches design).
 - **Removing a row never unlinks** — the relation lives on the item.
 - **Collapse is UI-only**; block structure + summaries are core-projected.
-- **Additive ViewModel** (`entries` retained) so the paused web shell still builds.
+- **Additive ViewModel** (`entries` retained), since three screens still read the flat list.
 
 ## 6. Phasing
 
