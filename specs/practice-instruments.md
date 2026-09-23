@@ -68,8 +68,8 @@ pub struct Metre {
 ```
 
 - `Item.metre: Option<Metre>`. `None` means the piece does not declare one.
-- **`ChordChart.metre` is removed.** `assign_beats` takes the metre as an
-  argument, supplied by the item at parse time.
+- **`ChordChart.metre` is removed.** (The per-chord beat split that read it
+  went too, in #1948.)
 - Migration: for every item with a chart, `metre = Metre { beats: <old u8>,
   unit: 4, groups: None }`; the chart's column is dropped by copy-table, or
   left in place and ignored if that is cheaper on device (append-only rule:

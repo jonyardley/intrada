@@ -167,9 +167,6 @@ pub enum RecognitionOperation {
 
 pub enum RecognitionOutput {
     Page(PageReading),
-    /// No recognition available on this device. Not an error: the user
-    /// types the fields, and the photo is still saved.
-    Unsupported,
     Failed,
 }
 

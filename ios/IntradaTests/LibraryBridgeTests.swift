@@ -627,7 +627,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(created.ladderIsKeys, false)
     XCTAssertEqual(created.photoId, photoId)
     XCTAssertNil(created.practice)
-    XCTAssertNil(created.latestAchievedTempo)
 
     // Every PATCH field flipped or cleared in one update (mirrors the shell's
     // ItemFormModel.updateInput()). A field the wire drops silently would

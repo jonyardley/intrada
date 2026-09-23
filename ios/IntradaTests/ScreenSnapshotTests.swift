@@ -1173,7 +1173,7 @@ final class ScreenSnapshotTests: XCTestCase {
     }
     let states: [(PhotoRecognitionStatus, Bool)] = [
       (.idle, false), (.reading, false), (.ready, false), (.ready, true),
-      (.failed, false), (.unsupported, false),
+      (.failed, false),
     ]
     let stack = VStack(spacing: IntradaSpacing.card) {
       ForEach(Array(states.enumerated()), id: \.offset) { _, state in

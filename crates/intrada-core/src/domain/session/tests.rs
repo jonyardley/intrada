@@ -795,7 +795,7 @@ fn building_view_projects_blocks_and_standalones() {
     let vm = Intrada.view(&m);
     let b = vm.building_setlist.expect("building view");
     assert_eq!(b.item_count, 4);
-    assert_eq!(b.block_count, 2);
+    assert_eq!(b.blocks.len(), 2);
     let block = &b.blocks[0];
     assert!(block.group_id.is_some());
     assert_eq!(block.piece_title.as_deref(), Some("Sonata"));
@@ -818,7 +818,7 @@ fn two_adjacent_blocks_project_separately() {
     let g2 = group_of(&m, "piece-R");
     assert!(g1.is_some() && g2.is_some() && g1 != g2, "distinct blocks");
     let b = Intrada.view(&m).building_setlist.unwrap();
-    assert_eq!(b.block_count, 2);
+    assert_eq!(b.blocks.len(), 2);
     assert_eq!(b.item_count, 5);
     assert_eq!(b.blocks[0].piece_title.as_deref(), Some("Sonata"));
     assert_eq!(b.blocks[0].related_count, 2);
@@ -880,7 +880,8 @@ fn removing_the_piece_dissolves_the_block_to_standalone() {
     );
     let b = Intrada.view(&m).building_setlist.unwrap();
     assert_eq!(
-        b.block_count, 2,
+        b.blocks.len(),
+        2,
         "two standalone units, not one pieceless block"
     );
 }

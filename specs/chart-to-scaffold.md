@@ -122,7 +122,7 @@ chord quality is more test surface on the one code path a wrong note ruins.
 - `Item.chord_chart: Option<ChordChart>` (`#[serde(default)]`, pieces only).
 - `ChordChart { key: String, modality: Modality, sections: Vec<ChartSection> }`;
   `ChartSection { label: Option<String>, bars: Vec<Bar> }`;
-  `Bar { chords: Vec<ChartChord> }`; `ChartChord { symbol: ChordSymbol, beats: u8 }`.
+  `Bar { chords: Vec<ChartChord> }`; `ChartChord { symbol: ChordSymbol }` (the per-chord `beats` split was removed in #1948: nothing read it).
 - `ChordSymbol { root: PitchClass, quality: ChordQuality, extensions: Vec<..>,
   bass: Option<PitchClass> }` — the parsed, canonical form; **`raw: String`
   retained** so an unparsed/edited token round-trips losslessly.
@@ -134,8 +134,7 @@ chord quality is more test surface on the one code path a wrong note ruins.
   - `CommitScaffold { piece_id, specs: Vec<ScaffoldSpec> }` → batch-create the
     confirmed exercises + push ids onto `linked_exercise_ids`, one transaction.
 - Derivation: `fn derive_scaffold(&ChordChart) -> Vec<ScaffoldSpec>` (pure).
-- Validation (`validation.rs`): host must be a `Piece`; chart non-empty; every
-  bar's beats sum to the metre; parse surfaces the first bad token with its
+- Validation (`validation.rs`): host must be a `Piece`; chart non-empty; parse surfaces the first bad token with its
   position. Reuse the piece-vs-exercise guards already there.
 - ViewModel: for a piece with a chart, `scaffold_preview:
   Option<ScaffoldPreviewView>` (the derived specs + per-spec rationale +

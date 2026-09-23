@@ -195,7 +195,7 @@
     /// date, reusable from snapshot tests as well as the canvas.
     static var previewCompleted: PracticeSessionView {
       PracticeSessionView(
-        id: "session-1", startedAt: "2026-05-30T09:00:00Z", finishedAt: "2026-05-30T09:32:00Z",
+        id: "session-1", startedAt: "2026-05-30T09:00:00Z",
         totalDurationDisplay: "32m 0s", totalDurationSummary: "32m",
         completionStatus: .completed,
         notes: "Left hand steadier once I slowed the middle section right down.",
@@ -215,7 +215,7 @@
     /// line per variation rather than only the last (#1739).
     static var previewWithVariations: PracticeSessionView {
       PracticeSessionView(
-        id: "session-3", startedAt: "2026-05-29T10:00:00Z", finishedAt: "2026-05-29T10:20:00Z",
+        id: "session-3", startedAt: "2026-05-29T10:00:00Z",
         totalDurationDisplay: "20m 30s", totalDurationSummary: "20m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
@@ -226,7 +226,7 @@
     /// names it rather than leaving it unattributed (#1785).
     static var previewWithOneVariation: PracticeSessionView {
       PracticeSessionView(
-        id: "session-4", startedAt: "2026-05-27T09:00:00Z", finishedAt: "2026-05-27T09:06:00Z",
+        id: "session-4", startedAt: "2026-05-27T09:00:00Z",
         totalDurationDisplay: "6m 0s", totalDurationSummary: "6m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
@@ -237,7 +237,7 @@
     /// rather than leave looking unmarked.
     static var previewEndedEarly: PracticeSessionView {
       PracticeSessionView(
-        id: "session-2", startedAt: "2026-05-28T18:00:00Z", finishedAt: "2026-05-28T18:14:00Z",
+        id: "session-2", startedAt: "2026-05-28T18:00:00Z",
         totalDurationDisplay: "14m 0s", totalDurationSummary: "14m",
         completionStatus: .endedEarly, notes: nil,
         entries: [

@@ -120,16 +120,6 @@ mod tests {
     }
 
     #[test]
-    fn hydrate_from_store_emits_a_load_effect() {
-        let app = crate::app::Intrada;
-        let mut model = Model::default();
-        let mut cmd = app.update(Event::HydrateFromStore, &mut model);
-        assert!(cmd
-            .effects()
-            .any(|e| matches!(e, Effect::Persistence(req) if req.operation == PersistenceOperation::LoadItems)));
-    }
-
-    #[test]
     fn store_loaded_items_replaces_model_items() {
         let app = crate::app::Intrada;
         let mut model = Model {

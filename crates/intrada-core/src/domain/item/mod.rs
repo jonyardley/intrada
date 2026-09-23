@@ -140,16 +140,6 @@ pub enum ItemEvent {
         id: String,
         labels: Vec<String>,
     },
-    /// Rename a variation in place, matched by `variant_id` rather than label:
-    /// `SetVariants`'s label-keyed reconciliation can't express a rename
-    /// (a changed label is indistinguishable from remove+add, which would
-    /// drop score history). `new_label` is validated against the item's
-    /// other live variations for duplicates (#1083 C4).
-    RenameVariant {
-        item_id: String,
-        variant_id: String,
-        new_label: String,
-    },
     /// Point the item at the photo the shell has already written to disk,
     /// replacing any it already had. Kept out of `Update` because
     /// `UpdateItem`'s three-state `Option<Option<T>>` is the fiddliest encoding
@@ -328,10 +318,5 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)
         }
-        ItemEvent::RenameVariant {
-            item_id,
-            variant_id,
-            new_label,
-        } => variations::rename_variant(model, item_id, variant_id, new_label),
     }
 }

@@ -170,12 +170,12 @@ pub(super) fn add_piece_in_full(
     }
 
     // No piece exists yet, so the chart derives against the key the form
-    // is carrying and the default metre; `SetMetre` re-derives later.
+    // is carrying.
     let chart = match chart.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
         Some(raw) => {
             let key = piece_input.key.clone().unwrap_or_else(|| "C".to_string());
             let modality = piece_input.modality.unwrap_or(Modality::Major);
-            match crate::domain::chart::parse_chart(raw, &key, modality, &Metre::default()) {
+            match crate::domain::chart::parse_chart(raw, &key, modality) {
                 Ok(chart) => Some(chart),
                 Err(e) => {
                     model.last_error_target = Some(if e.bar == 0 {

@@ -92,10 +92,6 @@ struct ScanPageEntry: View {
       switch status {
       case .reading:
         ProgressView().controlSize(.small)
-      case .unsupported:
-        // Nothing to offer: another page reads no better on a device that
-        // cannot read one at all.
-        EmptyView()
       default:
         sourceMenu {
           Text("Change")
@@ -115,7 +111,6 @@ struct ScanPageEntry: View {
     switch status {
     case .reading: "Reading the page"
     case .failed: "Couldn't read that page. Type the fields instead."
-    case .unsupported: "This phone can't read a page. Type the fields instead."
     case .ready where readNothing: "Nothing to read on that page."
     default: "Scanned page"
     }

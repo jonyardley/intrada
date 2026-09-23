@@ -94,9 +94,8 @@ pub(super) fn set_chord_chart(
         return crux_core::render::render();
     }
 
-    // The chart derives in the piece's key (default C major when unset)
-    // and its metre (default 4/4).
-    let (key, modality, metre) = model
+    // The chart derives in the piece's key (default C major when unset).
+    let (key, modality) = model
         .items
         .iter()
         .find(|i| i.id == piece_id)
@@ -104,12 +103,11 @@ pub(super) fn set_chord_chart(
             (
                 p.key.clone().unwrap_or_else(|| "C".to_string()),
                 p.modality.unwrap_or(Modality::Major),
-                p.metre.clone().unwrap_or_default(),
             )
         })
         .expect("validate_chart_host guarantees the piece exists");
 
-    let chart = match crate::domain::chart::parse_chart(&raw_chart, &key, modality, &metre) {
+    let chart = match crate::domain::chart::parse_chart(&raw_chart, &key, modality) {
         Ok(chart) => chart,
         Err(e) => {
             // Surface the parse error; store nothing (never a partial).

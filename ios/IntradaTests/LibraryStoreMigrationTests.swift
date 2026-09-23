@@ -409,7 +409,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       sections: [
         ChartSection(
           label: "A",
-          bars: [Bar(chords: [ChartChord(symbol: symbol, beats: 4)])])
+          bars: [Bar(chords: [ChartChord(symbol: symbol)])])
       ])
     let item = LibraryItemFixture.record(
       id: "p3", title: "Autumn Leaves", key: "G", modality: .minor, chordChart: chart)
@@ -419,6 +419,24 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertEqual(
       loaded[0].chordChart, chart,
       "chord_chart must round-trip through JSON storage intact")
+  }
+
+  /// A chart saved before #1948 still carries each chord's `beats`.
+  func testChartSavedWithChordBeatsStillLoads() throws {
+    let chart = #"""
+      {"key":"G","modality":"minor","sections":[{"label":"A","bars":[{"chords":[{"symbol":{"root":0,"quality":"min7","extensions":[],"bass":7,"raw":"Cm7/G"},"beats":4}]}]}]}
+      """#
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v17_item_metre",
+      seed: """
+        INSERT INTO item (id, title, kind, tags, created_at, updated_at, chord_chart)
+        VALUES ('p1', 'Autumn Leaves', 'piece', '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '\(chart)')
+        """)
+    let loaded = try XCTUnwrap(store.loadItems().first?.chordChart)
+    XCTAssertEqual(
+      loaded.sections.first?.bars.first?.chords.first?.symbol.raw, "Cm7/G",
+      "an old chart row must not lose its chords")
   }
 
   func testV11BuiltSessionTablesArriveWithV10DataIntact() throws {

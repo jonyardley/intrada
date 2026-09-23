@@ -31,9 +31,6 @@ pub enum RecognitionOperation {
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum RecognitionOutput {
     Page(PageReading),
-    /// No recognition available on this device. Not an error: the user types
-    /// the fields, and the photo is still saved.
-    Unsupported,
     Failed,
 }
 
@@ -1569,7 +1566,6 @@ mod tests {
             bpm: Some(120),
             chart_text: Some("F7 | Bb7".to_string()),
         })));
-        assert_round_trips(RecognitionOutput::Unsupported);
         assert_round_trips(RecognitionOutput::Failed);
     }
 
@@ -1638,14 +1634,14 @@ mod tests {
                 .expect("a Recognition effect");
 
             request
-                .resolve(RecognitionOutput::Unsupported)
+                .resolve(RecognitionOutput::Failed)
                 .expect("the shell resolves this once");
 
             let Some(Event::PhotoRead { photo_id, output }) = cmd.events().next() else {
                 panic!("resolving should send PhotoRead");
             };
             assert_eq!(photo_id, PHOTO);
-            assert_eq!(output, RecognitionOutput::Unsupported);
+            assert_eq!(output, RecognitionOutput::Failed);
         }
 
         /// The screens show a spinner off this, so `Reading` has to reach the
@@ -1719,21 +1715,6 @@ mod tests {
                 !draft.composer.expect("a composer").weak,
                 "the sharp lines are not dragged down with it"
             );
-        }
-
-        /// Not an error: the photo is still saved and the user types the
-        /// fields. Surfacing this as a banner would be the wrong story.
-        #[test]
-        fn a_device_without_recognition_is_an_outcome_not_an_error() {
-            let mut model = Model::default();
-            let _ = read_photo(&mut model);
-            let _ = Intrada.update(photo_read(RecognitionOutput::Unsupported), &mut model);
-
-            assert_eq!(
-                Intrada.view(&model).photo_recognition.status,
-                PhotoRecognitionStatus::Unsupported
-            );
-            assert!(model.last_error.is_none());
         }
 
         #[test]
@@ -1829,7 +1810,7 @@ mod tests {
             assert_round_trips(Event::Item(ItemEvent::ReadPhoto {
                 photo_id: PHOTO.to_string(),
             }));
-            assert_round_trips(photo_read(RecognitionOutput::Unsupported));
+            assert_round_trips(photo_read(RecognitionOutput::Failed));
             assert_round_trips(Event::DiscardPhotoDraft);
         }
 

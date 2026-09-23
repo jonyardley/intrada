@@ -250,7 +250,6 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewExercise]),
             ],
-            blockCount: 2,
             totalDurationDisplay: nil, totalDurationSummary: nil)))
     }
 
@@ -261,7 +260,7 @@
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
           buildingSetlist: BuildingSetlistView(
-            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
           recentlyPractised: [.previewPiece, .previewExercise]))
     }
@@ -274,7 +273,7 @@
           items: [.previewExercise],
           activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
           buildingSetlist: BuildingSetlistView(
-            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
           recentlyPractised: [.previewPiece, .previewExercise]))
     }
@@ -299,7 +298,6 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise]),
             ],
-            blockCount: 2,
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
     }
 
@@ -318,7 +316,6 @@
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
                 durationDisplay: "12 min", entries: block)
             ],
-            blockCount: 1,
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
     }
 
@@ -399,7 +396,7 @@
       var copy = item
       copy.practice = ItemPracticeSummary.fixture(
         sessionCount: 8, totalMinutes: 120, latestScore: score, scoreHistory: [],
-        latestTempo: nil, lastPracticedAt: "2026-05-30T09:00:00Z")
+        lastPracticedAt: "2026-05-30T09:00:00Z")
       return copy
     }
   }

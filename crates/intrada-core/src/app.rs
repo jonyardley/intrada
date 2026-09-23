@@ -52,7 +52,6 @@ pub enum Event {
     SetSort(LibrarySort),
 
     // ── Local-first persistence ──────────────────────────────────────
-    HydrateFromStore,
     StoreLoaded(PersistenceOutput),
     /// Write result (split from `StoreLoaded` so a failed write reloads without looping — #825).
     StoreWritten(PersistenceOutput),
@@ -64,8 +63,8 @@ pub enum Event {
     /// The shell read the page. Carries the `photo_id` it was asked to read, so
     /// a result can only ever land on the read that asked for it — two scans in
     /// flight would otherwise show one page beside the other's fields.
-    /// `Unsupported` and `Failed` are outcomes the form shows, not errors that
-    /// mute the banner.
+    /// `Failed` is an outcome the form shows, not an error that mutes the
+    /// banner.
     PhotoRead {
         photo_id: String,
         output: RecognitionOutput,
@@ -179,7 +178,6 @@ impl Intrada {
             }
 
             // ── Local-first persistence ──────────────────────────────
-            Event::HydrateFromStore => persistence::load_items(),
             Event::StoreLoaded(output) => match output {
                 PersistenceOutput::Items(items) => {
                     model.items = items;
@@ -248,9 +246,6 @@ impl Intrada {
                         photo_id,
                         draft: recognition::read_fields(&page),
                     },
-                    RecognitionOutput::Unsupported => {
-                        crate::model::PhotoRecognition::Unsupported { photo_id }
-                    }
                     RecognitionOutput::Failed => {
                         crate::model::PhotoRecognition::Failed { photo_id }
                     }
@@ -1379,7 +1374,6 @@ mod tests {
         assert_eq!(p1.session_count, 2);
         assert_eq!(p1.total_minutes, 45);
         assert_eq!(p1.latest_score, None);
-        assert_eq!(p1.latest_tempo, None);
         assert!(p1.score_history.is_empty());
         assert_eq!(p1.last_practiced_at, Some(sess1_started.to_rfc3339()));
         assert_eq!(p1.tempo_trend.points.len(), 2);
@@ -1859,12 +1853,6 @@ mod tests {
     }
 
     #[test]
-    fn latest_tempo_is_the_newest_measured_not_the_newest_session() {
-        // Reading the newest slot rather than the newest number would drop it.
-        assert_eq!(summary_for_tempos(&[Some(88), None]).latest_tempo, Some(88));
-    }
-
-    #[test]
     fn tempo_trend_has_no_trend_below_two_measured_tempos() {
         assert!(!tempo_trend_for(&[None, None]).has_trend);
         assert!(!tempo_trend_for(&[Some(96), None, None]).has_trend);
@@ -1978,7 +1966,6 @@ mod tests {
         assert_eq!(summary.session_count, 1);
         assert_eq!(summary.total_minutes, 3);
         assert!(summary.latest_score.is_none());
-        assert!(summary.latest_tempo.is_none());
         assert!(summary.score_history.is_empty());
         assert_eq!(summary.tempo_trend.points.len(), 1);
         assert!(summary.tempo_trend.points[0].tempo.is_none());

@@ -1,7 +1,7 @@
 use super::*;
 
 /// A session-local override of the metre lives in the shell's click; this is
-/// the piece's own, and the chart's beat split follows it.
+/// the piece's own.
 pub(super) fn set_metre(
     model: &mut Model,
     id: String,
@@ -25,10 +25,6 @@ pub(super) fn set_metre(
     }
 
     item.metre = next;
-    let derived = item.metre.clone().unwrap_or_default();
-    if let Some(chart) = item.chord_chart.as_mut() {
-        chart.reassign_beats(&derived);
-    }
     item.updated_at = chrono::Utc::now();
     let item = item.clone();
 

@@ -287,7 +287,6 @@ pub fn session_to_view(session: &PracticeSession, labels: &VariationLabels) -> P
     PracticeSessionView {
         id: session.id.clone(),
         started_at: session.started_at.to_rfc3339(),
-        finished_at: session.completed_at.to_rfc3339(),
         total_duration_display: format_duration_display(session.total_duration_secs),
         total_duration_summary: format_duration_summary(session.total_duration_secs),
         completion_status: session.completion_status.clone(),

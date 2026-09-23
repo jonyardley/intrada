@@ -476,7 +476,7 @@ pub fn validate_variant_host(id: &str, model: &Model) -> Result<(), LibraryError
     Ok(())
 }
 
-pub fn normalize_variant_labels(labels: Vec<String>) -> Vec<String> {
+pub(crate) fn normalize_variant_labels(labels: Vec<String>) -> Vec<String> {
     labels.into_iter().map(|l| l.trim().to_string()).collect()
 }
 
