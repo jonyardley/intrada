@@ -171,7 +171,6 @@ final class LibraryStoreMigrationTests: XCTestCase {
       let entries: String = row["entries"]
       XCTAssertTrue(entries.contains("\"score\":10"), "score 5 must rescale ×2 to 10")
       XCTAssertTrue(entries.contains("\"notes\":\"keep\""), "notes must survive the rescale")
-      // Entry e2 had no score key, so it must still have no score after the rescale.
       XCTAssertFalse(entries.contains("\"score\":0"), "null-score entry must not gain a zero score")
     }
   }
@@ -201,7 +200,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
       try insertV3Session(db, id: "bad", entries: "not json")
       try insertV3Session(db, id: "object", entries: #"{"a":{"score":3}}"#)
       try insertV3Session(
-        db, id: "good", entries: #"[{"id":"e1","score":2},{"id":"e2","score":4}]"#)
+        db, id: "good",
+        entries: #"[{"id":"e1","score":2},{"id":"e2","score":4},{"id":"e3","score":7}]"#)
     }
 
     try LibraryStore.migrator.migrate(queue)
@@ -214,8 +214,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
         #"{"a":{"score":3}}"#)
     }
     let good = try storedEntries(queue, id: "good")
-    XCTAssertEqual(good.map { $0["id"] as? String }, ["e1", "e2"])
-    XCTAssertEqual(good.map { $0["score"] as? Int }, [4, 8])
+    XCTAssertEqual(good.map { $0["id"] as? String }, ["e1", "e2", "e3"])
+    XCTAssertEqual(good.map { $0["score"] as? Int }, [4, 8, 10], "a doubled score caps at 10")
   }
 
   private func insertV3Session(_ db: Database, id: String, entries: String) throws {
