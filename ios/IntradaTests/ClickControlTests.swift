@@ -47,7 +47,7 @@ struct ClickControlTests {
   @Test func aMarkingWithNoBpmIsNotATargetTheClickCanSpeakFor() {
     #expect(TempoFormatting.display(marking: "Andante", bpm: nil) == "Andante")
     #expect(withoutTarget().readout == "Metronome")
-    #expect(withoutTarget().spokenValue == "no tempo set")
+    #expect(withoutTarget().spokenValue == "96 beats per minute")
   }
 
   @Test func aClickThatCouldNotStartSaysSoInPlace() {
@@ -60,8 +60,9 @@ struct ClickControlTests {
     #expect(!control(bpm: 66).spokenValue.contains("♩"))
   }
 
-  @Test func spokenTempoNamesTheAbsenceOfATarget() {
-    #expect(withoutTarget().spokenValue == "no tempo set")
+  // Reached by a VoiceOver swipe up and back to the seed (#2021).
+  @Test func withNoTargetTheSpokenValueIsTheTempoTheNextTapPlays() {
+    #expect(withoutTarget(bpm: 88).spokenValue == "88 beats per minute")
   }
 
   @Test func spokenTempoCarriesTheFailure() {

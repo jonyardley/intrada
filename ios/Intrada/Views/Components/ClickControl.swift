@@ -201,7 +201,7 @@ struct ClickControl: View {
   var spokenValue: String {
     if unavailable { return "unavailable" }
     if showsBpmNumeral { return TempoUnit.spoken(displayedBpm, unit: unit) }
-    return targetSpoken ?? "no tempo set"
+    return targetSpoken ?? TempoUnit.spoken(displayedBpm, unit: unit)
   }
 }
 
