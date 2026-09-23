@@ -92,7 +92,7 @@ final class Store {
     let job = DiskJob(store: store, operation: operation)
     diskTail = Task {
       await previous?.value
-      let result = await Task.detached { job.run() }.value
+      let result = await Task.detached(priority: .userInitiated) { job.run() }.value
       if let error = result.error { report(error, "persistence") }
       process(bridged { try bridge.resolve(id, persistenceOutput: result.output) } ?? [])
     }
@@ -217,8 +217,7 @@ final class Store {
   }
 }
 
-/// The generated bridge types are not `Sendable`; each job owns its copy of
-/// the operation and nothing else touches it while the job runs.
+/// Generated bridge types are value types without a `Sendable` conformance.
 private struct DiskJob: @unchecked Sendable {
   let store: (any ItemStore)?
   let operation: PersistenceOperation

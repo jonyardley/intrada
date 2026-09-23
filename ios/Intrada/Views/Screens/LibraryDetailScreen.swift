@@ -525,9 +525,9 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  // Links, unlinks and creates+links each draft (#1431); a failed write
-  // surfaces on the banner rather than rolling back (#846), so the haptic only
-  // fires once everything lands.
+  // Links, unlinks and creates+links each draft (#1431); the haptic fires once
+  // the core accepts them all, and a failed disk write arrives later on the
+  // banner (#846, #2004).
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise]) {
     let current = Swift.Set(item.linkedExercises.map(\.id))
     let toLink = selected.subtracting(current)

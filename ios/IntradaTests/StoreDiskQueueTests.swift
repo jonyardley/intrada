@@ -20,32 +20,29 @@ struct StoreDiskQueueTests {
     #expect(bridge.persistenceResolved.map(\.id) == [1])
   }
 
-  @Test func aLoadSentAfterASaveSeesTheSavedRow() async throws {
+  @Test func aLoadSentAfterASaveWaitsForTheSave() async throws {
+    let disk = SlowSaveStore()
     let bridge = FakeBridge()
     var next: UInt32 = 0
-    let item = StoreEffectLoopTests.sampleItem
     bridge.updateHandler = { event in
       next += 1
       if case .setQuery = event {
-        return [Request(id: next, effect: .persistence(.saveItem(item)))]
+        return [Request(id: next, effect: .persistence(.saveItem(StoreEffectLoopTests.sampleItem)))]
       }
       return [Request(id: next, effect: .persistence(.loadItems))]
     }
-    let store = Store(bridge: bridge)
+    let store = Store(bridge: bridge, store: disk)
 
     store.send(.setQuery(nil))
     store.send(.setUtcOffset(minutes: 0))
     await store.settle()
 
+    #expect(disk.calls == ["save", "load"])
     #expect(bridge.persistenceResolved.map(\.id) == [1, 2])
-    guard case .items(let items) = bridge.persistenceResolved.last?.output else {
-      Issue.record("expected .items")
-      return
-    }
-    #expect(items.map(\.id) == [item.id])
   }
 
-  @Test func jobsInOneBatchResolveInTheOrderTheCoreAsked() async throws {
+  @Test func jobsInOneBatchRunInTheOrderTheCoreAsked() async throws {
+    let disk = SlowSaveStore()
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [
@@ -54,11 +51,12 @@ struct StoreDiskQueueTests {
         Request(id: 3, effect: .persistence(.loadSessions)),
       ]
     }
-    let store = Store(bridge: bridge)
+    let store = Store(bridge: bridge, store: disk)
 
     store.send(.setQuery(nil))
     await store.settle()
 
+    #expect(disk.calls == ["save", "load", "sessions"])
     #expect(bridge.persistenceResolved.map(\.id) == [1, 2, 3])
   }
 
@@ -112,4 +110,29 @@ private final class ThreadRecordingStore: ItemStore, @unchecked Sendable {
     return []
   }
   func saveSession(_ session: PracticeSession) throws { record() }
+}
+
+/// A save slow enough that a load not made to wait would overtake it.
+private final class SlowSaveStore: ItemStore, @unchecked Sendable {
+  private let lock = NSLock()
+  private var recorded: [String] = []
+  var calls: [String] { lock.withLock { recorded } }
+
+  private func record(_ call: String) { lock.withLock { recorded.append(call) } }
+
+  func loadItems() throws -> [Item] {
+    record("load")
+    return []
+  }
+  func save(_ item: Item) throws {
+    Thread.sleep(forTimeInterval: 0.05)
+    record("save")
+  }
+  func save(_ items: [Item]) throws { record("save") }
+  func delete(id: String, deletedAt: String) throws { record("delete") }
+  func loadSessions() throws -> [PracticeSession] {
+    record("sessions")
+    return []
+  }
+  func saveSession(_ session: PracticeSession) throws { record("saveSession") }
 }
