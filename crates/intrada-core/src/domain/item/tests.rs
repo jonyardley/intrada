@@ -1456,7 +1456,7 @@ fn chord_chart_events_round_trip_on_the_ffi_bincode_wire() {
 #[test]
 fn variant_payloads_round_trip_on_the_ffi_bincode_wire() {
     // Bare Variant, with the tombstone set (deleted_at is a later bincode
-    // field — guard both levels).
+    // field, so guard both levels).
     let now = chrono::Utc::now();
     crate::domain::types::assert_round_trips(Variant {
         id: "v1".to_string(),

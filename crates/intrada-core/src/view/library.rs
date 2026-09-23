@@ -381,8 +381,8 @@ pub(crate) fn build_exercise_usage(
     }
 
     // Live pieces, then deleted ones, then "On its own". Within each, recency
-    // descending — which sinks never-practised rows for free, `None` sorting
-    // last under the reversed compare — then title, so linked-only rows (all
+    // descending (which sinks never-practised rows for free, `None` sorting
+    // last under the reversed compare), then title, so linked-only rows (all
     // `None`) read alphabetically.
     for rows in by_exercise.values_mut() {
         rows.sort_by(|a, b| match (&a.piece, &b.piece) {

@@ -1865,7 +1865,7 @@ fn test_save_session_updates_practice_summaries_in_view() {
         Event::SessionStoreWritten(crate::persistence::PersistenceOutput::Ack),
     );
 
-    // Build the view — this is what the shell sees
+    // Build the view: this is what the shell sees
     let app = crate::app::Intrada;
     let vm = <crate::app::Intrada as crux_core::App>::view(&app, &model);
 
@@ -2440,7 +2440,7 @@ fn test_update_entry_score_out_of_range_rejected() {
         panic!("Expected Summary state");
     };
 
-    // Score 0 — out of range
+    // Score 0: out of range
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -2455,7 +2455,7 @@ fn test_update_entry_score_out_of_range_rejected() {
         assert_eq!(play_of(&s.entries[0]).score, None); // Score not set
     }
 
-    // Score 11 — out of range
+    // Score 11: out of range
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -2475,7 +2475,7 @@ fn test_update_entry_score_out_of_range_rejected() {
 fn test_update_entry_score_rejected_on_pending_entry() {
     // The current item (the one in progress) has status NotAttempted
     // until NextItem / SkipItem flips it. Scoring it would let the user
-    // rate work they haven't done — invariant: only Completed entries
+    // rate work they haven't done. Invariant: only Completed entries
     // can be scored, regardless of session phase.
     let (mut model, _start) = model_with_active_session(2);
 
@@ -2495,7 +2495,7 @@ fn test_update_entry_score_rejected_on_pending_entry() {
         }),
     );
 
-    // Score not set — entry is still NotAttempted
+    // Score not set: entry is still NotAttempted
     if let SessionStatus::Active(ref a) = model.session_status {
         assert_eq!(play_of(&a.entries[0]).score, None);
         assert_eq!(a.entries[0].status, EntryStatus::NotAttempted);
@@ -2513,7 +2513,7 @@ fn test_update_entry_score_works_mid_session_on_completed_entry() {
     let (mut model, start) = model_with_active_session(2);
     let t1 = start + chrono::Duration::seconds(45);
 
-    // Advance — entry[0] becomes Completed, current_index moves to 1
+    // Advance: entry[0] becomes Completed, current_index moves to 1
     update(
         &mut model,
         Event::Session(SessionEvent::NextItem {
@@ -2529,7 +2529,7 @@ fn test_update_entry_score_works_mid_session_on_completed_entry() {
         assert_eq!(a.current_index, 1);
         a.entries[0].id.clone()
     } else {
-        panic!("Expected Active state — only one of two items advanced");
+        panic!("Expected Active state: only one of two items advanced");
     };
 
     // Score the just-completed entry mid-session
@@ -2548,14 +2548,14 @@ fn test_update_entry_score_works_mid_session_on_completed_entry() {
     if let SessionStatus::Active(ref a) = model.session_status {
         assert_eq!(play_of(&a.entries[0]).score, Some(4));
     } else {
-        panic!("Expected Active state — session shouldn't have ended");
+        panic!("Expected Active state: session shouldn't have ended");
     }
 }
 
 #[test]
 fn test_mid_session_entry_score_survives_into_summary() {
     // A per-entry score set mid-session must still be present once the
-    // session finishes and projects into the Summary — the reconciliation
+    // session finishes and projects into the Summary: the reconciliation
     // the reflection hand-off (Phase 6) relies on.
     let (mut model, start) = model_with_active_session(2);
     let t1 = start + chrono::Duration::seconds(45);
@@ -2710,7 +2710,7 @@ fn test_update_entry_score_works_on_last_item_after_finishing() {
         panic!("Expected Summary state after finishing on the last item");
     };
 
-    // Score the last item — same code path the reflection sheet takes
+    // Score the last item: same code path the reflection sheet takes
     let play_id = first_play_id(&model, &last_entry_id);
     update(
         &mut model,
@@ -2734,7 +2734,7 @@ fn test_update_entry_score_unknown_entry_id_is_silent_noop() {
     // The sheet snapshots the entry id at open time. If the session is
     // cleared (recovery, new session) before Continue, the id won't
     // match anything in the new model. `entry_for_update_mut` returns
-    // None — the dispatch must be silent (no last_error, no panic).
+    // None: the dispatch must be silent (no last_error, no panic).
     let mut model = model_with_summary();
     let live_entry_id = match model.session_status {
         SessionStatus::Summary(ref s) => s.entries[0].id.clone(),
@@ -2801,7 +2801,7 @@ fn test_update_entry_score_rejected_on_skipped_entry_in_active_phase() {
         }),
     );
 
-    // Score not applied — entry is Skipped, not Completed
+    // Score not applied: entry is Skipped, not Completed
     if let SessionStatus::Active(ref a) = model.session_status {
         assert_eq!(a.entries[0].score_summary(), None);
         assert!(a.entries[0].plays.is_empty());
@@ -2819,7 +2819,7 @@ fn test_update_entry_score_boundary_values() {
         panic!("Expected Summary state");
     };
 
-    // Score 1 — minimum valid
+    // Score 1: minimum valid
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -2834,7 +2834,7 @@ fn test_update_entry_score_boundary_values() {
         assert_eq!(play_of(&s.entries[0]).score, Some(1));
     }
 
-    // Score 10 — maximum valid
+    // Score 10: maximum valid
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -4120,7 +4120,7 @@ fn test_update_entry_tempo_rejected_out_of_range() {
         panic!("Expected Summary state");
     };
 
-    // Tempo 0 — out of range
+    // Tempo 0: out of range
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -4137,7 +4137,7 @@ fn test_update_entry_tempo_rejected_out_of_range() {
         assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
     }
 
-    // Tempo 501 — out of range
+    // Tempo 501: out of range
     let play_id = first_play_id(&model, &entry_id);
     update(
         &mut model,
@@ -4736,7 +4736,7 @@ fn test_rep_state_frozen_on_end_session_early() {
     );
 
     if let SessionStatus::Summary(ref s) = model.session_status {
-        // Item 1: rep state frozen — 2/5, not reached
+        // Item 1: rep state frozen at 2/5, not reached
         assert_eq!(play_of(&s.entries[0]).rep_target, Some(5));
         assert_eq!(play_of(&s.entries[0]).rep_count, Some(2));
         assert_eq!(play_of(&s.entries[0]).rep_target_reached, Some(false));

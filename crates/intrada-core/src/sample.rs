@@ -1,7 +1,7 @@
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::session::PracticeSession;
 
-/// Canonical demo dataset for `Event::LoadSampleData` — shared by every shell
+/// Canonical demo dataset for `Event::LoadSampleData`, shared by every shell
 /// (CI screenshots, local demos, E2E). Stable ids; staggered timestamps so the
 /// newest-first sort is deterministic.
 pub(crate) fn sample_items() -> Vec<Item> {

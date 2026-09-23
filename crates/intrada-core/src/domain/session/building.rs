@@ -62,7 +62,7 @@ pub(super) fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
     units
 }
 
-/// True when every `group_id` occupies a single contiguous run — the block
+/// True when every `group_id` occupies a single contiguous run: the block
 /// invariant a reorder must never break.
 pub(super) fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
     let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -84,7 +84,7 @@ pub(super) fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
     true
 }
 
-/// Clear the `group_id` of any block left without its anchor piece — a block
+/// Clear the `group_id` of any block left without its anchor piece. A block
 /// only means "this piece's warm-up", so when the piece goes the related
 /// exercises become standalone (§7.4 dissolve).
 pub(super) fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
@@ -319,7 +319,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
         }
     }
 
-    // Resolve the item and — for a piece — its related exercises as owned
+    // Resolve the item and, for a piece, its related exercises as owned
     // tuples before taking the mutable Building borrow.
     let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
         model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
@@ -346,7 +346,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
         return crux_core::render::render();
     };
 
-    // Skip related exercises already in the setlist — don't duplicate.
+    // Skip related exercises already in the setlist; don't duplicate.
     let existing: std::collections::HashSet<String> =
         building.entries.iter().map(|e| e.item_id.clone()).collect();
     let related_to_add: Vec<(String, String, ItemKind)> = related
@@ -424,7 +424,7 @@ pub(super) fn reorder_setlist(
     let entry = building.entries.remove(current_index);
     building.entries.insert(new_position, entry);
     if !groups_contiguous(&building.entries) {
-        // Revert — the move would split a block.
+        // Revert: the move would split a block.
         let entry = building.entries.remove(new_position);
         building.entries.insert(current_index, entry);
         model.raise_error("Can't move an item out of its block".to_string());

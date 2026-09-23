@@ -85,7 +85,7 @@ pub(super) fn commit_scaffold(
         return crux_core::render::render();
     }
 
-    // Re-derive from the stored chart — deterministic, so the committed
+    // Re-derive from the stored chart: deterministic, so the committed
     // exercises equal the previewed ones.
     let Some(chart) = model
         .items
@@ -103,7 +103,7 @@ pub(super) fn commit_scaffold(
         return crux_core::render::render();
     };
 
-    // Skip specs already linked (by reserved kind or hand-made title) —
+    // Skip specs already linked (by reserved kind or hand-made title),
     // same predicate the preview's `already_linked` flag uses.
     let (linked_kinds, linked_titles) = linked_scaffold_state(model, &piece_id);
 
@@ -135,7 +135,7 @@ pub(super) fn commit_scaffold(
         .collect();
 
     if new_exercises.is_empty() {
-        // Everything deselected or already linked — a benign no-op, not
+        // Everything deselected or already linked: a benign no-op, not
         // an error, and nothing to persist.
         model.last_error = None;
         return crux_core::render::render();

@@ -117,14 +117,14 @@ pub enum ItemEvent {
         ordered_ids: Vec<String>,
     },
     /// Parse `raw_chart` and store it on the piece. A parse error surfaces on
-    /// `last_error` and stores nothing — never a partial chart.
+    /// `last_error` and stores nothing, never a partial chart.
     SetChordChart {
         piece_id: String,
         raw_chart: String,
     },
     /// Materialise the selected scaffold `kinds` into real exercises linked to
     /// the piece. The core re-derives from the stored chart (deterministic), so
-    /// only the ticked `kind`s cross the wire — never spec content (#1106).
+    /// only the ticked `kind`s cross the wire, never spec content (#1106).
     /// Dedups by title against the piece's already-linked exercises; a batch
     /// with nothing new to add is a no-op.
     CommitScaffold {
@@ -236,7 +236,7 @@ pub(crate) fn linked_scaffold_state(
     (kinds, titles)
 }
 
-/// Whether a spec is already linked — by reserved kind (rename-robust) or a
+/// Whether a spec is already linked: by reserved kind (rename-robust) or a
 /// hand-made title collision.
 pub(crate) fn scaffold_already_linked(
     kinds: &std::collections::HashSet<ScaffoldKind>,

@@ -39,9 +39,9 @@ pub enum CompletionStatus {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum RepAction {
-    /// Failed rep — count decremented.
+    /// Failed rep: count decremented.
     Missed,
-    /// Successful rep — count incremented.
+    /// Successful rep: count incremented.
     Success,
 }
 
@@ -351,7 +351,7 @@ pub enum SessionEvent {
         target: Option<u8>,
     },
     /// Set or clear the planned duration for an entry during building phase.
-    /// `None` clears the planned duration; `Some(secs)` sets it (range: 60–3600).
+    /// `None` clears the planned duration; `Some(secs)` sets it (range: 60 to 3600).
     SetEntryDuration {
         entry_id: String,
         duration_secs: Option<u32>,
@@ -396,7 +396,7 @@ pub enum SessionEvent {
     KeepOnlyPiece {
         group_id: String,
     },
-    /// Dissolve a block — its entries stay in place but become standalone.
+    /// Dissolve a block: its entries stay in place but become standalone.
     UngroupBlock {
         group_id: String,
     },
