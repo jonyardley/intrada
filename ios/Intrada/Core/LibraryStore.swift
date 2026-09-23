@@ -632,9 +632,9 @@ final class LibraryStore: ItemStore {
   private struct StoredBar: Codable {
     var chords: [StoredChartChord]
   }
+  // Rows written before #1948 also carry `beats`; decoding ignores it.
   private struct StoredChartChord: Codable {
     var symbol: StoredChordSymbol
-    var beats: UInt8
   }
   private struct StoredChordSymbol: Codable {
     var root: UInt8
@@ -658,8 +658,7 @@ final class LibraryStore: ItemStore {
                   symbol: StoredChordSymbol(
                     root: chord.symbol.root, quality: chordQualityString(chord.symbol.quality),
                     extensions: chord.symbol.extensions, bass: chord.symbol.bass,
-                    raw: chord.symbol.raw),
-                  beats: chord.beats)
+                    raw: chord.symbol.raw))
               })
           })
       })
@@ -682,8 +681,7 @@ final class LibraryStore: ItemStore {
                     root: chord.symbol.root,
                     quality: chordQuality(from: chord.symbol.quality),
                     extensions: chord.symbol.extensions, bass: chord.symbol.bass,
-                    raw: chord.symbol.raw),
-                  beats: chord.beats)
+                    raw: chord.symbol.raw))
               })
           })
       })

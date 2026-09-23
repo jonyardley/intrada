@@ -24,7 +24,6 @@ pub(super) fn build_library_item_views(
     for item in &model.items {
         let practice = model.practice_summaries.get(&item.id).cloned();
         let subtitle = item.composer.clone().unwrap_or_default();
-        let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
 
         let linked_exercises = if item.kind == ItemKind::Piece {
             item.linked_exercise_ids
@@ -144,7 +143,6 @@ pub(super) fn build_library_item_views(
             created_at: item.created_at.to_rfc3339(),
             updated_at: item.updated_at.to_rfc3339(),
             practice,
-            latest_achieved_tempo,
             priority: item.priority,
             linked_exercises,
             used_in,
@@ -248,7 +246,6 @@ pub(crate) fn build_practice_summaries(
                 tempo_points.sort_by(|a, b| {
                     (&a.session_date, &a.session_id).cmp(&(&b.session_date, &b.session_id))
                 });
-                let latest_tempo = tempo_points.iter().rev().find_map(|p| p.tempo);
                 let measured = tempo_points.iter().filter(|p| p.tempo.is_some()).count();
                 let tempo_trend = TempoTrendView {
                     points: tempo_points,
@@ -262,7 +259,6 @@ pub(crate) fn build_practice_summaries(
                         total_minutes: (total_secs / 60) as u32,
                         latest_score,
                         score_history,
-                        latest_tempo,
                         tempo_trend,
                         last_practiced_at,
                     },

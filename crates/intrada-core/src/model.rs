@@ -77,11 +77,6 @@ pub enum PhotoRecognition {
         photo_id: String,
         draft: PhotoDraft,
     },
-    /// The device has no recognition. Not an error: the photo is still saved
-    /// and the user types the fields.
-    Unsupported {
-        photo_id: String,
-    },
     Failed {
         photo_id: String,
     },
@@ -299,7 +294,6 @@ pub enum PhotoRecognitionStatus {
     Idle,
     Reading,
     Ready,
-    Unsupported,
     Failed,
 }
 
@@ -399,7 +393,6 @@ pub struct LibraryItemView {
     pub created_at: String,
     pub updated_at: String,
     pub practice: Option<ItemPracticeSummary>,
-    pub latest_achieved_tempo: Option<u16>,
     pub priority: bool,
     pub linked_exercises: Vec<LinkedExerciseView>,
     /// For exercises: every piece this exercise is used in, plus the "On its
@@ -511,7 +504,6 @@ pub struct ItemPracticeSummary {
     pub total_minutes: u32,
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
-    pub latest_tempo: Option<u16>,
     pub tempo_trend: TempoTrendView,
     /// Most recent session date for this item (max `started_at`), independent
     /// of whether a score/tempo was recorded. `None` if never practised.
@@ -557,7 +549,6 @@ pub struct TempoTrendView {
 pub struct PracticeSessionView {
     pub id: String,
     pub started_at: String,
-    pub finished_at: String,
     pub total_duration_display: String,
     pub total_duration_summary: String,
     pub completion_status: CompletionStatus,
@@ -667,7 +658,6 @@ pub struct BuildingSetlistView {
     pub item_count: usize,
     /// The same entries grouped into ordered units (blocks + standalone items).
     pub blocks: Vec<SetlistBlockView>,
-    pub block_count: usize,
     /// Sum of the entries' planned durations; `None` when nothing is planned
     /// so shells can fall back to counts-only copy.
     pub total_duration_display: Option<String>,
@@ -706,7 +696,6 @@ impl LibraryItemView {
             created_at: String::new(),
             updated_at: String::new(),
             practice: None,
-            latest_achieved_tempo: None,
             priority: false,
             linked_exercises: Vec::new(),
             used_in: Vec::new(),
@@ -768,7 +757,6 @@ impl ItemPracticeSummary {
             total_minutes: 0,
             latest_score: None,
             score_history: Vec::new(),
-            latest_tempo: None,
             tempo_trend: TempoTrendView::default(),
             last_practiced_at: None,
         }

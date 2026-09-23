@@ -81,25 +81,8 @@ fn emits_save(
 
 // ── SetMetre ──
 
-fn beats_of(model: &Model, id: &str) -> Vec<u8> {
-    model
-        .items
-        .iter()
-        .find(|i| i.id == id)
-        .and_then(|i| i.chord_chart.as_ref())
-        .expect("chart stored")
-        .sections[0]
-        .bars[0]
-        .chords
-        .iter()
-        .map(|c| c.beats)
-        .collect()
-}
-
-/// The chart derives its beat split from the item's metre, at parse time
-/// and again when the metre changes (spec question 1).
 #[test]
-fn set_metre_rederives_a_charted_pieces_beats_and_persists() {
+fn set_metre_stores_the_metre_on_a_charted_piece_and_persists() {
     let mut model = model_with_piece_and_exercise();
     let _ = send_cmd(
         &mut model,
@@ -108,7 +91,6 @@ fn set_metre_rederives_a_charted_pieces_beats_and_persists() {
             raw_chart: "| Cm7 F7 |".to_string(),
         },
     );
-    assert_eq!(beats_of(&model, "piece-1"), vec![2, 2], "4/4 by default");
     let before = model
         .items
         .iter()
@@ -135,7 +117,6 @@ fn set_metre_rederives_a_charted_pieces_beats_and_persists() {
         piece.updated_at > before,
         "the metre rides the piece's updated_at"
     );
-    assert_eq!(beats_of(&model, "piece-1"), vec![2, 1]);
     assert!(model.last_error.is_none());
     assert!(emits_save(&mut cmd, "piece-1"));
 }
@@ -157,30 +138,6 @@ fn set_metre_rejects_a_grouping_that_does_not_add_up() {
     assert!(model.last_error.is_some());
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert_eq!(piece.metre, None);
-}
-
-#[test]
-fn a_chart_parses_against_the_pieces_metre() {
-    let mut model = model_with_piece_and_exercise();
-    let _ = send_cmd(
-        &mut model,
-        ItemEvent::SetMetre {
-            id: "piece-1".to_string(),
-            metre: Some(Metre {
-                beats: 6,
-                unit: 8,
-                groups: Some(vec![3, 3]),
-            }),
-        },
-    );
-    let _ = send_cmd(
-        &mut model,
-        ItemEvent::SetChordChart {
-            piece_id: "piece-1".to_string(),
-            raw_chart: "| Cm7 F7 |".to_string(),
-        },
-    );
-    assert_eq!(beats_of(&model, "piece-1"), vec![3, 3]);
 }
 
 #[test]
@@ -284,247 +241,6 @@ fn set_chord_chart_rejects_a_non_piece_host() {
     let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
     assert!(ex.chord_chart.is_none());
     assert!(model.last_error.is_some());
-}
-
-// ── RenameVariant ──
-
-#[test]
-fn rename_variant_renames_in_place_keeping_id_and_history() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let c_id = exercise_variants(&model)
-        .iter()
-        .find(|v| v.label == "C")
-        .unwrap()
-        .id
-        .clone();
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .updated_at;
-
-    let mut cmd = send_cmd(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: c_id.clone(),
-            new_label: "Do".to_string(),
-        },
-    );
-
-    let variants = exercise_variants(&model);
-    let renamed = variants.iter().find(|v| v.id == c_id).unwrap();
-    assert_eq!(renamed.label, "Do", "label updated");
-    assert_eq!(variants.len(), 2, "no new row created");
-    assert!(
-        variants.iter().any(|v| v.label == "F"),
-        "other variation untouched"
-    );
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert!(ex.updated_at >= before, "touches the item's updated_at");
-    assert!(model.last_error.is_none());
-    assert!(emits_save(&mut cmd, "ex-1"), "local-first persists");
-}
-
-#[test]
-fn rename_variant_rejects_a_duplicate_against_another_live_variation() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let c_id = exercise_variants(&model)
-        .iter()
-        .find(|v| v.label == "C")
-        .unwrap()
-        .id
-        .clone();
-
-    send(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: c_id,
-            new_label: "f".to_string(),
-        },
-    );
-
-    assert!(
-        model.last_error.is_some(),
-        "case-insensitive duplicate rejected"
-    );
-    let variants = exercise_variants(&model);
-    assert!(variants.iter().any(|v| v.label == "C"), "unchanged");
-    assert!(variants.iter().any(|v| v.label == "F"), "unchanged");
-}
-
-#[test]
-fn rename_variant_is_a_noop_without_a_save_when_unchanged() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-    let c_id = exercise_variants(&model)[0].id.clone();
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .updated_at;
-
-    let mut cmd = send_cmd(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: c_id,
-            new_label: "C".to_string(),
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.updated_at, before, "unchanged label leaves the stamp");
-    assert!(!emits_save(&mut cmd, "ex-1"), "nothing to persist");
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn rename_variant_rejects_a_blank_label() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-    let c_id = exercise_variants(&model)[0].id.clone();
-
-    send(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: c_id,
-            new_label: "   ".to_string(),
-        },
-    );
-
-    assert!(model.last_error.is_some());
-    assert_eq!(exercise_variants(&model)[0].label, "C", "unchanged");
-}
-
-#[test]
-fn rename_variant_on_missing_variant_surfaces_not_found() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: "nope".to_string(),
-            new_label: "Do".to_string(),
-        },
-    );
-
-    assert!(model.last_error.is_some());
-    assert_eq!(exercise_variants(&model)[0].label, "C", "unchanged");
-}
-
-#[test]
-fn rename_variant_on_a_tombstoned_variation_surfaces_not_found() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let f_id = exercise_variants(&model)
-        .iter()
-        .find(|v| v.label == "F")
-        .unwrap()
-        .id
-        .clone();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: f_id,
-            new_label: "Fa".to_string(),
-        },
-    );
-
-    assert!(
-        model.last_error.is_some(),
-        "a tombstoned variation can't be renamed"
-    );
-}
-
-#[test]
-fn rename_variant_event_round_trips_on_the_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::RenameVariant {
-        item_id: "ex-1".to_string(),
-        variant_id: "v-1".to_string(),
-        new_label: "Do".to_string(),
-    }));
-}
-
-#[test]
-fn set_chord_chart_uses_the_piece_key() {
-    let mut model = model_with_piece_and_exercise();
-    if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-        p.key = Some("G".to_string());
-        p.modality = Some(Modality::Minor);
-    }
-
-    send(
-        &mut model,
-        ItemEvent::SetChordChart {
-            piece_id: "piece-1".to_string(),
-            raw_chart: "| Cm7 |".to_string(),
-        },
-    );
-
-    let chart = model
-        .items
-        .iter()
-        .find(|i| i.id == "piece-1")
-        .unwrap()
-        .chord_chart
-        .as_ref()
-        .unwrap();
-    assert_eq!(chart.key, "G");
-    assert_eq!(chart.modality, Modality::Minor);
 }
 
 // ── CommitScaffold ──
@@ -3055,10 +2771,9 @@ fn update_variants_rejects_a_piece_host() {
 // ── Error targets on the item form (#1831) ──
 
 #[test]
-fn set_variants_and_rename_variant_mark_the_variations_section() {
+fn set_variants_marks_the_variations_section() {
     let mut model = model_with_piece_and_exercise();
     set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
 
     set_ladder(&mut model, &["C", "c"]);
     assert_eq!(
@@ -3066,23 +2781,6 @@ fn set_variants_and_rename_variant_mark_the_variations_section() {
         Some(FormErrorTarget::Piece {
             field: FormErrorField::Variations
         }),
-        "SetVariants"
-    );
-
-    send(
-        &mut model,
-        ItemEvent::RenameVariant {
-            item_id: "ex-1".to_string(),
-            variant_id: c,
-            new_label: "f".to_string(),
-        },
-    );
-    assert_eq!(
-        model.last_error_target,
-        Some(FormErrorTarget::Piece {
-            field: FormErrorField::Variations
-        }),
-        "RenameVariant"
     );
 }
 

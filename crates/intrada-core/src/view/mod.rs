@@ -104,12 +104,12 @@ impl Intrada {
 
         let labels = crate::view::session::variation_labels(&model.items);
 
-        let mut sessions: Vec<_> = model
-            .sessions
-            .iter()
+        let mut finished: Vec<_> = model.sessions.iter().collect();
+        finished.sort_by_key(|s| std::cmp::Reverse(s.completed_at));
+        let sessions: Vec<_> = finished
+            .into_iter()
             .map(|s| session_to_view(s, &labels))
             .collect();
-        sessions.sort_by(|a, b| b.finished_at.cmp(&a.finished_at));
 
         let (active_session, building_setlist, summary) = match &model.session_status {
             SessionStatus::Idle => (None, None, None),
@@ -121,7 +121,6 @@ impl Intrada {
                     .collect();
                 let item_count = entries.len();
                 let blocks = build_blocks(&entries);
-                let block_count = blocks.len();
                 let planned_total_secs: u64 = building
                     .entries
                     .iter()
@@ -146,7 +145,6 @@ impl Intrada {
                         entries,
                         item_count,
                         blocks,
-                        block_count,
                         total_duration_display,
                         total_duration_summary,
                     }),
@@ -241,11 +239,6 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             status: PhotoRecognitionStatus::Ready,
             photo_id: Some(photo_id.clone()),
             draft: Some(draft.clone()),
-        },
-        PhotoRecognition::Unsupported { photo_id } => PhotoRecognitionView {
-            status: PhotoRecognitionStatus::Unsupported,
-            photo_id: Some(photo_id.clone()),
-            draft: None,
         },
         PhotoRecognition::Failed { photo_id } => PhotoRecognitionView {
             status: PhotoRecognitionStatus::Failed,

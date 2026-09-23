@@ -51,13 +51,12 @@
       totalMinutes: UInt32 = 0,
       latestScore: UInt8? = nil,
       scoreHistory: [ScoreHistoryEntry] = [],
-      latestTempo: UInt16? = nil,
       tempoTrend: TempoTrendView = TempoTrendView(points: [], hasTrend: false),
       lastPracticedAt: String? = nil
     ) -> ItemPracticeSummary {
       ItemPracticeSummary(
         sessionCount: sessionCount, totalMinutes: totalMinutes, latestScore: latestScore,
-        scoreHistory: scoreHistory, latestTempo: latestTempo, tempoTrend: tempoTrend,
+        scoreHistory: scoreHistory, tempoTrend: tempoTrend,
         lastPracticedAt: lastPracticedAt)
     }
   }
@@ -309,7 +308,6 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewExercise]),
             ],
-            blockCount: 2,
             totalDurationDisplay: nil, totalDurationSummary: nil)))
     }
 
@@ -320,7 +318,7 @@
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
           buildingSetlist: BuildingSetlistView(
-            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
           recentlyPractised: [.previewPiece, .previewExercise]))
     }
@@ -333,7 +331,7 @@
           items: [.previewExercise],
           activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
           buildingSetlist: BuildingSetlistView(
-            entries: [], itemCount: 0, blocks: [], blockCount: 0,
+            entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil),
           recentlyPractised: [.previewPiece, .previewExercise]))
     }
@@ -358,7 +356,6 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise]),
             ],
-            blockCount: 2,
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
     }
 
@@ -377,7 +374,6 @@
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
                 durationDisplay: "12 min", entries: block)
             ],
-            blockCount: 1,
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
     }
 
@@ -458,7 +454,7 @@
       var copy = item
       copy.practice = ItemPracticeSummary.fixture(
         sessionCount: 8, totalMinutes: 120, latestScore: score, scoreHistory: [],
-        latestTempo: nil, lastPracticedAt: "2026-05-30T09:00:00Z")
+        lastPracticedAt: "2026-05-30T09:00:00Z")
       return copy
     }
   }
@@ -542,7 +538,7 @@
         key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
         tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false,
+        priority: false,
         linkedExercises: [
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
@@ -561,7 +557,7 @@
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true)
@@ -574,7 +570,7 @@
         id: "ex-a", itemType: .exercise, title: "Scales", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true)
@@ -587,7 +583,7 @@
         tempoBpm: 72,
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true)
     }
@@ -596,8 +592,7 @@
     static var previewCharted: LibraryItemView {
       func chord(_ raw: String, _ root: UInt8, _ q: ChordQuality) -> ChartChord {
         ChartChord(
-          symbol: ChordSymbol(root: root, quality: q, extensions: [], bass: nil, raw: raw),
-          beats: 4)
+          symbol: ChordSymbol(root: root, quality: q, extensions: [], bass: nil, raw: raw))
       }
       let chart = ChordChart(
         key: "G", modality: .minor,
@@ -615,7 +610,7 @@
         id: "piece-charted", itemType: .piece, title: "Autumn Leaves", subtitle: "Standard",
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true)
@@ -626,7 +621,7 @@
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true)
@@ -648,9 +643,9 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
           ],
-          latestTempo: 72, tempoTrend: .fixture([66, nil, 69, 72]),
+          tempoTrend: .fixture([66, nil, 69, 72]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        latestAchievedTempo: nil, priority: false,
+        priority: false,
         linkedExercises: [
           // Per-piece scores deliberately differ from the exercises' overall
           // `latestScore` (7 / 4), so the snapshot shows the B2 re-source.
@@ -658,14 +653,14 @@
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
             practice: ItemPracticeSummary.fixture(
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
-              latestTempo: 108, tempoTrend: .fixture([100, 104, 108]),
+              tempoTrend: .fixture([100, 104, 108]),
               lastPracticedAt: "2026-06-28T09:00:00Z"),
             pieceContextScore: 5),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil,
             practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
-              latestTempo: nil, lastPracticedAt: "2026-06-25T09:00:00Z"),
+              lastPracticedAt: "2026-06-25T09:00:00Z"),
             pieceContextScore: 6),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
@@ -689,9 +684,9 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
           ],
-          latestTempo: 108, tempoTrend: .fixture([96, 100, nil, 104, 108]),
+          tempoTrend: .fixture([96, 100, nil, 104, 108]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
@@ -718,9 +713,9 @@
           scoreHistory: [
             ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1")
           ],
-          latestTempo: 120, tempoTrend: .fixture([120]),
+          tempoTrend: .fixture([120]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
-        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        priority: false, linkedExercises: [],
         usedIn: [
           ExerciseUsageView(
             piece: PieceRefView(
@@ -754,7 +749,7 @@
         subtitle: "Bebop vocabulary, 12 keys",
         key: "C", modality: .major, tempo: "132 BPM", tempoMarking: nil, tempoBpm: 132,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [
           VariantView(
@@ -780,7 +775,7 @@
         subtitle: "All 12 keys",
         key: nil, modality: nil, tempo: "72 BPM", tempoMarking: nil, tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: keys.enumerated().map { index, label in
           let solid = index < 4
@@ -801,7 +796,7 @@
         id: "exercise-4", itemType: .exercise, title: "Triad inversions", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: rungs.enumerated().map { index, label in
           VariantView(
@@ -819,7 +814,7 @@
         id: "exercise-5", itemType: .exercise, title: "Arpeggios, four octaves", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: names.enumerated().map { index, label in
           VariantView(
@@ -836,7 +831,7 @@
         key: "D", modality: .major, tempo: "Lent et douloureux (60 BPM)",
         tempoMarking: "Lent et douloureux",
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false,
+        practice: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil, showsKey: true
       )
@@ -964,7 +959,7 @@
     /// date — reusable from snapshot tests as well as the canvas.
     static var previewCompleted: PracticeSessionView {
       PracticeSessionView(
-        id: "session-1", startedAt: "2026-05-30T09:00:00Z", finishedAt: "2026-05-30T09:32:00Z",
+        id: "session-1", startedAt: "2026-05-30T09:00:00Z",
         totalDurationDisplay: "32m 0s", totalDurationSummary: "32m",
         completionStatus: .completed,
         notes: "Left hand steadier once I slowed the middle section right down.",
@@ -984,7 +979,7 @@
     /// line per variation rather than only the last (#1739).
     static var previewWithVariations: PracticeSessionView {
       PracticeSessionView(
-        id: "session-3", startedAt: "2026-05-29T10:00:00Z", finishedAt: "2026-05-29T10:20:00Z",
+        id: "session-3", startedAt: "2026-05-29T10:00:00Z",
         totalDurationDisplay: "20m 30s", totalDurationSummary: "20m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
@@ -995,7 +990,7 @@
     /// names it rather than leaving it unattributed (#1785).
     static var previewWithOneVariation: PracticeSessionView {
       PracticeSessionView(
-        id: "session-4", startedAt: "2026-05-27T09:00:00Z", finishedAt: "2026-05-27T09:06:00Z",
+        id: "session-4", startedAt: "2026-05-27T09:00:00Z",
         totalDurationDisplay: "6m 0s", totalDurationSummary: "6m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
@@ -1006,7 +1001,7 @@
     /// rather than leave looking unmarked.
     static var previewEndedEarly: PracticeSessionView {
       PracticeSessionView(
-        id: "session-2", startedAt: "2026-05-28T18:00:00Z", finishedAt: "2026-05-28T18:14:00Z",
+        id: "session-2", startedAt: "2026-05-28T18:00:00Z",
         totalDurationDisplay: "14m 0s", totalDurationSummary: "14m",
         completionStatus: .endedEarly, notes: nil,
         entries: [

@@ -1173,7 +1173,7 @@ final class ScreenSnapshotTests: XCTestCase {
     }
     let states: [(PhotoRecognitionStatus, Bool)] = [
       (.idle, false), (.reading, false), (.ready, false), (.ready, true),
-      (.failed, false), (.unsupported, false),
+      (.failed, false),
     ]
     let stack = VStack(spacing: IntradaSpacing.card) {
       ForEach(Array(states.enumerated()), id: \.offset) { _, state in
@@ -1458,7 +1458,7 @@ final class ScreenSnapshotTests: XCTestCase {
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [],
+          priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
           photoId: nil, showsKey: true),
@@ -1466,7 +1466,7 @@ final class ScreenSnapshotTests: XCTestCase {
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [],
+          priority: false, linkedExercises: [],
           usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
           ladderIsKeys: false,
           photoId: nil, showsKey: true),
@@ -1521,7 +1521,7 @@ final class ScreenSnapshotTests: XCTestCase {
     LibraryItemView(
       id: id, itemType: .piece, title: title, subtitle: composer, key: nil, modality: nil,
       tempo: nil, tempoMarking: nil, tempoBpm: nil, notes: nil, tags: [], createdAt: "",
-      updatedAt: "", practice: nil, latestAchievedTempo: nil, priority: false,
+      updatedAt: "", practice: nil, priority: false,
       linkedExercises: [], usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
       variants: [],
       ladderIsKeys: false, photoId: nil, showsKey: true)
