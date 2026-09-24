@@ -148,6 +148,7 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
                 related_count: usize::from(grouped && !is_piece),
                 duration_display: String::new(),
                 entries: vec![entry.clone()],
+                taken_elsewhere: Vec::new(),
             });
         }
     }
@@ -162,6 +163,13 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
         } else {
             "—".to_string()
         };
+        if block.group_id.is_some() {
+            block.taken_elsewhere = entries
+                .iter()
+                .filter(|e| e.group_id != block.group_id)
+                .map(|e| e.item_id.clone())
+                .collect();
+        }
     }
     blocks
 }

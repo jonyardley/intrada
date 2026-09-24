@@ -720,6 +720,8 @@ pub struct SetlistBlockView {
     pub related_count: usize,
     pub duration_display: String,
     pub entries: Vec<SetlistEntryView>,
+    /// Items in the session outside this block, which it cannot take (#2075).
+    pub taken_elsewhere: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
