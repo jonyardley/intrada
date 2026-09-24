@@ -76,6 +76,9 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         ClickBarLine(
           metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001,
           currentBeat: 0, onTap: {})
+        ClickBarLine(
+          metre: Metre(beats: 12, unit: 8, groups: [2, 2, 2, 2, 2, 2]),
+          sounding: 0b0101_0101_0101, currentBeat: 0, onTap: {})
         ClickControl(
           bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: true,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
@@ -119,6 +122,24 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       .padding(.horizontal, IntradaSpacing.card)
     }
     assertSnapshot(of: host(sounding), as: axConfig)
+  }
+
+  // The widest bar a musician can build: at accessibility sizes it must tighten
+  // or drop the metre rather than run off the screen (#2139).
+  func testClickBarLineLargeText() {
+    let bars = ZStack {
+      IntradaColor.playerBgMid
+      VStack(spacing: 24) {
+        ClickBarLine(
+          metre: Metre(beats: 12, unit: 8, groups: [3, 3, 3, 3]), sounding: 0b1001_0010_0101,
+          currentBeat: 0, onTap: {})
+        ClickBarLine(
+          metre: Metre(beats: 12, unit: 8, groups: [2, 2, 2, 2, 2, 2]),
+          sounding: 0b0101_0101_0101, currentBeat: 0, onTap: {})
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(bars), as: axConfig)
   }
 
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the

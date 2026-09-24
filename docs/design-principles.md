@@ -694,7 +694,11 @@ Six rulings come with it.
   two gestures would collide on one target. Line one stays exactly T14's row;
   line two carries the metre and the dots, appears only while sounding, and owns
   the sheet. It also gives the travelling indicator room to be legible from a
-  music stand.
+  music stand. The line says it opens the sheet by sitting in a sunken pill
+  that ends in a settings glyph (2026-09-24, #2139): a faint chevron went
+  unnoticed, motion would break the calm the player holds, and a first-use
+  caption was rejected as more to build for less. On a bar too wide for the
+  row, the pill tightens its groups, then drops the metre, before it overflows.
 - **The metre is offered with an answer already in it, never asked for.** This
   is what dissolves T14's objection rather than overruling it: the app now holds
   a metre (from the piece, and the chart derives from it), so nothing is

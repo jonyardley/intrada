@@ -24,7 +24,7 @@ final class ClickBarUITests: XCTestCase {
     XCTAssertFalse(app.element("click.bar").exists, "no bar line while silent")
     start.tap()
 
-    let bar = app.control("click.bar", spoken: "Bar")
+    let bar = app.control("click.bar", spoken: "Metronome settings")
     XCTAssertEqual(bar.value as? String, "4 crotchet beats, metronome on every beat")
 
     // A pattern changes which beats sound, and nothing else.
