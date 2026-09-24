@@ -6367,6 +6367,158 @@ fn finishing_a_session_saves_no_recovery_copy() {
 }
 
 #[test]
+fn stamping_before_the_item_complete_sheet_saves_the_recovery_copy() {
+    let (mut model, start) = model_with_active_session(2);
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now: start + chrono::Duration::seconds(40),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_saved_what_is_active(&saves, &model);
+    assert_eq!(play_of(&saves[0].entries[0]).seconds, 40);
+}
+
+fn model_past_the_first_of_two_items() -> (Model, String, String) {
+    let (mut model, start) = model_with_active_session(2);
+    let t1 = start + chrono::Duration::seconds(45);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: t1,
+            next_item_started_at: t1,
+            reading: TempoReading::silent(),
+        }),
+    );
+    let entry_id = session_entries(&model)[0].id.clone();
+    let play_id = first_play_id(&model, &entry_id);
+    (model, entry_id, play_id)
+}
+
+#[test]
+fn a_mark_tempo_or_note_written_mid_session_saves_the_recovery_copy() {
+    let writes: [fn(String, String) -> Event; 3] = [
+        |entry_id, play_id| {
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id,
+                play_id,
+                score: Some(4),
+            })
+        },
+        |entry_id, play_id| {
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id,
+                play_id,
+                tempo: Some(96),
+                user_set: true,
+                click: None,
+            })
+        },
+        |entry_id, _| {
+            Event::Session(SessionEvent::UpdateEntryNotes {
+                entry_id,
+                notes: Some("Left hand rushed".to_string()),
+            })
+        },
+    ];
+    for write in writes {
+        let (mut model, entry_id, play_id) = model_past_the_first_of_two_items();
+        let saves = run(&mut model, write(entry_id, play_id));
+        assert_saved_what_is_active(&saves, &model);
+    }
+    let (mut model, entry_id, play_id) = model_past_the_first_of_two_items();
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::UpdateEntryScore {
+            entry_id,
+            play_id,
+            score: Some(4),
+        }),
+    );
+    assert_eq!(play_of(&saves[0].entries[0]).score, Some(4));
+}
+
+#[test]
+fn a_mark_written_on_the_summary_saves_no_recovery_copy() {
+    let (mut model, start) = model_with_active_session(1);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: start + chrono::Duration::seconds(30),
+            next_item_started_at: start + chrono::Duration::seconds(30),
+            reading: TempoReading::silent(),
+        }),
+    );
+    let entry_id = session_entries(&model)[0].id.clone();
+    let play_id = first_play_id(&model, &entry_id);
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::UpdateEntryScore {
+            entry_id,
+            play_id,
+            score: Some(4),
+        }),
+    );
+
+    assert!(saves.is_empty());
+}
+
+#[test]
+fn a_refused_mark_saves_no_recovery_copy() {
+    let (mut model, entry_id, _) = model_past_the_first_of_two_items();
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::UpdateEntryScore {
+            entry_id,
+            play_id: "not-a-play".to_string(),
+            score: Some(4),
+        }),
+    );
+
+    assert!(saves.is_empty());
+}
+
+#[test]
+fn a_stamped_tempo_survives_a_resume_from_the_item_complete_sheet() {
+    let (mut model, start) = model_with_active_session(2);
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now: start + chrono::Duration::seconds(40),
+            reading: sounding(88, None),
+        }),
+    );
+    let blob = saves.into_iter().next().expect("the stamp was saved");
+    let stamped = play_of(&blob.entries[0]).achieved_tempo;
+    assert!(stamped.is_some(), "the click's tempo was stamped");
+
+    let mut resumed = model_with_library();
+    let later = start + chrono::Duration::hours(2);
+    update(
+        &mut resumed,
+        Event::Session(SessionEvent::RecoverSession {
+            session: blob,
+            now: later,
+        }),
+    );
+    update(
+        &mut resumed,
+        Event::Session(SessionEvent::NextItem {
+            now: later,
+            next_item_started_at: later,
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_eq!(play_of(&session_entries(&resumed)[0]).achieved_tempo, stamped);
+}
+
+#[test]
 fn skipping_the_last_item_drops_the_play_that_recorded_nothing() {
     let (mut model, start) = model_with_active_session(2);
     let t1 = start + chrono::Duration::seconds(30);

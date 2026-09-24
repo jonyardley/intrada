@@ -24,9 +24,9 @@ pub(super) fn prepare_reflection(
         .map_or(TempoStamp::NothingToKeep, |entry| {
             close_open_play(entry, now, Some(&reading))
         });
+    let persist = persist_active(active);
     report_stamp(model, stamp);
-
-    crux_core::render::render()
+    persist
 }
 
 pub(super) fn next_item(
