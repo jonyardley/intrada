@@ -49,11 +49,9 @@ pub(super) fn build_library_item_views(
                         id: ex.id.clone(),
                         title: ex.title.clone(),
                         key: ex.key.clone(),
-                        tempo: ex
-                            .tempo
-                            .as_ref()
-                            .map(|t| t.format_display())
-                            .filter(|s| !s.is_empty()),
+                        modality: ex.modality,
+                        tempo_marking: ex.tempo.as_ref().and_then(|t| t.marking.clone()),
+                        tempo_bpm: ex.tempo.as_ref().and_then(|t| t.bpm),
                         practice: model.practice_summaries.get(&ex.id).cloned(),
                         piece_context_score,
                     })
@@ -125,11 +123,6 @@ pub(super) fn build_library_item_views(
             subtitle,
             key: item.key.clone(),
             modality: item.modality,
-            tempo: item
-                .tempo
-                .as_ref()
-                .map(|t| t.format_display())
-                .filter(|s| !s.is_empty()),
             tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
             tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
             notes: item.notes.clone(),
@@ -155,6 +148,10 @@ pub(super) fn build_library_item_views(
             photo_id: item.photo_id.clone(),
             shows_key,
             solid_variation_count,
+            key_selection: item
+                .key
+                .as_deref()
+                .and_then(|key| crate::domain::key::wheel_selection(key, item.modality)),
         });
     }
 
@@ -242,6 +239,9 @@ pub(crate) fn build_practice_summaries(
                 item_id,
                 (session_count, total_secs, mut score_history, mut tempo_points, last_practiced_at),
             )| {
+                // Reversed first so a session's later mark leads on a date tie,
+                // as the summary's top mover reads it (#2076).
+                score_history.reverse();
                 score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
                 let latest_score = score_history.first().map(|e| e.score);
 
@@ -697,6 +697,40 @@ pub fn sort_and_filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Practice summaries ──
+
+    #[test]
+    fn latest_score_is_the_last_mark_in_a_session_that_scored_the_item_twice() {
+        use crate::domain::session::{
+            CompletionStatus, PracticeSession, SetlistEntry, VariationPlay,
+        };
+        let entry = |id: &str, position: usize, score: u8| SetlistEntry {
+            id: id.to_string(),
+            item_id: "p1".to_string(),
+            position,
+            plays: vec![VariationPlay {
+                score: Some(score),
+                ..VariationPlay::fixture()
+            }],
+            ..SetlistEntry::fixture()
+        };
+        let at = chrono::DateTime::<chrono::Utc>::from_timestamp(1_782_291_600, 0).expect("date");
+        let session = PracticeSession {
+            id: "s1".to_string(),
+            entries: vec![entry("e1", 0, 6), entry("e2", 1, 4)],
+            session_notes: None,
+            started_at: at,
+            completed_at: at,
+            total_duration_secs: 600,
+            completion_status: CompletionStatus::Completed,
+            session_score: None,
+        };
+
+        let summaries = build_practice_summaries(&[session]);
+
+        assert_eq!(summaries["p1"].latest_score, Some(4));
+    }
 
     // ── Picker candidates (#1653) ──
 

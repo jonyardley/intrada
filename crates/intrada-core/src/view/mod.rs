@@ -145,7 +145,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             Some(build_summary_view(
                 summary_session,
                 &labels,
-                &cached.score_changes,
+                &model.practice_summaries,
             )),
         ),
     };

@@ -576,6 +576,98 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(try bridge.view().items.first?.priority, false, "star should flip priority off")
   }
 
+  /// A related exercise sends its mode and tempo as parts, not one formatted
+  /// string (#1939), so a positional slip would read one field as another.
+  func testRealBridgeLinkedExerciseCarriesModalityAndTempoParts() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Db Major Scale", kind: .exercise, composer: nil, key: "Db",
+            modality: .major, tempo: Tempo(marking: "Andante", bpm: 72), notes: nil, tags: [],
+            photoId: nil, variantLabels: []))))
+    let items = try bridge.view().items
+    let pieceId = try XCTUnwrap(items.first { $0.title == "Clair de Lune" }?.id)
+    let exerciseId = try XCTUnwrap(items.first { $0.title == "Db Major Scale" }?.id)
+
+    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "the link must decode cleanly (err=\(view.error ?? "nil"))")
+    let piece = try XCTUnwrap(view.items.first { $0.id == pieceId })
+    let linked = try XCTUnwrap(piece.linkedExercises.first)
+    XCTAssertEqual(linked.id, exerciseId)
+    XCTAssertEqual(linked.key, "Db")
+    XCTAssertEqual(linked.modality, .major)
+    XCTAssertEqual(linked.tempoMarking, "Andante")
+    XCTAssertEqual(linked.tempoBpm, 72)
+    XCTAssertNil(linked.pieceContextScore)
+  }
+
+  /// A key saved before the wheel existed ("F# major", no modality) still
+  /// lights its wedge (#2074); a slip in the trailing field reads as no key.
+  func testRealBridgeLegacyKeyLightsItsWedge() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: "F# major", modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "err=\(view.error ?? "nil")")
+    let item = try XCTUnwrap(view.items.first)
+    XCTAssertEqual(
+      item.keySelection, KeyWheelSelection(ring: 6, modality: .major, spelling: "F#"))
+  }
+
+  /// An edit that names only the title and clears the composer leaves every
+  /// other field alone (#1953): the update's absent fields must cross the wire
+  /// as absent, not as a clear.
+  func testRealBridgeTitleOnlyEditClearsTheComposerAndKeepsTheRest() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Nocturne", kind: .piece, composer: "Chopin", key: "E\u{266D}",
+            modality: .major, tempo: Tempo(marking: "Andante", bpm: 92), notes: "Slowly",
+            tags: ["romantic"], photoId: nil, variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(
+      .item(
+        .update(
+          id: id,
+          input: UpdateItem(
+            title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: nil, priority: nil))))
+
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "err=\(view.error ?? "nil")")
+    let item = try XCTUnwrap(view.items.first { $0.id == id })
+    XCTAssertEqual(item.title, "Nocturne Op. 9")
+    XCTAssertEqual(item.subtitle, "", "the composer was cleared")
+    XCTAssertEqual(item.itemType, .piece)
+    XCTAssertEqual(item.key, "E\u{266D}")
+    XCTAssertEqual(item.modality, .major)
+    XCTAssertEqual(item.tempoMarking, "Andante")
+    XCTAssertEqual(item.tempoBpm, 92)
+    XCTAssertEqual(item.notes, "Slowly")
+    XCTAssertEqual(item.tags, ["romantic"])
+  }
+
   // ── Real bridge (full-field contract, #846 class) ──────────────────────
 
   /// Real-bridge full-field round trip for `LibraryItemView` (#846): every
@@ -610,7 +702,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(created.modality, .major)
     XCTAssertEqual(created.tempoMarking, "Andante")
     XCTAssertEqual(created.tempoBpm, 92)
-    XCTAssertEqual(created.tempo, "Andante (92 BPM)")
     XCTAssertEqual(created.notes, "Practise slowly, hands separately")
     XCTAssertEqual(created.tags, ["romantic", "chopin"])
     XCTAssertNotNil(
@@ -650,7 +741,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertNil(patched.modality, "modality was cleared")
     XCTAssertNil(patched.tempoMarking, "tempo was cleared")
     XCTAssertNil(patched.tempoBpm, "tempo was cleared")
-    XCTAssertNil(patched.tempo, "tempo was cleared")
     XCTAssertNil(patched.notes, "notes were cleared")
     XCTAssertEqual(patched.tags, ["romantic", "edited"])
     XCTAssertEqual(patched.priority, true)
@@ -725,7 +815,9 @@ final class LibraryBridgeTests: XCTestCase {
       XCTAssertFalse(exercise.id.isEmpty)
       XCTAssertEqual(
         exercise.key, "G", "a scaffold-derived exercise is generated in the piece's key")
-      XCTAssertNil(exercise.tempo)
+      XCTAssertNil(exercise.modality)
+      XCTAssertNil(exercise.tempoMarking)
+      XCTAssertNil(exercise.tempoBpm)
       XCTAssertNil(exercise.practice, "never practised yet")
       XCTAssertNil(exercise.pieceContextScore, "never scored against this piece yet")
     }
