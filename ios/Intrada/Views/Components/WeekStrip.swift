@@ -74,7 +74,7 @@ private struct WeekDayCell: View {
 
   private var dayNumberColor: Color {
     if isSelected { return IntradaColor.onAccent }
-    return day.isFuture ? IntradaColor.futureDay : IntradaColor.ink
+    return day.isFuture ? IntradaColor.inkSecondary : IntradaColor.ink
   }
 
   private var accessibilityLabel: String {

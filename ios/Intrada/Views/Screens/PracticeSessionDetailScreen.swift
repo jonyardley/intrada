@@ -124,7 +124,6 @@ struct PracticeSessionDetailScreen: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(played ? 1 : IntradaOpacity.dimmed)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(entryAccessibilityLabel(entry))
   }
@@ -133,7 +132,7 @@ struct PracticeSessionDetailScreen: View {
     VStack(alignment: .leading, spacing: 3) {
       Text(entry.itemTitle)
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.ink)
+        .foregroundStyle(entry.status == .completed ? IntradaColor.ink : IntradaColor.inkSecondary)
       Text(entryMeta(entry))
         .font(IntradaFont.micro)
         .foregroundStyle(IntradaColor.inkSecondary)

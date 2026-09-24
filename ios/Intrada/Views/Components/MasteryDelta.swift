@@ -32,7 +32,7 @@ struct MasteryDelta: View {
       HStack(spacing: 4) {
         if let was {
           Text("\(was)")
-            .foregroundStyle(IntradaColor.figureMuted)
+            .foregroundStyle(IntradaColor.inkSecondary)
           Image(systemName: "arrow.right")
             .iconSize(.inline)
             .foregroundStyle(IntradaColor.inkFaintIcon)
