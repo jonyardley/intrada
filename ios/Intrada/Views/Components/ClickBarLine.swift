@@ -11,37 +11,63 @@ struct ClickBarLine: View {
   let currentBeat: Int?
   let onTap: () -> Void
 
+  @ScaledMetric(relativeTo: .caption) private var dividerHeight: CGFloat = 16
+
   var body: some View {
     Button(action: onTap) {
-      HStack(spacing: IntradaSpacing.cardCompact) {
-        Text(TempoUnit.metreLabel(metre))
-          .font(IntradaFont.metaMedium)
-          .monospacedDigit()
-          .foregroundStyle(IntradaColor.inkSecondary)
-        dots
-        Image(systemName: "chevron.right")
-          .imageScale(.small)
-          .foregroundStyle(IntradaColor.inkFaintIcon)
+      // A twelve-beat bar outgrows a phone's row, so the line tightens its
+      // groups, then drops the metre, before it overflows (#2139).
+      ViewThatFits(in: .horizontal) {
+        row(.full)
+        row(.compact)
+        row(.bare)
       }
       .padding(.horizontal, IntradaSpacing.cardCompact)
+      .frame(minHeight: 36)
+      .background(IntradaColor.surfaceSunken, in: Capsule())
+      .overlay(Capsule().strokeBorder(IntradaColor.divider, lineWidth: 1))
       .frame(minHeight: 44)
     }
     .buttonStyle(PressRebound())
-    .accessibilityLabel("Bar")
+    .accessibilityLabel("Metronome settings")
     .accessibilityValue(spokenValue)
     .accessibilityHint("Choose the time signature and which beats sound")
     .accessibilityIdentifier("click.bar")
   }
 
-  private var dots: some View {
-    HStack(spacing: IntradaSpacing.controlGap) {
+  private enum Fit { case full, compact, bare }
+
+  private func row(_ fit: Fit) -> some View {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      if fit != .bare {
+        Text(TempoUnit.metreLabel(metre))
+          .font(IntradaFont.metaMedium)
+          .monospacedDigit()
+          .lineLimit(1)
+          .fixedSize()
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      dots(fit)
+      if fit == .full {
+        HairlineDivider(axis: .vertical, colour: IntradaColor.divider)
+          .frame(height: dividerHeight)
+      }
+      Image(systemName: "slider.horizontal.3")
+        .iconSize(.inline)
+        .foregroundStyle(IntradaColor.ink)
+    }
+  }
+
+  private func dots(_ fit: Fit) -> some View {
+    let beatGap = fit == .full ? IntradaSpacing.controlGap : IntradaSpacing.controlGap / 2
+    return HStack(spacing: fit == .full ? IntradaSpacing.controlGap : IntradaSpacing.cardCompact) {
       ForEach(groupRanges.indices, id: \.self) { g in
-        HStack(spacing: IntradaSpacing.controlGap) {
+        HStack(spacing: beatGap) {
           ForEach(groupRanges[g], id: \.self) { beat in
             BeatDot(sounding: sounds(beat), current: beat == currentBeat)
           }
         }
-        if g < groupRanges.count - 1 {
+        if fit == .full && g < groupRanges.count - 1 {
           Spacer().frame(width: IntradaSpacing.cardCompact)
         }
       }
@@ -106,6 +132,9 @@ private struct BeatDot: View {
       ClickBarLine(
         metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001, currentBeat: 0,
         onTap: {})
+      ClickBarLine(
+        metre: Metre(beats: 12, unit: 8, groups: [2, 2, 2, 2, 2, 2]), sounding: 0b0101_0101_0101,
+        currentBeat: 0, onTap: {})
     }
     .padding()
     .background(RadialGradient.playerPaper)
