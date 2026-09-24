@@ -58,6 +58,13 @@ comment) before anything else below.
 6. **Comment policy.** Violations are Blockers, not Nits: a comment that
    restates the code, narrates the task, or runs past two lines without a
    tracked reason.
+7. **Prose.** On every changed doc, spec and the author's PR summary, check
+   against `docs/style-guide.md`: work through "Signs of machine writing" item
+   by item and name what you found, since "no drift" with nothing named is not
+   a review. Flag a claim with no source, an inference written as a fact, a
+   name we gave our own work with nothing it resolves to, and a relative date.
+   Leave dashes and spellings in committed files to `scripts/check-dashes.sh`,
+   and flag them in the PR summary, which the script never sees.
 
 ## What not to do
 

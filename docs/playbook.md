@@ -15,7 +15,7 @@ the mechanics; you pick, approve, merge and clear.
 |---|---|---|---|
 | 1. Pick | `just status` in the main checkout; choose the epic's next open child | | 1 |
 | 2. Open | A new session in the main checkout; type the issue number and one sentence of intent | Makes its worktree, claims the issue, reads it and its epic | 1 |
-| 3. Plan | Tier 1: nothing. Tier 2 and 3: read the plan comment on the issue, reply "go" or correct once | Posts about 150 words: done looks like, decisions, files, tests, out of scope | 3 |
+| 3. Plan | Tier 1: nothing. Tier 2 and 3: read the plan comment on the issue, reply "go" or correct once | Posts about 150 words on the [plan skeleton](../.claude/skills/intrada-shipping/SKILL.md#plan-comments) | 3 |
 | 4. Build | Nothing, or answer the one question it asks. A screen change: look at the screenshot it shows you | Test-first on the core; gates in `test-runner`; shows the screen before the PR | 0 |
 | 5. Ship | Read the PR body and the self-review comment; merge when green and mergeable | `/ship`: gates, `reviewer`, a draft PR marked ready after the self-review, CI watched to a conclusion | 5 |
 | 6. Close | `/clear`, or `just handover N` and paste what it prints into a fresh session | Closes the issue, moves the board, removes the worktree | 1 |

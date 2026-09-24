@@ -14,8 +14,9 @@ labels: ""
 
 ## What you would notice
 
-<!-- The observable situation. For a bug, what happens. For a change, what is
-     missing or awkward today. -->
+<!-- The observable situation. For a bug: the steps (the tap path, for a
+     screen), what you expected and what happened instead. For a change, what
+     is missing or awkward today. -->
 
 ## Why it matters
 
@@ -26,6 +27,12 @@ labels: ""
 
 <!-- The proposed fix or the decision needed, first sentence first. Say if it
      is deliberately open. -->
+
+## Done looks like
+
+<!-- Two or three things someone could check once it is done, as a musician
+     or Jon would see them. Optionally a last line, "Out of scope:", naming
+     what this deliberately leaves alone. -->
 
 ## Where it lives
 

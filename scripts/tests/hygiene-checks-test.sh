@@ -364,6 +364,46 @@ dash_case 0 "an en dash inside a Rust string literal" a.rs "title: \"ii${en}V${e
 dash_case 0 "an escaped quote before the dash" a.swift "let s = \"say \\\"$em\\\" now\""
 dash_case 0 "no dash at all" a.swift "let plain = \"text\""
 
+fence=$'```'
+dash_case 1 "a double dash in Markdown prose" a.md "Plain prose -- with a dash."
+dash_case 1 "an American spelling in Markdown" a.md "Pick a color for the tag."
+dash_case 1 "an American spelling in capitals" a.md "Behavior of the timer."
+dash_case 1 "prose after a fence closes" a.md "$fence"$'\nx --y\n'"$fence"$'\nThe color here.'
+dash_case 0 "a double dash in a code span" a.md 'Run `cargo test -- --nocapture` first.'
+dash_case 0 "an American spelling in a code span" a.md 'The `Color` token.'
+dash_case 0 "a code span wrapped across lines" a.md $'Run `xcrun simctl\n--process SpringBoard` to see it.'
+dash_case 1 "prose after a wrapped code span closes" a.md $'Run `xcrun simctl\n--process SpringBoard` in color.'
+dash_case 1 "a blank line ends an unclosed code span" a.md $'A stray ` tick.\n\nThen -- a dash.'
+dash_case 0 "a double dash in a fenced block" a.md "$fence"$'bash\ncargo test -- --nocapture\n'"$fence"
+dash_case 0 "a table separator" a.md $'| a | b |\n|--|--|\n| 1 | 2 |'
+dash_case 0 "an HTML comment" a.md "<!-- a note -->"
+dash_case 0 "a horizontal rule" a.md "---"
+dash_case 0 "an American spelling in a link target" a.md "See [the palette](docs/color.md)."
+dash_case 0 "British spellings" a.md "The colour and behaviour of the centre."
+dash_case 0 "a double dash in a Swift comment" a.swift "// run it with --verbose"
+dash_case 0 "a blank line inside a fenced block" a.md "$fence"$'\n\nx -- y\n'"$fence"
+dash_case 1 "prose after a closed span on the same line" a.md 'The `Color` token, in color.'
+dash_case 1 "a stray tick before a fence" a.md $'A stray ` tick.\n'"$fence"$'\nx\n'"$fence"$'\nThen -- a dash.'
+dash_case 0 "an Apple product name" a.md "Open Control Center and play."
+dash_case 0 "a quoted citation" a.md "Deliberate Practice and Behavior. <!-- docs-check: quoted -->"
+dash_case 1 "a non-ASCII file name" $'\xc3\xa9\xc3\xa9.md' "The color."
+
+git checkout -qB "old-prose" main
+printf 'The old color.\n' >old.md
+git add -A
+git commit -qm "old prose"
+git update-ref refs/remotes/origin/main old-prose
+git checkout -qB "new-prose" old-prose
+printf 'The old color.\nThe new colour.\n' >old.md
+git add -A
+git commit -qm "new prose"
+expect 0 "an American spelling on a line the branch did not add" bash "$repo_root/scripts/check-dashes.sh"
+git checkout -qB "moved-prose" old-prose
+git mv old.md moved.md
+git commit -qm "move prose"
+expect 0 "an American spelling in a file the branch only moved" bash "$repo_root/scripts/check-dashes.sh"
+git update-ref refs/remotes/origin/main main
+
 # ── The app version check ───────────────────────────────────────────────────
 
 versions="$work/versions"

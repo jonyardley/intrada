@@ -103,10 +103,12 @@ whether or not you have seen them.
   the code, narrates the task or PR, hedges without an issue, or notes that X "mirrors" Y.
   `///` on a self-evident item is the same noise. Over two lines, ask whether it should be a
   name or a type.
-- **British English**; UI copy is written against `docs/tone-of-voice.md`. **No em dashes,
-  en dashes or double dashes**: `scripts/check-dashes.sh` enforces the first two on changed
-  lines, the rest stays on the author. **Plain language in docs, issues and PR bodies**:
-  name features by the musician-visible outcome; issue numbers are the only stable handles.
+- **British English**; UI copy is written against `docs/tone-of-voice.md`, and PR bodies,
+  commits, issues and docs against [`docs/style-guide.md`](docs/style-guide.md). **No em
+  dashes, en dashes or double dashes**: `scripts/check-dashes.sh` fails double dashes and
+  American spellings on added Markdown lines and em or en dashes on most others. **Plain
+  language**: name features by the musician-visible outcome; issue numbers are the only
+  stable handles.
 
 ## Testing
 
@@ -139,10 +141,10 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
 - **Tier 1, just do it**: bug fixes, copy, style, renames, lint, one-file refactors, docs.
 - **Tier 2, plan comment** (default for feature work): a component or screen on existing
   patterns, an endpoint on established conventions, a field on a model. Before the first
-  commit a plan of about 150 words goes on the issue as a comment (done looks like,
-  decisions taken, files and lines, tests, out of scope, routing), approved by Jon and read
-  by the build; one that runs long is Tier 3. UI work does Claude Design first, and a new
-  screen starts by reading an existing one, which loads the UI rules.
+  commit a plan of about 150 words goes on the issue as a comment, on the skeleton in the
+  shipping skill's [Plan comments](.claude/skills/intrada-shipping/SKILL.md#plan-comments),
+  approved by Jon and read by the build; one that runs long is Tier 3. UI work does Claude
+  Design first, and a new screen starts by reading an existing one, which loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux core or
   bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
   of 100 to 200 lines riding as the first commit of Phase A, never its own PR.
