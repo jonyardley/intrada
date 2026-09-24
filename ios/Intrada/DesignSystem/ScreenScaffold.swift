@@ -16,6 +16,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   let leadingContent: Leading
   let trailingContent: Trailing
   let trailingPlacement: TrailingPlacement
+  private var reservesSubtitleLine = false
   @ViewBuilder var content: Content
   @Environment(\.navigationBarHiddenAtRoot) private var hiddenAtRoot
   @Environment(\.isPresented) private var isPresented
@@ -150,6 +151,8 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
           Text(subtitle)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
+        } else if reservesSubtitleLine {
+          Text(" ").font(IntradaFont.meta).hidden()
         }
       }
       // Combine only the title block so the trailing action stays its own
@@ -175,6 +178,13 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.controlGap)
+  }
+
+  // Keeps the header rule level with an iPad split column that has a subtitle.
+  func reservingSubtitleLine(_ reserves: Bool) -> Self {
+    var copy = self
+    copy.reservesSubtitleLine = reserves
+    return copy
   }
 }
 

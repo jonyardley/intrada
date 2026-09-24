@@ -15,12 +15,15 @@ struct PracticeScreen: View {
   // run, has no domain consequence and is deliberately not persisted.
   @State private var suggestionDismissed = false
   @State private var openSessionId: String?
+  // iPad split: a tapped card selects into the detail column instead of pushing.
+  private var selection: Binding<String?>?
   @State private var showingProfile = false
   // Measured from a cell, not hard-coded (#1730).
   @State private var weekStripHeight: CGFloat = 64
 
-  init(referenceDate: Date = Date()) {
+  init(referenceDate: Date = Date(), selection: Binding<String?>? = nil) {
     self.referenceDate = referenceDate
+    self.selection = selection
   }
 
   #if DEBUG
@@ -94,6 +97,7 @@ struct PracticeScreen: View {
       }
       .scrollEdgeShadow()
     }
+    .reservingSubtitleLine(selection != nil)
     // Drop a now-out-of-range pinned week so a later data change can't jump the
     // view to a stale page; reads are already clamped, this resets the store.
     .onChange(of: weeks.count) { _, newCount in
@@ -334,15 +338,24 @@ struct PracticeScreen: View {
       VStack(spacing: IntradaSpacing.cardCompact) {
         ForEach(daySessions, id: \.id) { session in
           SessionCard(session: session)
+            .splitSelected(selection?.wrappedValue == session.id)
             .contentShape(Rectangle())
-            .onTapGesture { openSessionId = session.id }
+            .onTapGesture { open(session) }
             // The trait alone only relabels it; the action is what VoiceOver and
             // Switch Control actually invoke, since this is a gesture not a Button.
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction { openSessionId = session.id }
+            .accessibilityAction { open(session) }
             .accessibilityHint("Opens the session")
         }
       }
+    }
+  }
+
+  private func open(_ session: PracticeSessionView) {
+    if let selection {
+      selection.wrappedValue = session.id
+    } else {
+      openSessionId = session.id
     }
   }
 

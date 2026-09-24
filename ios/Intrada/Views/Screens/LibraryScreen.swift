@@ -94,10 +94,7 @@ struct LibraryScreen: View {
         selection.wrappedValue = item.id
       } label: {
         LibraryItemCard(item: item, showsMastery: true, showsMissingDetailsPrompt: true)
-          .overlay(
-            RoundedRectangle(cornerRadius: IntradaRadius.card)
-              .stroke(IntradaColor.accent, lineWidth: 2)
-              .opacity(selection.wrappedValue == item.id ? 1 : 0))
+          .splitSelected(selection.wrappedValue == item.id)
       }
       .buttonStyle(.plain)
     } else {

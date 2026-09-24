@@ -66,7 +66,7 @@ chrome it emerges from behind must also be opaque and sit on top (`.zIndex(1)`).
 - Haptics through the `Store+Feedback` helpers: `selection` for tabs, `light`
   for taps, `success` for saves only after the core confirms, `warning` for
   destructive confirms.
-- iPad list-to-detail screens use `LibrarySplitView`, built with the view.
+- iPad list-to-detail screens use `ListDetailSplit`, built with the view.
 - Respect safe areas; `ScreenScaffold` handles them.
 
 Design happens in Claude Design (`docs/design-workflow.md`). Mock against the
