@@ -126,7 +126,7 @@ struct SessionSummaryScreen: View {
       }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(unfinished ? 0.5 : 1)
+    .opacity(unfinished ? IntradaOpacity.dimmed : 1)
   }
 
   // A written note stays on the row: a note the musician cannot see again is

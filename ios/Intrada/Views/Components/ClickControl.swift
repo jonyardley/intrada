@@ -86,10 +86,7 @@ struct ClickControl: View {
         .padding(.horizontal, IntradaSpacing.cardCompact)
         .frame(minHeight: 44)
         .background(capsuleFill, in: Capsule())
-        .shadow(
-          color: isDragging ? IntradaColor.shadow : .clear,
-          radius: isDragging ? 6 : 0, y: isDragging ? 3 : 0
-        )
+        .dropShadow(isDragging ? .lifted : .none)
         .scaleEffect(isDragging ? 1.04 : 1)
     }
     .buttonStyle(PressRebound())
@@ -193,7 +190,7 @@ struct ClickControl: View {
   }
 
   private var capsuleFill: Color {
-    if isDragging { return IntradaColor.accent.opacity(0.14) }
+    if isDragging { return IntradaColor.accent.opacity(IntradaOpacity.wash) }
     return isRunning ? marker : .clear
   }
 

@@ -39,6 +39,6 @@ struct InlineSuggestionList: View {
         }
       }
     }
-    .background(IntradaColor.surfaceSunken.opacity(0.6))
+    .background(IntradaColor.surfaceSunken.opacity(IntradaOpacity.soft))
   }
 }

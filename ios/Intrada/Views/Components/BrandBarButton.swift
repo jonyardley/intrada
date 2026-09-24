@@ -22,7 +22,7 @@ struct BrandBarButton<Label: View>: View {
         .background(
           marker, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
         )
-        .shadow(color: IntradaColor.buttonShadow, radius: 1, y: 1)
+        .dropShadow(.button)
     }
     .buttonStyle(.plain)
   }

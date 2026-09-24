@@ -190,7 +190,7 @@ struct EntrySettingsSheet: View {
 #if DEBUG
   #Preview("Entry settings") {
     let store = Store.previewBuildingGrouped
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         if let limits = store.viewModel?.limits {
           EntrySettingsSheet(entry: .previewGroupedScales, limits: limits).environment(store)

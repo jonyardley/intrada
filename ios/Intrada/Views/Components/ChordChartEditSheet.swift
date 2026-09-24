@@ -127,7 +127,7 @@ struct ChordChartEditSheet: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.cardCompact)
     .background(
-      IntradaColor.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: IntradaRadius.control)
+      IntradaColor.dangerWash, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Couldn't parse the chart. \(message)")

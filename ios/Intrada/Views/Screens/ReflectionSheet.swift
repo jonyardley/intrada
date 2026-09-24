@@ -274,7 +274,7 @@ struct ReflectionSheet: View {
 
 #if DEBUG
   #Preview("Reflection · one play") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
@@ -286,7 +286,7 @@ struct ReflectionSheet: View {
   }
 
   #Preview("Reflection · three variations") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,

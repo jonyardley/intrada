@@ -94,13 +94,13 @@ struct MasteryDeltaToast: View {
         if let subtitle {
           Text(subtitle)
             .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.celebrationInk.opacity(0.8))
+            .foregroundStyle(IntradaColor.celebrationInk.opacity(IntradaOpacity.strong))
         }
       }
       Spacer(minLength: IntradaSpacing.controlGap)
       HStack(spacing: 5) {
         Text("\(was)")
-          .opacity(0.45)
+          .opacity(IntradaOpacity.dimmed)
         Image(systemName: "arrow.right")
           .iconSize(.inline)
           .foregroundStyle(marker)

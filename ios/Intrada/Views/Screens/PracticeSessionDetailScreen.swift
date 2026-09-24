@@ -123,7 +123,7 @@ struct PracticeSessionDetailScreen: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(played ? 1 : 0.5)
+    .opacity(played ? 1 : IntradaOpacity.dimmed)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(entryAccessibilityLabel(entry))
   }

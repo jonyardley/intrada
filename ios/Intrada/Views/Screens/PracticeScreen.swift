@@ -226,7 +226,7 @@ struct PracticeScreen: View {
       // visually, so read separately it would reach VoiceOver detached from
       // the piece it describes.
       VStack(spacing: IntradaSpacing.cardCompact) {
-        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(0.7))
+        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
 
         if let lastPractised {
           Text(lastPractised.itemTitle)
@@ -249,7 +249,7 @@ struct PracticeScreen: View {
           .frame(width: 96, height: 96)
           .background(marker)
           .clipShape(Circle())
-          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+          .dropShadow(.heroButton)
       }
       .buttonStyle(PressRebound())
       .accessibilityLabel("Start practising")

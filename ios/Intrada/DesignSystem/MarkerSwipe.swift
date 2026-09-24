@@ -15,10 +15,10 @@ private struct MarkerSwipe: ViewModifier {
       LinearGradient(
         stops: [
           .init(color: .clear, location: 0.50),
-          .init(color: marker.opacity(0.6), location: 0.53),
+          .init(color: marker.opacity(IntradaOpacity.soft), location: 0.53),
           .init(color: marker, location: 0.58),
           .init(color: marker, location: 0.89),
-          .init(color: marker.opacity(0.6), location: 0.93),
+          .init(color: marker.opacity(IntradaOpacity.soft), location: 0.93),
           .init(color: .clear, location: 0.96),
         ],
         startPoint: .top, endPoint: .bottom

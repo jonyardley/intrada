@@ -121,7 +121,7 @@ struct RepCounter: View {
     }
     .buttonStyle(PressRebound())
     .disabled(disabled)
-    .opacity(disabled ? 0.4 : 1)
+    .opacity(disabled ? IntradaOpacity.dimmed : 1)
   }
 }
 

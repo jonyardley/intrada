@@ -31,11 +31,11 @@ struct UpNextHero: View {
   private var headline: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       HStack(alignment: .firstTextBaseline) {
-        Eyebrow("Up next", tint: IntradaColor.onAccent.opacity(0.7))
+        Eyebrow("Up next", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
         Spacer(minLength: IntradaSpacing.controlGap)
         Text(countLabel)
           .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.onAccent.opacity(0.7))
+          .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
       }
 
       Text(suggestion.pieceTitle)
@@ -53,7 +53,7 @@ struct UpNextHero: View {
         }
         Text(suggestion.reason)
           .font(IntradaFont.subtitle)
-          .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
+          .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.strong))
           .fixedSize(horizontal: false, vertical: true)
       }
     }
@@ -67,18 +67,18 @@ struct UpNextHero: View {
       ForEach(Array(suggestion.items.enumerated()), id: \.element.itemId) { index, item in
         if index > 0 {
           Rectangle()
-            .fill(IntradaColor.paperTop.opacity(0.12))
+            .fill(IntradaColor.paperTop.opacity(IntradaOpacity.wash))
             .frame(height: 1)
         }
         row(item)
       }
     }
     .padding(.horizontal, IntradaSpacing.cardCompact)
-    .background(IntradaColor.paperTop.opacity(0.1))
+    .background(IntradaColor.paperTop.opacity(IntradaOpacity.wash))
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
       RoundedRectangle(cornerRadius: IntradaRadius.card)
-        .strokeBorder(IntradaColor.paperTop.opacity(0.14), lineWidth: 1)
+        .strokeBorder(IntradaColor.paperTop.opacity(IntradaOpacity.wash), lineWidth: 1)
     )
   }
 
@@ -96,7 +96,7 @@ struct UpNextHero: View {
           .fixedSize(horizontal: false, vertical: true)
         Text(item.reason)
           .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.onAccent.opacity(0.75))
+          .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
           .fixedSize(horizontal: false, vertical: true)
       }
       Spacer(minLength: 0)
@@ -136,7 +136,7 @@ struct UpNextHero: View {
   private var buildOwnButton: some View {
     Button("Build my own instead", action: onBuildOwn)
       .font(IntradaFont.subtitle)
-      .foregroundStyle(IntradaColor.onAccent.opacity(0.78))
+      .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.controlGap)
       .accessibilityHint("Opens the session builder")

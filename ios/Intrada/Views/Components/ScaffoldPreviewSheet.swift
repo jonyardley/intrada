@@ -146,7 +146,7 @@ private struct SpecRow: View {
     .padding(.trailing, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
     .contentShape(Rectangle())
-    .opacity(selectable ? 1 : 0.6)
+    .opacity(selectable ? 1 : IntradaOpacity.soft)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
   }

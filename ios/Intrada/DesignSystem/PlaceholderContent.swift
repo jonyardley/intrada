@@ -4,7 +4,7 @@ import SwiftUI
 struct PlaceholderContent: View {
   let systemImage: String
   let message: String
-  var glyphTint: Color = IntradaColor.accent.opacity(0.55)
+  var glyphTint: Color = IntradaColor.accent.opacity(IntradaOpacity.dimmed)
 
   var body: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {

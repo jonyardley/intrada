@@ -70,7 +70,7 @@ struct VariationPickerSheet: View {
 
 #if DEBUG
   #Preview("Variation picker") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         VariationPickerSheet(
           itemTitle: "Major Scales",
