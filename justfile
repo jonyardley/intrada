@@ -81,6 +81,7 @@ hygiene:
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
+        "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
     )
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
@@ -168,22 +169,29 @@ check:
         echo "✓ HEAD $sha already green — skipping. Delete $stamp to force a re-run."
         exit 0
     fi
+    source scripts/lib/cmux-gate.sh
+    cmux_gate_start "just check"
+    hygiene_log=""
+    trap 'status=$?; rm -f "$hygiene_log"; cmux_gate_finish "$status"' EXIT
+    cmux_gate_step 0.1 "fmt"
     just fmt-check
     # hygiene needs nothing lint/test produce, so it runs alongside them
     # instead of tailing them. Captured rather than left to print live: it
     # often finishes first, and clippy/test output would otherwise bury it.
     hygiene_log=$(mktemp)
-    trap 'rm -f "$hygiene_log"' EXIT
     just hygiene >"$hygiene_log" 2>&1 &
     hygiene_pid=$!
     lint_status=0
+    cmux_gate_step 0.3 "lint"
     just lint || lint_status=$?
     # Skip test on a lint failure, same fail-fast as the old sequential order.
     test_status=0
     if [ "$lint_status" -eq 0 ]; then
+        cmux_gate_step 0.6 "test"
         just test || test_status=$?
     fi
     hygiene_status=0
+    cmux_gate_step 0.9 "hygiene"
     wait "$hygiene_pid" || hygiene_status=$?
     cat "$hygiene_log"
     if [ "$lint_status" -ne 0 ]; then exit "$lint_status"; fi
@@ -616,14 +624,22 @@ _ios-test-run tier:
             exit 0
         fi
     fi
+    source scripts/lib/cmux-gate.sh
+    cmux_gate_start "just ios-test ({{tier}})"
+    trap 'cmux_gate_finish $?' EXIT
+    cmux_gate_step 0.05 "waiting for the simulator"
     source scripts/ios-sim-lock.sh
     ios_sim_lock_acquire_for_run
     _ios_test_run_cleanup() {
+        local status=$?
         ios_sim_lock_release_with_idle_shutdown "$(just _ios-test-sim-udid 2>/dev/null || true)"
+        cmux_gate_finish "$status"
     }
     trap _ios_test_run_cleanup EXIT
+    cmux_gate_step 0.15 "build"
     just _ios-test-guard
     just _ios-build-for-testing
+    cmux_gate_step 0.5 "test"
     if [ "{{tier}}" = "fast" ]; then
         just _ios-test-without-building -only-testing:IntradaTests 0
     else

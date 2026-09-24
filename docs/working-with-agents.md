@@ -97,6 +97,9 @@ directory a session started in. It never starts a session itself (#1720).
 `INTRADA_WORKTREE_CMUX=0` silences the suggestion. A new workspace in the repo
 opens its Dock from `.cmux/dock.json`: `just status`, refreshed every five
 minutes. The Feed is a built-in sidebar tab, so the Dock leaves it out. cmux asks once to trust it, and again whenever the file changes.
+`just check`, `just ios-test` and `just ios-test-full` show their stage as a
+progress bar on the workspace's sidebar row and post a pass or fail notification
+with the elapsed time when they finish (#2088); a skipped green run stays quiet.
 
 **A session in the main checkout drives its worktree without restarting**, from
 2026-09-12, and that is the only shape in use. The path-scoped rules in `.claude/rules/` load
