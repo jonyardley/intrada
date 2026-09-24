@@ -215,16 +215,19 @@ pub(super) fn recover_session(
     // Re-anchor the running item's wall-clock timer: the blob's anchor
     // is from before the kill, so resuming hours later would otherwise
     // show that gap as elapsed practice (#962).
+    // Backdated by what the plays already recorded, or a practice saved at the
+    // item-complete sheet resumes with its time wiped (#2061).
     let mut session = session;
-    session.current_item_started_at = now;
+    let recorded = |secs: u64| now - chrono::Duration::seconds(secs as i64);
+    let entry = session.entries.get_mut(session.current_index);
+    let item_secs = entry
+        .as_ref()
+        .map_or(0, |e| e.plays.iter().map(|p| p.seconds).sum());
+    session.current_item_started_at = recorded(item_secs);
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
-    if let Some(play) = session
-        .entries
-        .get_mut(session.current_index)
-        .and_then(SetlistEntry::open_play_mut)
-    {
-        play.started_at = now;
+    if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
+        play.started_at = recorded(play.seconds);
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;

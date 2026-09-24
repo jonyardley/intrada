@@ -6484,7 +6484,7 @@ fn a_refused_mark_saves_no_recovery_copy() {
 }
 
 #[test]
-fn a_stamped_tempo_survives_a_resume_from_the_item_complete_sheet() {
+fn a_stamped_tempo_and_time_survive_a_resume_from_the_item_complete_sheet() {
     let (mut model, start) = model_with_active_session(2);
     let saves = run(
         &mut model,
@@ -6515,7 +6515,10 @@ fn a_stamped_tempo_survives_a_resume_from_the_item_complete_sheet() {
         }),
     );
 
-    assert_eq!(play_of(&session_entries(&resumed)[0]).achieved_tempo, stamped);
+    let entry = &session_entries(&resumed)[0];
+    assert_eq!(play_of(entry).achieved_tempo, stamped);
+    assert_eq!(play_of(entry).seconds, 40, "the gap is not practice");
+    assert_eq!(entry.duration_secs, 40);
 }
 
 #[test]
