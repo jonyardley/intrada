@@ -14,11 +14,12 @@ on:
     # the pre-label payload and fails again.
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-# Cancel in-flight runs when a new commit lands on the same PR. Don't cancel
-# main-branch runs: those need to run to completion so a red main is visible
-# and `alert-on-red-main` fires.
+# A new commit on a PR cancels the in-flight run. Each push to main is its own
+# group: GitHub replaces a pending run in a group with the newer one, and main's
+# path filter diffs only against the commit before, so a replaced run's native
+# change would never reach the Mac gate on main (#2113).
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -67,13 +68,16 @@ jobs:
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
               - '.github/workflows/ci.yml'
+              - 'mise.toml'
+              - '.cargo/config.toml'
       # A filter that wrongly saw nothing would skip main's Mac gate in
       # silence, so each run says what it saw (#2113).
       - name: Say what the filter saw
         env:
           RUST: ${{ steps.filter.outputs.rust }}
           NATIVE: ${{ steps.filter.outputs.native }}
-        run: echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE}" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE}" >> "$GITHUB_STEP_SUMMARY"
       # Drift installs clippy/rustfmt for the env's version, then cargo resolves
       # to the file's: "clippy is not installed", or a silent second download.
       # Checks every workflow's RUST_VERSION, not just this file's — so a
@@ -329,8 +333,8 @@ jobs:
             exit 1
           fi
       # The same tree on the same Xcode and runtime gives the same answer, and
-      # most merges land exactly the tree their PR tested, so a tree already
-      # green here skips the three test steps below (#2113). The build stays:
+      # a merge with no other merge since its PR's last run lands exactly the
+      # tree that run tested, so a tree already green here skips the three test steps below (#2113). The build stays:
       # main's launch check reuses this tree's app. A re-run attempt always
       # runs in full.
       - name: Look up an earlier green run of this tree

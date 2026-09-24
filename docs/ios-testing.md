@@ -276,11 +276,14 @@ tier (#2114).
 
 A tree that already passed the unit and UI tests on the runner, on the same
 Xcode and simulator runtime, skips them and links the run that passed it
-(#2113). Most merges land exactly the tree their PR tested, so main mostly
-pays for the build, the Release guard and the launch check. A merge after main
+(#2113). A merge with no other merge since its PR's last run lands exactly the
+tree that run tested (8 of 20 merges on 23 to 24 September), so main then pays
+only for the build, the Release guard and the launch check. A merge after main
 moved is a new tree and runs in full, and so does a re-run attempt. The records
 are files under `~/.intrada-ci/green-trees/` on the runner, pruned after 30
-days by **Runner housekeeping**.
+days by **Runner housekeeping**. Each push to main is its own concurrency
+group, so a queued main run is never replaced by the next push, whose filter
+would only see its own change (#2113).
 
 Measured shape (2026-09-24, 45 runs): build 16s, unit + snapshot 19s, UI 165s
 on six simulators (#1824), gate median 244s on a PR and 298s on main, and a
