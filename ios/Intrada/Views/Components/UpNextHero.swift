@@ -22,7 +22,7 @@ struct UpNextHero: View {
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .heroShadow()
+    .dropShadow(.hero)
     .accessibilityElement(children: .contain)
   }
 

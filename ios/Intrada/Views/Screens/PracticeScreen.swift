@@ -259,7 +259,7 @@ struct PracticeScreen: View {
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .heroShadow()
+    .dropShadow(.hero)
   }
 
   // The day lives here now, not under the play button (#1725).
