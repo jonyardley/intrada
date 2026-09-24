@@ -94,12 +94,10 @@ prose_added=$(git -c core.quotePath=false diff -M -U0 --diff-filter=d "$range" -
     if (m{^\+\+\+ b/(.*)$}) { print "\n" if defined $f; $f = $1; print "$f\t"; next }
     print join(" ", $1 .. $1 + (defined $2 ? $2 : 1) - 1), " "
       if defined $f && /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/;
-    END { print "\n" if defined $f }
   ' || true)
 
 while IFS=$'\t' read -r f added_lines; do
   [ -n "$f" ] || continue
-  [ -n "$added_lines" ] || continue
   hits=$(git show "HEAD:$f" | ADDED="$added_lines" WORDS="$americanisms" perl -ne '
     BEGIN { %added = map { $_ => 1 } split " ", $ENV{ADDED}; $fence = 0; $span = 0 }
     if (/^\s*(?:```|~~~)/) { $fence = !$fence; $span = 0; next }
