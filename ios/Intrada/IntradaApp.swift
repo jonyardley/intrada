@@ -60,8 +60,6 @@ struct IntradaApp: App {
     if UITestFlags.animationsDisabled {
       UIView.setAnimationsEnabled(false)
     }
-
-    Self.startSentry()
   }
 
   var body: some Scene {

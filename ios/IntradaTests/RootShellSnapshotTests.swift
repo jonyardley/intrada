@@ -40,7 +40,7 @@ final class RootShellSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(spacing: 0) {
         GlobalBanner(message: "Couldn't delete that item.", onDismiss: {})
-        GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
+        GlobalBanner(message: AppBanner.storageMessage)
         GlobalBanner(
           message: "That metronome setting doesn't give a crotchet tempo, so this play has none.",
           tone: .notice, onDismiss: {})

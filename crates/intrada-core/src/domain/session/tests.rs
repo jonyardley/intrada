@@ -2173,6 +2173,39 @@ fn test_recover_session_reanchors_current_item_timer() {
 }
 
 #[test]
+fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
+    let mut model = model_with_library();
+    let now = Utc::now();
+    let mut entry = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
+    let mut earlier = VariationPlay::opened(None, None, now);
+    earlier.seconds = u64::MAX;
+    entry.plays.push(earlier);
+    let mut open = VariationPlay::opened(None, None, now);
+    open.seconds = u64::MAX / 2;
+    entry.plays.push(open);
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: ActiveSession {
+                id: "corrupt".to_string(),
+                entries: vec![entry],
+                current_index: 0,
+                current_item_started_at: now,
+                session_started_at: now,
+            },
+            now,
+        }),
+    );
+
+    let SessionStatus::Active(ref a) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    assert_eq!(a.current_item_started_at, now);
+    assert_eq!(a.entries[0].plays[1].started_at, now);
+}
+
+#[test]
 fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
     let mut model = model_with_library();
     let started_yesterday = Utc::now() - chrono::Duration::hours(20);
@@ -2227,6 +2260,11 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
     assert_eq!(
         plays[0].seconds, closed_seconds,
         "a play closed before the kill keeps its recorded time"
+    );
+    assert_eq!(
+        a.current_item_started_at,
+        now - chrono::Duration::seconds(closed_seconds as i64),
+        "the item's clock keeps the time its plays recorded (#2061)"
     );
     assert_eq!(
         plays[0].started_at, started_yesterday,

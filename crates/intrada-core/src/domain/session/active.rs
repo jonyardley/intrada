@@ -218,11 +218,21 @@ pub(super) fn recover_session(
     // Backdated by what the plays already recorded, or a practice saved at the
     // item-complete sheet resumes with its time wiped (#2061).
     let mut session = session;
-    let recorded = |secs: u64| now - chrono::Duration::seconds(secs as i64);
+    // A corrupt count falls back to the resume instant, or every Resume tap
+    // would panic on a blob that outlives the crash.
+    let recorded = |secs: u64| {
+        i64::try_from(secs)
+            .ok()
+            .and_then(chrono::Duration::try_seconds)
+            .and_then(|d| now.checked_sub_signed(d))
+            .unwrap_or(now)
+    };
     let entry = session.entries.get_mut(session.current_index);
-    let item_secs = entry
-        .as_ref()
-        .map_or(0, |e| e.plays.iter().map(|p| p.seconds).sum());
+    let item_secs = entry.as_ref().map_or(0, |e| {
+        e.plays
+            .iter()
+            .fold(0u64, |sum, p| sum.saturating_add(p.seconds))
+    });
     session.current_item_started_at = recorded(item_secs);
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
