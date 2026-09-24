@@ -128,11 +128,14 @@ struct RepCounter: View {
 
 private struct RepDot: View {
   let done: Bool
+  // Scales with Dynamic Type, capped so ten passes still fit the row (#1950).
+  @ScaledMetric(relativeTo: .caption) private var diameter: CGFloat = 11
+  private var cappedDiameter: CGFloat { min(diameter, 18) }
 
   var body: some View {
     Circle()
       .fill(done ? IntradaColor.success : Color.clear)
-      .frame(width: 11, height: 11)
+      .frame(width: cappedDiameter, height: cappedDiameter)
       .overlay(
         Circle().strokeBorder(
           done ? Color.clear : IntradaColor.slotOutline, lineWidth: 1.6))

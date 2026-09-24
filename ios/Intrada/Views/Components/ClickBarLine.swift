@@ -75,11 +75,14 @@ struct ClickBarLine: View {
 private struct BeatDot: View {
   let sounding: Bool
   let current: Bool
+  // Scales with Dynamic Type, capped so a twelve-beat bar still fits the row (#1950).
+  @ScaledMetric(relativeTo: .caption) private var diameter: CGFloat = 10
+  private var cappedDiameter: CGFloat { min(diameter, 14) }
 
   var body: some View {
     Circle()
       .fill(sounding ? IntradaColor.accent : Color.clear)
-      .frame(width: 10, height: 10)
+      .frame(width: cappedDiameter, height: cappedDiameter)
       .overlay(
         Circle().strokeBorder(
           sounding ? Color.clear : IntradaColor.slotOutline, lineWidth: 1.5)
