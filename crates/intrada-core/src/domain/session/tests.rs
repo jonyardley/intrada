@@ -221,8 +221,10 @@ fn start_building_with_piece_forms_block() {
     );
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
     let e = building_entries(&m);
-    assert!(e[0].group_id.is_some(), "block has a group_id");
-    assert!(e.iter().all(|x| x.group_id == e[0].group_id));
+    let block = group_of(&m, "piece-P").expect("the piece anchors a block");
+    assert!(e
+        .iter()
+        .all(|x| x.group_id.as_deref() == Some(block.as_str())));
 }
 
 #[test]
@@ -252,7 +254,7 @@ fn start_building_with_unknown_item_stays_idle() {
             item_id: "nope".to_string(),
         }),
     );
-    assert!(m.last_error.is_some());
+    assert_eq!(m.last_error.as_deref(), Some("Item not found: nope"));
     assert!(
         matches!(m.session_status, SessionStatus::Idle),
         "a failed seed must not leave an empty building session"
@@ -287,9 +289,10 @@ fn start_building_from_suggestion_seeds_the_derived_block() {
 
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
     let e = building_entries(&m);
-    assert!(e[0].group_id.is_some(), "the seeded block has a group_id");
+    let block = group_of(&m, "piece-P").expect("the piece anchors the seeded block");
     assert!(
-        e.iter().all(|x| x.group_id == e[0].group_id),
+        e.iter()
+            .all(|x| x.group_id.as_deref() == Some(block.as_str())),
         "one block, not three standalone entries"
     );
     assert_eq!(m.last_error, None);
@@ -466,8 +469,10 @@ fn start_building_with_priorities_brings_a_starred_pieces_block() {
 
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
     let e = building_entries(&m);
-    assert!(e[0].group_id.is_some(), "the seeded piece keeps its block");
-    assert!(e.iter().all(|x| x.group_id == e[0].group_id));
+    let block = group_of(&m, "piece-P").expect("the seeded piece keeps its block");
+    assert!(e
+        .iter()
+        .all(|x| x.group_id.as_deref() == Some(block.as_str())));
 }
 
 #[test]
@@ -558,9 +563,10 @@ fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
     let mut m = linked_model();
     update(&mut m, Event::Session(SessionEvent::StartBuilding));
     add(&mut m, "piece-Q");
-    if let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") {
-        piece.linked_exercise_ids = vec!["ex-C".to_string()];
-    }
+    let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") else {
+        panic!("the fixture has piece-Q");
+    };
+    piece.linked_exercise_ids = vec!["ex-C".to_string()];
     add(&mut m, "piece-Q");
     assert_eq!(
         ids(&m),
@@ -622,8 +628,12 @@ fn add_piece_skips_already_present_related() {
         e[0].group_id, None,
         "the pre-existing ex-A stays standalone"
     );
-    assert!(e[1].group_id.is_some());
-    assert_eq!(e[1].group_id, e[2].group_id, "ex-B + piece form the block");
+    let block = group_of(&m, "piece-P").expect("the piece anchors a block");
+    assert_eq!(
+        e[1].group_id.as_deref(),
+        Some(block.as_str()),
+        "ex-B + piece form the block"
+    );
 }
 
 #[test]
@@ -657,7 +667,10 @@ fn add_exercise_to_block_rejects_unknown_group() {
             item_id: "ex-D".to_string(),
         }),
     );
-    assert!(m.last_error.is_some());
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Block 'no-such-group' not found in setlist")
+    );
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
 }
 
@@ -674,7 +687,10 @@ fn add_exercise_to_block_rejects_non_exercise_item() {
             item_id: "piece-Q".to_string(),
         }),
     );
-    assert!(m.last_error.is_some());
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Only an exercise can be added to a block")
+    );
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
 }
 
@@ -763,7 +779,8 @@ fn building_view_projects_blocks_and_standalones() {
     assert_eq!(b.item_count, 4);
     assert_eq!(b.blocks.len(), 2);
     let block = &b.blocks[0];
-    assert!(block.group_id.is_some());
+    let anchor = group_of(&m, "piece-P").expect("the piece anchors a block");
+    assert_eq!(block.group_id.as_deref(), Some(anchor.as_str()));
     assert_eq!(block.piece_title.as_deref(), Some("Sonata"));
     assert_eq!(block.related_count, 2);
     assert_eq!(block.entries.len(), 3);
@@ -898,7 +915,11 @@ fn move_unit_moves_the_unit_holding_the_entry() {
             .map(|e| (e.item_id.clone(), e.group_id.clone()))
             .collect();
         move_unit(&mut m, "ex-nowhere", 0);
-        assert!(m.last_error.is_some(), "a refused move first");
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("Entry 'no-entry-ex-nowhere' not found in setlist"),
+            "a refused move first"
+        );
         move_unit(&mut m, item_id, *new_position);
         assert!(
             m.last_error.is_none(),
@@ -925,7 +946,10 @@ fn move_unit_with_an_unknown_entry_is_refused() {
     let mut m = four_unit_model();
     let before = ids(&m);
     move_unit(&mut m, "ex-nowhere", 0);
-    assert!(m.last_error.is_some());
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Entry 'no-entry-ex-nowhere' not found in setlist")
+    );
     assert_eq!(ids(&m), before);
 }
 
@@ -940,7 +964,11 @@ fn move_related_moves_an_exercise_within_its_block() {
     for (item_id, new_position, expected_block) in cases {
         let mut m = four_unit_model();
         move_related(&mut m, "piece-P", 0);
-        assert!(m.last_error.is_some(), "a refused move first");
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("Only a related exercise moves within its block"),
+            "a refused move first"
+        );
         move_related(&mut m, item_id, *new_position);
         assert!(
             m.last_error.is_none(),
@@ -965,18 +993,43 @@ fn move_related_moves_an_exercise_within_its_block() {
 
 #[test]
 fn move_related_refuses_what_is_not_a_related_exercise_move() {
-    let cases: &[(&str, usize, &str)] = &[
-        ("ex-A", 2, "past the related run, onto the anchor piece"),
-        ("ex-B", 9, "far past the run"),
-        ("piece-P", 0, "the anchor piece itself"),
-        ("ex-D", 0, "a standalone exercise"),
-        ("ex-nowhere", 0, "an unknown entry"),
+    let cases: &[(&str, usize, &str, &str)] = &[
+        (
+            "ex-A",
+            2,
+            "Invalid position: 2 (max: 1)",
+            "past the related run, onto the anchor piece",
+        ),
+        (
+            "ex-B",
+            9,
+            "Invalid position: 9 (max: 1)",
+            "far past the run",
+        ),
+        (
+            "piece-P",
+            0,
+            "Only a related exercise moves within its block",
+            "the anchor piece itself",
+        ),
+        (
+            "ex-D",
+            0,
+            "Only a related exercise moves within its block",
+            "a standalone exercise",
+        ),
+        (
+            "ex-nowhere",
+            0,
+            "Entry 'no-entry-ex-nowhere' not found in setlist",
+            "an unknown entry",
+        ),
     ];
-    for (item_id, new_position, why) in cases {
+    for (item_id, new_position, message, why) in cases {
         let mut m = four_unit_model();
         let before = ids(&m);
         move_related(&mut m, item_id, *new_position);
-        assert!(m.last_error.is_some(), "{why}");
+        assert_eq!(m.last_error.as_deref(), Some(*message), "{why}");
         assert_eq!(ids(&m), before, "{why}: order unchanged");
     }
 }
@@ -991,7 +1044,7 @@ fn moves_outside_building_are_refused() {
             new_position: 0,
         }),
     );
-    assert!(m.last_error.is_some());
+    assert_eq!(m.last_error.as_deref(), Some("Not in building state"));
     m.last_error = None;
     update(
         &mut m,
@@ -1000,7 +1053,7 @@ fn moves_outside_building_are_refused() {
             new_position: 0,
         }),
     );
-    assert!(m.last_error.is_some());
+    assert_eq!(m.last_error.as_deref(), Some("Not in building state"));
 }
 
 #[test]
@@ -1057,8 +1110,10 @@ fn removing_a_related_keeps_the_block() {
     assert!(m.last_error.is_none());
     assert_eq!(ids(&m), ["ex-B", "piece-P"]);
     let e = building_entries(&m);
-    assert!(
-        e[0].group_id.is_some() && e[0].group_id == e[1].group_id,
+    let block = group_of(&m, "piece-P").expect("the piece still anchors a block");
+    assert_eq!(
+        e[0].group_id.as_deref(),
+        Some(block.as_str()),
         "the piece + remaining related stay one block"
     );
 }
@@ -1080,7 +1135,10 @@ fn test_start_building_when_already_building() {
     update(&mut model, Event::Session(SessionEvent::StartBuilding));
     update(&mut model, Event::Session(SessionEvent::StartBuilding));
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("A practice is already in progress")
+    );
 }
 
 #[test]
@@ -1116,7 +1174,10 @@ fn test_add_to_setlist_item_not_found() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Item not found: nonexistent")
+    );
 }
 
 #[test]
@@ -1167,7 +1228,10 @@ fn test_start_session_empty_setlist() {
         Event::Session(SessionEvent::StartSession { now }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Setlist must have at least one entry")
+    );
     assert!(matches!(model.session_status, SessionStatus::Building(_)));
 }
 
@@ -1721,7 +1785,10 @@ fn test_update_entry_notes_too_long() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Notes must not exceed 5000 characters")
+    );
 }
 
 #[test]
@@ -1957,12 +2024,13 @@ fn test_save_session_updates_practice_summaries_in_view() {
     let mut model = model_with_summary();
 
     // Score the first entry before saving
-    if let SessionStatus::Summary(ref mut summary) = model.session_status {
-        summary.entries[0]
-            .open_play_mut()
-            .expect("the practised entry has a play")
-            .score = Some(4);
-    }
+    let SessionStatus::Summary(ref mut summary) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    summary.entries[0]
+        .open_play_mut()
+        .expect("the practised entry has a play")
+        .score = Some(4);
 
     let now = Utc::now();
     update(
@@ -2213,7 +2281,10 @@ fn test_recover_session_when_not_idle() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Cannot recover: a practice is already in progress")
+    );
 }
 
 #[test]
@@ -2241,7 +2312,10 @@ fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
         matches!(model.session_status, SessionStatus::Idle),
         "an empty setlist never becomes Active: current_entry would index it (#1807)"
     );
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Couldn't resume · the saved practice was empty, so it's been removed.")
+    );
     assert!(
         cmd.effects().any(|e| matches!(e, Effect::App(req)
             if matches!(req.operation, AppEffect::ClearSessionInProgress))),
@@ -2531,6 +2605,11 @@ fn test_update_entry_score_ignored_on_skipped_entry() {
         }),
     );
 
+    assert_eq!(
+        model.last_error, None,
+        "turned away by its status, before the play id is checked"
+    );
+
     if let SessionStatus::Summary(ref s) = model.session_status {
         assert_eq!(s.entries[0].score_summary(), None, "score not set");
         assert!(s.entries[0].plays.is_empty());
@@ -2560,9 +2639,10 @@ fn test_update_entry_score_out_of_range_rejected() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).score, None); // Score not set
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).score, None);
 
     // Score 11: out of range
     let play_id = first_play_id(&model, &entry_id);
@@ -2575,9 +2655,10 @@ fn test_update_entry_score_out_of_range_rejected() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).score, None); // Score still not set
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).score, None);
 }
 
 #[test]
@@ -2742,9 +2823,10 @@ fn test_update_entry_tempo_works_mid_session_on_completed_entry() {
     );
 
     assert!(model.last_error.is_none());
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).achieved_tempo, Some(120));
-    }
+    let SessionStatus::Active(ref a) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    assert_eq!(play_of(&a.entries[0]).achieved_tempo, Some(120));
 }
 
 #[test]
@@ -2776,9 +2858,10 @@ fn test_update_entry_notes_works_mid_session_on_completed_entry() {
     );
 
     assert!(model.last_error.is_none());
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(a.entries[0].notes.as_deref(), Some("felt solid"));
-    }
+    let SessionStatus::Active(ref a) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    assert_eq!(a.entries[0].notes.as_deref(), Some("felt solid"));
 }
 
 #[test]
@@ -2910,12 +2993,18 @@ fn test_update_entry_score_rejected_on_skipped_entry_in_active_phase() {
         }),
     );
 
+    assert_eq!(
+        model.last_error, None,
+        "turned away by its status, before the play id is checked"
+    );
+
     // Score not applied: entry is Skipped, not Completed
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(a.entries[0].score_summary(), None);
-        assert!(a.entries[0].plays.is_empty());
-        assert_eq!(a.entries[0].status, EntryStatus::Skipped);
-    }
+    let SessionStatus::Active(ref a) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    assert_eq!(a.entries[0].score_summary(), None);
+    assert!(a.entries[0].plays.is_empty());
+    assert_eq!(a.entries[0].status, EntryStatus::Skipped);
 }
 
 #[test]
@@ -2939,9 +3028,10 @@ fn test_update_entry_score_boundary_values() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).score, Some(1));
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).score, Some(1));
 
     // Score 10: maximum valid
     let play_id = first_play_id(&model, &entry_id);
@@ -2954,9 +3044,10 @@ fn test_update_entry_score_boundary_values() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).score, Some(10));
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).score, Some(10));
 }
 
 // --- SetEntryVariant Tests (#1083 C1) ---
@@ -3046,7 +3137,11 @@ fn set_entry_variant_is_rejected_on_a_completed_entry() {
         }),
     );
 
-    assert!(model.last_error.is_some(), "surfaced, not silent");
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("A variation can only be planned while building"),
+        "surfaced, not silent"
+    );
     assert_eq!(planned_variation(&model), None);
 }
 
@@ -3089,7 +3184,10 @@ fn set_entry_variant_rejects_a_variant_of_another_item() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("That variation doesn't belong to this exercise")
+    );
     assert_eq!(planned_variation(&model), None);
 }
 
@@ -3115,7 +3213,10 @@ fn set_entry_variant_rejects_a_tombstoned_variant() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("That variation doesn't belong to this exercise")
+    );
     assert_eq!(planned_variation(&model), None);
 }
 
@@ -3246,7 +3347,10 @@ fn set_entry_variant_unknown_entry_surfaces_an_error() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Entry 'no-such-entry' not found")
+    );
 }
 
 // --- UpdateEntryTempo Tests ---
@@ -3991,7 +4095,10 @@ fn a_click_that_sounds_no_beat_is_rejected_and_writes_nothing() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("The click must sound on at least one beat of the bar")
+    );
     assert_eq!(achieved_tempo(&model, &entry_id), None);
 }
 
@@ -4076,33 +4183,45 @@ fn an_untouched_default_does_not_erase_a_measured_tempo() {
 
 #[test]
 fn clearing_the_tempo_needs_no_evidence() {
-    let mut model = model_with_summary();
-    let entry_id = tempo_entry_id(&model);
+    for user_set in [false, true] {
+        let mut model = model_with_summary();
+        let entry_id = tempo_entry_id(&model);
 
-    let play_id = first_play_id(&model, &entry_id);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::UpdateEntryTempo {
-            entry_id: entry_id.clone(),
-            play_id,
-            tempo: Some(120),
-            user_set: true,
-            click: None,
-        }),
-    );
-    let play_id = first_play_id(&model, &entry_id);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::UpdateEntryTempo {
-            entry_id: entry_id.clone(),
-            play_id,
-            tempo: None,
-            user_set: false,
-            click: None,
-        }),
-    );
+        let play_id = first_play_id(&model, &entry_id);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                play_id,
+                tempo: Some(120),
+                user_set: true,
+                click: None,
+            }),
+        );
+        assert_eq!(
+            achieved_tempo(&model, &entry_id),
+            Some(120),
+            "user_set {user_set}"
+        );
 
-    assert_eq!(achieved_tempo(&model, &entry_id), None);
+        let play_id = first_play_id(&model, &entry_id);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                play_id,
+                tempo: None,
+                user_set,
+                click: None,
+            }),
+        );
+
+        assert_eq!(
+            achieved_tempo(&model, &entry_id),
+            None,
+            "user_set {user_set}"
+        );
+    }
 }
 
 #[test]
@@ -4114,49 +4233,6 @@ fn update_entry_tempo_round_trips_on_ffi_bincode_wire() {
         user_set: true,
         click: None,
     }));
-}
-
-#[test]
-fn test_update_entry_tempo_none_clears() {
-    let mut model = model_with_summary();
-
-    let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
-        s.entries[0].id.clone()
-    } else {
-        panic!("Expected Summary state");
-    };
-
-    // Set tempo to 120
-    let play_id = first_play_id(&model, &entry_id);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::UpdateEntryTempo {
-            entry_id: entry_id.clone(),
-            play_id,
-            tempo: Some(120),
-            user_set: true,
-            click: None,
-        }),
-    );
-
-    // Clear tempo by setting to None
-    let play_id = first_play_id(&model, &entry_id);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::UpdateEntryTempo {
-            entry_id: entry_id.clone(),
-            play_id,
-            tempo: None,
-            user_set: true,
-            click: None,
-        }),
-    );
-
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
-    } else {
-        panic!("Expected Summary state");
-    }
 }
 
 #[test]
@@ -4213,10 +4289,16 @@ fn test_update_entry_tempo_rejected_on_skipped() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        let skipped = s.entries.iter().find(|e| e.id == skipped_entry_id).unwrap();
-        assert!(skipped.plays.is_empty(), "no play means no tempo recorded");
-    }
+    assert_eq!(
+        model.last_error, None,
+        "turned away by its status, before the play id is checked"
+    );
+
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    let skipped = s.entries.iter().find(|e| e.id == skipped_entry_id).unwrap();
+    assert!(skipped.plays.is_empty(), "no play means no tempo recorded");
 }
 
 #[test]
@@ -4242,9 +4324,10 @@ fn test_update_entry_tempo_rejected_out_of_range() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
 
     // Tempo 501: out of range
     let play_id = first_play_id(&model, &entry_id);
@@ -4259,9 +4342,10 @@ fn test_update_entry_tempo_rejected_out_of_range() {
         }),
     );
 
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(play_of(&s.entries[0]).achieved_tempo, None);
 }
 
 // --- SessionsData Serialization Test ---
@@ -4367,20 +4451,6 @@ fn test_set_entry_variant_tags_the_rung_while_building() {
     }
 }
 
-#[test]
-fn test_set_entry_variant_unknown_entry_surfaces_error() {
-    let mut model = model_with_library();
-    update(&mut model, Event::Session(SessionEvent::StartBuilding));
-    update(
-        &mut model,
-        Event::Session(SessionEvent::SetEntryVariant {
-            entry_id: "nope".to_string(),
-            variant_id: Some("var-1".to_string()),
-        }),
-    );
-    assert!(model.last_error.is_some());
-}
-
 // --- Rep Counter Tests ---
 
 const TAP_AT: &str = "2026-09-03T09:00:00Z";
@@ -4484,26 +4554,6 @@ fn test_rep_got_it_reaches_target() {
 
     update(&mut model, got_it());
     update(&mut model, got_it());
-    update(&mut model, got_it());
-
-    if let SessionStatus::Active(ref a) = model.session_status {
-        assert_eq!(play_of(&a.entries[0]).rep_count, Some(3));
-        assert_eq!(play_of(&a.entries[0]).rep_target_reached, Some(true));
-    } else {
-        panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_got_it_frozen_after_target_reached() {
-    let (mut model, _now) = model_with_active_session_and_rep(3);
-
-    // Reach target
-    for _ in 0..3 {
-        update(&mut model, got_it());
-    }
-
-    // Additional got-it should not increase count
     update(&mut model, got_it());
 
     if let SessionStatus::Active(ref a) = model.session_status {
@@ -4711,42 +4761,6 @@ fn test_rep_state_frozen_on_skip_item() {
         assert_eq!(a.entries[0].planned_rep_target, Some(5));
     } else {
         panic!("Expected Active state");
-    }
-}
-
-#[test]
-fn test_rep_state_in_summary_after_finish() {
-    let (mut model, start) = model_with_active_session_and_rep(3);
-
-    // Reach target
-    for _ in 0..3 {
-        update(&mut model, got_it());
-    }
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now: start,
-            next_item_started_at: start,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    let now = start + chrono::Duration::seconds(60);
-    update(
-        &mut model,
-        Event::Session(SessionEvent::NextItem {
-            now,
-            next_item_started_at: now,
-            reading: TempoReading::silent(),
-        }),
-    );
-
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(play_of(&s.entries[0]).rep_target, Some(3));
-        assert_eq!(play_of(&s.entries[0]).rep_count, Some(3));
-        assert_eq!(play_of(&s.entries[0]).rep_target_reached, Some(true));
-    } else {
-        panic!("Expected Summary state");
     }
 }
 
@@ -4967,7 +4981,10 @@ fn test_set_rep_target_invalid_value() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Rep target must be between 3 and 10")
+    );
     if let SessionStatus::Building(ref b) = model.session_status {
         assert_eq!(b.entries[0].planned_rep_target, None); // unchanged
     } else {
@@ -4984,7 +5001,10 @@ fn test_set_rep_target_invalid_value() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("Rep target must be between 3 and 10")
+    );
 }
 
 #[test]
@@ -5073,7 +5093,11 @@ fn set_entry_duration_outside_the_range_is_refused_and_keeps_the_plan() {
 
         set_duration(&mut model, &entry_id, Some(out_of_range));
 
-        assert!(model.last_error.is_some(), "{out_of_range} was accepted");
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("Planned duration must be between 60 and 3600 seconds"),
+            "{out_of_range} was accepted"
+        );
         assert_eq!(building_entries(&model)[0].planned_duration_secs, Some(600));
     }
 }
@@ -5182,9 +5206,10 @@ fn test_update_session_score_sets_and_validates() {
         Event::Session(SessionEvent::UpdateSessionScore { score: Some(11) }),
     );
     assert!(model.last_error.is_none());
-    if let SessionStatus::Summary(ref s) = model.session_status {
-        assert_eq!(s.session_score, Some(8));
-    }
+    let SessionStatus::Summary(ref s) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    assert_eq!(s.session_score, Some(8));
 }
 
 #[test]
@@ -5700,7 +5725,10 @@ fn a_play_id_from_another_entry_is_rejected() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("That play doesn't belong to this item")
+    );
     let entry = session_entries(&model)
         .iter()
         .find(|e| e.id == first_entry)
@@ -5723,7 +5751,10 @@ fn switching_to_a_dead_variation_is_rejected() {
         }),
     );
 
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("That variation doesn't belong to this exercise")
+    );
     assert_eq!(only_entry(&model).plays.len(), 1);
 }
 
@@ -5750,7 +5781,10 @@ fn an_entry_stops_at_the_play_cap() {
         only_entry(&model).plays.len(),
         validation::MAX_PLAYS_PER_ENTRY
     );
-    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("An item can record at most 24 variations")
+    );
 }
 
 #[test]
@@ -6357,11 +6391,12 @@ fn skipping_the_last_item_clears_the_tempo_of_a_play_that_survives() {
         &mut model,
         Event::Session(SessionEvent::RepGotIt { now: t1 }),
     );
-    if let SessionStatus::Active(ref mut active) = model.session_status {
-        let play = active.entries[1].open_play_mut().expect("a play is open");
-        play.achieved_tempo = Some(96);
-        play.click_pattern = Some(seven_eight_on_group_starts());
-    }
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    let play = active.entries[1].open_play_mut().expect("a play is open");
+    play.achieved_tempo = Some(96);
+    play.click_pattern = Some(seven_eight_on_group_starts());
 
     update(
         &mut model,
@@ -6407,7 +6442,10 @@ fn planning_setters_are_refused_outside_building() {
 
         update(&mut model, setter(before.id.clone()));
 
-        assert!(model.last_error.is_some());
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("An entry can only be planned while building")
+        );
         assert_eq!(active_entry(&model, 0), &before);
     }
 }

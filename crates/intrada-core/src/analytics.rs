@@ -1771,6 +1771,74 @@ mod tests {
         assert!(changes.is_empty());
     }
 
+    #[test]
+    fn score_change_since_last_scored_spans_a_gap_of_weeks() {
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+        let three_weeks_ago = NaiveDate::from_ymd_opt(2026, 1, 28).unwrap();
+        let six_weeks_ago = NaiveDate::from_ymd_opt(2026, 1, 7).unwrap();
+
+        let sessions = vec![
+            make_session(
+                "s-recent",
+                three_weeks_ago,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(2))],
+            ),
+            make_session(
+                "s-older",
+                six_weeks_ago,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(6))],
+            ),
+            make_session(
+                "s-today",
+                today,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(5))],
+            ),
+        ];
+
+        let changes = compute_score_changes(&sessions, clock(today));
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].previous_score, Some(2));
+        assert_eq!(changes[0].delta, 3);
+        assert!(!changes[0].is_new);
+    }
+
+    #[test]
+    #[ignore = "#2096"]
+    fn score_change_ignores_a_practice_dated_after_this_week() {
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+        let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap();
+        let next_wed = NaiveDate::from_ymd_opt(2026, 2, 25).unwrap();
+
+        let sessions = vec![
+            make_session(
+                "s-last-week",
+                last_wed,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(2))],
+            ),
+            make_session(
+                "s-today",
+                today,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(5))],
+            ),
+            make_session(
+                "s-next-week",
+                next_wed,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(9))],
+            ),
+        ];
+
+        let changes = compute_score_changes(&sessions, clock(today));
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].previous_score, Some(2));
+        assert_eq!(changes[0].delta, 3);
+    }
+
     // ── Integration: compute_analytics ───────────────────────────────
 
     #[test]
