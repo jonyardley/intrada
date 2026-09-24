@@ -148,6 +148,22 @@ extension LibraryItemView {
   var tempoSpoken: String? { TempoFormatting.spoken(marking: tempoMarking, bpm: tempoBpm) }
 }
 
+extension LinkedExerciseView {
+  var keyDisplay: String? { KeyHelper.display(key: key, modality: modality) }
+
+  var metaLine: String? {
+    let parts = [keyDisplay, TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm)]
+      .compactMap { $0 }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
+  var metaSpoken: String? {
+    let parts = [keyDisplay, TempoFormatting.spoken(marking: tempoMarking, bpm: tempoBpm)]
+      .compactMap { $0 }
+    return parts.isEmpty ? nil : parts.joined(separator: ", ")
+  }
+}
+
 extension ActiveSessionView {
   /// The current item's own declared tempo (the practice target) — distinct
   /// from `achievedTempo` on a `SetlistEntryView`, which is logged after the

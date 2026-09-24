@@ -349,11 +349,9 @@ enum StagedExercise: Identifiable, Hashable {
   var meta: String? {
     switch self {
     case .draft(_, _, let key, let modality, let bpm):
-      let mode = modality == .minor ? "minor" : "major"
-      let parts = [
-        key.isEmpty ? nil : "\(key) \(mode)",
-        bpm.isEmpty ? nil : "\(bpm) bpm",
-      ].compactMap { $0 }
+      let tempo = TempoFormatting.display(
+        marking: nil, bpm: UInt16(bpm.trimmingCharacters(in: .whitespaces)))
+      let parts = [KeyHelper.display(key: key, modality: modality), tempo].compactMap { $0 }
       return parts.isEmpty ? nil : parts.joined(separator: " · ")
     case .existing(_, _, let meta): return meta
     }

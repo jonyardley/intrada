@@ -82,9 +82,7 @@ struct ChordChartEditSheet: View {
   }
 
   private var keyDisplay: String {
-    let key = pieceKey?.isEmpty == false ? pieceKey! : "C"
-    let mode = pieceModality == .minor ? "minor" : "major"
-    return "\(key) \(mode)"
+    KeyHelper.display(key: pieceKey, modality: pieceModality ?? .major) ?? "C major"
   }
 
   private var editor: some View {
