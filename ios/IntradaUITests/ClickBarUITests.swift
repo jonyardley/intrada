@@ -31,7 +31,7 @@ final class ClickBarUITests: XCTestCase {
     bar.tap()
     let done = app.control("sheet.done", spoken: "Done")
     // BUG: a pause between choosing a pattern and Done leaves the bar line
-    // unable to reopen the sheet, so Done follows the pattern at once (#1950).
+    // unable to reopen the sheet, so Done follows the pattern at once (#2122).
     app.control("clickSheet.pattern.downbeat", spoken: "Downbeat").tap()
     done.tap()
     XCTAssertTrue(bar.waitForExistence(timeout: 5))
