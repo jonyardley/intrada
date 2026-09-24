@@ -80,10 +80,6 @@ enum IntradaColor {
   static let slotOutline = Color(hex: 0xDDD7CA)
   /// Dashed outline on full-width "+ Add …" rows.
   static let addDashOutline = Color(hex: 0xC9BFB0)
-  /// The faded "was" number in a was→now delta.
-  static let figureMuted = Color(hex: 0xC2B8AA)
-  /// Not-yet days in the week picker.
-  static let futureDay = Color(hex: 0xC9BFB0)
   static let inkFainter = Color(hex: 0xC2B8AA)
   // Focus-player warm radial backdrop.
   static let playerBgTop = Color(hex: 0xFBFAF7)

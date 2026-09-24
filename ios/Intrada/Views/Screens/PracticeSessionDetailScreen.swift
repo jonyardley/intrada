@@ -111,12 +111,12 @@ struct PracticeSessionDetailScreen: View {
     return Group {
       if dynamicTypeSize.isAccessibilitySize {
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          entryText(entry)
+          entryText(entry, played: played)
           if let ring { ScoreRing(score: ring, size: 34) }
         }
       } else {
         HStack(alignment: .top, spacing: IntradaSpacing.cardCompact) {
-          entryText(entry)
+          entryText(entry, played: played)
           Spacer(minLength: 0)
           if let ring { ScoreRing(score: ring, size: 34) }
         }
@@ -124,16 +124,15 @@ struct PracticeSessionDetailScreen: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(played ? 1 : IntradaOpacity.dimmed)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(entryAccessibilityLabel(entry))
   }
 
-  private func entryText(_ entry: SetlistEntryView) -> some View {
+  private func entryText(_ entry: SetlistEntryView, played: Bool) -> some View {
     VStack(alignment: .leading, spacing: 3) {
       Text(entry.itemTitle)
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.ink)
+        .foregroundStyle(played ? IntradaColor.ink : IntradaColor.inkSecondary)
       Text(entryMeta(entry))
         .font(IntradaFont.micro)
         .foregroundStyle(IntradaColor.inkSecondary)

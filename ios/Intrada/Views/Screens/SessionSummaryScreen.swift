@@ -100,7 +100,7 @@ struct SessionSummaryScreen: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(entry.itemTitle)
             .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.ink)
+            .foregroundStyle(unfinished ? IntradaColor.inkSecondary : IntradaColor.ink)
           Text(metaLine(entry, unfinished: unfinished))
             .font(IntradaFont.micro)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -126,7 +126,6 @@ struct SessionSummaryScreen: View {
       }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(unfinished ? IntradaOpacity.dimmed : 1)
   }
 
   // A written note stays on the row: a note the musician cannot see again is
@@ -205,7 +204,7 @@ struct SessionSummaryScreen: View {
   private func dot(_ entry: SetlistEntryView, unfinished: Bool) -> some View {
     if unfinished {
       Circle()
-        .strokeBorder(IntradaColor.figureMuted, lineWidth: 1.5)
+        .strokeBorder(IntradaColor.inkFaintIcon, lineWidth: 1.5)
         .frame(width: 8, height: 8)
     } else {
       Circle().fill(entry.itemType.accent).frame(width: 8, height: 8)
