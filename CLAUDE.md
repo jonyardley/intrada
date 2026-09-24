@@ -103,10 +103,12 @@ whether or not you have seen them.
   the code, narrates the task or PR, hedges without an issue, or notes that X "mirrors" Y.
   `///` on a self-evident item is the same noise. Over two lines, ask whether it should be a
   name or a type.
-- **British English**; UI copy is written against `docs/tone-of-voice.md`. **No em dashes,
-  en dashes or double dashes**: `scripts/check-dashes.sh` enforces the first two on changed
-  lines, the rest stays on the author. **Plain language in docs, issues and PR bodies**:
-  name features by the musician-visible outcome; issue numbers are the only stable handles.
+- **British English**; UI copy is written against `docs/tone-of-voice.md`, and PR bodies,
+  commits, issues and docs against [`docs/style-guide.md`](docs/style-guide.md). **No em
+  dashes, en dashes or double dashes**: `scripts/check-dashes.sh` fails all three and a list
+  of American spellings on added Markdown lines, and em and en dashes in comments. **Plain
+  language**: name features by the musician-visible outcome; issue numbers are the only
+  stable handles.
 
 ## Testing
 
