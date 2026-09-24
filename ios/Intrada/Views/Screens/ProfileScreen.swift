@@ -15,6 +15,7 @@ struct ProfileScreen: View {
       title: "Profile",
       trailingContent: {
         Button("Edit") { editing = true }
+          .accessibilityIdentifier("profile.edit")
       },
       content: {
         ScrollView {
@@ -82,6 +83,7 @@ struct ProfileScreen: View {
       .cardSurface()
       .accessibilityElement(children: .combine)
       .accessibilityLabel("Highlighter, \((profile?.colour ?? .butter).label)")
+      .accessibilityIdentifier("profile.highlighter")
     }
   }
 }

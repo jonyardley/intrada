@@ -73,6 +73,11 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: config)
   }
 
+  func testScaffoldPreviewSheetAccessibilitySize() {
+    assertSnapshot(
+      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: axConfig)
+  }
+
   func testPieceDetailLinkedPopulated() {
     let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
     let pushed = NavigationStack(
@@ -186,6 +191,13 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       of: host(
         AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGroupedRelatedSheet),
       as: config)
+  }
+
+  func testAddRelatedExerciseSheetAccessibilitySize() {
+    assertSnapshot(
+      of: host(
+        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGroupedRelatedSheet),
+      as: axConfig)
   }
 
   func testAddRelatedExerciseSheetAdded() {

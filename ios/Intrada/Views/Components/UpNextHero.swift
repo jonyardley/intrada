@@ -130,6 +130,7 @@ struct UpNextHero: View {
     }
     .buttonStyle(PressRebound())
     .accessibilityLabel("Start practising")
+    .accessibilityIdentifier("practice.start")
     .accessibilityValue("\(itemCountLabel), about \(suggestion.estimatedMinutes) minutes")
   }
 
@@ -140,6 +141,7 @@ struct UpNextHero: View {
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.controlGap)
       .accessibilityHint("Opens the session builder")
+      .accessibilityIdentifier("practice.buildOwn")
   }
 
   private var itemCountLabel: String {

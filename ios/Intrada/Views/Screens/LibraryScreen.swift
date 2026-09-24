@@ -28,7 +28,7 @@ struct LibraryScreen: View {
   var body: some View {
     ScreenScaffold(
       title: "Library", subtitle: subtitle,
-      trailing: .init(label: "Add item", action: { adding = true })
+      trailing: .init(label: "Add item", identifier: "library.add", action: { adding = true })
     ) {
       VStack(spacing: 0) {
         BrowseControlsBar(previewSearch: previewSearch, showsStarFilter: true)
@@ -97,11 +97,13 @@ struct LibraryScreen: View {
           .splitSelected(selection.wrappedValue == item.id)
       }
       .buttonStyle(.plain)
+      .accessibilityIdentifier("library.row")
     } else {
       NavigationLink(value: item.id) {
         LibraryItemCard(item: item, showsMastery: true, showsMissingDetailsPrompt: true)
       }
       .buttonStyle(.plain)
+      .accessibilityIdentifier("library.row")
     }
   }
 

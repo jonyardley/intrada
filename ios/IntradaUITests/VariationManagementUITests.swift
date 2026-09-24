@@ -19,20 +19,18 @@ final class VariationManagementUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Library"].tap()
-    let scalesRow = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Major Scales")
-    ).firstMatch
+    let scalesRow = app.row("library.row", spokenContaining: "Major Scales")
     XCTAssertTrue(scalesRow.waitForExistence(timeout: 10), "Major Scales library row")
     scalesRow.tap()
 
-    let editButton = app.buttons["Edit"].firstMatch
-    XCTAssertTrue(editButton.waitForExistence(timeout: 10), "Edit on the exercise's details")
-    editButton.tap()
+    app.control("libraryDetail.edit", spoken: "Edit", timeout: 10).tap()
     return app
   }
 
   private func variationField(_ app: XCUIApplication, value: String) -> XCUIElement {
-    app.textFields.matching(NSPredicate(format: "value == %@", value)).firstMatch
+    app.textFields.matching(
+      NSPredicate(format: "identifier == %@ AND value == %@", "variationRow.label", value)
+    ).firstMatch
   }
 
   func testRenameVariationPersistsAndLeavesOthersUntouched() {
@@ -46,7 +44,7 @@ final class VariationManagementUITests: XCTestCase {
     // re-resolve it, since the value has already changed (#1642).
     eField.typeText(XCUIKeyboardKey.delete.rawValue + "Fa\n")
 
-    app.buttons["Save"].tap()
+    app.control("itemForm.confirm", spoken: "Save").tap()
 
     // "Fa" isn't a key, so the details list the ladder as named rows.
     XCTAssertTrue(
@@ -61,8 +59,8 @@ final class VariationManagementUITests: XCTestCase {
   func testDraggingAHandleMovesItsRow() {
     let app = openScalesEditor()
 
-    let eHandle = app.descendants(matching: .any)["Reorder E"].firstMatch
-    let cHandle = app.descendants(matching: .any)["Reorder C"].firstMatch
+    let eHandle = app.row("variationRow.reorder", spokenContaining: "Reorder E")
+    let cHandle = app.row("variationRow.reorder", spokenContaining: "Reorder C")
     XCTAssertTrue(eHandle.waitForExistence(timeout: 5), "E's reorder handle")
     XCTAssertGreaterThan(
       variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,

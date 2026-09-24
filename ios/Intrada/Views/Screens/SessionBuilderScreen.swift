@@ -179,6 +179,7 @@ struct SessionBuilderScreen: View {
       subtitle: isEditing ? "Editing" : summary,
       leadingContent: {
         Button("Cancel") { cancel() }
+          .accessibilityIdentifier("builder.cancel")
       },
       trailingContent: { headerActions },
       content: {
@@ -246,6 +247,7 @@ struct SessionBuilderScreen: View {
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
         AddRowButton(title: "Add piece or exercise") { addingItems = true }
+          .accessibilityIdentifier("builder.addItems")
         Spacer()
         Spacer()
       }
@@ -274,6 +276,7 @@ struct SessionBuilderScreen: View {
         .onDelete(perform: deleteRows)
 
         AddRowButton(title: "Add piece or exercise") { addingItems = true }
+          .accessibilityIdentifier("builder.addItems")
           .listRowBackground(Color.clear)
           .listRowSeparator(.hidden)
           .listRowInsets(
@@ -349,6 +352,7 @@ struct SessionBuilderScreen: View {
       .accessibilityElement(children: .combine)
       .accessibilityAddTraits(isEditing ? [] : .isButton)
       .accessibilityHint(isEditing ? "" : "Opens settings")
+      .accessibilityIdentifier("builder.row")
       .accessibilityAction(named: "Settings") {
         configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
       }
@@ -367,6 +371,7 @@ struct SessionBuilderScreen: View {
         .buttonStyle(.plain)
         .hitTargetCompensation()
         .accessibilityLabel("Remove \(entry.itemTitle)")
+        .accessibilityIdentifier("builder.remove")
       }
     }
     .padding(IntradaSpacing.cardCompact)
@@ -450,6 +455,7 @@ struct SessionBuilderScreen: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isEditing ? [] : .isButton)
         .accessibilityHint(isEditing ? "" : "Opens settings")
+        .accessibilityIdentifier("builder.row")
         .accessibilityAction(named: "Settings") {
           configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
         }
@@ -527,6 +533,7 @@ struct SessionBuilderScreen: View {
       Image(systemName: "play.fill")
       Text(startTitle)
     }
+    .accessibilityIdentifier("builder.start")
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
     .padding(.bottom, IntradaSpacing.section)

@@ -60,13 +60,15 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
                 VStack(spacing: 0) {
                   FormField(
                     label: "Title", text: $form.title, placeholder: "Required",
-                    readWeakly: form.readFrom[.title], faulted: form.faults(.title)
+                    readWeakly: form.readFrom[.title], faulted: form.faults(.title),
+                    identifier: "itemForm.title"
                   )
                   .id(FormAnchor.field(.title))
                   HairlineDivider()
                   AutocompleteField(
                     label: "Composer", text: $form.composer, suggestions: composerSuggestions,
-                    readWeakly: form.readFrom[.composer], faulted: form.faults(.composer)
+                    readWeakly: form.readFrom[.composer], faulted: form.faults(.composer),
+                    identifier: "itemForm.composer"
                   )
                   .id(FormAnchor.field(.composer))
                   if form.showsKey {
@@ -129,10 +131,12 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel") { dismiss() }
+            .accessibilityIdentifier("itemForm.cancel")
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(confirmLabel, action: confirm)
             .disabled(!form.canSubmit)
+            .accessibilityIdentifier("itemForm.confirm")
         }
       }
     }

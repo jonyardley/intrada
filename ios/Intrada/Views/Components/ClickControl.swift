@@ -93,6 +93,7 @@ struct ClickControl: View {
     .accessibilityLabel(isRunning ? "Stop the metronome" : "Start the metronome")
     .accessibilityValue(spokenValue)
     .accessibilityAdjustableAction(adjust)
+    .accessibilityIdentifier("click.toggle")
     .highPriorityGesture(dragGesture)
     .onDisappear(perform: resetDrag)
     .animation(reduceMotion ? nil : IntradaMotion.snappy, value: isDragging)

@@ -20,16 +20,14 @@ final class SessionHistoryUITests: XCTestCase {
     app.endSessionEarly()
     app.saveSummary()
 
-    let card = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "1 piece")
-    ).firstMatch
+    let card = app.row("practice.sessionCard", spokenContaining: "1 piece")
     XCTAssertTrue(card.waitForExistence(timeout: 10), "a saved session card in history")
     card.tap()
 
     // Assert on the detail screen's own content: a card that merely vanished
     // would also satisfy "the card is gone".
     XCTAssertTrue(
-      app.staticTexts["What you played"].waitForExistence(timeout: 10),
+      app.element("sessionDetail.played").waitForExistence(timeout: 10),
       "the session detail screen is up")
     let item = app.staticTexts.matching(
       NSPredicate(format: "label CONTAINS %@", "Clair de Lune")

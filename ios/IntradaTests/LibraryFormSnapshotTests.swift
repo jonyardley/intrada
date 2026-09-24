@@ -22,6 +22,10 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }
 
+  func testLibraryAddScreenAccessibilitySize() {
+    assertSnapshot(of: host(LibraryAddScreen()), as: axConfig)
+  }
+
   func testLibraryAddScreenExercise() {
     assertSnapshot(of: host(LibraryAddScreen(defaultKind: .exercise)), as: config)
   }
@@ -191,6 +195,10 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: config)
   }
 
+  func testLibraryEditScreenAccessibilitySize() {
+    assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: axConfig)
+  }
+
   func testLibraryEditScreenExercise() {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewExercise)), as: config)
   }
@@ -298,6 +306,18 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  func testLinkedExercisePickerAccessibilitySize() {
+    let sheet = LinkedItemPickerSheet(
+      kind: .exercise,
+      library: [
+        .previewExercise,
+        LibraryItemFixture.view(id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db"),
+      ],
+      linkedIds: ["exercise-1"],
+      onApply: { _, _ in })
+    assertSnapshot(of: host(sheet), as: axConfig)
+  }
+
   // #1616: the create trigger plus a drafted row, alongside the ordinary list.
   func testLinkedExercisePickerWithDraft() {
     let sheet = LinkedItemPickerSheet(
@@ -350,6 +370,15 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
         .padding(16)
     }
     assertSnapshot(of: host(confirm), as: config)
+  }
+
+  func testPageCameraConfirmAccessibilitySize() {
+    let confirm = ZStack {
+      IntradaColor.viewerBackdrop
+      CapturedPageConfirm(page: Self.page, onKeep: {}, onRetake: {})
+        .padding(16)
+    }
+    assertSnapshot(of: host(confirm), as: axConfig)
   }
 
   private func piece(id: String, _ title: String, _ composer: String) -> LibraryItemView {

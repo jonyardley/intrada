@@ -62,6 +62,7 @@ struct ChordChartEditSheet: View {
         ToolbarItem(placement: .confirmationAction) {
           Button("Save") { save() }
             .disabled(saveDisabled)
+            .accessibilityIdentifier("chordChart.save")
         }
       }
     }
@@ -105,6 +106,7 @@ struct ChordChartEditSheet: View {
         .autocorrectionDisabled()
         .textInputAutocapitalization(.characters)
         .accessibilityLabel("Chord chart text")
+        .accessibilityIdentifier("chordChart.text")
     }
     .padding(IntradaSpacing.cardCompact)
     .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.control))

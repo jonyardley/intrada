@@ -91,6 +91,7 @@ struct PracticeSessionDetailScreen: View {
   private var playedSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       Eyebrow("What you played")
+        .accessibilityIdentifier("sessionDetail.played")
       VStack(spacing: 0) {
         ForEach(Array(session.entries.enumerated()), id: \.element.id) { index, entry in
           entryRow(entry)

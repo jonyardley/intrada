@@ -123,6 +123,7 @@ struct EntrySettingsSheet: View {
   private var repsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Toggle(isOn: $tracksReps) { Eyebrow("Track repetitions") }
+        .accessibilityIdentifier("entrySettings.trackReps")
         .tint(IntradaColor.accent)
         .onChange(of: tracksReps) { _, on in
           store.send(

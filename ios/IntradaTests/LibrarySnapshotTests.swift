@@ -96,6 +96,14 @@ final class LibrarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  func testTagFilterSheetAccessibilitySize() {
+    let sheet = TagFilterSheet(
+      available: ["classical", "jazz", "recital", "technique", "warm-up"],
+      selected: ["jazz", "recital"],
+      onChange: { _ in })
+    assertSnapshot(of: host(sheet), as: axConfig)
+  }
+
   func testTagFilterSheetEmpty() {
     let sheet = TagFilterSheet(available: [], selected: [], onChange: { _ in })
     assertSnapshot(of: host(sheet), as: config)

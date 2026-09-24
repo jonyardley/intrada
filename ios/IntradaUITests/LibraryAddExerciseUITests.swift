@@ -15,45 +15,34 @@ final class LibraryAddExerciseUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Library"].tap()
-    let add = app.buttons["Add item"]
-    XCTAssertTrue(add.waitForExistence(timeout: 10), "Library's add button")
-    add.tap()
+    app.control("library.add", spoken: "Add item", timeout: 10).tap()
 
-    let title = app.textFields["Required"].firstMatch
-    XCTAssertTrue(title.waitForExistence(timeout: 5), "the title field, by its placeholder")
+    let title = app.element("itemForm.title")
+    XCTAssertTrue(title.waitForExistence(timeout: 5), "the title field")
     title.tap()
     title.typeText("Nocturne in E flat")
 
-    // FormSectionRow double-reports on this iOS version, so firstMatch disambiguates.
-    app.buttons["Related exercises"].firstMatch.tap()
-    let addExercise = app.buttons["Add an exercise for this piece"]
-    XCTAssertTrue(addExercise.waitForExistence(timeout: 5), "the single Add exercise action")
-    addExercise.tap()
+    // FormSectionRow double-reports on this iOS version; `control` takes the first.
+    app.control("itemForm.relatedExercises", spoken: "Related exercises").tap()
+    app.control("itemForm.addExercise", spoken: "Add an exercise for this piece").tap()
 
-    let createTrigger = app.buttons["Create an exercise"]
-    XCTAssertTrue(createTrigger.waitForExistence(timeout: 5), "create-inline trigger")
-    createTrigger.tap()
+    app.control("linkedPicker.create", spoken: "Create an exercise").tap()
 
-    // A SwiftUI TextField exposes its placeholder as `identifier`, not `label`,
-    // so this matches the covered field the same way the subscript above does.
-    let requiredFields = app.textFields.matching(identifier: "Required")
-    let draftTitle = requiredFields.firstHittable()
-    XCTAssertNotNil(draftTitle, "the draft exercise's title field")
-    draftTitle?.tap()
-    draftTitle?.typeText("Chromatic run")
-    let doneButtons = app.buttons.matching(NSPredicate(format: "label == %@", "Done"))
-    doneButtons.firstHittable()?.tap()
+    let draftTitle = app.element("draftExercise.title")
+    XCTAssertTrue(draftTitle.waitForExistence(timeout: 5), "the draft exercise's title field")
+    draftTitle.tap()
+    draftTitle.typeText("Chromatic run")
+    app.control("draftExercise.done", spoken: "Done").tap()
 
     XCTAssertTrue(
       app.staticTexts["Chromatic run"].waitForExistence(timeout: 5),
       "the fresh draft joins the picker's own list")
 
-    let hanon = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Hanon No. 1"))
-      .firstMatch
+    let hanon = app.row("linkedPicker.row", spokenContaining: "Hanon No. 1")
     XCTAssertTrue(hanon.waitForExistence(timeout: 5), "Hanon in the picker's existing list")
     hanon.tap()
 
-    app.buttons["Done"].firstMatch.tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
     XCTAssertTrue(
       app.staticTexts["Chromatic run"].waitForExistence(timeout: 5),

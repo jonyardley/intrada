@@ -11,6 +11,10 @@ final class RootShellSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(RootView()), as: config)
   }
 
+  func testRootShellAccessibilitySize() {
+    assertSnapshot(of: host(RootView()), as: axConfig)
+  }
+
   /// The tab shell after the core has panicked (#1946): the last screen stays
   /// up under a standing banner.
   func testRootShellHalted() {

@@ -11,6 +11,10 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(RoutinesScreen()), as: config)
   }
 
+  func testRoutinesScreenAccessibilitySize() {
+    assertSnapshot(of: host(RoutinesScreen()), as: axConfig)
+  }
+
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
   }

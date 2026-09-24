@@ -33,6 +33,7 @@ struct InlineSuggestionList: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint(accessibilityHint(suggestion))
+        .accessibilityIdentifier("suggestion.row")
 
         if suggestion != matches.last {
           HairlineDivider().padding(.leading, IntradaSpacing.card)

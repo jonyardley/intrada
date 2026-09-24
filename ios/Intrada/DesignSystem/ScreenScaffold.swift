@@ -24,6 +24,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
   struct TrailingAction {
     let label: String
     var systemImage: String = "plus"
+    var identifier: String = ""
     let action: () -> Void
   }
 
@@ -167,6 +168,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(trailing.label)
+        .accessibilityIdentifier(trailing.identifier)
         // Centre the circular button on the title's baseline rather than
         // letting it hang below it.
         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }

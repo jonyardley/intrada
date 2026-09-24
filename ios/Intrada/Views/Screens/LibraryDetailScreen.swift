@@ -209,6 +209,7 @@ struct LibraryDetailScreen: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Add an exercise for this piece")
+    .accessibilityIdentifier("libraryDetail.addExercise")
     .padding(.horizontal, IntradaSpacing.controlGap)
     .padding(.vertical, IntradaSpacing.controlGap)
   }
@@ -347,6 +348,7 @@ struct LibraryDetailScreen: View {
         Text("Add exercise")
       }
       .accessibilityLabel("Add an exercise for this piece")
+      .accessibilityIdentifier("libraryDetail.addExercise")
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, IntradaSpacing.card)
@@ -642,6 +644,7 @@ struct LibraryDetailScreen: View {
       .accessibilityLabel(item.priority ? "Remove from priorities" : "Add to priorities")
 
       Button("Edit") { editing = true }
+        .accessibilityIdentifier("libraryDetail.edit")
     }
   }
 

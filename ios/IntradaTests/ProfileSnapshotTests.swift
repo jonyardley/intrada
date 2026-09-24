@@ -30,6 +30,11 @@ final class ProfileSnapshotTests: SnapshotTestCase {
       of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: config)
   }
 
+  func testProfileScreenAccessibilitySize() {
+    assertSnapshot(
+      of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: axConfig)
+  }
+
   /// No name yet: a prompt to add one, not blank rows (#1692).
   func testProfileScreenEmpty() {
     assertSnapshot(of: host(NavigationStack { ProfileScreen() }), as: config)
@@ -37,6 +42,10 @@ final class ProfileSnapshotTests: SnapshotTestCase {
 
   func testProfileEditSheet() {
     assertSnapshot(of: host(ProfileEditSheet(), store: .previewProfile), as: config)
+  }
+
+  func testProfileEditSheetAccessibilitySize() {
+    assertSnapshot(of: host(ProfileEditSheet(), store: .previewProfile), as: axConfig)
   }
 
   func testProfileEditSheetWithError() {
@@ -51,6 +60,11 @@ final class ProfileSnapshotTests: SnapshotTestCase {
   func testInstrumentIconPicker() {
     assertSnapshot(
       of: host(InstrumentIconPicker(suggested: .cello, choice: .constant(.harp))), as: config)
+  }
+
+  func testInstrumentIconPickerAccessibilitySize() {
+    assertSnapshot(
+      of: host(InstrumentIconPicker(suggested: .cello, choice: .constant(.harp))), as: axConfig)
   }
 
   /// The eight highlighters through the environment (#1677): a marker surface
