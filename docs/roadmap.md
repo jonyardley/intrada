@@ -228,9 +228,6 @@ Write the headline on the milestone description's first line. `just status`
 reads it from there, so a milestone nobody described says so rather than
 looking like a release with no work in it.
 
-At the cut, run `just audit-sweep` and commit the file it writes, so the
-next [audit](audit.md) has a trend to read.
-
 Whatever is still open in the milestone at that point rolls to the next
 one. If the headline keeps growing, cut anyway and rename the milestone: a
 version number costs nothing pre beta.

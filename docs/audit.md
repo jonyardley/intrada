@@ -9,9 +9,10 @@ one run can be compared with the next.*
 
 ## When it runs
 
-- **The sweep, at every release.** When a milestone is cut (`docs/roadmap.md`,
-  Cutting a release), run `just audit-sweep` and commit the file it writes with
-  the release. It takes about a minute and needs no agents.
+- **The sweep, as the first step of each audit,** and whenever Jon asks for
+  one. It takes about a minute and needs no agents. Not at every release
+  (decided 2026-09-24): the ratings compare with the last audit, so sweeps in
+  between would add files that nothing reads.
 - **The full audit, at the end of each phase or every quarter,** whichever
   comes first, and never alongside in-flight branches on the same files. Its
   cost is about fifteen agents, the same order as September's run: say so to
