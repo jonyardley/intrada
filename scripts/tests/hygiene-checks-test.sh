@@ -386,7 +386,7 @@ dash_case 1 "prose after a closed span on the same line" a.md 'The `Color` token
 dash_case 1 "a stray tick before a fence" a.md $'A stray ` tick.\n'"$fence"$'\nx\n'"$fence"$'\nThen -- a dash.'
 dash_case 0 "an Apple product name" a.md "Open Control Center and play."
 dash_case 0 "a quoted citation" a.md "Deliberate Practice and Behavior. <!-- docs-check: quoted -->"
-dash_case 1 "a non-ASCII file name" "caf"$'\xc3\xa9'".md" "The color."
+dash_case 1 "a non-ASCII file name" $'\xc3\xa9\xc3\xa9.md' "The color."
 
 git checkout -qB "old-prose" main
 printf 'The old color.\n' >old.md
