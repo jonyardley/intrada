@@ -345,6 +345,13 @@ printf 'UINotificationFeedbackGenerator().notificationOccurred(.success)\n' >"$h
 expect 1 "a success haptic built by hand" haptics_check
 rm "$haptics/Views/Save.swift"
 
+printf '.sensoryFeedback(.selection, trigger: revealed)\n' >"$haptics/Views/Reveal.swift"
+expect 0 "a selection tick through the SwiftUI modifier" haptics_check
+
+printf '.sensoryFeedback(.success, trigger: saved)\n' >"$haptics/Views/Saved.swift"
+expect 1 "a success haptic through the SwiftUI modifier" haptics_check
+rm "$haptics/Views/Saved.swift"
+
 printf 'UIImpactFeedbackGenerator(style: .light).impactOccurred()\n' >"$haptics/Store+Feedback.swift"
 expect 1 "a second file named like the helper, outside Core" haptics_check
 rm "$haptics/Store+Feedback.swift"
