@@ -613,13 +613,10 @@ mod tests {
 
         assert_eq!(vm.items.len(), 4);
 
-        // Check piece — keeps the flattened string (web) AND exposes structured
-        // marking + bpm so the iOS card can render "Allegro · ♩ = 132".
         let piece_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
         assert_eq!(piece_view.item_type, ItemKind::Piece);
         assert_eq!(piece_view.title, "Sonata");
         assert_eq!(piece_view.subtitle, "Beethoven");
-        assert_eq!(piece_view.tempo, Some("Allegro (132 BPM)".to_string()));
         assert_eq!(piece_view.tempo_marking, Some("Allegro".to_string()));
         assert_eq!(piece_view.tempo_bpm, Some(132));
         assert_eq!(piece_view.tags, vec!["classical".to_string()]);
@@ -633,7 +630,6 @@ mod tests {
         let nocturne_view = vm.items.iter().find(|i| i.id == "p3").unwrap();
         assert_eq!(nocturne_view.tempo_marking, Some("Largo".to_string()));
         assert_eq!(nocturne_view.tempo_bpm, None);
-        assert_eq!(nocturne_view.tempo, Some("Largo".to_string()));
 
         // Check exercise — no tempo at all.
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
@@ -2058,43 +2054,6 @@ mod tests {
         assert!(vm.sessions.is_empty());
     }
 
-    #[test]
-    fn test_tempo_format_display() {
-        use crate::domain::types::Tempo;
-
-        // None tempo — map returns None
-        let none_tempo: Option<Tempo> = None;
-        assert_eq!(none_tempo.as_ref().map(|t| t.format_display()), None);
-
-        // Both None — empty string
-        let tempo = Tempo {
-            marking: None,
-            bpm: None,
-        };
-        assert_eq!(tempo.format_display(), "");
-
-        // Marking only
-        let tempo = Tempo {
-            marking: Some("Adagio".to_string()),
-            bpm: None,
-        };
-        assert_eq!(tempo.format_display(), "Adagio");
-
-        // BPM only
-        let tempo = Tempo {
-            marking: None,
-            bpm: Some(120),
-        };
-        assert_eq!(tempo.format_display(), "120 BPM");
-
-        // Both
-        let tempo = Tempo {
-            marking: Some("Allegro".to_string()),
-            bpm: Some(132),
-        };
-        assert_eq!(tempo.format_display(), "Allegro (132 BPM)");
-    }
-
     // ── ViewModel projection tests (#554) ──────────────────────────────
 
     fn visible(vm: &ViewModel) -> Vec<&LibraryItemView> {
@@ -3486,9 +3445,9 @@ mod tests {
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: Some("G".to_string()),
-                    modality: None,
+                    modality: Some(crate::domain::item::Modality::Minor),
                     tempo: Some(crate::domain::types::Tempo {
-                        marking: None,
+                        marking: Some("Allegro".to_string()),
                         bpm: Some(80),
                     }),
                     notes: None,
@@ -3559,12 +3518,30 @@ mod tests {
         assert_eq!(piece_view.linked_exercises[0].title, "Scales");
         assert_eq!(piece_view.linked_exercises[0].key, Some("G".to_string()));
         assert_eq!(
-            piece_view.linked_exercises[0].tempo,
-            Some("80 BPM".to_string())
+            piece_view.linked_exercises[0].modality,
+            Some(crate::domain::item::Modality::Minor)
         );
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo_marking.as_deref(),
+            Some("Allegro")
+        );
+        assert_eq!(piece_view.linked_exercises[0].tempo_bpm, Some(80));
+        assert_eq!(piece_view.linked_exercises[1].modality, None);
+        assert_eq!(piece_view.linked_exercises[1].tempo_bpm, None);
         assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");
 
         let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex1_view.key_selection,
+            Some(crate::domain::key::KeyWheelSelection {
+                ring: 10,
+                modality: crate::domain::item::Modality::Minor,
+                spelling: "G".to_string(),
+            }),
+            "the stored key lights its wedge"
+        );
+        let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
+        assert_eq!(ex2_view.key_selection, None, "no key lights nothing");
         assert_eq!(ex1_view.used_in.len(), 1);
         assert!(ex1_view.used_in[0].linked);
         assert_eq!(ex1_view.used_in[0].piece.as_ref().unwrap().id, "piece-1");

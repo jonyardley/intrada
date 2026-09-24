@@ -255,10 +255,10 @@
             blocks: [
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewPiece]),
+                entries: [.previewPiece], takenElsewhere: []),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewExercise]),
+                entries: [.previewExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: [])))
     }
@@ -308,10 +308,10 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
-                durationDisplay: "12 min", entries: block),
+                durationDisplay: "12 min", entries: block, takenElsewhere: ["ex-c"]),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise]),
+                entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
     }
@@ -333,10 +333,10 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
-                durationDisplay: "12 min", entries: block),
+                durationDisplay: "12 min", entries: block, takenElsewhere: ["ex-c"]),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise]),
+                entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
     }
@@ -354,7 +354,7 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
-                durationDisplay: "12 min", entries: block)
+                durationDisplay: "12 min", entries: block, takenElsewhere: [])
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
     }

@@ -33,7 +33,6 @@ impl fmt::Display for ItemKind {
 }
 
 /// Major/minor tonality, paired with `Item.key` (the tonic, e.g. "F#").
-/// Selection/spelling logic lives in the shell's key picker.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]

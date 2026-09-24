@@ -809,6 +809,27 @@ fn two_adjacent_blocks_project_separately() {
     assert_eq!(b.blocks[1].related_count, 1);
 }
 
+#[test]
+fn a_block_cannot_take_an_item_already_elsewhere_in_the_session() {
+    let mut m = linked_model();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    add(&mut m, "piece-P"); // block G1: ex-A, ex-B, piece-P
+    add(&mut m, "piece-R"); // block G2: ex-C, piece-R
+    add(&mut m, "ex-D");
+    let b = Intrada.view(&m).building_setlist.unwrap();
+    let taken = |i: usize| {
+        let mut ids = b.blocks[i].taken_elsewhere.clone();
+        ids.sort();
+        ids
+    };
+    assert_eq!(taken(0), ["ex-C", "ex-D", "piece-R"]);
+    assert_eq!(taken(1), ["ex-A", "ex-B", "ex-D", "piece-P"]);
+    assert!(
+        taken(2).is_empty(),
+        "a standalone item is not a block, so nothing joins it"
+    );
+}
+
 // ── The builder's drag moves (#1957) ──
 
 /// Units in order: [ex-A ex-B piece-P] [ex-D] [ex-C piece-R] [piece-Q].
