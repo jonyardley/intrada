@@ -1,12 +1,6 @@
 {
   "controls": [
     {
-      "id": "feed",
-      "title": "Feed",
-      "command": "cmux feed tui",
-      "height": 420
-    },
-    {
       "id": "status",
       "title": "In flight",
       "command": "while :; do clear; just status; sleep 300; done",
