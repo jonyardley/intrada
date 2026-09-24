@@ -443,7 +443,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
                             (score, session_date, entry.item_title.clone()),
                         );
                     }
-                } else {
+                } else if session_date < clock.today {
                     let existing = prev.get(&entry.item_id);
                     if !matches!(existing, Some(e) if session_date < e.1) {
                         prev.insert(entry.item_id.clone(), (score, session_date));
@@ -1806,7 +1806,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "#2096"]
     fn score_change_ignores_a_practice_dated_after_this_week() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap();
