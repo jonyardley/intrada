@@ -416,4 +416,37 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertNil(item.metre)
     XCTAssertEqual(try XCTUnwrap(try store.loadSessions().first).entries, [])
   }
+
+  // #2005: an unreadable list reads back empty, so a save that writes that
+  // empty list back must not destroy what is still on disk.
+  func testSavingAnItemKeepsItsUnreadableListsUntilItsListsChange() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v17_item_metre",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, tags, linked_exercise_ids, created_at, updated_at, priority)
+        VALUES ('i1', 'X', 'piece', 'not json', '[1, 2]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)
+        """)
+    var loaded = try XCTUnwrap(try store.loadItems().first)
+    loaded.title = "Renamed"
+    try store.save(loaded)
+    XCTAssertEqual(try store.rawText("tags", ofItem: "i1"), "not json")
+    XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "i1"), "[1, 2]")
+
+    loaded.tags = ["scales"]
+    loaded.linkedExerciseIds = ["e1"]
+    try store.save(loaded)
+    XCTAssertEqual(try store.rawText("tags", ofItem: "i1"), #"["scales"]"#)
+    XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "i1"), #"["e1"]"#)
+  }
+
+  func testSavingAnEmptyListOverReadableTagsClearsThem() throws {
+    let store = try makeStore()
+    var saved = item("i1")
+    try store.save(saved)
+    saved.tags = []
+    try store.save(saved)
+    XCTAssertEqual(try store.rawText("tags", ofItem: "i1"), "[]")
+  }
 }
