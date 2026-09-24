@@ -71,6 +71,12 @@ final class LibraryStore: ItemStore {
   }
 
   private static func upsert(_ item: Item, in db: Database) throws {
+    let chordChart =
+      try encodeChordChart(item.chordChart)
+      ?? storedIfUnreadable("chord_chart", of: item.id, as: StoredChart.self, in: db)
+    let metre =
+      try encodeMetre(item.metre)
+      ?? storedIfUnreadable("metre", of: item.id, as: StoredMetre.self, in: db)
     try db.execute(
       sql: """
         INSERT INTO item
@@ -96,8 +102,7 @@ final class LibraryStore: ItemStore {
         try Self.encodeJSON(item.tags),
         try Self.encodeJSON(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
-        try Self.encodeChordChart(item.chordChart), item.photoId,
-        try Self.encodeMetre(item.metre),
+        chordChart, item.photoId, metre,
       ])
     // Same transaction as the item row, keyed by id; no delete-missing: the
     // core always carries the tombstones it loaded and writes them back
@@ -127,6 +132,19 @@ final class LibraryStore: ItemStore {
       AND NOT EXISTS (SELECT 1 FROM json_each(item.\(column)) WHERE type <> 'text')
     ) THEN item.\(column) ELSE excluded.\(column) END
     """
+  }
+
+  /// A value that will not decode reads back as none, so writing none back
+  /// would destroy the only copy (#2097); keep it until a real value replaces it.
+  private static func storedIfUnreadable<T: Decodable>(
+    _ column: String, of id: String, as type: T.Type, in db: Database
+  ) throws -> String? {
+    guard
+      let stored = try String.fetchOne(
+        db, sql: "SELECT \(column) FROM item WHERE id = ?", arguments: [id]),
+      tryDecodeJSON(type, from: stored) == nil
+    else { return nil }
+    return stored
   }
 
   /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same
