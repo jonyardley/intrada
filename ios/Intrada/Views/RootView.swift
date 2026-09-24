@@ -30,11 +30,9 @@ struct RootView: View {
       LibrarySplitView().screenTransaction("Library")
         .tabItem { Label("Library", systemImage: "books.vertical") }
         .tag(AppTab.library)
-      NavigationStack {
-        PracticeScreen().navigationBarHiddenAtRoot().screenTransaction("Practice")
-      }
-      .tabItem { Label("Practice", systemImage: "timer") }
-      .tag(AppTab.practice)
+      PracticeSplitView().screenTransaction("Practice")
+        .tabItem { Label("Practice", systemImage: "timer") }
+        .tag(AppTab.practice)
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
         .tag(AppTab.routines)
