@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The iPad list beside its detail: each column keeps its own stack, so a push
 /// in the detail stays in the detail.
-struct ListDetailSplit<List: View, Detail: View>: View {
-  @ViewBuilder let list: () -> List
+struct ListDetailSplit<ListContent: View, Detail: View>: View {
+  @ViewBuilder let list: () -> ListContent
   @ViewBuilder let detail: () -> Detail
 
   var body: some View {
@@ -33,5 +33,16 @@ struct SplitDetailPlaceholder: View {
     .navigationBarTitleDisplayMode(.inline)
     .navigationTitle("")
     .toolbar(.visible, for: .navigationBar)
+  }
+}
+
+extension View {
+  func splitSelected(_ isSelected: Bool) -> some View {
+    overlay(
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
+        .stroke(IntradaColor.accent, lineWidth: 2)
+        .opacity(isSelected ? 1 : 0)
+    )
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 }

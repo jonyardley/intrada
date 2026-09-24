@@ -1,8 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// iPad-adaptive Practice: the week and its sessions beside the tapped session
-/// on regular width; the unchanged push-navigation stack on compact (iPhone).
 struct PracticeSplitView: View {
   @Environment(Store.self) private var store
   @Environment(\.horizontalSizeClass) private var sizeClass

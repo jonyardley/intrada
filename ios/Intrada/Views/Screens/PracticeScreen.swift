@@ -97,6 +97,7 @@ struct PracticeScreen: View {
       }
       .scrollEdgeShadow()
     }
+    .reservingSubtitleLine(selection != nil)
     // Drop a now-out-of-range pinned week so a later data change can't jump the
     // view to a stale page; reads are already clamped, this resets the store.
     .onChange(of: weeks.count) { _, newCount in
@@ -337,17 +338,12 @@ struct PracticeScreen: View {
       VStack(spacing: IntradaSpacing.cardCompact) {
         ForEach(daySessions, id: \.id) { session in
           SessionCard(session: session)
-            .overlay(
-              RoundedRectangle(cornerRadius: IntradaRadius.card)
-                .stroke(IntradaColor.accent, lineWidth: 2)
-                .opacity(selection?.wrappedValue == session.id ? 1 : 0)
-            )
+            .splitSelected(selection?.wrappedValue == session.id)
             .contentShape(Rectangle())
             .onTapGesture { open(session) }
             // The trait alone only relabels it; the action is what VoiceOver and
             // Switch Control actually invoke, since this is a gesture not a Button.
             .accessibilityAddTraits(.isButton)
-            .accessibilityAddTraits(selection?.wrappedValue == session.id ? .isSelected : [])
             .accessibilityAction { open(session) }
             .accessibilityHint("Opens the session")
         }
