@@ -16,9 +16,7 @@ final class NativeBackNavigationUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Library"].tap()
-    let clairRow = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Clair de Lune")
-    ).firstMatch
+    let clairRow = app.row("library.row", spokenContaining: "Clair de Lune")
     XCTAssertTrue(clairRow.waitForExistence(timeout: 10), "Clair library row")
     clairRow.tap()
 

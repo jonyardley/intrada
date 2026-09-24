@@ -23,30 +23,27 @@ final class VariationPickerUITests: XCTestCase {
     app.tabBars.buttons["Practice"].tap()
     app.openEmptyBuilder()
 
-    let addRow = app.buttons["Add piece or exercise"]
-    XCTAssertTrue(addRow.waitForExistence(timeout: 10), "Add row")
-    addRow.tap()
+    app.control("builder.addItems", spoken: "Add piece or exercise", timeout: 10).tap()
 
-    let scalesCard = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@ AND value == %@", "Major Scales", "Not added")
+    let scalesCard = app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "identifier == %@ AND label CONTAINS %@ AND value == %@", "libraryPicker.row",
+        "Major Scales", "Not added")
     ).firstMatch
     XCTAssertTrue(scalesCard.waitForExistence(timeout: 10), "Major Scales card in the add sheet")
     scalesCard.tap()
-    app.buttons["Done"].tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
-    let startSession = app.buttons["Start session"]
-    XCTAssertTrue(startSession.waitForExistence(timeout: 5), "Start session bar")
-    startSession.tap()
+    app.control("builder.start", spoken: "Start session").tap()
     return app
   }
 
   private func pick(_ app: XCUIApplication, _ label: String) {
-    let chip = app.buttons["Variation"]
-    XCTAssertTrue(chip.waitForExistence(timeout: 10), "the variation chip on the player")
-    chip.tap()
+    app.control("player.variation", spoken: "Variation", timeout: 10).tap()
 
-    let row = app.buttons.matching(
-      NSPredicate(format: "label BEGINSWITH %@", "\(label),")
+    let row = app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "identifier == %@ AND label BEGINSWITH %@", "variationPicker.row", "\(label),")
     ).firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "\(label) row in the picker")
     row.tap()
@@ -62,18 +59,16 @@ final class VariationPickerUITests: XCTestCase {
     let app = startScalesSession()
 
     pick(app, "C")
-    app.buttons["Got it"].tap()
+    app.control("player.gotIt", spoken: "Got it").tap()
     pick(app, "G")
-    app.buttons["Got it"].tap()
+    app.control("player.gotIt", spoken: "Got it").tap()
 
-    let finish = app.buttons["Finish session"]
-    XCTAssertTrue(finish.waitForExistence(timeout: 5), "the transport's finish button")
-    finish.tap()
+    app.control("player.advance", spoken: "Finish session").tap()
 
-    let markC = app.otherElements["Mark for C"]
+    let markC = app.mark("reflection.mark", "Mark for C")
     XCTAssertTrue(
       markC.waitForExistence(timeout: 10), "the stretch played in C has its own mark")
-    let markG = app.otherElements["Mark for G"]
+    let markG = app.mark("reflection.mark", "Mark for G")
     XCTAssertTrue(markG.exists, "and so does the stretch played in G")
 
     // Two different marks, so one write cannot satisfy both, then save: the
@@ -84,18 +79,27 @@ final class VariationPickerUITests: XCTestCase {
     tapPill(markC, 7)
     tapPill(markG, 3)
 
-    app.buttons["Save & continue"].tap()
+    app.control("reflection.save", spoken: "Save & continue").tap()
 
     // The summary is the core's answer: each variation kept the mark it was
     // given, rather than one overwriting the other.
-    let summaryC = app.otherElements["Mark for Major Scales, C"]
+    let summaryC = app.mark("summary.mark", "Mark for Major Scales, C")
     XCTAssertTrue(
       summaryC.waitForExistence(timeout: 10), "the summary marks each variation separately")
     XCTAssertEqual(summaryC.value as? String, "7 of 10", "C kept the seven it was given")
     XCTAssertEqual(
-      app.otherElements["Mark for Major Scales, G"].value as? String, "3 of 10",
+      app.mark("summary.mark", "Mark for Major Scales, G").value as? String, "3 of 10",
       "and G kept its three rather than C's seven")
 
     app.discardSummary()
+  }
+}
+
+extension XCUIApplication {
+  /// Each play's mark shares one identifier, so its spoken label is the whole match.
+  fileprivate func mark(_ identifier: String, _ label: String) -> XCUIElement {
+    otherElements.matching(
+      NSPredicate(format: "identifier == %@ AND label == %@", identifier, label)
+    ).firstMatch
   }
 }

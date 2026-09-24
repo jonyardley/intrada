@@ -23,40 +23,37 @@ final class SessionBuilderUITests: XCTestCase {
     app.tabBars.buttons["Practice"].tap()
     app.openEmptyBuilder()
 
-    // Adding moved to the "Add to session" sheet — open it from the dashed row.
-    let addRow = app.buttons["Add piece or exercise"]
-    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
-    addRow.tap()
+    // Adding moved to the "Add to session" sheet: open it from the dashed row.
+    app.control("builder.addItems", spoken: "Add piece or exercise").tap()
 
     // In the sheet, add the top two cards ("Not added" / "Added" a11y value).
-    let notAdded = app.buttons.matching(NSPredicate(format: "value == %@", "Not added"))
+    let notAdded = app.descendants(matching: .any).matching(
+      NSPredicate(format: "identifier == %@ AND value == %@", "libraryPicker.row", "Not added"))
     XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "Library cards in sheet")
     notAdded.firstMatch.tap()
     XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "A second card to add")
     notAdded.firstMatch.tap()
-    app.buttons["Done"].tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
-    // Both land as standalone rows (their remove buttons are "Remove <title>").
-    let removes = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Remove"))
+    // Both land as standalone rows, each with a remove button spoken "Remove <title>".
+    let removes = app.rows("builder.remove", spokenContaining: "Remove ")
     XCTAssertTrue(removes.firstMatch.waitForExistence(timeout: 5), "queued items")
     XCTAssertEqual(removes.count, 2, "two items queued")
 
     removes.firstMatch.tap()
     XCTAssertEqual(
-      app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Remove")).count, 1,
+      app.rows("builder.remove", spokenContaining: "Remove ").count, 1,
       "one item remains after removing from the queue")
 
-    let cancel = app.buttons["Cancel"]
+    let cancel = app.control("builder.cancel", spoken: "Cancel")
     cancel.tap()
-    XCTAssertTrue(app.buttons["Discard"].waitForExistence(timeout: 5), "Cancel confirms")
-    app.buttons["Keep editing"].tap()
+    XCTAssertTrue(app.alerts.buttons["Discard"].waitForExistence(timeout: 5), "Cancel confirms")
+    app.alerts.buttons["Keep editing"].tap()
     XCTAssertTrue(cancel.waitForExistence(timeout: 5), "Keep editing stays in the builder")
 
-    app.buttons["Cancel"].tap()
-    app.buttons["Discard"].tap()
-    XCTAssertTrue(
-      app.buttons["Start practising"].waitForExistence(timeout: 5),
-      "Discard returns to Practice")
+    cancel.tap()
+    app.alerts.buttons["Discard"].tap()
+    app.control("practice.start", spoken: "Start practising")
   }
 
   /// Direct manipulation: top-level units reorder by long-press drag with NO
@@ -67,17 +64,13 @@ final class SessionBuilderUITests: XCTestCase {
     app.tabBars.buttons["Practice"].tap()
     app.openEmptyBuilder()
 
-    let addRow = app.buttons["Add piece or exercise"]
-    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
-    addRow.tap()
+    app.control("builder.addItems", spoken: "Add piece or exercise").tap()
 
-    let hanonCard = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Hanon No. 1")
-    ).firstMatch
+    let hanonCard = app.row("libraryPicker.row", spokenContaining: "Hanon No. 1")
     XCTAssertTrue(hanonCard.waitForExistence(timeout: 5), "Hanon card in sheet")
     hanonCard.tap()
-    app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Major Scales")).firstMatch.tap()
-    app.buttons["Done"].tap()
+    app.row("libraryPicker.row", spokenContaining: "Major Scales").tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
     // Builder rows are combined a11y elements labelled "<title>, Standalone …".
     let hanonRow = builderRow(app, titled: "Hanon No. 1", meta: "Standalone")
@@ -113,16 +106,15 @@ final class SessionBuilderUITests: XCTestCase {
     return settled()
   }
 
-  /// Builder rows combine their title + meta into one labelled element. Match
-  /// on title AND meta ("Standalone" / "Related"): the add-sheet cards prefix
-  /// their labels with the item type, and the Library tab's hierarchy stays
-  /// queryable while hidden, so a bare title BEGINSWITH can resolve to an
-  /// offscreen library row and derive coordinates from the wrong screen.
+  /// Builder rows combine their title + meta into one labelled element, spoken
+  /// "<title>, Standalone …" or "<title>, Related …".
   private func builderRow(_ app: XCUIApplication, titled title: String, meta: String)
     -> XCUIElement
   {
-    app.buttons.matching(
-      NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", title, meta)
+    app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "identifier == %@ AND label BEGINSWITH %@ AND label CONTAINS %@", "builder.row",
+        title, meta)
     ).firstMatch
   }
 
@@ -133,35 +125,26 @@ final class SessionBuilderUITests: XCTestCase {
     let app = launchSeeded()
 
     app.tabBars.buttons["Library"].tap()
-    let clairRow = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Clair de Lune")
-    ).firstMatch
+    let clairRow = app.row("library.row", spokenContaining: "Clair de Lune")
     XCTAssertTrue(clairRow.waitForExistence(timeout: 10), "Clair library row")
     clairRow.tap()
     // The empty state's one action opens the picker (#1616).
-    let addExercise = app.buttons["Add an exercise for this piece"]
-    XCTAssertTrue(addExercise.waitForExistence(timeout: 10), "related empty-state add-exercise CTA")
-    addExercise.tap()
-    let hanonPick = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Hanon No. 1")
-    ).firstMatch
+    app.control(
+      "libraryDetail.addExercise", spoken: "Add an exercise for this piece", timeout: 10
+    ).tap()
+    let hanonPick = app.row("linkedPicker.row", spokenContaining: "Hanon No. 1")
     XCTAssertTrue(hanonPick.waitForExistence(timeout: 10), "Hanon in picker")
     hanonPick.tap()
-    app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Major Scales")).firstMatch
-      .tap()
-    app.buttons["Done"].tap()
+    app.row("linkedPicker.row", spokenContaining: "Major Scales").tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
     app.tabBars.buttons["Practice"].tap()
     app.openEmptyBuilder()
-    let addRow = app.buttons["Add piece or exercise"]
-    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
-    addRow.tap()
-    let clairCard = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Clair de Lune")
-    ).firstMatch
+    app.control("builder.addItems", spoken: "Add piece or exercise").tap()
+    let clairCard = app.row("libraryPicker.row", spokenContaining: "Clair de Lune")
     XCTAssertTrue(clairCard.waitForExistence(timeout: 10), "Clair card in sheet")
     clairCard.tap()
-    app.buttons["Done"].tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
     let hanonRow = builderRow(app, titled: "Hanon No. 1", meta: "Related")
     let scalesRow = builderRow(app, titled: "Major Scales", meta: "Related")
@@ -170,8 +153,6 @@ final class SessionBuilderUITests: XCTestCase {
 
     // Row tap opens the entry settings sheet (Toggle labels surface as switches).
     hanonRow.tap()
-    XCTAssertTrue(
-      app.descendants(matching: .any)["Track repetitions"].firstMatch.waitForExistence(timeout: 5),
-      "settings sheet opens")
+    app.control("entrySettings.trackReps", spoken: "Track repetitions")
   }
 }

@@ -21,12 +21,10 @@ final class PracticeSuggestionUITests: XCTestCase {
     let app = launchSeeded()
     app.tabBars.buttons["Practice"].tap()
 
-    let buildOwn = app.buttons["Build my own instead"]
-    XCTAssertTrue(buildOwn.waitForExistence(timeout: 10), "Up next hero's secondary action")
-    buildOwn.tap()
+    app.openEmptyBuilder()
 
     XCTAssertTrue(
-      app.buttons["Add piece or exercise"].waitForExistence(timeout: 10),
+      app.element("builder.addItems").waitForExistence(timeout: 10),
       "one tap lands in the builder, with no second tap on Start practising")
   }
 
@@ -34,22 +32,15 @@ final class PracticeSuggestionUITests: XCTestCase {
     let app = launchSeeded()
     app.tabBars.buttons["Practice"].tap()
 
-    let buildOwn = app.buttons["Build my own instead"]
-    XCTAssertTrue(buildOwn.waitForExistence(timeout: 10), "Up next hero's secondary action")
-    buildOwn.tap()
-    XCTAssertTrue(
-      app.buttons["Add piece or exercise"].waitForExistence(timeout: 10), "in the builder")
+    app.openEmptyBuilder()
+    app.control("builder.addItems", spoken: "Add piece or exercise", timeout: 10)
 
-    let cancel = app.buttons["Cancel"]
-    XCTAssertTrue(cancel.waitForExistence(timeout: 10), "the builder's Cancel button")
-    cancel.tap()
+    app.control("builder.cancel", spoken: "Cancel", timeout: 10).tap()
 
-    let restore = app.buttons["Show suggestion"]
-    XCTAssertTrue(restore.waitForExistence(timeout: 10), "a way back on the ordinary screen")
-    restore.tap()
+    app.control("practice.showSuggestion", spoken: "Show suggestion", timeout: 10).tap()
 
     XCTAssertTrue(
-      app.buttons["Build my own instead"].waitForExistence(timeout: 10),
+      app.element("practice.buildOwn").waitForExistence(timeout: 10),
       "the suggestion is back without relaunching")
   }
 }
