@@ -94,11 +94,15 @@ templates are `.github/pull_request_template.md` and
 `.github/ISSUE_TEMPLATE/issue.md`; the headings there are the headings, not a
 suggestion.
 
-1. **What this fixes**: the situation the affected person would notice. For a
-   screen change that is the musician; for tooling or docs it is Jon or an
-   agent, and the body says what they hit rather than that no musician is
-   affected. No paths, symbols or code; a `just` recipe name once, when the
-   recipe is the outcome.
+0. **Look at**: one line above the headings naming the decision or risk Jon
+   should judge. Saying what feedback you want is the strongest predictor of a
+   useful review (Pirouzkhah, Wurzel Gonçalves and Bacchelli, arXiv 2602.14611).
+1. **What this fixes**: the situation the affected person would notice, as the
+   outcome and never the branch process. For a screen change that is the
+   musician; for tooling or docs it is Jon or an agent, and the body says what
+   they hit rather than that no musician is affected. It ends with one sentence
+   on why this approach. No paths, symbols or code; a `just` recipe name once,
+   when the recipe is the outcome.
 2. **Where this could bite**: residual risk in what ships, present tense, one
    paragraph per risk, each ending in its tracking issue or "deliberate, not
    tracked". A risk an earlier PR of the same feature stated gets its issue
@@ -107,11 +111,12 @@ suggestion.
    data on a public repo; say one exists and route the detail to Jon.
 3. **What it looks like**: screen changes only, the `just pr-visuals` output.
    Deleted on a PR that touches no screen.
-4. **What I checked**: evidence, not reassurance. "Gates green" is one line
+4. **What I checked**: the evidence each check produced. "Gates green" is one line
    with counts; the check that could have failed earns the space. The
    reviewer's findings, the defects fixed on the branch and why a check was
    worth running belong in the self-review comment, not here.
-5. **What changed where**: one line per file. Identifiers welcome.
+5. **What changed where**: at most five lines, the files worth opening first,
+   each with why. Identifiers welcome; the diff lists the rest.
 
 A Tier 1 or Tier 2 body runs under 400 words before the checklist. Tier 3 and
 domain-sensitive work may run longer, and every paragraph past that is a
@@ -120,9 +125,30 @@ bodies of 2026-09 (#1612, #1628, #1601) each carried over 100 words of branch
 history in **What I checked**, which is the failure this rule exists to stop.
 Checklist lines that do not apply are deleted, not annotated.
 
-Issues: what you would notice, why it matters, what to do, then where it lives.
-Measurements, logs and reproduction steps go last even when they are the reason
-the issue exists.
+Issues: what you would notice, why it matters, what to do, done looks like,
+then where it lives. A bug's notice section gives the tap path, what was
+expected and what happened; measurements, logs and fuller reproduction steps
+go last even when they are the reason the issue exists.
+
+## Plan comments
+
+A Tier 2 or Tier 3 plan goes on the issue before the first commit, about 150
+words, under these headings. Jon approves it and the build and the reviewer
+read it.
+
+```markdown
+**Done looks like**: two or three checks, as the musician or Jon sees them.
+**Time budget**: one session, or two; past it, stop and re-plan.
+**Decisions taken**: each choice, with the option rejected and why.
+**Files**: the files and lines it touches.
+**Tests**: what proves it, and the line a deletion should break.
+**Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
+**Out of scope**: what it deliberately leaves alone.
+**Routing**: sensitive surfaces or not, where it runs, and any parallel stream.
+```
+
+The routing line follows the rules in `docs/working-with-agents.md`. A plan that
+cannot fit the budget or runs well past 150 words is Tier 3.
 
 Any term not in the glossary (`docs/reference.md`) is said plainly or added to
 it. A phase letter, decision number or internal name ("Phase R", "T22", "the

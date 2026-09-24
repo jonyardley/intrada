@@ -1,12 +1,18 @@
+Look at: <!-- One line: the decision or risk Jon should judge before merging.
+     Asking for the feedback you want is what most reliably gets a useful
+     review. Under 400 words before the checklist for Tier 1 and 2. -->
+
 ## What this fixes
 
-<!-- The situation the affected person would notice. For a screen change that
-     is the musician; for tooling or docs it is Jon or an agent, so say what
-     they hit rather than that no musician is affected. No file paths, no
-     symbol names and no code in this block; a `just` recipe name may appear
-     once, when the recipe is the outcome. A phase letter, decision number or
-     internal name carries the document that resolves it, or is said plainly
-     instead. -->
+<!-- The situation the affected person would notice, as the first sentence:
+     the outcome, never the branch process ("the core half of a split"). For
+     a screen change that is the musician; for tooling or docs it is Jon or an
+     agent, so say what they hit rather than that no musician is affected. End
+     with one sentence on why this approach over the obvious other one. No
+     file paths, no symbol names and no code in this block; a `just` recipe
+     name may appear once, when the recipe is the outcome. A phase letter,
+     decision number or internal name carries the document that resolves it,
+     or is said plainly instead. -->
 
 ## Where this could bite
 
@@ -29,7 +35,7 @@
 
 ## What I checked
 
-<!-- Evidence, not reassurance. "Gates green" is one line with the counts,
+<!-- The evidence each check produced. "Gates green" is one line with the counts,
      because it is true of every PR worth showing. What earns space is the
      check that could have failed and what it showed. Not here: the reviewer's
      findings, the defects fixed on the branch, or why a check was worth
@@ -39,7 +45,8 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. What the new t
 
 ## What changed where
 
-<!-- One line per file. Identifiers welcome here. -->
+<!-- At most five lines: the files worth opening first, each with why. The
+     diff lists the rest. Identifiers welcome here. -->
 
 ## Checklist
 
