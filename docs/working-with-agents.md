@@ -94,7 +94,9 @@ yours entirely, and someone else's is readable and nothing more.
 Run from a cmux terminal, `just worktree-new` prints the `cmux new-workspace`
 command for the new worktree, because the sidebar shows the branch and PR of the
 directory a session started in. It never starts a session itself (#1720).
-`INTRADA_WORKTREE_CMUX=0` silences the suggestion.
+`INTRADA_WORKTREE_CMUX=0` silences the suggestion. A new workspace in the repo
+opens its Dock from `.cmux/dock.json`: the Feed, and `just status` refreshed every
+five minutes. cmux asks once to trust it, and again whenever the file changes.
 
 **A session in the main checkout drives its worktree without restarting**, from
 2026-09-12, and that is the only shape in use. The path-scoped rules in `.claude/rules/` load
