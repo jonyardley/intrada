@@ -22,7 +22,6 @@ final class LibraryAddExerciseUITests: XCTestCase {
     title.tap()
     title.typeText("Nocturne in E flat")
 
-    // FormSectionRow double-reports on this iOS version; `control` takes the first.
     app.control("itemForm.relatedExercises", spoken: "Related exercises").tap()
     app.control("itemForm.addExercise", spoken: "Add an exercise for this piece").tap()
 

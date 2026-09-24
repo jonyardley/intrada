@@ -1,8 +1,7 @@
 import XCTest
 
-/// Real-bridge UITest for the "Build session" builder (#935). Adding moved into
-/// the "Add to session" sheet. `--disable-animations` stops the Practice
-/// week-strip's paging TabView defeating XCUITest idle (#941).
+/// Real-bridge UITest for the "Build session" builder (#935). `--disable-animations`
+/// stops the Practice week-strip's paging TabView defeating XCUITest idle (#941).
 @MainActor
 final class SessionBuilderUITests: XCTestCase {
   override func setUp() {
@@ -23,7 +22,6 @@ final class SessionBuilderUITests: XCTestCase {
     app.tabBars.buttons["Practice"].tap()
     app.openEmptyBuilder()
 
-    // Adding moved to the "Add to session" sheet: open it from the dashed row.
     app.control("builder.addItems", spoken: "Add piece or exercise").tap()
 
     // In the sheet, add the top two cards ("Not added" / "Added" a11y value).

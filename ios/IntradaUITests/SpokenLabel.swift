@@ -1,12 +1,7 @@
 import XCTest
 
-/// Controls are found by `accessibilityIdentifier`, so a copy change cannot break
-/// the merge gate, and every control a test drives has its spoken label asserted,
-/// so VoiceOver reading the wrong words (or nothing) fails it instead (#1950).
-///
-/// Identifiers read `screen.control`: `builder.addItems`, `player.skip`. Rows that
-/// repeat share one identifier, and their label picks one out. Tab bar items,
-/// alert buttons and menu items are drawn by the system and keep their words.
+/// Finds a control by its `screen.control` identifier and asserts what VoiceOver
+/// reads for it (#1950). Repeated rows share an identifier; their label picks one.
 extension XCUIApplication {
   @MainActor
   @discardableResult
