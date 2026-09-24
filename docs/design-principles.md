@@ -1055,3 +1055,20 @@ either showed up red or went unsaid. Now `GlobalBanner` has two tones:
 Both can stand at once, error on top, and each dismisses on its own. The first
 notice is a play closing with the metronome at a speed the app cannot keep as a
 crotchet tempo.
+
+### T31: Not played is said by a colour step, never a fade
+
+**Status:** DECIDED 2026-09-24 (jonyardley/intrada#2032, #2033). A piece you did
+not get to was faded to half strength on the session summary and on a past
+session, which pushed its status line below the contrast floor. Following T23,
+the words stay readable and only the glyph dims:
+
+- The status line ("Saved for next time", "Not played") is `inkSecondary` at
+  full strength.
+- The title steps down from `ink` to `inkSecondary`; the hollow dot is
+  `inkFaintIcon`, which clears the 3:1 floor for graphics.
+- The earlier score in a mastery change and the dates of days still to come in
+  the week strip take `inkSecondary`; the paler colours they used are deleted.
+
+A future day now differs from a past one by that same step, ink against
+`inkSecondary`, the step a title has over its meta line elsewhere.
