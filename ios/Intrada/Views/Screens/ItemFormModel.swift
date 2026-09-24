@@ -115,11 +115,8 @@ final class ItemFormModel {
     storedTitle = item.title
     storedComposer = item.subtitle
     storedTags = item.tags
-    // Normalise on load so editing self-heals legacy combined values
-    // ("F# major") into tonic + modality even if the user never re-taps a spoke.
-    let selection = KeyHelper.selection(key: item.key ?? "", modality: item.modality)
-    key = selection?.spelling ?? item.key ?? ""
-    modality = selection?.mode ?? item.modality
+    key = item.keySelection?.spelling ?? item.key ?? ""
+    modality = item.keySelection?.modality ?? item.modality
     storedMarking = item.tempoMarking ?? ""
     storedBpm = item.tempoBpm.map(String.init) ?? ""
     storedNotes = item.notes ?? ""
