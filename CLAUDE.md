@@ -79,8 +79,9 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → 
 - **Swift**: an `@Observable @MainActor` store, not `ObservableObject`; effect handlers run
   off the main actor and hop back. `try!`, force-unwraps and `as!` are banned like
   `unwrap()`. Persistence is a core `Effect` driven by `Command`: GRDB executes typed
-  effects, the core decides reads, writes and LWW reconciliation; `crux_kv` is for
-  singletons. Every colour, font, spacing and radius is a named token from `Theme.swift`.
+  effects, the core decides reads, writes and LWW reconciliation. Singletons go to
+  UserDefaults through an `AppEffect`; each blob must take a versioned key and a Rust
+  wire pin. Every colour, font, spacing and radius is a named token from `Theme.swift`.
 
 The offline-first invariants, the UI and tone rules, the per-screen quality bar and the
 silent-failure hazards load from `.claude/rules/` when you read a file they cover, and bind

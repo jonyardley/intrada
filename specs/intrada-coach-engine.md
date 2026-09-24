@@ -431,7 +431,7 @@ which is the whole point of decision 16. Nothing in the engine may infer from it
 
 Persistence per the invariants: client-minted ulid (3), append-only with
 `updated_at` + `deleted_at` (2), `BlockRecord`s in GRDB, the in-progress
-`EngineSession` in `crux_kv` for crash recovery (8).
+`EngineSession` in UserDefaults for crash recovery (8).
 
 ## 5. Planner resolution order
 

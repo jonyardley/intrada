@@ -24,9 +24,7 @@ final class Store {
   /// persist. The shell shows a standing warning. False for tests/previews.
   let degraded: Bool
 
-  /// UserDefaults key for the persisted library sort (small singleton — see
-  /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
-  /// AppEffect path rather than wiring crux_kv for one value).
+  // FIXME(#2089): unversioned key, no wire pin.
   static let sortDefaultsKey = "intrada.library-sort"
   /// Positional bincode: any change to `ActiveSession`'s graph takes a new key,
   /// named by the core's `ActiveSession::BLOB_VERSION` so the bump never lives here (#1345, #1116).

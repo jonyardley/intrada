@@ -27,8 +27,11 @@ being offline.
 6. **A single write path.** There is one local-first path, not two branches to
    keep in sync.
 7. **No account gate on core functionality.** Only sync may require auth.
-8. **Relational data in GRDB; only small singletons in `crux_kv`** (settings,
-   the crash-recovery blob).
+8. **Relational data in GRDB; only small singletons in UserDefaults** (the
+   library sort, the profile, the crash-recovery blob), written through an
+   `AppEffect`. Each blob must take a versioned key and a Rust wire pin, so a
+   shape change fails a test instead of silently failing to decode (#1952); the
+   library sort does not yet (#2089).
 
 ## Local data migrations (GRDB, `LibraryStore`)
 

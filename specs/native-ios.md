@@ -108,9 +108,11 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
   — same shape as `AppEffect`). The core decides *what* to read/write and runs
   **LWW reconciliation**; that logic lives in core so it's shareable to Android.
 - **Shell side:** **GRDB owns the real SQLite tables** and fulfils the
-  persistence effect off the main actor, returning serialized rows. `crux_kv`
-  is used **only** for small singletons (settings, `session-in-progress`
-  crash-recovery), never for relational data.
+  persistence effect off the main actor, returning serialized rows. UserDefaults,
+  written through an `AppEffect`, holds **only** small singletons (the library
+  sort, the profile, `session-in-progress` crash-recovery), never relational
+  data. Each must take a versioned key and a Rust wire pin; the library sort
+  does not yet (#2089).
 - **Sync (LWW) design, with the known pitfalls handled:**
   - **Server-authoritative `updated_at`** stamped on write (avoids device
     clock skew silently losing newer edits).
