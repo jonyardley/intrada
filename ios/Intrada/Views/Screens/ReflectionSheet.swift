@@ -138,9 +138,7 @@ struct ReflectionSheet: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         VStack(spacing: 8) {
-          Text(Self.heading(elapsedDisplay: elapsedDisplay))
-            .font(IntradaFont.badge).textCase(.uppercase).kerning(1.5)
-            .foregroundStyle(IntradaColor.exerciseBadgeFg)
+          Eyebrow(Self.heading(elapsedDisplay: elapsedDisplay), tint: IntradaColor.exerciseBadgeFg)
           Text("How did it go?")
             .font(IntradaFont.pageTitle(24)).foregroundStyle(IntradaColor.ink)
             .multilineTextAlignment(.center)
