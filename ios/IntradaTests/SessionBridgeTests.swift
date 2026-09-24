@@ -518,6 +518,20 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(after.blocks.last?.entries.map(\.id), block.entries.map(\.id))
   }
 
+  /// A block names the items elsewhere in the session that it cannot take
+  /// (#2075); the list is the trailing field, so a slip reads as empty.
+  func testRealBridgeBlockNamesWhatIsTakenElsewhere() throws {
+    let bridge = try bridgeBuildingABlockAndAStandalone()
+    let view = try bridge.view()
+    XCTAssertNil(view.error)
+    let arpeggiosId = try XCTUnwrap(view.items.first { $0.title == "Arpeggios" }?.id)
+    let setlist = try XCTUnwrap(view.buildingSetlist)
+    let block = try XCTUnwrap(setlist.blocks.first { $0.groupId != nil })
+    XCTAssertEqual(block.takenElsewhere, [arpeggiosId])
+    let standalone = try XCTUnwrap(setlist.blocks.first { $0.groupId == nil })
+    XCTAssertEqual(standalone.takenElsewhere, [], "only a grouped block lists what it cannot take")
+  }
+
   // ── Real bridge (full-field contract, #846 class) ──────────────────────
 
   /// Real-bridge full-field round trip for `SetlistEntryView` and the

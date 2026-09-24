@@ -745,7 +745,8 @@ private struct LinkedExerciseRow: View {
   }
 
   private var metaLine: String? {
-    let parts = [exercise.key, exercise.tempo].compactMap { $0 }.filter { !$0.isEmpty }
+    let tempo = TempoFormatting.display(marking: exercise.tempoMarking, bpm: exercise.tempoBpm)
+    let parts = [exercise.key, tempo].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
@@ -895,7 +896,8 @@ private struct LinkedExerciseEditRow: View {
   }
 
   private var metaLine: String? {
-    let parts = [exercise.key, exercise.tempo].compactMap { $0 }.filter { !$0.isEmpty }
+    let tempo = TempoFormatting.display(marking: exercise.tempoMarking, bpm: exercise.tempoBpm)
+    let parts = [exercise.key, tempo].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 }

@@ -17,13 +17,13 @@ struct SessionBuilderMoveTests {
     let blocks = [
       SetlistBlockView(
         groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
-        entries: [.previewPiece]),
+        entries: [.previewPiece], takenElsewhere: []),
       SetlistBlockView(
         groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2, durationDisplay: "12 min",
-        entries: block),
+        entries: block, takenElsewhere: ["ex-c"]),
       SetlistBlockView(
         groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "",
-        entries: [.previewStandaloneExercise]),
+        entries: [.previewStandaloneExercise], takenElsewhere: []),
     ]
     return Row.rows(for: blocks, collapsed: [], isEditing: false)
   }
