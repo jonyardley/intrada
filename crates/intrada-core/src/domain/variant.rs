@@ -342,4 +342,22 @@ mod tests {
         assert_eq!(next[0].label, "c", "incoming casing adopted");
         assert!(next[0].deleted_at.is_none());
     }
+
+    #[test]
+    fn a_resurrected_row_bumps_updated_at_even_in_its_old_place() {
+        let removed_at = Utc::now() - chrono::Duration::days(3);
+        let existing = vec![Variant {
+            updated_at: removed_at,
+            deleted_at: Some(removed_at),
+            ..row("c", "C", 0)
+        }];
+        let now = Utc::now();
+
+        let next = reconcile_variant_edits(existing, &[edit(None, "C")], now);
+
+        assert_eq!(next.len(), 1);
+        assert_eq!(next[0].id, "c");
+        assert!(next[0].deleted_at.is_none());
+        assert_eq!(next[0].updated_at, now);
+    }
 }

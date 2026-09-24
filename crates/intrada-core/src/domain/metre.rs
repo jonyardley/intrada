@@ -57,7 +57,7 @@ mod tests {
     /// every other, at the rounding the spec states.
     #[test]
     fn every_displayed_tempo_normalises_to_a_comparable_crotchet_bpm() {
-        let table: [(Metre, u16, u16); 8] = [
+        let table: [(Metre, u16, u16); 13] = [
             (metre(4, 4), 120, 120),
             (metre(3, 4), 66, 66),
             (metre(7, 8), 168, 84),
@@ -65,8 +65,13 @@ mod tests {
             (metre(6, 8), 1, 1),
             (metre(2, 2), 60, 120),
             (metre(2, 2), 40, 80),
-            // The stepper's ceiling in minims stays inside MAX_ACHIEVED_TEMPO.
-            (metre(2, 2), 208, 416),
+            // The ends of TempoScale.range(unit:) in ios/Intrada/Core/TempoScale.swift.
+            (metre(4, 4), 40, 40),
+            (metre(4, 4), 208, 208),
+            (metre(2, 2), 20, 40),
+            (metre(2, 2), 104, 208),
+            (metre(6, 8), 80, 40),
+            (metre(6, 8), 416, 208),
         ];
         for (metre, displayed, expected) in table {
             assert_eq!(
