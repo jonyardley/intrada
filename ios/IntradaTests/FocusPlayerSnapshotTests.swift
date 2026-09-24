@@ -103,7 +103,8 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     let store = Store(bridge: SnapshotStubBridge())
     let limits = try XCTUnwrap(store.viewModel?.limits)
     assertSnapshot(
-      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: axConfig)
+      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store),
+      as: tallAxConfig(height: 2600))
   }
 
   /// The sounding row is the tight one, so it is the state that has to reflow.
@@ -189,6 +190,16 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       currentVariationId: active.currentVariationId,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testVariationPickerSheetAccessibilitySize() {
+    let active = ActiveSessionView.previewActiveVariations
+    let sheet = VariationPickerSheet(
+      itemTitle: LibraryItemView.previewExerciseWithVariations.title,
+      currentVariations: active.currentVariations,
+      currentVariationId: active.currentVariationId,
+      onPick: { _ in true })
+    assertSnapshot(of: host(sheet), as: axConfig)
   }
 
   /// Variations named in words rather than key letters, at the largest text

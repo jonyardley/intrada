@@ -122,7 +122,7 @@ final class PracticeSnapshotTests: SnapshotTestCase {
     assertSnapshot(
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-        store: .previewPractice), as: practiceHeaderAxConfig)
+        store: .previewPractice), as: tallAxConfig())
   }
 
   func testPracticeScreenQuietDay() {
