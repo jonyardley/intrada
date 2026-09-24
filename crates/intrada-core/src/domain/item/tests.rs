@@ -2892,3 +2892,276 @@ fn update_marks_the_field_it_refused() {
         })
     );
 }
+
+// ── What a musician types into the add and edit forms ──
+
+#[derive(Debug, PartialEq)]
+enum Saved {
+    As {
+        title: String,
+        composer: Option<String>,
+        tags: Vec<String>,
+    },
+    Refused(String),
+}
+
+fn saved_as(title: &str, composer: Option<&str>, tags: &[&str]) -> Saved {
+    Saved::As {
+        title: title.to_string(),
+        composer: composer.map(str::to_string),
+        tags: tags.iter().map(|t| t.to_string()).collect(),
+    }
+}
+
+fn refused(message: &str) -> Saved {
+    Saved::Refused(message.to_string())
+}
+
+fn saved_item(model: &Model, id: Option<&str>) -> Saved {
+    if let Some(message) = &model.last_error {
+        return Saved::Refused(message.clone());
+    }
+    let item = model
+        .items
+        .iter()
+        .find(|i| id.is_none_or(|id| i.id == id))
+        .expect("the item was stored");
+    Saved::As {
+        title: item.title.clone(),
+        composer: item.composer.clone(),
+        tags: item.tags.clone(),
+    }
+}
+
+#[test]
+fn adding_a_piece_keeps_what_a_musician_types_and_refuses_what_is_too_long() {
+    let over = |c: &str, max: usize| c.repeat(max + 1);
+    let cases: Vec<(&str, CreateItem, Saved)> = vec![
+        (
+            "a háček in the composer",
+            CreateItem {
+                composer: Some("Dvořák".to_string()),
+                ..one_pass_piece_input("Humoresque in G♭")
+            },
+            saved_as("Humoresque in G♭", Some("Dvořák"), &[]),
+        ),
+        (
+            "padding round an accented composer",
+            CreateItem {
+                composer: Some("  Saint-Saëns  ".to_string()),
+                ..one_pass_piece_input(" Le Cygne ")
+            },
+            saved_as("Le Cygne", Some("Saint-Saëns"), &[]),
+        ),
+        (
+            "a Japanese title and composer",
+            CreateItem {
+                composer: Some("ドビュッシー".to_string()),
+                ..one_pass_piece_input("月の光")
+            },
+            saved_as("月の光", Some("ドビュッシー"), &[]),
+        ),
+        (
+            "emoji and accented tags, one per spelling whatever the case",
+            CreateItem {
+                composer: Some("Fauré".to_string()),
+                tags: vec![
+                    "🎹 warm-ups".to_string(),
+                    "Études".to_string(),
+                    "études".to_string(),
+                ],
+                ..one_pass_piece_input("Pavane")
+            },
+            saved_as("Pavane", Some("Fauré"), &["🎹 warm-ups", "Études"]),
+        ),
+        (
+            "a blank composer is no composer",
+            CreateItem {
+                composer: Some("   ".to_string()),
+                ..one_pass_piece_input("Gymnopédie No. 1")
+            },
+            saved_as("Gymnopédie No. 1", None, &[]),
+        ),
+        (
+            "an accented title at the limit",
+            one_pass_piece_input(&"é".repeat(validation::MAX_TITLE)),
+            saved_as(&"é".repeat(validation::MAX_TITLE), Some("Kosma"), &[]),
+        ),
+        (
+            "an accented composer at the limit",
+            CreateItem {
+                composer: Some("ø".repeat(validation::MAX_COMPOSER)),
+                ..one_pass_piece_input("Holberg Suite")
+            },
+            saved_as(
+                "Holberg Suite",
+                Some(&"ø".repeat(validation::MAX_COMPOSER)),
+                &[],
+            ),
+        ),
+        (
+            "an emoji tag at the limit",
+            CreateItem {
+                tags: vec!["🎻".repeat(validation::MAX_TAG)],
+                ..one_pass_piece_input("Méditation")
+            },
+            saved_as(
+                "Méditation",
+                Some("Kosma"),
+                &[&"🎻".repeat(validation::MAX_TAG)],
+            ),
+        ),
+        (
+            "a blank title",
+            one_pass_piece_input("   "),
+            refused("Title must be between 1 and 500 characters"),
+        ),
+        (
+            "an accented title one over the limit",
+            one_pass_piece_input(&over("é", validation::MAX_TITLE)),
+            refused("Title must be between 1 and 500 characters"),
+        ),
+        (
+            "an accented composer one over the limit",
+            CreateItem {
+                composer: Some(over("ø", validation::MAX_COMPOSER)),
+                ..one_pass_piece_input("Holberg Suite")
+            },
+            refused("Composer must be between 1 and 200 characters"),
+        ),
+        (
+            "an emoji tag one over the limit",
+            CreateItem {
+                tags: vec![over("🎻", validation::MAX_TAG)],
+                ..one_pass_piece_input("Méditation")
+            },
+            refused("Each tag must be between 1 and 100 characters"),
+        ),
+        (
+            "emoji notes one over the limit",
+            CreateItem {
+                notes: Some(over("🎶", validation::MAX_NOTES)),
+                ..one_pass_piece_input("Rêverie")
+            },
+            refused("Notes must not exceed 5000 characters"),
+        ),
+    ];
+
+    for (why, input, expected) in cases {
+        let mut model = Model::default();
+        send(&mut model, ItemEvent::Add(input));
+        assert_eq!(saved_item(&model, None), expected, "{why}");
+        if matches!(expected, Saved::Refused(_)) {
+            assert!(model.items.is_empty(), "{why}");
+        }
+    }
+}
+
+#[test]
+fn editing_a_piece_keeps_what_a_musician_types_and_refuses_what_is_too_long() {
+    let over = |c: &str, max: usize| c.repeat(max + 1);
+    let cases: Vec<(&str, UpdateItem, Saved)> = vec![
+        (
+            "an accented title and composer",
+            UpdateItem {
+                title: Some("Humoresque in G♭".to_string()),
+                composer: Some(Some("Antonín Dvořák".to_string())),
+                ..Default::default()
+            },
+            saved_as("Humoresque in G♭", Some("Antonín Dvořák"), &[]),
+        ),
+        (
+            "padding round an accented composer",
+            UpdateItem {
+                composer: Some(Some("  Saint-Saëns  ".to_string())),
+                ..Default::default()
+            },
+            saved_as("Moonlight Sonata", Some("Saint-Saëns"), &[]),
+        ),
+        (
+            "a Japanese title",
+            UpdateItem {
+                title: Some("月の光".to_string()),
+                ..Default::default()
+            },
+            saved_as("月の光", Some("Beethoven"), &[]),
+        ),
+        (
+            "a blank composer clears it",
+            UpdateItem {
+                composer: Some(Some("   ".to_string())),
+                ..Default::default()
+            },
+            saved_as("Moonlight Sonata", None, &[]),
+        ),
+        (
+            "emoji and accented tags, one per spelling whatever the case",
+            UpdateItem {
+                tags: Some(vec![
+                    "🎹 warm-ups".to_string(),
+                    "Études".to_string(),
+                    "études".to_string(),
+                ]),
+                ..Default::default()
+            },
+            saved_as(
+                "Moonlight Sonata",
+                Some("Beethoven"),
+                &["🎹 warm-ups", "Études"],
+            ),
+        ),
+        (
+            "a blank title",
+            UpdateItem {
+                title: Some("   ".to_string()),
+                ..Default::default()
+            },
+            refused("Title must be between 1 and 500 characters"),
+        ),
+        (
+            "an accented composer one over the limit",
+            UpdateItem {
+                composer: Some(Some(over("ø", validation::MAX_COMPOSER))),
+                ..Default::default()
+            },
+            refused("Composer must be between 1 and 200 characters"),
+        ),
+        (
+            "emoji notes one over the limit",
+            UpdateItem {
+                notes: Some(Some(over("🎶", validation::MAX_NOTES))),
+                ..Default::default()
+            },
+            refused("Notes must not exceed 5000 characters"),
+        ),
+    ];
+
+    for (why, input, expected) in cases {
+        let mut model = Model {
+            items: vec![make_piece("piece-1")].into(),
+            ..Default::default()
+        };
+        let before = model
+            .items
+            .iter()
+            .next()
+            .cloned()
+            .expect("the fixture piece");
+        send(
+            &mut model,
+            ItemEvent::Update {
+                id: "piece-1".to_string(),
+                input,
+            },
+        );
+        assert_eq!(saved_item(&model, Some("piece-1")), expected, "{why}");
+        if matches!(expected, Saved::Refused(_)) {
+            let after = model
+                .items
+                .iter()
+                .find(|i| i.id == "piece-1")
+                .expect("the piece is still there");
+            assert_eq!(after, &before, "{why}: nothing changed");
+        }
+    }
+}
