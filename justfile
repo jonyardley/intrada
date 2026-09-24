@@ -90,6 +90,7 @@ hygiene:
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
+        "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
     )
     tmpdir=$(mktemp -d) || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
@@ -143,6 +144,10 @@ gitleaks:
         exit 0
     fi
     gitleaks git --no-banner --redact --log-level warn --log-opts="--no-merges --first-parent origin/main..HEAD"
+
+[doc("The audit's mechanical counts, written to docs/audit-metrics and compared with the last sweep (docs/audit.md)")]
+audit-sweep *args:
+    bash scripts/audit-sweep.sh {{args}}
 
 [doc("Show what is in flight: open PRs, claimed issues, epics and recent merges")]
 status:
