@@ -18,7 +18,9 @@ struct DraftExerciseSheet: View {
         ScrollView {
           VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
             VStack(spacing: 0) {
-              FormField(label: "Title", text: $title, placeholder: "Required")
+              FormField(
+                label: "Title", text: $title, placeholder: "Required",
+                identifier: "draftExercise.title")
               HairlineDivider()
               KeyPicker(label: "Key", key: $key, modality: $modality)
               HairlineDivider()
@@ -43,6 +45,7 @@ struct DraftExerciseSheet: View {
         ToolbarItem(placement: .confirmationAction) {
           Button("Done", action: done)
             .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+            .accessibilityIdentifier("draftExercise.done")
         }
       }
     }

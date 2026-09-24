@@ -163,12 +163,14 @@ struct ReflectionSheet: View {
           ) { next in
             setMark(next, for: only.id)
           }
+          .accessibilityIdentifier("reflection.mark")
           .padding(.top, IntradaSpacing.controlGap)
 
           Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, IntradaSpacing.card)
           TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
+            .accessibilityIdentifier("reflection.tempo")
             .padding(.top, IntradaSpacing.controlGap)
         }
 
@@ -203,9 +205,11 @@ struct ReflectionSheet: View {
           Text("Save & continue")
           Image(systemName: "arrow.right")
         }
+        .accessibilityIdentifier("reflection.save")
         .padding(.top, IntradaSpacing.card)
 
         Button("Skip rating") { onSkip() }
+          .accessibilityIdentifier("reflection.skip")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.inkSecondary)
           .frame(maxWidth: .infinity)
@@ -236,9 +240,12 @@ struct ReflectionSheet: View {
             ) { next in
               setMark(next, for: play.id)
             }
+            .accessibilityIdentifier("reflection.mark")
             TempoStepper(
               value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
-              accessibilityLabel: "Tempo for \(play.title)")
+              accessibilityLabel: "Tempo for \(play.title)"
+            )
+            .accessibilityIdentifier("reflection.tempo")
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)

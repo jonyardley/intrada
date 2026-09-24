@@ -11,6 +11,7 @@ struct AutocompleteField: View {
   var autocapitalization: TextInputAutocapitalization = .words
   var readWeakly: Bool?
   var faulted: Bool = false
+  var identifier: String?
 
   @FocusState private var focused: Bool
 
@@ -46,7 +47,7 @@ struct AutocompleteField: View {
           .textInputAutocapitalization(autocapitalization)
           .autocorrectionDisabled()
           .focused($focused)
-          .accessibilityIdentifier(label)
+          .accessibilityIdentifier(identifier ?? label)
           .accessibilityHint(hint)
         if let readWeakly {
           FieldMark(weak: readWeakly)

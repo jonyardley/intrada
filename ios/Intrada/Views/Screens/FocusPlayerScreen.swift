@@ -149,6 +149,7 @@ struct FocusPlayerScreen: View {
         .frame(width: 28, height: 28)
     }
     .accessibilityLabel("Session options")
+    .accessibilityIdentifier("player.options")
   }
 
   // ── Centre: item identity, the live timer ──
@@ -214,6 +215,7 @@ struct FocusPlayerScreen: View {
       }
       .buttonStyle(PressRebound())
       .accessibilityLabel("Variation")
+      .accessibilityIdentifier("player.variation")
       .accessibilityValue(active.currentVariationLabel ?? "none picked")
       .accessibilityHint("Switches to another variation of this exercise")
     }
@@ -321,6 +323,7 @@ struct FocusPlayerScreen: View {
         }
         .buttonStyle(PressRebound())
         .accessibilityLabel(active.nextItemTitle == nil ? "Finish session" : "Next item")
+        .accessibilityIdentifier("player.advance")
 
         Button {
           store.send(.session(.skipItem(now: SessionClock.nowRFC3339())))
@@ -332,6 +335,7 @@ struct FocusPlayerScreen: View {
         }
         .buttonStyle(PressRebound())
         .accessibilityLabel("Skip this item")
+        .accessibilityIdentifier("player.skip")
       }
       if let next = active.nextItemTitle {
         Text("Next · \(next)")

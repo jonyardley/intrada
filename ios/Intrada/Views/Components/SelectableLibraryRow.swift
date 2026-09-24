@@ -28,5 +28,6 @@ struct SelectableLibraryRow: View {
     .buttonStyle(.plain)
     .accessibilityValue(added ? "Added" : "Not added")
     .accessibilityHint(added ? removeHint : addHint)
+    .accessibilityIdentifier("libraryPicker.row")
   }
 }

@@ -86,6 +86,7 @@ struct RepCounter: View {
     )
     .accessibilityLabel("Got it")
     .accessibilityHint("Counts one repetition")
+    .accessibilityIdentifier("player.gotIt")
   }
 
   private func notQuite(title: String) -> some View {

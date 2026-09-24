@@ -233,6 +233,7 @@ struct LinkedItemPickerSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel(rowAccessibilityLabel(item, isOn: isOn))
             .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+            .accessibilityIdentifier("linkedPicker.row")
 
             if item.id != rows.last?.id {
               HairlineDivider().padding(.leading, IntradaSpacing.card)
@@ -248,6 +249,7 @@ struct LinkedItemPickerSheet: View {
 
   private var createTrigger: some View {
     AddRowButton(title: "Create an exercise", style: .plain) { creatingDraft = true }
+      .accessibilityIdentifier("linkedPicker.create")
       .padding(.horizontal, IntradaSpacing.card)
   }
 

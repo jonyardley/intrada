@@ -47,6 +47,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
             dismiss()
           }
           .disabled(confirmationDisabled)
+          .accessibilityIdentifier("sheet.done")
         }
       }
     }

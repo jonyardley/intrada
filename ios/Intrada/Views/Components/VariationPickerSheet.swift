@@ -65,6 +65,7 @@ struct VariationPickerSheet: View {
     .accessibilityLabel("\(variation.label), \(variation.caption)")
     .accessibilityHint(isCurrent ? "" : "Switches \(itemTitle) to this variation")
     .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
+    .accessibilityIdentifier("variationPicker.row")
   }
 }
 

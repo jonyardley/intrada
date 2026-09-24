@@ -246,6 +246,7 @@ struct SessionSummaryScreen: View {
         ) { next in
           store.send(.session(.updateEntryScore(entryId: entry.id, playId: play.id, score: next)))
         }
+        .accessibilityIdentifier("summary.mark")
       }
     }
     .padding(.leading, 19)
@@ -306,9 +307,11 @@ struct SessionSummaryScreen: View {
           .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }
       .buttonStyle(PressRebound())
+      .accessibilityIdentifier("summary.save")
       Button("Discard") { confirmingDiscard = true }
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
+        .accessibilityIdentifier("summary.discard")
     }
   }
 }

@@ -72,6 +72,7 @@ struct PracticeScreen: View {
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Profile")
+      .accessibilityIdentifier("practice.profile")
     } content: {
       ScrollView {
         VStack(spacing: IntradaSpacing.section) {
@@ -218,6 +219,7 @@ struct PracticeScreen: View {
     }
     .buttonStyle(PressRebound())
     .accessibilityHint("Brings back the suggested session")
+    .accessibilityIdentifier("practice.showSuggestion")
   }
 
   private var hero: some View {
@@ -253,6 +255,7 @@ struct PracticeScreen: View {
       }
       .buttonStyle(PressRebound())
       .accessibilityLabel("Start practising")
+      .accessibilityIdentifier("practice.start")
       .padding(.vertical, IntradaSpacing.controlGap)
     }
     .frame(maxWidth: .infinity)
@@ -346,6 +349,7 @@ struct PracticeScreen: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { open(session) }
             .accessibilityHint("Opens the session")
+            .accessibilityIdentifier("practice.sessionCard")
         }
       }
     }

@@ -30,6 +30,7 @@ struct ClickBarLine: View {
     .accessibilityLabel("Bar")
     .accessibilityValue(spokenValue)
     .accessibilityHint("Choose the time signature and which beats sound")
+    .accessibilityIdentifier("click.bar")
   }
 
   private var dots: some View {
