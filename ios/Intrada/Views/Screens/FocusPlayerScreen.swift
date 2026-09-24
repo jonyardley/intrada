@@ -308,30 +308,18 @@ struct FocusPlayerScreen: View {
   private func controls(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 14) {
       HStack(spacing: 32) {
-        Button {
+        TransportButton(
+          systemImage: "play.fill", prominence: .primary,
+          label: active.nextItemTitle == nil ? "Finish session" : "Next item"
+        ) {
           presentReflection(active)
-        } label: {
-          Image(systemName: "play.fill")
-            .iconSize(.transport)
-            .foregroundStyle(IntradaColor.onAccent)
-            .frame(width: 78, height: 78)
-            .background(LinearGradient.inkBar)
-            .clipShape(Circle())
-            .shadow(color: IntradaColor.ink.opacity(0.18), radius: 14, y: 6)
         }
-        .buttonStyle(PressRebound())
-        .accessibilityLabel(active.nextItemTitle == nil ? "Finish session" : "Next item")
 
-        Button {
+        TransportButton(
+          systemImage: "forward.end", prominence: .secondary, label: "Skip this item"
+        ) {
           store.send(.session(.skipItem(now: SessionClock.nowRFC3339())))
-        } label: {
-          Image(systemName: "forward.end")
-            .iconSize(.control)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .frame(width: 48, height: 48)
         }
-        .buttonStyle(PressRebound())
-        .accessibilityLabel("Skip this item")
       }
       if let next = active.nextItemTitle {
         Text("Next · \(next)")
