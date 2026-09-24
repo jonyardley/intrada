@@ -95,13 +95,13 @@ templates are `.github/pull_request_template.md` and
 suggestion.
 
 0. **Look at**: one line above the headings naming the decision or risk Jon
-   should judge. Saying what feedback you want is the strongest predictor of a
-   useful review (Pirouzkhah, Wurzel Gonçalves and Bacchelli, arXiv 2602.14611).
-1. **What this fixes**: the situation the affected person would notice, as the
-   outcome and never the branch process. For a screen change that is the
+   should judge. Stating the feedback wanted best predicts acceptance and
+   reviewer engagement (Pirouzkhah, Wurzel Gonçalves and Bacchelli, arXiv 2602.14611).
+1. **What this fixes**: the situation the affected person would notice, in the
+   first sentence. For a screen change that is the
    musician; for tooling or docs it is Jon or an agent, and the body says what
    they hit rather than that no musician is affected. It ends with one sentence
-   on why this approach. No paths, symbols or code; a `just` recipe name once,
+   on why this approach over the obvious other one. No paths, symbols or code; a `just` recipe name once,
    when the recipe is the outcome.
 2. **Where this could bite**: residual risk in what ships, present tense, one
    paragraph per risk, each ending in its tracking issue or "deliberate, not
@@ -126,7 +126,7 @@ history in **What I checked**, which is the failure this rule exists to stop.
 Checklist lines that do not apply are deleted, not annotated.
 
 Issues: what you would notice, why it matters, what to do, done looks like,
-then where it lives. A bug's notice section gives the tap path, what was
+then where it lives. A bug's notice section gives the steps (the tap path, for a screen), what was
 expected and what happened; measurements, logs and fuller reproduction steps
 go last even when they are the reason the issue exists.
 
@@ -144,11 +144,12 @@ read it.
 **Tests**: what proves it, and the line a deletion should break.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
-**Routing**: sensitive surfaces or not, where it runs, and any parallel stream.
+**Routing**: the epic from `just claim`, sensitive surfaces or not, where it
+runs, and any parallel stream.
 ```
 
 The routing line follows the rules in `docs/working-with-agents.md`. A plan that
-cannot fit the budget or runs well past 150 words is Tier 3.
+needs more than two sessions, or runs well past 150 words, is Tier 3.
 
 Any term not in the glossary (`docs/reference.md`) is said plainly or added to
 it. A phase letter, decision number or internal name ("Phase R", "T22", "the

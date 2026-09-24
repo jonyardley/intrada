@@ -143,8 +143,8 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   patterns, an endpoint on established conventions, a field on a model. Before the first
   commit a plan of about 150 words goes on the issue as a comment, on the skeleton in the
   shipping skill's [Plan comments](.claude/skills/intrada-shipping/SKILL.md#plan-comments),
-  approved by Jon and read by the build; one that runs long is Tier 3. UI work does Claude Design first, and a new
-  screen starts by reading an existing one, which loads the UI rules.
+  approved by Jon and read by the build; one that runs long is Tier 3. UI work does Claude
+  Design first, and a new screen starts by reading an existing one, which loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux core or
   bridge changes, auth or schema changes. The plan comment, then one `specs/<feature>.md`
   of 100 to 200 lines riding as the first commit of Phase A, never its own PR.

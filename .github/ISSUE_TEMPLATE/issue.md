@@ -14,8 +14,9 @@ labels: ""
 
 ## What you would notice
 
-<!-- The observable situation. For a bug: the tap path, what you expected and
-     what happened instead. For a change, what is missing or awkward today. -->
+<!-- The observable situation. For a bug: the steps (the tap path, for a
+     screen), what you expected and what happened instead. For a change, what
+     is missing or awkward today. -->
 
 ## Why it matters
 

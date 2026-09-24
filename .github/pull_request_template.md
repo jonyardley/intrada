@@ -1,11 +1,13 @@
+<!-- Under 400 words before the checklist for Tier 1 and 2. -->
+
 Look at: <!-- One line: the decision or risk Jon should judge before merging.
-     Asking for the feedback you want is what most reliably gets a useful
-     review. Under 400 words before the checklist for Tier 1 and 2. -->
+     Stating the feedback wanted best predicts a PR being accepted and
+     engaged with (arXiv 2602.14611). -->
 
 ## What this fixes
 
-<!-- The situation the affected person would notice, as the first sentence:
-     the outcome, never the branch process ("the core half of a split"). For
+<!-- The situation the affected person would notice, in the first sentence;
+     the branch's process ("the core half of a split") goes nowhere here. For
      a screen change that is the musician; for tooling or docs it is Jon or an
      agent, so say what they hit rather than that no musician is affected. End
      with one sentence on why this approach over the obvious other one. No

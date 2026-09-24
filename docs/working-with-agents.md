@@ -302,9 +302,9 @@ standalone globals: `test-driven-development`, `requesting-code-review`,
 | Holding a Tier 1 fix | No plan comment; build it |
 | Handing a task to a new session | `just handover [N]`, which starts the opener with the `/model` and `/effort` lines and names the issue; add the stream by hand when there is more than one |
 
-A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words:
-done looks like, decisions taken, files and lines, tests, out of scope,
-routing. Jon approves it, the build reads it, and `reviewer` is briefed with
+A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words,
+on the skeleton in the shipping skill's
+[Plan comments](../.claude/skills/intrada-shipping/SKILL.md#plan-comments). Jon approves it, the build reads it, and `reviewer` is briefed with
 the issue so it checks the diff against done looks like. A plan that runs long
 is the signal the issue is really Tier 3, which adds a `specs/<feature>.md`
 riding as the first commit of Phase A.
