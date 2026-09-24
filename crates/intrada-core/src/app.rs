@@ -3537,6 +3537,17 @@ mod tests {
         assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");
 
         let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex1_view.key_selection,
+            Some(crate::domain::key::KeyWheelSelection {
+                ring: 10,
+                modality: crate::domain::item::Modality::Minor,
+                spelling: "G".to_string(),
+            }),
+            "the stored key lights its wedge"
+        );
+        let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
+        assert_eq!(ex2_view.key_selection, None, "no key lights nothing");
         assert_eq!(ex1_view.used_in.len(), 1);
         assert!(ex1_view.used_in[0].linked);
         assert_eq!(ex1_view.used_in[0].piece.as_ref().unwrap().id, "piece-1");

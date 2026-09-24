@@ -148,6 +148,10 @@ pub(super) fn build_library_item_views(
             photo_id: item.photo_id.clone(),
             shows_key,
             solid_variation_count,
+            key_selection: item
+                .key
+                .as_deref()
+                .and_then(|key| crate::domain::key::wheel_selection(key, item.modality)),
         });
     }
 

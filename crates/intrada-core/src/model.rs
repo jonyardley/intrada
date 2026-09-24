@@ -499,6 +499,8 @@ pub struct LibraryItemView {
     /// bincode, where a default is never read (#846).
     pub shows_key: bool,
     pub solid_variation_count: usize,
+    /// The wedge the key picker lights for the stored key (#2074).
+    pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -792,6 +794,7 @@ impl LibraryItemView {
             photo_id: None,
             shows_key: true,
             solid_variation_count: 0,
+            key_selection: None,
         }
     }
 }
