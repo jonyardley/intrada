@@ -33,7 +33,7 @@ version=$({ grep -E '^[[:space:]]*MARKETING_VERSION:' "$project_file" || true; }
 
 tag=$(git tag --merged HEAD --list 'v*' --sort=-v:refname |
   { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | head -1)
-[ -n "$tag" ] || fail "no vX.Y.Z tag is reachable from HEAD. A shallow clone hides them: check out with full history (fetch-depth: 0)."
+[ -n "$tag" ] || fail "no vX.Y.Z tag is reachable from HEAD. A shallow clone hides them: fetch the tags (git fetch --tags) or check out with full history."
 
 newest="${tag#v}"
 lowest=$(printf '%s\n%s\n' "$version" "$newest" | sort -t. -k1,1n -k2,2n -k3,3n | head -1)

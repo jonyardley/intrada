@@ -397,6 +397,9 @@ expect 1 "the version behind the newest tag" version_check
 set_version 0.10.0
 expect 0 "a two-digit minor compared as a number" version_check
 
+git tag v0.11.0
+expect 1 "behind a newer two-digit tag" version_check
+
 set_version 0.11.0
 expect 0 "the version bumped ahead of the tag being cut" version_check
 

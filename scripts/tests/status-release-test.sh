@@ -2,7 +2,7 @@
 # Self-test for the RELEASE block of scripts/generate-status.sh. Puts a fake
 # `gh` on PATH so the real script runs unchanged, and asserts the cases that
 # would otherwise pass silently: a milestone nobody described, counts GitHub
-# left out, and either read failing.
+# left out, and each of its three reads (milestones, tags, releases) failing.
 #
 # The fake serves real payloads and honours --jq, so the script's own jq
 # programs and its tag filter are what the assertions exercise. A fake that
@@ -43,7 +43,7 @@ if [ "${1:-}" = "api" ]; then
   esac
 fi
 
-if [ -n "$jq_expr" ]; then
+if [ -n "$jq_expr" ] && ! { [ -n "${RAW_ON:-}" ] && printf '%s' "$endpoint" | grep -q "$RAW_ON"; }; then
   printf '%s' "$body" | jq -r "$jq_expr"
 else
   printf '%s' "$body"
@@ -181,6 +181,11 @@ refute "$out" "claims no distance it cannot measure" "commits on main since"
 out="$(FAIL_ON=releases "$script")"
 check "$out" "names the releases outage rather than claiming no drafts" "Could not read the releases"
 check "$out" "survives a releases outage" "- v0.11.0: Finish capture"
+
+echo '<html>Service unavailable</html>' >"$FIXTURES/releases.json"
+out="$(RAW_ON=releases "$script")"
+check "$out" "names a releases answer that is not a count" "answered something other than a count"
+refute "$out" "never prints what came back in place of a count" "Service unavailable"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

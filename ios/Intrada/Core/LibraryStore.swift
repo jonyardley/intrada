@@ -142,7 +142,7 @@ final class LibraryStore: ItemStore {
     guard
       let stored = try String.fetchOne(
         db, sql: "SELECT \(column) FROM item WHERE id = ?", arguments: [id]),
-      (try? JSONDecoder().decode(type, from: Data(stored.utf8))) == nil
+      tryDecodeJSON(type, from: stored) == nil
     else { return nil }
     return stored
   }

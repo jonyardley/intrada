@@ -28,12 +28,15 @@ extension LibraryStore {
   static func decodeJSON<T: Decodable>(_ type: T.Type, from json: String, field: String)
     -> T?
   {
-    do {
-      return try JSONDecoder().decode(type, from: Data(json.utf8))
-    } catch {
+    guard let value = tryDecodeJSON(type, from: json) else {
       report(StoredCodecError(field: field), decodeContext)
       return nil
     }
+    return value
+  }
+
+  static func tryDecodeJSON<T: Decodable>(_ type: T.Type, from json: String) -> T? {
+    try? JSONDecoder().decode(type, from: Data(json.utf8))
   }
 
   /// A new core case fails to compile in `encode`, but `cases` is listed by
