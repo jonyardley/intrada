@@ -96,7 +96,7 @@ struct BrowseControlsBar: View {
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
-    .padding(.bottom, IntradaSpacing.row)
+    .padding(.bottom, IntradaSpacing.card)
     // Opaque + on top so the bar emerges from behind the pills rather than
     // ghosting over them (see Design System Rules → animated reveals).
     .background(IntradaColor.paperTop)

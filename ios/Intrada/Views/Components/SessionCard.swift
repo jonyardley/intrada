@@ -31,7 +31,7 @@ struct SessionCard: View {
           .padding(.top, 2)
       }
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(IntradaColor.cardFill)
@@ -64,7 +64,7 @@ struct SessionCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      VStack(spacing: IntradaSpacing.row) {
+      VStack(spacing: IntradaSpacing.card) {
         SessionCard(session: .previewCompleted)
         SessionCard(session: .previewWithVariations)
         SessionCard(session: .previewEndedEarly)

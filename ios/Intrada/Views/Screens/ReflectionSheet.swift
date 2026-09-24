@@ -138,9 +138,7 @@ struct ReflectionSheet: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         VStack(spacing: 8) {
-          Text(Self.heading(elapsedDisplay: elapsedDisplay))
-            .font(IntradaFont.badge).textCase(.uppercase).kerning(1.5)
-            .foregroundStyle(IntradaColor.exerciseBadgeFg)
+          Eyebrow(Self.heading(elapsedDisplay: elapsedDisplay), tint: IntradaColor.exerciseBadgeFg)
           Text("How did it go?")
             .font(IntradaFont.pageTitle(24)).foregroundStyle(IntradaColor.ink)
             .multilineTextAlignment(.center)
@@ -163,12 +161,14 @@ struct ReflectionSheet: View {
           ) { next in
             setMark(next, for: only.id)
           }
+          .accessibilityIdentifier("reflection.mark")
           .padding(.top, IntradaSpacing.controlGap)
 
           Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, IntradaSpacing.card)
           TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
+            .accessibilityIdentifier("reflection.tempo")
             .padding(.top, IntradaSpacing.controlGap)
         }
 
@@ -203,9 +203,11 @@ struct ReflectionSheet: View {
           Text("Save & continue")
           Image(systemName: "arrow.right")
         }
+        .accessibilityIdentifier("reflection.save")
         .padding(.top, IntradaSpacing.card)
 
         Button("Skip rating") { onSkip() }
+          .accessibilityIdentifier("reflection.skip")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.inkSecondary)
           .frame(maxWidth: .infinity)
@@ -236,9 +238,12 @@ struct ReflectionSheet: View {
             ) { next in
               setMark(next, for: play.id)
             }
+            .accessibilityIdentifier("reflection.mark")
             TempoStepper(
               value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
-              accessibilityLabel: "Tempo for \(play.title)")
+              accessibilityLabel: "Tempo for \(play.title)"
+            )
+            .accessibilityIdentifier("reflection.tempo")
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)
@@ -274,7 +279,7 @@ struct ReflectionSheet: View {
 
 #if DEBUG
   #Preview("Reflection · one play") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
@@ -286,7 +291,7 @@ struct ReflectionSheet: View {
   }
 
   #Preview("Reflection · three variations") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,

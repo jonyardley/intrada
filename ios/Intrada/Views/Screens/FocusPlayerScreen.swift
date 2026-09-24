@@ -144,11 +144,12 @@ struct FocusPlayerScreen: View {
       }
     } label: {
       Image(systemName: "ellipsis")
-        .font(.system(size: 20))
+        .iconSize(.control)
         .foregroundStyle(IntradaColor.inkSecondary)
         .frame(width: 28, height: 28)
     }
     .accessibilityLabel("Session options")
+    .accessibilityIdentifier("player.options")
   }
 
   // ── Centre: item identity, the live timer ──
@@ -214,6 +215,7 @@ struct FocusPlayerScreen: View {
       }
       .buttonStyle(PressRebound())
       .accessibilityLabel("Variation")
+      .accessibilityIdentifier("player.variation")
       .accessibilityValue(active.currentVariationLabel ?? "none picked")
       .accessibilityHint("Switches to another variation of this exercise")
     }
@@ -308,30 +310,20 @@ struct FocusPlayerScreen: View {
   private func controls(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 14) {
       HStack(spacing: 32) {
-        Button {
+        TransportButton(
+          systemImage: "play.fill", prominence: .primary,
+          label: active.nextItemTitle == nil ? "Finish session" : "Next item"
+        ) {
           presentReflection(active)
-        } label: {
-          Image(systemName: "play.fill")
-            .font(.system(size: 32))
-            .foregroundStyle(IntradaColor.onAccent)
-            .frame(width: 78, height: 78)
-            .background(LinearGradient.inkBar)
-            .clipShape(Circle())
-            .shadow(color: IntradaColor.ink.opacity(0.18), radius: 14, y: 6)
         }
-        .buttonStyle(PressRebound())
-        .accessibilityLabel(active.nextItemTitle == nil ? "Finish session" : "Next item")
+        .accessibilityIdentifier("player.advance")
 
-        Button {
+        TransportButton(
+          systemImage: "forward.end", prominence: .secondary, label: "Skip this item"
+        ) {
           store.send(.session(.skipItem(now: SessionClock.nowRFC3339())))
-        } label: {
-          Image(systemName: "forward.end")
-            .font(.system(size: 22))
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .frame(width: 48, height: 48)
         }
-        .buttonStyle(PressRebound())
-        .accessibilityLabel("Skip this item")
+        .accessibilityIdentifier("player.skip")
       }
       if let next = active.nextItemTitle {
         Text("Next · \(next)")

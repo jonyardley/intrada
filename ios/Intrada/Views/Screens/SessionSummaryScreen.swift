@@ -126,7 +126,7 @@ struct SessionSummaryScreen: View {
       }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(unfinished ? 0.5 : 1)
+    .opacity(unfinished ? IntradaOpacity.dimmed : 1)
   }
 
   // A written note stays on the row: a note the musician cannot see again is
@@ -246,6 +246,7 @@ struct SessionSummaryScreen: View {
         ) { next in
           store.send(.session(.updateEntryScore(entryId: entry.id, playId: play.id, score: next)))
         }
+        .accessibilityIdentifier("summary.mark")
       }
     }
     .padding(.leading, 19)
@@ -301,14 +302,16 @@ struct SessionSummaryScreen: View {
           .font(IntradaFont.button)
           .foregroundStyle(IntradaColor.onMarker)
           .frame(maxWidth: .infinity)
-          .padding(.vertical, IntradaSpacing.row)
+          .padding(.vertical, IntradaSpacing.card)
           .background(marker)
           .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }
       .buttonStyle(PressRebound())
+      .accessibilityIdentifier("summary.save")
       Button("Discard") { confirmingDiscard = true }
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
+        .accessibilityIdentifier("summary.discard")
     }
   }
 }

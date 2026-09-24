@@ -62,6 +62,7 @@ struct ChordChartEditSheet: View {
         ToolbarItem(placement: .confirmationAction) {
           Button("Save") { save() }
             .disabled(saveDisabled)
+            .accessibilityIdentifier("chordChart.save")
         }
       }
     }
@@ -105,6 +106,7 @@ struct ChordChartEditSheet: View {
         .autocorrectionDisabled()
         .textInputAutocapitalization(.characters)
         .accessibilityLabel("Chord chart text")
+        .accessibilityIdentifier("chordChart.text")
     }
     .padding(IntradaSpacing.cardCompact)
     .background(IntradaColor.cardFill, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
@@ -127,7 +129,7 @@ struct ChordChartEditSheet: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.cardCompact)
     .background(
-      IntradaColor.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: IntradaRadius.control)
+      IntradaColor.dangerWash, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Couldn't parse the chart. \(message)")

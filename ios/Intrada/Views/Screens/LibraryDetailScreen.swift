@@ -209,6 +209,7 @@ struct LibraryDetailScreen: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Add an exercise for this piece")
+    .accessibilityIdentifier("libraryDetail.addExercise")
     .padding(.horizontal, IntradaSpacing.controlGap)
     .padding(.vertical, IntradaSpacing.controlGap)
   }
@@ -347,6 +348,7 @@ struct LibraryDetailScreen: View {
         Text("Add exercise")
       }
       .accessibilityLabel("Add an exercise for this piece")
+      .accessibilityIdentifier("libraryDetail.addExercise")
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.horizontal, IntradaSpacing.card)
@@ -642,6 +644,7 @@ struct LibraryDetailScreen: View {
       .accessibilityLabel(item.priority ? "Remove from priorities" : "Add to priorities")
 
       Button("Edit") { editing = true }
+        .accessibilityIdentifier("libraryDetail.edit")
     }
   }
 
@@ -716,7 +719,7 @@ private struct LinkedExerciseRow: View {
   let exercise: LinkedExerciseView
 
   var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
       VStack(alignment: .leading, spacing: 3) {
         Text(exercise.title)
@@ -733,7 +736,7 @@ private struct LinkedExerciseRow: View {
       // the section caption tells the reader which. Unrated until practised here.
       ScoreRing(score: exercise.pieceContextScore.map(Int.init), size: 44)
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.leading, 20)
     .padding(.trailing, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
@@ -812,7 +815,7 @@ private struct VariationListRow: View {
         .foregroundStyle(captionColor)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.horizontal, IntradaSpacing.card)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)

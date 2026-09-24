@@ -7,9 +7,9 @@ extension View {
   func scrimCapsule() -> some View {
     font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.onAccent)
-      .padding(.horizontal, IntradaSpacing.row)
+      .padding(.horizontal, IntradaSpacing.card)
       .padding(.vertical, IntradaSpacing.cardCompact)
-      .background(IntradaColor.viewerBackdrop.opacity(0.8), in: Capsule())
+      .background(IntradaColor.viewerBackdrop.opacity(IntradaOpacity.strong), in: Capsule())
       .contentShape(Capsule())
   }
 }

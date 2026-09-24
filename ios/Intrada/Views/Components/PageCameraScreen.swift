@@ -209,7 +209,7 @@ struct PageCameraShutter: View {
     Button(action: onPress) {
       ZStack {
         Circle()
-          .strokeBorder(IntradaColor.onAccent.opacity(0.6), lineWidth: 3)
+          .strokeBorder(IntradaColor.onAccent.opacity(IntradaOpacity.soft), lineWidth: 3)
           .frame(width: 76, height: 76)
         Circle()
           .fill(IntradaColor.onAccent)
@@ -267,7 +267,7 @@ struct PageCameraBlocked: View {
       if access == .denied {
         Text("Turn it on in Settings to photograph a page.")
           .font(IntradaFont.body)
-          .foregroundStyle(IntradaColor.onAccent.opacity(0.75))
+          .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
           .multilineTextAlignment(.center)
 
         Button("Open Settings", action: onOpenSettings)
@@ -291,7 +291,7 @@ struct PageCameraUnstartable: View {
 
       Text("Something else may be using it. Close this and try again.")
         .font(IntradaFont.body)
-        .foregroundStyle(IntradaColor.onAccent.opacity(0.75))
+        .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
         .multilineTextAlignment(.center)
     }
     .padding(IntradaSpacing.section)

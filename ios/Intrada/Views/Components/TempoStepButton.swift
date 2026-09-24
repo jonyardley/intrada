@@ -13,7 +13,7 @@ struct TempoStepButton: View {
       action()
     } label: {
       Image(systemName: systemImage)
-        .font(.system(size: 15, weight: .semibold))
+        .iconSize(.inline, weight: .semibold)
         .foregroundStyle(IntradaColor.inkSecondary)
         .frame(width: 44, height: 44)
         .background(IntradaColor.cardFill)

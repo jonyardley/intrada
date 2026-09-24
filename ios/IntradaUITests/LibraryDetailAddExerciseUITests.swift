@@ -15,38 +15,31 @@ final class LibraryDetailAddExerciseUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Library"].tap()
-    let clairRow = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "Clair de Lune")
-    ).firstMatch
+    let clairRow = app.row("library.row", spokenContaining: "Clair de Lune")
     XCTAssertTrue(clairRow.waitForExistence(timeout: 10), "Clair library row")
     clairRow.tap()
 
-    let addExercise = app.buttons["Add an exercise for this piece"]
-    XCTAssertTrue(addExercise.waitForExistence(timeout: 10), "the single Add exercise action")
-    addExercise.tap()
+    app.control(
+      "libraryDetail.addExercise", spoken: "Add an exercise for this piece", timeout: 10
+    ).tap()
 
-    let createTrigger = app.buttons["Create an exercise"]
-    XCTAssertTrue(createTrigger.waitForExistence(timeout: 5), "create-inline trigger")
-    createTrigger.tap()
+    app.control("linkedPicker.create", spoken: "Create an exercise").tap()
 
-    let requiredFields = app.textFields.matching(identifier: "Required")
-    let draftTitle = requiredFields.firstHittable()
-    XCTAssertNotNil(draftTitle, "the draft exercise's title field")
-    draftTitle?.tap()
-    draftTitle?.typeText("Chromatic run")
-    let doneButtons = app.buttons.matching(NSPredicate(format: "label == %@", "Done"))
-    doneButtons.firstHittable()?.tap()
+    let draftTitle = app.element("draftExercise.title")
+    XCTAssertTrue(draftTitle.waitForExistence(timeout: 5), "the draft exercise's title field")
+    draftTitle.tap()
+    draftTitle.typeText("Chromatic run")
+    app.control("draftExercise.done", spoken: "Done").tap()
 
     XCTAssertTrue(
       app.staticTexts["Chromatic run"].waitForExistence(timeout: 5),
       "the fresh draft joins the picker's own list")
 
-    let hanon = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Hanon No. 1"))
-      .firstMatch
+    let hanon = app.row("linkedPicker.row", spokenContaining: "Hanon No. 1")
     XCTAssertTrue(hanon.waitForExistence(timeout: 5), "Hanon in the picker's existing list")
     hanon.tap()
 
-    app.buttons["Done"].firstMatch.tap()
+    app.control("sheet.done", spoken: "Done").tap()
 
     // Links immediately on Done, since the piece already exists (#1431).
     XCTAssertTrue(

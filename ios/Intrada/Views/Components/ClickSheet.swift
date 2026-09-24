@@ -93,6 +93,12 @@ struct ClickSheet: View {
           case .other: "Other"
           }
         },
+        identifier: { choice in
+          switch choice {
+          case .metre(let metre): "clickSheet.metre.\(metre.beats)-\(metre.unit)"
+          case .other: "clickSheet.metre.other"
+          }
+        },
         layout: .fullWidthTrack)
       Text("From the piece. Changing it here holds for this session only.")
         .font(IntradaFont.meta)
@@ -105,7 +111,7 @@ struct ClickSheet: View {
   var unitOptions: [UInt8] { limits.metreUnits }
 
   private var otherSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.row) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Eyebrow("Beats in the bar")
         Stepper(value: $beats, in: beatsRange) {
@@ -184,6 +190,7 @@ struct ClickSheet: View {
           get: { ClickPattern.matching(click.sounding, in: metre) },
           set: { if let pattern = $0 { click.apply(pattern) } }),
         label: { $0?.title ?? "" },
+        identifier: { $0.map { "clickSheet.pattern.\($0)" } ?? "" },
         layout: .fullWidthTrack)
       beatGrid(metre)
     }

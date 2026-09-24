@@ -91,6 +91,7 @@ struct PracticeSessionDetailScreen: View {
   private var playedSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       Eyebrow("What you played")
+        .accessibilityIdentifier("sessionDetail.played")
       VStack(spacing: 0) {
         ForEach(Array(session.entries.enumerated()), id: \.element.id) { index, entry in
           entryRow(entry)
@@ -123,7 +124,7 @@ struct PracticeSessionDetailScreen: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(played ? 1 : 0.5)
+    .opacity(played ? 1 : IntradaOpacity.dimmed)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(entryAccessibilityLabel(entry))
   }

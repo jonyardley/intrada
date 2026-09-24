@@ -94,6 +94,7 @@ struct LibraryAddScreen: View {
   @ViewBuilder private var chartSection: some View {
     if form.chartText.isEmpty {
       FormSectionRow(title: "Chord chart", accessory: .opensSheet) { editingChart = true }
+        .accessibilityIdentifier("itemForm.chordChart")
         .cardSurface()
     } else {
       StagedChartCard(
@@ -117,6 +118,7 @@ struct LibraryAddScreen: View {
           expandsExercises.toggle()
         }
       }
+      .accessibilityIdentifier("itemForm.relatedExercises")
       if expandsExercises || !form.stagedExercises.isEmpty {
         if form.stagedExercises.isEmpty {
           Text("Scales, arpeggios, and anything else you practise alongside this piece.")
@@ -161,6 +163,7 @@ struct LibraryAddScreen: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Add an exercise for this piece")
+    .accessibilityIdentifier("itemForm.addExercise")
   }
 
   // `Swift.Set`, because `SharedTypes` exports a domain `Set` that shadows the

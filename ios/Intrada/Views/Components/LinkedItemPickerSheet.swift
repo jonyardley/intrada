@@ -216,7 +216,7 @@ struct LinkedItemPickerSheet: View {
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
-            .padding(.vertical, IntradaSpacing.row)
+            .padding(.vertical, IntradaSpacing.card)
         } else {
           Eyebrow(copy.listHeading)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -233,6 +233,7 @@ struct LinkedItemPickerSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel(rowAccessibilityLabel(item, isOn: isOn))
             .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+            .accessibilityIdentifier("linkedPicker.row")
 
             if item.id != rows.last?.id {
               HairlineDivider().padding(.leading, IntradaSpacing.card)
@@ -248,6 +249,7 @@ struct LinkedItemPickerSheet: View {
 
   private var createTrigger: some View {
     AddRowButton(title: "Create an exercise", style: .plain) { creatingDraft = true }
+      .accessibilityIdentifier("linkedPicker.create")
       .padding(.horizontal, IntradaSpacing.card)
   }
 
@@ -304,7 +306,7 @@ struct LinkedItemPickerSheet: View {
             .strokeBorder(kind.accent, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
-        .font(.system(size: 14, weight: .semibold))
+        .iconSize(.inline, weight: .semibold)
         .foregroundStyle(isOn ? kind.onAccent : kind.accent)
     }
     .frame(width: 28, height: 28)

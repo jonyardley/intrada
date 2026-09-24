@@ -18,11 +18,11 @@ struct BrandBarButton<Label: View>: View {
         .font(IntradaFont.button)
         .foregroundStyle(IntradaColor.onMarker)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.row)
+        .padding(.vertical, IntradaSpacing.card)
         .background(
           marker, in: RoundedRectangle(cornerRadius: IntradaRadius.control)
         )
-        .shadow(color: IntradaColor.buttonShadow, radius: 1, y: 1)
+        .dropShadow(.button)
     }
     .buttonStyle(.plain)
   }

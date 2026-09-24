@@ -72,6 +72,7 @@ struct PracticeScreen: View {
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Profile")
+      .accessibilityIdentifier("practice.profile")
     } content: {
       ScrollView {
         VStack(spacing: IntradaSpacing.section) {
@@ -218,6 +219,7 @@ struct PracticeScreen: View {
     }
     .buttonStyle(PressRebound())
     .accessibilityHint("Brings back the suggested session")
+    .accessibilityIdentifier("practice.showSuggestion")
   }
 
   private var hero: some View {
@@ -226,7 +228,7 @@ struct PracticeScreen: View {
       // visually, so read separately it would reach VoiceOver detached from
       // the piece it describes.
       VStack(spacing: IntradaSpacing.cardCompact) {
-        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(0.7))
+        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
 
         if let lastPractised {
           Text(lastPractised.itemTitle)
@@ -244,22 +246,23 @@ struct PracticeScreen: View {
         store.send(.session(.startBuilding))
       } label: {
         Image(systemName: "play.fill")
-          .font(.system(size: 38))
+          .iconSize(.hero)
           .foregroundStyle(IntradaColor.onMarker)
           .frame(width: 96, height: 96)
           .background(marker)
           .clipShape(Circle())
-          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+          .dropShadow(.heroButton)
       }
       .buttonStyle(PressRebound())
       .accessibilityLabel("Start practising")
+      .accessibilityIdentifier("practice.start")
       .padding(.vertical, IntradaSpacing.controlGap)
     }
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .heroShadow()
+    .dropShadow(.hero)
   }
 
   // The day lives here now, not under the play button (#1725).
@@ -346,6 +349,7 @@ struct PracticeScreen: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { open(session) }
             .accessibilityHint("Opens the session")
+            .accessibilityIdentifier("practice.sessionCard")
         }
       }
     }
@@ -362,7 +366,7 @@ struct PracticeScreen: View {
   private var emptyDayCard: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Image(systemName: isFutureSelection ? "sunrise" : "moon")
-        .font(.system(size: 28))
+        .iconSize(.large)
         .foregroundStyle(IntradaColor.inkSecondary)
       Text(isFutureSelection ? "Nothing logged yet" : "No practice logged")
         .font(IntradaFont.bodyMedium)

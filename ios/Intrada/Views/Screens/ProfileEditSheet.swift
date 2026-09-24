@@ -53,9 +53,11 @@ struct ProfileEditSheet: View {
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel") { dismiss() }
+            .accessibilityIdentifier("profileEdit.cancel")
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Save", action: save)
+            .accessibilityIdentifier("profileEdit.save")
         }
       }
       .sheet(isPresented: $choosingIcon) {
@@ -90,7 +92,7 @@ struct ProfileEditSheet: View {
   }
 
   private var iconCard: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       ProfileBadge(icon: shownIcon)
       VStack(alignment: .leading, spacing: 3) {
         Text("Icon")
@@ -122,11 +124,13 @@ struct ProfileEditSheet: View {
     VStack(spacing: 0) {
       FormField(
         label: "Name", text: $name, placeholder: "Your name",
-        autocapitalization: .words, faulted: faultedField == .name)
+        autocapitalization: .words, faulted: faultedField == .name,
+        identifier: "profileEdit.name")
       HairlineDivider()
       AutocompleteField(
         label: "Instrument", text: $instrument, placeholder: "e.g. Cello",
-        suggestions: InstrumentNames.suggestions, faulted: faultedField == .instrument)
+        suggestions: InstrumentNames.suggestions, faulted: faultedField == .instrument,
+        identifier: "profileEdit.instrument")
     }
     .cardSurface()
   }
@@ -150,7 +154,7 @@ struct ProfileEditSheet: View {
                 .overlay {
                   if swatch == colour {
                     Image(systemName: "checkmark")
-                      .font(.system(size: 15, weight: .bold))
+                      .iconSize(.inline, weight: .bold)
                       .foregroundStyle(IntradaColor.onMarker)
                   }
                 }
@@ -163,6 +167,7 @@ struct ProfileEditSheet: View {
           }
           .buttonStyle(.plain)
           .accessibilityLabel(swatch.label)
+          .accessibilityIdentifier("profileEdit.highlighter.\(swatch)")
           .accessibilityAddTraits(swatch == colour ? .isSelected : [])
         }
       }

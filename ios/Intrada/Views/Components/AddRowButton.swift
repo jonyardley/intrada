@@ -25,7 +25,7 @@ struct AddRowButton: View {
   private var verticalPadding: CGFloat {
     switch style {
     case .plain: IntradaSpacing.cardCompact
-    case .dashed: IntradaSpacing.row
+    case .dashed: IntradaSpacing.card
     }
   }
 

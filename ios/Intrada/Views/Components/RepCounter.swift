@@ -86,6 +86,7 @@ struct RepCounter: View {
     )
     .accessibilityLabel("Got it")
     .accessibilityHint("Counts one repetition")
+    .accessibilityIdentifier("player.gotIt")
   }
 
   private func notQuite(title: String) -> some View {
@@ -121,17 +122,20 @@ struct RepCounter: View {
     }
     .buttonStyle(PressRebound())
     .disabled(disabled)
-    .opacity(disabled ? 0.4 : 1)
+    .opacity(disabled ? IntradaOpacity.dimmed : 1)
   }
 }
 
 private struct RepDot: View {
   let done: Bool
+  // Scales with Dynamic Type, capped so ten passes still fit the row (#1950).
+  @ScaledMetric(relativeTo: .caption) private var diameter: CGFloat = 11
+  private var cappedDiameter: CGFloat { min(diameter, 18) }
 
   var body: some View {
     Circle()
       .fill(done ? IntradaColor.success : Color.clear)
-      .frame(width: 11, height: 11)
+      .frame(width: cappedDiameter, height: cappedDiameter)
       .overlay(
         Circle().strokeBorder(
           done ? Color.clear : IntradaColor.slotOutline, lineWidth: 1.6))

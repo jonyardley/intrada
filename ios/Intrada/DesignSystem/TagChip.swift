@@ -41,7 +41,7 @@ struct TagChip: View {
         .lineLimit(1)
       if removable {
         Image(systemName: "xmark")
-          .font(.system(size: 9, weight: .semibold))
+          .iconSize(.badge, weight: .semibold)
           .foregroundStyle(IntradaColor.inkFaintIcon)
       }
     }

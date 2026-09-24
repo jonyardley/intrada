@@ -35,10 +35,7 @@ struct ConsistencyBars: View {
             )
             .frame(maxWidth: .infinity)
             .frame(height: barHeight(for: week))
-            .shadow(
-              color: week.isCurrent ? IntradaColor.accent.opacity(0.4) : .clear,
-              radius: 6, x: 0, y: 4
-            )
+            .dropShadow(week.isCurrent ? .glow : .none)
             .scaleEffect(y: scale, anchor: .bottom)
             .animation(animation(index: index), value: grown)
           Text(week.label)

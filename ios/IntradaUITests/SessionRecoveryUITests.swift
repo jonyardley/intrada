@@ -19,8 +19,7 @@ final class SessionRecoveryUITests: XCTestCase {
 
     app.startOneItemSession()
 
-    let skip = app.buttons["Skip this item"]
-    XCTAssertTrue(skip.waitForExistence(timeout: 10), "the focus player is up")
+    app.control("player.skip", spoken: "Skip this item", timeout: 10)
 
     // Kill mid-session — the crash this feature exists for.
     app.terminate()
@@ -31,12 +30,11 @@ final class SessionRecoveryUITests: XCTestCase {
     relaunch.launch()
 
     relaunch.tabBars.buttons["Practice"].tap()
-    let resume = relaunch.buttons["Resume the interrupted session"]
-    XCTAssertTrue(resume.waitForExistence(timeout: 10), "the recovery prompt offers Resume")
-    resume.tap()
+    relaunch.control("practice.resume", spoken: "Resume the interrupted session", timeout: 10)
+      .tap()
 
     XCTAssertTrue(
-      relaunch.buttons["Skip this item"].waitForExistence(timeout: 10),
+      relaunch.element("player.skip").waitForExistence(timeout: 10),
       "Resume reopens the focus player on the interrupted session")
 
     // Leave the container clean for the next test.

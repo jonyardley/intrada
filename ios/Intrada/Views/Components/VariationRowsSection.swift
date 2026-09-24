@@ -80,6 +80,7 @@ struct VariationRowsSection: View {
             current.label.isEmpty ? "Reorder this variation" : "Reorder \(current.label)"
           )
           .accessibilityHint("Drag to change this variation's position")
+          .accessibilityIdentifier("variationRow.reorder")
           .accessibilityAction(named: "Move up") { rows.move(current.id, by: -1) }
           .accessibilityAction(named: "Move down") { rows.move(current.id, by: 1) }
         TextField("e.g. C", text: label(of: current.id))
@@ -87,6 +88,7 @@ struct VariationRowsSection: View {
           .foregroundStyle(IntradaColor.ink)
           .focused($focusedRow, equals: current.id)
           .accessibilityLabel("Variation")
+          .accessibilityIdentifier("variationRow.label")
         Button {
           if current.hasMarks {
             confirmingRemoval = current

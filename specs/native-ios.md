@@ -211,8 +211,22 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
   "eyes" for UI regression. Pin one CI simulator + iOS runtime; use perceptual
   tolerance; reference images are reviewable diffs.
 - **Sentry** crash reporting from the first build.
-- **Accessibility** per screen — VoiceOver labels + Dynamic Type — verified as
-  each screen lands, not at the end.
+- **Accessibility** per screen, VoiceOver labels and Dynamic Type, built as
+  each screen lands and gated since #1950:
+  - **Dynamic Type:** every screen and sheet with a snapshot has one more at the
+    largest accessibility text size (`axConfig`), so any change to the layout at
+    that size fails the snapshot job until the reference is re-recorded and
+    looked at.
+  - **VoiceOver labels:** every button an XCUITest drives is found by its
+    `accessibilityIdentifier` (`screen.control`, such as `builder.addItems`) and
+    has its spoken label asserted (`control(_:spoken:)` in `SpokenLabel.swift`),
+    so a missing or wrong label fails the merge gate and a copy change does not.
+    Text fields, and rows the tests pick out by what they read, are found by
+    identifier without a label assertion.
+  - **Not gated, checked by hand:** labels on controls no UI test drives; the
+    system's own controls (tab bar items, alert buttons, menu items), which the
+    tests still find by their words; text fields' spoken labels; hints, reading
+    order and grouping; text sizes between the default and the largest.
 
 ## Open questions
 

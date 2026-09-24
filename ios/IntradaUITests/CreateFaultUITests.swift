@@ -27,52 +27,46 @@ final class CreateFaultUITests: XCTestCase {
     app.launch()
 
     app.tabBars.buttons["Library"].tap()
-    let add = app.buttons["Add item"]
-    XCTAssertTrue(add.waitForExistence(timeout: 10), "Library's add button")
-    add.tap()
+    app.control("library.add", spoken: "Add item", timeout: 10).tap()
 
     // The chart first, while nothing has raised the keyboard: with it up, the
     // section rows sit under it and a tap never reaches them.
-    let chartRow = app.buttons.matching(NSPredicate(format: "label == %@", "Chord chart"))
-    XCTAssertTrue(chartRow.firstMatch.waitForExistence(timeout: 10), "the chord chart row")
+    app.control("itemForm.chordChart", spoken: "Chord chart", timeout: 10)
+    let chartRow = app.descendants(matching: .any).matching(identifier: "itemForm.chordChart")
     let tappable = hittable(chartRow, scrolling: app)
     XCTAssertNotNil(tappable, "one of the chord chart rows takes a tap")
     tappable?.tap()
 
-    XCTAssertTrue(
-      app.navigationBars["Chord chart"].waitForExistence(timeout: 5), "the chart sheet opened")
-    let editor = app.textViews["Chord chart text"]
-    XCTAssertTrue(editor.waitForExistence(timeout: 5), "the chart editor")
+    let editor = app.control("chordChart.text", spoken: "Chord chart text")
     editor.tap()
     editor.typeText("| Dm7 | G7 |")
-    app.buttons["Save"].firstMatch.tap()
+    app.control("chordChart.save", spoken: "Save").tap()
 
-    let title = app.textFields["Required"].firstMatch
-    XCTAssertTrue(title.waitForExistence(timeout: 5), "the title field, by its placeholder")
+    let title = app.element("itemForm.title")
+    XCTAssertTrue(title.waitForExistence(timeout: 5), "the title field")
     title.tap()
     title.typeText("Kettle of fish")
 
     // An over-long composer, so the piece itself is what the core refuses. The
     // create carries a chart, so it goes through the one-pass event, not a
     // plain add.
-    let composer = app.textFields["Composer"].firstMatch
+    let composer = app.element("itemForm.composer")
     XCTAssertTrue(composer.waitForExistence(timeout: 5), "the composer field")
     composer.tap()
     composer.typeText(String(repeating: "x", count: 201))
-    app.buttons["Add"].firstMatch.tap()
+    app.control("itemForm.confirm", spoken: "Add").tap()
 
     XCTAssertTrue(
       app.staticTexts["Composer must be between 1 and 200 characters"].waitForExistence(
         timeout: 5),
       "the core's own sentence, on the form rather than behind it")
     XCTAssertTrue(
-      app.navigationBars["New Piece"].exists,
+      app.element("itemForm.confirm").exists,
       "a refused create leaves everything staged on screen, chart included")
 
-    app.buttons["Cancel"].firstMatch.tap()
+    app.control("itemForm.cancel", spoken: "Cancel").tap()
     XCTAssertFalse(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Kettle of fish"))
-        .firstMatch.waitForExistence(timeout: 3),
+      app.row("library.row", spokenContaining: "Kettle of fish").waitForExistence(timeout: 3),
       "nothing was written, so the library is as it was")
   }
 }

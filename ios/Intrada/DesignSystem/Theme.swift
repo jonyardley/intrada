@@ -49,6 +49,8 @@ enum IntradaColor {
   static let dangerEdge = danger.opacity(0.25)
   static let shadow = ink.opacity(0.05)
   static let buttonShadow = ink.opacity(0.06)
+  /// The dimmed ground behind a floating sheet.
+  static let sheetScrim = Color.black.opacity(0.2)
 
   static let tabBarFill = Color(hex: 0xF3EFE8)
 
@@ -184,15 +186,11 @@ enum IntradaFont {
   }
 }
 
-/// The spacing scale. Every padding / inset / list gap traces to one of these,
-/// the same way colours trace to `IntradaColor` — so screens can't drift on the
-/// standard rhythm. Names mirror the web `p-card` tokens to keep one spacing
-/// language across shells. Genuine one-offs (a fixed component height, a 2pt
-/// baseline nudge) stay literal; don't tokenise those.
+/// Genuine one-offs (a fixed component height, a 2pt baseline nudge) stay
+/// literal; don't tokenise those.
 enum IntradaSpacing {
   static let controlGap: CGFloat = 8
   static let cardCompact: CGFloat = 12
-  static let row: CGFloat = 16
   static let card: CGFloat = 16
   static let section: CGFloat = 24
 }
@@ -218,6 +216,80 @@ enum IntradaGlyph {
   static let bar: CGFloat = 36
   static let tile: CGFloat = 56
   static let hero: CGFloat = 88
+}
+
+/// SF Symbol sizes. Apply through `.iconSize(_:weight:)`, which scales the
+/// glyph with Dynamic Type beside the text it sits with (#1459), up to
+/// `maxPoints` so it still fits the fixed circle or button it sits in.
+enum IntradaIconSize {
+  case badge, caption, inline, control, large, transport, hero
+
+  var points: CGFloat {
+    switch self {
+    case .badge: 9
+    case .caption: 11
+    case .inline: 15
+    case .control: 20
+    case .large: 28
+    case .transport: 32
+    case .hero: 38
+    }
+  }
+
+  var maxPoints: CGFloat {
+    switch self {
+    case .badge: 13
+    case .caption: 16
+    case .inline: 18
+    case .control: 26
+    case .large: 36
+    case .transport: 40
+    case .hero: 56
+    }
+  }
+
+  var textStyle: Font.TextStyle {
+    switch self {
+    case .badge: .caption2
+    case .caption: .caption
+    case .inline: .body
+    case .control: .title3
+    case .large: .title
+    case .transport, .hero: .largeTitle
+    }
+  }
+}
+
+/// Alpha for a colour laid over another surface, named by the job it does.
+/// Show-and-hide toggles stay `0`/`1`.
+enum IntradaOpacity {
+  /// A faint tint washing a surface (a pressed capsule, a card on a dark hero).
+  static let wash: Double = 0.12
+  /// A row or figure that is disabled, unplayed or superseded.
+  static let dimmed: Double = 0.5
+  /// A softened fill or edge that still reads as the colour it came from.
+  static let soft: Double = 0.6
+  /// Secondary text or glyphs on a dark or photographic ground.
+  static let secondary: Double = 0.75
+  /// A ground or text that must hold contrast over anything beneath it.
+  static let strong: Double = 0.8
+}
+
+/// Named drop shadows. Apply through `.dropShadow(_:)`.
+struct IntradaShadow {
+  let color: Color
+  let radius: CGFloat
+  let y: CGFloat
+
+  static let none = IntradaShadow(color: .clear, radius: 0, y: 0)
+  static let card = IntradaShadow(color: IntradaColor.shadow, radius: 1, y: 1)
+  static let button = IntradaShadow(color: IntradaColor.buttonShadow, radius: 1, y: 1)
+  static let lifted = IntradaShadow(color: IntradaColor.shadow, radius: 6, y: 3)
+  static let glow = IntradaShadow(color: IntradaColor.accent.opacity(0.4), radius: 6, y: 4)
+  static let transport = IntradaShadow(color: IntradaColor.ink.opacity(0.18), radius: 14, y: 6)
+  static let heroButton = IntradaShadow(color: .black.opacity(0.25), radius: 16, y: 8)
+  /// The Practice hero card, the only card that floats this far off the paper.
+  static let hero = IntradaShadow(color: .black.opacity(0.18), radius: 20, y: 10)
 }
 
 /// Named motion tokens — the "engaging refresh" springs, the signature `fadeUp`

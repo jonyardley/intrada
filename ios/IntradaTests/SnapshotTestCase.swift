@@ -86,10 +86,10 @@ class SnapshotTestCase: XCTestCase {
       })
   }
 
-  var practiceHeaderAxConfig: Snapshotting<UIViewController, UIImage> {
+  func tallAxConfig(height: CGFloat = 1400) -> Snapshotting<UIViewController, UIImage> {
     .image(
       on: ViewImageConfig(
-        safeArea: .zero, size: CGSize(width: 390, height: 1400), traits: .init(displayScale: 1)),
+        safeArea: .zero, size: CGSize(width: 390, height: height), traits: .init(displayScale: 1)),
       perceptualPrecision: 0.98,
       traits: UITraitCollection { traits in
         traits.displayScale = 1

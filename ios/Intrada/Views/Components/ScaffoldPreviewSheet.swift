@@ -115,7 +115,7 @@ private struct SpecRow: View {
   let selectable: Bool
 
   var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       ItemKind.exercise.bar
         .frame(width: 4, height: 34)
         .clipShape(Capsule())
@@ -141,12 +141,12 @@ private struct SpecRow: View {
         membershipControl(isOn: isOn)
       }
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.leading, 20)
     .padding(.trailing, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
     .contentShape(Rectangle())
-    .opacity(selectable ? 1 : 0.6)
+    .opacity(selectable ? 1 : IntradaOpacity.soft)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
   }
@@ -160,7 +160,7 @@ private struct SpecRow: View {
             .strokeBorder(IntradaColor.accent, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
-        .font(.system(size: 14, weight: .semibold))
+        .iconSize(.inline, weight: .semibold)
         .foregroundStyle(isOn ? IntradaColor.onAccent : IntradaColor.accent)
     }
     .frame(width: 28, height: 28)

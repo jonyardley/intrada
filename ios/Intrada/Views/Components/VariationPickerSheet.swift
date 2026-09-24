@@ -65,12 +65,13 @@ struct VariationPickerSheet: View {
     .accessibilityLabel("\(variation.label), \(variation.caption)")
     .accessibilityHint(isCurrent ? "" : "Switches \(itemTitle) to this variation")
     .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
+    .accessibilityIdentifier("variationPicker.row")
   }
 }
 
 #if DEBUG
   #Preview("Variation picker") {
-    Color.black.opacity(0.2).ignoresSafeArea()
+    IntradaColor.sheetScrim.ignoresSafeArea()
       .sheet(isPresented: .constant(true)) {
         VariationPickerSheet(
           itemTitle: "Major Scales",

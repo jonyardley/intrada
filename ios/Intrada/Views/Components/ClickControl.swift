@@ -86,16 +86,14 @@ struct ClickControl: View {
         .padding(.horizontal, IntradaSpacing.cardCompact)
         .frame(minHeight: 44)
         .background(capsuleFill, in: Capsule())
-        .shadow(
-          color: isDragging ? IntradaColor.shadow : .clear,
-          radius: isDragging ? 6 : 0, y: isDragging ? 3 : 0
-        )
+        .dropShadow(isDragging ? .lifted : .none)
         .scaleEffect(isDragging ? 1.04 : 1)
     }
     .buttonStyle(PressRebound())
     .accessibilityLabel(isRunning ? "Stop the metronome" : "Start the metronome")
     .accessibilityValue(spokenValue)
     .accessibilityAdjustableAction(adjust)
+    .accessibilityIdentifier("click.toggle")
     .highPriorityGesture(dragGesture)
     .onDisappear(perform: resetDrag)
     .animation(reduceMotion ? nil : IntradaMotion.snappy, value: isDragging)
@@ -121,7 +119,7 @@ struct ClickControl: View {
   /// first-use tooltip to dismiss (#1823).
   private var gripGlyph: some View {
     Image(systemName: "arrow.up.and.down")
-      .font(.system(size: 11, weight: .semibold))
+      .iconSize(.caption, weight: .semibold)
       .foregroundStyle(IntradaColor.inkFaintIcon)
       .accessibilityHidden(true)
   }
@@ -193,7 +191,7 @@ struct ClickControl: View {
   }
 
   private var capsuleFill: Color {
-    if isDragging { return IntradaColor.accent.opacity(0.14) }
+    if isDragging { return IntradaColor.accent.opacity(IntradaOpacity.wash) }
     return isRunning ? marker : .clear
   }
 

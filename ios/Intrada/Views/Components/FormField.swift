@@ -12,6 +12,7 @@ struct FormField: View {
   /// when that read was weak (#1436).
   var readWeakly: Bool?
   var faulted: Bool = false
+  var identifier: String = ""
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
@@ -24,6 +25,7 @@ struct FormField: View {
         .keyboardType(keyboard)
         .textInputAutocapitalization(autocapitalization)
         .accessibilityHint(hint)
+        .accessibilityIdentifier(identifier)
       if let readWeakly {
         FieldMark(weak: readWeakly)
       }

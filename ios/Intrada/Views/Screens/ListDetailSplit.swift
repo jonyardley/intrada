@@ -12,7 +12,7 @@ struct ListDetailSplit<ListContent: View, Detail: View>: View {
         .frame(maxWidth: 380)
       // PaperBackground ignores the safe area, so without this the line
       // runs up behind the tabs instead of starting below them (#1682).
-      Divider().safeAreaPadding(.top)
+      HairlineDivider(axis: .vertical).safeAreaPadding(.top)
       NavigationStack { detail() }
         .frame(maxWidth: .infinity)
     }
