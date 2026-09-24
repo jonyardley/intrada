@@ -48,7 +48,9 @@ shipped, and were each reworked, the same way).
    an existing primitive are the number one source of visual drift.
 5. Typography through `IntradaFont` (`.pageTitle`, `.cardTitle`,
    `.sectionTitle`, `.fieldLabel`), spacing through `IntradaSpacing`
-   (`controlGap`, `cardCompact`, `row`, `card`), motion through `Motion.swift`.
+   (`controlGap`, `cardCompact`, `card`), SF Symbols through `IntradaIconSize`,
+   alpha through `IntradaOpacity`, shadows through `IntradaShadow`, motion
+   through `Motion.swift`.
 
 Deviation is allowed only in an explicit redesign, which is a flagged
 conversation (Claude Design first, then the plan comment) and produces updated tokens
