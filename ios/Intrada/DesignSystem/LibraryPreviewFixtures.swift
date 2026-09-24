@@ -282,7 +282,7 @@
       LibraryItemView(
         id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
         subtitle: "Bebop vocabulary, 12 keys",
-        key: "C", modality: .major, tempoMarking: nil, tempoBpm: 132,
+        key: nil, modality: .major, tempoMarking: nil, tempoBpm: 132,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
