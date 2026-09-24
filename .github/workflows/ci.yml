@@ -35,9 +35,10 @@ env:
   SELFHOSTED_XCODE: "27.0"
 
 jobs:
-  # Detects which paths changed in the PR — used to skip jobs whose inputs
-  # haven't changed. Always-true on main pushes, so every job runs and
-  # `alert-on-red-main`'s `needs` are satisfied. Runs cheaply (~5s) on every event.
+  # Detects which paths changed: against the base branch on a PR, against the
+  # commit before the push on main. The Rust jobs still run on every main push,
+  # since Codecov compares a PR with its base commit's report; the Mac gate
+  # follows `native` on both (#2113). Runs cheaply (~5s) on every event.
   changes:
     name: Path Changes
     runs-on: ubuntu-latest
@@ -66,6 +67,13 @@ jobs:
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
               - '.github/workflows/ci.yml'
+      # A filter that wrongly saw nothing would skip main's Mac gate in
+      # silence, so each run says what it saw (#2113).
+      - name: Say what the filter saw
+        env:
+          RUST: ${{ steps.filter.outputs.rust }}
+          NATIVE: ${{ steps.filter.outputs.native }}
+        run: echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE}" >> "$GITHUB_STEP_SUMMARY"
       # Drift installs clippy/rustfmt for the env's version, then cargo resolves
       # to the file's: "clippy is not installed", or a silent second download.
       # Checks every workflow's RUST_VERSION, not just this file's — so a
@@ -268,12 +276,13 @@ jobs:
     # later has to be named here before it can reach the machine. Fork pull
     # requests are not supported (#1962) and never reach it; the repo's
     # "require approval for all external contributors" setting is the second
-    # line, not the first.
+    # line, not the first. A push to main whose native paths did not change
+    # skips it too: a docs-only merge ran the full gate for nothing (#2113).
     if: >-
-      github.event_name == 'push'
+      needs.changes.outputs.native == 'true'
+      && (github.event_name == 'push'
       || (github.event_name == 'pull_request'
-      && needs.changes.outputs.native == 'true'
-      && github.event.pull_request.head.repo.full_name == github.repository)
+      && github.event.pull_request.head.repo.full_name == github.repository))
     permissions:
       contents: read
     steps:
@@ -319,6 +328,23 @@ jobs:
             echo "the iOS 26.5 simulator runtime the snapshot references pin is missing" >&2
             exit 1
           fi
+      # The same tree on the same Xcode and runtime gives the same answer, and
+      # most merges land exactly the tree their PR tested, so a tree already
+      # green here skips the three test steps below (#2113). The build stays:
+      # main's launch check reuses this tree's app. A re-run attempt always
+      # runs in full.
+      - name: Look up an earlier green run of this tree
+        id: proven
+        run: |
+          set -euo pipefail
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          toolchain="$( { xcodebuild -version; xcrun simctl list runtimes | grep "iOS 26.5 "; } | shasum -a 256 | cut -c1-16)"
+          record="$HOME/.intrada-ci/green-trees/$tree-$toolchain"
+          echo "record=$record" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_RUN_ATTEMPT" = "1" ] && [ -f "$record" ]; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "Tree $tree already passed the unit and UI tests in $(cat "$record"), so they are skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
       # Through GITHUB_ENV because the `env` context is illegal in a job-level
       # `env:`, where it resolves to empty instead of failing.
       - name: Pin the Rust toolchain for this job
@@ -343,6 +369,7 @@ jobs:
       # shutdown at job start leaves this one off, so without the boot the
       # step is a silent no-op.
       - name: Clear the app's saved state from the test device
+        if: steps.proven.outputs.hit != 'true'
         run: |
           udid="$(just _ios-test-sim-udid)"
           if [ -n "$udid" ]; then
@@ -350,6 +377,7 @@ jobs:
             xcrun simctl uninstall "$udid" com.intrada.native || true
           fi
       - name: Test (unit + snapshot)
+        if: steps.proven.outputs.hit != 'true'
         run: just _ios-test-without-building -only-testing:IntradaTests 0
       # A skip, not an only, so a test target added later joins this step
       # instead of running nowhere (#1456). The third argument is the
@@ -357,7 +385,15 @@ jobs:
       # the field with delete keys instead of waiting on a Select All menu
       # (#1642).
       - name: Test (UI)
+        if: steps.proven.outputs.hit != 'true'
         run: just _ios-test-without-building -skip-testing:IntradaTests 1 1
+      - name: Record this tree as green
+        if: steps.proven.outputs.hit != 'true'
+        env:
+          RECORD: ${{ steps.proven.outputs.record }}
+        run: |
+          mkdir -p "$(dirname "$RECORD")"
+          echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$RECORD"
       - name: Upload snapshot failures
         if: failure()
         uses: actions/upload-artifact@v7
@@ -408,7 +444,7 @@ jobs:
     name: Native iOS (build + test)
     runs-on: ubuntu-latest
     needs: [changes, native-ios-selfhosted]
-    if: always() && (github.event_name == 'push' || needs.changes.outputs.native == 'true')
+    if: always() && needs.changes.outputs.native == 'true'
     steps:
       - name: Check the self-hosted gate
         run: |
