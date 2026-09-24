@@ -219,7 +219,8 @@ enum IntradaGlyph {
 }
 
 /// SF Symbol sizes. Apply through `.iconSize(_:weight:)`, which scales the
-/// glyph with Dynamic Type beside the text it sits with (#1459).
+/// glyph with Dynamic Type beside the text it sits with (#1459), up to
+/// `maxPoints` so it still fits the fixed circle or button it sits in.
 enum IntradaIconSize {
   case badge, caption, inline, control, large, transport, hero
 
@@ -232,6 +233,18 @@ enum IntradaIconSize {
     case .large: 28
     case .transport: 32
     case .hero: 38
+    }
+  }
+
+  var maxPoints: CGFloat {
+    switch self {
+    case .badge: 13
+    case .caption: 16
+    case .inline: 18
+    case .control: 26
+    case .large: 36
+    case .transport: 40
+    case .hero: 56
     }
   }
 
