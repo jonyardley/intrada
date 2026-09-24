@@ -30,9 +30,9 @@ one run can be compared with the next.*
    A synthesis writes the report. A follow-up agent re-checks the last audit's
    issues: fixed, still open, or back again.
 3. **Walk**: the design group reads the committed snapshot images and a seeded
-   and an empty `just ios-run` screenshot of each tab. Then Jon spends 30
-   minutes on the device with the checklist below, and his findings are added
-   to the report before its PR merges.
+   and an empty screenshot of each tab, starting from `just ios-run`. Then Jon
+   spends 30 minutes on the device with the checklist below, and his findings
+   are added to the report before its PR merges.
 
 **The ratchet.** Any finding a script could catch is filed as a gate for
 `just check` (and CI), not as something to find again next time. Anything
@@ -109,7 +109,9 @@ Sweep: `tests.*`.
 
 1. Does each screen have its empty, loading and error states, and do they say
    what to do next?
-2. Can each of the ten journey steps be done without a dead end?
+2. Can the musician get through the walk checklist's journey, and the
+   current direction in `docs/roadmap.md`, without a dead end? (The ten steps
+   in `docs/journeys.md` are no longer the yardstick.)
 3. Does anything on screen contradict `docs/design-principles.md`?
 
 **Consistency.** Does the app look and read like one app?
@@ -196,8 +198,9 @@ bands as September:
 
 ## Running a full audit
 
-1. Make a worktree at a fixed commit (`just worktree-new audit-YYYY-MM`) and
-   run `just audit-sweep` there.
+1. Make a worktree at a fixed commit (`just worktree-new audit-YYYY-MM`), run
+   `just audit-sweep` there and commit its file, so the mutation stage starts
+   from a clean tree.
 2. Tell Jon the cost and wait for his go.
 3. Run the saved workflow (below).
 4. Read the report. Make sure every finding has been verified, and every
@@ -256,6 +259,7 @@ Jon, about 30 minutes, on a TestFlight build of the audited commit:
 - **Findings, by cost:** by band, each with the question it answers, how it was
   verified, the cost, the fix, the tier, where it is, and its issue.
 - **Gates to add:** the ratchet's list.
+- **Spec status:** the drift group's table of every spec against the code.
 - **Build order**, **Decisions for Jon**, **Dropped**, **Not covered**, and
   **The walk**.
 

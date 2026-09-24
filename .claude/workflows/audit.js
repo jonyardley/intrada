@@ -24,7 +24,10 @@ const a = args || {}
 for (const key of ['worktree', 'commit', 'date', 'sweep']) {
   if (!a[key]) throw new Error(`audit: args.${key} is required (docs/audit.md, Running a full audit)`)
 }
-const groups = (a.groups || Object.keys(GROUPS)).filter(g => GROUPS[g])
+const unknown = (a.groups || []).filter(g => !GROUPS[g])
+if (unknown.length) throw new Error(`audit: unknown groups ${unknown.join(', ')}; the groups are ${Object.keys(GROUPS).join(', ')}`)
+if (!a.previousEpic !== !a.previousReport) throw new Error('audit: previousEpic and previousReport go together')
+const groups = a.groups || Object.keys(GROUPS)
 const wt = a.worktree
 
 const GROUND = `You are one reviewer in intrada's whole-app audit, run against commit ${a.commit} in the worktree ${wt}. Read files by absolute path under that worktree, and prefix every shell command with \`cd ${wt} && \`. Change no file there. The rubric is ${wt}/docs/audit.md: read it first, in full. The sweep for this run is ${wt}/${a.sweep}.`
@@ -173,7 +176,7 @@ const reviewThunks = groups.map(g => () =>
   agent(
     `${GROUND}
 
-Your group is "${g}", the lanes ${GROUPS[g].join(', ')}. Answer every question those lanes ask, and nothing outside them. Start from the sweep metrics the rubric names for your lanes, then read the code. A finding needs file:line evidence you read yourself. Rate each lane by the rubric's Ratings section. Name in notCovered everything you did not read or could not run.${g === 'tests' ? ' Propose mutations as the rubric asks, with two controls; do not apply them, a later stage runs them.' : ''}${g === 'screens' ? ` Read the snapshot images under ${wt}/ios/IntradaTests/__Snapshots__. Take a seeded and an empty screenshot with \`just ios-run\` and \`SEED=0 just ios-run\`; if the simulator is unavailable, say so in notCovered.` : ''}`,
+Your group is "${g}", the lanes ${GROUPS[g].join(', ')}. Answer every question those lanes ask, and nothing outside them. Start from the sweep metrics the rubric names for your lanes, then read the code. A finding needs file:line evidence you read yourself. Rate each lane by the rubric's Ratings section. Name in notCovered everything you did not read or could not run.${g === 'tests' ? ' Propose mutations as the rubric asks, with two controls; do not apply them, a later stage runs them.' : ''}${g === 'screens' ? ` Read the snapshot images under ${wt}/ios/IntradaTests/__Snapshots__. Take a seeded and an empty screenshot of each tab, starting from \`just ios-run\` and \`SEED=0 just ios-run\`; if the simulator is unavailable, say so in notCovered.` : ''}`,
     { label: `review:${g}`, phase: 'Review', schema: LANE_SCHEMA, effort: HIGH_EFFORT.includes(g) ? 'high' : undefined },
   ).then(r => (r ? { group: g, ...r } : null)),
 )
@@ -199,13 +202,15 @@ const mutations = proposed.length
   ? await agent(
       `${GROUND}
 
-The review has finished, so you may now edit files in the worktree, one mutation at a time. For each mutation below: delete exactly the named lines, run the suite (core: \`cargo test -p intrada-core\`; ios: \`just ios-test\`), record red or green and the failing test names, then restore the file with \`git checkout -- <file>\` and confirm \`git status --porcelain\` is empty before the next. Run every core mutation; run at most three ios ones and mark the rest "not run". Finish by confirming the tree is clean.
+The review has finished, so you may now edit files in the worktree, one mutation at a time. First record \`git status --porcelain\` as the baseline; it may list the sweep file. For each mutation below: delete exactly the named lines, run the suite (core: \`cargo test -p intrada-core\`; ios: \`just ios-test\`), record red or green and the failing test names, then restore the file with \`git checkout -- <file>\` and confirm \`git status --porcelain\` matches the baseline before the next. Never delete or restore any other file. Run every core mutation; run at most three ios ones and mark the rest "not run". Finish by confirming the status matches the baseline; treeClean is that answer.
 
 ${JSON.stringify(proposed, null, 2)}`,
       { label: 'mutate', phase: 'Mutate', schema: MUTATION_SCHEMA },
     )
   : { rows: [], treeClean: true }
-if (mutations && !mutations.treeClean) log('The worktree is not clean after the mutations: restore it before trusting anything else.')
+if (!mutations || !mutations.treeClean) {
+  throw new Error(`audit: the worktree may still hold a mutation; restore ${wt} to its baseline and resume, or the verifiers read mutated code`)
+}
 
 phase('Verify')
 const verified = await parallel(
@@ -251,4 +256,4 @@ ${JSON.stringify(judged, null, 2)}`,
   { label: 'synthesise', phase: 'Synthesise', schema: SYNTHESIS_SCHEMA },
 )
 
-return { counts, missing, mutationsClean: mutations ? mutations.treeClean : false, synthesis }
+return { counts, missing, synthesis }
