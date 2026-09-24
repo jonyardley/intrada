@@ -28,7 +28,7 @@ Swift bindings). `ios/` is the SwiftUI app (iOS 17+, GRDB on-device). Rust 2021,
 ## Commands
 
 ```bash
-just check            # CI's Rust and hygiene jobs, bar MSRV and coverage (CI-only)
+just check            # CI's Rust and hygiene jobs, bar MSRV and coverage
 just ios              # regen bindings (if core changed) + open Xcode
 just ios-run          # build + launch on simulator + screenshot (seeded data)
 just ios-test         # unit + snapshot (fast tier)
@@ -40,8 +40,8 @@ just ios-test-full    # adds XCUITests (the merge gate; mirrors CI)
   the concurrency guard (#1536, #1537). A passing run prints its own counts; silence is
   never the evidence.
 - **Run `just check` before pushing**, plus `just ios-fmt-check` for `ios/` (fix with
-  `just ios-fmt`); local green means CI green bar MSRV and the coverage upload, so keep the justfile and
-  `ci.yml` in step.
+  `just ios-fmt`); local green means CI green bar MSRV and coverage (`just msrv`,
+  `just coverage`), so keep the justfile and `ci.yml` in step.
   Read every compile error before fixing the first: `cargo check --all-targets`, and the
   full `just ios-test` error list.
 - **The simulator is machine-global.** `just ios-test`/`ios-test-full` wait on a

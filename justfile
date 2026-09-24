@@ -52,7 +52,8 @@ coverage:
 # release name contract (what CI's Security & hygiene job runs), plus the
 # self-test proving pr-visuals.sh still classifies a modified, an added and a
 # deleted snapshot reference correctly. The three tools come from mise.toml
-# (`mise install`) or brew; the scripts and self-tests need nothing installed.
+# (`mise install`) or brew, cargo-deny and gitleaks from cargo or brew; the
+# scripts and self-tests need nothing installed.
 # `actionlint` falls back to mise when it is absent from PATH: bare needs
 # mise's shims, and a plain shell without `mise activate` would fail the whole
 # gate with 127, which reads as broken rather than as a tool that is not
@@ -114,8 +115,7 @@ hygiene:
     fi
     exit "$fail"
 
-# Advisories, licences, bans and sources, as CI's cargo-deny step runs it.
-# Offline, the fetch fails; the retry reads the cached advisory database.
+# Offline, the advisory fetch fails; the retry reads the cached database.
 [doc("Check dependencies with cargo-deny, as CI does; skips when it is not installed")]
 deny:
     #!/usr/bin/env bash
@@ -125,7 +125,7 @@ deny:
         exit 0
     fi
     cargo deny --log-level warn --all-features check \
-        || cargo deny --log-level warn --all-features check --disable-fetch
+        || cargo deny --offline --log-level warn --all-features check
 
 # Scans only the commits this branch adds, as CI's Gitleaks step does on a PR;
 # a scan of the whole history reports historical findings CI never sees.
@@ -135,6 +135,10 @@ gitleaks:
     set -euo pipefail
     if ! command -v gitleaks >/dev/null 2>&1; then
         echo "skipped: gitleaks is not installed (brew install gitleaks), CI still runs it"
+        exit 0
+    fi
+    if ! git rev-parse -q --verify origin/main >/dev/null; then
+        echo "skipped: no origin/main ref to scan from, CI still runs Gitleaks"
         exit 0
     fi
     gitleaks git --no-banner --redact --log-level warn --log-opts="--no-merges --first-parent origin/main..HEAD"

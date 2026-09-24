@@ -237,8 +237,8 @@ fi
 # Comment posted before label, so a failure between the two never leaves the
 # issue labelled with nothing to identify its owner.
 if [ -f "$CALLS/issue_comment.log" ] && [ -f "$CALLS/issue_edit.log" ]; then
-  comment_time="$(stat -f %m "$CALLS/issue_comment.log" 2>/dev/null || stat -c %Y "$CALLS/issue_comment.log")"
-  edit_time="$(stat -f %m "$CALLS/issue_edit.log" 2>/dev/null || stat -c %Y "$CALLS/issue_edit.log")"
+  comment_time="$(stat -c %Y "$CALLS/issue_comment.log" 2>/dev/null || stat -f %m "$CALLS/issue_comment.log")"
+  edit_time="$(stat -c %Y "$CALLS/issue_edit.log" 2>/dev/null || stat -f %m "$CALLS/issue_edit.log")"
   if [ "$comment_time" -le "$edit_time" ]; then
     pass=$((pass + 1))
   else

@@ -29,7 +29,7 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 now="$(date +%s)"
 if [ -f "$cache_file" ]; then
-  mtime="$(stat -f %m "$cache_file" 2>/dev/null || stat -c %Y "$cache_file" 2>/dev/null || echo 0)"
+  mtime="$(stat -c %Y "$cache_file" 2>/dev/null || stat -f %m "$cache_file" 2>/dev/null || echo 0)"
   if [ $((now - mtime)) -lt "$cache_ttl_seconds" ]; then
     cat "$cache_file"
     exit 0

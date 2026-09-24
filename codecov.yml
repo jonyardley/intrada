@@ -1,7 +1,6 @@
 # Codecov configuration — informational, not blocking.
 # Coverage data helps spot gaps; it doesn't gate merges.
-# The patch target measures the Rust core only: ios/ is out of scope (see
-# ignore below), so a PR's Coverage line says nothing about its Swift half.
+# With ios/ ignored below, a PR's Coverage line says nothing about its Swift half.
 
 coverage:
   status:
