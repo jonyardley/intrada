@@ -58,20 +58,7 @@ struct RootView: View {
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
-      VStack(spacing: 0) {
-        if store.halted {
-          GlobalBanner(message: Store.haltedMessage)
-        }
-        if store.degraded {
-          GlobalBanner(message: "Storage unavailable · changes this session won't be saved.")
-        }
-        if let error = store.viewModel?.error {
-          GlobalBanner(message: error) { store.send(.clearError) }
-        }
-        if let notice = store.viewModel?.notice {
-          GlobalBanner(message: notice, tone: .notice) { store.send(.clearNotice) }
-        }
-      }
+      AppBannerStack()
     }
     .task {
       store.reportUtcOffset()

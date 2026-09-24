@@ -16,20 +16,10 @@ struct PlayerHost: View {
       }
     }
     // The player is a fullScreenCover, so RootView's banner is occluded while
-    // it's up. Re-surface viewModel.error here — otherwise an error raised mid
-    // session (a swallowed score tap, a failed save) is a silent no-op (#846).
+    // it's up. Re-surface the banners here, or an error raised mid session is a
+    // silent no-op (#846) and a storage failure vanishes while practising (#2036).
     .safeAreaInset(edge: .top, spacing: 0) {
-      VStack(spacing: 0) {
-        if store.halted {
-          GlobalBanner(message: Store.haltedMessage)
-        }
-        if let error = store.viewModel?.error {
-          GlobalBanner(message: error) { store.send(.clearError) }
-        }
-        if let notice = store.viewModel?.notice {
-          GlobalBanner(message: notice, tone: .notice) { store.send(.clearNotice) }
-        }
-      }
+      AppBannerStack()
     }
   }
 }
