@@ -10,6 +10,8 @@ struct IntradaApp: App {
   @State private var store = IntradaApp.makeStore()
 
   private static func makeStore() -> Store {
+    // Sentry starts before the database opens, or a store-open failure is dropped (#2058).
+    startSentry()
     let opened = openOnDiskStore()
     // opened == nil → on-disk failed, Store falls back to in-memory: degraded.
     return Store(store: opened, degraded: opened == nil)
@@ -24,13 +26,9 @@ struct IntradaApp: App {
     }
   }
 
-  init() {
-    IntradaFonts.register()
+  private static func startSentry() { _ = sentryStarted }
 
-    if UITestFlags.animationsDisabled {
-      UIView.setAnimationsEnabled(false)
-    }
-
+  private static let sentryStarted: Void = {
     // `hasPrefix` gates out empty (CI) and an unexpanded `${…}` literal alike.
     let runningUnderXCTest =
       ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -53,6 +51,14 @@ struct IntradaApp: App {
         options.enablePerformanceV2 = true
         options.enableAppHangTrackingV2 = true
       }
+    }
+  }()
+
+  init() {
+    IntradaFonts.register()
+
+    if UITestFlags.animationsDisabled {
+      UIView.setAnimationsEnabled(false)
     }
   }
 

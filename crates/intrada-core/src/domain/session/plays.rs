@@ -184,6 +184,15 @@ pub(super) fn persist_active(active: &ActiveSession) -> Command<Effect, Event> {
     ])
 }
 
+/// A reflection written before the summary lives only in the running practice
+/// until the next save, so an app killed in between loses it (#2061).
+pub(super) fn persist_if_active(model: &Model) -> Command<Effect, Event> {
+    match &model.session_status {
+        SessionStatus::Active(active) => persist_active(active),
+        _ => crux_core::render::render(),
+    }
+}
+
 /// Find an entry by id in Active *or* Summary phase, so the mid-session
 /// reflection sheet can write per-entry data before the summary screen.
 pub(super) fn entry_for_update_mut<'a>(

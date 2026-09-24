@@ -35,7 +35,7 @@ pub(super) fn update_entry_score(
         play.score = score;
     }
     model.last_error = None;
-    crux_core::render::render()
+    persist_if_active(model)
 }
 
 pub(super) fn update_entry_tempo(
@@ -90,7 +90,7 @@ pub(super) fn update_entry_tempo(
         }
     }
     model.last_error = None;
-    crux_core::render::render()
+    persist_if_active(model)
 }
 
 pub(super) fn update_entry_notes(
@@ -110,7 +110,7 @@ pub(super) fn update_entry_notes(
 
     entry.notes = notes;
     model.last_error = None;
-    crux_core::render::render()
+    persist_if_active(model)
 }
 
 pub(super) fn update_session_notes(

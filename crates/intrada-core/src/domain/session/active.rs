@@ -24,9 +24,9 @@ pub(super) fn prepare_reflection(
         .map_or(TempoStamp::NothingToKeep, |entry| {
             close_open_play(entry, now, Some(&reading))
         });
+    let persist = persist_active(active);
     report_stamp(model, stamp);
-
-    crux_core::render::render()
+    persist
 }
 
 pub(super) fn next_item(
@@ -215,16 +215,29 @@ pub(super) fn recover_session(
     // Re-anchor the running item's wall-clock timer: the blob's anchor
     // is from before the kill, so resuming hours later would otherwise
     // show that gap as elapsed practice (#962).
+    // Backdated by what the plays already recorded, or a practice saved at the
+    // item-complete sheet resumes with its time wiped (#2061).
     let mut session = session;
-    session.current_item_started_at = now;
+    // A corrupt count falls back to the resume instant, or every Resume tap
+    // would panic on a blob that outlives the crash.
+    let recorded = |secs: u64| {
+        i64::try_from(secs)
+            .ok()
+            .and_then(chrono::Duration::try_seconds)
+            .and_then(|d| now.checked_sub_signed(d))
+            .unwrap_or(now)
+    };
+    let entry = session.entries.get_mut(session.current_index);
+    let item_secs = entry.as_ref().map_or(0, |e| {
+        e.plays
+            .iter()
+            .fold(0u64, |sum, p| sum.saturating_add(p.seconds))
+    });
+    session.current_item_started_at = recorded(item_secs);
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
-    if let Some(play) = session
-        .entries
-        .get_mut(session.current_index)
-        .and_then(SetlistEntry::open_play_mut)
-    {
-        play.started_at = now;
+    if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
+        play.started_at = recorded(play.seconds);
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;

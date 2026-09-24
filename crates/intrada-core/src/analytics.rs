@@ -433,6 +433,9 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
 
     for session in sessions {
         let session_date = clock.session_day(session);
+        if session_date > clock.today {
+            continue;
+        }
         for entry in &session.entries {
             if let Some(score) = entry.score_summary() {
                 if session_date.iso_week() == today_iso_week {
@@ -1806,7 +1809,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "#2096"]
     fn score_change_ignores_a_practice_dated_after_this_week() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap();
@@ -1836,6 +1838,39 @@ mod tests {
         let changes = compute_score_changes(&sessions, clock(today));
         assert_eq!(changes.len(), 1);
         assert_eq!(changes[0].previous_score, Some(2));
+        assert_eq!(changes[0].delta, 3);
+    }
+
+    #[test]
+    fn score_change_ignores_a_practice_dated_later_this_week() {
+        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
+        let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap();
+        let this_fri = NaiveDate::from_ymd_opt(2026, 2, 20).unwrap();
+
+        let sessions = vec![
+            make_session(
+                "s-last-week",
+                last_wed,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(2))],
+            ),
+            make_session(
+                "s-today",
+                today,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(5))],
+            ),
+            make_session(
+                "s-friday",
+                this_fri,
+                600,
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(9))],
+            ),
+        ];
+
+        let changes = compute_score_changes(&sessions, clock(today));
+        assert_eq!(changes.len(), 1);
+        assert_eq!(changes[0].current_score, 5);
         assert_eq!(changes[0].delta, 3);
     }
 
