@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-24",
+  "commit": "4c4d4362",
+  "metrics": {
+    "simplicity.rust_core_lines": 34041,
+    "simplicity.swift_app_lines": 18789,
+    "simplicity.rust_largest_file_lines": 4727,
+    "simplicity.swift_largest_file_lines": 972,
+    "simplicity.allow_dead_code": 0,
+    "simplicity.todo_without_issue": 0,
+    "principles.rust_unwrap_outside_tests": 0,
+    "principles.swift_force_try_or_cast": 0,
+    "consistency.swift_raw_colours": 0,
+    "consistency.swift_numeric_spacing": 200,
+    "accessibility.swift_fixed_font_sizes": 21,
+    "accessibility.swift_accessibility_modifiers": 284,
+    "accessibility.swift_buttons": 100,
+    "tests.rust_tests": 942,
+    "tests.swift_tests": 540,
+    "tests.snapshot_images": 145,
+    "data.grdb_migrations": 17,
+    "data.blob_version": 4,
+    "security.privacy_manifests": 0,
+    "security.file_protection_refs": 0,
+    "security.userdefaults_refs": 4,
+    "security.network_hosts": 0,
+    "security.gitleaks_history": 16,
+    "dependencies.cargo_lock_packages": 196,
+    "dependencies.cargo_deny_advisories": 0,
+    "drift.dead_paths": 0,
+    "drift.specs": 37,
+    "activity.commits_since_last": 312
+  },
+  "lists": {
+    "hotspots_rust": [
+      "4727 crates/intrada-core/src/app.rs",
+      "2293 crates/intrada-core/src/analytics.rs",
+      "1942 crates/intrada-core/src/recognition.rs",
+      "1861 crates/intrada-core/src/validation.rs",
+      "1858 crates/intrada-core/src/view/session.rs"
+    ],
+    "hotspots_swift": [
+      "972 ios/Intrada/Core/LibraryStore.swift",
+      "949 ios/Intrada/Views/Screens/LibraryDetailScreen.swift",
+      "773 ios/Intrada/Views/Screens/SessionBuilderScreen.swift",
+      "561 ios/Intrada/DesignSystem/SessionPreviewFixtures.swift",
+      "492 ios/Intrada/Views/Screens/FocusPlayerScreen.swift"
+    ],
+    "churn": [
+      "44 crates/intrada-core/src/app.rs",
+      "42 ios/Intrada/DesignSystem/PreviewSupport.swift",
+      "40 crates/intrada-core/src/model.rs",
+      "28 ios/Intrada/Views/Screens/LibraryDetailScreen.swift",
+      "27 ios/Intrada/Views/Screens/FocusPlayerScreen.swift"
+    ],
+    "network_hosts": [],
+    "dead_paths": []
+  }
+}

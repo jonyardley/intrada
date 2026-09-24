@@ -570,6 +570,11 @@ jobs:
       # ── cmux gate signal ─────────────────────────────────────────────────
       - name: A gate's cmux signal never changes its verdict
         run: bash scripts/tests/cmux-gate-test.sh
+      # ── audit sweep ──────────────────────────────────────────────────────
+      # A probe that stops matching reads as an improvement in the next audit
+      # rather than as a broken probe (#2092).
+      - name: The audit sweep still counts what it claims to
+        run: bash scripts/tests/audit-sweep-test.sh
       # ── just status ──────────────────────────────────────────────────────
       # The release block answers whether a cut is due (#1639), and both of its
       # GitHub reads can fail in ways a reader cannot see: an outage that

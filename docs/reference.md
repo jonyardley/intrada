@@ -14,6 +14,7 @@ just test                  # nextest, same as CI's `test` job
 just lint                  # clippy -D warnings, same targets as CI's `clippy` job
 just hygiene               # typos, cargo-shear, actionlint, links, release name, self-tests
 just pr-visuals            # before/after markdown for snapshot references this branch changed
+just audit-sweep           # the audit's counts, compared with the last sweep (docs/audit.md)
 just ios-fmt               # format Swift sources in place (swift format)
 just ios-fmt-check         # Swift formatting gate (CI runs this too)
 just ios                   # regen bindings (if core changed) + open Xcode
