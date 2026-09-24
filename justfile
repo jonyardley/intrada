@@ -61,7 +61,7 @@ coverage:
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
 # A check whose tool is absent prints a line starting "skipped:" and passes;
 # those lines are echoed on a green run so a skip never reads as a pass.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests and the release-name and faint-ink checks")]
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests and the release-name, app-version and faint-ink checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -73,6 +73,7 @@ hygiene:
         "actionlint:$actionlint_cmd"
         "check-links:bash scripts/check-links.sh"
         "check-release-name:bash scripts/check-release-name.sh"
+        "check-app-version:bash scripts/check-app-version.sh"
         "check-faint-ink:bash scripts/check-faint-ink.sh"
         "comment-density:bash scripts/check-comment-density.sh"
         "dash-check:bash scripts/check-dashes.sh"
