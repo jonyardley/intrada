@@ -42,7 +42,7 @@ struct LibraryDetailScreen: View {
     .sheet(isPresented: $showingPicker) {
       LinkedItemPickerSheet(
         kind: .exercise,
-        available: allExercises,
+        library: library,
         linkedIds: item.linkedExercises.map(\.id),
         onApply: applyLinkChanges
       )
@@ -51,7 +51,7 @@ struct LibraryDetailScreen: View {
     .sheet(isPresented: $showingPiecePicker) {
       LinkedItemPickerSheet(
         kind: .piece,
-        available: allPieces,
+        library: library,
         linkedIds: linkedPieceIds,
         onApply: { ids, _ in applyPieceLinkChanges(ids) }
       )
@@ -418,16 +418,12 @@ struct LibraryDetailScreen: View {
     HStack(alignment: .firstTextBaseline) {
       Eyebrow(item.ladderIsKeys ? "Keys" : "Variations")
       if !item.variants.isEmpty {
-        Text("\(solidVariationCount) of \(item.variants.count) solid")
+        Text("\(item.solidVariationCount) of \(item.variants.count) solid")
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer()
     }
-  }
-
-  private var solidVariationCount: Int {
-    item.variants.filter(\.isSolid).count
   }
 
   private var variationsEmptyState: some View {
@@ -487,13 +483,7 @@ struct LibraryDetailScreen: View {
 
   // ── Actions ──
 
-  private var allExercises: [LibraryItemView] {
-    (store.viewModel?.items ?? []).filter { $0.itemType == .exercise }
-  }
-
-  private var allPieces: [LibraryItemView] {
-    (store.viewModel?.items ?? []).filter { $0.itemType == .piece }
-  }
+  private var library: [LibraryItemView] { store.viewModel?.items ?? [] }
 
   /// The pieces that declare the link, as opposed to the ones this exercise has
   /// merely been practised alongside — only a declared link can be unticked.

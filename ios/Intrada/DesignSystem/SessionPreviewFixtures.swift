@@ -453,7 +453,10 @@
             "e3", "Gymnopédie No. 1", .piece, "11m 30s", 690, .completed, score: 5,
             notes: "Pedal changes cleaner than last week."),
           summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", 330, .completed, score: 3),
-        ], sessionScore: 8, completedCount: 4, topMover: nil)
+        ], sessionScore: 8, completedCount: 4,
+        topMover: ScoreChange(
+          itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3, currentScore: 4,
+          delta: 1, isNew: false))
     }
 
     static var previewSummaryEndedEarly: SummaryView {

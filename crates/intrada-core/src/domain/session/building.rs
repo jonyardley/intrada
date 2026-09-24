@@ -62,28 +62,6 @@ pub(super) fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
     units
 }
 
-/// True when every `group_id` occupies a single contiguous run: the block
-/// invariant a reorder must never break.
-pub(super) fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
-    let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    let mut current: Option<&str> = None;
-    for entry in entries {
-        let g = entry.group_id.as_deref();
-        if g != current {
-            if let Some(prev) = current {
-                closed.insert(prev);
-            }
-            if let Some(g) = g {
-                if closed.contains(g) {
-                    return false;
-                }
-            }
-            current = g;
-        }
-    }
-    true
-}
-
 /// Clear the `group_id` of any block left without its anchor piece. A block
 /// only means "this piece's warm-up", so when the piece goes the related
 /// exercises become standalone (§7.4 dissolve).
@@ -372,73 +350,6 @@ pub(super) fn remove_from_setlist(model: &mut Model, entry_id: String) -> Comman
     }
 
     dissolve_pieceless_groups(&mut building.entries);
-    reindex_entries(&mut building.entries);
-    model.last_error = None;
-    crux_core::render::render()
-}
-
-pub(super) fn reorder_setlist(
-    model: &mut Model,
-    entry_id: String,
-    new_position: usize,
-) -> Command<Effect, Event> {
-    let SessionStatus::Building(ref mut building) = model.session_status else {
-        model.raise_error("Not in building state".to_string());
-        return crux_core::render::render();
-    };
-
-    let Some(current_index) = building.entries.iter().position(|e| e.id == entry_id) else {
-        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
-        return crux_core::render::render();
-    };
-
-    if new_position >= building.entries.len() {
-        let msg = format!(
-            "Invalid position: {new_position} (max: {})",
-            building.entries.len().saturating_sub(1)
-        );
-        model.raise_error(msg);
-        return crux_core::render::render();
-    }
-
-    let entry = building.entries.remove(current_index);
-    building.entries.insert(new_position, entry);
-    if !groups_contiguous(&building.entries) {
-        // Revert: the move would split a block.
-        let entry = building.entries.remove(new_position);
-        building.entries.insert(current_index, entry);
-        model.raise_error("Can't move an item out of its block".to_string());
-        return crux_core::render::render();
-    }
-    reindex_entries(&mut building.entries);
-    model.last_error = None;
-    crux_core::render::render()
-}
-
-pub(super) fn reorder_block(
-    model: &mut Model,
-    group_id: String,
-    new_position: usize,
-) -> Command<Effect, Event> {
-    let SessionStatus::Building(ref mut building) = model.session_status else {
-        model.raise_error("Not in building state".to_string());
-        return crux_core::render::render();
-    };
-
-    let mut units = into_units(std::mem::take(&mut building.entries));
-    let Some(current) = units
-        .iter()
-        .position(|u| u.first().and_then(|e| e.group_id.as_deref()) == Some(group_id.as_str()))
-    else {
-        building.entries = units.into_iter().flatten().collect();
-        model.raise_error(format!("Block '{group_id}' not found in setlist"));
-        return crux_core::render::render();
-    };
-
-    let target = new_position.min(units.len().saturating_sub(1));
-    let unit = units.remove(current);
-    units.insert(target, unit);
-    building.entries = units.into_iter().flatten().collect();
     reindex_entries(&mut building.entries);
     model.last_error = None;
     crux_core::render::render()

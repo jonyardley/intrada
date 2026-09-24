@@ -6,12 +6,8 @@ import SwiftUI
 /// core forms the block); the shell only sends add/remove.
 struct AddToSessionSheet: View {
   @Environment(Store.self) private var store
-  @State private var starFilter = false
 
   private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
-  private var displayedItems: [LibraryItemView] {
-    starFilter ? visibleItems.filter(\.priority) : visibleItems
-  }
   private var recentlyPractised: [LibraryItemView] {
     store.viewModel?.recentlyPractisedItems ?? []
   }
@@ -23,7 +19,7 @@ struct AddToSessionSheet: View {
   var body: some View {
     BottomSheet(title: "Add to session", detents: [.large]) {
       VStack(spacing: 0) {
-        BrowseControlsBar(elevated: true, starFilter: $starFilter)
+        BrowseControlsBar(elevated: true, showsStarFilter: true)
         library
       }
     }
@@ -31,7 +27,7 @@ struct AddToSessionSheet: View {
   }
 
   @ViewBuilder private var library: some View {
-    let rows = displayedItems
+    let rows = visibleItems
     if rows.isEmpty {
       PlaceholderContent(systemImage: emptyIcon, message: emptyMessage)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -53,10 +49,7 @@ struct AddToSessionSheet: View {
     }
   }
 
-  private var isFiltered: Bool {
-    let query = store.viewModel?.activeQuery
-    return isSearching || starFilter || query?.itemType != nil || !(query?.tags.isEmpty ?? true)
-  }
+  private var isFiltered: Bool { store.viewModel?.activeQuery != nil }
 
   private var showsRecentlyPractised: Bool {
     !isFiltered && !recentlyPractised.isEmpty
@@ -93,17 +86,23 @@ struct AddToSessionSheet: View {
 
   private var isSearching: Bool { !(store.viewModel?.activeQuery?.text ?? "").isEmpty }
 
+  private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
+
+  private var hasNoPriorities: Bool {
+    priorityOnly && !(store.viewModel?.items.isEmpty ?? true)
+  }
+
   private var emptyIcon: String {
-    if starFilter { return "star" }
-    return isSearching ? "magnifyingglass" : "books.vertical"
+    if isSearching { return "magnifyingglass" }
+    return hasNoPriorities ? "star" : "books.vertical"
   }
 
   private var emptyMessage: String {
-    if starFilter && !visibleItems.isEmpty {
-      return "No priorities yet. Swipe a row to add it to priorities."
-    }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
+    }
+    if hasNoPriorities {
+      return "No priorities yet. Swipe a row to add it to priorities."
     }
     return "The library is empty · add pieces and exercises first."
   }

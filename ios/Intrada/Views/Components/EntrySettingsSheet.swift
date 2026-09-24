@@ -17,10 +17,9 @@ struct EntrySettingsSheet: View {
   @State private var plannedMinutes: Int
   @State private var variantId: String?
 
-  // Looked up rather than threaded in, since the sheet only ever holds the
-  // flat entry — mirrors the same lookup in FocusPlayerScreen.
-  private var variants: [VariantView] {
-    store.viewModel?.items.first(where: { $0.id == entry.itemId })?.variants ?? []
+  private var variants: [PickerVariationView] {
+    store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }?.variations
+      ?? []
   }
 
   var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }

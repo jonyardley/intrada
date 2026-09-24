@@ -69,10 +69,12 @@
       let visible: [LibraryItemView]
       if let visibleIds {
         visible = items.filter { visibleIds.contains($0.id) }
-      } else if let kind = activeQuery?.itemType {
-        visible = items.filter { $0.itemType == kind }
       } else {
-        visible = items
+        let kind = activeQuery?.itemType
+        let priorityOnly = activeQuery?.priorityOnly ?? false
+        visible = items.filter { item in
+          (kind.map { item.itemType == $0 } ?? true) && (!priorityOnly || item.priority)
+        }
       }
       viewModel.items = items
       viewModel.visibleIds = visible.map(\.id)
@@ -80,7 +82,9 @@
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       // Derived from the whole library, never `visible`, so a fixture with a
       // filter on still reports what the core would report (#981).
-      viewModel.hasPriorities = items.contains { $0.priority }
+      viewModel.showsPriorities =
+        items.contains { $0.priority } && buildingSetlist == nil && activeSession == nil
+        && summary == nil
       viewModel.sessions = sessions
       if let practiceWeeks { viewModel.practiceWeeks = practiceWeeks }
       viewModel.buildingSetlist = buildingSetlist
@@ -298,6 +302,31 @@
       return Store(
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: block + [.previewStandaloneExercise],
+            itemCount: 4,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
+                durationDisplay: "12 min", entries: block),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewStandaloneExercise]),
+            ],
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
+    }
+
+    /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
+    /// sheet's own scope has narrowed the query to exercises (#1999).
+    static var previewBuildingGroupedRelatedSheet: Store {
+      let block: [SetlistEntryView] = [
+        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
+      ]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(
+            text: nil, itemType: .exercise, key: nil, tags: [], priorityOnly: false),
           buildingSetlist: BuildingSetlistView(
             entries: block + [.previewStandaloneExercise],
             itemCount: 4,

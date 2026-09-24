@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -9,16 +10,16 @@ import SwiftUI
 /// One component, both directions (#1363): `kind` carries the copy and the
 /// type colour.
 ///
-/// The filter bar (star / sort / tag / search) drives *shell-local* state over
-/// the passed-in `available` list — the picker curates its own subset rather
+/// The filter bar (star / sort / tag / search) holds *shell-local* state rather
 /// than the core's shared Library `ListQuery`, so filtering here never disturbs
-/// the Library screen. Search and sort themselves are the core's (#1440, #1445, #1653).
+/// the Library screen. The core narrows `library` to `kind` and applies the
+/// star, tags, search and sort through the picker call (#1440, #1653, #1999).
 ///
 /// For exercises, the picker also offers creating one inline (#1616): a
 /// drafted exercise and a toggled selection hand back together on Done.
 struct LinkedItemPickerSheet: View {
   let kind: ItemKind
-  let available: [LibraryItemView]
+  let library: [LibraryItemView]
   let linkedIds: [String]
   let onApply: (Swift.Set<String>, [StagedExercise]) -> Void
 
@@ -37,12 +38,12 @@ struct LinkedItemPickerSheet: View {
   @FocusState private var searchFocused: Bool
 
   init(
-    kind: ItemKind, available: [LibraryItemView], linkedIds: [String],
+    kind: ItemKind, library: [LibraryItemView], linkedIds: [String],
     existingDrafts: [StagedExercise] = [],
     onApply: @escaping (Swift.Set<String>, [StagedExercise]) -> Void
   ) {
     self.kind = kind
-    self.available = available
+    self.library = library
     self.linkedIds = linkedIds
     self.onApply = onApply
     _selected = State(initialValue: Swift.Set(linkedIds))
@@ -53,19 +54,21 @@ struct LinkedItemPickerSheet: View {
   private var allowsCreate: Bool { kind == .exercise }
 
   var body: some View {
+    let ofKind = library.sortedAndFiltered(
+      by: sort, search: "", filter: PickerFilterArg(kind: kind))
     BottomSheet(
       title: copy.sheetTitle,
       onDone: { onApply(selected, drafts) },
       leadingAction: { Button("Cancel") { dismiss() } },
       content: {
-        if available.isEmpty && !allowsCreate {
+        if ofKind.isEmpty && !allowsCreate {
           PlaceholderContent(
             systemImage: kind.iconName, message: copy.noneAtAll)
         } else {
           VStack(spacing: 0) {
-            if !available.isEmpty { filterBar }
+            if !ofKind.isEmpty { filterBar(availableTags: Self.tags(in: ofKind)) }
             selectedCount
-            list
+            list(hasAnyOfKind: !ofKind.isEmpty)
           }
         }
       }
@@ -77,16 +80,16 @@ struct LinkedItemPickerSheet: View {
 
   // ── Filter bar ──
 
-  private var availableTags: [String] {
+  private static func tags(in items: [LibraryItemView]) -> [String] {
     var seen = Swift.Set<String>()
     var tags: [String] = []
-    for tag in available.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
+    for tag in items.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
       tags.append(tag)
     }
     return tags.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
   }
 
-  private var filterBar: some View {
+  private func filterBar(availableTags: [String]) -> some View {
     VStack(spacing: 0) {
       // zIndex keeps the header above the revealed search bar so the bar slides
       // out from *under* it rather than ghosting over it (Design System Rules →
@@ -190,19 +193,12 @@ struct LinkedItemPickerSheet: View {
   // ── List ──
 
   private var filtered: [LibraryItemView] {
-    var items = available
-    if priorityOnly { items = items.filter(\.priority) }
-    if !selectedTags.isEmpty {
-      items = items.filter { exercise in
-        selectedTags.contains { tag in
-          exercise.tags.contains { $0.localizedCaseInsensitiveCompare(tag) == .orderedSame }
-        }
-      }
-    }
-    return items.sortedAndFiltered(by: sort, search: searchText)
+    library.sortedAndFiltered(
+      by: sort, search: searchText,
+      filter: PickerFilterArg(kind: kind, priorityOnly: priorityOnly, tags: selectedTags))
   }
 
-  private var list: some View {
+  private func list(hasAnyOfKind: Bool) -> some View {
     ScrollView {
       VStack(spacing: 0) {
         if allowsCreate {
@@ -215,7 +211,7 @@ struct LinkedItemPickerSheet: View {
         }
         let rows = filtered
         if rows.isEmpty {
-          Text(available.isEmpty ? copy.noneAtAll : copy.noMatches)
+          Text(hasAnyOfKind ? copy.noMatches : copy.noneAtAll)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -376,7 +372,7 @@ private struct PickerCopy {
   #Preview("Add or remove — one related") {
     LinkedItemPickerSheet(
       kind: .exercise,
-      available: [
+      library: [
         .previewExercise,
         LibraryItemFixture.view(
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
@@ -390,11 +386,11 @@ private struct PickerCopy {
   }
 
   #Preview("Empty") {
-    LinkedItemPickerSheet(kind: .exercise, available: [], linkedIds: [], onApply: { _, _ in })
+    LinkedItemPickerSheet(kind: .exercise, library: [], linkedIds: [], onApply: { _, _ in })
   }
 
   #Preview("Link a piece — from the exercise side") {
     LinkedItemPickerSheet(
-      kind: .piece, available: [.previewPiece], linkedIds: [], onApply: { _, _ in })
+      kind: .piece, library: [.previewPiece], linkedIds: [], onApply: { _, _ in })
   }
 #endif

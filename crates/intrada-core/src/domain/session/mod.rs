@@ -382,16 +382,6 @@ pub enum SessionEvent {
     RemoveFromSetlist {
         entry_id: String,
     },
-    ReorderSetlist {
-        entry_id: String,
-        new_position: usize,
-    },
-    /// Move a whole block to a new unit-position (blocks + standalone items,
-    /// in order). Keeps the block contiguous.
-    ReorderBlock {
-        group_id: String,
-        new_position: usize,
-    },
     /// Move the unit holding `entry_id` (its whole block, or the entry alone)
     /// to a unit position, clamped to the end (#1957).
     MoveUnit {
@@ -579,16 +569,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::RemoveFromSetlist { entry_id } => {
             building::remove_from_setlist(model, entry_id)
         }
-
-        SessionEvent::ReorderSetlist {
-            entry_id,
-            new_position,
-        } => building::reorder_setlist(model, entry_id, new_position),
-
-        SessionEvent::ReorderBlock {
-            group_id,
-            new_position,
-        } => building::reorder_block(model, group_id, new_position),
 
         SessionEvent::MoveUnit {
             entry_id,

@@ -21,8 +21,7 @@ struct AddRelatedExerciseSheet: View {
 
   private var candidates: [LibraryItemView] {
     let elsewhere = Swift.Set(entries.filter { $0.groupId != groupId }.map(\.itemId))
-    return (store.viewModel?.visibleItems ?? [])
-      .filter { $0.itemType == .exercise && !elsewhere.contains($0.id) }
+    return (store.viewModel?.visibleItems ?? []).filter { !elsewhere.contains($0.id) }
   }
 
   var body: some View {
@@ -32,7 +31,7 @@ struct AddRelatedExerciseSheet: View {
         list
       }
     }
-    .libraryQueryScope()
+    .libraryQueryScope(kind: .exercise)
   }
 
   @ViewBuilder private var list: some View {

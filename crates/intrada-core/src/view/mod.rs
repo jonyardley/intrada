@@ -172,7 +172,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         last_practised: cached.last_practised.clone(),
         profile: build_profile_view(&model.profile, clock.hour_of(now)),
         up_next: cached.up_next.clone(),
-        has_priorities: cached.has_priorities,
         photo_recognition: photo_recognition_view(&model.photo_recognition),
         limits: LimitsView::default(),
         visible_ids,

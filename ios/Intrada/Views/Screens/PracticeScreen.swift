@@ -164,15 +164,7 @@ struct PracticeScreen: View {
 
   // Text, never a filled CTA: two buttons a thumb apart that both start a
   // session is the ambiguity T15 rejected for the Up next card (T20).
-  private var showsPriorities: Bool { Self.showsPriorities(store.viewModel) }
-
-  /// Something is starred and nothing else is under way, so the tap cannot land
-  /// on the core's "a practice is already in progress" refusal (#981).
-  static func showsPriorities(_ viewModel: ViewModel?) -> Bool {
-    guard let viewModel else { return false }
-    return viewModel.hasPriorities && viewModel.buildingSetlist == nil
-      && viewModel.activeSession == nil && viewModel.summary == nil
-  }
+  private var showsPriorities: Bool { store.viewModel?.showsPriorities ?? false }
 
   private var prioritiesButton: some View {
     Button {

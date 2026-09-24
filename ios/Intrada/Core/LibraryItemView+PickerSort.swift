@@ -2,10 +2,12 @@ import IntradaCoreFFI
 import SharedTypes
 
 extension Array where Element == LibraryItemView {
-  /// The picker sheet's own sort and search (#1445, #1440, #1653): a plain
-  /// call, not an `Event`, so a tap in the picker never touches the Library
-  /// screen's own `ListQuery` state.
-  func sortedAndFiltered(by sort: LibrarySort, search: String) -> [LibraryItemView] {
+  /// The picker sheet's own scope, sort and search (#1445, #1440, #1653,
+  /// #1999): a plain call, not an `Event`, so a tap in the picker never
+  /// touches the Library screen's own `ListQuery` state.
+  func sortedAndFiltered(
+    by sort: LibrarySort, search: String, filter: PickerFilterArg
+  ) -> [LibraryItemView] {
     let candidates = map { item in
       PickerCandidateArg(
         id: item.id, title: item.title, subtitle: item.subtitle, notes: item.notes,
@@ -14,8 +16,7 @@ extension Array where Element == LibraryItemView {
         kind: PickerKind(item.itemType), priority: item.priority)
     }
     let orderedIds = sortAndFilterPickerCandidates(
-      candidates: candidates, sort: sort.pickerSortArg, search: search,
-      filter: PickerFilterArg(kind: nil, priorityOnly: false, tags: []))
+      candidates: candidates, sort: sort.pickerSortArg, search: search, filter: filter)
     let byId = Dictionary(map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     return orderedIds.compactMap { byId[$0] }
   }
@@ -44,5 +45,11 @@ extension PickerKind {
     case .piece: self = .piece
     case .exercise: self = .exercise
     }
+  }
+}
+
+extension PickerFilterArg {
+  init(kind: ItemKind, priorityOnly: Bool = false, tags: [String] = []) {
+    self.init(kind: PickerKind(kind), priorityOnly: priorityOnly, tags: tags)
   }
 }

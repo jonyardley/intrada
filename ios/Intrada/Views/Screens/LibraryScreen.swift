@@ -5,10 +5,6 @@ struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var adding = false
-  // Leading "priorities only" filter: prioritise is a filter, not a section.
-  // Shell-side over the core-filtered list, until ListQuery carries a priority
-  // dimension (#1003).
-  @State private var starFilter = false
   // iPad split mode: when set, rows select into the shared binding (detail pane)
   // instead of pushing a stack. nil on compact — the unchanged push navigation.
   private var selection: Binding<String?>? = nil
@@ -28,9 +24,6 @@ struct LibraryScreen: View {
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
   private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
-  private var displayedItems: [LibraryItemView] {
-    starFilter ? visibleItems.filter(\.priority) : visibleItems
-  }
 
   var body: some View {
     ScreenScaffold(
@@ -38,7 +31,7 @@ struct LibraryScreen: View {
       trailing: .init(label: "Add item", action: { adding = true })
     ) {
       VStack(spacing: 0) {
-        BrowseControlsBar(previewSearch: previewSearch, starFilter: $starFilter)
+        BrowseControlsBar(previewSearch: previewSearch, showsStarFilter: true)
         content
       }
     }
@@ -58,7 +51,7 @@ struct LibraryScreen: View {
   }
 
   @ViewBuilder private var content: some View {
-    let rows = displayedItems
+    let rows = visibleItems
     if rows.isEmpty {
       PlaceholderContent(
         systemImage: emptyIcon,
@@ -136,17 +129,23 @@ struct LibraryScreen: View {
     !(store.viewModel?.activeQuery?.text ?? "").isEmpty
   }
 
+  private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
+
+  private var hasNoPriorities: Bool {
+    priorityOnly && !(store.viewModel?.items.isEmpty ?? true)
+  }
+
   private var emptyIcon: String {
-    if starFilter { return "star" }
-    return isSearching ? "magnifyingglass" : "books.vertical"
+    if isSearching { return "magnifyingglass" }
+    return hasNoPriorities ? "star" : "books.vertical"
   }
 
   private var emptyMessage: String {
-    if starFilter && !visibleItems.isEmpty {
-      return "No priorities yet. Swipe a row to add it to priorities."
-    }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
+    }
+    if hasNoPriorities {
+      return "No priorities yet. Swipe a row to add it to priorities."
     }
     switch LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) {
     case .all: return "Pieces and exercises will live here."

@@ -286,7 +286,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     // rest show the outlined add control.
     let sheet = LinkedItemPickerSheet(
       kind: .exercise,
-      available: [
+      library: [
         .previewExercise,
         LibraryItemFixture.view(
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
@@ -302,7 +302,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
   func testLinkedExercisePickerWithDraft() {
     let sheet = LinkedItemPickerSheet(
       kind: .exercise,
-      available: [.previewExercise],
+      library: [.previewExercise],
       linkedIds: [],
       existingDrafts: [
         .draft(
@@ -315,7 +315,10 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
   func testLinkedPiecePicker() {
     let sheet = LinkedItemPickerSheet(
       kind: .piece,
-      available: [.previewPiece, piece(id: "piece-9", "Blue Bossa", "Kenny Dorham")],
+      // The whole library goes in; the core leaves only the pieces (#1999).
+      library: [
+        .previewPiece, .previewExercise, piece(id: "piece-9", "Blue Bossa", "Kenny Dorham"),
+      ],
       linkedIds: [LibraryItemView.previewPiece.id],
       onApply: { _, _ in })
     assertSnapshot(of: host(sheet), as: config)
