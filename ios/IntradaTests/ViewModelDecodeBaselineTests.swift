@@ -5,7 +5,8 @@ import Testing
 @testable import Intrada
 
 /// Baseline for #1801: what one event costs the shell at a realistic library size, through the
-/// real bridge. Prints its numbers; asserts only bounds loose enough never to flake.
+/// real bridge. Seeding takes about four seconds, so it runs only when asked:
+/// `TEST_RUNNER_INTRADA_BASELINE=1 just ios-test`, numbers in the result's attachment.
 @MainActor
 struct ViewModelDecodeBaselineTests {
   private static let pieces = 100
@@ -95,7 +96,9 @@ struct ViewModelDecodeBaselineTests {
     ms(samples.sorted()[samples.count / 2])
   }
 
-  @Test("a realistic ViewModel decodes, and the per-event cost is printed as a baseline")
+  @Test(
+    "a realistic ViewModel decodes, and the per-event cost is recorded as a baseline",
+    .enabled(if: ProcessInfo.processInfo.environment["INTRADA_BASELINE"] != nil))
   func decodeAndRoundTripBaseline() throws {
     let (bridge, exerciseIds) = try seededBridge()
     let clock = ContinuousClock()
@@ -107,7 +110,7 @@ struct ViewModelDecodeBaselineTests {
     }
     let decoded = try ViewModel.bincodeDeserialize(input: bytes)
     #expect(decoded.items.count == Self.pieces + Self.exercises)
-    #expect(bytes.count > 100_000, "the fixture is the size the issue measured")
+    #expect(bytes.count > 100_000, "at least 100 KB, the scale #1801 is about")
 
     var starts: [Duration] = []
     var nexts: [Duration] = []
@@ -138,8 +141,9 @@ struct ViewModelDecodeBaselineTests {
     }
     #expect(try bridge.view().activeSession == nil)
 
-    let defaults = try #require(UserDefaults(suiteName: "ViewModelDecodeBaselineTests"))
-    defer { defaults.removePersistentDomain(forName: "ViewModelDecodeBaselineTests") }
+    let suite = "ViewModelDecodeBaselineTests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
     let store = Store(bridge: bridge, sortDefaults: defaults)
     var storeNexts: [Duration] = []
     let day = Self.pastSessions + 5
@@ -166,7 +170,6 @@ struct ViewModelDecodeBaselineTests {
       NextItem bridge round trip median ms \(String(format: "%.2f", Self.median(nexts)))
       NextItem Store.send median ms \(String(format: "%.2f", Self.median(storeNexts)))
       """
-    print(report)
     Attachment.record(report, named: "baseline-1801.txt")
     #expect(decode < 2_000, "a decode past two seconds is a regression, not noise")
   }
