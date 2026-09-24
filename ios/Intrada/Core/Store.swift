@@ -34,7 +34,9 @@ final class Store {
   static let profileDefaultsKey = "intrada.profile.v1"
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
-  private let sortDefaults: UserDefaults
+  private let sortSlot: DefaultsSlot
+  private let sessionSlot: DefaultsSlot
+  private let profileSlot: DefaultsSlot
   private var diskTail: Task<Void, Never>?
 
   init(
@@ -45,10 +47,20 @@ final class Store {
     self.bridge = bridge
     self.degraded = degraded
     // Default to in-memory so tests/previews never touch disk; the real app
-    // passes an on-disk store. `try?` (not `guarded`) because `self` isn't fully
-    // initialized yet here; in-memory creation effectively never fails.
-    self.store = store ?? (try? LibraryStore.inMemory())
-    self.sortDefaults = sortDefaults
+    // passes an on-disk store. Not `guarded`: `self` isn't initialized yet.
+    if let store {
+      self.store = store
+    } else {
+      do {
+        self.store = try LibraryStore.inMemory()
+      } catch {
+        report(error, "in-memory LibraryStore")
+        self.store = nil
+      }
+    }
+    sortSlot = DefaultsSlot(key: Self.sortDefaultsKey, defaults: sortDefaults)
+    sessionSlot = DefaultsSlot(key: Self.sessionInProgressKey, defaults: sortDefaults)
+    profileSlot = DefaultsSlot(key: Self.profileDefaultsKey, defaults: sortDefaults)
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
     self.viewModel = bridged { try bridge.view() }
@@ -115,18 +127,18 @@ final class Store {
     switch effect {
     case .saveLibrarySort(let sort):
       if let bytes = guarded({ try sort.bincodeSerialize() }) {
-        sortDefaults.set(Data(bytes), forKey: Self.sortDefaultsKey)
+        sortSlot.write(bytes)
       }
     case .saveSessionInProgress(let active):
       if let bytes = guarded({ try active.bincodeSerialize() }) {
-        sortDefaults.set(Data(bytes), forKey: Self.sessionInProgressKey)
+        sessionSlot.write(bytes)
       }
     case .clearSessionInProgress:
-      sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
+      sessionSlot.clear()
       recoverableSession = nil
     case .saveProfile(let profile):
       if let bytes = guarded({ try profile.bincodeSerialize() }) {
-        sortDefaults.set(Data(bytes), forKey: Self.profileDefaultsKey)
+        profileSlot.write(bytes)
       }
     }
   }
@@ -136,8 +148,8 @@ final class Store {
   var recoverableSession: ActiveSession?
 
   func pendingSessionInProgress() -> ActiveSession? {
-    guard let data = sortDefaults.data(forKey: Self.sessionInProgressKey) else { return nil }
-    return guarded { try ActiveSession.bincodeDeserialize(input: [UInt8](data)) }
+    guard let bytes = sessionSlot.read() else { return nil }
+    return guarded { try ActiveSession.bincodeDeserialize(input: bytes) }
   }
 
   func loadRecoverableSession() {
@@ -157,7 +169,7 @@ final class Store {
   /// core's own clearing path (SaveSession or DiscardSession emitting
   /// ClearSessionInProgress) needs a session to be running (#962).
   func discardSessionInProgress() {
-    sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
+    sessionSlot.clear()
     recoverableSession = nil
   }
 
@@ -168,19 +180,19 @@ final class Store {
   }
 
   func restorePersistedSort() {
-    guard let data = sortDefaults.data(forKey: Self.sortDefaultsKey),
-      let sort = guarded({ try LibrarySort.bincodeDeserialize(input: [UInt8](data)) })
+    guard let bytes = sortSlot.read(),
+      let sort = guarded({ try LibrarySort.bincodeDeserialize(input: bytes) })
     else { return }
     send(.setSort(sort))
   }
 
   func forgetPersistedProfile() {
-    sortDefaults.removeObject(forKey: Self.profileDefaultsKey)
+    profileSlot.clear()
   }
 
   func restorePersistedProfile() {
-    guard let data = sortDefaults.data(forKey: Self.profileDefaultsKey),
-      let profile = guarded({ try Profile.bincodeDeserialize(input: [UInt8](data)) })
+    guard let bytes = profileSlot.read(),
+      let profile = guarded({ try Profile.bincodeDeserialize(input: bytes) })
     else { return }
     send(.profile(.loaded(profile)))
   }
