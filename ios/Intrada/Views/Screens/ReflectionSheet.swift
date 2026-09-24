@@ -247,8 +247,8 @@ struct ReflectionSheet: View {
   }
 
   private var singlePlayTempoEyebrow: String {
-    tempoTarget.map { "Tempo reached · target \(TempoUnit.readout(Int($0), unit: tempoUnit))" }
-      ?? "Tempo reached"
+    tempoTarget.flatMap { TempoFormatting.display(marking: nil, bpm: $0) }
+      .map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
   private func mark(for playId: String) -> Int { marks[playId] ?? 0 }

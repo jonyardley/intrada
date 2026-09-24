@@ -4,9 +4,8 @@ import Testing
 
 @testable import Intrada
 
-/// The snapshot suite renders hand-built fixtures, never the live core (#1949).
-/// Each test states the musician's input, runs it through `LiveBridge`, and
-/// holds the fixture to what the core projects from it.
+/// Holds each hand-built snapshot fixture to what `LiveBridge` projects from
+/// the musician's input (#1949).
 @MainActor
 struct PreviewFixtureParityTests {
 
@@ -14,6 +13,7 @@ struct PreviewFixtureParityTests {
     let title: String
     let key: String?
     let modality: Modality?
+    let keySelection: KeyWheelSelection?
     let tempoMarking: String?
     let tempoBpm: UInt16?
   }
@@ -35,6 +35,8 @@ struct PreviewFixtureParityTests {
   private struct Ladder: Equatable {
     let key: String?
     let modality: Modality?
+    let keySelection: KeyWheelSelection?
+    let tempoBpm: UInt16?
     let rows: [VariationRow]
     let solidCount: UInt64
     let isKeys: Bool
@@ -81,7 +83,7 @@ struct PreviewFixtureParityTests {
   @Test func aLadderInThreeKeysCaptionsEachMarkAsTheCoreDoes() throws {
     let projected = try projectedExercise(
       title: LibraryItemView.previewExerciseWithVariations.title, key: "C", modality: .major,
-      labels: ["C", "F", "B♭"], scores: ["C": 9, "F": 5])
+      tempoBpm: 132, labels: ["C", "F", "B♭"], scores: ["C": 9, "F": 5])
 
     #expect(ladder(.previewExerciseWithVariations) == ladder(projected))
   }
@@ -89,7 +91,7 @@ struct PreviewFixtureParityTests {
   @Test func twelveKeysCaptionEachMarkAsTheCoreDoes() throws {
     let labels = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"]
     let projected = try projectedExercise(
-      title: "Chromatic run", key: nil, modality: nil, labels: labels,
+      title: "Chromatic run", key: nil, modality: nil, tempoBpm: 72, labels: labels,
       scores: ["C": 9, "C♯": 9, "D": 9, "D♯": 9, "E": 6])
 
     #expect(ladder(.previewExerciseWithTwelveVariations) == ladder(projected))
@@ -97,7 +99,7 @@ struct PreviewFixtureParityTests {
 
   @Test func inversionsNeverPlayedCaptionAsTheCoreDoes() throws {
     let projected = try projectedExercise(
-      title: "Triad inversions", key: nil, modality: nil,
+      title: "Triad inversions", key: nil, modality: nil, tempoBpm: nil,
       labels: ["Root position", "1st inversion", "2nd inversion"], scores: [:])
 
     #expect(ladder(.previewExerciseWithNamedVariations) == ladder(projected))
@@ -105,7 +107,7 @@ struct PreviewFixtureParityTests {
 
   @Test func longVariationNamesCaptionEachMarkAsTheCoreDoes() throws {
     let projected = try projectedExercise(
-      title: "Arpeggios, four octaves", key: nil, modality: nil,
+      title: "Arpeggios, four octaves", key: nil, modality: nil, tempoBpm: nil,
       labels: ["Hands together, two octaves", "Hands separately", "Slow, with the metronome"],
       scores: ["Hands together, two octaves": 8])
 
@@ -160,22 +162,23 @@ struct PreviewFixtureParityTests {
   }
 
   private func projectedExercise(
-    title: String, key: String?, modality: Modality?, labels: [String],
+    title: String, key: String?, modality: Modality?, tempoBpm: UInt16?, labels: [String],
     scores: [String: UInt8]
   ) throws -> LibraryItemView {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp)
     let id = try addScoredExercise(
-      bridge, title: title, key: key, modality: modality, labels: labels, scores: scores)
+      bridge, title: title, key: key, modality: modality,
+      tempo: tempoBpm.map { Tempo(marking: nil, bpm: $0) }, labels: labels, scores: scores)
     return try item(bridge, id)
   }
 
   private func addScoredExercise(
-    _ bridge: LiveBridge, title: String, key: String?, modality: Modality?,
+    _ bridge: LiveBridge, title: String, key: String?, modality: Modality?, tempo: Tempo? = nil,
     labels: [String], scores: [String: UInt8]
   ) throws -> String {
     let id = try add(
-      bridge, title: title, kind: .exercise, key: key, modality: modality, tempo: nil,
+      bridge, title: title, kind: .exercise, key: key, modality: modality, tempo: tempo,
       labels: labels)
     let scored = try item(bridge, id).variants.filter { scores[$0.label] != nil }
     guard let first = scored.first else { return id }
@@ -240,9 +243,9 @@ struct PreviewFixtureParityTests {
   }
 
   private func stamp(minutes: Int) -> String {
-    let start = Date(timeIntervalSince1970: 1_782_291_600)
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime]
+    let start = formatter.date(from: "2026-06-24T09:00:00Z") ?? .distantPast
     return formatter.string(from: start.addingTimeInterval(Double(minutes) * 60))
   }
 
@@ -251,18 +254,19 @@ struct PreviewFixtureParityTests {
   private func fields(_ item: LibraryItemView) -> KeyAndTempo {
     KeyAndTempo(
       title: item.title, key: item.key, modality: item.modality,
-      tempoMarking: item.tempoMarking, tempoBpm: item.tempoBpm)
+      keySelection: item.keySelection, tempoMarking: item.tempoMarking, tempoBpm: item.tempoBpm)
   }
 
   private func fields(_ exercise: LinkedExerciseView) -> KeyAndTempo {
     KeyAndTempo(
       title: exercise.title, key: exercise.key, modality: exercise.modality,
-      tempoMarking: exercise.tempoMarking, tempoBpm: exercise.tempoBpm)
+      keySelection: nil, tempoMarking: exercise.tempoMarking, tempoBpm: exercise.tempoBpm)
   }
 
   private func ladder(_ item: LibraryItemView) -> Ladder {
     Ladder(
-      key: item.key, modality: item.modality,
+      key: item.key, modality: item.modality, keySelection: item.keySelection,
+      tempoBpm: item.tempoBpm,
       rows: item.variants.map {
         VariationRow(
           label: $0.label, latestScore: $0.latestScore, isSolid: $0.isSolid, caption: $0.caption)
