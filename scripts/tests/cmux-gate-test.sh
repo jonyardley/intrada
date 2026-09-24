@@ -55,6 +55,7 @@ run_gate 0
 expect "step sets progress with the stage" "set-progress 0.3 --label just check: lint"
 expect "finish clears the bar" "clear-progress"
 expect "a pass is reported" "notify --title ✓ just check passed"
+expect "the elapsed time is reported" "--body 0m 0s in "
 
 # ── A failing gate keeps its own exit status ──
 rm -f "$log"

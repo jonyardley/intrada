@@ -172,7 +172,7 @@ check:
     source scripts/lib/cmux-gate.sh
     cmux_gate_start "just check"
     hygiene_log=""
-    trap 'status=$?; rm -f "$hygiene_log"; cmux_gate_finish "$status"' EXIT
+    trap 'status=$?; rm -f ${hygiene_log:+"$hygiene_log"}; cmux_gate_finish "$status"' EXIT
     cmux_gate_step 0.1 "fmt"
     just fmt-check
     # hygiene needs nothing lint/test produce, so it runs alongside them
