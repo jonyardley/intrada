@@ -23,10 +23,7 @@ pub struct Variant {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-/// A variation is "Solid" (UI copy) once its latest score reaches this, of 10.
-/// The current variation is the first that isn't; progress means advancing the
-/// rung, not polishing one rating (#1083; threshold decision in
-/// specs/exercise-variants.md).
+/// A variation is "Solid" (UI copy) once its latest score reaches this, of 10 (#1083).
 pub const SOLID_SCORE_MIN: u8 = 8;
 
 /// One row of a ladder as the Edit form sends it (#1783): `id` names the row

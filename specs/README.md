@@ -38,7 +38,7 @@ Accurate about how the app works or is being built now.
 | [`profile.md`](profile.md) | The musician's name, instrument, icon and highlighter colour, held on the device (`domain/profile.rs`, `AppEffect::SaveProfile`). Shipped across #1691 and #1692 |
 | [`one-pass-create.md`](one-pass-create.md) | Adding a piece with its chord chart and exercises in one save (`ItemEvent::AddPieceInFull`, sent from `LibraryAddScreen.swift`). Core in #1591, screens in #1596 |
 | [`picker-core-sort.md`](picker-core-sort.md) | The linked-item picker sheet's sort and search calling into the core (`sort_and_filter_candidates` in `app.rs`, `sort_and_filter_picker_candidates` in `intrada-ffi`). Core in #1662, screens and the Swift copies deleted in #1664 |
-| [`exercise-variations.md`](exercise-variations.md) | Variations defined on the exercise, and a session recording what was actually played (#1739). Phases A, B and C shipped; #1501 and #1107 follow outside it. Supersedes decisions 4 and 5 of `exercise-variants.md` |
+| [`exercise-variations.md`](exercise-variations.md) | Variations defined on the exercise, and a session recording what was actually played (#1739). Phases A, B and C shipped; #1501 and #1107 follow outside it. Supersedes the current rung and the one-score session entry of #1083 (`exercise-linking-origins.md`) |
 | [`notice-channel.md`](notice-channel.md) | A calm grey banner for an outcome that is true but not a failure (`ViewModel.notice`, #1325). Core in #2034, screens in #2038 |
 | [`save-acknowledged.md`](save-acknowledged.md) | Save session waits for the store before clearing the summary and the crash-recovery copy (#974, shipped in #2018) |
 | [`practice-weeks-in-core.md`](practice-weeks-in-core.md) | The Practice tab's week strip and the Progress headline numbers worked out in the core (#2046). Core in #2054, screens in #2056 |
@@ -60,10 +60,8 @@ contract.
 | Spec | Scope |
 |---|---|
 | [`chart-to-scaffold.md`](chart-to-scaffold.md) | Chord-chart parsing and scaffold derivation (`domain/chart.rs`). Phase C shipped in PR #1111. The twelve-key ladder originally scoped inside it is still open as #1107, and that issue records that the steps mechanism it needs has since shipped, so the old #1083 blocker is gone |
-| [`exercise-variants.md`](exercise-variants.md) | Exercise steps and the per-step ladder (`domain/variant.rs`) |
+| [`exercise-linking-origins.md`](exercise-linking-origins.md) | How exercises came to be linked to pieces and to have variations: the decisions that still hold from #1015, the #1026 to #1043 screen work and #1083, folded from four earlier specs (#1959). Read `exercise-variations.md`, `exercise-relations.md` and `piece-related-exercises.md` for current behaviour |
 | [`session-block-grouping.md`](session-block-grouping.md) | Grouping and reordering blocks in the builder (`group_id`, `UngroupBlock`). Shipped via #1022, which the spec itself does not cite |
-| [`piece-linked-exercises.md`](piece-linked-exercises.md) · [`piece-linked-exercises-design-brief.md`](piece-linked-exercises-design-brief.md) | The original piece-linked exercises (#1015). Its "Linked exercises" copy has since been renamed twice; read `exercise-relations.md` and `piece-related-exercises.md` for current behaviour |
-| [`related-exercises-redesign.md`](related-exercises-redesign.md) | Related-exercises stocktake. Its "already shipped" inventory is stale: the exercise detail's "Related to" breadcrumb it lists was replaced by the "Used in" list. The Focus Player still shows one (`FocusPlayerScreen.swift`), which `exercise-relations.md` keeps deliberately |
 | [`track-exercises-per-piece/`](track-exercises-per-piece/) | Per-piece exercise tracking |
 | [`native-player.md`](native-player.md) · [`native-ios-player.md`](native-ios-player.md) | The Focus Player, as two sequential phases (#932 spine, #948 persistence) |
 | [`priority-items.md`](priority-items.md) | Priority items replacing Goals in the Plan layer. Landed across #739 and #769, with #981 as its slice 2 |

@@ -211,7 +211,7 @@ from this session" path — T4's non-gesture floor). Edit/Done shrinks to
 **bulk remove** (system minus-circles), per mock frame 14. Invented affordances
 that deviate from the mock (chevron tap-steppers, Edit-gated settings glyphs)
 were removed. This also **overturns decision 3 of
-`specs/related-exercises-redesign.md` (2026-07-01)**: the per-exercise
+the related-exercises redesign (2026-07-01, now in `specs/exercise-linking-origins.md`)**: the per-exercise
 "include today" toggle returns (off = stays visible but dimmed, excluded from
 totals, dropped at session start) — needs a core event, tracked as
 jonyardley/intrada#1101. Recorded deviation: the mock draws the block dragging
