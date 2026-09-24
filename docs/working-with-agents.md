@@ -409,7 +409,7 @@ bridge contract, so the domain-sensitivity override puts it up a tier.
    matches the core's. A shell constant that merely repeats the number is not
    the fix.
 6. Verify on the running app, not just in CI. A core type change means iOS
-   tests mean nothing until `just ios-test-full` has run.
+   tests mean nothing until the UI tests have run, which CI does on the draft.
 7. Ship as two PRs, core then screens, each independently reviewable.
 
 Opener for the first session:
@@ -441,8 +441,8 @@ ViewModel; no need to open either file in full. A shell constant repeating
 the number is not the fix.
 
 Add the test the issue asks for: the offered range matches the core's, so
-widening the core cannot silently leave a sheet behind. Then just ios-test-full,
-because the core type changed. Re-record any snapshots the control changes
+widening the core cannot silently leave a sheet behind. Then just ios-test, and
+read CI's UI tests on the draft, because the core type changed. Re-record any snapshots the control changes
 touch, and say which.
 
 Report back per .claude/agents/task.md: diff --stat and changed symbols, the

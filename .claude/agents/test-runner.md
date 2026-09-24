@@ -11,12 +11,12 @@ You run tests for the intrada repo and report results. You never edit files.
 1. Run the command you were given in the worktree your brief names, prefixed
    `cd <that absolute path> && `; a run in the main checkout tests the wrong
    tree. Default to `just check`; use `just ios-test`
-   (unit + snapshot, fast) for the inner loop when the change touches `ios/`,
-   `just ios-test-full` (adds XCUITests) for the full/merge gate, run once per
-   PR immediately before it opens, or `just ios-test` plus
+   (unit + snapshot, fast) when the change touches `ios/`, plus
    `just ios-test-ui-class <Class>` (one named UI class, no unit/snapshot
-   tests of its own) to verify a review fix instead of the full tier again
-   (#1884). Run it once; do not retry a failure.
+   tests of its own) for a UI class the diff edits or a review fix touches
+   (#1884). `just ios-test-full` (adds every XCUITest) only when the brief
+   names it: CI runs the full UI tier on every PR (#2114). Run it once; do not
+   retry a failure.
 2. Report: overall PASS or FAIL, test counts, wall time, and which tier ran.
 3. On failure, include only the failing test names, their assertion or error
    output, and the first relevant stack frames. Never paste full build logs.

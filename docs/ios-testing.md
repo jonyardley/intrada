@@ -95,8 +95,9 @@ just ios-gen        # force-regenerate the Swift bindings (after a core change)
 just ios-snapshots-optimize   # oxipng -o max every reference (run before commit)
 just ios-snapshots-check      # orphan + 200 KB-ceiling guard (same as CI)
 just ios-test                 # fast tier: IntradaTests only (unit + snapshot) on a per-worktree sim
-just ios-test-full            # full gate: + IntradaUITests — what ship/CI run before merge (CI parity)
-                              # the UI tests run on this worktree's own sim, about five minutes on a quiet machine (#1480)
+just ios-test-full            # full tier: + IntradaUITests on this worktree's own sim, about five minutes (#1480)
+                              # not part of /ship: CI runs the UI tests on every PR, six at a time (#2114)
+just ios-test-ui-class <Class> # one UI test class: what /ship runs for each class the diff adds or edits
 just ios-test-sim-clean       # delete this worktree's ios-test sim
 ```
 
@@ -265,13 +266,30 @@ Rules to keep two checkouts from colliding:
 ## CI
 
 `.github/workflows/ci.yml` runs the iOS gate on the self-hosted Mac,
-**Native iOS: self-hosted gate**, for every same-repo push and pull request
-(#1577): one job, sequential steps, build then unit + snapshot then UI, on the
-warm workspace that machine exists for. The Release compile guard (`#if DEBUG`
-divergence, #1177) runs on pushes to main only, not on pull requests (#1651).
-Measured shape (2026-09-11 gate review, last 30 runs): build 19s, unit +
-snapshot 27s, UI 207s, gate median 339s (concurrency raised 4→6 on
-2026-09-14, #1824, since superseding this figure). Fork pull requests are not
+**Native iOS: self-hosted gate**, for every same-repo pull request and push to
+main whose native paths changed (#1577, #2113): one job, sequential steps,
+build then unit + snapshot then UI, on the warm workspace that machine exists
+for. The Release compile guard (`#if DEBUG` divergence, #1177) runs on pushes
+to main only, not on pull requests (#1651). It is a PR's first full UI run:
+`/ship` runs the fast tier and the UI classes the diff edits, not the full
+tier (#2114).
+
+A tree that already passed the unit and UI tests on the runner, on the same
+Xcode and simulator runtime, skips them and links the run that passed it
+(#2113). A merge with no other merge since its PR's last run lands exactly the
+tree that run tested (8 of 20 merges on 23 to 24 September), so main then pays
+only for the build, the Release guard and the launch check. A merge after main
+moved is a new tree and runs in full, and so does a re-run attempt. The records
+are files under `~/.intrada-ci/green-trees/` on the runner, pruned after 30
+days by **Runner housekeeping**. Each push to main is its own concurrency
+group, so a queued main run is never replaced by the next push, whose filter
+would only see its own change (#2113).
+
+Measured shape (2026-09-24, 45 runs): build 16s, unit + snapshot 19s, UI 165s
+on six simulators (#1824), gate median 244s on a PR and 298s on main, and a
+median 78s wait for the runner (529s at the 90th percentile).
+
+Fork pull requests are not
 supported (#1962), which is what keeps untrusted code off the machine. The gate
 reports into **Native iOS (build + test)**, the required check, and **Snapshot
 Hygiene** runs alongside it. The self-hosted machine, its toolchain and its

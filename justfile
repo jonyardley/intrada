@@ -255,8 +255,7 @@ pre-push: check
 # Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
 # Plain `just check` stays Rust-only for fast Rust-only iterations. Runs the
-# fast `ios-test` tier only; `ship` and CI additionally gate on
-# `ios-test-full` (XCUITests too) before merge — see #1198.
+# fast `ios-test` tier only; CI runs the XCUITests on every PR (#1198, #2114).
 [doc("Run check plus the fast iOS tier (unit and snapshot tests, no XCUITests)")]
 check-all: check ios-test
 
@@ -599,17 +598,17 @@ ios-fmt-check:
 # iOS 26.5 sim. Seconds once built — catches wire breaks, codecs, upgrade
 # paths. XCUITests are NOT run here: 204 unit/snapshot tests are the local
 # signal that matters, the 18 XCUITests add ~2 min plus flake and caught
-# nothing locally in the #1194 session (#1198). `ship` and CI additionally
-# run `ios-test-full` before merge, so nothing merges without the UI tier.
+# nothing locally in the #1194 session (#1198). CI runs the UI tier on every
+# PR, so nothing merges without it (#2114).
 # Regenerates bindings first if the core changed. The device pin must match
 # the recorded snapshot references (renderer-specific).
 [doc("Run the fast iOS tier: unit and snapshot tests, no XCUITests")]
 [group('iOS')]
 ios-test: _ios-sync (_ios-test-run "fast")
 
-# Full gate: IntradaTests + IntradaUITests. What `ship` and CI run before
-# merge — see #1198.
-[doc("Run the full iOS tier with XCUITests, the merge gate")]
+# Full tier: IntradaTests + IntradaUITests, one test at a time. CI runs the UI
+# tests on every PR, so `ship` does not run this (#2114).
+[doc("Run the full iOS tier with XCUITests, for debugging a UI failure")]
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
 
