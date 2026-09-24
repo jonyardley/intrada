@@ -9,7 +9,7 @@ struct TempoStepButton: View {
 
   var body: some View {
     Button {
-      UISelectionFeedbackGenerator().selectionChanged()
+      Haptic.selection.play()
       action()
     } label: {
       Image(systemName: systemImage)

@@ -599,6 +599,10 @@ jobs:
       # token is kept to the section eyebrow (#1941).
       - name: Faint ink stays on eyebrows
         run: bash scripts/check-faint-ink.sh
+      # A haptic built by hand can fire before the core confirms, and a change
+      # to haptics would have to be made at every call (#2013).
+      - name: Haptics go through the helper
+        run: bash scripts/check-haptics.sh
       # ── the gates above, proven against broken input ────────────────────
       - name: Hygiene checks still bite
         run: bash scripts/tests/hygiene-checks-test.sh

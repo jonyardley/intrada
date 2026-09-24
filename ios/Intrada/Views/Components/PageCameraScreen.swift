@@ -179,7 +179,7 @@ struct PageCameraScreen: View {
   }
 
   private func takePhoto() {
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Haptic.impact.play()
     Task { await model.takePhoto() }
   }
 

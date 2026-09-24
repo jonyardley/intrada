@@ -411,7 +411,7 @@ struct FocusPlayerScreen: View {
       halted: store.halted, error: store.viewModel?.error)
     withAnimation { reflecting?.refusal = message }
     store.send(.clearError)
-    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    Haptic.error.play()
     UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")
   }
 }

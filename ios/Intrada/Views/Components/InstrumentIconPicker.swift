@@ -45,7 +45,7 @@ struct InstrumentIconPicker: View {
     let selected = icon == shown
     return Button {
       choice = icon == suggested ? nil : icon
-      UISelectionFeedbackGenerator().selectionChanged()
+      Haptic.selection.play()
     } label: {
       VStack(spacing: 6) {
         InstrumentGlyph(icon: icon, size: IntradaGlyph.bar)

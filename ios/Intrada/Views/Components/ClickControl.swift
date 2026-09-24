@@ -79,7 +79,7 @@ struct ClickControl: View {
 
   private var toggle: some View {
     Button {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Haptic.impact.play()
       onToggle()
     } label: {
       readoutRow
@@ -137,7 +137,7 @@ struct ClickControl: View {
         let next = TempoScale.bpm(
           fromDragTranslation: value.translation.height, anchor: anchor, unit: unit)
         guard next != liveBpm else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
+        Haptic.selection.play()
         liveBpm = next
         commit(next)
       }

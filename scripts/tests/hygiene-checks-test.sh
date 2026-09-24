@@ -329,6 +329,30 @@ expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$re
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
 
+# ── The haptics check ───────────────────────────────────────────────────────
+
+haptics="$work/haptics"
+mkdir -p "$haptics/Core" "$haptics/Views"
+haptics_check() {
+  HAPTICS_ROOT="$haptics" bash "$repo_root/scripts/check-haptics.sh"
+}
+
+printf 'UISelectionFeedbackGenerator().selectionChanged()\n' >"$haptics/Core/Store+Feedback.swift"
+printf 'Haptic.selection.play()  // not UISelectionFeedbackGenerator\n' >"$haptics/Views/Tap.swift"
+expect 0 "the helper itself, a call through it and a comment" haptics_check
+
+printf 'UINotificationFeedbackGenerator().notificationOccurred(.success)\n' >"$haptics/Views/Save.swift"
+expect 1 "a success haptic built by hand" haptics_check
+rm "$haptics/Views/Save.swift"
+
+printf 'UIImpactFeedbackGenerator(style: .light).impactOccurred()\n' >"$haptics/Store+Feedback.swift"
+expect 1 "a second file named like the helper, outside Core" haptics_check
+rm "$haptics/Store+Feedback.swift"
+
+expect 2 "a root that is not there" env HAPTICS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-haptics.sh"
+
+expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-haptics.sh"
+
 # ── The dash check ──────────────────────────────────────────────────────────
 
 em=$'\xe2\x80\x94'

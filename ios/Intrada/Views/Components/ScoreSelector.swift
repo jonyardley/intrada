@@ -21,10 +21,10 @@ struct ScoreSelector: View {
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment where score < 10:
-        UISelectionFeedbackGenerator().selectionChanged()
+        Haptic.selection.play()
         onSelect(UInt8(score + 1))
       case .decrement where score > 0:
-        UISelectionFeedbackGenerator().selectionChanged()
+        Haptic.selection.play()
         onSelect(score == 1 ? nil : UInt8(score - 1))
       default:
         break
@@ -35,7 +35,7 @@ struct ScoreSelector: View {
   private func pill(_ value: Int) -> some View {
     let filled = score >= value
     return Button {
-      UISelectionFeedbackGenerator().selectionChanged()
+      Haptic.selection.play()
       onSelect(score == value ? nil : UInt8(value))
     } label: {
       Text("\(value)")

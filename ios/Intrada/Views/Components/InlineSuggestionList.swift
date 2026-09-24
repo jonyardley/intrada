@@ -15,7 +15,7 @@ struct InlineSuggestionList: View {
       ForEach(matches, id: \.self) { suggestion in
         Button {
           onPick(suggestion)
-          UISelectionFeedbackGenerator().selectionChanged()
+          Haptic.selection.play()
         } label: {
           HStack(spacing: 10) {
             Image(systemName: systemImage)

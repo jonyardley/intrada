@@ -159,7 +159,7 @@ struct LibraryDetailScreen: View {
       }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
     }
   }
 
@@ -186,7 +186,7 @@ struct LibraryDetailScreen: View {
       }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
     }
   }
 
@@ -285,7 +285,7 @@ struct LibraryDetailScreen: View {
   }
 
   private func delete() {
-    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    Haptic.warning.play()
     store.send(.item(.delete(id: item.id)))
     dismiss()
   }

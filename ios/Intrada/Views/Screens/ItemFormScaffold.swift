@@ -160,10 +160,10 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
       // Show it inline only; clear the core error so the global banner doesn't
       // also surface it behind/after this sheet (validation re-sets it directly).
       store.send(.clearError)
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      Haptic.error.play()
       UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
     } else {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
       dismiss()
     }
   }

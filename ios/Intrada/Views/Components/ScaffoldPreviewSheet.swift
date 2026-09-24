@@ -92,7 +92,7 @@ struct ScaffoldPreviewSheet: View {
     } else {
       selected.insert(kind)
     }
-    UISelectionFeedbackGenerator().selectionChanged()
+    Haptic.selection.play()
   }
 
   private var fallbackLegend: some View {
