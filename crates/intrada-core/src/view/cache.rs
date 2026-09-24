@@ -1,6 +1,5 @@
 use crate::analytics::{
     analytics_from_changes, compute_score_changes, AnalyticsView, LastPractisedView, LocalClock,
-    ScoreChange,
 };
 use crate::domain::types::{LibrarySort, SortDirection, SortField};
 use crate::model::{LibraryItemView, Model, PracticeSessionView};
@@ -50,9 +49,6 @@ pub(crate) struct Projections {
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
     pub(crate) analytics: Option<AnalyticsView>,
     pub(crate) last_practised: Option<LastPractisedView>,
-    /// Every change this week, where `analytics` keeps only a few; the
-    /// summary's top mover reads the whole list.
-    pub(crate) score_changes: Vec<ScoreChange>,
 }
 
 /// Called at the end of every `update`, since `view` cannot store.
@@ -148,7 +144,6 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         practice_weeks,
         analytics,
         last_practised,
-        score_changes,
     }
 }
 

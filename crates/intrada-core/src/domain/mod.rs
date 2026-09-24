@@ -1,5 +1,6 @@
 pub mod chart;
 pub mod item;
+pub mod key;
 pub mod metre;
 pub mod profile;
 pub mod session;

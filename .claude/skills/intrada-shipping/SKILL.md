@@ -15,6 +15,10 @@ main while its reviewer was still thinking.
 - **Small Tier 2**, one file with no bridge, DB, auth or migration surface, may
   take a lighter single-pass review. Anything on the domain-sensitivity list,
   or spanning files, takes the full agent.
+- **A new or reshaped bridge type ships with a `LiveBridge` test** in
+  `LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`.
+  A Rust round trip cannot see Rust and Swift disagreeing about the wire
+  (#846, #1953); the reviewer blocks a bridge diff without one.
 - **`reviewer` is pinned to Opus 5.5 high**, briefed with the worktree and the
   issue so it checks the diff against done looks like. Tier 1 and screens-only
   diffs take the pin, which is no reason to skip review (#1665). A diff on a

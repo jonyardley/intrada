@@ -7,17 +7,21 @@ write-up is its GitHub release, generated from that release's milestone
 right now, run `just status`; it reads GitHub, which is the source of truth.
 Direction and phases: [`roadmap.md`](roadmap.md).*
 
-**v0.10.0 is on TestFlight (2026-09-09), as build 19.** Its headline is
-capture: add a piece with its chord chart and its exercises in one pass, and a
-refusal that marks the field, the row or the chart at fault rather than only
-saying what is wrong (#1390 and #1595,
+**v0.13.0, "What you actually played", is the current release (2026-09-16).**
+Its write-up, and v0.12.0's, are their
+[GitHub releases](https://github.com/jonyardley/intrada/releases).
+
+v0.10.0 (2026-09-09, TestFlight build 19) was the capture release: add a
+piece with its chord chart and its exercises in one pass, and a refusal that
+marks the field, the row or the chart at fault rather than only saying what is
+wrong (#1390 and #1595,
 [`specs/one-pass-create.md`](../specs/one-pass-create.md)). Alongside it: the
 whole Focus Player round (the overall session timer, the resident pass counter,
 and a click that sounds chosen beats of a chosen bar), one tap into the starred
 set on Practice (#981), a note per item on Session Complete and a past session
 opened from history (#1370, #1371), and the page camera fixes.
 
-**It is also the first build that reports its crashes.** Every earlier
+**v0.10.0 was also the first build that reports its crashes.** Every earlier
 TestFlight build shipped with Sentry switched off, because the key was never
 handed to the release build (#1553); a tagged release now refuses to build
 without it, and each one gets a Sentry release of its own, named for the build
@@ -31,8 +35,8 @@ Intelligence is available (phases A to C of
 chart from a photo, is not started).
 
 **Phase R ([`rethink-plan.md`](rethink-plan.md)) has met its exit criteria.**
-Stage 4 chose the direction on 2026-09-07 and its first slice shipped in this
-release, so the phase's own test, a direction with a Tier 3 spec and a slice
+Stage 4 chose the direction on 2026-09-07 and its first slice shipped in
+v0.10.0, so the phase's own test, a direction with a Tier 3 spec and a slice
 of it shipped, is answered. Its Stage 3 work was the audit backlog in
 [`audit-2026-08.md`](audit-2026-08.md), the definitive reference for what the
 audit found and the order it ran in. **Every phase of that backlog is

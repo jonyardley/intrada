@@ -80,6 +80,23 @@ if [ -n "$last_tag" ]; then
   esac
 fi
 
+# A cut tag whose release is never published leaves the history quiet
+# without failing (#1961): v0.12.0 and v0.13.0 sat as drafts unnoticed.
+drafts=""
+drafts_error=""
+if drafts=$(gh api "repos/$repo/releases?per_page=100" \
+  --jq '[.[] | select(.draft)] | length' 2>&1); then
+  case "$drafts" in
+    "" | *[!0-9]*)
+      drafts_error="the releases read answered something other than a count"
+      drafts=""
+      ;;
+  esac
+else
+  drafts_error=$(printf '%s' "$drafts" | head -1)
+  drafts=""
+fi
+
 # `capture` emits nothing rather than null when it does not match, which would
 # drop the whole row, so it is defaulted before the field is read.
 issue_of='(.closingIssuesReferences[0].number
@@ -175,6 +192,13 @@ if [ -n "$ahead" ]; then
 elif [ -n "$tags_error" ]; then
   echo "    Could not read the tags, so there is no distance from the last"
   echo "    release: $tags_error"
+fi
+if [ -n "$drafts" ] && [ "$drafts" -gt 0 ]; then
+  noun="draft releases"
+  [ "$drafts" -eq 1 ] && noun="draft release"
+  echo "    $drafts $noun not yet published: gh release list."
+elif [ -n "$drafts_error" ]; then
+  echo "    Could not read the releases, so drafts are not counted: $drafts_error"
 fi
 echo "    Cut when the headline works on the phone, then roll whatever is"
 echo "    still open into the next milestone. See docs/roadmap.md."

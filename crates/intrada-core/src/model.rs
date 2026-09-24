@@ -372,7 +372,9 @@ pub struct LinkedExerciseView {
     pub id: String,
     pub title: String,
     pub key: Option<String>,
-    pub tempo: Option<String>,
+    pub modality: Option<Modality>,
+    pub tempo_marking: Option<String>,
+    pub tempo_bpm: Option<u16>,
     pub practice: Option<ItemPracticeSummary>,
     /// This exercise's latest score *on the piece it's linked from* (#1087 B2),
     /// derived from the shared session block — distinct from `practice`, which
@@ -454,7 +456,6 @@ pub struct LibraryItemView {
     pub subtitle: String,
     pub key: Option<String>,
     pub modality: Option<Modality>,
-    pub tempo: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
     pub notes: Option<String>,
@@ -498,6 +499,8 @@ pub struct LibraryItemView {
     /// bincode, where a default is never read (#846).
     pub shows_key: bool,
     pub solid_variation_count: usize,
+    /// The wedge the key picker lights for the stored key (#2074).
+    pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -719,6 +722,8 @@ pub struct SetlistBlockView {
     pub related_count: usize,
     pub duration_display: String,
     pub entries: Vec<SetlistEntryView>,
+    /// Items in the session outside this block, which it cannot take (#2075).
+    pub taken_elsewhere: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -771,7 +776,6 @@ impl LibraryItemView {
             subtitle: String::new(),
             key: None,
             modality: None,
-            tempo: None,
             tempo_marking: None,
             tempo_bpm: None,
             notes: None,
@@ -790,6 +794,7 @@ impl LibraryItemView {
             photo_id: None,
             shows_key: true,
             solid_variation_count: 0,
+            key_selection: None,
         }
     }
 }
@@ -801,7 +806,9 @@ impl LinkedExerciseView {
             id: id.to_string(),
             title: title.to_string(),
             key: None,
-            tempo: None,
+            modality: None,
+            tempo_marking: None,
+            tempo_bpm: None,
             practice: None,
             piece_context_score: None,
         }
@@ -1028,7 +1035,9 @@ mod tests {
             id: "E".to_string(),
             title: "Enclosures".to_string(),
             key: Some("C".to_string()),
-            tempo: Some("♩ = 120".to_string()),
+            modality: Some(Modality::Minor),
+            tempo_marking: Some("Allegro".to_string()),
+            tempo_bpm: Some(132),
             practice: None,
             piece_context_score: Some(7),
         });

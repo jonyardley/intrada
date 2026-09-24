@@ -2,7 +2,7 @@
 # Self-test for the RELEASE block of scripts/generate-status.sh. Puts a fake
 # `gh` on PATH so the real script runs unchanged, and asserts the cases that
 # would otherwise pass silently: a milestone nobody described, counts GitHub
-# left out, and either read failing.
+# left out, and each of its three reads (milestones, tags, releases) failing.
 #
 # The fake serves real payloads and honours --jq, so the script's own jq
 # programs and its tag filter are what the assertions exercise. A fake that
@@ -38,11 +38,12 @@ if [ "${1:-}" = "api" ]; then
     *milestones*) body="$(cat "$FIXTURES/milestones.json")" ;;
     *tags*) body="$(cat "$FIXTURES/tags.json")" ;;
     *compare*) body="$(cat "$FIXTURES/compare.json")" ;;
+    *releases*) body="$(cat "$FIXTURES/releases.json")" ;;
     graphql) body='{"data":{"repository":{"issues":{"nodes":[]}}}}' ;;
   esac
 fi
 
-if [ -n "$jq_expr" ]; then
+if [ -n "$jq_expr" ] && ! { [ -n "${RAW_ON:-}" ] && printf '%s' "$endpoint" | grep -q "$RAW_ON"; }; then
   printf '%s' "$body" | jq -r "$jq_expr"
 else
   printf '%s' "$body"
@@ -60,6 +61,9 @@ cat >"$FIXTURES/tags.json" <<'JSON'
 [{"name":"v0.11.0-rc1"},{"name":"v0.10.0"},{"name":"v0.9.0"},{"name":"v0.8.0"}]
 JSON
 echo '{"ahead_by":10}' >"$FIXTURES/compare.json"
+cat >"$FIXTURES/releases.json" <<'JSON'
+[{"tag_name":"v0.10.0","draft":false},{"tag_name":"v0.9.0","draft":false}]
+JSON
 
 pass=0
 fail=0
@@ -94,6 +98,26 @@ check "$out" "prints title and headline" "- v0.11.0: Finish capture"
 check "$out" "prints the burn" "2 of 6 closed"
 check "$out" "measures from the last full release, not the pre-release" "10 commits on main since v0.10.0."
 refute "$out" "keeps the headline to one line" "The rest is prose"
+refute "$out" "says nothing about drafts when there are none" "draft release"
+
+# ── Drafts nobody published ─────────────────────────────────────────────────
+
+cat >"$FIXTURES/releases.json" <<'JSON'
+[{"tag_name":"v0.12.0","draft":true},{"tag_name":"v0.11.0","draft":true},
+ {"tag_name":"v0.10.0","draft":false}]
+JSON
+out="$("$script")"
+check "$out" "counts the drafts, not every release" "2 draft releases not yet published"
+
+cat >"$FIXTURES/releases.json" <<'JSON'
+[{"tag_name":"v0.11.0","draft":true},{"tag_name":"v0.10.0","draft":false}]
+JSON
+out="$("$script")"
+check "$out" "names a single draft in the singular" "1 draft release not yet published"
+
+cat >"$FIXTURES/releases.json" <<'JSON'
+[{"tag_name":"v0.10.0","draft":false}]
+JSON
 
 # ── A milestone nobody described ────────────────────────────────────────────
 
@@ -153,6 +177,15 @@ out="$(FAIL_ON=tags "$script")"
 check "$out" "survives a tags outage" "- v0.11.0: Finish capture"
 check "$out" "names the tags outage" "Could not read the tags"
 refute "$out" "claims no distance it cannot measure" "commits on main since"
+
+out="$(FAIL_ON=releases "$script")"
+check "$out" "names the releases outage rather than claiming no drafts" "Could not read the releases"
+check "$out" "survives a releases outage" "- v0.11.0: Finish capture"
+
+echo '<html>Service unavailable</html>' >"$FIXTURES/releases.json"
+out="$(RAW_ON=releases "$script")"
+check "$out" "names a releases answer that is not a count" "answered something other than a count"
+refute "$out" "never prints what came back in place of a count" "Service unavailable"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -404,7 +404,56 @@ git commit -qm "move prose"
 expect 0 "an American spelling in a file the branch only moved" bash "$repo_root/scripts/check-dashes.sh"
 git update-ref refs/remotes/origin/main main
 
+# ── The app version check ───────────────────────────────────────────────────
+
+versions="$work/versions"
+mkdir -p "$versions"
+cd "$versions"
+git init -q -b main .
+git config user.email "test@example.com"
+git config user.name "Hygiene self-test"
+git config commit.gpgsign false
+git config tag.gpgsign false
+
+set_version() {
+  printf 'settings:\n  base:\n    MARKETING_VERSION: "%s"\n' "$1" >project.yml
+}
+
+version_check() {
+  APP_VERSION_PROJECT=project.yml bash "$repo_root/scripts/check-app-version.sh"
+}
+
+set_version 0.9.0
+git add -A
+git commit -qm "base"
+expect 1 "no release tag reachable" version_check
+
+git tag v0.9.0
+expect 0 "the version equal to the newest tag" version_check
+
+git tag v0.10.0
+expect 1 "the version behind the newest tag" version_check
+
+set_version 0.10.0
+expect 0 "a two-digit minor compared as a number" version_check
+
+git tag v0.11.0
+expect 1 "behind a newer two-digit tag" version_check
+
+set_version 0.11.0
+expect 0 "the version bumped ahead of the tag being cut" version_check
+
+git checkout -qb release-elsewhere
+git commit -q --allow-empty -m "elsewhere"
+git tag v0.12.0
+git checkout -q main
+expect 0 "a newer tag not reachable from HEAD" version_check
+
+set_version "0.11"
+expect 1 "a version that is not X.Y.Z" version_check
+
 cd "$repo_root"
+expect 0 "the version this repo actually ships" bash scripts/check-app-version.sh
 
 # ── Result ──────────────────────────────────────────────────────────────────
 

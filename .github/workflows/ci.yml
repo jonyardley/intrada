@@ -549,6 +549,11 @@ jobs:
       # Info.plist fields, and nothing else reads the two together (#1611).
       - name: Release name agrees across the app and the release lane
         run: bash scripts/check-release-name.sh
+      # ── app version ────────────────────────────────────────────────────
+      # A hand-dispatched build takes its version from ios/project.yml, so one
+      # behind the newest tag files crashes under a release nobody cut (#1961).
+      - name: App version is not behind the newest release tag
+        run: bash scripts/check-app-version.sh
       # ── faint ink ──────────────────────────────────────────────────────
       # inkFaint fails AA on text and a snapshot cannot see contrast, so the
       # token is kept to the section eyebrow (#1941).
