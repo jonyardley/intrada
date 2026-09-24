@@ -7,8 +7,9 @@ use crate::domain::session::{
 };
 use crate::domain::variant::ladder_is_all_keys;
 use crate::model::{
-    saved_mark_caption, ActiveSessionView, PickerVariationView, PracticeSessionView,
-    SetlistBlockView, SetlistEntryView, SummaryView, VariantView, VariationPlayView,
+    saved_mark_caption, ActiveSessionView, ItemPracticeSummary, PickerVariationView,
+    PracticeSessionView, SetlistBlockView, SetlistEntryView, SummaryView, VariantView,
+    VariationPlayView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -274,21 +275,14 @@ pub(crate) fn picker_variations(
         .collect()
 }
 
-/// `changes` is every score change this week; only this session's items can
-/// be its top mover.
+/// `before` is each item's practice summary from the saved sessions, which do
+/// not include this one yet (#2076): the top mover is what this session moved.
 pub fn build_summary_view(
     summary: &SummarySession,
     labels: &VariationLabels,
-    changes: &[ScoreChange],
+    before: &HashMap<String, ItemPracticeSummary>,
 ) -> SummaryView {
     let total_secs: u64 = summary.entries.iter().map(|e| e.duration_secs).sum();
-    let played: std::collections::HashSet<&str> =
-        summary.entries.iter().map(|e| e.item_id.as_str()).collect();
-    let session_changes: Vec<ScoreChange> = changes
-        .iter()
-        .filter(|c| played.contains(c.item_id.as_str()))
-        .cloned()
-        .collect();
     SummaryView {
         total_duration_display: format_duration_display(total_secs),
         completion_status: summary.completion_status.clone(),
@@ -304,8 +298,37 @@ pub fn build_summary_view(
             .iter()
             .filter(|e| e.status == EntryStatus::Completed)
             .count(),
-        top_mover: crate::analytics::top_mover(&session_changes),
+        top_mover: crate::analytics::top_mover(&session_changes(summary, before)),
     }
+}
+
+/// An item played twice in one session is judged by its last scored entry.
+fn session_changes(
+    summary: &SummarySession,
+    before: &HashMap<String, ItemPracticeSummary>,
+) -> Vec<ScoreChange> {
+    let mut latest: Vec<(&SetlistEntry, u8)> = Vec::new();
+    for entry in &summary.entries {
+        let Some(score) = entry.score_summary() else {
+            continue;
+        };
+        latest.retain(|(e, _)| e.item_id != entry.item_id);
+        latest.push((entry, score));
+    }
+    latest
+        .into_iter()
+        .map(|(entry, current)| {
+            let previous = before.get(&entry.item_id).and_then(|p| p.latest_score);
+            ScoreChange {
+                item_id: entry.item_id.clone(),
+                item_title: entry.item_title.clone(),
+                previous_score: previous,
+                current_score: current,
+                delta: previous.map_or(0, |p| current as i8 - p as i8),
+                is_new: previous.is_none(),
+            }
+        })
+        .collect()
 }
 
 pub fn session_to_view(session: &PracticeSession, labels: &VariationLabels) -> PracticeSessionView {
@@ -996,7 +1019,7 @@ mod tests {
             session_notes: None,
             session_score: None,
         };
-        let view = build_summary_view(&summary, &VariationLabels::new(), &[]);
+        let view = build_summary_view(&summary, &VariationLabels::new(), &HashMap::new());
         assert_eq!(view.total_duration_display, "2m 30s");
     }
 
@@ -1019,15 +1042,32 @@ mod tests {
         }
     }
 
-    fn rise(item_id: &str, title: &str, previous: Option<u8>, current: u8) -> ScoreChange {
-        ScoreChange {
-            item_id: item_id.to_string(),
-            item_title: title.to_string(),
-            previous_score: previous,
-            current_score: current,
-            delta: previous.map_or(0, |p| current as i8 - p as i8),
-            is_new: previous.is_none(),
+    fn scored(id: &str, item_id: &str, title: &str, marks: &[u8]) -> SetlistEntry {
+        SetlistEntry {
+            plays: marks
+                .iter()
+                .map(|m| VariationPlay {
+                    score: Some(*m),
+                    ..VariationPlay::fixture()
+                })
+                .collect(),
+            ..entry_with(id, item_id, title, EntryStatus::Completed)
         }
+    }
+
+    fn marked_before(marks: &[(&str, u8)]) -> HashMap<String, ItemPracticeSummary> {
+        marks
+            .iter()
+            .map(|(id, mark)| {
+                (
+                    id.to_string(),
+                    ItemPracticeSummary {
+                        latest_score: Some(*mark),
+                        ..ItemPracticeSummary::fixture()
+                    },
+                )
+            })
+            .collect()
     }
 
     #[test]
@@ -1059,7 +1099,7 @@ mod tests {
             let view = build_summary_view(
                 &summary_of(entries, completion.clone()),
                 &VariationLabels::new(),
-                &[],
+                &HashMap::new(),
             );
             assert_eq!(view.completed_count, *expected, "{statuses:?}");
             assert_eq!(view.entries.len(), statuses.len());
@@ -1067,58 +1107,81 @@ mod tests {
     }
 
     #[test]
-    fn summary_top_mover_is_the_largest_rise_among_this_sessions_items() {
-        let entries = vec![
-            entry_with("e1", "i1", "Scales", EntryStatus::Completed),
-            entry_with("e2", "i2", "Etude", EntryStatus::Completed),
-            entry_with("e3", "i3", "Nocturne", EntryStatus::Completed),
-            entry_with("e5", "i5", "Hanon", EntryStatus::Completed),
-        ];
-        let summary = summary_of(entries, CompletionStatus::Completed);
-        let top = |changes: &[ScoreChange]| {
-            build_summary_view(&summary, &VariationLabels::new(), changes)
-                .top_mover
-                .map(|c| c.item_id)
+    fn summary_top_mover_is_what_this_session_moved() {
+        let top = |entries: Vec<SetlistEntry>, before: &[(&str, u8)]| {
+            build_summary_view(
+                &summary_of(entries, CompletionStatus::Completed),
+                &VariationLabels::new(),
+                &marked_before(before),
+            )
+            .top_mover
+            .map(|c| (c.item_id, c.previous_score, c.current_score))
         };
 
-        assert_eq!(top(&[]), None, "nothing moved");
         assert_eq!(
-            top(&[
-                rise("x9", "Scales", Some(2), 9),
-                rise("i1", "Scales", Some(3), 5)
-            ]),
-            Some("i1".to_string()),
-            "an item outside the session sharing a title is not this session's"
+            top(vec![scored("e1", "i1", "Scales", &[5])], &[("i1", 3)]),
+            Some(("i1".to_string(), Some(3), 5)),
+            "this session's mark against the one before it"
         );
         assert_eq!(
-            top(&[rise("x9", "Other", Some(1), 9)]),
+            top(
+                vec![entry_with("e1", "i1", "Scales", EntryStatus::Completed)],
+                &[("i1", 3)]
+            ),
             None,
-            "a rise elsewhere this week is not this session's"
+            "an unmarked entry moved nothing, whatever moved earlier this week"
         );
         assert_eq!(
-            top(&[rise("i2", "Etude", Some(8), 5)]),
+            top(vec![scored("e1", "i1", "Scales", &[3])], &[("i1", 3)]),
+            None,
+            "the same mark again is not a rise"
+        );
+        assert_eq!(
+            top(vec![scored("e1", "i1", "Scales", &[2])], &[("i1", 4)]),
             None,
             "a fall is not a mover"
         );
         assert_eq!(
-            top(&[rise("i3", "Nocturne", None, 6)]),
+            top(vec![scored("e1", "i1", "Scales", &[6])], &[]),
             None,
             "a first mark has no before"
         );
         assert_eq!(
-            top(&[
-                rise("i5", "Hanon", Some(3), 5),
-                rise("i1", "Scales", Some(4), 6)
-            ]),
-            Some("i1".to_string()),
+            top(vec![scored("e1", "i1", "Scales", &[4, 6])], &[("i1", 3)]),
+            Some(("i1".to_string(), Some(3), 5)),
+            "several plays collapse to their rounded mean"
+        );
+        assert_eq!(
+            top(
+                vec![
+                    scored("e1", "i1", "Scales", &[6]),
+                    scored("e2", "i1", "Scales", &[4]),
+                ],
+                &[("i1", 3)]
+            ),
+            Some(("i1".to_string(), Some(3), 4)),
+            "an item played twice is judged by its last scored entry"
+        );
+        assert_eq!(
+            top(
+                vec![
+                    scored("e1", "i5", "Hanon", &[5]),
+                    scored("e2", "i1", "Scales", &[6]),
+                ],
+                &[("i5", 3), ("i1", 4)]
+            ),
+            Some(("i1".to_string(), Some(4), 6)),
             "a tie goes to the lower item id"
         );
         assert_eq!(
-            top(&[
-                rise("i1", "Scales", Some(4), 5),
-                rise("i5", "Hanon", Some(2), 6)
-            ]),
-            Some("i5".to_string()),
+            top(
+                vec![
+                    scored("e1", "i1", "Scales", &[5]),
+                    scored("e2", "i5", "Hanon", &[6]),
+                ],
+                &[("i1", 4), ("i5", 2)]
+            ),
+            Some(("i5".to_string(), Some(2), 6)),
             "the largest rise wins"
         );
     }
@@ -1126,13 +1189,13 @@ mod tests {
     #[test]
     fn summary_view_round_trips_on_ffi_bincode_wire() {
         let summary = summary_of(
-            vec![entry_with("e1", "i1", "Scales", EntryStatus::Completed)],
+            vec![scored("e1", "i1", "Scales", &[5])],
             CompletionStatus::EndedEarly,
         );
         let view = build_summary_view(
             &summary,
             &VariationLabels::new(),
-            &[rise("i1", "Scales", Some(3), 5)],
+            &marked_before(&[("i1", 3)]),
         );
         assert_eq!(view.completed_count, 1);
         assert!(view.top_mover.is_some());
@@ -1199,7 +1262,7 @@ mod tests {
             session_notes: None,
             session_score: Some(7),
         };
-        let view = build_summary_view(&summary, &VariationLabels::new(), &[]);
+        let view = build_summary_view(&summary, &VariationLabels::new(), &HashMap::new());
         assert_eq!(view.session_score, Some(7));
     }
 
