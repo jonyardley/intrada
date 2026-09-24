@@ -16,6 +16,11 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
   }
 
+  func testSessionBuilderAccessibilitySize() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: axConfig)
+  }
+
   func testSessionBuilderGrouped() {
     assertSnapshot(
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
@@ -24,6 +29,10 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
 
   func testAddToSessionSheet() {
     assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
+  }
+
+  func testAddToSessionSheetAccessibilitySize() {
+    assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: axConfig)
   }
 
   func testAddToSessionSheetRecentlyPractised() {
@@ -60,5 +69,14 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       of: host(
         EntrySettingsSheet(entry: .previewGroupedScalesConfigured, limits: limits), store: store
       ), as: config)
+  }
+
+  func testEntrySettingsSheetAccessibilitySize() throws {
+    let store = Store.previewBuildingGrouped
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(
+        EntrySettingsSheet(entry: .previewGroupedScalesConfigured, limits: limits), store: store
+      ), as: axConfig)
   }
 }

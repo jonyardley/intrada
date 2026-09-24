@@ -11,6 +11,10 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: config)
   }
 
+  func testSessionSummaryAccessibilitySize() {
+    assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: axConfig)
+  }
+
   /// A mark per variation, beside a piece with one play (#1739 decision 10).
   func testSessionSummaryWithVariations() {
     assertSnapshot(

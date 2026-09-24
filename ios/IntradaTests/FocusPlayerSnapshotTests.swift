@@ -96,6 +96,16 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
+  func testClickSheetAccessibilitySize() throws {
+    let click = ClickController()
+    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]))
+    click.apply(.groupStarts)
+    let store = Store(bridge: SnapshotStubBridge())
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: axConfig)
+  }
+
   /// The sounding row is the tight one, so it is the state that has to reflow.
   func testClickControlLargeText() {
     let sounding = ZStack {
