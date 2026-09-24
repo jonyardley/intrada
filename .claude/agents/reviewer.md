@@ -63,7 +63,8 @@ comment) before anything else below.
    by item and name what you found, since "no drift" with nothing named is not
    a review. Flag a claim with no source, an inference written as a fact, a
    name we gave our own work with nothing it resolves to, and a relative date.
-   Leave dashes and spellings to `scripts/check-dashes.sh`.
+   Leave dashes and spellings in committed files to `scripts/check-dashes.sh`,
+   and flag them in the PR summary, which the script never sees.
 
 ## What not to do
 

@@ -42,7 +42,7 @@ dash_re="$em|$en"
 # Prose and comment surfaces only. The label-separator exception (#1231) lives
 # here as an exemption: the three structured docs that use it as house style are
 # excluded, along with the archived specs kept only for reference.
-files=$(git diff "$range" --name-only -- \
+files=$(git -c core.quotePath=false diff "$range" --name-only -- \
   '*.md' '*.rs' '*.swift' '*.sh' '*.py' '*.yml' '*.yaml' \
   ':(exclude)CLAUDE.md' \
   ':(exclude)docs/roadmap.md' \
@@ -58,7 +58,7 @@ found=0
 report=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  added=$(git diff "$range" -- "$f" | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+  added=$(git -c core.quotePath=false diff "$range" -- "$f" | grep -E '^\+' | grep -vE '^\+\+\+' || true)
   case "$f" in
     # A string literal in code is data, often the core's own output (the dash
     # it shows for an empty duration), and changing it moves snapshot references.
@@ -82,23 +82,27 @@ EOF
 # ── Double dashes and American spellings in Markdown prose ──
 # Judged against the file as committed rather than the diff, so a line inside a
 # fenced block is known to be code even when the fence itself did not change.
-# Only words that are unambiguously wrong here; code spans and link targets are
-# exempt, since an API name such as `Color` is spelt the way its owner spells it.
+# Only words that are unambiguously wrong here; code spans, inline link targets
+# and Apple's product names are exempt, since an API name such as `Color` is
+# spelt the way its owner spells it. A quoted title or citation carries the
+# marker `<!-- docs-check: quoted -->` on its line. Renames are paired (-M) so a
+# moved file is judged on the lines it changed, not all of them.
 americanisms='analyze|analyzed|analyzes|analyzing|behavior|behaviors|center|centered|centers|color|colors|defense|favor|favors|favorite|fulfillment|maximize|minimize|optimize|optimized|optimizing|organize|organized|organizing|organization|organizations|prioritize|prioritized|prioritizing|recognize|recognized|recognizing|standardize|standardized|summarize|summarized|summarizing|traveled|traveling'
 
-prose_files=$(git diff "$range" --name-only --diff-filter=d -- '*.md' \
-  ':(exclude)specs/_archive/**' 2>/dev/null || true)
-
-while IFS= read -r f; do
-  [ -n "$f" ] || continue
-  added_lines=$(git diff -U0 "$range" -- "$f" | perl -ne '
+prose_added=$(git -c core.quotePath=false diff -M -U0 --diff-filter=d "$range" -- \
+  '*.md' ':(exclude)specs/_archive/**' 2>/dev/null | perl -ne '
+    if (m{^\+\+\+ b/(.*)$}) { print "\n" if defined $f; $f = $1; print "$f\t"; next }
     print join(" ", $1 .. $1 + (defined $2 ? $2 : 1) - 1), " "
-      if /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/;
-  ')
+      if defined $f && /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/;
+    END { print "\n" if defined $f }
+  ' || true)
+
+while IFS=$'\t' read -r f added_lines; do
+  [ -n "$f" ] || continue
   [ -n "$added_lines" ] || continue
   hits=$(git show "HEAD:$f" | ADDED="$added_lines" WORDS="$americanisms" perl -ne '
     BEGIN { %added = map { $_ => 1 } split " ", $ENV{ADDED}; $fence = 0; $span = 0 }
-    if (/^\s*(?:```|~~~)/) { $fence = !$fence; next }
+    if (/^\s*(?:```|~~~)/) { $fence = !$fence; $span = 0; next }
     next if $fence;
     my $prose = $_;
     $span = 0 if $prose =~ /^\s*$/;
@@ -106,6 +110,8 @@ while IFS= read -r f; do
     $prose =~ s/`[^`]*`//g;
     if ($prose =~ s/`.*//s) { $span = 1 }
     next unless $added{$.};
+    next if $prose =~ /<!-- docs-check: quoted -->/;
+    $prose =~ s/\b(?:Control|Notification|Game) Center\b//g;
     $prose =~ s/<!--|-->//g;
     $prose =~ s/\]\([^)]*\)/]/g;
     next if $prose =~ /^\s*\|?[\s:|-]+\|?\s*$/;
@@ -116,7 +122,7 @@ while IFS= read -r f; do
     report="$report"$'\n'"  $f:"$'\n'"$(printf '%s\n' "$hits" | sed 's/^/    /')"
   fi
 done <<EOF
-$prose_files
+$prose_added
 EOF
 
 if [ "$found" = "1" ]; then

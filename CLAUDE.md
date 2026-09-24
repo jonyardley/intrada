@@ -105,8 +105,8 @@ whether or not you have seen them.
   name or a type.
 - **British English**; UI copy is written against `docs/tone-of-voice.md`, and PR bodies,
   commits, issues and docs against [`docs/style-guide.md`](docs/style-guide.md). **No em
-  dashes, en dashes or double dashes**: `scripts/check-dashes.sh` fails all three and a list
-  of American spellings on added Markdown lines, and em and en dashes in comments. **Plain
+  dashes, en dashes or double dashes**: `scripts/check-dashes.sh` fails double dashes and
+  American spellings on added Markdown lines and em or en dashes on most others. **Plain
   language**: name features by the musician-visible outcome; issue numbers are the only
   stable handles.
 
