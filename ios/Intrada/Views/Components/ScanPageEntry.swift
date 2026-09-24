@@ -46,7 +46,7 @@ struct ScanPageEntry: View {
     sourceMenu {
       HStack(spacing: 10) {
         Image(systemName: "doc.viewfinder")
-          .font(.system(size: 20, weight: .regular))
+          .iconSize(.control)
           .foregroundStyle(IntradaColor.accent)
         VStack(alignment: .leading, spacing: 2) {
           Text("Scan a page")

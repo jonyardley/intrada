@@ -244,7 +244,7 @@ struct PracticeScreen: View {
         store.send(.session(.startBuilding))
       } label: {
         Image(systemName: "play.fill")
-          .font(.system(size: 38))
+          .iconSize(.hero)
           .foregroundStyle(IntradaColor.onMarker)
           .frame(width: 96, height: 96)
           .background(marker)
@@ -362,7 +362,7 @@ struct PracticeScreen: View {
   private var emptyDayCard: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Image(systemName: isFutureSelection ? "sunrise" : "moon")
-        .font(.system(size: 28))
+        .iconSize(.large)
         .foregroundStyle(IntradaColor.inkSecondary)
       Text(isFutureSelection ? "Nothing logged yet" : "No practice logged")
         .font(IntradaFont.bodyMedium)

@@ -160,7 +160,7 @@ private struct SpecRow: View {
             .strokeBorder(IntradaColor.accent, lineWidth: 2)
             .opacity(isOn ? 0 : 1))
       Image(systemName: isOn ? "checkmark" : "plus")
-        .font(.system(size: 14, weight: .semibold))
+        .iconSize(.inline, weight: .semibold)
         .foregroundStyle(isOn ? IntradaColor.onAccent : IntradaColor.accent)
     }
     .frame(width: 28, height: 28)

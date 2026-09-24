@@ -144,7 +144,7 @@ struct FocusPlayerScreen: View {
       }
     } label: {
       Image(systemName: "ellipsis")
-        .font(.system(size: 20))
+        .iconSize(.control)
         .foregroundStyle(IntradaColor.inkSecondary)
         .frame(width: 28, height: 28)
     }
@@ -312,7 +312,7 @@ struct FocusPlayerScreen: View {
           presentReflection(active)
         } label: {
           Image(systemName: "play.fill")
-            .font(.system(size: 32))
+            .iconSize(.transport)
             .foregroundStyle(IntradaColor.onAccent)
             .frame(width: 78, height: 78)
             .background(LinearGradient.inkBar)
@@ -326,7 +326,7 @@ struct FocusPlayerScreen: View {
           store.send(.session(.skipItem(now: SessionClock.nowRFC3339())))
         } label: {
           Image(systemName: "forward.end")
-            .font(.system(size: 22))
+            .iconSize(.control)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(width: 48, height: 48)
         }

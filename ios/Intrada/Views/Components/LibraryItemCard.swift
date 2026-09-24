@@ -39,13 +39,13 @@ struct LibraryItemCard: View {
           HStack(spacing: 6) {
             if item.priority {
               Image(systemName: "star.fill")
-                .font(.system(size: 11))
+                .iconSize(.caption)
                 .foregroundStyle(IntradaColor.accent)
                 .accessibilityHidden(true)
             }
             if hasLinkedExercises {
               countChip("\(item.linkedExercises.count)") {
-                Image(systemName: "dumbbell.fill").font(.system(size: 9))
+                Image(systemName: "dumbbell.fill").iconSize(.badge)
               }
             }
             if hasStepLadder {
@@ -108,7 +108,7 @@ struct LibraryItemCard: View {
     if item.ladderIsKeys {
       Text(verbatim: "♯").font(IntradaFont.meta)
     } else {
-      Image(systemName: "stairs").font(.system(size: 9))
+      Image(systemName: "stairs").iconSize(.badge)
     }
   }
 

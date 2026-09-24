@@ -207,10 +207,11 @@ extension View {
 }
 
 /// The solid circular icon button `ScreenScaffold`'s `trailing` renders.
+@MainActor
 enum ScreenScaffoldIconButton {
   static func icon(_ systemImage: String) -> some View {
     Image(systemName: systemImage)
-      .font(.system(size: 16, weight: .semibold))
+      .iconSize(.inline, weight: .semibold)
       .foregroundStyle(IntradaColor.onAccent)
       .frame(width: 30, height: 30)
       .background(IntradaColor.accent, in: Circle())

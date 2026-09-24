@@ -150,7 +150,7 @@ struct ProfileEditSheet: View {
                 .overlay {
                   if swatch == colour {
                     Image(systemName: "checkmark")
-                      .font(.system(size: 15, weight: .bold))
+                      .iconSize(.inline, weight: .bold)
                       .foregroundStyle(IntradaColor.onMarker)
                   }
                 }

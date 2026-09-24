@@ -48,7 +48,7 @@ struct UpNextHero: View {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
         if suggestion.priority {
           Image(systemName: "star.fill")
-            .font(.system(size: 11))
+            .iconSize(.caption)
             .foregroundStyle(marker)
         }
         Text(suggestion.reason)

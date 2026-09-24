@@ -121,7 +121,7 @@ struct ClickControl: View {
   /// first-use tooltip to dismiss (#1823).
   private var gripGlyph: some View {
     Image(systemName: "arrow.up.and.down")
-      .font(.system(size: 11, weight: .semibold))
+      .iconSize(.caption, weight: .semibold)
       .foregroundStyle(IntradaColor.inkFaintIcon)
       .accessibilityHidden(true)
   }

@@ -9,7 +9,7 @@ struct FieldMark: View {
   var body: some View {
     HStack(spacing: 5) {
       Image(systemName: "doc.viewfinder")
-        .font(.system(size: 11, weight: .medium))
+        .iconSize(.caption, weight: .medium)
         .foregroundStyle(weak ? IntradaColor.inkFaintIcon : IntradaColor.inkSecondary)
       Text("From the photo")
         .font(IntradaFont.micro)

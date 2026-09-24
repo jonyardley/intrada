@@ -34,7 +34,7 @@ struct MasteryDelta: View {
           Text("\(was)")
             .foregroundStyle(IntradaColor.figureMuted)
           Image(systemName: "arrow.right")
-            .font(.system(size: 13))
+            .iconSize(.inline)
             .foregroundStyle(IntradaColor.inkFaintIcon)
         }
         Text("\(now)")
@@ -83,7 +83,7 @@ struct MasteryDeltaToast: View {
   var body: some View {
     HStack(spacing: 13) {
       Image(systemName: "sparkles")
-        .font(.system(size: 17))
+        .iconSize(.inline)
         .foregroundStyle(IntradaColor.onMarker)
         .frame(width: 34, height: 34)
         .background(marker, in: Circle())
@@ -102,7 +102,7 @@ struct MasteryDeltaToast: View {
         Text("\(was)")
           .opacity(0.45)
         Image(systemName: "arrow.right")
-          .font(.system(size: 15))
+          .iconSize(.inline)
           .foregroundStyle(marker)
         Text("\(now)")
       }
