@@ -14,10 +14,14 @@ extension XCUIApplication {
     _ identifier: String, spoken label: String, timeout: TimeInterval = 5,
     file: StaticString = #filePath, line: UInt = #line
   ) -> XCUIElement {
-    let element = descendants(matching: .any).matching(identifier: identifier).firstMatch
+    let any = descendants(matching: .any).matching(identifier: identifier).firstMatch
     XCTAssertTrue(
-      element.waitForExistence(timeout: timeout), "\(identifier) is on screen", file: file,
+      any.waitForExistence(timeout: timeout), "\(identifier) is on screen", file: file,
       line: line)
+    // A toolbar item reports a wrapper around its button under the same
+    // identifier; the tap goes to the button.
+    let matches = buttons.matching(identifier: identifier).allElementsBoundByIndex
+    let element = matches.first(where: \.isHittable) ?? matches.first ?? any
     XCTAssertEqual(
       element.label, label, "what VoiceOver reads for \(identifier)", file: file, line: line)
     return element

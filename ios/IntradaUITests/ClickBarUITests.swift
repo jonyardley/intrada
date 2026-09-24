@@ -29,8 +29,11 @@ final class ClickBarUITests: XCTestCase {
 
     // A pattern changes which beats sound, and nothing else.
     bar.tap()
+    let done = app.control("sheet.done", spoken: "Done")
+    // BUG: a pause between choosing a pattern and Done leaves the bar line
+    // unable to reopen the sheet, so Done follows the pattern at once (#1950).
     app.control("clickSheet.pattern.downbeat", spoken: "Downbeat").tap()
-    app.control("sheet.done", spoken: "Done").tap()
+    done.tap()
     XCTAssertTrue(bar.waitForExistence(timeout: 5))
     XCTAssertEqual(bar.value as? String, "4 crotchet beats, metronome on beat 1")
 
