@@ -41,7 +41,7 @@ struct VariationRowsSection: View {
       presenting: confirmingRemoval
     ) { row in
       Button("Remove", role: .destructive) {
-        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        Haptic.warning.play()
         rows.removeAll { $0.id == row.id }
       }
       Button("Cancel", role: .cancel) {}
@@ -143,7 +143,7 @@ struct VariationRowsSection: View {
           }
           rowsPassed += step
           travel -= CGFloat(step) * rowPitch
-          UISelectionFeedbackGenerator().selectionChanged()
+          Haptic.selection.play()
         }
         dragTravel = travel
       }

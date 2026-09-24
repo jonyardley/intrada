@@ -145,7 +145,7 @@ struct ProfileEditSheet: View {
         ForEach(HighlighterColour.all, id: \.self) { swatch in
           Button {
             colour = swatch
-            UISelectionFeedbackGenerator().selectionChanged()
+            Haptic.selection.play()
           } label: {
             VStack(spacing: 6) {
               Circle()
@@ -192,10 +192,10 @@ struct ProfileEditSheet: View {
       }
       withAnimation { formError = error }
       store.send(.clearError)
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      Haptic.error.play()
       UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
     } else {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
       dismiss()
     }
   }

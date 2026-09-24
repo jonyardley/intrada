@@ -81,7 +81,7 @@ struct KeyPicker: View {
         Button {
           key = ""
           modality = nil
-          UIImpactFeedbackGenerator(style: .light).impactOccurred()
+          Haptic.impact.play()
         } label: {
           Image(systemName: "xmark.circle.fill")
             .foregroundStyle(IntradaColor.inkFaintIcon)
@@ -105,7 +105,7 @@ struct KeyPicker: View {
       withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
         expanded.toggle()
       }
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Haptic.impact.play()
     }
     .accessibilityElement(children: .combine)
     .accessibilityAddTraits(.isButton)
@@ -269,9 +269,9 @@ struct KeyPicker: View {
     key = result.tonic
     modality = result.modality
     if result.flipped {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Haptic.impact.play()
     } else {
-      UISelectionFeedbackGenerator().selectionChanged()
+      Haptic.selection.play()
     }
   }
 }

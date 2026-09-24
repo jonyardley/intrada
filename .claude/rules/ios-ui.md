@@ -65,9 +65,10 @@ chrome it emerges from behind must also be opaque and sit on top (`.zIndex(1)`).
 
 ## Native feel
 
-- Haptics through the `Store+Feedback` helpers: `selection` for tabs, `light`
-  for taps, `success` for saves only after the core confirms, `warning` for
-  destructive confirms.
+- Haptics through `Haptic` in `Store+Feedback.swift`: `selection` for tabs,
+  `impact` for taps, `success` for saves only after the core confirms (through
+  `store.send(_:onSuccess:)`), `warning` for destructive confirms.
+  `scripts/check-haptics.sh` fails one built anywhere else (#2013).
 - iPad list-to-detail screens use `ListDetailSplit`, built with the view.
 - Respect safe areas; `ScreenScaffold` handles them.
 

@@ -68,7 +68,7 @@ struct TagFilterSheet: View {
     var next = selected.filter { $0.localizedCaseInsensitiveCompare(tag) != .orderedSame }
     if !isOn { next.append(tag) }
     onChange(next)
-    UISelectionFeedbackGenerator().selectionChanged()
+    Haptic.selection.play()
   }
 }
 

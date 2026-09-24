@@ -79,298 +79,6 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  // ── Chord chart ──
-
-  private var chordChartSection: some View {
-    VStack(spacing: 0) {
-      SectionHeader(
-        title: "Chord chart",
-        action: .init(
-          title: item.chordChart == nil ? "Add" : "Edit",
-          accessibilityLabel: item.chordChart == nil ? "Add a chord chart" : "Edit chord chart",
-          perform: { editingChart = true })
-      )
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.top, IntradaSpacing.card)
-      .padding(.bottom, item.chordChart == nil ? IntradaSpacing.card : IntradaSpacing.cardCompact)
-
-      if let chart = item.chordChart {
-        chartSubtitle(chart)
-        chartBarGrid(chart).padding(.bottom, IntradaSpacing.controlGap)
-      } else {
-        chartEmptyState
-      }
-    }
-    .cardSurface()
-  }
-
-  private func chartSubtitle(_ chart: ChordChart) -> some View {
-    let bars = chart.sections.reduce(0) { $0 + $1.bars.count }
-    let changes = chart.sections.reduce(0) { $0 + $1.bars.reduce(0) { $0 + $1.chords.count } }
-    let key = item.keyDisplay ?? chart.key
-    return Text("\(key) · \(bars) \(bars == 1 ? "bar" : "bars") · \(changes) changes")
-      .font(IntradaFont.meta)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.bottom, IntradaSpacing.cardCompact)
-  }
-
-  private func chartBarGrid(_ chart: ChordChart) -> some View {
-    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
-    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      ForEach(Array(chart.sections.enumerated()), id: \.offset) { _, section in
-        if let label = section.label, !label.isEmpty {
-          Eyebrow(label)
-        }
-        LazyVGrid(columns: columns, spacing: 6) {
-          ForEach(Array(sectionChords(section).enumerated()), id: \.offset) { _, raw in
-            Text(raw)
-              .font(IntradaFont.cardTitle())
-              .foregroundStyle(IntradaColor.ink)
-              .lineLimit(1)
-              .minimumScaleFactor(0.7)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, IntradaSpacing.controlGap)
-              .padding(.horizontal, 4)
-              .background(
-                RoundedRectangle(cornerRadius: IntradaRadius.badge)
-                  .fill(IntradaColor.paperTop)
-                  .stroke(IntradaColor.divider, lineWidth: 1)
-              )
-          }
-        }
-      }
-    }
-    .padding(.horizontal, IntradaSpacing.card)
-    .padding(.bottom, IntradaSpacing.cardCompact)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(
-      "Chord chart: " + chart.sections.flatMap { sectionChords($0) }.joined(separator: ", "))
-  }
-
-  private func sectionChords(_ section: ChartSection) -> [String] {
-    section.bars.flatMap { $0.chords.map { $0.symbol.raw } }
-  }
-
-  private var chartEmptyState: some View {
-    Text("Paste the changes to keep them with the piece.")
-      .font(IntradaFont.body)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.bottom, IntradaSpacing.card)
-  }
-
-  // ── Related exercises ──
-
-  private var linkedExercisesSection: some View {
-    VStack(spacing: 0) {
-      linkedExercisesHeader
-      if item.linkedExercises.isEmpty {
-        linkedExercisesEmptyState
-      } else {
-        if !editingLinks {
-          // The rings below are each exercise's score *on this piece*, not its
-          // overall — say so, mirroring the exercise hero's "Overall" (#1087 B2).
-          Text("Marks shown are for this piece")
-            .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, IntradaSpacing.card)
-            .padding(.bottom, IntradaSpacing.cardCompact)
-        }
-        linkedExercisesRows
-        populatedFooterActions
-      }
-      if item.scaffoldPreview != nil {
-        HairlineDivider()
-        suggestionsFromChart
-      }
-    }
-    .cardSurface()
-    .onChange(of: item.linkedExercises.isEmpty) { _, isEmpty in
-      if isEmpty { editingLinks = false }
-    }
-  }
-
-  // The brand bar belongs to the empty state, where there is one obvious next
-  // step; once the card holds exercises the action recedes (T18).
-  private var populatedFooterActions: some View {
-    Button {
-      showingPicker = true
-    } label: {
-      Label("Add exercise", systemImage: "plus")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Add an exercise for this piece")
-    .accessibilityIdentifier("libraryDetail.addExercise")
-    .padding(.horizontal, IntradaSpacing.controlGap)
-    .padding(.vertical, IntradaSpacing.controlGap)
-  }
-
-  // Drawn as a control, not a section: read as plain content its eyebrow gets
-  // mistaken for the button, and it creates several library items (T18).
-  @ViewBuilder private var suggestionsFromChart: some View {
-    if let preview = item.scaffoldPreview {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow("From the chord chart")
-        Button {
-          showingScaffold = true
-        } label: {
-          HStack(spacing: IntradaSpacing.cardCompact) {
-            Image(systemName: "sparkles")
-              .font(IntradaFont.bodyMedium)
-              .foregroundStyle(IntradaColor.exerciseBadgeFg)
-              .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-              Text(suggestionHeadline(preview))
-                .font(IntradaFont.bodyMedium)
-                .foregroundStyle(IntradaColor.ink)
-                .multilineTextAlignment(.leading)
-              Text(suggestionSubtitle(preview))
-                .font(IntradaFont.meta)
-                .foregroundStyle(IntradaColor.inkSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right")
-              .font(IntradaFont.meta)
-              .foregroundStyle(IntradaColor.exerciseBadgeFg)
-              .accessibilityHidden(true)
-          }
-          .padding(IntradaSpacing.cardCompact)
-          .background(
-            IntradaColor.surfaceSunken, in: RoundedRectangle(cornerRadius: IntradaRadius.card)
-          )
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(suggestionAccessibilityLabel(preview))
-        .accessibilityHint("Opens the exercises worked out from these changes")
-      }
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.top, IntradaSpacing.cardCompact)
-      .padding(.bottom, IntradaSpacing.card)
-    }
-  }
-
-  /// Names the first two suggestions rather than counting them: what they are
-  /// is the reason to tap, and a bare count says nothing about the music.
-  private func suggestionHeadline(_ preview: ScaffoldPreviewView) -> String {
-    let names = preview.specs.filter { !$0.alreadyLinked }.map(\.title)
-    guard let first = names.first else { return "All of them are already added" }
-    let shown = names.prefix(2).enumerated().map { index, title in
-      index == 0 ? title : lowercasingFirstLetter(title)
-    }
-    let rest = names.count - shown.count
-    if rest > 0 {
-      return shown.joined(separator: ", ") + " and \(rest) more"
-    }
-    return shown.count == 2 ? shown.joined(separator: " and ") : first
-  }
-
-  /// "Shells, guide-tone lines and 3 more" — the run reads as one sentence, so
-  /// every title after the first drops its capital (tone doc, sentence case).
-  private func lowercasingFirstLetter(_ title: String) -> String {
-    guard let first = title.first else { return title }
-    return first.lowercased() + title.dropFirst()
-  }
-
-  private func suggestionSubtitle(_ preview: ScaffoldPreviewView) -> String {
-    let added = preview.specs.filter(\.alreadyLinked).count
-    if added > 0 {
-      return "\(added) of \(preview.specs.count) already added"
-    }
-    return "Worked out from these changes, in \(preview.key)"
-  }
-
-  private func suggestionAccessibilityLabel(_ preview: ScaffoldPreviewView) -> String {
-    "From the chord chart: \(suggestionHeadline(preview)) · \(suggestionSubtitle(preview))"
-  }
-
-  private var linkedExercisesHeader: some View {
-    SectionHeader(
-      title: "Related exercises",
-      caption: item.linkedExercises.isEmpty ? nil : "\(item.linkedExercises.count)",
-      captionAccessibilityHidden: true,
-      action: .init(
-        title: editingLinks ? "Done" : "Edit",
-        accessibilityLabel: editingLinks
-          ? "Done editing related exercises" : "Edit related exercises",
-        isDisabled: item.linkedExercises.isEmpty,
-        perform: { editingLinks.toggle() })
-    )
-    .padding(.horizontal, IntradaSpacing.card)
-    .padding(.top, IntradaSpacing.card)
-    .padding(.bottom, item.linkedExercises.isEmpty ? 0 : IntradaSpacing.cardCompact)
-  }
-
-  @ViewBuilder private var linkedExercisesRows: some View {
-    if editingLinks {
-      ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
-        if index > 0 {
-          HairlineDivider()
-        }
-        LinkedExerciseEditRow(
-          exercise: exercise,
-          isFirst: index == 0,
-          isLast: index == item.linkedExercises.count - 1,
-          onMoveUp: { moveExercise(at: index, by: -1) },
-          onMoveDown: { moveExercise(at: index, by: 1) },
-          onRemove: { removeExercise(id: exercise.id) })
-      }
-    } else {
-      ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
-        if index > 0 {
-          HairlineDivider()
-        }
-        NavigationLink(value: exercise.id) {
-          LinkedExerciseRow(exercise: exercise)
-        }
-        .buttonStyle(.plain)
-      }
-    }
-  }
-
-  private var linkedExercisesEmptyState: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Text("Scales, arpeggios, and anything else you practise alongside this piece.")
-        .font(IntradaFont.body)
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .fixedSize(horizontal: false, vertical: true)
-      BrandBarButton(action: { showingPicker = true }) {
-        Image(systemName: "plus")
-        Text("Add exercise")
-      }
-      .accessibilityLabel("Add an exercise for this piece")
-      .accessibilityIdentifier("libraryDetail.addExercise")
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.horizontal, IntradaSpacing.card)
-    .padding(.bottom, IntradaSpacing.card)
-  }
-
-  // ── Exercise hero + provenance ──
-
-  private var exerciseHero: some View {
-    VStack(spacing: 6) {
-      ScoreRing(
-        score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
-      // Names the hero as the score across every piece, so it can't be read as
-      // one piece's — the distinction the "Used in" rows below make (#1087 B2).
-      if !item.usedIn.isEmpty {
-        Eyebrow("Overall")
-      }
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, IntradaSpacing.controlGap)
-  }
-
   // ── Notes ──
 
   private func notesSection(_ notes: String) -> some View {
@@ -383,68 +91,6 @@ struct LibraryDetailScreen: View {
     }
     .padding(IntradaSpacing.card)
     .cardSurface()
-  }
-
-  // ── Variations (#1733) ──
-
-  private var variationsSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      variationsHeader
-      if item.variants.isEmpty {
-        variationsEmptyState
-      } else if item.ladderIsKeys {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(spacing: IntradaSpacing.card) {
-            ForEach(item.variants, id: \.id) { variation in
-              VariationRingItem(variation: variation)
-            }
-          }
-          .padding(IntradaSpacing.cardCompact)
-        }
-        .cardSurface(cornerRadius: IntradaRadius.card)
-      } else {
-        VStack(spacing: 0) {
-          ForEach(Array(item.variants.enumerated()), id: \.element.id) { index, variation in
-            if index > 0 {
-              HairlineDivider()
-            }
-            VariationListRow(variation: variation)
-          }
-        }
-        .cardSurface()
-      }
-    }
-  }
-
-  private var variationsHeader: some View {
-    HStack(alignment: .firstTextBaseline) {
-      Eyebrow(item.ladderIsKeys ? "Keys" : "Variations")
-      if !item.variants.isEmpty {
-        Text("\(item.solidVariationCount) of \(item.variants.count) solid")
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      Spacer()
-    }
-  }
-
-  private var variationsEmptyState: some View {
-    VStack(spacing: IntradaSpacing.controlGap) {
-      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circleMajor) }
-        .accessibilityLabel("Add 12 major keys as this exercise's variations")
-      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circleMinor) }
-        .accessibilityLabel("Add 12 minor keys as this exercise's variations")
-      AddRowButton(title: "Add variations", style: .plain) {
-        editing = true
-      }
-      .accessibilityLabel("Add variations to this exercise")
-    }
-    .padding(IntradaSpacing.card)
-    .cardSurface()
-  }
-
-  private func addKeyPreset(_ labels: [String]) {
-    store.send(.item(.setVariants(id: item.id, labels: labels)), onSuccess: .impact)
   }
 
   // ── Used in (pieces this exercise serves) ──
@@ -513,7 +159,7 @@ struct LibraryDetailScreen: View {
       }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
     }
   }
 
@@ -540,26 +186,13 @@ struct LibraryDetailScreen: View {
       }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Haptic.success.play()
     }
   }
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {
     guard !kinds.isEmpty else { return }
     store.send(.item(.commitScaffold(pieceId: item.id, kinds: Array(kinds))), onSuccess: .success)
-  }
-
-  private func moveExercise(at index: Int, by delta: Int) {
-    var ids = item.linkedExercises.map(\.id)
-    let dest = index + delta
-    guard dest >= 0, dest < ids.count else { return }
-    ids.swapAt(index, dest)
-    store.send(
-      .item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)), onSuccess: .selection)
-  }
-
-  private func removeExercise(id: String) {
-    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)), onSuccess: .impact)
   }
 
   private var deleteButton: some View {
@@ -572,7 +205,7 @@ struct LibraryDetailScreen: View {
     ScrollView {
       VStack(alignment: .leading, spacing: IntradaSpacing.card) {
         if item.itemType == .exercise {
-          exerciseHero
+          ExerciseHero(item: item)
         }
         badgeRow
 
@@ -581,7 +214,7 @@ struct LibraryDetailScreen: View {
         }
 
         if item.itemType == .exercise {
-          variationsSection
+          VariationsSection(item: item, onAddVariations: { editing = true })
         }
 
         if !detailRows.isEmpty {
@@ -610,11 +243,14 @@ struct LibraryDetailScreen: View {
         PhotoCard(itemId: item.id, photoId: item.photoId)
 
         if item.itemType == .piece {
-          chordChartSection
+          ChordChartCard(item: item, onEdit: { editingChart = true })
         }
 
         if item.itemType == .piece {
-          linkedExercisesSection
+          RelatedExercisesCard(
+            item: item, editing: $editingLinks,
+            onAdd: { showingPicker = true },
+            onShowSuggestions: { showingScaffold = true })
         }
 
         if item.itemType == .exercise {
@@ -649,7 +285,7 @@ struct LibraryDetailScreen: View {
   }
 
   private func delete() {
-    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    Haptic.warning.play()
     store.send(.item(.delete(id: item.id)))
     dismiss()
   }
@@ -711,185 +347,6 @@ private struct DetailRow: View {
     .padding(.horizontal, IntradaSpacing.card)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(label), \(value)")
-  }
-}
-
-/// Normal-mode row: exercise type bar + title + key/tempo meta + trailing score ring.
-private struct LinkedExerciseRow: View {
-  let exercise: LinkedExerciseView
-
-  var body: some View {
-    HStack(spacing: IntradaSpacing.card) {
-      // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
-      VStack(alignment: .leading, spacing: 3) {
-        Text(exercise.title)
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-        if let meta = exercise.metaLine {
-          Text(meta)
-            .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.inkSecondary)
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      // The score *on this piece* (#1087 B2), not the exercise's flat overall —
-      // the section caption tells the reader which. Unrated until practised here.
-      ScoreRing(score: exercise.pieceContextScore.map(Int.init), size: 44)
-    }
-    .padding(.vertical, IntradaSpacing.card)
-    .padding(.leading, 20)
-    .padding(.trailing, IntradaSpacing.card)
-    .background(IntradaColor.cardFill)
-    .overlay(alignment: .leading) {
-      ItemKind.exercise.bar.frame(width: 4)
-    }
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var accessibilityLabel: String {
-    var parts = ["Exercise", exercise.title]
-    if let meta = exercise.metaSpoken { parts.append(meta) }
-    if let score = exercise.pieceContextScore {
-      parts.append("Mark \(score) of 10 on this piece")
-    } else {
-      parts.append("Not yet rated on this piece")
-    }
-    return parts.joined(separator: ", ")
-  }
-}
-
-/// One column in the Variations horizontal scroller: a ring (letter + arc)
-/// and a state caption below: Solid, calm and static, no pulse (`breathe` and
-/// `metro` are retired per `design/CLAUDE.md` "Motion"), or a dash for not yet
-/// reached.
-private struct VariationRingItem: View {
-  let variation: VariantView
-
-  var body: some View {
-    VStack(spacing: 6) {
-      ScoreRing(
-        score: variation.latestScore.map(Int.init), size: 44, solid: variation.isSolid,
-        labelOverride: variation.label)
-      Text(captionText)
-        .font(IntradaFont.meta)
-        .foregroundStyle(captionColor)
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var captionText: String {
-    if variation.isSolid { return "Solid" }
-    return "—"
-  }
-
-  private var captionColor: Color {
-    variation.isSolid ? IntradaColor.accent : IntradaColor.inkFaintIcon
-  }
-
-  private var accessibilityLabel: String {
-    guard let score = variation.latestScore else { return "\(variation.label), not yet attempted" }
-    return variation.isSolid
-      ? "\(variation.label), solid, \(score) of 10" : "\(variation.label), \(score) of 10"
-  }
-}
-
-/// Non-key variations row (#1786): a ring's label shrinks to fit, which a
-/// free-text name like "Hands together, two octaves" can't survive, so this
-/// lays out like `VariationPickerSheet.row` instead: full-width label above
-/// the caption, never sharing a line with it, so a long name always keeps
-/// the whole row rather than giving up width to the caption.
-private struct VariationListRow: View {
-  let variation: VariantView
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(variation.label)
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.ink)
-        .multilineTextAlignment(.leading)
-        .fixedSize(horizontal: false, vertical: true)
-      Text(captionText)
-        .font(IntradaFont.meta)
-        .foregroundStyle(captionColor)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.vertical, IntradaSpacing.card)
-    .padding(.horizontal, IntradaSpacing.card)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var captionText: String {
-    variation.caption
-  }
-
-  private var captionColor: Color {
-    variation.isSolid ? IntradaColor.ink : IntradaColor.inkSecondary
-  }
-
-  private var accessibilityLabel: String {
-    "\(variation.label), \(variation.caption)"
-  }
-}
-
-/// Edit-mode row: remove button + title + meta + up/down move buttons (VoiceOver-accessible reorder).
-private struct LinkedExerciseEditRow: View {
-  let exercise: LinkedExerciseView
-  let isFirst: Bool
-  let isLast: Bool
-  let onMoveUp: () -> Void
-  let onMoveDown: () -> Void
-  let onRemove: () -> Void
-
-  var body: some View {
-    HStack(spacing: IntradaSpacing.cardCompact) {
-      // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
-      VStack(alignment: .leading, spacing: 3) {
-        Text(exercise.title)
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-        if let meta = exercise.metaLine {
-          Text(meta)
-            .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.inkSecondary)
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      HStack(spacing: IntradaSpacing.controlGap) {
-        VStack(spacing: 0) {
-          Button(action: onMoveUp) {
-            Image(systemName: "chevron.up")
-              .imageScale(.small)
-              .font(IntradaFont.meta)
-              .foregroundStyle(isFirst ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
-          }
-          .buttonStyle(.plain)
-          .disabled(isFirst)
-          .accessibilityLabel("Move \(exercise.title) up")
-          Button(action: onMoveDown) {
-            Image(systemName: "chevron.down")
-              .imageScale(.small)
-              .font(IntradaFont.meta)
-              .foregroundStyle(isLast ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
-          }
-          .buttonStyle(.plain)
-          .disabled(isLast)
-          .accessibilityLabel("Move \(exercise.title) down")
-        }
-        Button(action: onRemove) {
-          Image(systemName: "minus.circle")
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.danger)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Remove \(exercise.title) from related exercises")
-      }
-    }
-    .padding(.vertical, IntradaSpacing.cardCompact)
-    .padding(.horizontal, IntradaSpacing.card)
-    .background(IntradaColor.cardFill)
   }
 }
 

@@ -145,7 +145,7 @@ struct ScanPageEntry: View {
       },
       onFailure: { message in
         withAnimation { failure = message }
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        Haptic.error.play()
         UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")
       })
   }

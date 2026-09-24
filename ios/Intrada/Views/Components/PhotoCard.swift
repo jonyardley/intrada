@@ -159,7 +159,7 @@ struct PhotoCard: View {
 
   private func surface(_ message: String) {
     withAnimation { failure = message }
-    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    Haptic.error.play()
     UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")
   }
 }

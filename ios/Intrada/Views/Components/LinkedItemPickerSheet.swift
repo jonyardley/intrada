@@ -329,7 +329,7 @@ struct LinkedItemPickerSheet: View {
     } else {
       selected.insert(id)
     }
-    UISelectionFeedbackGenerator().selectionChanged()
+    Haptic.selection.play()
   }
 
   private func rowAccessibilityLabel(_ item: LibraryItemView, isOn: Bool) -> String {

@@ -1,28 +1,34 @@
 import SharedTypes
 import UIKit
 
-/// Success haptic for an optimistic send: fires only when the core accepted
-/// the event, so a rejected mutation never feels like it landed.
-enum SuccessFeedback {
+/// The one place a haptic is built (#2013): `scripts/check-haptics.sh` fails
+/// any other file that makes a feedback generator.
+enum Haptic {
   case impact
   case selection
   case success
+  case warning
+  case error
 
   @MainActor
-  fileprivate func fire() {
+  func play() {
     switch self {
     case .impact: UIImpactFeedbackGenerator(style: .light).impactOccurred()
     case .selection: UISelectionFeedbackGenerator().selectionChanged()
     case .success: UINotificationFeedbackGenerator().notificationOccurred(.success)
+    case .warning: UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    case .error: UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
   }
 }
 
 extension Store {
+  /// Plays the haptic only when the core accepted the event, so a rejected
+  /// mutation never feels like it landed.
   @discardableResult
-  func send(_ event: Event, onSuccess feedback: SuccessFeedback) -> Bool {
+  func send(_ event: Event, onSuccess haptic: Haptic) -> Bool {
     let accepted = sendAccepted(event)
-    if accepted { feedback.fire() }
+    if accepted { haptic.play() }
     return accepted
   }
 
