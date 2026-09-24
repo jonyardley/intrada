@@ -371,6 +371,9 @@ dash_case 1 "an American spelling in capitals" a.md "Behavior of the timer."
 dash_case 1 "prose after a fence closes" a.md "$fence"$'\nx --y\n'"$fence"$'\nThe color here.'
 dash_case 0 "a double dash in a code span" a.md 'Run `cargo test -- --nocapture` first.'
 dash_case 0 "an American spelling in a code span" a.md 'The `Color` token.'
+dash_case 0 "a code span wrapped across lines" a.md $'Run `xcrun simctl\n--process SpringBoard` to see it.'
+dash_case 1 "prose after a wrapped code span closes" a.md $'Run `xcrun simctl\n--process SpringBoard` in color.'
+dash_case 1 "a blank line ends an unclosed code span" a.md $'A stray ` tick.\n\nThen -- a dash.'
 dash_case 0 "a double dash in a fenced block" a.md "$fence"$'bash\ncargo test -- --nocapture\n'"$fence"
 dash_case 0 "a table separator" a.md $'| a | b |\n|--|--|\n| 1 | 2 |'
 dash_case 0 "an HTML comment" a.md "<!-- a note -->"

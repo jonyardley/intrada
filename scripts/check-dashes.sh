@@ -97,11 +97,15 @@ while IFS= read -r f; do
   ')
   [ -n "$added_lines" ] || continue
   hits=$(git show "HEAD:$f" | ADDED="$added_lines" WORDS="$americanisms" perl -ne '
-    BEGIN { %added = map { $_ => 1 } split " ", $ENV{ADDED}; $fence = 0 }
+    BEGIN { %added = map { $_ => 1 } split " ", $ENV{ADDED}; $fence = 0; $span = 0 }
     if (/^\s*(?:```|~~~)/) { $fence = !$fence; next }
-    next if $fence || !$added{$.};
+    next if $fence;
     my $prose = $_;
+    $span = 0 if $prose =~ /^\s*$/;
+    if ($span) { $prose =~ s/^[^`]*(`|$)// and $span = !$1 }
     $prose =~ s/`[^`]*`//g;
+    if ($prose =~ s/`.*//s) { $span = 1 }
+    next unless $added{$.};
     $prose =~ s/<!--|-->//g;
     $prose =~ s/\]\([^)]*\)/]/g;
     next if $prose =~ /^\s*\|?[\s:|-]+\|?\s*$/;
