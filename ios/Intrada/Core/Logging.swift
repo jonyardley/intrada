@@ -4,6 +4,9 @@ import os
 
 private let logger = Logger(subsystem: "com.intrada.native", category: "core")
 
+/// Per-event bridge timing for Instruments (#1801).
+let bridgeSignposter = OSSignposter(subsystem: "com.intrada.native", category: .pointsOfInterest)
+
 /// Non-fatal errors `Store` swallows via `guarded` (the #846 silent-no-op
 /// class). Logs to the unified log too, so they're visible in dev/CI where
 /// Sentry has no DSN.

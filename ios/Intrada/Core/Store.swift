@@ -67,7 +67,10 @@ final class Store {
   }
 
   func send(_ event: Event) {
-    process(bridged { try bridge.update(event) } ?? [])
+    let requests = bridgeSignposter.withIntervalSignpost("bridge.update") {
+      bridged { try bridge.update(event) } ?? []
+    }
+    process(requests)
   }
 
   private func process(_ requests: [Request]) {
@@ -118,8 +121,11 @@ final class Store {
   }
 
   private func refreshView() {
-    if let next = bridged({ try bridge.view() }) {
-      viewModel = next
+    let next = bridgeSignposter.withIntervalSignpost("bridge.view") {
+      bridged { try bridge.view() }
+    }
+    if let next {
+      bridgeSignposter.withIntervalSignpost("viewModel.assign") { viewModel = next }
     }
   }
 
