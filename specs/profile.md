@@ -127,8 +127,8 @@ The offline-first rules name `crux_kv` for small singletons, but nothing wires
 it today; the library sort and the crash-recovery blob persist through the
 existing fire-and-forget `AppEffect`. The profile takes the same route: no new
 capability, no new dependency, one more arm in a switch the shell already has.
-If a third singleton arrives, that is the moment to stand `crux_kv` up and
-move all three.
+A third singleton takes the same route, with a versioned key and a Rust wire
+pin (offline-first invariant 8, #1952).
 
 - **Write:** `Save` emits `AppEffect::SaveProfile(Profile)`; `Store.swift`
   bincode-serialises it into UserDefaults under `Store.profileDefaultsKey`.

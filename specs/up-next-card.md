@@ -185,7 +185,7 @@ exactly as it does today.
    consequence, no persistence, and the issue's "no new storage" holds. The
    plain hero it lands on carries a text route back, "Show suggestion", so a
    curious or accidental tap is recoverable rather than final. If dismissal
-   should ever survive a relaunch it becomes a `crux_kv` singleton, which is
+   should ever survive a relaunch it becomes a UserDefaults singleton, which is
    a later decision, not this one. Amends the original reading, which had the
    tap reveal the hero for a second tap to open the builder;
    `docs/design-principles.md` T22 records why.
