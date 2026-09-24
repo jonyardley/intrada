@@ -191,7 +191,9 @@ struct BrowseControlsBar: View {
     let query =
       (kind == nil && trimmed.isEmpty && tags.isEmpty)
       ? nil
-      : ListQuery(text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags)
+      : ListQuery(
+        text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags,
+        priorityOnly: false)
     store.send(.setQuery(query))
   }
 }

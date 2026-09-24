@@ -119,7 +119,8 @@
       Store(
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
-          activeQuery: ListQuery(text: nil, itemType: .piece, key: nil, tags: [])))
+          activeQuery: ListQuery(
+            text: nil, itemType: .piece, key: nil, tags: [], priorityOnly: false)))
     }
 
     /// Text-searched library for the revealed-search-bar snapshot: "clair"
@@ -128,7 +129,8 @@
       Store(
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise, .previewMinimal],
-          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: []),
+          activeQuery: ListQuery(
+            text: "clair", itemType: nil, key: nil, tags: [], priorityOnly: false),
           visibleIds: [LibraryItemView.previewPiece.id]))
     }
 
@@ -254,7 +256,7 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewExercise]),
             ],
-            totalDurationDisplay: nil, totalDurationSummary: nil)))
+            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -265,7 +267,7 @@
           items: [.previewPiece, .previewExercise, .previewMinimal],
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
-            totalDurationDisplay: nil, totalDurationSummary: nil),
+            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -277,10 +279,11 @@
       Store(
         bridge: PreviewBridge(
           items: [.previewPiece, .previewExercise],
-          activeQuery: ListQuery(text: nil, itemType: .exercise, key: nil, tags: []),
+          activeQuery: ListQuery(
+            text: nil, itemType: .exercise, key: nil, tags: [], priorityOnly: false),
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
-            totalDurationDisplay: nil, totalDurationSummary: nil),
+            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -306,7 +309,7 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise]),
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -324,7 +327,7 @@
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
                 durationDisplay: "12 min", entries: block)
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min")))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
     }
 
     /// Player Focus: a piece mid-session, no reps.

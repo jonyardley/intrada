@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
-use crate::analytics::{AnalyticsView, LastPractisedView};
+use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
@@ -304,6 +304,10 @@ pub struct ViewModel {
     /// Up to 5 items with practice history, most recently practised first,
     /// for the builder's "Recently practised" quick-add section (#1362).
     pub recently_practised_ids: Vec<String>,
+    /// "Practise your priorities" can show: something is starred and nothing
+    /// is being built, played or summarised, so the tap cannot meet the
+    /// core's "already in progress" refusal (#981).
+    pub shows_priorities: bool,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a
@@ -349,6 +353,8 @@ pub struct PhotoRecognitionView {
     /// what the form marks; there is deliberately no whole-draft flag beside
     /// it, since nothing would read one.
     pub draft: Option<PhotoDraft>,
+    /// A finished read whose draft holds no field at all.
+    pub read_nothing: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -493,6 +499,7 @@ pub struct LibraryItemView {
     /// `serde(default)`, matching `ladder_is_keys`: the bridge is positional
     /// bincode, where a default is never read (#846).
     pub shows_key: bool,
+    pub solid_variation_count: usize,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -727,6 +734,16 @@ pub struct BuildingSetlistView {
     /// so shells can fall back to counts-only copy.
     pub total_duration_display: Option<String>,
     pub total_duration_summary: Option<String>,
+    /// The variations each entry can be tagged to, for the entries whose item
+    /// has any. Looked up in the whole library, so a search cannot empty it.
+    pub entry_variations: Vec<EntryVariationsView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct EntryVariationsView {
+    pub entry_id: String,
+    pub variations: Vec<PickerVariationView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -737,6 +754,9 @@ pub struct SummaryView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_score: Option<u8>,
+    pub completed_count: usize,
+    /// The largest rise this week among this session's items, by item id.
+    pub top_mover: Option<ScoreChange>,
 }
 
 // ── Test fixtures ─────────────────────────────────────────────────────
@@ -771,6 +791,7 @@ impl LibraryItemView {
             ladder_is_keys: false,
             photo_id: None,
             shows_key: true,
+            solid_variation_count: 0,
         }
     }
 }

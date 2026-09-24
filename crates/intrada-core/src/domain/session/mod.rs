@@ -392,6 +392,18 @@ pub enum SessionEvent {
         group_id: String,
         new_position: usize,
     },
+    /// Move the unit holding `entry_id` (its whole block, or the entry alone)
+    /// to a unit position, clamped to the end (#1957).
+    MoveUnit {
+        entry_id: String,
+        new_position: usize,
+    },
+    /// Move a related exercise among its block's related exercises; the
+    /// anchor piece stays last (#1957).
+    MoveRelated {
+        entry_id: String,
+        new_position: usize,
+    },
     /// Drop a block's related exercises, keeping the piece (becomes standalone).
     KeepOnlyPiece {
         group_id: String,
@@ -577,6 +589,16 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             group_id,
             new_position,
         } => building::reorder_block(model, group_id, new_position),
+
+        SessionEvent::MoveUnit {
+            entry_id,
+            new_position,
+        } => building::move_unit(model, &entry_id, new_position),
+
+        SessionEvent::MoveRelated {
+            entry_id,
+            new_position,
+        } => building::move_related(model, &entry_id, new_position),
 
         SessionEvent::KeepOnlyPiece { group_id } => building::keep_only_piece(model, group_id),
 

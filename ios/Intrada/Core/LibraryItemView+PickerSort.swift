@@ -10,10 +10,12 @@ extension Array where Element == LibraryItemView {
       PickerCandidateArg(
         id: item.id, title: item.title, subtitle: item.subtitle, notes: item.notes,
         tags: item.tags, createdAt: item.createdAt,
-        lastPracticedAt: item.practice?.lastPracticedAt)
+        lastPracticedAt: item.practice?.lastPracticedAt,
+        kind: PickerKind(item.itemType), priority: item.priority)
     }
     let orderedIds = sortAndFilterPickerCandidates(
-      candidates: candidates, sort: sort.pickerSortArg, search: search)
+      candidates: candidates, sort: sort.pickerSortArg, search: search,
+      filter: PickerFilterArg(kind: nil, priorityOnly: false, tags: []))
     let byId = Dictionary(map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     return orderedIds.compactMap { byId[$0] }
   }
@@ -33,5 +35,14 @@ extension LibrarySort {
       case .descending: .descending
       }
     return PickerSortArg(field: field, direction: direction)
+  }
+}
+
+extension PickerKind {
+  init(_ kind: ItemKind) {
+    switch kind {
+    case .piece: self = .piece
+    case .exercise: self = .exercise
+    }
   }
 }

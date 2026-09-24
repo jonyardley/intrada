@@ -177,6 +177,7 @@ impl LocalClock {
 
 // ── Computation Functions ────────────────────────────────────────────
 
+#[cfg(test)]
 pub fn compute_analytics(
     sessions: &[PracticeSession],
     items: &[Item],
@@ -185,6 +186,19 @@ pub fn compute_analytics(
     clock: LocalClock,
 ) -> AnalyticsView {
     let changes = compute_score_changes(sessions, clock);
+    analytics_from_changes(&changes, sessions, items, summaries, item_views, clock)
+}
+
+/// `compute_analytics` over score changes the caller already holds, so the
+/// projection cache works them out once for Progress and the summary.
+pub(crate) fn analytics_from_changes(
+    changes: &[ScoreChange],
+    sessions: &[PracticeSession],
+    items: &[Item],
+    summaries: &HashMap<String, ItemPracticeSummary>,
+    item_views: &[LibraryItemView],
+    clock: LocalClock,
+) -> AnalyticsView {
     AnalyticsView {
         weekly_summary: compute_weekly_summary(sessions, clock),
         streak: compute_streak(sessions, clock),
@@ -194,8 +208,8 @@ pub fn compute_analytics(
         variation_coverage: compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT),
         weekly_minutes: compute_weekly_minutes(sessions, clock),
         overall_mastery: compute_overall_mastery(item_views),
-        top_mover: top_mover(&changes),
-        mastery_change: mastery_change(&changes),
+        top_mover: top_mover(changes),
+        mastery_change: mastery_change(changes),
     }
 }
 
@@ -487,7 +501,7 @@ pub fn compute_overall_mastery(item_views: &[LibraryItemView]) -> f64 {
     marks.iter().sum::<f64>() / marks.len() as f64
 }
 
-fn top_mover(changes: &[ScoreChange]) -> Option<ScoreChange> {
+pub(crate) fn top_mover(changes: &[ScoreChange]) -> Option<ScoreChange> {
     changes
         .iter()
         .filter(|c| c.delta > 0)

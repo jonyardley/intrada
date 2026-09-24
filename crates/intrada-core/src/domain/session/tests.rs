@@ -859,6 +859,229 @@ fn standalone_can_move_between_two_blocks() {
     assert!(groups_contiguous(building_entries(&m)));
 }
 
+// ── The builder's drag moves (#1957) ──
+
+/// Units in order: [ex-A ex-B piece-P] [ex-D] [ex-C piece-R] [piece-Q].
+fn four_unit_model() -> Model {
+    let mut m = linked_model();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    add(&mut m, "piece-P");
+    add(&mut m, "ex-D");
+    add(&mut m, "piece-R");
+    add(&mut m, "piece-Q");
+    assert_eq!(
+        ids(&m),
+        ["ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R", "piece-Q"]
+    );
+    m
+}
+
+fn entry_id_of(model: &Model, item_id: &str) -> String {
+    building_entries(model)
+        .iter()
+        .find(|e| e.item_id == item_id)
+        .map_or_else(|| format!("no-entry-{item_id}"), |e| e.id.clone())
+}
+
+fn move_unit(model: &mut Model, item_id: &str, new_position: usize) {
+    let entry_id = entry_id_of(model, item_id);
+    update(
+        model,
+        Event::Session(SessionEvent::MoveUnit {
+            entry_id,
+            new_position,
+        }),
+    );
+}
+
+fn move_related(model: &mut Model, item_id: &str, new_position: usize) {
+    let entry_id = entry_id_of(model, item_id);
+    update(
+        model,
+        Event::Session(SessionEvent::MoveRelated {
+            entry_id,
+            new_position,
+        }),
+    );
+}
+
+#[test]
+fn move_unit_moves_the_unit_holding_the_entry() {
+    let cases: &[(&str, usize, [&str; 7])] = &[
+        (
+            "ex-D",
+            0,
+            [
+                "ex-D", "ex-A", "ex-B", "piece-P", "ex-C", "piece-R", "piece-Q",
+            ],
+        ),
+        (
+            "ex-D",
+            2,
+            [
+                "ex-A", "ex-B", "piece-P", "ex-C", "piece-R", "ex-D", "piece-Q",
+            ],
+        ),
+        (
+            "piece-Q",
+            0,
+            [
+                "piece-Q", "ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R",
+            ],
+        ),
+        (
+            "ex-B",
+            3,
+            [
+                "ex-D", "ex-C", "piece-R", "piece-Q", "ex-A", "ex-B", "piece-P",
+            ],
+        ),
+        (
+            "piece-P",
+            1,
+            [
+                "ex-D", "ex-A", "ex-B", "piece-P", "ex-C", "piece-R", "piece-Q",
+            ],
+        ),
+        (
+            "piece-R",
+            99,
+            [
+                "ex-A", "ex-B", "piece-P", "ex-D", "piece-Q", "ex-C", "piece-R",
+            ],
+        ),
+        (
+            "ex-D",
+            1,
+            [
+                "ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R", "piece-Q",
+            ],
+        ),
+    ];
+    for (item_id, new_position, expected) in cases {
+        let mut m = four_unit_model();
+        let groups_before: Vec<_> = building_entries(&m)
+            .iter()
+            .map(|e| (e.item_id.clone(), e.group_id.clone()))
+            .collect();
+        move_unit(&mut m, "ex-nowhere", 0);
+        assert!(m.last_error.is_some(), "a refused move first");
+        move_unit(&mut m, item_id, *new_position);
+        assert!(
+            m.last_error.is_none(),
+            "{item_id} to {new_position}: {:?}",
+            m.last_error
+        );
+        assert_eq!(ids(&m), expected, "{item_id} to {new_position}");
+        assert!(groups_contiguous(building_entries(&m)));
+        let mut groups_after: Vec<_> = building_entries(&m)
+            .iter()
+            .map(|e| (e.item_id.clone(), e.group_id.clone()))
+            .collect();
+        let mut groups_before = groups_before.clone();
+        groups_before.sort();
+        groups_after.sort();
+        assert_eq!(groups_after, groups_before, "no entry changes block");
+        let positions: Vec<_> = building_entries(&m).iter().map(|e| e.position).collect();
+        assert_eq!(positions, (0..7).collect::<Vec<_>>(), "reindexed");
+    }
+}
+
+#[test]
+fn move_unit_with_an_unknown_entry_is_refused() {
+    let mut m = four_unit_model();
+    let before = ids(&m);
+    move_unit(&mut m, "ex-nowhere", 0);
+    assert!(m.last_error.is_some());
+    assert_eq!(ids(&m), before);
+}
+
+#[test]
+fn move_related_moves_an_exercise_within_its_block() {
+    let cases: &[(&str, usize, [&str; 3])] = &[
+        ("ex-B", 0, ["ex-B", "ex-A", "piece-P"]),
+        ("ex-A", 1, ["ex-B", "ex-A", "piece-P"]),
+        ("ex-A", 0, ["ex-A", "ex-B", "piece-P"]),
+        ("ex-B", 1, ["ex-A", "ex-B", "piece-P"]),
+    ];
+    for (item_id, new_position, expected_block) in cases {
+        let mut m = four_unit_model();
+        move_related(&mut m, "piece-P", 0);
+        assert!(m.last_error.is_some(), "a refused move first");
+        move_related(&mut m, item_id, *new_position);
+        assert!(
+            m.last_error.is_none(),
+            "{item_id} to {new_position}: {:?}",
+            m.last_error
+        );
+        let got = ids(&m);
+        assert_eq!(&got[..3], expected_block, "{item_id} to {new_position}");
+        assert_eq!(
+            &got[3..],
+            ["ex-D", "ex-C", "piece-R", "piece-Q"],
+            "the other units stay put"
+        );
+        assert!(groups_contiguous(building_entries(&m)));
+        let group = group_of(&m, "piece-P");
+        assert!(group.is_some());
+        assert!(building_entries(&m)[..3]
+            .iter()
+            .all(|e| e.group_id == group));
+    }
+}
+
+#[test]
+fn move_related_refuses_what_is_not_a_related_exercise_move() {
+    let cases: &[(&str, usize, &str)] = &[
+        ("ex-A", 2, "past the related run, onto the anchor piece"),
+        ("ex-B", 9, "far past the run"),
+        ("piece-P", 0, "the anchor piece itself"),
+        ("ex-D", 0, "a standalone exercise"),
+        ("ex-nowhere", 0, "an unknown entry"),
+    ];
+    for (item_id, new_position, why) in cases {
+        let mut m = four_unit_model();
+        let before = ids(&m);
+        move_related(&mut m, item_id, *new_position);
+        assert!(m.last_error.is_some(), "{why}");
+        assert_eq!(ids(&m), before, "{why}: order unchanged");
+    }
+}
+
+#[test]
+fn moves_outside_building_are_refused() {
+    let mut m = linked_model();
+    update(
+        &mut m,
+        Event::Session(SessionEvent::MoveUnit {
+            entry_id: "e".to_string(),
+            new_position: 0,
+        }),
+    );
+    assert!(m.last_error.is_some());
+    m.last_error = None;
+    update(
+        &mut m,
+        Event::Session(SessionEvent::MoveRelated {
+            entry_id: "e".to_string(),
+            new_position: 0,
+        }),
+    );
+    assert!(m.last_error.is_some());
+}
+
+#[test]
+fn drag_moves_round_trip_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::MoveUnit {
+        entry_id: "e1".to_string(),
+        new_position: 3,
+    }));
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::MoveRelated {
+        entry_id: "e2".to_string(),
+        new_position: 1,
+    }));
+}
+
 #[test]
 fn removing_the_piece_dissolves_the_block_to_standalone() {
     let mut m = linked_model();

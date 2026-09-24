@@ -444,6 +444,85 @@ pub(super) fn reorder_block(
     crux_core::render::render()
 }
 
+pub(super) fn move_unit(
+    model: &mut Model,
+    entry_id: &str,
+    new_position: usize,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error("Not in building state".to_string());
+        return crux_core::render::render();
+    };
+
+    let mut units = into_units(std::mem::take(&mut building.entries));
+    let Some(current) = units
+        .iter()
+        .position(|u| u.iter().any(|e| e.id == entry_id))
+    else {
+        building.entries = units.into_iter().flatten().collect();
+        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
+        return crux_core::render::render();
+    };
+
+    let target = new_position.min(units.len().saturating_sub(1));
+    let unit = units.remove(current);
+    units.insert(target, unit);
+    building.entries = units.into_iter().flatten().collect();
+    reindex_entries(&mut building.entries);
+    model.last_error = None;
+    crux_core::render::render()
+}
+
+pub(super) fn move_related(
+    model: &mut Model,
+    entry_id: &str,
+    new_position: usize,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error("Not in building state".to_string());
+        return crux_core::render::render();
+    };
+
+    let Some(entry) = building.entries.iter().find(|e| e.id == entry_id) else {
+        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
+        return crux_core::render::render();
+    };
+    let (Some(group_id), ItemKind::Exercise) = (entry.group_id.clone(), &entry.item_type) else {
+        model.raise_error("Only a related exercise moves within its block".to_string());
+        return crux_core::render::render();
+    };
+
+    let related: Vec<usize> = building
+        .entries
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| {
+            e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Exercise
+        })
+        .map(|(i, _)| i)
+        .collect();
+    let (Some(&destination), Some(&from)) = (
+        related.get(new_position),
+        related
+            .iter()
+            .find(|&&i| building.entries[i].id == entry_id),
+    ) else {
+        let msg = format!(
+            "Invalid position: {new_position} (max: {})",
+            related.len().saturating_sub(1)
+        );
+        model.raise_error(msg);
+        return crux_core::render::render();
+    };
+
+    // Both indices sit inside one contiguous block, so the move cannot split it.
+    let moved = building.entries.remove(from);
+    building.entries.insert(destination, moved);
+    reindex_entries(&mut building.entries);
+    model.last_error = None;
+    crux_core::render::render()
+}
+
 pub(super) fn keep_only_piece(model: &mut Model, group_id: String) -> Command<Effect, Event> {
     let SessionStatus::Building(ref mut building) = model.session_status else {
         model.raise_error("Not in building state".to_string());
