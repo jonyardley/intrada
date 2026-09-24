@@ -12,7 +12,7 @@ struct UpNextHero: View {
   @Environment(\.marker) private var marker
 
   var body: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.row) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       headline
       itemList
       startButton
@@ -124,7 +124,7 @@ struct UpNextHero: View {
       .font(IntradaFont.button)
       .foregroundStyle(IntradaColor.onMarker)
       .frame(maxWidth: .infinity)
-      .padding(.vertical, IntradaSpacing.row)
+      .padding(.vertical, IntradaSpacing.card)
       .background(
         marker, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
     }

@@ -40,7 +40,7 @@ struct TagFilterSheet: View {
                         .foregroundStyle(IntradaColor.accent)
                     }
                   }
-                  .padding(.vertical, IntradaSpacing.row)
+                  .padding(.vertical, IntradaSpacing.card)
                   .padding(.horizontal, IntradaSpacing.card)
                   .frame(maxWidth: .infinity, alignment: .leading)
                   .contentShape(Rectangle())

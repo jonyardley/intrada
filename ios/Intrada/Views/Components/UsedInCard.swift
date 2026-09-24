@@ -124,7 +124,7 @@ struct UsedInRow: View {
         linkButton(onLink)
       }
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.horizontal, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
   }
@@ -134,7 +134,7 @@ struct UsedInRow: View {
     let layout: AnyLayout =
       dynamicTypeSize.isAccessibilitySize
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.controlGap))
-      : AnyLayout(HStackLayout(spacing: IntradaSpacing.row))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
     return layout {
       // Decorative here: the ring's rest glyph and "not practised together yet"
       // are the same fact, and for a rated row the mark is already spoken by

@@ -105,7 +105,7 @@ struct ClickSheet: View {
   var unitOptions: [UInt8] { limits.metreUnits }
 
   private var otherSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.row) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Eyebrow("Beats in the bar")
         Stepper(value: $beats, in: beatsRange) {

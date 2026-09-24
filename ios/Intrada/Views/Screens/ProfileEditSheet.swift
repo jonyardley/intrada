@@ -90,7 +90,7 @@ struct ProfileEditSheet: View {
   }
 
   private var iconCard: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       ProfileBadge(icon: shownIcon)
       VStack(alignment: .leading, spacing: 3) {
         Text("Icon")

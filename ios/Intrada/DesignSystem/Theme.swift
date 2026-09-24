@@ -184,15 +184,11 @@ enum IntradaFont {
   }
 }
 
-/// The spacing scale. Every padding / inset / list gap traces to one of these,
-/// the same way colours trace to `IntradaColor` — so screens can't drift on the
-/// standard rhythm. Names mirror the web `p-card` tokens to keep one spacing
-/// language across shells. Genuine one-offs (a fixed component height, a 2pt
-/// baseline nudge) stay literal; don't tokenise those.
+/// Genuine one-offs (a fixed component height, a 2pt baseline nudge) stay
+/// literal; don't tokenise those.
 enum IntradaSpacing {
   static let controlGap: CGFloat = 8
   static let cardCompact: CGFloat = 12
-  static let row: CGFloat = 16
   static let card: CGFloat = 16
   static let section: CGFloat = 24
 }

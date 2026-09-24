@@ -102,7 +102,7 @@ final class PracticeSnapshotTests: SnapshotTestCase {
   /// The card's "what was played" line: pieces named plainly, an exercise's
   /// keys spelled out when there are few (#1785).
   func testSessionCardsPlayedSummary() {
-    let cards = VStack(spacing: IntradaSpacing.row) {
+    let cards = VStack(spacing: IntradaSpacing.card) {
       SessionCard(session: .previewCompleted)
       SessionCard(session: .previewWithVariations)
       SessionCard(session: .previewEndedEarly)

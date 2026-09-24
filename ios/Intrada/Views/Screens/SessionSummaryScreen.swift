@@ -301,7 +301,7 @@ struct SessionSummaryScreen: View {
           .font(IntradaFont.button)
           .foregroundStyle(IntradaColor.onMarker)
           .frame(maxWidth: .infinity)
-          .padding(.vertical, IntradaSpacing.row)
+          .padding(.vertical, IntradaSpacing.card)
           .background(marker)
           .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }

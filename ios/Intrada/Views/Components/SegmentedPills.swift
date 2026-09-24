@@ -74,7 +74,7 @@ struct SegmentedPills<Option: Hashable>: View {
       .foregroundStyle(isSelected ? IntradaColor.onAccent : unselectedColor)
     switch layout {
     case .inlineScrolling:
-      text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.row)
+      text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
     case .fullWidthTrack:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     }

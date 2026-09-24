@@ -115,7 +115,7 @@ private struct SpecRow: View {
   let selectable: Bool
 
   var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       ItemKind.exercise.bar
         .frame(width: 4, height: 34)
         .clipShape(Capsule())
@@ -141,7 +141,7 @@ private struct SpecRow: View {
         membershipControl(isOn: isOn)
       }
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.leading, 20)
     .padding(.trailing, IntradaSpacing.card)
     .background(IntradaColor.cardFill)

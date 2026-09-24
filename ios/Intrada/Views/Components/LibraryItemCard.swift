@@ -15,7 +15,7 @@ struct LibraryItemCard: View {
   var showsMissingDetailsPrompt: Bool = false
 
   var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.card) {
       VStack(alignment: .leading, spacing: 3) {
         Text(item.title)
           .font(IntradaFont.cardTitle())
@@ -63,9 +63,9 @@ struct LibraryItemCard: View {
         ScoreRing(score: item.practice?.latestScore.map(Int.init), size: 32)
       }
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.card)
     .padding(.leading, 20)
-    .padding(.trailing, IntradaSpacing.row + trailingGutter)
+    .padding(.trailing, IntradaSpacing.card + trailingGutter)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(IntradaColor.cardFill)
     // Bar as a leading overlay so it fills the content height without the
@@ -148,7 +148,7 @@ struct LibraryItemCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      VStack(spacing: IntradaSpacing.row) {
+      VStack(spacing: IntradaSpacing.card) {
         LibraryItemCard(item: .previewPiece)
         LibraryItemCard(item: .previewExercise)
         LibraryItemCard(item: .previewExerciseWithTwelveVariations)

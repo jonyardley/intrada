@@ -216,7 +216,7 @@ struct LinkedItemPickerSheet: View {
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
-            .padding(.vertical, IntradaSpacing.row)
+            .padding(.vertical, IntradaSpacing.card)
         } else {
           Eyebrow(copy.listHeading)
             .frame(maxWidth: .infinity, alignment: .leading)
