@@ -32,7 +32,12 @@ final class LiveBridge: CoreBridge {
   }
 
   func view() throws -> ViewModel {
-    try ViewModel.bincodeDeserialize(input: [UInt8](try call { try core.view() }))
+    let bytes = try bridgeSignposter.withIntervalSignpost("core.view") {
+      try call { try core.view() }
+    }
+    return try bridgeSignposter.withIntervalSignpost("viewModel.decode") {
+      try ViewModel.bincodeDeserialize(input: [UInt8](bytes))
+    }
   }
 
   // A generated call throws either the declared `CoreError` or UniFFI's own
