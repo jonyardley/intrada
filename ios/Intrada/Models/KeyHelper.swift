@@ -1,9 +1,6 @@
 import Foundation
 import SharedTypes
 
-/// Keys are stored structured (`key` tonic + core `Modality`); legacy freeform
-/// values ("F# major") are still parsed so old items display and self-heal on
-/// save. View-only by design (#819) — the mode type comes from the core.
 enum KeyHelper {
   struct Selection: Equatable {
     let ring: Int
@@ -36,10 +33,8 @@ enum KeyHelper {
   }
 
   static func selection(key: String, modality: Modality?) -> Selection? {
-    if let modality, let s = ringFor(tonic: key, mode: modality) {
-      return s
-    }
-    return parse(key)
+    guard let modality else { return nil }
+    return ringFor(tonic: key, mode: modality)
   }
 
   /// Tapping the already-selected enharmonic spoke flips its spelling; any
@@ -107,57 +102,15 @@ enum KeyHelper {
   // ── Internal ──
 
   private static func ringFor(tonic: String, mode: Modality) -> Selection? {
-    guard let norm = normaliseTonic(tonic) else { return nil }
     for ring in 0..<12 {
-      if primary(ring: ring, mode: mode) == norm {
-        return Selection(ring: ring, mode: mode, spelling: norm)
+      if primary(ring: ring, mode: mode) == tonic {
+        return Selection(ring: ring, mode: mode, spelling: tonic)
       }
-      if let alt = enharmonicAlt(ring: ring, mode: mode), alt == norm {
+      if let alt = enharmonicAlt(ring: ring, mode: mode), alt == tonic {
         return Selection(ring: ring, mode: mode, spelling: alt)
       }
     }
     return nil
-  }
-
-  static func parse(_ raw: String) -> Selection? {
-    let normalised = asciiAccidentals(raw)
-    if normalised.isEmpty { return nil }
-    let lower = normalised.lowercased()
-    let mode: Modality
-    let tonicRaw: String
-    if lower.hasSuffix("minor") {
-      mode = .minor
-      tonicRaw = String(normalised.dropLast(5))
-    } else if lower.hasSuffix("major") {
-      mode = .major
-      tonicRaw = String(normalised.dropLast(5))
-    } else {
-      return nil
-    }
-    return ringFor(tonic: tonicRaw, mode: mode)
-  }
-
-  private static func asciiAccidentals(_ raw: String) -> String {
-    raw
-      .replacingOccurrences(of: "\u{266F}", with: "#")
-      .replacingOccurrences(of: "\u{266D}", with: "b")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-
-  private static func normaliseTonic(_ raw: String) -> String? {
-    let chars = Array(raw.trimmingCharacters(in: .whitespaces))
-    guard let first = chars.first, let letter = first.uppercased().first,
-      ("A"..."G").contains(letter)
-    else {
-      return nil
-    }
-    if chars.count == 1 { return String(letter) }
-    guard chars.count == 2 else { return nil }
-    switch chars[1] {
-    case "#": return "\(letter)#"
-    case "b", "B": return "\(letter)b"
-    default: return nil
-    }
   }
 
   private static func spokenTonic(_ tonic: String) -> String {

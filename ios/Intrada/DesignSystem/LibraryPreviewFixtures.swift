@@ -60,6 +60,17 @@
     }
   }
 
+  extension LinkedExerciseView {
+    static func fixture(
+      id: String = "exercise-1", title: String = "Hanon No. 1", key: String? = nil,
+      modality: Modality? = nil, tempoMarking: String? = nil, tempoBpm: UInt16? = nil
+    ) -> LinkedExerciseView {
+      LinkedExerciseView(
+        id: id, title: title, key: key, modality: modality, tempoMarking: tempoMarking,
+        tempoBpm: tempoBpm, practice: nil, pieceContextScore: nil)
+    }
+  }
+
   extension LibraryItemView {
     static var previewPiece: LibraryItemView {
       LibraryItemView(
@@ -81,7 +92,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     static var previewExercise: LibraryItemView {
@@ -94,7 +105,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -121,7 +132,7 @@
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     /// A charted piece: exercises the chord-chart card (parsed grid + preview).
@@ -150,7 +161,7 @@
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"))
     }
 
     static var previewMinimal: LibraryItemView { LibraryItemFixture.view() }
@@ -200,7 +211,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
@@ -231,7 +242,7 @@
             pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -273,7 +284,7 @@
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,
@@ -282,7 +293,7 @@
       LibraryItemView(
         id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
         subtitle: "Bebop vocabulary, 12 keys",
-        key: "C", modality: .major, tempoMarking: nil, tempoBpm: 132,
+        key: nil, modality: .major, tempoMarking: nil, tempoBpm: 132,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -372,7 +383,8 @@
         practice: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil,
-        showsKey: true, solidVariationCount: 0, keySelection: nil
+        showsKey: true, solidVariationCount: 0,
+        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D")
       )
     }
   }
@@ -410,7 +422,8 @@
   enum LibraryItemFixture {
     static func view(
       id: String = "piece-2", itemType: ItemKind = .piece, title: String = "Prelude in C",
-      subtitle: String = "", key: String? = nil, modality: Modality? = nil
+      subtitle: String = "", key: String? = nil, modality: Modality? = nil,
+      keySelection: KeyWheelSelection? = nil
     ) -> LibraryItemView {
       LibraryItemView(
         id: id, itemType: itemType, title: title, subtitle: subtitle,
@@ -420,7 +433,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: keySelection)
     }
 
     static func record(

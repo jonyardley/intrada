@@ -722,7 +722,7 @@ private struct LinkedExerciseRow: View {
         Text(exercise.title)
           .font(IntradaFont.cardTitle())
           .foregroundStyle(IntradaColor.ink)
-        if let meta = metaLine {
+        if let meta = exercise.metaLine {
           Text(meta)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -744,15 +744,9 @@ private struct LinkedExerciseRow: View {
     .accessibilityLabel(accessibilityLabel)
   }
 
-  private var metaLine: String? {
-    let tempo = TempoFormatting.display(marking: exercise.tempoMarking, bpm: exercise.tempoBpm)
-    let parts = [exercise.key, tempo].compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
-  }
-
   private var accessibilityLabel: String {
     var parts = ["Exercise", exercise.title]
-    if let meta = metaLine { parts.append(meta) }
+    if let meta = exercise.metaSpoken { parts.append(meta) }
     if let score = exercise.pieceContextScore {
       parts.append("Mark \(score) of 10 on this piece")
     } else {
@@ -853,7 +847,7 @@ private struct LinkedExerciseEditRow: View {
         Text(exercise.title)
           .font(IntradaFont.cardTitle())
           .foregroundStyle(IntradaColor.ink)
-        if let meta = metaLine {
+        if let meta = exercise.metaLine {
           Text(meta)
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
@@ -893,12 +887,6 @@ private struct LinkedExerciseEditRow: View {
     .padding(.vertical, IntradaSpacing.cardCompact)
     .padding(.horizontal, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
-  }
-
-  private var metaLine: String? {
-    let tempo = TempoFormatting.display(marking: exercise.tempoMarking, bpm: exercise.tempoBpm)
-    let parts = [exercise.key, tempo].compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 }
 

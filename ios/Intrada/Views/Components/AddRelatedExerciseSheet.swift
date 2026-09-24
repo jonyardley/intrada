@@ -11,17 +11,19 @@ struct AddRelatedExerciseSheet: View {
   let groupId: String
   @Environment(Store.self) private var store
 
-  private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
+  private var block: SetlistBlockView? {
+    store.viewModel?.buildingSetlist?.blocks.first { $0.groupId == groupId }
+  }
 
   private var blockEntryByItem: [String: String] {
     Dictionary(
-      entries.filter { $0.groupId == groupId }.map { ($0.itemId, $0.id) },
+      (block?.entries ?? []).map { ($0.itemId, $0.id) },
       uniquingKeysWith: { first, _ in first })
   }
 
   private var candidates: [LibraryItemView] {
-    let elsewhere = Swift.Set(entries.filter { $0.groupId != groupId }.map(\.itemId))
-    return (store.viewModel?.visibleItems ?? []).filter { !elsewhere.contains($0.id) }
+    let taken = Swift.Set(block?.takenElsewhere ?? [])
+    return (store.viewModel?.visibleItems ?? []).filter { !taken.contains($0.id) }
   }
 
   var body: some View {

@@ -4,52 +4,11 @@ import XCTest
 @testable import Intrada
 
 final class KeyHelperTests: XCTestCase {
-  func testParsesCanonicalMajorAndMinor() {
-    XCTAssertEqual(
-      KeyHelper.parse("F# major"), KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
-    XCTAssertEqual(
-      KeyHelper.parse("A minor"), KeyHelper.Selection(ring: 0, mode: .minor, spelling: "A"))
-  }
-
-  func testParseIsCaseAndAccidentalInsensitive() {
-    XCTAssertEqual(KeyHelper.parse("c MAJOR")?.spelling, "C")
-    XCTAssertEqual(KeyHelper.parse("f# MINOR")?.mode, .minor)
-    // Unicode accidentals normalise to ASCII.
-    let s = KeyHelper.parse("C\u{266F} minor")
-    XCTAssertEqual(s?.spelling, "C#")
-    XCTAssertEqual(s?.mode, .minor)
-  }
-
-  func testParsesEnharmonicAlternateSpelling() {
-    XCTAssertEqual(KeyHelper.parse("Gb major")?.spelling, "Gb")
-    XCTAssertEqual(
-      KeyHelper.parse("Eb minor"), KeyHelper.Selection(ring: 6, mode: .minor, spelling: "Eb"))
-  }
-
-  func testParsesRingFiveEnharmonicAlternates() {
-    XCTAssertEqual(
-      KeyHelper.parse("Cb major"), KeyHelper.Selection(ring: 5, mode: .major, spelling: "Cb"))
-    XCTAssertEqual(
-      KeyHelper.parse("Ab minor"), KeyHelper.Selection(ring: 5, mode: .minor, spelling: "Ab"))
-  }
-
-  func testRejectsEmptyAndGarbage() {
-    XCTAssertNil(KeyHelper.parse(""))
-    XCTAssertNil(KeyHelper.parse("   "))
-    XCTAssertNil(KeyHelper.parse("Lydian"))
-    XCTAssertNil(KeyHelper.parse("H major"))
-    XCTAssertNil(KeyHelper.parse("C## major"))
-    XCTAssertNil(KeyHelper.parse("C dorian"))
-  }
-
-  func testSelectionPrefersStructuredAndFallsBackToLegacy() {
+  func testSelectionMatchesStructuredTonicOnly() {
     XCTAssertEqual(
       KeyHelper.selection(key: "F#", modality: .major),
       KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
-    // Legacy combined-string path: no modality given.
-    XCTAssertEqual(
-      KeyHelper.selection(key: "F# major", modality: nil),
-      KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
+    XCTAssertNil(KeyHelper.selection(key: "F# major", modality: nil))
     XCTAssertNil(KeyHelper.selection(key: "", modality: nil))
   }
 
