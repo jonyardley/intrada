@@ -76,7 +76,7 @@ just ios              # Regenerate bindings (if core changed) + open in Xcode
 just ios-run          # Build + launch on a simulator + screenshot (seeds demo data)
 SEED=0 just ios-run   # …launch against your real on-device data instead of demo data
 just ios-test         # Build + run the snapshot/unit test suite (fast tier)
-just ios-test-full    # …+ XCUITests (full gate; what ship/CI run before merge)
+just ios-test-full    # …+ XCUITests (full tier; CI runs these on every PR)
 ```
 
 ## Project structure

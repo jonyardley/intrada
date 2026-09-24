@@ -41,5 +41,12 @@ jobs:
       # own toolchain assertion has already failed by then.
       - name: Drop simulator devices with no runtime
         run: xcrun simctl delete unavailable
+      # The gate adds one small record per green tree (#2113); a month-old
+      # tree will not be merged again.
+      - name: Drop green-tree records older than 30 days
+        run: |
+          set -euo pipefail
+          dir="$HOME/.intrada-ci/green-trees"
+          [ ! -d "$dir" ] || find "$dir" -type f -mtime +30 -delete
       - name: Space after
         run: df -h /System/Volumes/Data | tail -1

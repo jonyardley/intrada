@@ -22,7 +22,7 @@ just ios-gen               # force a full binding regenerate
 just ios-run               # build + launch on simulator + screenshot
 just ios-logs              # stream booted-sim logs, filtered to our subsystem
 just ios-test              # unit + snapshot (fast inner-loop tier)
-just ios-test-full         # adds XCUITests (the merge gate; mirrors CI)
+just ios-test-full         # adds XCUITests; CI runs them on every PR, so /ship does not (#2114)
 just ios-snapshots-check   # fail orphaned / oversized snapshot references
 just ios-snapshots-optimize # drop Xcode's opaque alpha channel (~75% smaller)
 just check-all             # check + the fast ios-test tier
@@ -494,8 +494,9 @@ once.
 - **tier** — ceremony level per CLAUDE.md Workflow: 1 just do it, 2 plan
   comment, 3 spec first.
 - **fast tier / full tier**, the two iOS test gates: `just ios-test` (unit and
-  snapshot) and `just ios-test-full` (adds XCUITests, the merge gate). Not the
-  ceremony tier above.
+  snapshot) and `just ios-test-full` (adds XCUITests). CI runs the full tier on
+  every PR; locally it is for debugging a UI failure (#2114). Not the ceremony
+  tier above.
 - **the lane**, the TestFlight release workflow
   (`.github/workflows/release-testflight.yml`); runs on a tag only.
 - **the stamp**, the freshness fingerprint the iOS recipes write so an

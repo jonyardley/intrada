@@ -32,7 +32,7 @@ just check            # CI's Rust and hygiene jobs, bar MSRV and coverage
 just ios              # regen bindings (if core changed) + open Xcode
 just ios-run          # build + launch on simulator + screenshot (seeded data)
 just ios-test         # unit + snapshot (fast tier)
-just ios-test-full    # adds XCUITests (the merge gate; mirrors CI)
+just ios-test-full    # adds XCUITests; CI runs them on every PR, so /ship does not (#2114)
 ```
 
 - **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or test call.** Xcode's `RenderPreview` is the one exception ([`docs/ios-testing.md`](docs/ios-testing.md)).
