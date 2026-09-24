@@ -48,17 +48,6 @@ impl Tempo {
             None
         }
     }
-
-    /// Format for display: "Allegro (132 BPM)", "Allegro", "132 BPM", or empty string.
-    #[must_use]
-    pub fn format_display(&self) -> String {
-        match (&self.marking, self.bpm) {
-            (Some(marking), Some(bpm)) => format!("{marking} ({bpm} BPM)"),
-            (Some(marking), None) => marking.clone(),
-            (None, Some(bpm)) => format!("{bpm} BPM"),
-            (None, None) => String::new(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

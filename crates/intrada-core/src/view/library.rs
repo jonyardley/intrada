@@ -49,11 +49,9 @@ pub(super) fn build_library_item_views(
                         id: ex.id.clone(),
                         title: ex.title.clone(),
                         key: ex.key.clone(),
-                        tempo: ex
-                            .tempo
-                            .as_ref()
-                            .map(|t| t.format_display())
-                            .filter(|s| !s.is_empty()),
+                        modality: ex.modality,
+                        tempo_marking: ex.tempo.as_ref().and_then(|t| t.marking.clone()),
+                        tempo_bpm: ex.tempo.as_ref().and_then(|t| t.bpm),
                         practice: model.practice_summaries.get(&ex.id).cloned(),
                         piece_context_score,
                     })
@@ -125,11 +123,6 @@ pub(super) fn build_library_item_views(
             subtitle,
             key: item.key.clone(),
             modality: item.modality,
-            tempo: item
-                .tempo
-                .as_ref()
-                .map(|t| t.format_display())
-                .filter(|s| !s.is_empty()),
             tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
             tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
             notes: item.notes.clone(),
