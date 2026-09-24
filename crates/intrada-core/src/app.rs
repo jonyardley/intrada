@@ -3261,14 +3261,11 @@ mod tests {
         update(
             &mut model,
             crate::domain::types::UpdateItem {
-                modality: Some(Some(crate::domain::item::Modality::Minor)),
+                modality: Some(Some(Modality::Minor)),
                 ..Default::default()
             },
         );
-        assert_eq!(
-            model.items[0].modality,
-            Some(crate::domain::item::Modality::Minor)
-        );
+        assert_eq!(model.items[0].modality, Some(Modality::Minor));
 
         // skip (modality absent) → unchanged
         update(
@@ -3278,10 +3275,7 @@ mod tests {
                 ..Default::default()
             },
         );
-        assert_eq!(
-            model.items[0].modality,
-            Some(crate::domain::item::Modality::Minor)
-        );
+        assert_eq!(model.items[0].modality, Some(Modality::Minor));
 
         // clear → None
         update(

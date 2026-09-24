@@ -9,9 +9,8 @@ const CIRCLE_MINOR: [&str; 12] = [
     "A", "E", "B", "F#", "C#", "G#", "Eb", "Bb", "F", "C", "G", "D",
 ];
 
-/// A stored key placed on the circle of fifths: `ring` counts clockwise from
-/// C major (A minor) at 12 o'clock, and `spelling` is the tonic as the key
-/// picker writes it back.
+/// A stored key on the circle of fifths (#2074): `ring` counts clockwise from
+/// C major at 12 o'clock; `spelling` is the tonic the picker writes back.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct KeyWheelSelection {
@@ -20,9 +19,8 @@ pub struct KeyWheelSelection {
     pub spelling: String,
 }
 
-/// Structured keys resolve against their modality; a legacy freeform value
-/// ("F# major", "c minor") is parsed so it still lights its wedge and heals
-/// into tonic plus modality on the next save.
+/// A legacy freeform key ("F# major") is parsed so it still lights its wedge
+/// and heals into tonic plus modality on the next save (#2074).
 pub fn wheel_selection(key: &str, modality: Option<Modality>) -> Option<KeyWheelSelection> {
     modality
         .and_then(|mode| ring_for(key, mode))

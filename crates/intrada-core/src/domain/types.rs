@@ -194,8 +194,9 @@ mod tests {
     // ── FFI bincode round-trip (#846) ────────────────────────────────────
     // The native iOS shell ships these write payloads as positional bincode
     // (crux's BincodeFfiFormat). A serde attr that assumes a self-describing
-    // format misaligns that wire and the event silently fails to decode. These guard against that whole class, via the
-    // module-level `assert_round_trips` shared with the other domain modules.
+    // format misaligns that wire and the event silently fails to decode. These
+    // guard against that whole class, via the module-level `assert_round_trips`
+    // shared with the other domain modules.
 
     #[test]
     fn update_item_round_trips_on_ffi_bincode_wire() {
