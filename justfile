@@ -58,7 +58,9 @@ coverage:
 # gate with 127, which reads as broken rather than as a tool that is not
 # installed. The link check is diff-scoped, so it reads committed content only.
 # The checks below are independent (each self-test sandboxes its own mktemp -d), so they run concurrently.
-[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, the script self-tests and the release-name and faint-ink checks")]
+# A check whose tool is absent prints a line starting "skipped:" and passes;
+# those lines are echoed on a green run so a skip never reads as a pass.
+[doc("Run the hygiene checks in parallel: spelling, unused deps, workflow lint, links, comment density, dashes, snapshots, cargo-deny, Gitleaks, the script self-tests and the release-name and faint-ink checks")]
 hygiene:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -71,6 +73,11 @@ hygiene:
         "check-links:bash scripts/check-links.sh"
         "check-release-name:bash scripts/check-release-name.sh"
         "check-faint-ink:bash scripts/check-faint-ink.sh"
+        "comment-density:bash scripts/check-comment-density.sh"
+        "dash-check:bash scripts/check-dashes.sh"
+        "snapshot-hygiene:bash scripts/check-snapshots.sh"
+        "cargo-deny:just deny"
+        "gitleaks:just gitleaks"
         "hygiene-checks-test:bash scripts/tests/hygiene-checks-test.sh"
         "pr-visuals-test:bash scripts/tests/pr-visuals-test.sh"
         "status-release-test:bash scripts/tests/status-release-test.sh"
@@ -101,8 +108,36 @@ hygiene:
             sed 's/^/    /' "$tmpdir/${names[$i]}.log" >&2
         fi
     done
-    [ "$fail" -eq 0 ] && echo "✓ hygiene (${#checks[@]} checks, parallel)"
+    if [ "$fail" -eq 0 ]; then
+        cat "$tmpdir"/*.log | grep '^skipped:' || true
+        echo "✓ hygiene (${#checks[@]} checks, parallel)"
+    fi
     exit "$fail"
+
+# Advisories, licences, bans and sources, as CI's cargo-deny step runs it.
+# Offline, the fetch fails; the retry reads the cached advisory database.
+[doc("Check dependencies with cargo-deny, as CI does; skips when it is not installed")]
+deny:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v cargo-deny >/dev/null 2>&1; then
+        echo "skipped: cargo-deny is not installed (cargo install cargo-deny), CI still runs it"
+        exit 0
+    fi
+    cargo deny --log-level warn --all-features check \
+        || cargo deny --log-level warn --all-features check --disable-fetch
+
+# Scans only the commits this branch adds, as CI's Gitleaks step does on a PR;
+# a scan of the whole history reports historical findings CI never sees.
+[doc("Scan this branch's commits for leaked secrets with Gitleaks; skips when it is not installed")]
+gitleaks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v gitleaks >/dev/null 2>&1; then
+        echo "skipped: gitleaks is not installed (brew install gitleaks), CI still runs it"
+        exit 0
+    fi
+    gitleaks git --no-banner --redact --log-level warn --log-opts="--no-merges --first-parent origin/main..HEAD"
 
 [doc("Show what is in flight: open PRs, claimed issues, epics and recent merges")]
 status:
@@ -899,4 +934,4 @@ _ios-sync:
 
 [private]
 _ios-src-hash:
-    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml -type f -exec shasum {} \; | shasum | cut -d' ' -f1
+    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1

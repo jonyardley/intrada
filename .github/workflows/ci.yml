@@ -573,6 +573,20 @@ jobs:
       # printed an empty section would read as "no release in flight".
       - name: just status still reports the release burn
         run: bash scripts/tests/status-release-test.sh
+      # ── claims ───────────────────────────────────────────────────────────
+      # The claim tooling is what stops one issue being built twice (#1702).
+      - name: just claim still refuses a claimed issue
+        run: bash scripts/tests/claim-issue-test.sh
+      - name: just pr-open still refuses an unclaimed issue
+        run: bash scripts/tests/pr-open-test.sh
+      - name: The session claims list still reads in-flight issues
+        run: bash scripts/tests/session-claims-test.sh
+      - name: just status epics self-test
+        run: bash scripts/tests/status-epics-test.sh
+      - name: just epic-add self-test
+        run: bash scripts/tests/epic-add-test.sh
+      - name: Handover opener self-test
+        run: bash scripts/tests/handover-test.sh
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.
