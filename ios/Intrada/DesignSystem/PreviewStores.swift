@@ -76,7 +76,6 @@
           (kind.map { item.itemType == $0 } ?? true) && (!priorityOnly || item.priority)
         }
       }
-      viewModel.items = items
       viewModel.visibleIds = visible.map(\.id)
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
@@ -85,8 +84,6 @@
       viewModel.showsPriorities =
         items.contains { $0.priority } && buildingSetlist == nil && activeSession == nil
         && summary == nil
-      viewModel.sessions = sessions
-      if let practiceWeeks { viewModel.practiceWeeks = practiceWeeks }
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
@@ -97,9 +94,19 @@
       if let profile { viewModel.profile = profile }
       return viewModel
     }
+
+    var sections: [AppEffect] {
+      [.libraryChanged(items), .historyChanged(sessions), .weeksChanged(practiceWeeks ?? [])]
+    }
   }
 
   extension Store {
+    /// A store over a preview bridge, holding the rows the bridge was given.
+    convenience init(bridge: PreviewBridge) {
+      self.init(bridge: bridge as CoreBridge)
+      receive(bridge.sections)
+    }
+
     /// A deterministic, offline store for `#Preview` blocks.
     static var preview: Store { Store(bridge: PreviewBridge()) }
 

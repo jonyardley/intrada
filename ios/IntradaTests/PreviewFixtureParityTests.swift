@@ -115,7 +115,7 @@ struct PreviewFixtureParityTests {
   }
 
   @Test func thePlayersVariationPickerCaptionsEachRowAsTheCoreDoes() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     let id = try addScoredExercise(
       bridge, title: LibraryItemView.previewExerciseWithVariations.title, key: "C",
@@ -126,14 +126,14 @@ struct PreviewFixtureParityTests {
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
-    let entryId = try #require(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try #require(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
     _ = try bridge.update(.session(.startSession(now: "2026-06-25T09:00:00Z")))
     _ = try bridge.update(
       .session(
         .switchVariation(
           entryId: entryId, variationId: inF, now: "2026-06-25T09:03:10Z", reading: .silent)))
-    let active = try #require(try bridge.view().activeSession)
+    let active = try #require(try bridge.rendered().activeSession)
     let fixture = ActiveSessionView.previewActiveVariations
 
     #expect(fixture.currentVariationLabel == active.currentVariationLabel)
@@ -146,7 +146,7 @@ struct PreviewFixtureParityTests {
     title: String, key: String?, modality: Modality?, marking: String?, bpm: UInt16?,
     linking exercises: [ExerciseInput]
   ) throws -> LibraryItemView {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     let pieceId = try add(
       bridge, title: title, kind: .piece, key: key, modality: modality,
@@ -165,7 +165,7 @@ struct PreviewFixtureParityTests {
     title: String, key: String?, modality: Modality?, tempoBpm: UInt16?, labels: [String],
     scores: [String: UInt8]
   ) throws -> LibraryItemView {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     let id = try addScoredExercise(
       bridge, title: title, key: key, modality: modality,
@@ -174,7 +174,7 @@ struct PreviewFixtureParityTests {
   }
 
   private func addScoredExercise(
-    _ bridge: LiveBridge, title: String, key: String?, modality: Modality?, tempo: Tempo? = nil,
+    _ bridge: RowsBridge, title: String, key: String?, modality: Modality?, tempo: Tempo? = nil,
     labels: [String], scores: [String: UInt8]
   ) throws -> String {
     let id = try add(
@@ -185,7 +185,7 @@ struct PreviewFixtureParityTests {
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
-    let entryId = try #require(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try #require(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: first.id)))
     _ = try bridge.update(.session(.startSession(now: stamp(minutes: 0))))
     for (index, variant) in scored.enumerated().dropFirst() {
@@ -199,7 +199,7 @@ struct PreviewFixtureParityTests {
     _ = try bridge.update(
       .session(.nextItem(now: end, nextItemStartedAt: end, reading: .silent)))
 
-    let plays = try #require(try bridge.view().summary?.entries.first?.plays)
+    let plays = try #require(try bridge.rendered().summary?.entries.first?.plays)
     #expect(plays.count == scored.count, "one play per scored variation")
     for play in plays {
       let label = try #require(scored.first { $0.id == play.variationId }?.label)
@@ -214,12 +214,12 @@ struct PreviewFixtureParityTests {
         if case .persistence(.saveSession) = $0.effect { return true } else { return false }
       })
     _ = try bridge.resolve(write.id, persistenceOutput: .ack)
-    #expect(try bridge.view().error == nil, "the session saves cleanly")
+    #expect(try bridge.rendered().error == nil, "the session saves cleanly")
     return id
   }
 
   private func add(
-    _ bridge: LiveBridge, title: String, kind: ItemKind, key: String?, modality: Modality?,
+    _ bridge: RowsBridge, title: String, kind: ItemKind, key: String?, modality: Modality?,
     tempo: Tempo?, labels: [String]
   ) throws -> String {
     _ = try bridge.update(
@@ -228,17 +228,17 @@ struct PreviewFixtureParityTests {
           CreateItem(
             title: title, kind: kind, composer: nil, key: key, modality: modality,
             tempo: tempo, notes: nil, tags: [], photoId: nil, variantLabels: labels))))
-    let view = try bridge.view()
+    let view = try bridge.rendered()
     return try #require(
       view.items.first { $0.title == title }?.id,
       "\(title) should land: \(view.error ?? "no error")")
   }
 
-  private func item(_ bridge: LiveBridge, _ id: String) throws -> LibraryItemView {
-    try #require(try bridge.view().items.first { $0.id == id })
+  private func item(_ bridge: RowsBridge, _ id: String) throws -> LibraryItemView {
+    try #require(try bridge.rendered().items.first { $0.id == id })
   }
 
-  private func variationId(_ bridge: LiveBridge, item id: String, label: String) throws -> String {
+  private func variationId(_ bridge: RowsBridge, item id: String, label: String) throws -> String {
     try #require(try item(bridge, id).variants.first { $0.label == label }?.id)
   }
 

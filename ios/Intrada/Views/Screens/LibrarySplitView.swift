@@ -18,7 +18,7 @@ struct LibrarySplitView: View {
     }
   #endif
 
-  private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var items: [LibraryItemView] { store.libraryRows }
   private var selectedItem: LibraryItemView? {
     selectedId.flatMap { id in items.first { $0.id == id } }
   }

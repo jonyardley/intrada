@@ -78,7 +78,7 @@ struct LibraryAddScreen: View {
     .sheet(isPresented: $choosingExercises) {
       LinkedItemPickerSheet(
         kind: .exercise,
-        library: store.viewModel?.items ?? [],
+        library: store.libraryRows,
         linkedIds: form.stagedExercises.compactMap(\.existingId),
         existingDrafts: form.stagedExercises.filter { $0.existingId == nil },
         onApply: applyChosen)
@@ -171,7 +171,7 @@ struct LibraryAddScreen: View {
   private func applyChosen(_ ids: Swift.Set<String>, _ drafts: [StagedExercise]) {
     form.stagedExercises =
       drafts
-      + (store.viewModel?.items ?? [])
+      + store.libraryRows
       .filter { ids.contains($0.id) }
       .map { .existing(id: $0.id, title: $0.title, meta: $0.subtitle) }
   }

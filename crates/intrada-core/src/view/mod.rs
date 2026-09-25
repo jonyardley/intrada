@@ -37,13 +37,8 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         }
     };
 
-    let items: Vec<_> = cached
-        .sorted
-        .iter()
-        .map(|&i| cached.library[i].clone())
-        .collect();
-    let visible: Vec<_> = items
-        .iter()
+    let visible: Vec<_> = cached
+        .rows()
         .filter(|i| {
             model
                 .active_query
@@ -151,15 +146,12 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
     };
 
     ViewModel {
-        items,
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
         visible_pieces,
         visible_exercises,
         available_tags: cached.available_tags.clone(),
         available_composers: cached.available_composers.clone(),
-        sessions: cached.sessions.clone(),
-        practice_weeks: cached.practice_weeks.clone(),
         active_session,
         building_setlist,
         summary,
@@ -178,6 +170,56 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         recently_practised_ids: cached.recently_practised_ids.clone(),
         shows_priorities: cached.has_priorities
             && matches!(model.session_status, SessionStatus::Idle),
+    }
+}
+
+/// The screen state plus the two sections sent apart from it (#1801), so a
+/// test reads the rows the shell would hold.
+#[cfg(test)]
+#[derive(Debug, PartialEq)]
+pub(crate) struct Rendered {
+    pub(crate) view: ViewModel,
+    pub(crate) items: Vec<crate::model::LibraryItemView>,
+    pub(crate) sessions: Vec<crate::model::PracticeSessionView>,
+    pub(crate) practice_weeks: Vec<crate::practice_weeks::PracticeWeekView>,
+}
+
+#[cfg(test)]
+impl std::ops::Deref for Rendered {
+    type Target = ViewModel;
+    fn deref(&self) -> &ViewModel {
+        &self.view
+    }
+}
+
+#[cfg(test)]
+impl Intrada {
+    pub(crate) fn rendered(&self, model: &Model) -> Rendered {
+        rendered(model)
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn rendered(model: &Model) -> Rendered {
+    rendered_at(model, chrono::Utc::now())
+}
+
+#[cfg(test)]
+pub(crate) fn rendered_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -> Rendered {
+    let clock = LocalClock::from_now(now, model.utc_offset_minutes);
+    let fresh;
+    let cached = match &model.projections {
+        Some(p) if p.key == ProjectionKey::of(model, clock) => p,
+        _ => {
+            fresh = cache::build(model, clock);
+            &fresh
+        }
+    };
+    Rendered {
+        view: build_view_at(model, now),
+        items: cached.rows().cloned().collect(),
+        sessions: cached.sessions.clone(),
+        practice_weeks: cached.practice_weeks.clone(),
     }
 }
 
