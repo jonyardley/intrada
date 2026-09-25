@@ -105,7 +105,7 @@ final class SessionBuilderUITests: XCTestCase {
   }
 
   /// Builder rows combine their title + meta into one labelled element, spoken
-  /// "<title>, Exercise …" or "<title>, Related …".
+  /// "<title>, <type> …" or "<title>, Related …".
   private func builderRow(_ app: XCUIApplication, titled title: String, meta: String)
     -> XCUIElement
   {
