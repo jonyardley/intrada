@@ -9,7 +9,7 @@ import SharedTypes
 final class Store {
   private(set) var viewModel: ViewModel?
   /// Sent by the core only when a row changes, so a tap mid-practice does not
-  /// replace them or redraw the screens that read them (#1801).
+  /// replace them (#1801).
   private(set) var libraryRows: [LibraryItemView] = []
   private(set) var sessionHistory: [PracticeSessionView] = []
   private(set) var practiceWeeks: [PracticeWeekView] = []

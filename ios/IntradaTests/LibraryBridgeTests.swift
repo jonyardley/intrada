@@ -44,6 +44,15 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  func testRealBridgeWeekStripCrossesTheWireWithToday() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+
+    let weeks = try bridge.rendered().practiceWeeks
+    XCTAssertFalse(weeks.isEmpty, "the week strip should arrive on start")
+    XCTAssertTrue(weeks.flatMap(\.days).contains { $0.isToday }, "one day should be today")
+  }
+
   /// Real-bridge wire pin (#846, #1467): a `Bool` that never made it across
   /// reads as `false`, so the row would say "steps" about a ladder of keys,
   /// no crash, no error, just the wrong noun.

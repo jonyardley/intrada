@@ -9,6 +9,7 @@ final class RowsBridge: CoreBridge {
   private(set) var items: [LibraryItemView] = []
   private(set) var sessions: [PracticeSessionView] = []
   private(set) var practiceWeeks: [PracticeWeekView] = []
+  private(set) var lastSections: [AppEffect] = []
 
   func update(_ event: Event) throws -> [Request] { keep(try live.update(event)) }
 
@@ -30,14 +31,16 @@ final class RowsBridge: CoreBridge {
   }
 
   private func keep(_ requests: [Request]) -> [Request] {
+    lastSections = []
     for request in requests {
       guard case .app(let effect) = request.effect else { continue }
       switch effect {
       case .libraryChanged(let rows): items = rows
       case .historyChanged(let rows): sessions = rows
       case .weeksChanged(let weeks): practiceWeeks = weeks
-      default: break
+      default: continue
       }
+      lastSections.append(effect)
     }
     return requests
   }

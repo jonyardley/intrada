@@ -167,6 +167,10 @@ The fix: make such helpers **format-aware** via
 `Deserializer::is_human_readable()`, with a JSON branch and a bincode branch, so
 the same type round-trips on both wires.
 
+The library rows, session history and week strip reach the shell as `AppEffect`s
+sent only when they change (#1801), not through the `ViewModel`, so a new field
+on those rows crosses the bridge inside those effects.
+
 Rules of thumb for any type crossing the bridge (`Event`, `Effect`, `ViewModel`,
 and everything they contain):
 

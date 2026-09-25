@@ -691,4 +691,16 @@ mod tests {
             "bytes per tap: {sizes:?}"
         );
     }
+
+    #[test]
+    fn each_section_effect_round_trips_on_the_ffi_wire() {
+        use crate::app::AppEffect;
+        use crate::domain::types::assert_round_trips;
+        let view = crate::view::rendered(&sampled());
+        assert!(!view.items.is_empty() && !view.sessions.is_empty());
+        assert!(!view.practice_weeks.is_empty());
+        assert_round_trips(AppEffect::LibraryChanged(view.items));
+        assert_round_trips(AppEffect::HistoryChanged(view.sessions));
+        assert_round_trips(AppEffect::WeeksChanged(view.practice_weeks));
+    }
 }

@@ -5,8 +5,8 @@ import Testing
 
 @testable import Intrada
 
-/// The library rows and history reach the Store as their own messages, and a
-/// tap mid-practice leaves them alone so their screens are not redrawn (#1801).
+/// The library rows and history reach the Store as their own messages, and
+/// Start and Next leave them unchanged (#1801).
 @MainActor
 struct StoreSectionsTests {
   private static func stamp(_ minute: Int) -> String {

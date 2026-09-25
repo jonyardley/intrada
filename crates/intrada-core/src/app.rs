@@ -89,7 +89,8 @@ pub enum Effect {
     Recognition(RecognitionOperation),
 }
 
-/// Singleton side-effect operations handled by the shell (UserDefaults).
+/// Fire-and-forget operations the shell handles: UserDefaults singletons, and the
+/// sections sent apart from the ViewModel (#1801).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -1262,9 +1263,9 @@ mod tests {
 
         // Benchmark: view() with 10k items + 500 sessions
         let start = std::time::Instant::now();
-        let vm = app.rendered(&model);
+        let vm = app.view(&model);
         let view_time = start.elapsed();
-        assert_eq!(vm.items.len(), 10_000);
+        assert_eq!(app.rendered(&model).items.len(), 10_000);
         // O(n): forward resolution + the O(n) reverse index over 10k items + 25k
         // links. A naive O(n²) reverse scan (5k exercises × 5k pieces = 25M) would
         // run in seconds, so this still catches that regression with wide margin;
@@ -1280,7 +1281,7 @@ mod tests {
         let start = std::time::Instant::now();
         let cached = app.view(&model);
         let cached_time = start.elapsed();
-        assert_eq!(cached, vm.view);
+        assert_eq!(cached, vm);
         assert!(
             cached_time.as_millis() < 250 && cached_time * 3 < view_time,
             "cached view() with 10k items took {}ms against {}ms cold (target: <250ms and under a third)",

@@ -111,6 +111,7 @@ struct ViewModelDecodeBaselineTests {
     }
     for tap in taps {
       _ = try bridge.update(tap)
+      #expect(bridge.lastSections.isEmpty, "\(tap) sent \(bridge.lastSections.count) sections")
       let bytes = try bridge.view().bincodeSerialize().count
       #expect(bytes < 20_000, "\(bytes) bytes after \(tap)")
     }
