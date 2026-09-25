@@ -41,8 +41,8 @@ struct PracticeScreen: View {
     }
   #endif
 
-  private var sessions: [PracticeSessionView] { store.viewModel?.sessions ?? [] }
-  private var weeks: [PracticeWeekView] { store.viewModel?.practiceWeeks ?? [] }
+  private var sessions: [PracticeSessionView] { store.sessionHistory }
+  private var weeks: [PracticeWeekView] { store.practiceWeeks }
   // Defaults to the last (current) week; a swipe overrides it.
   private var effectiveWeekIndex: Int {
     max(0, min(weekIndexOverride ?? (weeks.count - 1), weeks.count - 1))

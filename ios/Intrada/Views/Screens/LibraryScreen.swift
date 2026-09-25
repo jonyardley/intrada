@@ -22,8 +22,8 @@ struct LibraryScreen: View {
     init(previewSearch: String) { self.previewSearch = previewSearch }
   #endif
 
-  private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
-  private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
+  private var items: [LibraryItemView] { store.libraryRows }
+  private var visibleItems: [LibraryItemView] { store.visibleItems }
 
   var body: some View {
     ScreenScaffold(
@@ -109,7 +109,7 @@ struct LibraryScreen: View {
 
   // Read the item fresh at tap time — a render-captured value can go stale.
   private func toggleStar(_ id: String) {
-    guard let item = store.viewModel?.items.first(where: { $0.id == id }) else { return }
+    guard let item = store.libraryRows.first(where: { $0.id == id }) else { return }
     withAnimation(reduceMotion ? nil : IntradaMotion.standard) {
       store.send(.item(.update(id: id, input: togglePriority(item))))
     }
@@ -131,7 +131,7 @@ struct LibraryScreen: View {
   private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
 
   private var hasNoPriorities: Bool {
-    priorityOnly && !(store.viewModel?.items.isEmpty ?? true)
+    priorityOnly && !store.libraryRows.isEmpty
   }
 
   private var emptyIcon: String {

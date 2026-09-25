@@ -13,7 +13,6 @@ use crate::domain::session::{
 };
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
-use crate::practice_weeks::PracticeWeekView;
 use crate::recognition::PhotoDraft;
 use crate::suggestion::SuggestedSession;
 
@@ -256,8 +255,6 @@ pub enum FormErrorField {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ViewModel {
-    /// The whole library in sort order; the filter is `visible_ids` (#1998).
-    pub items: Vec<LibraryItemView>,
     /// Active filter, mirrored so the shell's pill reads one source of truth (#792).
     pub active_query: Option<ListQuery>,
     /// Active sort, mirrored so the shell's menu reads one source of truth.
@@ -272,9 +269,6 @@ pub struct ViewModel {
     /// Distinct composers (sorted) for the add/edit autocomplete. Computed
     /// pre-filter so it stays the full vocabulary when the list is narrowed.
     pub available_composers: Vec<String>,
-    pub sessions: Vec<PracticeSessionView>,
-    /// The Practice tab's week strip (#2046), oldest first and never empty.
-    pub practice_weeks: Vec<PracticeWeekView>,
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,

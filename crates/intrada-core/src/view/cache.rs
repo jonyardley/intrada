@@ -51,14 +51,43 @@ pub(crate) struct Projections {
     pub(crate) last_practised: Option<LastPractisedView>,
 }
 
+impl Projections {
+    pub(crate) fn rows(&self) -> impl Iterator<Item = &LibraryItemView> {
+        self.sorted.iter().map(|&i| &self.library[i])
+    }
+}
+
+/// Which of the sections the shell holds apart from the ViewModel a refresh
+/// changed (#1801).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Changed {
+    pub(crate) library: bool,
+    pub(crate) history: bool,
+    pub(crate) weeks: bool,
+}
+
 /// Called at the end of every `update`, since `view` cannot store.
-pub(crate) fn refresh(model: &mut Model, now: chrono::DateTime<chrono::Utc>) {
+pub(crate) fn refresh(model: &mut Model, now: chrono::DateTime<chrono::Utc>) -> Changed {
     let clock = LocalClock::from_now(now, model.utc_offset_minutes);
     let key = ProjectionKey::of(model, clock);
     if model.projections.as_ref().is_some_and(|p| p.key == key) {
-        return;
+        return Changed::default();
     }
-    model.projections = Some(build(model, clock));
+    let built = build(model, clock);
+    let changed = match &model.projections {
+        Some(old) => Changed {
+            library: !old.rows().eq(built.rows()),
+            history: old.sessions != built.sessions,
+            weeks: old.practice_weeks != built.practice_weeks,
+        },
+        None => Changed {
+            library: !built.library.is_empty(),
+            history: !built.sessions.is_empty(),
+            weeks: true,
+        },
+    };
+    model.projections = Some(built);
+    changed
 }
 
 pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
@@ -160,9 +189,8 @@ mod tests {
     use crate::domain::item::{ItemEvent, ItemKind};
     use crate::domain::session::{SessionEvent, TempoReading};
     use crate::domain::types::{CreateItem, ListQuery, UpdateItem};
-    use crate::model::ViewModel;
     use crate::persistence::PersistenceOutput;
-    use crate::view::build_view_at;
+    use crate::view::{build_view_at, rendered_at, Rendered};
     use chrono::{DateTime, Duration, Utc};
     use crux_core::App;
 
@@ -176,9 +204,9 @@ mod tests {
         model
     }
 
-    fn fresh_view(model: &mut Model, now: DateTime<Utc>) -> ViewModel {
+    fn fresh_view(model: &mut Model, now: DateTime<Utc>) -> Rendered {
         let kept = model.projections.take();
-        let view = build_view_at(model, now);
+        let view = rendered_at(model, now);
         model.projections = kept;
         view
     }
@@ -193,7 +221,7 @@ mod tests {
             Some(ProjectionKey::of(model, clock)),
             "{what}: update left the cache behind"
         );
-        let cached = build_view_at(model, now);
+        let cached = rendered_at(model, now);
         assert_eq!(cached, fresh_view(model, now), "{what}");
     }
 
@@ -269,7 +297,7 @@ mod tests {
 
         for (what, event) in steps {
             let wrote = matches!(event, Event::Item(_));
-            let before = build_view_at(&model, now);
+            let before = rendered_at(&model, now);
             send(&mut model, event);
             assert_ne!(
                 before,
@@ -289,7 +317,7 @@ mod tests {
         let mut model = sampled();
         let item_id = model.items[0].id.clone();
         let start = Utc::now() - Duration::minutes(5);
-        let sessions_before = build_view_at(&model, Utc::now()).sessions.len();
+        let sessions_before = crate::view::rendered(&model).sessions.len();
 
         for event in [
             Event::Session(SessionEvent::StartBuilding),
@@ -389,7 +417,7 @@ mod tests {
             "the sample must tell the two days apart"
         );
         assert_eq!(
-            build_view_at(&model, tomorrow),
+            rendered_at(&model, tomorrow),
             fresh_view(&mut model, tomorrow)
         );
     }
@@ -410,7 +438,7 @@ mod tests {
             })),
         );
 
-        let view = build_view_at(&model, Utc::now());
+        let view = crate::view::rendered(&model);
         assert_eq!(view.items.len(), model.items.len());
         let mut by_title_rows = view.items.clone();
         sort_library_items(&mut by_title_rows, &by_title);
@@ -429,5 +457,238 @@ mod tests {
     fn the_view_model_round_trips_on_ffi_bincode_wire() {
         let model = sampled();
         crate::domain::types::assert_round_trips(build_view_at(&model, Utc::now()));
+    }
+
+    // ── Sections sent to the shell (#1801) ──
+
+    #[derive(Default)]
+    struct Sent {
+        library: Option<Vec<LibraryItemView>>,
+        history: Option<Vec<PracticeSessionView>>,
+        weeks: Option<Vec<PracticeWeekView>>,
+        library_before_render: bool,
+    }
+
+    fn sent(model: &mut Model, event: Event) -> Sent {
+        use crate::app::{AppEffect, Effect};
+        let mut command = Intrada.update(event, model);
+        let mut out = Sent::default();
+        let mut rendered = false;
+        for effect in command.effects() {
+            match effect {
+                Effect::Render(_) => rendered = true,
+                Effect::App(request) => match request.operation {
+                    AppEffect::LibraryChanged(rows) => {
+                        out.library_before_render = !rendered;
+                        out.library = Some(rows);
+                    }
+                    AppEffect::HistoryChanged(rows) => out.history = Some(rows),
+                    AppEffect::WeeksChanged(weeks) => out.weeks = Some(weeks),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        out
+    }
+
+    fn practice(item_ids: Vec<String>, start: DateTime<Utc>) -> Vec<Event> {
+        let mut events = vec![Event::Session(SessionEvent::StartBuilding)];
+        events.extend(
+            item_ids
+                .into_iter()
+                .map(|item_id| Event::Session(SessionEvent::AddToSetlist { item_id })),
+        );
+        events.extend([
+            Event::Session(SessionEvent::StartSession { now: start }),
+            Event::Session(SessionEvent::RepGotIt { now: start }),
+            Event::Session(SessionEvent::NextItem {
+                now: start + Duration::seconds(30),
+                next_item_started_at: start + Duration::seconds(30),
+                reading: TempoReading::silent(),
+            }),
+        ]);
+        events
+    }
+
+    #[test]
+    fn loading_the_library_sends_every_row_in_the_library_order_before_the_render() {
+        let mut model = Model::default();
+        let out = sent(&mut model, Event::LoadSampleData);
+
+        let rows = out.library.expect("a first load sends the rows");
+        assert_eq!(rows.len(), model.items.len());
+        let mut by_sort = rows.clone();
+        sort_library_items(&mut by_sort, &model.active_sort);
+        assert_eq!(rows, by_sort);
+        assert!(out.library_before_render);
+        let history = out.history.expect("a first load sends the history");
+        assert_eq!(history.len(), model.sessions.len());
+        assert!(out
+            .weeks
+            .is_some_and(|w| w.iter().flat_map(|w| &w.days).any(|d| d.is_today)));
+    }
+
+    #[test]
+    fn a_search_and_a_practice_under_way_send_neither_section() {
+        let mut model = sampled();
+        let mut steps = vec![sent(
+            &mut model,
+            Event::SetQuery(Some(ListQuery {
+                item_type: Some(ItemKind::Exercise),
+                ..Default::default()
+            })),
+        )];
+        let ids = model.items.iter().take(2).map(|i| i.id.clone()).collect();
+        for event in practice(ids, Utc::now()) {
+            steps.push(sent(&mut model, event));
+        }
+
+        assert!(matches!(
+            model.session_status,
+            crate::domain::session::SessionStatus::Active(_)
+        ));
+        for (i, out) in steps.iter().enumerate() {
+            assert!(out.library.is_none(), "step {i} sent the library");
+            assert!(out.history.is_none(), "step {i} sent the history");
+            assert!(out.weeks.is_none(), "step {i} sent the weeks");
+        }
+    }
+
+    #[test]
+    fn the_first_refresh_of_a_new_day_sends_the_weeks() {
+        let mut model = sampled();
+        let now = Utc::now();
+        refresh(&mut model, now);
+        assert!(refresh(&mut model, now + Duration::days(1)).weeks);
+    }
+
+    #[test]
+    fn an_edit_sends_the_library_and_not_the_history() {
+        let mut model = sampled();
+        let id = model.items[0].id.clone();
+        let out = sent(
+            &mut model,
+            Event::Item(ItemEvent::Update {
+                id: id.clone(),
+                input: UpdateItem {
+                    title: Some("Renamed".to_string()),
+                    ..Default::default()
+                },
+            }),
+        );
+
+        let rows = out.library.expect("an edit sends the library");
+        assert_eq!(
+            rows.iter().find(|r| r.id == id).map(|r| r.title.as_str()),
+            Some("Renamed")
+        );
+        assert!(out.history.is_none());
+        assert!(out.weeks.is_none());
+    }
+
+    #[test]
+    fn a_saved_practice_sends_the_history_with_it() {
+        let mut model = sampled();
+        let item_id = model.items[0].id.clone();
+        let before = model.sessions.len();
+        let start = Utc::now() - Duration::minutes(5);
+
+        let (mut history, mut weeks) = (None, None);
+        for event in [
+            Event::Session(SessionEvent::StartBuilding),
+            Event::Session(SessionEvent::AddToSetlist { item_id }),
+            Event::Session(SessionEvent::StartSession { now: start }),
+            Event::Session(SessionEvent::EndSessionEarly {
+                now: start + Duration::seconds(90),
+                reading: TempoReading::silent(),
+            }),
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+            Event::SessionStoreWritten(PersistenceOutput::Ack),
+        ] {
+            let out = sent(&mut model, event);
+            history = out.history.or(history);
+            weeks = out.weeks.or(weeks);
+        }
+
+        assert_eq!(history.map(|h| h.len()), Some(before + 1));
+        assert!(weeks.is_some(), "the week strip marks the new practice");
+    }
+
+    /// 200 items and 100 sessions of six entries, the size step 1 measured (#1801).
+    fn a_musicians_library() -> Model {
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry, VariationPlay,
+        };
+        let mut model = Model::default();
+        let samples = crate::sample::sample_items();
+        let now = Utc::now();
+        model.items = (0..200)
+            .map(|i| {
+                let mut item = samples[i % samples.len()].clone();
+                item.id = format!("fx{i:03}");
+                item.title = format!("{} {i}", item.title);
+                item.notes = Some(format!("Notes on the fingering in bar {i}"));
+                item.tags = vec!["scales".into(), format!("term{}", i % 3), "exam".into()];
+                item
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let sessions: Vec<PracticeSession> = (0..100u32)
+            .map(|s| PracticeSession {
+                id: format!("sess{s:03}"),
+                started_at: now - Duration::hours(i64::from(s) * 20 + 1),
+                completed_at: now - Duration::hours(i64::from(s) * 20),
+                total_duration_secs: 1800,
+                completion_status: CompletionStatus::Completed,
+                session_notes: None,
+                entries: (0..6u32)
+                    .map(|e| {
+                        let item = &model.items[((s * 6 + e) % 200) as usize];
+                        SetlistEntry {
+                            id: format!("se{s:03}_{e}"),
+                            item_id: item.id.clone(),
+                            item_title: item.title.clone(),
+                            item_type: item.kind.clone(),
+                            position: e as usize,
+                            duration_secs: 300,
+                            status: EntryStatus::Completed,
+                            plays: vec![VariationPlay {
+                                id: format!("se{s:03}_{e}-play"),
+                                seconds: 300,
+                                score: Some(3),
+                                ..VariationPlay::fixture()
+                            }],
+                            ..SetlistEntry::fixture()
+                        }
+                    })
+                    .collect(),
+                session_score: None,
+            })
+            .collect();
+        model.practice_summaries = crate::view::library::build_practice_summaries(&sessions).into();
+        model.sessions = sessions.into();
+        refresh(&mut model, now);
+        model
+    }
+
+    #[test]
+    fn the_screen_state_sent_on_each_practice_tap_stays_under_20_kb() {
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+        let mut model = a_musicians_library();
+        let ids = model.items.iter().take(6).map(|i| i.id.clone()).collect();
+        let start = Utc::now();
+
+        let mut sizes = Vec::new();
+        for event in practice(ids, start) {
+            send(&mut model, event);
+            let mut bytes = Vec::new();
+            BincodeFfiFormat::serialize(&mut bytes, &build_view_at(&model, start)).expect("encode");
+            sizes.push(bytes.len());
+        }
+        assert!(
+            sizes.iter().all(|&n| n < 20_000),
+            "bytes per tap: {sizes:?}"
+        );
     }
 }

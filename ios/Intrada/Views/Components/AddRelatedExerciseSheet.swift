@@ -23,7 +23,7 @@ struct AddRelatedExerciseSheet: View {
 
   private var candidates: [LibraryItemView] {
     let taken = Swift.Set(block?.takenElsewhere ?? [])
-    return (store.viewModel?.visibleItems ?? []).filter { !taken.contains($0.id) }
+    return store.visibleItems.filter { !taken.contains($0.id) }
   }
 
   var body: some View {

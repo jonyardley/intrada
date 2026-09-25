@@ -131,7 +131,7 @@ struct LibraryDetailScreen: View {
 
   // ── Actions ──
 
-  private var library: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var library: [LibraryItemView] { store.libraryRows }
 
   /// The pieces that declare the link, as opposed to the ones this exercise has
   /// merely been practised alongside — only a declared link can be unticked.

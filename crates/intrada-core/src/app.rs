@@ -104,6 +104,14 @@ pub enum AppEffect {
     /// Persist the musician's profile (UserDefaults, key versioned per
     /// `specs/profile.md`). Fire-and-forget; output is `()`.
     SaveProfile(Profile),
+    /// Every library row in the Library's order. Sent only when a row changed,
+    /// so a tap mid-practice does not replace them (#1801).
+    LibraryChanged(Vec<crate::model::LibraryItemView>),
+    /// The finished sessions, newest first. Sent only when one changed (#1801).
+    HistoryChanged(Vec<crate::model::PracticeSessionView>),
+    /// The Practice tab's week strip, oldest first. Sent only when it changed:
+    /// a new practice, or the first event of a new day (#1801).
+    WeeksChanged(Vec<crate::practice_weeks::PracticeWeekView>),
 }
 
 impl Operation for AppEffect {
@@ -125,8 +133,30 @@ impl App for Intrada {
         // error the event in hand reported (#1595).
         model.last_error_target = None;
         let command = self.handle_event(event, model);
-        crate::view::cache::refresh(model, chrono::Utc::now());
-        command
+        let changed = crate::view::cache::refresh(model, chrono::Utc::now());
+        let Some(projections) = &model.projections else {
+            return command;
+        };
+        // Ahead of the handler's render, so no screen draws ids whose rows
+        // have not reached the shell yet.
+        let mut sections = Vec::new();
+        if changed.library {
+            let rows = projections.rows().cloned().collect();
+            sections.push(Command::notify_shell(AppEffect::LibraryChanged(rows)).into());
+        }
+        if changed.history {
+            let rows = projections.sessions.clone();
+            sections.push(Command::notify_shell(AppEffect::HistoryChanged(rows)).into());
+        }
+        if changed.weeks {
+            let weeks = projections.practice_weeks.clone();
+            sections.push(Command::notify_shell(AppEffect::WeeksChanged(weeks)).into());
+        }
+        if sections.is_empty() {
+            return command;
+        }
+        sections.push(command);
+        Command::all(sections)
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
@@ -344,7 +374,7 @@ mod tests {
             &mut model,
         );
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let piece = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let preview = piece
             .scaffold_preview
@@ -379,7 +409,7 @@ mod tests {
     fn test_view_empty_model() {
         let app = Intrada;
         let model = Model::default();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         assert!(vm.items.is_empty());
         assert_eq!(vm.items.len(), 0);
@@ -424,7 +454,7 @@ mod tests {
         let mut model = Model::default();
         let _ = app.update(Event::LoadSampleData, &mut model);
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let scales = vm.items.iter().find(|i| i.id == "sample-scales").unwrap();
         assert!(
             scales.variants.len() >= 3,
@@ -468,7 +498,7 @@ mod tests {
             .any(|s| s.completion_status == CompletionStatus::EndedEarly));
 
         // The view projects them with a human-readable duration + entries.
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.sessions.len(), model.sessions.len());
         assert!(vm
             .sessions
@@ -504,7 +534,7 @@ mod tests {
             ..Model::default()
         };
 
-        let view = app.view(&model);
+        let view = app.rendered(&model);
 
         assert_eq!(
             view.items[0].photo_id.as_deref(),
@@ -609,7 +639,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         assert_eq!(vm.items.len(), 4);
 
@@ -648,7 +678,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.error, Some("Something went wrong".to_string()));
     }
 
@@ -699,7 +729,7 @@ mod tests {
             metre: None,
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 2);
 
         let _cmd = app.update(
@@ -709,12 +739,12 @@ mod tests {
             })),
             &mut model,
         );
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].item_type, ItemKind::Piece);
 
         let _cmd = app.update(Event::SetQuery(None), &mut model);
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 2);
     }
 
@@ -787,7 +817,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Moonlight Sonata");
     }
@@ -842,7 +872,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Sonata");
     }
@@ -883,7 +913,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let titles: Vec<String> = visible(&vm).iter().map(|i| i.title.clone()).collect();
         assert_eq!(titles.len(), 2, "OR semantics: matches classical OR jazz");
         assert!(titles.contains(&"Bebop".to_string()));
@@ -922,7 +952,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.available_tags, vec!["classical", "Jazz", "piano"]);
     }
 
@@ -965,7 +995,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         // Whole-library vocabulary: case-folded dedupe (first-seen "Chopin"), trimmed.
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(vm.available_composers, vec!["Beethoven", "Chopin", "Ravel"]);
@@ -1078,7 +1108,7 @@ mod tests {
         assert_eq!(model.items[0].tags, vec!["日本語タグ".to_string()]);
 
         // Verify ViewModel preserves Unicode
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.items[0].title, "Ménuet en Sol");
         assert_eq!(vm.items[0].subtitle, "Dvořák");
     }
@@ -1232,7 +1262,7 @@ mod tests {
 
         // Benchmark: view() with 10k items + 500 sessions
         let start = std::time::Instant::now();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let view_time = start.elapsed();
         assert_eq!(vm.items.len(), 10_000);
         // O(n): forward resolution + the O(n) reverse index over 10k items + 25k
@@ -1250,7 +1280,7 @@ mod tests {
         let start = std::time::Instant::now();
         let cached = app.view(&model);
         let cached_time = start.elapsed();
-        assert_eq!(cached, vm);
+        assert_eq!(cached, vm.view);
         assert!(
             cached_time.as_millis() < 250 && cached_time * 3 < view_time,
             "cached view() with 10k items took {}ms against {}ms cold (target: <250ms and under a third)",
@@ -1418,7 +1448,7 @@ mod tests {
         });
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let p2_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
 
@@ -1532,7 +1562,7 @@ mod tests {
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
 
@@ -1610,7 +1640,7 @@ mod tests {
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
 
@@ -1704,7 +1734,7 @@ mod tests {
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
 
@@ -1776,7 +1806,7 @@ mod tests {
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
 
@@ -2013,7 +2043,7 @@ mod tests {
             ..Model::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(vm.building_setlist.is_some());
         assert!(vm.active_session.is_none());
         assert!(vm.summary.is_none());
@@ -2050,13 +2080,13 @@ mod tests {
     fn test_view_empty_sessions() {
         let app = Intrada;
         let model = Model::default();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(vm.sessions.is_empty());
     }
 
     // ── ViewModel projection tests (#554) ──────────────────────────────
 
-    fn visible(vm: &ViewModel) -> Vec<&LibraryItemView> {
+    fn visible(vm: &crate::view::Rendered) -> Vec<&LibraryItemView> {
         vm.visible_ids
             .iter()
             .filter_map(|id| vm.items.iter().find(|i| &i.id == id))
@@ -2128,13 +2158,13 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(
             !visible(&vm).iter().any(|i| i.id == "p1"),
             "the filter really does hide the piece from the list"
         );
         assert_eq!(
-            vm.up_next.expect("a suggestion").piece_id,
+            vm.view.up_next.expect("a suggestion").piece_id,
             "p1",
             "the suggestion is derived before the filter"
         );
@@ -2155,7 +2185,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(
             !vm.visible_ids.iter().any(|id| id == "p1"),
             "the filter really does hide the piece from the list"
@@ -2191,12 +2221,15 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(
             !visible(&vm).iter().any(|i| i.id == "ex1"),
             "the filter really does hide the exercise from the list"
         );
-        let analytics = vm.analytics.expect("a session makes the analytics view");
+        let analytics = vm
+            .view
+            .analytics
+            .expect("a session makes the analytics view");
         assert_eq!(
             analytics
                 .variation_coverage
@@ -2277,7 +2310,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(
             !visible(&vm).iter().any(|i| i.id == "p1"),
             "the filter really does hide the starred piece from the list"
@@ -2349,7 +2382,7 @@ mod tests {
             items: vec![exercise].into(),
             ..Default::default()
         };
-        let solid_count = |model: &Model| app.view(model).items[0].solid_variation_count;
+        let solid_count = |model: &Model| app.rendered(model).items[0].solid_variation_count;
         assert_eq!(solid_count(&model), 0, "nothing marked");
 
         model.sessions = vec![
@@ -2358,7 +2391,7 @@ mod tests {
             make_session_on_variation("s3", "ex1", "v2", 8),
         ]
         .into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let flagged = vm.items[0].variants.iter().filter(|v| v.is_solid).count();
         assert_eq!(flagged, 2, "v0 and v2 are solid, v1 is not");
         assert_eq!(solid_count(&model), flagged);
@@ -2438,7 +2471,7 @@ mod tests {
             make_item("b", "Middle", ItemKind::Piece, t2),
         ]
         .into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.items[0].title, "Newest");
         assert_eq!(vm.items[1].title, "Middle");
         assert_eq!(vm.items[2].title, "Old");
@@ -2471,7 +2504,7 @@ mod tests {
             field: SortField::Title,
             direction: SortDirection::Ascending,
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
         assert_eq!(titles, vec!["Ballade", "etude", "Sonata"]);
     }
@@ -2491,7 +2524,7 @@ mod tests {
             field: SortField::Title,
             direction: SortDirection::Ascending,
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
         assert_eq!(titles, vec!["Ballade", "\u{c9}tude", "Waltz"]);
     }
@@ -2512,7 +2545,7 @@ mod tests {
             field: SortField::Title,
             direction: SortDirection::Ascending,
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
         assert_eq!(titles, vec!["\u{c9}tude", "Etudes"]);
     }
@@ -2533,7 +2566,7 @@ mod tests {
             field: SortField::LastPracticed,
             direction: SortDirection::Descending,
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.items[0].title, "Fresh");
         assert_eq!(vm.items[1].title, "Stale");
     }
@@ -2556,7 +2589,7 @@ mod tests {
             field: SortField::LastPracticed,
             direction: SortDirection::Ascending,
         };
-        assert_eq!(app.view(&model).items[0].title, "NeverPractised");
+        assert_eq!(app.rendered(&model).items[0].title, "NeverPractised");
 
         // Descending (most recent first): never-practised sinks to the bottom.
         model.active_sort = LibrarySort {
@@ -2564,7 +2597,7 @@ mod tests {
             direction: SortDirection::Descending,
         };
         assert_eq!(
-            app.view(&model).items.last().unwrap().title,
+            app.rendered(&model).items.last().unwrap().title,
             "NeverPractised"
         );
     }
@@ -2583,7 +2616,7 @@ mod tests {
         set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
         set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         assert_eq!(
             vm.recently_practised_ids,
@@ -2603,7 +2636,7 @@ mod tests {
             set_last_practiced(&mut model, &id, now - chrono::Duration::days(i as i64));
         }
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         assert_eq!(vm.recently_practised_ids.len(), 5);
         assert_eq!(vm.recently_practised_ids[0], "p0");
@@ -2625,7 +2658,7 @@ mod tests {
             ..Default::default()
         });
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         assert!(!vm.visible_ids.iter().any(|id| id == "p1"));
         assert!(vm.recently_practised_ids.iter().any(|id| id == "p1"));
@@ -2642,7 +2675,7 @@ mod tests {
             make_item("b", "New", ItemKind::Piece, t2),
         ]
         .into();
-        let vm = app.view(&model); // default active_sort
+        let vm = app.rendered(&model); // default active_sort
         assert_eq!(vm.items[0].title, "New");
         assert_eq!(vm.items[1].title, "Old");
     }
@@ -2664,7 +2697,7 @@ mod tests {
             text: None,
             priority_only: false,
         });
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Exercise One");
     }
@@ -2686,7 +2719,7 @@ mod tests {
             text: Some("clair".to_string()),
             priority_only: false,
         });
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Clair de Lune");
     }
@@ -2707,7 +2740,7 @@ mod tests {
             text: None,
             priority_only: false,
         });
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(visible(&vm)[0].title, "Tagged");
     }
@@ -2772,7 +2805,7 @@ mod tests {
         ];
         for (query, expected, why) in cases {
             model.active_query = Some(query.clone());
-            let vm = app.view(&model);
+            let vm = app.rendered(&model);
             let mut got: Vec<&str> = visible(&vm).iter().map(|i| i.id.as_str()).collect();
             got.sort_unstable();
             assert_eq!(got, *expected, "{why}");
@@ -2793,7 +2826,7 @@ mod tests {
             tags: vec![chip],
             ..Default::default()
         });
-        assert_eq!(app.view(&model).items.len(), 1);
+        assert_eq!(app.rendered(&model).items.len(), 1);
     }
 
     #[test]
@@ -2808,7 +2841,7 @@ mod tests {
             priority_only: false,
         };
         model.active_query = Some(query.clone());
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.active_query, Some(query));
     }
 
@@ -2816,7 +2849,7 @@ mod tests {
     fn view_active_query_none_when_unset() {
         let app = Intrada;
         let model = Model::default();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.active_query, None);
     }
 
@@ -2832,7 +2865,7 @@ mod tests {
         ]
         .into();
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.visible_pieces, 2);
         assert_eq!(vm.visible_exercises, 1);
 
@@ -2843,7 +2876,7 @@ mod tests {
             text: None,
             priority_only: false,
         });
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(vm.visible_pieces, 0);
         assert_eq!(vm.visible_exercises, 1);
@@ -2855,7 +2888,7 @@ mod tests {
             text: Some("Piece One".to_string()),
             priority_only: false,
         });
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.visible_pieces, 1);
         assert_eq!(vm.visible_exercises, 0);
     }
@@ -2889,7 +2922,7 @@ mod tests {
             },
         ]
         .into();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.sessions[0].id, "s2");
         assert_eq!(vm.sessions[1].id, "s1");
     }
@@ -2901,7 +2934,7 @@ mod tests {
             last_error: Some("bad request".to_string()),
             ..Default::default()
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.error.as_deref(), Some("bad request"));
     }
 
@@ -2929,7 +2962,7 @@ mod tests {
     fn view_empty_sessions_produces_no_analytics() {
         let app = Intrada;
         let model = Model::default();
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(vm.analytics.is_none());
     }
 
@@ -3024,7 +3057,7 @@ mod tests {
 
         model.raise_notice("kept, but");
 
-        let view = app.view(&model);
+        let view = app.rendered(&model);
         assert_eq!(view.notice.as_deref(), Some("kept, but"));
         assert_eq!(view.notice_seq, 1);
     }
@@ -3037,13 +3070,13 @@ mod tests {
         model.raise_notice("kept, but");
 
         let _ = app.update(Event::ClearNotice, &mut model);
-        let view = app.view(&model);
+        let view = app.rendered(&model);
         assert_eq!(view.notice, None, "the notice is dismissed");
         assert_eq!(view.error.as_deref(), Some("refused"), "the error stands");
 
         model.raise_notice("kept, but");
         let _ = app.update(Event::ClearError, &mut model);
-        let view = app.view(&model);
+        let view = app.rendered(&model);
         assert_eq!(view.error, None, "the error is dismissed");
         assert_eq!(
             view.notice.as_deref(),
@@ -3081,8 +3114,8 @@ mod tests {
             }),
             ..Default::default()
         };
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
+        let vm = app.rendered(&model);
+        let building = vm.view.building_setlist.unwrap();
         assert_eq!(building.total_duration_display.as_deref(), Some("25m 30s"));
         assert_eq!(building.total_duration_summary.as_deref(), Some("25m 30s"));
     }
@@ -3099,8 +3132,8 @@ mod tests {
             }),
             ..Default::default()
         };
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
+        let vm = app.rendered(&model);
+        let building = vm.view.building_setlist.unwrap();
         assert_eq!(building.total_duration_summary.as_deref(), Some("20 min"));
     }
 
@@ -3113,8 +3146,8 @@ mod tests {
             }),
             ..Default::default()
         };
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
+        let vm = app.rendered(&model);
+        let building = vm.view.building_setlist.unwrap();
         assert_eq!(building.total_duration_display, None);
         assert_eq!(building.total_duration_summary, None);
     }
@@ -3143,7 +3176,7 @@ mod tests {
         assert_eq!(model.items.len(), 1);
         assert!(!model.items[0].priority);
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(!vm.items[0].priority);
     }
 
@@ -3214,7 +3247,7 @@ mod tests {
 
         assert_eq!(model.items[0].key.as_deref(), Some("Db"));
         assert_eq!(model.items[0].modality, Some(Modality::Major));
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert_eq!(vm.items[0].modality, Some(Modality::Major));
     }
 
@@ -3389,7 +3422,7 @@ mod tests {
             items: vec![piece, ex].into(),
             ..Model::default()
         };
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let exercise = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(
             exercise.used_in[0]
@@ -3504,7 +3537,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         // Piece: resolves [ex-1, ex-2] — ex-missing dropped from middle, order preserved.
         let piece_view = vm.items.iter().find(|i| i.id == "piece-1").unwrap();
@@ -3573,7 +3606,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1.used_in.len(), 1, "the link alone makes a row");
 
@@ -3613,7 +3646,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1.used_in.len(), 1);
 
@@ -3645,7 +3678,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1.used_in.len(), 1, "one row, both sources");
         assert!(ex1.used_in[0].linked);
@@ -3715,7 +3748,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         let order: Vec<&str> = ex1
             .used_in
@@ -3785,7 +3818,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = Intrada.view(&model);
+        let vm = Intrada.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         let order: Vec<&str> = ex1
             .used_in
@@ -3901,7 +3934,7 @@ mod tests {
             ..Model::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         assert!(
             visible(&vm).is_empty(),
             "the filter really does hide the exercise"
@@ -4077,7 +4110,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1.used_in.len(), 2, "piece + on-its-own");
 
@@ -4133,7 +4166,7 @@ mod tests {
         };
 
         let ex1 = app
-            .view(&model)
+            .rendered(&model)
             .items
             .into_iter()
             .find(|i| i.id == "ex-1")
@@ -4168,7 +4201,7 @@ mod tests {
         };
 
         let ex1 = app
-            .view(&model)
+            .rendered(&model)
             .items
             .into_iter()
             .find(|i| i.id == "ex-1")
@@ -4201,7 +4234,7 @@ mod tests {
         };
 
         let ex1 = app
-            .view(&model)
+            .rendered(&model)
             .items
             .into_iter()
             .find(|i| i.id == "ex-1")
@@ -4253,7 +4286,7 @@ mod tests {
         };
 
         let piece_view = app
-            .view(&model)
+            .rendered(&model)
             .items
             .into_iter()
             .find(|i| i.id == "P")
@@ -4294,7 +4327,7 @@ mod tests {
             &mut local,
         );
         let local_ctx = app
-            .view(&local)
+            .rendered(&local)
             .items
             .into_iter()
             .find(|i| i.id == "ex-1")
@@ -4360,7 +4393,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
 
         // Forward: piece-a drops item-b (wrong kind).
         let piece_a = vm.items.iter().find(|i| i.id == "piece-a").unwrap();
@@ -4445,7 +4478,7 @@ mod tests {
         }
     }
 
-    fn step_view_model(sessions: Vec<PracticeSession>) -> ViewModel {
+    fn step_view_model(sessions: Vec<PracticeSession>) -> crate::view::Rendered {
         let app = Intrada;
         let mut model = Model {
             items: vec![laddered_exercise("ex-1")].into(),
@@ -4453,12 +4486,12 @@ mod tests {
             ..Default::default()
         };
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        app.view(&model)
+        app.rendered(&model)
     }
 
     #[test]
     fn view_carries_this_week_with_no_sessions_and_today_with_one() {
-        let empty = Intrada.view(&Model::default());
+        let empty = Intrada.rendered(&Model::default());
         assert_eq!(empty.practice_weeks.len(), 1);
         assert!(empty.practice_weeks[0].days.iter().any(|d| d.is_today));
 
@@ -4556,7 +4589,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(!ex.ladder_is_keys, "one non-key rung and \"keys\" is a lie");
     }
@@ -4577,7 +4610,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(ex.ladder_is_keys, "the removed rung is not on the ladder");
     }
@@ -4596,7 +4629,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
         assert!(!piece.ladder_is_keys, "no rungs is not a ladder of keys");
     }
@@ -4609,7 +4642,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(
             !ex.shows_key,
@@ -4631,7 +4664,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(ex.shows_key, "no rungs, nothing to hide the field for");
     }
@@ -4650,7 +4683,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
         assert!(piece.shows_key, "a piece never has a ladder to hide it for");
     }
@@ -4669,7 +4702,7 @@ mod tests {
             ..Default::default()
         };
 
-        let vm = app.view(&model);
+        let vm = app.rendered(&model);
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(ex.shows_key, "nothing live on the ladder");
     }

@@ -374,6 +374,7 @@ fn start_building_from_suggestion_attributes_the_current_step() {
 #[test]
 fn start_building_from_suggestion_makes_no_network_call() {
     let mut m = suggestion_model();
+    crate::view::cache::refresh(&mut m, Utc::now());
     let app = Intrada;
     let mut cmd = app.update(
         Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
@@ -519,6 +520,7 @@ fn start_building_with_priorities_is_a_no_op_with_nothing_starred() {
 fn start_building_with_priorities_makes_no_network_call() {
     let mut m = linked_model();
     star(&mut m, &["piece-P"]);
+    crate::view::cache::refresh(&mut m, Utc::now());
     let app = Intrada;
     let mut cmd = app.update(
         Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
@@ -2064,8 +2066,7 @@ fn test_save_session_updates_practice_summaries_in_view() {
     );
 
     // Build the view: this is what the shell sees
-    let app = crate::app::Intrada;
-    let vm = <crate::app::Intrada as crux_core::App>::view(&app, &model);
+    let vm = crate::view::rendered(&model);
 
     // Find the item that was practised (piece-1)
     let practised_item = vm.items.iter().find(|i| i.id == "piece-1");

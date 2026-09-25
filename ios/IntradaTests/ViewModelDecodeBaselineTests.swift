@@ -4,8 +4,8 @@ import Testing
 
 @testable import Intrada
 
-/// Baseline for #1801: what one event costs the shell at a realistic library size, through the
-/// real bridge. Seeding takes about four seconds, so it runs only when asked:
+/// #1801 at a realistic library size, through the real bridge. The payload check runs in the
+/// fast tier; the timing baseline only when asked:
 /// `TEST_RUNNER_INTRADA_BASELINE=1 just ios-test`, numbers in the result's attachment.
 @MainActor
 struct ViewModelDecodeBaselineTests {
@@ -33,8 +33,8 @@ struct ViewModelDecodeBaselineTests {
 
   private static let keys = ["C major", "G major", "D major", "A major", "E major", "B major"]
 
-  private func seededBridge() throws -> (LiveBridge, [String]) {
-    let bridge = LiveBridge()
+  private func seededBridge() throws -> (RowsBridge, [String]) {
+    let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     for index in 0..<Self.exercises {
       _ = try bridge.update(
@@ -43,7 +43,7 @@ struct ViewModelDecodeBaselineTests {
     for index in 0..<Self.pieces {
       _ = try bridge.update(Self.create("Piece \(index)", .piece))
     }
-    let view = try bridge.view()
+    let view = try bridge.rendered()
     let exerciseIds = view.items.filter { $0.itemType == .exercise }.map(\.id)
     let pieceIds = view.items.filter { $0.itemType == .piece }.map(\.id)
     #expect(exerciseIds.count == Self.exercises)
@@ -81,7 +81,7 @@ struct ViewModelDecodeBaselineTests {
         })
       _ = try bridge.resolve(write.id, persistenceOutput: .ack)
     }
-    let seeded = try bridge.view()
+    let seeded = try bridge.rendered()
     #expect(seeded.error == nil)
     #expect(seeded.sessions.count == Self.pastSessions)
     return (bridge, exerciseIds)
@@ -96,6 +96,27 @@ struct ViewModelDecodeBaselineTests {
     ms(samples.sorted()[samples.count / 2])
   }
 
+  @Test("the screen state sent on Start and on each Next stays under 20 KB")
+  func payloadPerTap() throws {
+    let (bridge, exerciseIds) = try seededBridge()
+    let day = Self.pastSessions
+    _ = try bridge.update(.session(.startBuilding))
+    for offset in 0..<Self.entriesPerSession {
+      _ = try bridge.update(.session(.addToSetlist(itemId: exerciseIds[offset])))
+    }
+    var taps = [Event.session(.startSession(now: Self.stamp(day: day, minute: 0)))]
+    for step in 1..<Self.entriesPerSession {
+      let now = Self.stamp(day: day, minute: step * 5)
+      taps.append(.session(.nextItem(now: now, nextItemStartedAt: now, reading: .silent)))
+    }
+    for tap in taps {
+      _ = try bridge.update(tap)
+      let bytes = try bridge.view().bincodeSerialize().count
+      #expect(bytes < 20_000, "\(bytes) bytes after \(tap)")
+    }
+    #expect(try bridge.view().activeSession != nil)
+  }
+
   @Test(
     "a realistic ViewModel decodes, and the per-event cost is recorded as a baseline",
     .enabled(if: ProcessInfo.processInfo.environment["INTRADA_BASELINE"] != nil))
@@ -108,9 +129,7 @@ struct ViewModelDecodeBaselineTests {
     for _ in 0..<15 {
       decodes.append(clock.measure { _ = try? ViewModel.bincodeDeserialize(input: bytes) })
     }
-    let decoded = try ViewModel.bincodeDeserialize(input: bytes)
-    #expect(decoded.items.count == Self.pieces + Self.exercises)
-    #expect(bytes.count > 100_000, "at least 100 KB, the scale #1801 is about")
+    #expect(try ViewModel.bincodeDeserialize(input: bytes) == bridge.view())
 
     var starts: [Duration] = []
     var nexts: [Duration] = []

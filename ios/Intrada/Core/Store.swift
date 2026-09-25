@@ -8,6 +8,11 @@ import SharedTypes
 @Observable
 final class Store {
   private(set) var viewModel: ViewModel?
+  /// Sent by the core only when a row changes, so a tap mid-practice does not
+  /// replace them or redraw the screens that read them (#1801).
+  private(set) var libraryRows: [LibraryItemView] = []
+  private(set) var sessionHistory: [PracticeSessionView] = []
+  private(set) var practiceWeeks: [PracticeWeekView] = []
 
   /// Bumped on every throw from the core bridge: a throw yields no render and no `errorSeq`
   /// move, so confirmations need their own signal for it (#1937).
@@ -146,7 +151,22 @@ final class Store {
       if let bytes = guarded({ try profile.bincodeSerialize() }) {
         profileSlot.write(bytes)
       }
+    case .libraryChanged(let rows):
+      libraryRows = rows
+    case .historyChanged(let sessions):
+      sessionHistory = sessions
+    case .weeksChanged(let weeks):
+      practiceWeeks = weeks
     }
+  }
+
+  /// The rows the Library filter leaves showing, in sort order (#1998).
+  var visibleItems: [LibraryItemView] {
+    libraryRows.rows(withIds: viewModel?.visibleIds ?? [])
+  }
+
+  var recentlyPractisedItems: [LibraryItemView] {
+    libraryRows.rows(withIds: viewModel?.recentlyPractisedIds ?? [])
   }
 
   /// Crash-recovery blob found at launch; non-nil drives the Practice tab's
@@ -261,3 +281,12 @@ private struct DiskJob: @unchecked Sendable {
     }
   }
 }
+
+#if DEBUG
+  extension Store {
+    /// Previews and snapshots hand over the rows the core would send (#1801).
+    func receive(_ effects: [AppEffect]) {
+      effects.forEach(handleAppEffect)
+    }
+  }
+#endif

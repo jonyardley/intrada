@@ -20,7 +20,7 @@ struct PracticeSplitView: View {
   #endif
 
   private var selectedSession: PracticeSessionView? {
-    selectedId.flatMap { id in store.viewModel?.sessions.first { $0.id == id } }
+    selectedId.flatMap { id in store.sessionHistory.first { $0.id == id } }
   }
 
   var body: some View {

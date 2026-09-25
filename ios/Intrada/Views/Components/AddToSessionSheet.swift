@@ -7,9 +7,9 @@ import SwiftUI
 struct AddToSessionSheet: View {
   @Environment(Store.self) private var store
 
-  private var visibleItems: [LibraryItemView] { store.viewModel?.visibleItems ?? [] }
+  private var visibleItems: [LibraryItemView] { store.visibleItems }
   private var recentlyPractised: [LibraryItemView] {
-    store.viewModel?.recentlyPractisedItems ?? []
+    store.recentlyPractisedItems
   }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
   private var entryByItem: [String: String] {
@@ -89,7 +89,7 @@ struct AddToSessionSheet: View {
   private var priorityOnly: Bool { store.viewModel?.activeQuery?.priorityOnly ?? false }
 
   private var hasNoPriorities: Bool {
-    priorityOnly && !(store.viewModel?.items.isEmpty ?? true)
+    priorityOnly && !store.libraryRows.isEmpty
   }
 
   private var emptyIcon: String {

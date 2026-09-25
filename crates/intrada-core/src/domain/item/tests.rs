@@ -473,7 +473,7 @@ fn committed_exercise_tag_is_hidden_from_the_view_and_vocabulary() {
         .find(|i| i.tags.contains(&ScaffoldKind::Shells.scaffold_tag()))
         .expect("the committed exercise carries the reserved tag");
 
-    let vm = Intrada.view(&model);
+    let vm = crate::view::rendered(&model);
     let shells_view = vm.items.iter().find(|v| v.id == shells.id).unwrap();
     assert!(
         shells_view.tags.iter().all(|t| !t.starts_with("scaffold:")),

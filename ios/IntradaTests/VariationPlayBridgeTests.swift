@@ -8,7 +8,7 @@ import XCTest
 /// through `LiveBridge` and reads the result back off the ViewModel.
 final class VariationPlayBridgeTests: XCTestCase {
 
-  private func exerciseWithTwoVariations(_ bridge: LiveBridge) throws -> String {
+  private func exerciseWithTwoVariations(_ bridge: RowsBridge) throws -> String {
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
@@ -16,18 +16,18 @@ final class VariationPlayBridgeTests: XCTestCase {
           CreateItem(
             title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
-    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "D"])))
     return id
   }
 
-  private func variationId(_ bridge: LiveBridge, label: String) throws -> String {
-    let variants = try XCTUnwrap(try bridge.view().items.first?.variants)
+  private func variationId(_ bridge: RowsBridge, label: String) throws -> String {
+    let variants = try XCTUnwrap(try bridge.rendered().items.first?.variants)
     return try XCTUnwrap(variants.first(where: { $0.label == label })?.id)
   }
 
   func testSwitchingMidItemRecordsTwoPlaysOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inC = try variationId(bridge, label: "C")
     let inD = try variationId(bridge, label: "D")
@@ -35,11 +35,11 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     let entryId = try XCTUnwrap(
-      try bridge.view().buildingSetlist?.entries.first?.id)
+      try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
 
-    let atStart = try XCTUnwrap(try bridge.view().activeSession)
+    let atStart = try XCTUnwrap(try bridge.rendered().activeSession)
     XCTAssertEqual(atStart.currentVariationId, inC, "the plan seeds the first play")
     XCTAssertEqual(atStart.currentVariationLabel, "C")
 
@@ -48,7 +48,7 @@ final class VariationPlayBridgeTests: XCTestCase {
         .switchVariation(
           entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
 
-    let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    let afterSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
     let entry = try XCTUnwrap(afterSwitch.entries.first)
     XCTAssertEqual(entry.plays.count, 2, "the switch closed one play and opened another")
     XCTAssertEqual(entry.plays.first?.variationId, inC)
@@ -59,20 +59,20 @@ final class VariationPlayBridgeTests: XCTestCase {
 
   /// Moved from `VariationPickerUITests` (#1825): switching variation restarts the rep count.
   func testSwitchingVariationRestartsTheRepetitionCountOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inC = try variationId(bridge, label: "C")
     let inD = try variationId(bridge, label: "D")
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
 
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:30Z")))
     _ = try bridge.update(.session(.repGotIt(now: "2026-09-01T10:00:40Z")))
-    let beforeSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    let beforeSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
     XCTAssertEqual(beforeSwitch.currentRepCount, 2, "two repetitions banked against C")
 
     _ = try bridge.update(
@@ -80,7 +80,7 @@ final class VariationPlayBridgeTests: XCTestCase {
         .switchVariation(
           entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
 
-    let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    let afterSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
     XCTAssertEqual(afterSwitch.currentVariationLabel, "D", "the chip follows the switch")
     XCTAssertNil(
       afterSwitch.currentRepCount, "D's fresh play starts untouched rather than carrying C's 2")
@@ -90,7 +90,7 @@ final class VariationPlayBridgeTests: XCTestCase {
   /// from the click sounding then and the hand-off stamps D, through real
   /// bincode with a quaver click on both events.
   func testEachPlayKeepsTheTempoItsClickSoundedAtOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inC = try variationId(bridge, label: "C")
     let inD = try variationId(bridge, label: "D")
@@ -99,7 +99,7 @@ final class VariationPlayBridgeTests: XCTestCase {
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
 
@@ -117,7 +117,7 @@ final class VariationPlayBridgeTests: XCTestCase {
           now: "2026-09-01T10:06:30Z", nextItemStartedAt: "2026-09-01T10:06:30Z",
           reading: handOff)))
 
-    let view = try bridge.view()
+    let view = try bridge.rendered()
     XCTAssertNil(view.error, "every reading must decode on the wire (#846)")
     let plays = try XCTUnwrap(view.summary?.entries.first?.plays)
     XCTAssertEqual(plays.map(\.variationId), [inC, inD])
@@ -131,18 +131,18 @@ final class VariationPlayBridgeTests: XCTestCase {
   /// switch must show the new variation as playing and the old one as played
   /// this session, not stale "not yet played" text from a stub bridge.
   func testSwitchingVariationUpdatesCurrentVariationsOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inC = try variationId(bridge, label: "C")
     let inD = try variationId(bridge, label: "D")
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: inC)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
 
-    let atStart = try XCTUnwrap(try bridge.view().activeSession)
+    let atStart = try XCTUnwrap(try bridge.rendered().activeSession)
     let captionsAtStart = Dictionary(
       uniqueKeysWithValues: atStart.currentVariations.map { ($0.id, $0.caption) })
     XCTAssertEqual(captionsAtStart[inC], "Playing now")
@@ -153,7 +153,7 @@ final class VariationPlayBridgeTests: XCTestCase {
         .switchVariation(
           entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z", reading: .silent)))
 
-    let afterSwitch = try XCTUnwrap(try bridge.view().activeSession)
+    let afterSwitch = try XCTUnwrap(try bridge.rendered().activeSession)
     let captionsAfterSwitch = Dictionary(
       uniqueKeysWithValues: afterSwitch.currentVariations.map { ($0.id, $0.caption) })
     XCTAssertEqual(
@@ -165,13 +165,13 @@ final class VariationPlayBridgeTests: XCTestCase {
   }
 
   func testScoringEachPlayLandsOnItsOwnRowOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inD = try variationId(bridge, label: "D")
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
     _ = try bridge.update(
       .session(
@@ -183,7 +183,7 @@ final class VariationPlayBridgeTests: XCTestCase {
           now: "2026-09-01T10:10:00Z", nextItemStartedAt: "2026-09-01T10:10:00Z", reading: .silent))
     )
 
-    let plays = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
+    let plays = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays)
     XCTAssertEqual(plays.count, 2)
 
     _ = try bridge.update(
@@ -191,33 +191,33 @@ final class VariationPlayBridgeTests: XCTestCase {
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: entryId, playId: plays[1].id, score: 5)))
 
-    let entry = try XCTUnwrap(try bridge.view().summary?.entries.first)
+    let entry = try XCTUnwrap(try bridge.rendered().summary?.entries.first)
     XCTAssertEqual(entry.plays.map(\.score), [8, 5])
     XCTAssertEqual(entry.scoreSummary, 7, "13 over 2 rounds to 7")
   }
 
   /// `PrepareReflection` predicts a play's markability over the real bincode bridge (#1758).
   func testPrepareReflectionPredictsWhichPlaySurvivesOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inD = try variationId(bridge, label: "D")
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
-    let opened = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.first?.id)
+    let opened = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.first?.id)
 
     // A stray tap two seconds before the item ends.
     _ = try bridge.update(
       .session(
         .switchVariation(
           entryId: entryId, variationId: inD, now: "2026-09-01T10:04:58Z", reading: .silent)))
-    let strayTap = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.plays.last?.id)
+    let strayTap = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
 
     _ = try bridge.update(
       .session(.prepareReflection(now: "2026-09-01T10:05:00Z", reading: .silent)))
-    let stamped = try XCTUnwrap(try bridge.view().activeSession?.entries.first)
+    let stamped = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first)
     XCTAssertEqual(
       stamped.plays.last?.seconds, 2, "PrepareReflection stamped the real duration")
     XCTAssertEqual(stamped.plays.first(where: { $0.id == opened })?.isMarkable, true)
@@ -229,14 +229,14 @@ final class VariationPlayBridgeTests: XCTestCase {
         .nextItem(
           now: "2026-09-01T10:05:00Z", nextItemStartedAt: "2026-09-01T10:05:00Z", reading: .silent))
     )
-    let survivors = try XCTUnwrap(try bridge.view().summary?.entries.first?.plays)
+    let survivors = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays)
     XCTAssertEqual(survivors.map(\.id), [opened], "the prediction matched the drop")
   }
 
   /// A `playId` that belongs to another entry must be refused, or one row of
   /// the item-complete sheet could write another's mark.
   func testAForeignPlayIdIsRefusedOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
 
     _ = try bridge.update(
@@ -246,7 +246,7 @@ final class VariationPlayBridgeTests: XCTestCase {
             title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
     let pieceId = try XCTUnwrap(
-      try bridge.view().items.first(where: { $0.itemType == .piece })?.id)
+      try bridge.rendered().items.first(where: { $0.itemType == .piece })?.id)
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
@@ -263,29 +263,29 @@ final class VariationPlayBridgeTests: XCTestCase {
           now: "2026-09-01T10:10:00Z", nextItemStartedAt: "2026-09-01T10:10:00Z", reading: .silent))
     )
 
-    let entries = try XCTUnwrap(try bridge.view().summary?.entries)
+    let entries = try XCTUnwrap(try bridge.rendered().summary?.entries)
     let first = try XCTUnwrap(entries.first)
     let foreign = try XCTUnwrap(entries.last?.plays.first?.id)
 
     _ = try bridge.update(
       .session(.updateEntryScore(entryId: first.id, playId: foreign, score: 9)))
 
-    let after = try XCTUnwrap(try bridge.view().summary?.entries.first)
+    let after = try XCTUnwrap(try bridge.rendered().summary?.entries.first)
     XCTAssertNil(after.plays.first?.score, "the foreign play id wrote nothing")
-    XCTAssertNotNil(try bridge.view().error, "and the refusal is surfaced")
+    XCTAssertNotNil(try bridge.rendered().error, "and the refusal is surfaced")
   }
 
   /// The notice channel over the real bridge (#1325, #846): a reading the core
   /// cannot keep reaches the shell as a notice, not an error.
   func testAnUnusableReadingArrivesAsANoticeOverTheRealBridge() throws {
-    let bridge = LiveBridge()
+    let bridge = RowsBridge()
     let itemId = try exerciseWithTwoVariations(bridge)
     let inD = try variationId(bridge, label: "D")
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
     _ = try bridge.update(.session(.startSession(now: "2026-09-01T10:00:00Z")))
-    let before = try bridge.view()
+    let before = try bridge.rendered()
     XCTAssertNil(before.notice)
 
     let minimsPastTheCeiling = TempoReading(
@@ -297,7 +297,7 @@ final class VariationPlayBridgeTests: XCTestCase {
           entryId: entryId, variationId: inD, now: "2026-09-01T10:05:00Z",
           reading: minimsPastTheCeiling)))
 
-    let after = try bridge.view()
+    let after = try bridge.rendered()
     XCTAssertEqual(
       after.notice, "That metronome setting doesn't give a crotchet tempo, so this play has none.")
     XCTAssertEqual(after.noticeSeq, before.noticeSeq + 1)
@@ -305,7 +305,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     XCTAssertNil(after.error)
 
     _ = try bridge.update(.clearNotice)
-    XCTAssertNil(try bridge.view().notice)
+    XCTAssertNil(try bridge.rendered().notice)
   }
 }
 
