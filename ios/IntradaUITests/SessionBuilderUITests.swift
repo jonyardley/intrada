@@ -70,9 +70,9 @@ final class SessionBuilderUITests: XCTestCase {
     app.row("libraryPicker.row", spokenContaining: "Major Scales").tap()
     app.control("sheet.done", spoken: "Done").tap()
 
-    // Builder rows are combined a11y elements labelled "<title>, Standalone …".
-    let hanonRow = builderRow(app, titled: "Hanon No. 1", meta: "Standalone")
-    let scalesRow = builderRow(app, titled: "Major Scales", meta: "Standalone")
+    // Builder rows are combined a11y elements labelled "<title>, <type> …".
+    let hanonRow = builderRow(app, titled: "Hanon No. 1", meta: "Exercise")
+    let scalesRow = builderRow(app, titled: "Major Scales", meta: "Exercise")
     XCTAssertTrue(hanonRow.waitForExistence(timeout: 5), "Hanon queued")
     XCTAssertTrue(scalesRow.exists, "Scales queued")
     XCTAssertLessThan(hanonRow.frame.minY, scalesRow.frame.minY, "Hanon starts above Scales")
@@ -105,7 +105,7 @@ final class SessionBuilderUITests: XCTestCase {
   }
 
   /// Builder rows combine their title + meta into one labelled element, spoken
-  /// "<title>, Standalone …" or "<title>, Related …".
+  /// "<title>, <type> …" or "<title>, Related …".
   private func builderRow(_ app: XCUIApplication, titled title: String, meta: String)
     -> XCUIElement
   {

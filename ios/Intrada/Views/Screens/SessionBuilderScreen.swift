@@ -341,11 +341,9 @@ struct SessionBuilderScreen: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(entry.itemTitle).font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
             .lineLimit(1)
-          Text(
-            "Standalone \(entry.itemType.label.lowercased())\(durationSuffix(block.durationDisplay))"
-          )
-          .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
-          .lineLimit(1)
+          Text("\(entry.itemType.label)\(durationSuffix(block.durationDisplay))")
+            .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
+            .lineLimit(1)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
       }
