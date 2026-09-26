@@ -10,6 +10,34 @@ The rule it protects is narrow: **at most one session mutates the tracked files,
 index and HEAD of one working tree at a time**. Not one session per repo, and
 not a ban on reading.
 
+## Making one
+
+Worktrees are made with worktrunk (`wt`), the worktree tool across Jon's repos.
+`just worktree-new <name>` is a thin wrapper for `wt switch --create <name>
+--base origin/main`: it fetches first, refuses a name that would collide with
+another worktree's simulator name, and strips the copied check-stamp so a new
+branch earns its own green (#1204). Calling `wt switch -c <name>` directly works
+too, and skips those three.
+
+Worktrunk's user config (`~/.config/worktrunk/config.toml`, machine-local) does
+the rest:
+
+- **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
+- **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
+  reflinks the main checkout's gitignored files (`target/`, `ios/build/`,
+  `ios/generated/`, `.env`, `.claude/settings.local.json`) into the new tree
+  before anything builds. A mismatched `ios/generated/` is harmless:
+  `_ios-sync` regenerates whenever its stamp does not match the core source.
+- **A cmux workspace.** The same hook opens a workspace at the new tree and
+  focuses it, for a worktree a session makes as much as one Jon makes. A
+  `pre-switch` hook reopens a missing workspace on `wt switch <name>`, and
+  `pre-remove` closes it on `wt remove`.
+
+Remove one from inside it, `cd <worktree> && wt remove`, or with
+`just worktree-rm <name>`, which also cleans its throwaway simulator. Claude
+Code's own subagent and `--worktree` worktrees stay in `.claude/worktrees`, so
+its sweep keeps cleaning them.
+
 ## Three places, one rule each
 
 Everything below assumes the repo has at least one linked worktree, which is how
@@ -63,7 +91,8 @@ the file path for a file tool, the working directory for a shell command.
 | ---------------------- | ------------- | ------------- | -------------- |
 | Read a file            | yes           | yes           | yes            |
 | `just worktrees`, `gh pr view` | yes   | yes           | yes            |
-| `just worktree-new`    | yes           | yes           | yes            |
+| `just worktree-new`, `wt switch`, `wt list` | yes | yes      | yes            |
+| Any other `wt` subcommand | no         | yes           | no             |
 | Build, test, `just check` | yes        | yes           | no             |
 | Edit, commit, push     | no (unless it self-heals, below) | yes | no    |
 
@@ -83,7 +112,8 @@ The read-only list is a list, not a principle, so expect to meet a tool that
 reads and is denied anyway. It currently allows the usual file and text
 commands, shell keywords, `sed` without `-i`, `find` without `-delete` or
 `-exec`, read-only `git` subcommands, `rtk read`, `just` limited to `worktrees`,
-`status`, `worktree-new` and `--list`, and `gh` limited to `view`, `list`,
+`status`, `worktree-new` and `--list`, `wt` limited to `switch` and `list`, and
+`gh` limited to `view`, `list`,
 `checks` and `status`. So `rtk read` reads while `rtk test` and `rtk err` run
 whatever they are handed, and `gh pr checks` reads while `gh pr create` does not.
 
@@ -159,7 +189,7 @@ Jon's, not an agent's. When the guard fires, the session says so and stops.
 
 The hooks are machine-local and in no repository: `guard-worktree.sh`,
 `worktree-lease.sh` and `worktree-session.sh` in `~/.claude/hooks/`, with a
-battery of 100 cases in `guard-worktree.test.sh`. Run the battery after any edit
+battery of 109 cases in `guard-worktree.test.sh`. Run the battery after any edit
 to either script, and mutation-test rather than trusting a green: set `GUARD=`
 and `LEASE=` to doctored copies so a mutation run never breaks the hooks other
 live sessions are relying on.
