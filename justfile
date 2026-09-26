@@ -288,7 +288,7 @@ worktree-new name:
     command -v wt >/dev/null || { echo "✗ worktrunk (wt) is not installed: brew install worktrunk" >&2; exit 1; }
 
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="$(dirname "$main_root")/intrada-worktrees"
+    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
     slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
     for dir in "$worktree_root"/*/; do
         [ -d "$dir" ] || continue
@@ -305,7 +305,11 @@ worktree-new name:
     target="$(git worktree list --porcelain | awk -v b="branch refs/heads/{{name}}" '/^worktree /{p=substr($0, 10)} $0 == b {print p}')"
     # A new branch must earn its own green (#1204): the reflinked target/
     # brings the main checkout's check-stamp with it.
-    [ -n "$target" ] && rm -f "$target/target/.check-stamp"
+    if [ -z "$target" ]; then
+        echo "✗ wt reported success but no worktree has branch {{name}}" >&2
+        exit 1
+    fi
+    rm -f "$target/target/.check-stamp"
     echo "  cd $target && just check"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),
@@ -317,7 +321,7 @@ worktree-rm name:
     #!/usr/bin/env bash
     set -euo pipefail
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
-    worktree_root="${INTRADA_WORKTREE_ROOT:-$(dirname "$main_root")/intrada-worktrees}"
+    worktree_root="$(dirname "$main_root")/$(basename "$main_root")-worktrees"
     target="$worktree_root/{{name}}"
     if [ -d "$target" ]; then
         (cd "$target" && just ios-test-sim-clean) || true

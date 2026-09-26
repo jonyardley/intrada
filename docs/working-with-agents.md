@@ -75,9 +75,9 @@ otherwise cost eleven corrections (#1837), and `guard-worktree.sh` denied 51
 writes in main, almost all a missing `cd` prefix, which the self-heal now adds
 for you (#1840).
 
-`just worktree-new <name>` branches from fresh `origin/main` and seeds the warm
-`target/` and `ios/build` caches (#1205). Worktrees live at
-`$INTRADA_WORKTREE_ROOT`, default `../intrada-worktrees`. `just worktree-rm
+`just worktree-new <name>` wraps worktrunk's `wt switch --create`, branches from
+fresh `origin/main`, and worktrunk reflinks the warm `target/` and `ios/build`
+caches (#1205). Worktrees live at `../intrada-worktrees`. `just worktree-rm
 <name>` removes one and deletes its throwaway simulator. `graphify-out/` exists
 only in the main checkout: query it there by path from a worktree
 (`docs/reference.md`), never move the work there. Once you have a worktree,
@@ -91,10 +91,9 @@ three places a session can be, are all in [`docs/worktrees.md`](worktrees.md).
 In short: main lets anyone read and build but nobody edit, your own worktree is
 yours entirely, and someone else's is readable and nothing more.
 
-Run from a cmux terminal, `just worktree-new` prints the `cmux new-workspace`
-command for the new worktree, because the sidebar shows the branch and PR of the
-directory a session started in. It never starts a session itself (#1720).
-`INTRADA_WORKTREE_CMUX=0` silences the suggestion. A new workspace in the repo
+Worktrunk's user config opens and focuses a cmux workspace at every new
+worktree, because the sidebar shows the branch and PR of the directory a session
+started in. It never starts a session itself (#1720). A new workspace in the repo
 opens its Dock from `.cmux/dock.json`: `just status`, refreshed every five
 minutes. The Feed is a built-in sidebar tab, so the Dock leaves it out. cmux asks once to trust it, and again whenever the file changes.
 `just check`, `just ios-test` and `just ios-test-full` show their stage as a
