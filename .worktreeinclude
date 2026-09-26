@@ -1,0 +1,10 @@
+# What worktrunk's `wt step copy-ignored` reflinks into a new worktree. Without
+# this file it copies every gitignored path, including .claude/worktrees (live
+# Claude Code worktrees), graphify-out (main checkout only) and files holding
+# the main checkout's absolute paths.
+target/
+ios/build/
+ios/generated/
+crates/intrada-ffi/generated/
+.env
+.claude/settings.local.json
