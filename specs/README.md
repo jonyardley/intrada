@@ -33,6 +33,7 @@ Accurate about how the app works or is being built now.
 | [`practice-instruments.md`](practice-instruments.md) | The Focus Player's timer, rep counter and honest click (`click_sounding` in `domain/session.rs`) |
 | [`up-next-card.md`](up-next-card.md) | The "Up next" suggestion on the Practice tab (`compute_up_next` in `suggestion.rs`) |
 | [`getting-cold-signal.md`](getting-cold-signal.md) | Weighting the "not practised in a while" signal by how well learned a piece is (`staleness.rs`) |
+| [`reflection-draft.md`](reflection-draft.md) | The item-complete sheet's answers kept in the running practice's saved copy, so a crash reopens the sheet with them (#2137) |
 | [`api-removal.md`](api-removal.md) | The 2026-09-12 decision to remove the API and the sync, account and MCP-token client code (#1746, #1749); what went, what stays, what Jon tears down by hand |
 | [`retire-shell-dead-session-fields.md`](retire-shell-dead-session-fields.md) | Removing the session intention, time target and the three reflection boxes nothing could set any more (#1766, #1374). Shipped in #1770 and #1780; the four columns (the intention and the three reflection boxes) stay, unread, in the on-device `session` table |
 | [`profile.md`](profile.md) | The musician's name, instrument, icon and highlighter colour, held on the device (`domain/profile.rs`, `AppEffect::SaveProfile`). Shipped across #1691 and #1692 |
