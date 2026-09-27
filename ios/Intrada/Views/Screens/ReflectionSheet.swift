@@ -78,6 +78,8 @@ struct ReflectionResult {
 }
 
 struct ReflectionSheet: View {
+  @Environment(\.scenePhase) private var scenePhase
+
   let itemTitle: String
   let elapsedDisplay: String?
   /// The item's own declared tempo marking (the practice target), if any.
@@ -94,9 +96,14 @@ struct ReflectionSheet: View {
   let refusal: String?
   let onSave: (ReflectionResult) -> Void
   let onSkip: () -> Void
+  /// The answers so far, for the crash-recovery copy (#2137): a mark or tempo at
+  /// once, the note after a pause in typing or on leaving the app.
+  let onDraft: (ReflectionResult) -> Void
 
-  @State private var marks: [String: Int] = [:]
-  @State private var note: String = ""
+  @State private var marks: [String: Int]
+  @State private var note: String
+  /// The trimmed note last handed to `onDraft`, so a pause with no new text writes nothing.
+  @State private var draftedNote: String
   /// One per play, seeded from its stamp or the current click (#1761 rule 6).
   @State private var tempos: [String: TrackedTempo]
 
@@ -106,8 +113,10 @@ struct ReflectionSheet: View {
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
     refusal: String? = nil,
+    seed: ReflectionResult? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
-    onSkip: @escaping () -> Void
+    onSkip: @escaping () -> Void,
+    onDraft: @escaping (ReflectionResult) -> Void = { _ in }
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
@@ -118,16 +127,23 @@ struct ReflectionSheet: View {
     self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
-    _tempos = State(
-      initialValue: Dictionary(
-        plays.filter(\.isMarkable).map { play in
-          (
-            play.id,
-            TrackedTempo(
-              startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm,
-              unit: play.clickPattern?.metre.unit ?? tempoUnit)
-          )
-        }, uniquingKeysWith: { first, _ in first }))
+    self.onDraft = onDraft
+    _marks = State(initialValue: (seed?.marks ?? [:]).mapValues(Int.init))
+    _note = State(initialValue: seed?.note ?? "")
+    _draftedNote = State(initialValue: seed?.note ?? "")
+    var tempos = Dictionary(
+      plays.filter(\.isMarkable).map { play in
+        (
+          play.id,
+          TrackedTempo(
+            startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm,
+            unit: play.clickPattern?.metre.unit ?? tempoUnit)
+        )
+      }, uniquingKeysWith: { first, _ in first })
+    for row in seed?.tempos ?? [] where row.userSet {
+      tempos[row.playId]?.set(Int(row.tempo))
+    }
+    _tempos = State(initialValue: tempos)
   }
 
   static func heading(elapsedDisplay: String?) -> String {
@@ -179,6 +195,7 @@ struct ReflectionSheet: View {
           .foregroundStyle(IntradaColor.ink)
           .padding(IntradaSpacing.cardCompact)
           .cardSurface(cornerRadius: IntradaRadius.control)
+          .accessibilityIdentifier("reflection.note")
           .padding(.top, IntradaSpacing.controlGap)
 
         if let refusal {
@@ -188,17 +205,7 @@ struct ReflectionSheet: View {
         }
 
         BrandBarButton {
-          onSave(
-            ReflectionResult(
-              marks: marks.compactMapValues { $0 == 0 ? nil : UInt8($0) },
-              note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-              tempos: plays.compactMap { play in
-                tempos[play.id].map { tracked in
-                  ReflectionRowTempo(
-                    playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
-                    click: play.clickPattern ?? currentClick)
-                }
-              }))
+          onSave(result)
         } label: {
           Text("Save & continue")
           Image(systemName: "arrow.right")
@@ -216,6 +223,36 @@ struct ReflectionSheet: View {
       .padding(.horizontal, IntradaSpacing.section)
       .padding(.bottom, IntradaSpacing.section)
     }
+    .task(id: note) {
+      do { try await Task.sleep(for: .milliseconds(600)) } catch { return }
+      draftNoteIfChanged()
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase != .active { draftNoteIfChanged() }
+    }
+  }
+
+  private var result: ReflectionResult {
+    ReflectionResult(
+      marks: marks.compactMapValues { $0 == 0 ? nil : UInt8($0) },
+      note: note.trimmingCharacters(in: .whitespacesAndNewlines),
+      tempos: plays.compactMap { play in
+        tempos[play.id].map { tracked in
+          ReflectionRowTempo(
+            playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
+            click: play.clickPattern ?? currentClick)
+        }
+      })
+  }
+
+  private func draft() {
+    let current = result
+    draftedNote = current.note
+    onDraft(current)
+  }
+
+  private func draftNoteIfChanged() {
+    if note.trimmingCharacters(in: .whitespacesAndNewlines) != draftedNote { draft() }
   }
 
   private var playRows: some View {
@@ -260,6 +297,7 @@ struct ReflectionSheet: View {
 
   private func setMark(_ next: UInt8?, for playId: String) {
     marks[playId] = next.map(Int.init) ?? 0
+    draft()
   }
 
   private func stepperUnit(for play: ReflectionPlay) -> UInt8 {
@@ -269,7 +307,12 @@ struct ReflectionSheet: View {
   // TempoStepper only writes on an explicit tap or accessibility adjustment,
   // never on appear, so a write here is the user considering the number (#1420).
   private func tempoBinding(for playId: String) -> Binding<Int> {
-    Binding(get: { tempos[playId]?.bpm ?? 0 }, set: { tempos[playId]?.set($0) })
+    Binding(
+      get: { tempos[playId]?.bpm ?? 0 },
+      set: {
+        tempos[playId]?.set($0)
+        draft()
+      })
   }
 
   private func eyebrow(_ text: String) -> some View {

@@ -17,7 +17,8 @@ struct FocusPlayerScreen: View {
 
   init(referenceDate: Date? = nil) { self.referenceDate = referenceDate }
 
-  @State private var reflecting: ReflectionTarget?
+  /// Shown in the sheet, not the banner behind it (#2009); cleared when the core closes the sheet.
+  @State private var reflectionRefusal: String?
   @State private var click = ClickController()
   @State private var configuringClick = false
   @State private var switchingVariation = false
@@ -38,14 +39,21 @@ struct FocusPlayerScreen: View {
         content(active)
       }
     }
-    .sheet(item: $reflecting) { target in
+    // The core's draft decides whether the sheet is up, so a resume reopens it (#2137).
+    .sheet(item: Binding(get: { reflectionTarget }, set: { _ in })) { target in
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
         tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
-        refusal: target.refusal,
+        refusal: reflectionRefusal, seed: target.seed,
         onSave: { result in handleReflection(target, result) },
-        onSkip: { handleSkipRating(target) }
+        onSkip: { handleSkipRating(target) },
+        onDraft: { result in
+          store.send(
+            .session(
+              .updateReflectionDraft(
+                answers: ReflectionHandoff.draft(result, plays: target.plays))))
+        }
       )
       .presentationDetents([.medium, .large])
       .interactiveDismissDisabled()
@@ -65,6 +73,9 @@ struct FocusPlayerScreen: View {
       }
     }
     .task { click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre) }
+    .onChange(of: active?.reflection == nil) { _, closed in
+      if closed { reflectionRefusal = nil }
+    }
     .onChange(of: active?.currentPosition) { _, _ in
       click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre)
     }
@@ -339,11 +350,10 @@ struct FocusPlayerScreen: View {
   private struct ReflectionTarget: Identifiable {
     let id: String  // the current entry's ulid
     let title: String
-    let elapsedDisplay: String?
+    let elapsedDisplay: String
     let tempoTargetBpm: UInt16?
-    /// The click at the moment the item ended, read before it was stopped:
-    /// `PrepareReflection` stamps from it and `NextItem` must send it again
-    /// (#1761).
+    /// The click at the stamp, kept in the draft so a resume still seeds the
+    /// unstamped rows from it; `NextItem` sends it again (#1761, #2137).
     let reading: TempoReading
     var startingTempoBpm: Int { Int(reading.bpm) }
     /// The unit the stepper counts in, which is the click's when the player
@@ -353,9 +363,22 @@ struct FocusPlayerScreen: View {
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
     let plays: [ReflectionPlay]
-    /// `PrepareReflection`'s instant: `NextItem`'s own `now` must reuse it, or the rows above stop predicting the drop (#1758).
-    let now: String
-    var refusal: String?
+    let seed: ReflectionResult
+  }
+
+  private var reflectionTarget: ReflectionTarget? {
+    guard let active, let draft = active.reflection,
+      active.entries.indices.contains(Int(active.currentPosition))
+    else { return nil }
+    let entry = active.entries[Int(active.currentPosition)]
+    // The stamped plays tile the item, and recovery backdates its start by
+    // their sum, so this reads the same before and after a resume (#2137).
+    let seconds = entry.plays.reduce(0) { $0 + Int($1.seconds) }
+    return ReflectionTarget(
+      id: entry.id, title: active.currentItemTitle,
+      elapsedDisplay: SessionClock.clockDisplay(seconds),
+      tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
+      plays: ReflectionPlay.rows(entry.plays), seed: ReflectionHandoff.seed(draft.answers))
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -367,49 +390,38 @@ struct FocusPlayerScreen: View {
       store.send(.session(.nextItem(now: now, nextItemStartedAt: now, reading: reading)))
       return
     }
-    let elapsed = SessionClock.parseRFC3339(active.currentItemStartedAt).map {
-      max(Int((referenceDate ?? Date()).timeIntervalSince($0)), 0)
-    }
     // The item is over; a click ticking through the rating is keeping time for
     // nothing.
     click.stop()
-    let entry = active.entries[pos]
-    let now = SessionClock.nowRFC3339()
     // Stamps the open play's real seconds and tempo ahead of the terminal
-    // transition, so the rows below can tell which ones the core is about to
-    // discard (#1758).
-    store.send(.session(.prepareReflection(now: now, reading: reading)))
-    let stamped =
-      store.viewModel?.activeSession?.entries.first(where: { $0.id == entry.id })?.plays
-      ?? entry.plays
-    reflecting = ReflectionTarget(
-      id: entry.id, title: active.currentItemTitle,
-      elapsedDisplay: elapsed.map(SessionClock.clockDisplay),
-      tempoTargetBpm: active.currentItemTempoBpm, reading: reading,
-      plays: ReflectionPlay.rows(stamped), now: now)
+    // transition, so the sheet's rows can tell which ones the core is about to
+    // discard (#1758), and opens the draft that puts the sheet up.
+    store.send(.session(.prepareReflection(now: SessionClock.nowRFC3339(), reading: reading)))
   }
 
+  // `now` is ignored while the draft is open: the core closes the entry at
+  // the draft's own instant (#2137). A fresh nextItemStartedAt, or the
+  // sheet's dwell reads as practice on the item after (#1758).
   private func handleReflection(_ target: ReflectionTarget, _ result: ReflectionResult) {
-    // A fresh nextItemStartedAt, or the sheet's dwell reads as practice on the item after (#1758).
+    let now = SessionClock.nowRFC3339()
     let plan = ReflectionHandoff.plan(
-      entryId: target.id, now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(),
+      entryId: target.id, now: now, nextItemStartedAt: now,
       reading: target.reading, plays: target.plays, result: result)
-    if ReflectionHandoff.run(plan, send: store.sendAccepted) { reflecting = nil } else { refuse() }
+    if !ReflectionHandoff.run(plan, send: store.sendAccepted) { refuse() }
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
+    let now = SessionClock.nowRFC3339()
     let accepted = store.sendAccepted(
-      .session(
-        .nextItem(
-          now: target.now, nextItemStartedAt: SessionClock.nowRFC3339(), reading: target.reading)))
-    if accepted { reflecting = nil } else { refuse() }
+      .session(.nextItem(now: now, nextItemStartedAt: now, reading: target.reading)))
+    if !accepted { refuse() }
   }
 
   /// Cleared from the core so it does not also wait on the banner behind the sheet (#2009).
   private func refuse() {
     let message = ReflectionHandoff.refusalMessage(
       halted: store.halted, error: store.viewModel?.error)
-    withAnimation { reflecting?.refusal = message }
+    withAnimation { reflectionRefusal = message }
     store.send(.clearError)
     Haptic.error.play()
     UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")

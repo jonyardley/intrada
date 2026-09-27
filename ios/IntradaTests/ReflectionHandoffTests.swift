@@ -98,4 +98,39 @@ struct ReflectionHandoffTests {
     #expect(handoff.note == nil)
     #expect(handoff.after.count == 1, "the tempo row, and no score")
   }
+
+  // ── The open sheet's draft (#2137) ──
+
+  @Test func theSheetReopensFromTheSavedDraftWithWhatWasWritten() throws {
+    let bridge = RowsBridge()
+    let (_, plays) = try pieceMidSession(bridge)
+    let playId = try #require(plays.first?.id)
+    let result = ReflectionResult(
+      marks: [playId: 6], note: "Pedal clearer",
+      tempos: [ReflectionRowTempo(playId: playId, tempo: 88, userSet: true, click: nil)])
+
+    _ = try bridge.update(
+      .session(.updateReflectionDraft(answers: ReflectionHandoff.draft(result, plays: plays))))
+
+    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    let seed = ReflectionHandoff.seed(saved)
+    #expect(seed.marks == [playId: 6])
+    #expect(seed.note == "Pedal clearer")
+    #expect(seed.tempos.map(\.tempo) == [88])
+    #expect(
+      seed.tempos.map(\.userSet) == [true], "the reopened sheet still counts it as set by hand")
+  }
+
+  @Test func aTempoNobodyMovedStaysOutOfTheDraft() {
+    let plays = [
+      ReflectionPlay(
+        id: "p1", variationLabel: nil, durationDisplay: "5:00", repCount: nil, repTarget: nil,
+        isMarkable: true, tempoDisplay: 92, clickPattern: nil)
+    ]
+    let result = ReflectionResult(
+      marks: [:], note: "",
+      tempos: [ReflectionRowTempo(playId: "p1", tempo: 92, userSet: false, click: nil)])
+
+    #expect(ReflectionHandoff.draft(result, plays: plays).tempos.isEmpty)
+  }
 }

@@ -47,6 +47,30 @@ enum ReflectionHandoff {
     return true
   }
 
+  /// What the core keeps for the open sheet (#2137): only the tempos set by
+  /// hand, since the rest reseed from their stamps.
+  static func draft(_ result: ReflectionResult, plays: [ReflectionPlay]) -> ReflectionAnswers {
+    ReflectionAnswers(
+      marks: plays.compactMap { play in
+        result.marks[play.id].map { DraftMark(playId: play.id, score: $0) }
+      },
+      note: result.note,
+      tempos: result.tempos.filter(\.userSet).map {
+        DraftTempo(playId: $0.playId, tempo: $0.tempo, click: $0.click)
+      })
+  }
+
+  /// The saved draft as the sheet's starting answers, after a resume (#2137).
+  static func seed(_ answers: ReflectionAnswers) -> ReflectionResult {
+    ReflectionResult(
+      marks: Dictionary(
+        answers.marks.map { ($0.playId, $0.score) }, uniquingKeysWith: { first, _ in first }),
+      note: answers.note,
+      tempos: answers.tempos.map {
+        ReflectionRowTempo(playId: $0.playId, tempo: $0.tempo, userSet: true, click: $0.click)
+      })
+  }
+
   /// A halted app has no core error to read, and a retry can never succeed (#2009).
   @MainActor static func refusalMessage(halted: Bool, error: String?) -> String {
     if halted { return Store.haltedMessage }
