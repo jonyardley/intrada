@@ -3927,6 +3927,7 @@ mod tests {
                 current_index: 0,
                 current_item_started_at: chrono::Utc::now(),
                 session_started_at: chrono::Utc::now(),
+                reflection: None,
             }),
             active_query: Some(ListQuery {
                 item_type: Some(ItemKind::Piece),

@@ -252,6 +252,45 @@ impl TempoReading {
     }
 }
 
+/// The item-complete sheet while it is open, kept in the crash-recovery copy
+/// so a kill before Next reopens the sheet with its answers (#2137). `now` is
+/// the instant `NextItem` closes the entry at; `reading` seeds the sheet's
+/// unstamped tempo rows after a resume.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ReflectionDraft {
+    pub now: DateTime<Utc>,
+    pub reading: TempoReading,
+    pub answers: ReflectionAnswers,
+}
+
+/// What the sheet holds before Next. The shell still sends these around
+/// `NextItem` itself, so a skipped sheet writes none of them.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ReflectionAnswers {
+    pub marks: Vec<DraftMark>,
+    pub note: String,
+    /// Only the rows set by hand; the rest reseed from their stamps.
+    pub tempos: Vec<DraftTempo>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct DraftMark {
+    pub play_id: String,
+    pub score: u8,
+}
+
+/// `tempo` as displayed, in `click.metre.unit`, as `UpdateEntryTempo`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct DraftTempo {
+    pub play_id: String,
+    pub tempo: u16,
+    pub click: Option<ClickState>,
+}
+
 /// What the click was set to. Facts only, like `TempoReading`: the core
 /// decides what they mean. The pattern never divides the tempo; the pulse
 /// keeps its rate and `sounding` gates the beats.
@@ -281,17 +320,19 @@ pub struct ActiveSession {
     pub current_index: usize,
     pub current_item_started_at: DateTime<Utc>,
     pub session_started_at: DateTime<Utc>,
+    /// `Some` while the item-complete sheet is open on the current entry.
+    pub reflection: Option<ReflectionDraft>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 3;
+const RETIRED_BLOB_VERSION_MAX: u32 = 4;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 3 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 4;
+    /// 4 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 5;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -468,6 +509,13 @@ pub enum SessionEvent {
         now: DateTime<Utc>,
         reading: TempoReading,
     },
+    /// Replace the open sheet's answers, whole, and save them for crash
+    /// recovery (#2137). Refused whole without an open sheet or when any
+    /// answer fails validation; `last_error` is left alone, as
+    /// `PrepareReflection`, since the sheet shows its refusal on Next.
+    UpdateReflectionDraft {
+        answers: ReflectionAnswers,
+    },
 
     // === Summary Phase ===
     UpdateEntryNotes {
@@ -623,6 +671,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             now,
             reading,
         } => active::switch_variation(model, entry_id, variation_id, now, reading),
+
+        SessionEvent::UpdateReflectionDraft { answers } => {
+            active::update_reflection_draft(model, answers)
+        }
 
         // ── Entry Updates (Active or Summary) ──────────────────────
         // Accepted in both phases so the mid-session reflection sheet can record
