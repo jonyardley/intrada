@@ -324,7 +324,7 @@
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
-        currentVariations: [])
+        currentVariations: [], reflection: nil)
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -346,7 +346,7 @@
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
         currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
-        currentVariations: [])
+        currentVariations: [], reflection: nil)
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -378,7 +378,8 @@
             id: "variation-f", label: "F", caption: "Playing now", isSolid: false),
           PickerVariationView(
             id: "variation-bb", label: "B♭", caption: "Not yet played", isSolid: false),
-        ])
+        ],
+        reflection: nil)
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -425,7 +426,7 @@
         currentItemNotes: nil,
         currentRelatedPieceTitle: "Moonlight Sonata",
         currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
-        currentVariations: [])
+        currentVariations: [], reflection: nil)
     }
   }
 

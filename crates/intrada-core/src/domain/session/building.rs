@@ -574,6 +574,7 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         current_index: 0,
         current_item_started_at: now,
         session_started_at: now,
+        reflection: None,
     };
 
     if let Some(entry) = active.entries.first_mut() {

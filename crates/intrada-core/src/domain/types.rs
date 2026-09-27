@@ -539,6 +539,7 @@ mod tests {
                 current_index: 0,
                 current_item_started_at: anchor,
                 session_started_at: anchor,
+                reflection: None,
             },
             now: anchor,
         });

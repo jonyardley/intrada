@@ -9,7 +9,8 @@ use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
 use crate::domain::session::{
-    ClickState, CompletionStatus, EntryStatus, PracticeSession, RepEvent, SessionStatus,
+    ClickState, CompletionStatus, EntryStatus, PracticeSession, ReflectionAnswers, RepEvent,
+    SessionStatus, TempoReading,
 };
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
@@ -703,6 +704,17 @@ pub struct ActiveSessionView {
     pub current_item_metre: Option<Metre>,
     /// The current item's variations with the picker's caption for each (#1784).
     pub current_variations: Vec<PickerVariationView>,
+    /// `Some` while the item-complete sheet is open, including after a resume (#2137).
+    pub reflection: Option<ReflectionView>,
+}
+
+/// The open sheet's saved answers, and the click at its stamp, which seeds
+/// the rows that have no stamp of their own.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ReflectionView {
+    pub answers: ReflectionAnswers,
+    pub reading: TempoReading,
 }
 
 /// A unit in the builder queue: a block (a piece with its related exercises) or

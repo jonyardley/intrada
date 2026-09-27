@@ -2115,6 +2115,7 @@ fn test_recover_session() {
         current_index: 0,
         current_item_started_at: now,
         session_started_at: now,
+        reflection: None,
     };
 
     update(
@@ -2150,6 +2151,7 @@ fn test_recover_session_reanchors_current_item_timer() {
         current_index: 0,
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
+        reflection: None,
     };
 
     update(
@@ -2194,6 +2196,7 @@ fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
                 current_index: 0,
                 current_item_started_at: now,
                 session_started_at: now,
+                reflection: None,
             },
             now,
         }),
@@ -2227,6 +2230,7 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
         current_index: 0,
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
+        reflection: None,
     };
 
     update(
@@ -2295,6 +2299,7 @@ fn test_recover_session_reanchors_only_the_current_entry_play() {
         current_index: 1,
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
+        reflection: None,
     };
 
     update(
@@ -2331,6 +2336,7 @@ fn test_recover_session_when_not_idle() {
         current_index: 0,
         current_item_started_at: now,
         session_started_at: now,
+        reflection: None,
     };
 
     update(
@@ -2357,6 +2363,7 @@ fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
         current_index: 0,
         current_item_started_at: now,
         session_started_at: now,
+        reflection: None,
     };
 
     let app = Intrada;
@@ -5406,6 +5413,26 @@ fn pinned_active_session() -> ActiveSession {
         current_index: 1,
         current_item_started_at: tap_at(),
         session_started_at: started,
+        reflection: Some(ReflectionDraft {
+            now: tap_at(),
+            reading: TempoReading {
+                bpm: 168,
+                click_sounding: true,
+                click: Some(seven_eight_on_group_starts()),
+            },
+            answers: ReflectionAnswers {
+                marks: vec![DraftMark {
+                    play_id: "e2-play".to_string(),
+                    score: 6,
+                }],
+                note: "steady".to_string(),
+                tempos: vec![DraftTempo {
+                    play_id: "e2-play".to_string(),
+                    tempo: 150,
+                    click: None,
+                }],
+            },
+        }),
     }
 }
 
@@ -5422,10 +5449,13 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "020000000000000065320200000000000000783106000000000000005363616c65730100000001",
     "000000000000000000000000000000020000000000000000000000000000000000010000000000",
     "00001400000000000000323032362d30392d30335430393a30303a30305a140000000000000032",
-    "3032362d30392d30335430383a34373a30305a",
+    "3032362d30392d30335430383a34373a30305a011400000000000000323032362d30392d303354",
+    "30393a30303a30305aa80001010708010300000000000000030202290001000000000000000700",
+    "00000000000065322d706c61790606000000000000007374656164790100000000000000070000",
+    "000000000065322d706c6179960000",
 );
 
-const PINNED_BLOB_VERSION: u32 = 4;
+const PINNED_BLOB_VERSION: u32 = 5;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6721,4 +6751,419 @@ fn a_history_load_that_brings_back_no_list_is_no_longer_out() {
             "{arm}"
         );
     }
+}
+
+// ── The sheet's draft in the recovery copy (#2137) ─────────────────
+
+fn draft(model: &Model) -> Option<&ReflectionDraft> {
+    let SessionStatus::Active(ref active) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    active.reflection.as_ref()
+}
+
+fn prepare(model: &mut Model, now: DateTime<Utc>) {
+    update(
+        model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now,
+            reading: TempoReading::silent(),
+        }),
+    );
+}
+
+fn answers_for(play_id: &str) -> ReflectionAnswers {
+    ReflectionAnswers {
+        marks: vec![DraftMark {
+            play_id: play_id.to_string(),
+            score: 7,
+        }],
+        note: "left hand late in bar 12".to_string(),
+        tempos: vec![DraftTempo {
+            play_id: play_id.to_string(),
+            tempo: 96,
+            click: Some(seven_eight_on_group_starts()),
+        }],
+    }
+}
+
+fn write_draft(model: &mut Model, answers: ReflectionAnswers) -> Vec<ActiveSession> {
+    run(
+        model,
+        Event::Session(SessionEvent::UpdateReflectionDraft { answers }),
+    )
+}
+
+#[test]
+fn prepare_reflection_opens_an_empty_draft_and_saves_it() {
+    let (mut model, start) = model_with_active_session(2);
+    assert!(draft(&model).is_none());
+    let at = start + chrono::Duration::seconds(30);
+    let reading = TempoReading {
+        bpm: 96,
+        click_sounding: true,
+        click: None,
+    };
+
+    let saves = run(
+        &mut model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now: at,
+            reading: reading.clone(),
+        }),
+    );
+
+    assert_eq!(
+        draft(&model),
+        Some(&ReflectionDraft {
+            now: at,
+            reading,
+            answers: ReflectionAnswers::default(),
+        })
+    );
+    assert_saved_what_is_active(&saves, &model);
+}
+
+#[test]
+fn a_second_prepare_reflection_keeps_the_draft_and_the_stamp() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    write_draft(&mut model, answers_for(&play_id));
+
+    prepare(&mut model, start + chrono::Duration::seconds(90));
+
+    let kept = draft(&model).expect("the sheet is still open");
+    assert_eq!(kept.now, start + chrono::Duration::seconds(30));
+    assert_eq!(kept.answers, answers_for(&play_id));
+    assert_eq!(
+        session_entries(&model)[0].plays[0].seconds,
+        30,
+        "the sheet's dwell is not practice"
+    );
+}
+
+#[test]
+fn update_reflection_draft_replaces_the_answers_and_saves() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    write_draft(&mut model, answers_for(&play_id));
+
+    let cleared = ReflectionAnswers {
+        note: "better".to_string(),
+        ..ReflectionAnswers::default()
+    };
+    let saves = write_draft(&mut model, cleared.clone());
+
+    assert_eq!(draft(&model).map(|d| &d.answers), Some(&cleared));
+    assert_saved_what_is_active(&saves, &model);
+    let entry = &session_entries(&model)[0];
+    assert!(
+        entry.notes.is_none() && entry.plays[0].score.is_none(),
+        "a draft writes nothing to the entry; the shell sends it on Next"
+    );
+}
+
+#[test]
+fn update_reflection_draft_without_an_open_sheet_is_refused() {
+    let (mut model, _) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+
+    let saves = write_draft(&mut model, answers_for(&play_id));
+
+    assert!(draft(&model).is_none());
+    assert!(saves.is_empty());
+}
+
+#[test]
+fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let good = answers_for(&play_id);
+    write_draft(&mut model, good.clone());
+
+    let mark = |play_id: &str, score: u8| DraftMark {
+        play_id: play_id.to_string(),
+        score,
+    };
+    let tempo = |tempo: u16| DraftTempo {
+        play_id: play_id.clone(),
+        tempo,
+        click: None,
+    };
+    let cases: Vec<(&str, ReflectionAnswers)> = vec![
+        (
+            "a mark on an unknown play",
+            ReflectionAnswers {
+                marks: vec![mark("not-on-this-entry", 5)],
+                ..good.clone()
+            },
+        ),
+        (
+            "two marks on one play",
+            ReflectionAnswers {
+                marks: vec![mark(&play_id, 5), mark(&play_id, 6)],
+                ..good.clone()
+            },
+        ),
+        (
+            "a click that sounds on no beat",
+            ReflectionAnswers {
+                tempos: vec![DraftTempo {
+                    play_id: play_id.clone(),
+                    tempo: 96,
+                    click: Some(ClickState {
+                        sounding: 0,
+                        ..seven_eight_on_group_starts()
+                    }),
+                }],
+                ..good.clone()
+            },
+        ),
+        (
+            "a mark above the scale",
+            ReflectionAnswers {
+                marks: vec![mark(&play_id, validation::MAX_SCORE + 1)],
+                ..good.clone()
+            },
+        ),
+        (
+            "a mark below the scale",
+            ReflectionAnswers {
+                marks: vec![mark(&play_id, 0)],
+                ..good.clone()
+            },
+        ),
+        (
+            "a note past the limit",
+            ReflectionAnswers {
+                note: "a".repeat(validation::MAX_NOTES + 1),
+                ..good.clone()
+            },
+        ),
+        (
+            "a tempo past the limit",
+            ReflectionAnswers {
+                tempos: vec![tempo(validation::MAX_ACHIEVED_TEMPO + 1)],
+                ..good.clone()
+            },
+        ),
+        (
+            "a tempo on an unknown play",
+            ReflectionAnswers {
+                tempos: vec![DraftTempo {
+                    play_id: "nope".to_string(),
+                    tempo: 96,
+                    click: None,
+                }],
+                ..good.clone()
+            },
+        ),
+    ];
+
+    for (case, answers) in cases {
+        let saves = write_draft(&mut model, answers);
+        assert_eq!(
+            draft(&model).map(|d| &d.answers),
+            Some(&good),
+            "{case}: the last good draft stands"
+        );
+        assert!(saves.is_empty(), "{case}: nothing saved");
+        assert!(
+            model.last_error.is_none(),
+            "{case}: no banner behind the sheet"
+        );
+    }
+}
+
+#[test]
+fn next_item_closes_with_the_drafts_instant_and_drops_it() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: start + chrono::Duration::seconds(500),
+            next_item_started_at: start + chrono::Duration::seconds(500),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert!(draft(&model).is_none(), "the next item has no sheet open");
+    let finished = &session_entries(&model)[0];
+    assert_eq!(finished.duration_secs, 30);
+    assert_eq!(finished.plays[0].seconds, 30);
+}
+
+#[test]
+fn skip_item_drops_the_draft() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SkipItem {
+            now: start + chrono::Duration::seconds(40),
+        }),
+    );
+
+    assert!(draft(&model).is_none());
+}
+
+#[test]
+fn a_resumed_sheet_keeps_its_answers_and_records_only_the_stamped_time() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let saved = write_draft(&mut model, answers_for(&play_id))
+        .pop()
+        .expect("the draft was saved");
+
+    let resumed_at = start + chrono::Duration::hours(3);
+    let mut model = model_with_library();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: saved,
+            now: resumed_at,
+        }),
+    );
+
+    let reopened = draft(&model).expect("the sheet reopens");
+    assert_eq!(reopened.answers, answers_for(&play_id));
+    assert_eq!(reopened.now, resumed_at);
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: resumed_at + chrono::Duration::seconds(100),
+            next_item_started_at: resumed_at + chrono::Duration::seconds(100),
+            reading: TempoReading::silent(),
+        }),
+    );
+    let finished = &session_entries(&model)[0];
+    assert_eq!(
+        (finished.duration_secs, finished.plays[0].seconds),
+        (30, 30),
+        "neither the downtime nor the resumed dwell reads as practice"
+    );
+}
+
+#[test]
+fn update_reflection_draft_round_trips_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateReflectionDraft {
+        answers: answers_for("e1-play"),
+    }));
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateReflectionDraft {
+        answers: ReflectionAnswers::default(),
+    }));
+}
+
+#[test]
+fn next_item_with_a_draft_still_takes_the_events_reading() {
+    let (mut model, start) = model_with_active_session(2);
+    let ended = start + chrono::Duration::seconds(30);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now: ended,
+            reading: sounding(96, None),
+        }),
+    );
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: ended,
+            next_item_started_at: ended,
+            reading: sounding(120, None),
+        }),
+    );
+
+    assert_eq!(
+        session_entries(&model)[0].plays[0].achieved_tempo,
+        Some(120)
+    );
+}
+
+fn summary_of(model: &Model) -> &SummarySession {
+    let SessionStatus::Summary(ref summary) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    summary
+}
+
+#[test]
+fn a_resumed_sheet_on_the_last_item_ends_the_practice_at_the_resume() {
+    let (mut model, start) = model_with_active_session(1);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let saved = write_draft(&mut model, ReflectionAnswers::default())
+        .pop()
+        .expect("the draft was saved");
+
+    let resumed_at = start + chrono::Duration::hours(3);
+    let mut model = model_with_library();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: saved,
+            now: resumed_at,
+        }),
+    );
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: resumed_at + chrono::Duration::seconds(100),
+            next_item_started_at: resumed_at + chrono::Duration::seconds(100),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    let summary = summary_of(&model);
+    assert_eq!(summary.entries[0].duration_secs, 30);
+    assert_eq!(summary.session_ended_at, resumed_at);
+}
+
+#[test]
+fn ending_early_from_the_sheet_keeps_the_stamped_time() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::EndSessionEarly {
+            now: start + chrono::Duration::seconds(500),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    let summary = summary_of(&model);
+    assert_eq!(summary.entries[0].duration_secs, 30);
+    assert_eq!(
+        summary.session_ended_at,
+        start + chrono::Duration::seconds(30)
+    );
+}
+
+#[test]
+fn switching_variation_with_the_sheet_open_changes_nothing() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let before = only_entry(&model).plays.clone();
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchVariation {
+            entry_id,
+            variation_id: Some("v-d".to_string()),
+            now: start + chrono::Duration::seconds(90),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_eq!(only_entry(&model).plays, before);
 }

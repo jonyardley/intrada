@@ -17,6 +17,11 @@ pub(super) fn prepare_reflection(
     let SessionStatus::Active(ref mut active) = model.session_status else {
         return crux_core::render::render();
     };
+    // The sheet is already open: the stamp is final, and a second one would
+    // count its dwell as practice (#2137).
+    if active.reflection.is_some() {
+        return crux_core::render::render();
+    }
 
     let stamp = active
         .entries
@@ -24,6 +29,11 @@ pub(super) fn prepare_reflection(
         .map_or(TempoStamp::NothingToKeep, |entry| {
             close_open_play(entry, now, Some(&reading))
         });
+    active.reflection = Some(ReflectionDraft {
+        now,
+        reading,
+        answers: ReflectionAnswers::default(),
+    });
     let persist = persist_active(active);
     report_stamp(model, stamp);
     persist
@@ -39,6 +49,8 @@ pub(super) fn next_item(
         model.raise_error("Not in active state".to_string());
         return crux_core::render::render();
     };
+    // After a resume the shell no longer has the stamp's instant (#2137).
+    let now = active.reflection.take().map_or(now, |draft| draft.now);
 
     if active.current_index >= active.entries.len() - 1 {
         let (summary, stamp) = transition_to_summary(
@@ -125,6 +137,7 @@ pub(super) fn end_session_early(
         return crux_core::render::render();
     };
 
+    let now = active.reflection.take().map_or(now, |draft| draft.now);
     let (summary, stamp) = transition_to_summary(
         active,
         &model.items,
@@ -142,8 +155,12 @@ pub(super) fn switch_variation(
     now: DateTime<Utc>,
     reading: TempoReading,
 ) -> Command<Effect, Event> {
-    if !matches!(model.session_status, SessionStatus::Active(_)) {
+    let SessionStatus::Active(ref active) = model.session_status else {
         model.raise_error("Not in active state".to_string());
+        return crux_core::render::render();
+    };
+    // The stamped play is final while the sheet is open (#2137).
+    if active.reflection.is_some() {
         return crux_core::render::render();
     }
 
@@ -218,6 +235,11 @@ pub(super) fn recover_session(
     // Backdated by what the plays already recorded, or a practice saved at the
     // item-complete sheet resumes with its time wiped (#2061).
     let mut session = session;
+    // Closing at the resume instant against the backdated clocks below
+    // records exactly the stamped seconds (#2137).
+    if let Some(draft) = session.reflection.as_mut() {
+        draft.now = now;
+    }
     // A corrupt count falls back to the resume instant, or every Resume tap
     // would panic on a blob that outlives the crash.
     let recorded = |secs: u64| {
@@ -247,6 +269,7 @@ pub(super) fn recover_session(
 fn advance(active: &mut ActiveSession, items: &[Item], started_at: DateTime<Utc>) {
     active.current_index += 1;
     active.current_item_started_at = started_at;
+    active.reflection = None;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         open_first_play(entry, items, started_at);
     }
@@ -257,4 +280,54 @@ fn finish(model: &mut Model, summary: SummarySession, stamp: TempoStamp) -> Comm
     model.last_error = None;
     report_stamp(model, stamp);
     crux_core::render::render()
+}
+
+pub(super) fn update_reflection_draft(
+    model: &mut Model,
+    answers: ReflectionAnswers,
+) -> Command<Effect, Event> {
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        return crux_core::render::render();
+    };
+    let entry = active.current_entry();
+    if active.reflection.is_none() || !draft_answers_valid(entry, &answers) {
+        return crux_core::render::render();
+    }
+    if let Some(draft) = active.reflection.as_mut() {
+        draft.answers = answers;
+    }
+    persist_active(active)
+}
+
+fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {
+    let distinct = |ids: Vec<&str>| {
+        let count = ids.len();
+        ids.into_iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            == count
+    };
+    if !distinct(answers.marks.iter().map(|m| m.play_id.as_str()).collect())
+        || !distinct(answers.tempos.iter().map(|t| t.play_id.as_str()).collect())
+    {
+        return false;
+    }
+    let marks_valid = answers.marks.iter().all(|mark| {
+        (validation::MIN_SCORE..=validation::MAX_SCORE).contains(&mark.score)
+            && validation::validate_play_belongs(entry, &mark.play_id).is_ok()
+    });
+    let tempos_valid = answers.tempos.iter().all(|row| {
+        let crotchets = row
+            .click
+            .as_ref()
+            .map_or(row.tempo, |c| c.metre.crotchet_bpm(row.tempo));
+        row.click
+            .as_ref()
+            .is_none_or(|c| validation::validate_click_state(c).is_ok())
+            && validation::validate_achieved_tempo(&Some(crotchets)).is_ok()
+            && validation::validate_play_belongs(entry, &row.play_id).is_ok()
+    });
+    marks_valid
+        && tempos_valid
+        && validation::validate_entry_notes(&Some(answers.note.clone())).is_ok()
 }

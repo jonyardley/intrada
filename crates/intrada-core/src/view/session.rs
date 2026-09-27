@@ -8,8 +8,8 @@ use crate::domain::session::{
 use crate::domain::variant::ladder_is_all_keys;
 use crate::model::{
     saved_mark_caption, ActiveSessionView, ItemPracticeSummary, PickerVariationView,
-    PracticeSessionView, SetlistBlockView, SetlistEntryView, SummaryView, VariantView,
-    VariationPlayView,
+    PracticeSessionView, ReflectionView, SetlistBlockView, SetlistEntryView, SummaryView,
+    VariantView, VariationPlayView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -244,6 +244,10 @@ pub fn build_active_session_view(
             .get(current.item_id.as_str())
             .and_then(|i| i.metre.clone()),
         current_variations: picker_variations(current, current_variations),
+        reflection: active.reflection.as_ref().map(|draft| ReflectionView {
+            answers: draft.answers.clone(),
+            reading: draft.reading.clone(),
+        }),
     }
 }
 
@@ -596,6 +600,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         assert_eq!(
             build_active_session_view(&active, &items, &VariationLabels::new(), &[])
@@ -629,6 +634,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         assert_eq!(
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[])
@@ -660,6 +666,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -677,6 +684,7 @@ mod tests {
             current_index: 1,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -693,6 +701,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -713,6 +722,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -737,6 +747,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -757,6 +768,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -774,6 +786,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let item = Item {
             id: "i1".to_string(),
@@ -811,6 +824,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let view =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
@@ -829,6 +843,7 @@ mod tests {
             current_index: 1,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let item1 = Item {
             notes: Some("Watch the thumb crossing".to_string()),
@@ -854,6 +869,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let item = make_item("i1", "Scale", ItemKind::Exercise);
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
@@ -872,6 +888,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         }
     }
 
@@ -1223,6 +1240,7 @@ mod tests {
             current_index: 0,
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
+            reflection: None,
         };
         let player =
             build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
@@ -1925,5 +1943,44 @@ mod tests {
         let view = session_to_view(&session, &VariationLabels::new());
 
         assert_eq!(view.played_summary, "Nocturne in E\u{266d}");
+    }
+
+    // ── the open sheet's draft (#2137) ─────────────────────────────────
+
+    #[test]
+    fn active_view_carries_no_sheet_without_a_draft() {
+        let active = session_on(vec![play_on("p1", "c", 250)]);
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        assert!(view.reflection.is_none());
+    }
+
+    #[test]
+    fn active_view_carries_the_drafts_answers_and_reading() {
+        use crate::domain::session::{DraftMark, ReflectionAnswers, ReflectionDraft, TempoReading};
+        let mut active = session_on(vec![play_on("p1", "c", 250)]);
+        let answers = ReflectionAnswers {
+            marks: vec![DraftMark {
+                play_id: "p1".to_string(),
+                score: 8,
+            }],
+            note: "even quavers".to_string(),
+            tempos: vec![],
+        };
+        let reading = TempoReading {
+            bpm: 72,
+            click_sounding: true,
+            click: None,
+        };
+        active.reflection = Some(ReflectionDraft {
+            now: Utc::now(),
+            reading: reading.clone(),
+            answers: answers.clone(),
+        });
+
+        let view =
+            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+
+        assert_eq!(view.reflection, Some(ReflectionView { answers, reading }));
     }
 }
