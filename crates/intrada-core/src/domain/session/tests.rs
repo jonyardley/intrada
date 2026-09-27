@@ -6880,11 +6880,6 @@ fn update_reflection_draft_without_an_open_sheet_is_refused() {
 fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
     let (mut model, start) = model_with_active_session(2);
     let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
-    let other_entry_play = session_entries(&model)[1]
-        .plays
-        .first()
-        .map(|p| p.id.clone())
-        .unwrap_or_else(|| "not-on-this-entry".to_string());
     prepare(&mut model, start + chrono::Duration::seconds(30));
     let good = answers_for(&play_id);
     write_draft(&mut model, good.clone());
@@ -6900,9 +6895,30 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
     };
     let cases: Vec<(&str, ReflectionAnswers)> = vec![
         (
-            "a mark on a play of another entry",
+            "a mark on an unknown play",
             ReflectionAnswers {
-                marks: vec![mark(&other_entry_play, 5)],
+                marks: vec![mark("not-on-this-entry", 5)],
+                ..good.clone()
+            },
+        ),
+        (
+            "two marks on one play",
+            ReflectionAnswers {
+                marks: vec![mark(&play_id, 5), mark(&play_id, 6)],
+                ..good.clone()
+            },
+        ),
+        (
+            "a click that sounds on no beat",
+            ReflectionAnswers {
+                tempos: vec![DraftTempo {
+                    play_id: play_id.clone(),
+                    tempo: 96,
+                    click: Some(ClickState {
+                        sounding: 0,
+                        ..seven_eight_on_group_starts()
+                    }),
+                }],
                 ..good.clone()
             },
         ),
@@ -7044,4 +7060,110 @@ fn update_reflection_draft_round_trips_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(Event::Session(SessionEvent::UpdateReflectionDraft {
         answers: ReflectionAnswers::default(),
     }));
+}
+
+#[test]
+fn next_item_with_a_draft_still_takes_the_events_reading() {
+    let (mut model, start) = model_with_active_session(2);
+    let ended = start + chrono::Duration::seconds(30);
+    update(
+        &mut model,
+        Event::Session(SessionEvent::PrepareReflection {
+            now: ended,
+            reading: sounding(96, None),
+        }),
+    );
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: ended,
+            next_item_started_at: ended,
+            reading: sounding(120, None),
+        }),
+    );
+
+    assert_eq!(
+        session_entries(&model)[0].plays[0].achieved_tempo,
+        Some(120)
+    );
+}
+
+fn summary_of(model: &Model) -> &SummarySession {
+    let SessionStatus::Summary(ref summary) = model.session_status else {
+        panic!("Expected Summary state");
+    };
+    summary
+}
+
+#[test]
+fn a_resumed_sheet_on_the_last_item_ends_the_practice_at_the_resume() {
+    let (mut model, start) = model_with_active_session(1);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let saved = write_draft(&mut model, ReflectionAnswers::default())
+        .pop()
+        .expect("the draft was saved");
+
+    let resumed_at = start + chrono::Duration::hours(3);
+    let mut model = model_with_library();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: saved,
+            now: resumed_at,
+        }),
+    );
+    update(
+        &mut model,
+        Event::Session(SessionEvent::NextItem {
+            now: resumed_at + chrono::Duration::seconds(100),
+            next_item_started_at: resumed_at + chrono::Duration::seconds(100),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    let summary = summary_of(&model);
+    assert_eq!(summary.entries[0].duration_secs, 30);
+    assert_eq!(summary.session_ended_at, resumed_at);
+}
+
+#[test]
+fn ending_early_from_the_sheet_keeps_the_stamped_time() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::EndSessionEarly {
+            now: start + chrono::Duration::seconds(500),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    let summary = summary_of(&model);
+    assert_eq!(summary.entries[0].duration_secs, 30);
+    assert_eq!(
+        summary.session_ended_at,
+        start + chrono::Duration::seconds(30)
+    );
+}
+
+#[test]
+fn switching_variation_with_the_sheet_open_changes_nothing() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let before = only_entry(&model).plays.clone();
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchVariation {
+            entry_id,
+            variation_id: Some("v-d".to_string()),
+            now: start + chrono::Duration::seconds(90),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    assert_eq!(only_entry(&model).plays, before);
 }

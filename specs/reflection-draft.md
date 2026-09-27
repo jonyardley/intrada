@@ -54,18 +54,22 @@ The rules:
 2. **`UpdateReflectionDraft { answers }`** replaces the answers wholesale and
    saves. It is refused without a draft, and refused whole when a mark is
    out of range, a play is not on the current entry, the note is too long or
-   a tempo does not validate. Like `PrepareReflection` it neither raises nor
+   a tempo does not validate, or two answers name one play. The note is
+   checked untrimmed, so the screens PR trims before sending it. Like `PrepareReflection` it neither raises nor
    clears `last_error` (#944): the sheet shows the refusal on Next.
 3. **`NextItem` with a draft open** closes the entry with the draft's `now`,
    not the event's. The two are equal before a crash; after one the shell
    no longer has it. The reading stays the event's, so a later sounding
    close still wins whole (#1761); after a resume the shell's click is
    stopped, and a silent reading writes nothing, so the stamp stands.
-4. **Leaving the entry** (`NextItem`, `SkipItem`) drops the draft. Terminal
+4. **While the sheet is open** `SwitchVariation` is refused, since the
+   stamped play is final, and `EndSessionEarly` closes at the draft's `now`,
+   as `NextItem` does.
+5. **Leaving the entry** (`NextItem`, `SkipItem`) drops the draft. Terminal
    transitions drop the whole `ActiveSession`. The draft never writes a mark,
    tempo or note itself: the shell still sends them around `NextItem`
    exactly as today, so Skip discards the draft by sending nothing.
-5. **`RecoverSession` with a draft** moves the draft's `now` to the resume
+6. **`RecoverSession` with a draft** moves the draft's `now` to the resume
    instant. Recovery already backdates the item and play clocks by what the
    plays recorded, so closing at the resume instant records exactly the
    stamped seconds, and the downtime is never practice.
@@ -107,6 +111,8 @@ cost every blob change pays, and there is no migration.
 - Recovery keeps the draft and moves its instant, and a `NextItem` after it
   records the stamped seconds, not the downtime. Deleting the draft from
   recovery breaks this test.
+- Ending early from the sheet keeps the stamped time; a switch is refused.
+- A resumed sheet on the last item ends the practice at the resume.
 - The view carries the draft's answers and reading, and `None` without one.
 
 ## Out of scope

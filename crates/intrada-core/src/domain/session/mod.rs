@@ -282,7 +282,7 @@ pub struct DraftMark {
     pub score: u8,
 }
 
-/// `tempo` as displayed, in `click.metre.unit`, as `UpdateEntryTempo`.
+/// `tempo` as displayed, in `click.metre.unit`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct DraftTempo {
@@ -511,8 +511,8 @@ pub enum SessionEvent {
     },
     /// Replace the open sheet's answers, whole, and save them for crash
     /// recovery (#2137). Refused whole without an open sheet or when any
-    /// answer fails validation; `last_error` is left alone, as
-    /// `PrepareReflection`, since the sheet shows its refusal on Next.
+    /// answer fails validation. `last_error` is left alone, since the
+    /// sheet shows its refusal on Next.
     UpdateReflectionDraft {
         answers: ReflectionAnswers,
     },

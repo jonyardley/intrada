@@ -18,7 +18,7 @@ pub(super) fn prepare_reflection(
         return crux_core::render::render();
     };
     // The sheet is already open: the stamp is final, and a second one would
-    // count its dwell as practice.
+    // count its dwell as practice (#2137).
     if active.reflection.is_some() {
         return crux_core::render::render();
     }
@@ -137,6 +137,7 @@ pub(super) fn end_session_early(
         return crux_core::render::render();
     };
 
+    let now = active.reflection.take().map_or(now, |draft| draft.now);
     let (summary, stamp) = transition_to_summary(
         active,
         &model.items,
@@ -154,8 +155,12 @@ pub(super) fn switch_variation(
     now: DateTime<Utc>,
     reading: TempoReading,
 ) -> Command<Effect, Event> {
-    if !matches!(model.session_status, SessionStatus::Active(_)) {
+    let SessionStatus::Active(ref active) = model.session_status else {
         model.raise_error("Not in active state".to_string());
+        return crux_core::render::render();
+    };
+    // The stamped play is final while the sheet is open (#2137).
+    if active.reflection.is_some() {
         return crux_core::render::render();
     }
 
@@ -295,6 +300,18 @@ pub(super) fn update_reflection_draft(
 }
 
 fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {
+    let distinct = |ids: Vec<&str>| {
+        let count = ids.len();
+        ids.into_iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            == count
+    };
+    if !distinct(answers.marks.iter().map(|m| m.play_id.as_str()).collect())
+        || !distinct(answers.tempos.iter().map(|t| t.play_id.as_str()).collect())
+    {
+        return false;
+    }
     let marks_valid = answers.marks.iter().all(|mark| {
         (validation::MIN_SCORE..=validation::MAX_SCORE).contains(&mark.score)
             && validation::validate_play_belongs(entry, &mark.play_id).is_ok()
