@@ -214,6 +214,57 @@ final class SessionBridgeTests: XCTestCase {
       "a pre-fill nobody looked at leaves no point for the trend to draw")
   }
 
+  /// Real-bridge wire pin for the sheet's draft (#2137, #846): the answers
+  /// cross into the core, come back on the view, and survive the saved copy
+  /// Swift writes and hands back on resume.
+  func testRealBridgeSheetDraftSurvivesTheSavedCopy() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    for title in ["Scales", "Arpeggios"] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .exercise, composer: nil, key: nil, modality: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    }
+    _ = try bridge.update(.session(.startBuilding))
+    for id in try bridge.rendered().items.map(\.id) {
+      _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    }
+    _ = try bridge.update(.session(.startSession(now: "2026-09-27T09:00:00Z")))
+    XCTAssertNil(try bridge.rendered().activeSession?.reflection, "no sheet before the stamp")
+
+    let click = ClickState(metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b0101001)
+    _ = try bridge.update(
+      .session(
+        .prepareReflection(
+          now: "2026-09-27T09:05:00Z",
+          reading: TempoReading(bpm: 168, clickSounding: true, click: click))))
+    let playId = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
+    let answers = ReflectionAnswers(
+      marks: [DraftMark(playId: playId, score: 7)], note: "bar 12 rushed",
+      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)])
+    let requests = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
+
+    let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
+    XCTAssertEqual(open.answers, answers)
+    XCTAssertEqual(open.reading.click, click)
+    let saved = try XCTUnwrap(
+      requests.lazy.compactMap { request -> ActiveSession? in
+        if case .app(.saveSessionInProgress(let active)) = request.effect { return active }
+        return nil
+      }.first, "the draft is saved for crash recovery")
+
+    let resumed = RowsBridge()
+    _ = try resumed.update(.startApp)
+    _ = try resumed.update(.session(.recoverSession(session: saved, now: "2026-09-27T12:00:00Z")))
+    XCTAssertNil(try resumed.rendered().error)
+    XCTAssertEqual(
+      try resumed.rendered().activeSession?.reflection?.answers, answers,
+      "the sheet reopens with what was written")
+  }
+
   /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing
   /// write, round-trip it through the real bincode bridge (#846).
   func testRealBridgePractiseThisSeedsBuilder() throws {
@@ -378,7 +429,8 @@ final class SessionBridgeTests: XCTestCase {
       groupId: nil, plannedVariationId: nil, plannedRepTarget: nil, plays: [])
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
-      currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z")
+      currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
+      reflection: nil)
     _ = try bridge.update(.session(.recoverSession(session: blob, now: "2026-06-16T11:00:00Z")))
     let recovered = try bridge.rendered()
     XCTAssertEqual(recovered.activeSession?.currentItemTitle, "Recovered Scales")

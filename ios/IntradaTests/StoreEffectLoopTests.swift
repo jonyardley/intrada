@@ -35,7 +35,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
     let active = ActiveSession(
       id: "s-crash", entries: [], currentIndex: 0,
-      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z")
+      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
+      reflection: nil)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]
@@ -59,7 +60,8 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
     let active = ActiveSession(
       id: "s-stale", entries: [], currentIndex: 0,
-      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z")
+      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
+      reflection: nil)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]
