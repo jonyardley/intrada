@@ -227,8 +227,8 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: usedInCard([]), as: config)
   }
 
-  // UIKit sizes the back chevron once per process, from the first pushed bar it
-  // draws, so an accessibility-size screen alone got a larger one than in the suite (#1744).
+  // UIKit keeps the back chevron size from the first pushed bar a process draws,
+  // so an accessibility-size screen run alone draws a larger one than the suite does (#1744).
   private func primeBackChevron() {
     let pushed = NavigationStack(path: .constant(["prime"])) {
       Color.clear.navigationDestination(for: String.self) { _ in Color.clear }
