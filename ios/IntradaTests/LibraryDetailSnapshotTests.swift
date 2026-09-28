@@ -143,6 +143,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   /// Largest accessibility text size: proves the Variations scroller reflows
   /// rather than clipping or wrapping (#1083 C2).
   func testExerciseDetailWithVariationsAccessibilitySize() {
+    primeBackChevron()
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithVariations]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExerciseWithVariations.id])
@@ -179,6 +180,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   /// Largest accessibility text size: the label wraps within its own line
   /// rather than clipping or breaking mid-word (#1786).
   func testExerciseDetailWithLongVariationNameAccessibilitySize() {
+    primeBackChevron()
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLongVariationName]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExerciseWithLongVariationName.id])
@@ -223,6 +225,17 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
 
   func testUsedInCardOnItsOwn() {
     assertSnapshot(of: usedInCard([]), as: config)
+  }
+
+  // UIKit sizes the back chevron once per process, from the first pushed bar it
+  // draws, so an accessibility-size screen alone got a larger one than in the suite (#1744).
+  private func primeBackChevron() {
+    let pushed = NavigationStack(path: .constant(["prime"])) {
+      Color.clear.navigationDestination(for: String.self) { _ in Color.clear }
+    }
+    let rendered = expectation(description: "default-size back chevron drawn")
+    config.snapshot(host(pushed)).run { _ in rendered.fulfill() }
+    wait(for: [rendered], timeout: 10)
   }
 
   private func usedInCard(_ usage: [ExerciseUsageView]) -> UIViewController {
