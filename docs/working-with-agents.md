@@ -722,6 +722,11 @@ who reads it and when.
 8. **Docs on demand.** `reference.md` for the why behind every rule, the specs,
    the roadmap. Cost nothing per turn.
 
+**A trim carries its ledger.** Any cut to `CLAUDE.md`, a skill or an agent doc
+lists every removed line in the PR with where its content now lives, or says it
+is dropped on purpose. A benchmark of the original harness trim lost the
+`save_or_put` pointer in 6 of 9 runs.
+
 The test for the personal versus project split, from the RIBA template review:
 if this is set wrong, who does it hurt? Only the author, and it is personal
 (`.claude/settings.local.json`, `~/.claude`). Anyone else, and it is project,
