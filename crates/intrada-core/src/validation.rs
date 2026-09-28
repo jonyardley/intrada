@@ -29,6 +29,7 @@ pub const MAX_PLAYS_PER_ENTRY: usize = 24;
 pub const MIN_PLAY_SECONDS: u64 = 5;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
+pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 360;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 pub const MIN_METRE_BEATS: u8 = 2;
