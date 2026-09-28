@@ -36,6 +36,17 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(try bridge.rendered().error, "clearing the rung round-trips")
   }
 
+  /// Three u32s side by side decode silently into each other's slots if Rust
+  /// and Swift disagree on field order (#846, #2041).
+  func testRealBridgeLimitsCarryThePlannedDurationBoundsAndDefault() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let limits = try bridge.rendered().limits
+    XCTAssertEqual(limits.plannedDurationMinSecs, 60)
+    XCTAssertEqual(limits.plannedDurationMaxSecs, 3600)
+    XCTAssertEqual(limits.plannedDurationDefaultSecs, 360)
+  }
+
   /// Answers the session write the way GRDB does, so the core commits the
   /// practice, clears the recovery copy and closes the summary (#974).
   private func acknowledgeSave(_ bridge: RowsBridge, _ requests: [Request]) throws {

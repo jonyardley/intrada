@@ -317,6 +317,7 @@ pub struct LimitsView {
     pub rep_target_default: u8,
     pub planned_duration_min_secs: u32,
     pub planned_duration_max_secs: u32,
+    pub planned_duration_default_secs: u32,
 }
 
 impl Default for LimitsView {
@@ -332,6 +333,7 @@ impl Default for LimitsView {
             rep_target_default: validation::DEFAULT_REP_TARGET,
             planned_duration_min_secs: validation::MIN_PLANNED_DURATION_SECS,
             planned_duration_max_secs: validation::MAX_PLANNED_DURATION_SECS,
+            planned_duration_default_secs: validation::DEFAULT_PLANNED_DURATION_SECS,
         }
     }
 }
@@ -950,6 +952,7 @@ mod tests {
         for secs in [
             limits.planned_duration_min_secs,
             limits.planned_duration_max_secs,
+            limits.planned_duration_default_secs,
         ] {
             assert!(
                 crate::validation::validate_planned_duration(&Some(secs)).is_ok(),
