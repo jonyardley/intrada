@@ -11,7 +11,8 @@ struct SheetBoundsTests {
   private let limits = LimitsView(
     metreBeatsMin: 5, metreBeatsMax: 7, metreUnits: [4, 16],
     repTargetMin: 2, repTargetMax: 4, repTargetDefault: 3,
-    plannedDurationMinSecs: 90, plannedDurationMaxSecs: 630, plannedDurationDefaultSecs: 480)
+    plannedDurationMinSecs: 90, plannedDurationMaxSecs: 630, plannedDurationDefaultSecs: 480,
+    scoreMin: 2, scoreMax: 6)
 
   private func clickSheet() -> ClickSheet {
     ClickSheet(click: ClickController(), bpm: 120, limits: limits)

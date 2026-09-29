@@ -313,7 +313,7 @@ fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> boo
         return false;
     }
     let marks_valid = answers.marks.iter().all(|mark| {
-        (validation::MIN_SCORE..=validation::MAX_SCORE).contains(&mark.score)
+        validation::validate_score(mark.score).is_ok()
             && validation::validate_play_belongs(entry, &mark.play_id).is_ok()
     });
     let tempos_valid = answers.tempos.iter().all(|row| {

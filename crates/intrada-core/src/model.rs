@@ -318,6 +318,8 @@ pub struct LimitsView {
     pub planned_duration_min_secs: u32,
     pub planned_duration_max_secs: u32,
     pub planned_duration_default_secs: u32,
+    pub score_min: u8,
+    pub score_max: u8,
 }
 
 impl Default for LimitsView {
@@ -334,6 +336,8 @@ impl Default for LimitsView {
             planned_duration_min_secs: validation::MIN_PLANNED_DURATION_SECS,
             planned_duration_max_secs: validation::MAX_PLANNED_DURATION_SECS,
             planned_duration_default_secs: validation::DEFAULT_PLANNED_DURATION_SECS,
+            score_min: validation::MIN_SCORE,
+            score_max: validation::MAX_SCORE,
         }
     }
 }
@@ -943,6 +947,25 @@ mod tests {
             (limits.rep_target_min..=limits.rep_target_max).contains(&limits.rep_target_default),
             "the default the sheet opens on sits outside the range it offers"
         );
+    }
+
+    #[test]
+    fn offered_scores_are_what_validate_score_accepts() {
+        let limits = LimitsView::default();
+
+        for score in limits.score_min..=limits.score_max {
+            assert!(
+                crate::validation::validate_score(score).is_ok(),
+                "the selector offers a mark of {score}, which the core refuses"
+            );
+        }
+
+        for score in [limits.score_min.saturating_sub(1), limits.score_max + 1] {
+            assert!(
+                crate::validation::validate_score(score).is_err(),
+                "a mark of {score} is outside the offered range but the core accepts it"
+            );
+        }
     }
 
     #[test]

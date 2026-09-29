@@ -243,6 +243,16 @@ pub fn validate_intention(intention: &Option<String>) -> Result<(), LibraryError
     Ok(())
 }
 
+pub fn validate_score(score: u8) -> Result<(), LibraryError> {
+    if !(MIN_SCORE..=MAX_SCORE).contains(&score) {
+        return Err(LibraryError::Validation {
+            field: "score".to_string(),
+            message: format!("Mark must be between {MIN_SCORE} and {MAX_SCORE}"),
+        });
+    }
+    Ok(())
+}
+
 pub fn validate_rep_target(rep_target: &Option<u8>) -> Result<(), LibraryError> {
     if let Some(t) = rep_target {
         if !(MIN_REP_TARGET..=MAX_REP_TARGET).contains(t) {
