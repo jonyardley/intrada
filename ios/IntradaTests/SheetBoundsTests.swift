@@ -3,9 +3,9 @@ import Testing
 
 @testable import Intrada
 
-/// The metronome and entry-settings sheets offer what the core validates rather
-/// than numbers of their own (#1512), so the fixture's bounds are deliberately
-/// unlike the ones shipping today.
+/// The metronome and entry-settings sheets and the mark pills offer what the
+/// core validates rather than numbers of their own (#1512, #2042), so the
+/// fixture's bounds are deliberately unlike the ones shipping today.
 @MainActor
 struct SheetBoundsTests {
   private let limits = LimitsView(
@@ -38,6 +38,34 @@ struct SheetBoundsTests {
   /// stepper offers has to be one the core would accept, so both ends round in.
   @Test func theDurationStepperOffersTheCoresSecondsAsWholeMinutes() {
     #expect(entrySheet().durationRange == 2...10)
+  }
+
+  private func scoreSelector(score: Int) -> ScoreSelector {
+    ScoreSelector(score: score, range: limits.scoreRange, accessibilityLabel: "Mark") { _ in }
+  }
+
+  @Test func theMarkPillsOfferTheScoresTheCoreAccepts() {
+    #expect(scoreSelector(score: 0).pillValues == [2, 3, 4, 5, 6])
+  }
+
+  @Test func theSpokenMarkIsOutOfTheCoresTopScore() {
+    #expect(scoreSelector(score: 4).spokenValue == "4 of 6")
+  }
+
+  @Test func aSwipeUpFromUnmarkedLandsOnTheCoresLowestScore() {
+    #expect(scoreSelector(score: 0).markAbove == 2)
+  }
+
+  @Test func aSwipeUpStopsAtTheCoresTopScore() {
+    #expect(scoreSelector(score: 6).markAbove == nil)
+  }
+
+  @Test func aSwipeDownFromTheCoresLowestScoreClears() {
+    #expect(scoreSelector(score: 2).markBelow == nil)
+  }
+
+  @Test func aSwipeDownWithinTheRangeStepsOneMark() {
+    #expect(scoreSelector(score: 4).markBelow == 3)
   }
 
   @Test func anEntryWithNoTargetStartsAtTheCoresDefault() {
