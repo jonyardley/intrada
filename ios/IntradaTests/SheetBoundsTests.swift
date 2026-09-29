@@ -48,4 +48,16 @@ struct SheetBoundsTests {
       EntrySettingsSheet.initialRepTarget(for: .previewGroupedScalesConfigured, limits: limits) == 7
     )
   }
+
+  @Test func anEntryWithNoPlannedDurationStartsAtTheCoresDefault() {
+    #expect(
+      EntrySettingsSheet.initialPlannedMinutes(for: .previewGroupedScales, limits: limits) == 8)
+  }
+
+  @Test func anEntryThatAlreadyHasAPlannedDurationKeepsIt() {
+    #expect(
+      EntrySettingsSheet.initialPlannedMinutes(
+        for: .previewGroupedScalesConfigured, limits: limits) == 6
+    )
+  }
 }

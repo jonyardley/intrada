@@ -35,6 +35,10 @@ struct EntrySettingsSheet: View {
     Int(entry.plannedRepTarget ?? limits.repTargetDefault)
   }
 
+  static func initialPlannedMinutes(for entry: SetlistEntryView, limits: LimitsView) -> Int {
+    Int((entry.plannedDurationSecs ?? limits.plannedDurationDefaultSecs) / 60)
+  }
+
   init(entry: SetlistEntryView, limits: LimitsView) {
     self.entry = entry
     self.limits = limits
@@ -42,7 +46,7 @@ struct EntrySettingsSheet: View {
     _tracksReps = State(initialValue: entry.plannedRepTarget != nil)
     _repTarget = State(initialValue: Self.initialRepTarget(for: entry, limits: limits))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
-    _plannedMinutes = State(initialValue: Int((entry.plannedDurationSecs ?? 360) / 60))
+    _plannedMinutes = State(initialValue: Self.initialPlannedMinutes(for: entry, limits: limits))
     _variantId = State(initialValue: entry.plannedVariationId)
   }
 
