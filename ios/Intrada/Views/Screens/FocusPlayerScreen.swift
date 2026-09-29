@@ -41,22 +41,25 @@ struct FocusPlayerScreen: View {
     }
     // The core's draft decides whether the sheet is up, so a resume reopens it (#2137).
     .sheet(item: Binding(get: { reflectionTarget }, set: { _ in })) { target in
-      ReflectionSheet(
-        itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
-        tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
-        tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
-        refusal: reflectionRefusal, seed: target.seed,
-        onSave: { result in handleReflection(target, result) },
-        onSkip: { handleSkipRating(target) },
-        onDraft: { result in
-          store.send(
-            .session(
-              .updateReflectionDraft(
-                answers: ReflectionHandoff.draft(result, plays: target.plays))))
-        }
-      )
-      .presentationDetents([.medium, .large])
-      .interactiveDismissDisabled()
+      if let limits = store.viewModel?.limits {
+        ReflectionSheet(
+          itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
+          tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
+          tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
+          scoreRange: limits.scoreRange,
+          refusal: reflectionRefusal, seed: target.seed,
+          onSave: { result in handleReflection(target, result) },
+          onSkip: { handleSkipRating(target) },
+          onDraft: { result in
+            store.send(
+              .session(
+                .updateReflectionDraft(
+                  answers: ReflectionHandoff.draft(result, plays: target.plays))))
+          }
+        )
+        .presentationDetents([.medium, .large])
+        .interactiveDismissDisabled()
+      }
     }
     .sheet(isPresented: $configuringClick) {
       if let limits = store.viewModel?.limits {

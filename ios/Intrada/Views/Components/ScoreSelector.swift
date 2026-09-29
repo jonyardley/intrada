@@ -1,35 +1,48 @@
+import SharedTypes
 import SwiftUI
 
-/// The 0–10 score control: ten tappable pills with a cumulative fill up to the
-/// chosen value. Tapping the current value clears it (`nil`). Feeds the
-/// `ScoreRing` everywhere a score is set — per-item and overall at session
-/// hand-off. Pure presentation; the caller owns the score and the write.
+/// One pill per mark the core accepts (#2042), filled up to the chosen one;
+/// tapping the chosen one clears it. The caller owns the score and the write.
 struct ScoreSelector: View {
   /// 0 means unscored — no pills filled.
   let score: Int
+  let range: ClosedRange<Int>
   let accessibilityLabel: String
   /// `nil` clears the score (tapping the current value).
   let onSelect: (UInt8?) -> Void
 
   var body: some View {
     HStack(spacing: 4) {
-      ForEach(1...10, id: \.self) { pill($0) }
+      ForEach(pillValues, id: \.self) { pill($0) }
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
-    .accessibilityValue(score == 0 ? "not marked" : "\(score) of 10")
+    .accessibilityValue(spokenValue)
     .accessibilityAdjustableAction { direction in
       switch direction {
-      case .increment where score < 10:
+      case .increment:
+        guard let markAbove else { return }
         Haptic.selection.play()
-        onSelect(UInt8(score + 1))
+        onSelect(markAbove)
       case .decrement where score > 0:
         Haptic.selection.play()
-        onSelect(score == 1 ? nil : UInt8(score - 1))
+        onSelect(markBelow)
       default:
         break
       }
     }
+  }
+
+  var pillValues: [Int] { Array(range) }
+
+  var spokenValue: String { score == 0 ? "not marked" : "\(score) of \(range.upperBound)" }
+
+  /// Unmarked starts at the lowest mark, which need not be 1.
+  var markAbove: UInt8? { score < range.upperBound ? UInt8(max(score + 1, range.lowerBound)) : nil }
+
+  /// `nil` clears: at or under the lowest mark there is no lower one to send.
+  var markBelow: UInt8? {
+    score <= range.lowerBound ? nil : UInt8(min(score - 1, range.upperBound))
   }
 
   private func pill(_ value: Int) -> some View {
@@ -56,12 +69,16 @@ struct ScoreSelector: View {
   }
 }
 
+extension LimitsView {
+  var scoreRange: ClosedRange<Int> { Int(scoreMin)...Int(scoreMax) }
+}
+
 #if DEBUG
   #Preview("Score selector") {
     VStack(alignment: .leading, spacing: 24) {
-      ScoreSelector(score: 0, accessibilityLabel: "Score") { _ in }
-      ScoreSelector(score: 4, accessibilityLabel: "Score") { _ in }
-      ScoreSelector(score: 10, accessibilityLabel: "Score") { _ in }
+      ScoreSelector(score: 0, range: 1...10, accessibilityLabel: "Score") { _ in }
+      ScoreSelector(score: 4, range: 1...10, accessibilityLabel: "Score") { _ in }
+      ScoreSelector(score: 10, range: 1...10, accessibilityLabel: "Score") { _ in }
     }
     .padding()
     .background(IntradaColor.paperTop)

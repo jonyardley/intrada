@@ -92,6 +92,7 @@ struct ReflectionSheet: View {
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
   let plays: [ReflectionPlay]
+  let scoreRange: ClosedRange<Int>
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
   let onSave: (ReflectionResult) -> Void
@@ -112,6 +113,7 @@ struct ReflectionSheet: View {
     startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
+    scoreRange: ClosedRange<Int>,
     refusal: String? = nil,
     seed: ReflectionResult? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
@@ -124,6 +126,7 @@ struct ReflectionSheet: View {
     self.tempoUnit = tempoUnit
     self.currentClick = currentClick
     self.plays = plays
+    self.scoreRange = scoreRange
     self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
@@ -173,7 +176,8 @@ struct ReflectionSheet: View {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
-            score: mark(for: only.id), accessibilityLabel: "Mark for \(itemTitle)"
+            score: mark(for: only.id), range: scoreRange,
+            accessibilityLabel: "Mark for \(itemTitle)"
           ) { next in
             setMark(next, for: only.id)
           }
@@ -271,7 +275,8 @@ struct ReflectionSheet: View {
           }
           if play.isMarkable {
             ScoreSelector(
-              score: mark(for: play.id), accessibilityLabel: "Mark for \(play.title)"
+              score: mark(for: play.id), range: scoreRange,
+              accessibilityLabel: "Mark for \(play.title)"
             ) { next in
               setMark(next, for: play.id)
             }
@@ -326,7 +331,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
-          plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)],
+          plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], scoreRange: 1...10,
           onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.medium, .large])
@@ -343,6 +348,7 @@ struct ReflectionSheet: View {
             ReflectionPlay.preview("p2", "G major", "3:20", 10, 10),
             ReflectionPlay.preview("p3", "D major", "5:10", 4, 10),
           ],
+          scoreRange: 1...10,
           onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.large])

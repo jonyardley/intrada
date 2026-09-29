@@ -17,6 +17,7 @@ struct SessionSummaryScreen: View {
   @State private var confirmingDiscard = false
 
   private var summary: SummaryView? { store.viewModel?.summary }
+  private var scoreRange: ClosedRange<Int>? { store.viewModel?.limits.scoreRange }
 
   var body: some View {
     // No NavigationStack here (a fullScreenCover), so the title sits at the
@@ -237,15 +238,18 @@ struct SessionSummaryScreen: View {
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
-        ScoreSelector(
-          score: play.score.map(Int.init) ?? 0,
-          accessibilityLabel: entry.plays.count > 1
-            ? "Mark for \(entry.itemTitle), \(play.displayLabel)"
-            : "Mark for \(entry.itemTitle)"
-        ) { next in
-          store.send(.session(.updateEntryScore(entryId: entry.id, playId: play.id, score: next)))
+        if let scoreRange {
+          ScoreSelector(
+            score: play.score.map(Int.init) ?? 0,
+            range: scoreRange,
+            accessibilityLabel: entry.plays.count > 1
+              ? "Mark for \(entry.itemTitle), \(play.displayLabel)"
+              : "Mark for \(entry.itemTitle)"
+          ) { next in
+            store.send(.session(.updateEntryScore(entryId: entry.id, playId: play.id, score: next)))
+          }
+          .accessibilityIdentifier("summary.mark")
         }
-        .accessibilityIdentifier("summary.mark")
       }
     }
     .padding(.leading, 19)
@@ -256,11 +260,14 @@ struct SessionSummaryScreen: View {
       Text("Overall")
         .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
-      ScoreSelector(
-        score: summary.sessionScore.map(Int.init) ?? 0,
-        accessibilityLabel: "Overall session mark"
-      ) { next in
-        store.send(.session(.updateSessionScore(score: next)))
+      if let scoreRange {
+        ScoreSelector(
+          score: summary.sessionScore.map(Int.init) ?? 0,
+          range: scoreRange,
+          accessibilityLabel: "Overall session mark"
+        ) { next in
+          store.send(.session(.updateSessionScore(score: next)))
+        }
       }
     }
   }
