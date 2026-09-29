@@ -47,6 +47,15 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(limits.plannedDurationDefaultSecs, 360)
   }
 
+  /// The two u8s after the planned-duration trio swap silently on a field-order mismatch (#846, #2042).
+  func testRealBridgeLimitsCarryTheScoreBounds() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let limits = try bridge.rendered().limits
+    XCTAssertEqual(limits.scoreMin, 1)
+    XCTAssertEqual(limits.scoreMax, 10)
+  }
+
   /// Answers the session write the way GRDB does, so the core commits the
   /// practice, clears the recovery copy and closes the summary (#974).
   private func acknowledgeSave(_ bridge: RowsBridge, _ requests: [Request]) throws {

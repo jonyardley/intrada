@@ -13,7 +13,7 @@ pub(super) fn update_entry_score(
     score: Option<u8>,
 ) -> Command<Effect, Event> {
     if let Some(s) = score {
-        if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
+        if validation::validate_score(s).is_err() {
             return crux_core::render::render();
         }
     }
@@ -134,7 +134,7 @@ pub(super) fn update_session_notes(
 
 pub(super) fn update_session_score(model: &mut Model, score: Option<u8>) -> Command<Effect, Event> {
     if let Some(s) = score {
-        if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
+        if validation::validate_score(s).is_err() {
             return crux_core::render::render();
         }
     }
