@@ -304,8 +304,9 @@ pub struct ClickState {
 
 // ── Transient State Types ──────────────────────────────────────────────
 
-/// State during setlist assembly (Building phase).
-#[derive(Debug, Clone, Default)]
+/// State during setlist assembly (Building phase). No `Default`: a build
+/// starts from `fresh_building`, or it drops the preferred length (#1736).
+#[derive(Debug, Clone)]
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
     /// Today's length, copied from the preference when the build starts and

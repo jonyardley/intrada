@@ -7,9 +7,9 @@
 
 A practice session assumes nothing about how long it runs. A musician with
 twenty minutes before work and one with a free hour build the same way, and
-neither was asked. How long you have is the biggest thing shaping a session,
-and it is knowable in one question; asking it every time is friction, and
-never asking it builds the session for someone else.
+neither was asked. How long you have shapes a session more than most choices
+in it, and it is knowable in one question; asking it every time is friction,
+and never asking it builds the session for someone else.
 
 The repetition default from the same issue shipped in #1915
 (`specs/practice-defaults.md`); this spec is the session length and the way to
@@ -78,9 +78,8 @@ steppers draw their bounds from the core.
 
 The defaults blob gains the length, so its shape changes. `Store.swift`'s key
 moves from `intrada.practice-defaults.v1` to `v2`, and the Rust pin is
-re-pinned. A `v1` blob is left unread: it merged on 2026-09-30 (#2173) and is
-on no tester's phone, so the only cost is a developer's phone starting its
-repetition and click defaults again once. The profile blob is untouched.
+re-pinned. A `v1` blob is left unread: `v1` merged on 2026-09-30 (#2173), so
+if a build shipped since, a tester's repetitions and click start over once. The profile blob is untouched.
 
 **Not in the crash-recovery blob.** Today's length lives on
 `BuildingSession`, which is never saved; `StartSession` does not carry it
@@ -88,14 +87,15 @@ onto `ActiveSession`, so `BLOB_VERSION` stays as it is.
 
 ## Key decisions
 
-1. **Today is different is an adjustment inside the builder** (#1736 plan,
-   decision 1a). A step before the builder costs a tap every session.
+1. **Today is different is an adjustment inside the builder** (#1736 plan
+   comment, first decision taken). A step before the builder costs a tap every session.
 2. **Off until set.** No length nobody chose.
 3. **On the practice defaults, under a new key.** Rejected: a third saved
    value beside it, since nothing shipped reads `v1`.
 4. **Only planned entries count.** An entry with no planned duration has no
    honest number to add.
-5. **A guide, never enforced.** Over the length is shown, not refused.
+5. **A guide, never enforced.** Over the length reads in the same colour as
+   under it.
 
 ## Deliberately not doing
 

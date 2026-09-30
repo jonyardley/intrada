@@ -767,7 +767,6 @@ pub struct BuildingSetlistView {
     /// so shells can fall back to counts-only copy.
     pub total_duration_display: Option<String>,
     pub total_duration_summary: Option<String>,
-    /// Today's length, for the builder's control; `None` when switched off.
     pub length_mins: Option<u16>,
     /// "20 of 30 min planned", or "30 min today" before anything is planned;
     /// `None` without a length (`specs/session-length.md`).
