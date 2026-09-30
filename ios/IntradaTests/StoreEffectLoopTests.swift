@@ -270,6 +270,56 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(sentEvents.isEmpty, "no stored profile, no event")
   }
 
+  // ── Practice defaults persistence ──────────────────────────────────────
+
+  func testSavePracticeDefaultsEffectWritesToDefaultsUnderItsOwnKey() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour)
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Request(id: 7, effect: .app(.savePracticeDefaults(saved)))] }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.send(.setQuery(nil))
+
+    let data = try XCTUnwrap(defaults.data(forKey: Store.practiceDefaultsKey))
+    XCTAssertEqual(try PracticeDefaults.bincodeDeserialize(input: [UInt8](data)), saved)
+    XCTAssertNil(
+      defaults.data(forKey: Store.profileDefaultsKey), "the profile blob is never touched")
+    XCTAssertTrue(bridge.emptyResolved.isEmpty, "the app effect must not be resolved (#882)")
+  }
+
+  func testRestorePersistedPracticeDefaultsReplaysLoaded() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
+    let saved = PracticeDefaults(repTarget: 4, click: .twoAndFour)
+    defaults.set(Data(try saved.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedPracticeDefaults()
+
+    XCTAssertEqual(sentEvents, [.practiceDefaults(.loaded(saved))])
+  }
+
+  func testRestorePersistedPracticeDefaultsNoopWhenAbsent() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedPracticeDefaults()
+
+    XCTAssertTrue(sentEvents.isEmpty, "nothing stored, no event")
+  }
+
   // ── Failure-soft (guarded) ─────────────────────────────────────────────
 
   func testUpdateThrowIsSwallowedWithoutCrashing() {

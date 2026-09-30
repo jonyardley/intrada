@@ -8,6 +8,9 @@ use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::item::{handle_item_event, ItemEvent};
+use crate::domain::practice_defaults::{
+    handle_practice_defaults_event, PracticeDefaults, PracticeDefaultsEvent,
+};
 use crate::domain::profile::{handle_profile_event, Profile, ProfileEvent};
 use crate::domain::session::{handle_session_event, ActiveSession, SessionEvent};
 use crate::domain::types::{LibrarySort, ListQuery};
@@ -42,6 +45,7 @@ pub enum Event {
     Item(ItemEvent),
     Session(SessionEvent),
     Profile(ProfileEvent),
+    PracticeDefaults(PracticeDefaultsEvent),
 
     // ── Error handling ──────────────────────────────────────────────
     ClearError,
@@ -105,6 +109,9 @@ pub enum AppEffect {
     /// Persist the musician's profile (UserDefaults, key versioned per
     /// `specs/profile.md`). Fire-and-forget; output is `()`.
     SaveProfile(Profile),
+    /// Persist the practice defaults (UserDefaults, key versioned per
+    /// `specs/practice-defaults.md`). Fire-and-forget; output is `()`.
+    SavePracticeDefaults(PracticeDefaults),
     /// Every library row in the Library's order. Sent only when a row changed,
     /// so a tap mid-practice does not replace them (#1801).
     LibraryChanged(Vec<crate::model::LibraryItemView>),
@@ -189,6 +196,9 @@ impl Intrada {
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Profile(profile_event) => handle_profile_event(profile_event, model),
+            Event::PracticeDefaults(defaults_event) => {
+                handle_practice_defaults_event(defaults_event, model)
+            }
 
             // ── Error handling ───────────────────────────────────────
             Event::ClearError => {

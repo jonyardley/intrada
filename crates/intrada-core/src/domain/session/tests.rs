@@ -4727,8 +4727,19 @@ fn test_first_missed_on_untouched_entry_records_the_miss_at_zero() {
 }
 
 #[test]
+fn test_first_tap_takes_the_musicians_default_target() {
+    let (mut model, _now) = model_with_active_session(2);
+    model.practice_defaults.rep_target = 5;
+
+    update(&mut model, got_it());
+
+    assert_eq!(play_of(active_entry(&model, 0)).rep_target, Some(5));
+}
+
+#[test]
 fn test_first_tap_keeps_a_builder_target() {
     let (mut model, _now) = model_with_active_session_and_rep(7);
+    model.practice_defaults.rep_target = 5;
 
     update(&mut model, got_it());
 

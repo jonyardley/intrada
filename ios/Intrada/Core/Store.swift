@@ -37,11 +37,15 @@ final class Store {
   /// Positional bincode too: a field added to `Profile` takes a new key
   /// (`specs/profile.md`; pinned by the core's `profile_blob_wire_is_pinned`).
   static let profileDefaultsKey = "intrada.profile.v1"
+  /// Its own blob, never fields on `Profile`, so no profile is lost to a
+  /// failed decode (#1915; pinned by `practice_defaults_blob_wire_is_pinned`).
+  static let practiceDefaultsKey = "intrada.practice-defaults.v1"  // gitleaks:allow
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
   private let sortSlot: DefaultsSlot
   private let sessionSlot: DefaultsSlot
   private let profileSlot: DefaultsSlot
+  private let practiceDefaultsSlot: DefaultsSlot
   private var diskTail: Task<Void, Never>?
 
   init(
@@ -66,6 +70,7 @@ final class Store {
     sortSlot = DefaultsSlot(key: Self.sortDefaultsKey, defaults: sortDefaults)
     sessionSlot = DefaultsSlot(key: Self.sessionInProgressKey, defaults: sortDefaults)
     profileSlot = DefaultsSlot(key: Self.profileDefaultsKey, defaults: sortDefaults)
+    practiceDefaultsSlot = DefaultsSlot(key: Self.practiceDefaultsKey, defaults: sortDefaults)
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
     self.viewModel = bridged { try bridge.view() }
@@ -151,6 +156,10 @@ final class Store {
       if let bytes = guarded({ try profile.bincodeSerialize() }) {
         profileSlot.write(bytes)
       }
+    case .savePracticeDefaults(let defaults):
+      if let bytes = guarded({ try defaults.bincodeSerialize() }) {
+        practiceDefaultsSlot.write(bytes)
+      }
     case .libraryChanged(let rows):
       libraryRows = rows
     case .historyChanged(let sessions):
@@ -221,6 +230,13 @@ final class Store {
       let profile = guarded({ try Profile.bincodeDeserialize(input: bytes) })
     else { return }
     send(.profile(.loaded(profile)))
+  }
+
+  func restorePersistedPracticeDefaults() {
+    guard let bytes = practiceDefaultsSlot.read(),
+      let defaults = guarded({ try PracticeDefaults.bincodeDeserialize(input: bytes) })
+    else { return }
+    send(.practiceDefaults(.loaded(defaults)))
   }
 
   // A bridge failure means a serialization/protocol break (e.g. stale bindings

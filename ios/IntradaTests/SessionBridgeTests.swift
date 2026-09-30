@@ -56,6 +56,37 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(limits.scoreMax, 10)
   }
 
+  /// The saved defaults reach the counter, the click and the item sheet across
+  /// the bincode wire; a u8 beside an enum tag misdecodes on a field-order mismatch (#846, #1915).
+  func testRealBridgePracticeDefaultsReachTheCounterTheClickAndTheSheet() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour)
+    let requests = try bridge.update(.practiceDefaults(.save(saved)))
+    XCTAssertTrue(
+      requests.contains {
+        if case .app(.savePracticeDefaults(saved)) = $0.effect { return true } else { return false }
+      }, "the save effect decodes with the saved value")
+    XCTAssertEqual(try bridge.rendered().practiceDefaults, saved)
+    XCTAssertEqual(try bridge.rendered().limits.repTargetDefault, 5)
+
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-30T09:00:00Z")))
+
+    let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertEqual(active.currentRepSlots, 5)
+    XCTAssertEqual(
+      active.currentClickSounding, 0b1010, "2 and 4 in the 4/4 an item with no metre gets")
+  }
+
   /// Answers the session write the way GRDB does, so the core commits the
   /// practice, clears the recovery copy and closes the summary (#974).
   private func acknowledgeSave(_ bridge: RowsBridge, _ requests: [Request]) throws {
