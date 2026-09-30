@@ -14,6 +14,13 @@ fake="$tmp/cmux"
 printf '#!/usr/bin/env bash\necho "$*" >>"%s"\nexit "${FAKE_CMUX_STATUS:-0}"\n' "$log" >"$fake"
 chmod +x "$fake"
 
+reporter="$tmp/report-gate.sh"
+printf '#!/usr/bin/env bash\necho "report $*" >>"%s"\n' "$log" >"$reporter"
+chmod +x "$reporter"
+# Never the installed cockpit's reporter, and never this shell's own agent.
+export CMUX_GATE_REPORTER="$tmp/absent.sh"
+unset CLAUDECODE
+
 pass=0
 fail=0
 
@@ -81,6 +88,33 @@ status=0
 ) || status=$?
 expect "a failure is reported" "notify --title ✗ just check failed"
 if [ "$status" -eq 3 ]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "FAIL: gate exit status became $status, not 3" >&2; fi
+
+# ── Every finished gate goes to the cockpit's reporter ──
+export CMUX_GATE_REPORTER="$reporter"
+run_gate 0
+expect_match "the reporter gets the status, name and seconds" "^report 0 just check 7[5-9]$"
+expect "Jon's own run still alerts" "notify --title ✓ just check passed"
+
+# ── An agent's run reports but sends no alert (#2195) ──
+CLAUDECODE=1 run_gate 1
+expect_match "an agent's failure still reaches the reporter" "^report 1 just check "
+if grep -qF "notify" "$log"; then
+  fail=$((fail + 1))
+  echo "FAIL: an agent's run sent an alert: $(cat "$log")" >&2
+else
+  pass=$((pass + 1))
+fi
+expect "an agent's run still clears the bar" "clear-progress"
+
+# ── A missing reporter is skipped ──
+export CMUX_GATE_REPORTER="$tmp/absent.sh"
+run_gate 0
+if grep -q "^report" "$log"; then
+  fail=$((fail + 1))
+  echo "FAIL: an absent reporter was called" >&2
+else
+  pass=$((pass + 1))
+fi
 
 # ── A cmux that errors never fails the gate ──
 rm -f "$log"
