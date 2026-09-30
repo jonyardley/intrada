@@ -209,7 +209,7 @@
         ],
         sessionScore: 7,
         playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2",
-        dayLabel: "Sat 30 May")
+        dayLabel: "Yesterday")
     }
 
     /// One exercise practised across three keys, so the detail screen lists a
