@@ -55,18 +55,25 @@
 
     static var previewEmptyWeek: PracticeWeekView { mayWeek(sessions: [:], openingDay: 6) }
 
-    private static func mayWeek(sessions: [String: [String]], openingDay: UInt64)
-      -> PracticeWeekView
-    {
+    /// Read on Thursday 28 May, so Friday to Sunday are still to come (#2144).
+    /// `session-4` stands in for a practised Wednesday; its own day label is not read here.
+    static var previewMidWeek: PracticeWeekView {
+      mayWeek(
+        sessions: ["2026-05-27": ["session-4"]], openingDay: 2, today: 3)
+    }
+
+    private static func mayWeek(
+      sessions: [String: [String]], openingDay: UInt64, today: Int = 6
+    ) -> PracticeWeekView {
       let weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
       let days = weekdays.enumerated().map { index, weekday in
         let dayNumber = 25 + index
         let date = "2026-05-\(dayNumber)"
         let fullDate = "\(weekday) \(dayNumber) May"
-        let heading = index == 6 ? "Today" : index == 5 ? "Yesterday" : fullDate
+        let heading = index == today ? "Today" : index == today - 1 ? "Yesterday" : fullDate
         return PracticeDayView(
           date: date, weekdayInitial: String(weekday.prefix(1)), dayNumber: UInt32(dayNumber),
-          fullDate: fullDate, heading: heading, isToday: index == 6, isFuture: false,
+          fullDate: fullDate, heading: heading, isToday: index == today, isFuture: index > today,
           sessionIds: sessions[date] ?? [])
       }
       return PracticeWeekView(

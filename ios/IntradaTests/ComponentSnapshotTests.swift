@@ -43,6 +43,17 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(buttons), as: config)
   }
 
+  // The preview week the screens read ends on today, so this one is read mid-week (#2144).
+  func testWeekStripDimsDaysStillToCome() {
+    let week = PracticeWeekView.previewMidWeek
+    let strip = ZStack {
+      PaperBackground()
+      WeekStrip(days: week.days, selected: .constant(week.days[Int(week.openingDay)].date))
+        .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(strip), as: config)
+  }
+
   // The eyebrow must wrap between words beside the Edit button, never inside one (#1781).
   func testSectionHeaderWithActionAccessibilitySize() {
     let headers = ZStack {
