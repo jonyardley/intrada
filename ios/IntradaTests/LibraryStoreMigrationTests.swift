@@ -1,6 +1,7 @@
 import GRDB
 import SharedTypes
 import XCTest
+import os
 
 @testable import Intrada
 
@@ -216,6 +217,30 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let good = try storedEntries(queue, id: "good")
     XCTAssertEqual(good.map { $0["id"] as? String }, ["e1", "e2", "e3"])
     XCTAssertEqual(good.map { $0["score"] as? Int }, [4, 8, 10], "a doubled score caps at 10")
+  }
+
+  func testV5ReportsTheRowItSkipsByMigrationAndRowId() throws {
+    let skipped = OSAllocatedUnfairLock<[LibraryStore.SkippedMigrationRow]>(initialState: [])
+    reportObserver.withLock {
+      $0 = { error, _ in
+        guard let row = error as? LibraryStore.SkippedMigrationRow else { return }
+        skipped.withLock { $0.append(row) }
+      }
+    }
+    defer { reportObserver.withLock { $0 = nil } }
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v4_session_score")
+    try queue.write { db in
+      try insertV3Session(db, id: "broken", entries: "not json")
+      try insertV3Session(db, id: "good", entries: #"[{"id":"e1","score":3}]"#)
+    }
+
+    try LibraryStore.migrator.migrate(queue)
+
+    XCTAssertEqual(
+      skipped.withLock { $0 },
+      [LibraryStore.SkippedMigrationRow(migration: "v5_rescale_entry_scores", rowId: "broken")])
+    XCTAssertEqual(try storedEntries(queue, id: "good").first?["score"] as? Int, 6)
   }
 
   private func insertV3Session(_ db: Database, id: String, entries: String) throws {
