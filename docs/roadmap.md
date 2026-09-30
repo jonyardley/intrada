@@ -10,17 +10,17 @@ build and the phase: [`where-we-are.md`](where-we-are.md).*
 
 ## Direction
 
-intrada is a **practice notebook**: the musician plans, the app remembers,
-keeps the record honest and nudges ([`VISION.md`](../VISION.md), v3,
-2026-09-30). The 2026-07 practice coach, which planned for the musician, was
-removed on 2026-08-13 (#1344); the notebook is what every release since has
-built on. A suggested session stays on the far horizon, as a proposal the
-musician can ignore, never a plan the app imposes.
+intrada is a **practice notebook**: the musician decides what matters, the
+app decides where today starts, keeps the record honest and can always be
+overruled ([`VISION.md`](../VISION.md), v3, 2026-09-30). The 2026-07 practice
+coach, which planned for the musician with no way round it, was removed on
+2026-08-14 (#1344). Today's plan from one-tap start (#57) is the same idea
+kept in the musician's hands: shown first, always changeable.
 
 **The capture line is delivered.** The direction chosen on 2026-09-07 shipped
-through v0.10.0 to v0.14.0: one-pass create, a piece from a photo, keys and
-variations, the Focus Player and its click, a tempo recorded only on evidence,
-and practice defaults. **The next headline is a first run that gets a new
+in v0.10.0 (a piece with its chord chart and exercises in one pass, #1390),
+and v0.11.0 to v0.14.0 built on it: the paper and marker look, a profile,
+variations that record what you played, and the September audit's fixes. **The next headline is a first run that gets a new
 musician to their first marked session (#2121)**, because so far the only
 regular user is the person building the app, and every later call needs
 evidence from others.
@@ -38,7 +38,11 @@ is the intent and the label is the one to fix.
 
 - **#2121 A first run that gets a new musician to their first marked
   session.** Ends by watching three new musicians try it (#2120).
-- Finishing, not new: the September audit backlog (#1967) and the core
+- **#57 One-tap start and #999 today's plan**, resumed after this review:
+  the core half (#2182) is green and waiting, the screens half not started.
+  It opens on stars and cold items; how it weighs the teacher's week is
+  #2185.
+- Also closing out: the September audit backlog (#1967) and the core
   maintainability epic (#1995), each with a handful of children left.
 
 ### Next: the product, in order
@@ -56,8 +60,9 @@ is the intent and the label is the one to fix.
 
 ### Later
 
-- **#1978 Know what to practise next**: priorities and spacing. Waits on the
-  week's intent, which is what it reads.
+- **#1978 Know what to practise next**: priorities and spacing. Its first
+  child, how today's plan weighs its sources (#2185), runs once one-tap start
+  has been lived with and the lesson trial (#1927) has reported.
 - **#1977 See the practice working** and **#1976 Score how it went.**
 - **#1979 One look everywhere** and **#1980 Make it yours, part two.**
 - **#2025 Chord charts**: parked until the design is reopened.
@@ -81,15 +86,13 @@ the agent harness and **#1849** Claude usage.
 
 ## Three pillars
 
-Filters across the epics, not a ranking.
+How the app divides a musician's day, used in specs and design; there are no
+pillar labels.
 
-- **Plan**, deciding what to practise, before the instrument comes out:
-  [`pillar:plan`](https://github.com/jonyardley/intrada/labels/pillar%3Aplan).
-- **Practice**, playing with intention while the timer runs; the app stays
-  out of the way:
-  [`pillar:practice`](https://github.com/jonyardley/intrada/labels/pillar%3Apractice).
-- **Track**, seeing the practice working afterwards:
-  [`pillar:track`](https://github.com/jonyardley/intrada/labels/pillar%3Atrack).
+- **Plan**: deciding what to practise, before the instrument comes out.
+- **Practice**: playing with intention while the timer runs; the app stays
+  out of the way.
+- **Track**: seeing the practice working afterwards.
 
 ---
 
@@ -125,9 +128,8 @@ one place: [`where-we-are.md`](where-we-are.md).
 
 | Label | Purpose |
 |-------|---------|
-| `pillar:plan` / `pillar:practice` / `pillar:track` | Activity pillar |
-| `layer:capture` / `:plan` / `:space` / `:show` / `:guide` | Vision layer |
-| `horizon:now` / `:next` / `:later` | Rough timing — 4 wk / 4–12 wk / 12+ wk |
+| `layer:capture` / `:plan` / `:space` / `:show` / `:guide` | Vision layer (`:space` is the vision's Nudge layer) |
+| `horizon:now` / `:next` / `:later` | Rough timing, defined under [Horizons](#horizons) |
 | `architecture` | Technical debt, infrastructure |
 | `ux` / `accessibility` | Cross-cutting |
 | `security` | Security-relevant |
@@ -178,7 +180,7 @@ filters on. Keeping the two apart is the point: an issue can be ready to
 start and deliberately out of the cut, or in the cut and not yet
 understood, and neither has to lie about the other.
 
-A `Priority` custom field (P0/P1/P2) ranks within a pillar/layer when
+A `Priority` custom field (P0/P1/P2) ranks within an epic when
 multiple items share the same horizon.
 
 ### Cutting a release
@@ -264,9 +266,9 @@ These are unresolved product questions. Each one likely produces issues
 
 5. **Goals (superseded 2026-09-30 by the week's intent).** Goals are not
    rebuilt. What the ruling below wanted, a named aim that planning reads,
-   becomes the week's intent: one sentence, possibly from a lesson, linked to
-   the items it concerns (#1926, VISION.md "Intent, Not Goals"). The July
-   ruling stays below as the record.
+   becomes the week's intent: one dated sentence on an item, with its source,
+   shown while the item plays and pre-filling its aim in the builder (#1926,
+   VISION.md "The Week's Intent"). The July ruling stays below as the record.
 
    **Goals (re-resolved 2026-07-14).** History: goals were built twice
    (an early goals feature, removed in #213 for a ground-up redesign;
@@ -279,7 +281,7 @@ These are unresolved product questions. Each one likely produces issues
    linked to library items with an optional target date, consumed by
    session planning, and none of the confidence/photo apparatus that sank
    the previous versions. The priority star stays as the zero-ceremony
-   layer beneath. See VISION.md "The Scheduling Intelligence" and
+   layer beneath. See VISION.md v2 "The Scheduling Intelligence" (in git) and
    `docs/journeys.md` step 4.
 
 6. **Lessons / photos / R2 surface (resolved 2026-07-14).** Rolled back:

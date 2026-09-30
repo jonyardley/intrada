@@ -2,8 +2,8 @@
 
 **A practice notebook for musicians**
 
-*Product vision, April 2026; revised July 2026; v3 September 2026 (after the
-coach reversal, #1344, and the capture releases v0.10.0 to v0.14.0).*
+*Product vision, April 2026; revised July 2026; v3 September 2026, after the
+coach reversal (#1344) and the releases v0.10.0 to v0.14.0.*
 
 *Where the work stands and what comes next: [`docs/roadmap.md`](docs/roadmap.md).*
 
@@ -23,9 +23,9 @@ Musicians practise but don't always progress. Hours pass at the instrument, yet 
 
 ## What Intrada Is
 
-Intrada is a practice notebook: the place a musician's material lives, where they plan what they'll play, and where the record of what they actually played builds up. **The musician makes the plan; the app remembers, keeps the record honest, and nudges.** It does not decide for you.
+Intrada is a practice notebook: the place a musician's material lives, where today's practice starts, and where the record of what they actually played builds up. **The musician decides what matters; the app decides where today starts, keeps the record honest, and can always be overruled.**
 
-That line was drawn by experience. In July 2026 intrada became a practice coach that chose what you practised and gated each block on evidence; it went too far too fast and was removed on 2026-08-13 (#1344). What survived, and what every release since has built on, is the notebook.
+In July 2026 intrada became a practice coach that chose what you practised, gated each block on evidence and left the musician no way round it; it went too far too fast and was removed on 2026-08-14 (#1344). What broke it was the loss of control, not the ready-made plan. What survived, and what every release since has built on, is the notebook.
 
 ### Five layers
 
@@ -33,11 +33,11 @@ The layers explain what the notebook does and how the parts depend on each other
 
 **1. Capture.** Every piece, exercise, scale and pattern lives in intrada, with its keys, tempo, chord chart and the exercises that build it. Adding one takes one pass, typed or from a photo of the page. Nothing gets lost in a paper notebook.
 
-**2. Plan.** The musician builds a session from the library: pick, group, reorder, set its length, or start from a saved routine or the starred set. The path from "I want to practise" to "I am practising" stays short: defaults are remembered, and one tap starts a session you have built before.
+**2. Plan.** The musician builds a session from the library: pick, group, reorder and set its length, or start from the starred set or the Up next suggestion. The path from "I want to practise" to "I am practising" stays short: practice defaults and the preferred session length are remembered. Routines return as a saved starting point (#1348).
 
-**3. Nudge.** The app notices what the musician would lose track of: what is going cold, what is starred, what is up next. It surfaces these as suggestions inside the plan the musician is making, never as a plan made for them.
+**3. Nudge.** The musician says what matters over the week: the starred items they want to improve and what the teacher set (#1926). The app adds what they would lose track of: what is going cold. From those it offers today's plan, filled to the session length, so starting takes one tap and no decision (#57). The plan is always shown before it starts and can always be changed or set aside for one built by hand. How it weighs the three sources, and whether it shows why each item is there, is still being explored (#2185).
 
-**4. Show.** Progress is real but gradual, so intrada makes it visible: a score and a tempo per item, per key, recorded only when there is evidence behind them (a tempo is kept when the musician set it or the click was sounding). The record includes what the musician wrote, played back beside the numbers.
+**4. Show.** Progress is real but gradual, so intrada makes it visible: a score and a tempo per item, per key, recorded only when there is evidence behind them (a tempo is kept when the musician set it or the click was sounding). The session record keeps what the musician wrote beside the numbers.
 
 **5. Guide.** Later, and only on the foundation the first four build: patterns the musician can't see for themselves ("your flat keys lag your sharp ones"), then suggested exercises. See Future vision.
 
@@ -51,7 +51,7 @@ Intrada is instrument-agnostic but designed from a keyboard and jazz perspective
 
 **So far the only regular user is the person building it.** The next step is to watch new musicians get from a fresh install to their first marked session (#2121), and to let what they do test everything in this section.
 
-### Musician tracks: a hypothesis, not built
+### Musician tracks: an unbuilt hypothesis
 
 Musicians come with different motivations: mastery, one piece for a party, a return after years away. The earlier vision named tracks for these (Entertainer, Jammer, Virtuoso, Soul Player, Late Starter) to shape onboarding and tone. None is built, and none will be until real users show the difference matters. The principle stands: different motivations can want a different experience. See the [Research Foundation](docs/research-foundation.md) for its basis in self-determination theory.
 
@@ -73,11 +73,11 @@ Every interaction should feel lightweight. If logging a session takes more than 
 
 ### Short Path to Start
 
-Every decision between "I want to practise" and "I am practising" is a chance for the session not to happen, particularly for musicians with executive function challenges. Remembered defaults, routines and the starred set keep that path to one or two taps.
+Every decision between "I want to practise" and "I am practising" is a chance for the session not to happen, particularly for musicians with executive function challenges. Today's plan makes it one tap (#57); remembered defaults and the starred set keep building your own session short, and routines will join them (#1348).
 
 ### Reflection Closes the Loop
 
-Practice without reflection is repetition. A short note per item at the end of a session, skippable but always offered, is where the musician says what improved and what still breaks. Those words come back later, on the item and in the record.
+Practice without reflection is repetition. A short note per item at the end of a session, skippable but always offered, is where the musician says what improved and what still breaks. Those words stay in the session record; showing them on the item is planned with the week's intent (#1926).
 
 ### The Record Tells the Truth
 
@@ -85,7 +85,7 @@ A number shown as measurement must be one. Tempo, score and time are recorded wh
 
 ### Celebrate Comeback, Not Streak
 
-Intrada never shows a broken streak or a zero. It welcomes returns, and it tells you what went cold while you were away without blaming you for it.
+Intrada never shows a broken streak or a zero. A return is welcomed, and what went cold while you were away is shown as information, never as blame.
 
 ### No Journey Is Linear
 
@@ -93,7 +93,7 @@ Musicians plateau, change direction, take breaks and restart. Taking a break is 
 
 ### Designed for Every Mind
 
-Designing for neurodivergent musicians is part of the core design, not a separate workstream: a short path to start, time made visible, comeback over streak, variable session lengths. Specific commitments: no auto-playing sounds, a calm palette, readable type at every text size, predictable navigation that stays stable across versions, and feedback whose frequency and tone the musician can adjust.
+Designing for neurodivergent musicians runs through every screen: a short path to start, time made visible, comeback over streak, variable session lengths. Specific commitments: no auto-playing sounds, a calm palette, readable type at every text size, predictable navigation that stays stable across versions, and feedback whose frequency and tone the musician can adjust.
 
 ---
 
@@ -101,7 +101,7 @@ Designing for neurodivergent musicians is part of the core design, not a separat
 
 ### Keys and variations
 
-An exercise practised across keys tracks each key on its own, so the weak ones are visible rather than averaged away. What counts as a variation, and how each is tracked, is being settled in #1970.
+An exercise practised across keys tracks each key on its own, so the weak ones are visible rather than averaged away. A variation belongs to the exercise, and a session records the ones you played (#1739, [`specs/exercise-variations.md`](specs/exercise-variations.md)); the remaining wording and tidy-ups are in #1970.
 
 ### Item types
 
@@ -113,15 +113,15 @@ A piece is built, not only practised. A jazz standard accumulates the exercises 
 
 ### Routines
 
-Reusable sequences of items (a warm-up, a technical block) that can start or join any session, so the musician doesn't rebuild the same plan every day.
+Reusable sequences of items (a warm-up, a technical block) that start or join a session, so the musician doesn't rebuild the same plan every day. The first version was removed in #1747; the rebuild is planned under #1974 (#1348).
 
 ---
 
-## Intent, Not Goals
+## The Week's Intent
 
-A musician usually knows what this week is for: the tune for Thursday's gig, the voicing the teacher set. Intrada will hold that as **the week's intent**: a sentence, possibly from a lesson, linked to the items it concerns, which the builder and Up next read (#1926). It replaces the separate goals feature ruled in July 2026, which was never built.
+A musician usually knows what this week is for: the tune for Thursday's gig, the voicing the teacher set. Intrada will hold that as **one sentence on an item**, dated and labelled with its source ("From Tuesday's lesson", "Mine"). The current sentence shows while the item plays and pre-fills its aim in the builder; earlier ones stay on the item as history, and the week is read from the dates (#1926). There is no lesson or goal record to manage.
 
-Goals were built and removed twice before (#213, #769); each time they became an admin surface of their own. Intent stays small: one sentence per week, read by planning, with the per-item priority star as the zero-ceremony layer beneath it.
+This replaces the separate goals feature ruled in July 2026, which was never built. Goals were built and removed twice before (#213, #769), and each time they became an admin surface of their own. The per-item priority star stays as the zero-ceremony layer beneath.
 
 ---
 
@@ -129,13 +129,14 @@ Goals were built and removed twice before (#213, #769); each time they became an
 
 Real ambitions, each depending on the foundation above and none scheduled:
 
-- **A suggested session.** Given the time available, the week's intent and what is going cold, intrada proposes a session the musician can take, edit or ignore. This is where the Nudge layer leads if its suggestions earn trust; it stays a proposal, never a gate.
 - **Patterns and gaps.** Weak keys, neglected material and stalls surfaced from the musician's own record.
 - **Teacher sharing.** A teacher suggests items, sets target tempos and shares routines, with the student's permission.
 - **Audio recording.** Record a run-through and compare it with weeks ago.
 - **Curriculum help.** Turning "I want to play Clair de lune" into a sequence of exercises, measured against the musician's record.
+- **Correctness help.** Answering "am I doing this right?": whether a voicing or a scale fits the harmony. It needs musical knowledge or a teacher, and is the hardest problem here.
+- **Adaptive plans.** Today's plan learning from how the musician changes it, and noticing a plateau.
 
-Machine listening (the app hearing whether a passage was right) is deferred; MIDI input comes first if listening returns.
+Machine listening (the app hearing whether a passage was right) is deferred, with the spike's findings in [`docs/segmentation-findings.md`](docs/segmentation-findings.md); MIDI input comes first if listening returns.
 
 ---
 
@@ -153,4 +154,4 @@ A detailed competitive analysis is in the [Research Foundation](docs/research-fo
 
 ---
 
-*The vision is a living document. It changes when the product teaches us something, and real users are the next teacher.*
+*The vision is a living document. It changes when the product teaches us something.*
