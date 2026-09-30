@@ -438,6 +438,10 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(saved.summary, "saveSession clears the summary once the store has it")
     XCTAssertNil(saved.activeSession)
     XCTAssertNil(saved.error, "a clean save surfaces no error")
+    // Two Strings side by side swap silently on a field-order mismatch (#846, #2053).
+    let row = try XCTUnwrap(bridge.sessions.first)
+    XCTAssertEqual(row.playedSummary, "Etude")
+    XCTAssertEqual(row.dayLabel, "Tue 16 Jun")
 
     // Crash recovery: RecoverSession (with its new `now` re-anchor field) has
     // never crossed the live bridge from Swift before (#846, #962). The stale

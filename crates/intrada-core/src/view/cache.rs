@@ -138,7 +138,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
     finished.sort_by_key(|s| std::cmp::Reverse(s.completed_at));
     let sessions = finished
         .into_iter()
-        .map(|s| session_to_view(s, &labels))
+        .map(|s| session_to_view(s, &labels, clock))
         .collect();
 
     let practice_weeks = crate::practice_weeks::compute_practice_weeks(&model.sessions, clock);
@@ -556,11 +556,16 @@ mod tests {
     }
 
     #[test]
-    fn the_first_refresh_of_a_new_day_sends_the_weeks() {
+    fn the_first_refresh_of_a_new_day_sends_the_weeks_and_the_history() {
         let mut model = sampled();
         let now = Utc::now();
         refresh(&mut model, now);
-        assert!(refresh(&mut model, now + Duration::days(1)).weeks);
+        let changed = refresh(&mut model, now + Duration::days(1));
+        assert!(changed.weeks);
+        assert!(
+            changed.history,
+            "each session's day line moves on a day (#2053)"
+        );
     }
 
     #[test]
