@@ -1,61 +1,59 @@
 # Intrada
 
-**Your Intentional Practice Companion**
+**A practice notebook for musicians**
 
-*Product Vision — April 2026, revised July 2026*
+*Product vision, April 2026; revised July 2026; v3 September 2026 (after the
+coach reversal, #1344, and the capture releases v0.10.0 to v0.14.0).*
 
-*The companion walkthrough of the ideal user journey lives in
-[`docs/journeys.md`](docs/journeys.md); features are judged against it.*
+*Where the work stands and what comes next: [`docs/roadmap.md`](docs/roadmap.md).*
 
 ---
 
 ## The Problem
 
-Musicians practise but don't always progress. Hours pass at the instrument, yet the same passages stumble, the same keys feel unfamiliar, and the sense of forward motion stalls. This isn't a talent problem — it's a practice design problem with three layers.
+Musicians practise but don't always progress. Hours pass at the instrument, yet the same passages stumble, the same keys feel unfamiliar, and the sense of forward motion stalls. This isn't a talent problem: it's a practice design problem with three layers.
 
-**Material gets lost.** A teacher introduces a new voicing pattern, assigns ii-V-I progressions across all keys, suggests a tune to transcribe. The musician scrawls it in a notebook. A week later, the notation is cryptic, the context is gone, and half the assignment is forgotten. Over a year, dozens of rich, multi-key exercises accumulate — and most of them disappear. Even self-directed musicians face this: ideas, exercises, and repertoire scatter across apps, sheets, and memory.
+**Material gets lost.** A teacher introduces a new voicing pattern, assigns ii-V-I progressions across all keys, suggests a tune to transcribe. The musician scrawls it in a notebook. A week later, the notation is cryptic, the context is gone, and half the assignment is forgotten. Over a year, dozens of rich, multi-key exercises accumulate, and most of them disappear. Self-directed musicians face the same thing: ideas, exercises and repertoire scatter across apps, sheets and memory.
 
-**Deciding what to practise is paralysing.** The musician sits down with 30 minutes. They could work on voicings, scales over changes, a new tune, that passage from last week, or revisit something from a month ago. The material is effectively infinite — twelve keys, multiple voicing types, dozens of exercises — and without a plan, the decision cost is high enough to either stall the session entirely or push the musician into grabbing whatever's on the music stand. Research confirms the intuition: choice is only motivating when the learner has the competence and knowledge to choose meaningfully. When they don't, excessive choice becomes a burden rather than a freedom.
+**Deciding what to practise is costly.** The musician sits down with 30 minutes. They could work on voicings, scales over changes, a new tune, that passage from last week, or something from a month ago. Without a plan made in advance, the decision either stalls the session or pushes the musician into playing whatever is on the music stand.
 
-**Progress is invisible for too long.** Music has one of the longest feedback loops of any skill. A software developer writes code and sees whether it works in seconds. A musician practises a passage and it sounds… slightly better? Maybe? Improvement is often invisible for weeks — motor skills consolidate between sessions, not within them. Without external evidence that practice is working, anxiety fills the gap: "Am I doing the right thing? Is this the right voicing? Am I wasting my time?" The musician needs to trust the process before they can see the results, but trust without evidence is hard to sustain.
+**Progress is invisible for too long.** Music has one of the longest feedback loops of any skill. Improvement is often invisible for weeks, because motor skills consolidate between sessions, not within them. Without evidence that practice is working, anxiety fills the gap: "Am I doing the right thing? Am I wasting my time?"
 
 ---
 
-## What Intrada Does
+## What Intrada Is
 
-Intrada is where a musician's practice material lives and where their daily practice plan comes from. It captures what you need to work on, organises it so you can find it, schedules it so you revisit things at the right time, and tracks your progress so you can see that the work is paying off.
+Intrada is a practice notebook: the place a musician's material lives, where they plan what they'll play, and where the record of what they actually played builds up. **The musician makes the plan; the app remembers, keeps the record honest, and nudges.** It does not decide for you.
 
-### Five Layers
+That line was drawn by experience. In July 2026 intrada became a practice coach that chose what you practised and gated each block on evidence; it went too far too fast and was removed on 2026-08-13 (#1344). What survived, and what every release since has built on, is the notebook.
 
-These build on each other. You can't schedule what you haven't captured, you can't space what you haven't scheduled, and you can't show progress on what you haven't tracked.
+### Five layers
 
-**1. Capture and remember.** Every exercise, piece, voicing pattern, scale, lick, and technique lives in Intrada — structured, searchable, and connected to its context. When your teacher introduces ii-V-I progressions in a new voicing, you capture it once and the app knows it's an exercise that spans twelve keys. Your practice notes are searchable across your entire history. Nothing gets lost in a notebook.
+The layers explain what the notebook does and how the parts depend on each other. They are not a ranking rule; the roadmap ranks work directly.
 
-**2. Plan what to do today.** Given your available time and your library of material, Intrada generates a practice session. You sit down, tap start, and play. The app absorbs the decision-making burden — you always *can* choose what to work on, but you never *have to*. A 15-minute session gets a focused selection; a 60-minute session gets a broader one. The path from "I want to practise" to "I am practising" requires one decision: start.
+**1. Capture.** Every piece, exercise, scale and pattern lives in intrada, with its keys, tempo, chord chart and the exercises that build it. Adding one takes one pass, typed or from a photo of the page. Nothing gets lost in a paper notebook.
 
-**3. Space it for retention.** Intrada schedules returns to material at intervals optimised for long-term retention, not just coverage. Items you're learning surface frequently; items you've consolidated appear less often but before you've forgotten them. The app manages the spacing so you don't have to — and so exercises from six weeks ago don't silently decay while you focus on this week's assignment. This is grounded in decades of research on spaced repetition and interleaved practice.
+**2. Plan.** The musician builds a session from the library: pick, group, reorder, set its length, or start from a saved routine or the starred set. The path from "I want to practise" to "I am practising" stays short: defaults are remembered, and one tap starts a session you have built before.
 
-**4. Show that it's working.** Progress in music is real but gradual. Intrada makes it visible. Mastery ratings per item, per key, and per tempo accumulate over weeks and months into evidence you can see: "Your Db mastery went from 2 to 4 over the last three weeks." And the evidence isn't only numbers: Intrada keeps what you *said*, the reflections captured during and after practice, and plays it back against the data. "Two weeks ago you wrote 'bridge still rushing'; this week: 'bridge steady at 96'." Progress reported in your own words is proof no chart can match. This isn't gamification: it's the external confirmation that the process is working, delivered before you can feel it yourself. It turns weeks of invisible improvement into daily visible signals.
+**3. Nudge.** The app notices what the musician would lose track of: what is going cold, what is starred, what is up next. It surfaces these as suggestions inside the plan the musician is making, never as a plan made for them.
 
-**5. Identify gaps and guide what's next.** Over time, Intrada gets smarter. It surfaces patterns you can't see yourself — "You consistently struggle with keys that have four or more flats" or "You spend most of your time on pieces and almost none on the keys you rated lowest." Initially this comes from your practice data alone. Later, it extends to suggesting specific exercises to address weaknesses and generating practice pathways toward goals — the kind of curriculum guidance that a teacher provides instinctively.
+**4. Show.** Progress is real but gradual, so intrada makes it visible: a score and a tempo per item, per key, recorded only when there is evidence behind them (a tempo is kept when the musician set it or the click was sounding). The record includes what the musician wrote, played back beside the numbers.
+
+**5. Guide.** Later, and only on the foundation the first four build: patterns the musician can't see for themselves ("your flat keys lag your sharp ones"), then suggested exercises. See Future vision.
 
 ---
 
 ## Who It's For
 
-Intrada is for self-directed musicians who are past the beginner stage and serious about improvement. The common thread is a desire to practise more effectively, not just more.
+Self-directed musicians past the beginner stage who want to practise more effectively, not just more: people working with a teacher who need a structured place for assignments between lessons, self-taught musicians who lack that structure, adult returners rebuilding skills, and anyone preparing for exams, auditions or performance.
 
-This includes musicians working with a teacher who need a structured place to capture assignments and manage the growing library of material between lessons. It includes self-taught musicians who lack the external structure a teacher provides. It includes adult returners who are rebuilding skills after a gap and need evidence that progress is real. It includes anyone preparing for graded exams, auditions, or performance.
+Intrada is instrument-agnostic but designed from a keyboard and jazz perspective first, where exercises multiply across twelve keys and the volume of material is especially overwhelming.
 
-Intrada is instrument-agnostic but designed from a keyboard and jazz perspective first — where exercises multiply across twelve keys and the volume of material is especially overwhelming.
+**So far the only regular user is the person building it.** The next step is to watch new musicians get from a fresh install to their first marked session (#2121), and to let what they do test everything in this section.
 
-### Musician Tracks — Entry Points, Not Boxes
+### Musician tracks: a hypothesis, not built
 
-Musicians come to Intrada with different motivations: some want mastery through deliberate practice, some want to learn one piece to play at a party, some are returning to an instrument after years away. Intrada recognises these different starting points through *tracks* — not rigid categories, but lenses that shape onboarding, default suggestions, analytics framing, and encouragement tone.
-
-Tracks are fluid. A Late Starter who gains confidence becomes a Jammer. A Virtuoso who burns out becomes a Soul Player. The app never frames a change as failure — it adapts, and the musician's complete history travels with them.
-
-> **Note:** The specific tracks (Entertainer, Jammer, Virtuoso Classical/Jazz, Soul Player, Late Starter) are a design hypothesis, not validated categories. The underlying principle — that different motivations should shape the experience — is well-supported. The specific categories will be refined against real user data. See the [Research Foundation](docs/research-foundation.md) for the SDT basis.
+Musicians come with different motivations: mastery, one piece for a party, a return after years away. The earlier vision named tracks for these (Entertainer, Jammer, Virtuoso, Soul Player, Late Starter) to shape onboarding and tone. None is built, and none will be until real users show the difference matters. The principle stands: different motivations can want a different experience. See the [Research Foundation](docs/research-foundation.md) for its basis in self-determination theory.
 
 ---
 
@@ -63,111 +61,96 @@ Tracks are fluid. A Late Starter who gains confidence becomes a Jammer. A Virtuo
 
 ### Progress Is the Product
 
-The primary value Intrada delivers is the feeling of making progress. Every feature should either enable progress or make it visible. If a feature doesn't serve one of those functions, it doesn't belong.
+The primary value intrada delivers is the feeling of making progress. Every feature should either enable progress or make it visible. If it does neither, it doesn't belong.
+
+### The Musician Decides
+
+The app proposes and remembers; the musician chooses. A suggestion can be dismissed, a default can be changed, and nothing blocks the next step on the app's judgement. This is the principle the coach broke.
 
 ### Simplicity Over Features
 
-Every interaction should feel lightweight. If logging a practice session takes more than 30 seconds, it's too slow. Musicians will abandon tools that feel like work. The app stays out of the way during practice and does its thinking before and after.
+Every interaction should feel lightweight. If logging a session takes more than 30 seconds, it's too slow. The app stays out of the way during practice and does its work before and after.
 
-### One Tap to Start
+### Short Path to Start
 
-Every decision point between "I want to practise" and "I am practising" is a potential session-ending barrier — particularly for musicians with executive function challenges. The default path requires one decision: tap start. Everything else is optional.
+Every decision between "I want to practise" and "I am practising" is a chance for the session not to happen, particularly for musicians with executive function challenges. Remembered defaults, routines and the starred set keep that path to one or two taps.
 
-### Reflection Closes Every Loop
+### Reflection Closes the Loop
 
-Practice without reflection is repetition. Intrada treats reflection as a
-first-class act at two moments: a one-tap capture *during* practice that never
-breaks flow, and a short structured beat *after* the session (what improved,
-what's still broken, what to target next time) that is skippable but never
-skipped by design. What you write feeds forward: the next target becomes the
-next session's suggested aim, and your words become the spine of your progress
-report. This is the "good friction" the design principles protect; everything
-else stays frictionless so this can stay deliberate.
+Practice without reflection is repetition. A short note per item at the end of a session, skippable but always offered, is where the musician says what improved and what still breaks. Those words come back later, on the item and in the record.
+
+### The Record Tells the Truth
+
+A number shown as measurement must be one. Tempo, score and time are recorded when there is evidence for them and left empty otherwise, so a chart never draws a default as if it were played.
 
 ### Celebrate Comeback, Not Streak
 
-Intrada never shows a broken streak counter or a zero. It celebrates returns: "Welcome back — your scheduling has adapted and we've got a session ready." Consistency matters, but the framing determines whether it motivates or shames.
+Intrada never shows a broken streak or a zero. It welcomes returns, and it tells you what went cold while you were away without blaming you for it.
 
 ### No Journey Is Linear
 
-Musicians plateau, change direction, take breaks, restart, and redefine what they want from their instrument. Intrada normalises all of this. Taking a break is not quitting. Choosing enjoyment over mastery is not giving up. Coming back after six months is not starting over.
+Musicians plateau, change direction, take breaks and restart. Taking a break is not quitting; coming back after six months is not starting over.
 
 ### Designed for Every Mind
 
-Designing for neurodivergent musicians isn't a separate workstream — it's embedded in Intrada's core design. Reducing decisions to start, externalising time, celebrating comeback over streak, and supporting variable session lengths all stem from this principle. These features benefit every musician, but they're essential for musicians with ADHD, who are likely a meaningful portion of the audience.
-
-Specific commitments: sensory-considerate defaults (no auto-playing sounds, calm palette, configurable contrast), accessible typography (clean fonts, adequate spacing, dark grey on off-white), predictable navigation (same layout, same flows, stable across versions), and configurable feedback (frequency, tone, and delivery all adjustable).
+Designing for neurodivergent musicians is part of the core design, not a separate workstream: a short path to start, time made visible, comeback over streak, variable session lengths. Specific commitments: no auto-playing sounds, a calm palette, readable type at every text size, predictable navigation that stays stable across versions, and feedback whose frequency and tone the musician can adjust.
 
 ---
 
 ## How Practice Material Works
 
-### Key-Aware Grouping
+### Keys and variations
 
-When a musician adds an exercise to be practised across keys, Intrada generates sub-items for each key, tracking mastery independently. The smart scheduler treats each key as a separate unit — weaker keys surface more frequently. This is essential for jazz musicians working through voicings, progressions, and patterns, and for classical musicians working through technical exercises.
+An exercise practised across keys tracks each key on its own, so the weak ones are visible rather than averaged away. What counts as a variation, and how each is tracked, is being settled in #1970.
 
-The app also recognises when a musician always practises keys as a sequential loop and can prompt independent key practice to ensure genuine fluency rather than motor pattern reinforcement.
+### Item types
 
-### Item Types
+Pieces (repertoire, with an optional chord chart) and exercises (scales, arpeggios, patterns, technical studies).
 
-Pieces (repertoire with sections), exercises (scales, arpeggios, technical studies), licks and vocabulary (jazz patterns, typically across keys), and techniques (specific technical goals like left-hand independence or pedalling).
+### Piece scaffolding
 
-### Piece Scaffolding
-
-A piece is not practised alone; it is built. A jazz standard accumulates the
-exercises that construct it: the melody, shells in each inversion, scales to
-each chord tone on every change, constrained improvisation. Intrada makes that
-relationship first-class: a piece anchors an ordered set of related exercises,
-each tracked separately, practised together as a block, and navigable in
-both directions. Exercises can serve several pieces; mastery earned in one
-context is visible in every context that shares it.
+A piece is built, not only practised. A jazz standard accumulates the exercises that construct it: the melody, shells in each inversion, scales on every change. A piece anchors its related exercises, each tracked separately, practised together and reachable in both directions.
 
 ### Routines
 
-Reusable sequences of items — a warm-up routine, a technical block, a cool-down set — that can be inserted into any session. This reduces daily decision-making, supports consistency, and is particularly valuable for musicians who struggle with session initiation.
+Reusable sequences of items (a warm-up, a technical block) that can start or join any session, so the musician doesn't rebuild the same plan every day.
 
 ---
 
-## The Scheduling Intelligence
+## Intent, Not Goals
 
-The scheduler combines spaced repetition urgency (what's overdue for review), interleaved ordering (mixing material types for better retention), goal alignment (what serves the musician's current objectives), and time fitting (what fits in the available session length).
+A musician usually knows what this week is for: the tune for Thursday's gig, the voicing the teacher set. Intrada will hold that as **the week's intent**: a sentence, possibly from a lesson, linked to the items it concerns, which the builder and Up next read (#1926). It replaces the separate goals feature ruled in July 2026, which was never built.
 
-Goals here are deliberately small: an outcome statement ("learn Body and Soul", "improvise fluently over rhythm changes") linked to library items, with an optional target date. Nothing more. An earlier, heavier goals feature (confidence tracking, progress percentages, photos) was built and removed twice; the lesson was that goals earn their place only as an *input to planning*, never as an admin surface of their own. The per-item priority star remains the zero-ceremony shortcut; a goal is the named ambition sitting above it.
-
-This isn't AI — it's an algorithm grounded in well-established learning science. The research basis is documented in the [Research Foundation](docs/research-foundation.md).
+Goals were built and removed twice before (#213, #769); each time they became an admin surface of their own. Intent stays small: one sentence per week, read by planning, with the per-item priority star as the zero-ceremony layer beneath it.
 
 ---
 
 ## Future Vision
 
-The five layers describe what Intrada is building toward now. Beyond them lie capabilities that extend the product significantly:
+Real ambitions, each depending on the foundation above and none scheduled:
 
-**AI-assisted curriculum design.** When a musician says "I want to play Claire de Lune" or "I want to improvise like Bill Evans," the app decomposes the goal into prerequisite skills, maps them against the musician's current mastery data, and generates a sequenced pathway of exercises and studies. This is the "illuminate the critical path" promise at its most ambitious — and it depends on the data foundation that layers 1–4 build.
+- **A suggested session.** Given the time available, the week's intent and what is going cold, intrada proposes a session the musician can take, edit or ignore. This is where the Nudge layer leads if its suggestions earn trust; it stays a proposal, never a gate.
+- **Patterns and gaps.** Weak keys, neglected material and stalls surfaced from the musician's own record.
+- **Teacher sharing.** A teacher suggests items, sets target tempos and shares routines, with the student's permission.
+- **Audio recording.** Record a run-through and compare it with weeks ago.
+- **Curriculum help.** Turning "I want to play Clair de lune" into a sequence of exercises, measured against the musician's record.
 
-**Correctness validation.** Helping musicians answer "am I doing this right?" — whether a voicing choice is appropriate, whether a scale fits the harmony. This requires either AI musical knowledge or teacher integration, and is the hardest problem in the stack.
-
-**Teacher integration.** Teachers can suggest items, set target tempos, view progress (with permission), and share routines. This bridges the gap between lesson and practice room — the teacher's assignments flow directly into the student's practice plan.
-
-**Audio recording and playback.** Record a run-through, play it back, compare to weeks ago. Objective evidence of improvement that goes beyond numerical ratings.
-
-**Adaptive intelligence.** The scheduling algorithm learns from the musician's response patterns — adjusting interleaving intensity, detecting plateaus, and suggesting strategy changes when progress stalls.
-
-These are real ambitions, not aspirational padding. But they depend on the foundation being solid first. See the [roadmap](docs/roadmap.md) for current priorities and timeline.
+Machine listening (the app hearing whether a passage was right) is deferred; MIDI input comes first if listening returns.
 
 ---
 
 ## Research Foundation
 
-Intrada's design decisions are grounded in evidence from learning science, motivational psychology, and music education research. The detailed research basis — including spaced repetition, interleaved practice, deliberate practice, self-determination theory, growth mindset, choice overload, and goal-specific pathways — is documented separately in the [Research Foundation](docs/research-foundation.md).
+Intrada's design is grounded in learning science, motivational psychology and music education research: spaced repetition, interleaved practice, deliberate practice, self-determination theory, and choice overload. The detail is in the [Research Foundation](docs/research-foundation.md).
 
 ---
 
 ## Competitive Position
 
-Existing practice apps either track time (measuring attendance, not progress), overwhelm with features that feel like work, or optimise for social engagement over practice quality. Intrada's unique position is the combination of structured capture, evidence-based scheduling, key-aware tracking, fine-grained progress metrics, and neurodiversity-informed design — in a clean, instrument-agnostic package.
+Existing practice apps either track time (measuring attendance, not progress), overwhelm with features that feel like work, or optimise for social engagement over practice quality. Intrada combines fast capture, key-aware tracking, an honest record and neurodiversity-informed design, in a clean, instrument-agnostic app that works entirely on the phone.
 
-A detailed competitive analysis is maintained in the [Research Foundation](docs/research-foundation.md).
+A detailed competitive analysis is in the [Research Foundation](docs/research-foundation.md).
 
 ---
 
-*The vision is a living document. It evolves as the product matures and as real user data validates or challenges its assumptions.*
+*The vision is a living document. It changes when the product teaches us something, and real users are the next teacher.*

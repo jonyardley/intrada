@@ -7,58 +7,37 @@ write-up is its GitHub release, generated from that release's milestone
 right now, run `just status`; it reads GitHub, which is the source of truth.
 Direction and phases: [`roadmap.md`](roadmap.md).*
 
-**v0.13.0, "What you actually played", is the current release (2026-09-16).**
-Its write-up, and v0.12.0's, are their
-[GitHub releases](https://github.com/jonyardley/intrada/releases).
+**v0.14.0, "Nothing goes missing, and the screen tells the truth", is the
+latest release (2026-09-24, TestFlight build 23).** Its write-up, and those of
+v0.12.0 and v0.13.0, are their
+[GitHub releases](https://github.com/jonyardley/intrada/releases). v0.10.0 and
+v0.11.0 are tags without a release write-up.
 
-v0.10.0 (2026-09-09, TestFlight build 19) was the capture release: add a
-piece with its chord chart and its exercises in one pass, and a refusal that
-marks the field, the row or the chart at fault rather than only saying what is
-wrong (#1390 and #1595,
-[`specs/one-pass-create.md`](../specs/one-pass-create.md)). Alongside it: the
-whole Focus Player round (the overall session timer, the resident pass counter,
-and a click that sounds chosen beats of a chosen bar), one tap into the starred
-set on Practice (#981), a note per item on Session Complete and a past session
-opened from history (#1370, #1371), and the page camera fixes.
+**The phase now is first run: get a new musician to their first marked
+session (#2121), then watch three of them do it (#2120).** Agreed on
+2026-09-30 with the vision rewrite ([`VISION.md`](../VISION.md) v3): intrada
+is a practice notebook in which the musician plans and the app remembers,
+keeps the record honest and nudges. The ranking of everything after it is in
+[`roadmap.md`](roadmap.md#the-ranking); the week's intent (#1926), which
+replaces the goals feature, is next.
 
-**v0.10.0 was also the first build that reports its crashes.** Every earlier
-TestFlight build shipped with Sentry switched off, because the key was never
-handed to the release build (#1553); a tagged release now refuses to build
-without it, and each one gets a Sentry release of its own, named for the build
-a tester is running. Debug symbols are still not uploaded, so a crash names the
-build and not the line (#1610).
+**The capture phase before it is done.** Chosen on 2026-09-07 at the end of the
+post-revert rethink ([`rethink-plan.md`](rethink-plan.md)), it shipped as:
 
-v0.9.0 (2026-09-02) was the photo release: photograph the page and the add form
-fills itself, with the on-device model picking the fields where Apple
-Intelligence is available (phases A to C of
-[`specs/piece-from-photo.md`](../specs/piece-from-photo.md); phase D, a chord
-chart from a photo, is not started).
+- **v0.10.0** (2026-09-09): add a piece with its chord chart and exercises in
+  one pass (#1390), the Focus Player's session timer, repetition counter and
+  click, and the first build that reports its crashes.
+- **v0.11.0** (2026-09-11): the paper and marker look.
+- **v0.12.0** (2026-09-16): the app knows who is practising, with a name,
+  an instrument and a highlighter colour.
+- **v0.13.0** (2026-09-16): variations belong to the exercise, and a session
+  records what you actually played.
+- **v0.14.0** (2026-09-24): the September audit's data-loss and
+  wrong-number fixes (#1967).
 
-**Phase R ([`rethink-plan.md`](rethink-plan.md)) has met its exit criteria.**
-Stage 4 chose the direction on 2026-09-07 and its first slice shipped in
-v0.10.0, so the phase's own test, a direction with a Tier 3 spec and a slice
-of it shipped, is answered. Its Stage 3 work was the audit backlog in
-[`audit-2026-08.md`](audit-2026-08.md), the definitive reference for what the
-audit found and the order it ran in. **Every phase of that backlog is
-closed**: Phase 3 finished on 2026-09-07 when #1585 shipped
-per-item notes on Session Complete (#1370), after the quick-add section (#1362)
-and the history detail view (#1371, in #1580).
+Since v0.14.0, practice defaults and the preferred session length landed on the
+Profile screen and the builder (#1915, #1736), not yet released.
 
-**The Focus Player round shipped on 2026-09-03** and closed Phase 4: the
-overall session timer (#1364), the resident pass counter (#1367, core then
-shell), and a click that sounds chosen beats of a chosen bar without lying
-about the tempo (#1499, core then shell). One Claude Design pass, one Tier 3
-spec ([`specs/practice-instruments.md`](../specs/practice-instruments.md)),
-six PRs. Two of the things it deliberately left behind are still tracked: the
-declared tempo of a quaver-metre piece still reads as a crotchet (#1510), and
-sheets still hand-mirror ranges the core validates (#1512). The idle timer
-(#1513) was fixed on 2026-09-04.
-
-The next major direction was decided on 2026-09-07 (Stage 4 of the rethink
-plan): **push the capture line**. The weekly-lesson loop (#1087) turned out to
-be three quarters shipped, since per-piece tracking (#1081), the Up next card
-(#1082) and exercise steps (#1083) have all landed, so its only unbuilt part
-was entry, and entry is a capture problem. Quick lesson entry (#1080) closes
-into one-pass create (#1390), specced in
-[`specs/one-pass-create.md`](../specs/one-pass-create.md); no lesson entity
-gets built.
+**Known gaps a tester will hit:** a crash names the build but not the line,
+because debug symbols are not uploaded (#1610), and several screens break at
+the largest text sizes (#2134).

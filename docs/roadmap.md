@@ -1,130 +1,95 @@
-# intrada — Product Roadmap
+# intrada: Product Roadmap
 
-*This is a vision and prioritisation doc, not a project plan. For what's
-actually shipping right now, run `just status` (one screen, read from GitHub),
-or see the [project board](https://github.com/users/jonyardley/projects/2)
-and [open issues](https://github.com/jonyardley/intrada/issues).*
-
----
-
-> ## ⚠️ THE 2026-07 COACH PIVOT WAS REVERSED (2026-08-13)
->
-> Between July and August 2026 the product direction was the **practice
-> coach**: the app decided what you practised, gated every block on evidence,
-> and told you when you were done. It was built through Phase 2b and then
-> **removed on 2026-08-13** (#1344): the direction went too far too fast, and
-> the call was to restore the session-builder product. The coach code is
-> recoverable from commit 071b85b; the design record stays in
-> [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md)
-> and [`specs/intrada-coach-engine.md`](../specs/intrada-coach-engine.md)
-> (both bannered), the assessment that drove the pivot in
-> [`docs/rebuild-review.md`](rebuild-review.md), and the machine-listening
-> spike findings in [`segmentation-findings.md`](segmentation-findings.md).
->
-> What the product does today is the restored builder flow: build a session
-> from the library, group and reorder, play it through the Focus Player,
-> reflect on the summary. The near-term direction is the audit backlog in
-> [`audit-2026-08.md`](audit-2026-08.md) (refine the builder, step by step);
-> **the next major direction stays open** and is Stage 4 of
-> [`rethink-plan.md`](rethink-plan.md). The post-revert triage (2026-08-14)
-> closed the defunct coach-era issues and unparked the builder-era ones; the
-> `superseded-by-pivot` label is empty and retired.
+*The direction and the ranking of the work. What is in flight right now:
+`just status` (one screen, read from GitHub), the
+[project board](https://github.com/users/jonyardley/projects/2) and the
+[open issues](https://github.com/jonyardley/intrada/issues). The released
+build and the phase: [`where-we-are.md`](where-we-are.md).*
 
 ---
 
-## How to read this doc
+## Direction
 
-intrada serves the five layers of the [Product Vision](../VISION.md):
-**Capture → Plan → Space → Show → Guide**. The layers build on each other
-— you can't schedule what you haven't captured, can't space what you
-haven't scheduled, can't show progress on what you haven't tracked.
+intrada is a **practice notebook**: the musician plans, the app remembers,
+keeps the record honest and nudges ([`VISION.md`](../VISION.md), v3,
+2026-09-30). The 2026-07 practice coach, which planned for the musician, was
+removed on 2026-08-13 (#1344); the notebook is what every release since has
+built on. A suggested session stays on the far horizon, as a proposal the
+musician can ignore, never a plan the app imposes.
 
-The roadmap is also organised around three activity pillars — **Plan**
-(decide what to practise), **Practice** (play with intention), and
-**Track** (see the process working) — that cut across the layers.
-
-This doc names the layers, pillars, and prioritisation principle.
-**Issues on the [project board](https://github.com/users/jonyardley/projects/2)
-are the source of truth for scope and timing.** When this doc and the
-issues disagree, the issues are right.
+**The capture line is delivered.** The direction chosen on 2026-09-07 shipped
+through v0.10.0 to v0.14.0: one-pass create, a piece from a photo, keys and
+variations, the Focus Player and its click, a tempo recorded only on evidence,
+and practice defaults. **The next headline is a first run that gets a new
+musician to their first marked session (#2121)**, because so far the only
+regular user is the person building the app, and every later call needs
+evidence from others.
 
 ---
 
-## Where the product is today
+## The ranking
 
-Capture, Plan, Space (manual), and Show (analytics) all have working
-surfaces. Auth, library, sessions, routines, scoring, focus mode, tempo
-tracking, design system, multi-device shell, E2E tests — all done. The
-native SwiftUI iOS app (on the Crux core — see
-[`specs/native-ios.md`](../specs/native-ios.md)) is the only shell; the
-Leptos web app and the Tauri iOS host were **deleted** in #1133, not paused.
+Work is picked from epics (see [Epics](#epics)), ranked here directly. The
+five layers and three pillars in the vision explain the product; they are not
+a ranking rule. When this list and an epic's horizon label disagree, this list
+is the intent and the label is the one to fix.
 
-The active gaps are deeper Layer-1 capture (multi-key, sections, archive),
-the rest of the Space layer (per-item scheduling state and resurfacing; its
-first slice, the getting-cold signal, landed in #1416), and parts of Show
-(timeline charts, calendar). Layer 5 (Guide / AI) is intentionally on the
-horizon.
+### Now: the next release's headline
 
-Filter `is:open is:issue` on the board to see what's currently in flight.
+- **#2121 A first run that gets a new musician to their first marked
+  session.** Ends by watching three new musicians try it (#2120).
+- Finishing, not new: the September audit backlog (#1967) and the core
+  maintainability epic (#1995), each with a handful of children left.
 
-### Current focus
+### Next: the product, in order
 
-The coach pivot is reversed (see the banner at the top). Phase R
-([`rethink-plan.md`](rethink-plan.md)) ran the audit backlog in
-[`audit-2026-08.md`](audit-2026-08.md) and chose the next direction, pushing
-the capture line, whose first slice shipped in 2026-09. Which release is out
-and what phase we are in lives in [`where-we-are.md`](where-we-are.md), the one
-place that says it; `just status` and the
-[project board](https://github.com/users/jonyardley/projects/2)
-say what is in flight.
+1. **#1926 A week's practice set with intent.** The week's intent replaces
+   the goals feature (Open question 5); starts from the lesson trial (#1927)
+   and its research note (#1928).
+2. **#2134 Every screen holds together at the largest text sizes.**
+3. **#1975 Play the session through**, led by session start feeling laggy
+   (#1801).
+4. **#1974 Build a session your way.**
+5. **#1970 Practise an exercise in its keys.**
+6. **#1972 Add a piece in one pass** and **#1973 the Library**: refinement
+   of the capture line, pulled when use shows a gap.
+
+### Later
+
+- **#1978 Know what to practise next**: priorities and spacing. Waits on the
+  week's intent, which is what it reads.
+- **#1977 See the practice working** and **#1976 Score how it went.**
+- **#1979 One look everywhere** and **#1980 Make it yours, part two.**
+- **#2025 Chord charts**: parked until the design is reopened.
+
+### Alongside: tooling
+
+The build, the test gates and the agent harness run beside the product and
+are not ranked against it: **#1982** a build a tester can trust (it matters
+more once testers arrive with #2121), **#1981** the iOS test gates, **#1983**
+the agent harness and **#1849** Claude usage.
+
+### Horizons
+
+`horizon:now`, `:next` and `:later` stay on each issue for filtering:
+
+- **Now**: a real musician hits a wall *because* this isn't built.
+- **Next**: a real musician notices it's missing after a month of use.
+- **Later**: the app could live without it for a year.
 
 ---
 
 ## Three pillars
 
-### Plan — "Decide what to practise"
+Filters across the epics, not a ranking.
 
-Before the instrument comes out. Building sessions, organising the
-library, and eventually letting the app decide for you. Spans Layers 1
-(Capture), 2 (Plan), and 3 (Space).
-
-→ [`pillar:plan`](https://github.com/jonyardley/intrada/labels/pillar%3Aplan)
-
-### Practice — "Play with intention"
-
-Instrument is out. Timer running. The app stays out of the way and
-supports focus, not admin. Lives mainly in Layer 4 (Show — encouragement,
-feedback) with cross-cutting accessibility concerns.
-
-→ [`pillar:practice`](https://github.com/jonyardley/intrada/labels/pillar%3Apractice)
-
-### Track — "See the process working"
-
-After the session. Analytics, insights, visualisation. Evidence the
-practice is actually working. Mostly Layer 4 (Show); Layer 5 (Guide) when
-AI work becomes timely.
-
-→ [`pillar:track`](https://github.com/jonyardley/intrada/labels/pillar%3Atrack)
-
----
-
-## Prioritisation principle
-
-**Vision layer first, then pillar.** Layer 1 features take precedence
-over Layer 2, which take precedence over Layer 3, and so on. Within a
-layer, the three pillars advance independently.
-
-The question is *"what's the most important thing I haven't captured
-yet?"* before *"what's the smartest way to schedule it?"*
-
-### Now / Next / Later in your head
-
-- **Now** — a real musician hits a wall *because* this isn't built.
-- **Next** — a real musician notices it's missing after a month of use.
-- **Later** — the app could live without it for a year.
-
-These are tags on issues, not buckets in this doc. They drift as work
-ships and as we learn.
+- **Plan**, deciding what to practise, before the instrument comes out:
+  [`pillar:plan`](https://github.com/jonyardley/intrada/labels/pillar%3Aplan).
+- **Practice**, playing with intention while the timer runs; the app stays
+  out of the way:
+  [`pillar:practice`](https://github.com/jonyardley/intrada/labels/pillar%3Apractice).
+- **Track**, seeing the practice working afterwards:
+  [`pillar:track`](https://github.com/jonyardley/intrada/labels/pillar%3Atrack).
 
 ---
 
@@ -150,7 +115,7 @@ has started.
 Historical note: the sentences that used to live here ("the web app stays on
 Leptos, untouched", "the Tauri shell stays shipping until parity") were true in
 May and false by July. Statements about what is *currently* shipping belong in
-one place — the banner at the top of this doc.
+one place: [`where-we-are.md`](where-we-are.md).
 
 ---
 
@@ -297,7 +262,13 @@ These are unresolved product questions. Each one likely produces issues
    The teacher-assignment capture (#267) addressed the immediate capture
    problem without teacher-facing features.
 
-5. **Goals (re-resolved 2026-07-14).** History: goals were built twice
+5. **Goals (superseded 2026-09-30 by the week's intent).** Goals are not
+   rebuilt. What the ruling below wanted, a named aim that planning reads,
+   becomes the week's intent: one sentence, possibly from a lesson, linked to
+   the items it concerns (#1926, VISION.md "Intent, Not Goals"). The July
+   ruling stays below as the record.
+
+   **Goals (re-resolved 2026-07-14).** History: goals were built twice
    (an early goals feature, removed in #213 for a ground-up redesign;
    then Goals #711–#740, removed in #769), with the lessons vertical
    (#273) in between, leaving the per-item `priority` flag (#765,
