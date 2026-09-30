@@ -2050,7 +2050,10 @@ mod tests {
 
         let app = Intrada;
         let model = Model {
-            session_status: SessionStatus::Building(BuildingSession::default()),
+            session_status: SessionStatus::Building(BuildingSession {
+                entries: vec![],
+                length_mins: None,
+            }),
             ..Model::default()
         };
 
@@ -3122,6 +3125,7 @@ mod tests {
                     building_entry("e2", Some(630)),
                     building_entry("e3", None),
                 ],
+                length_mins: None,
             }),
             ..Default::default()
         };
@@ -3140,6 +3144,7 @@ mod tests {
                     building_entry("e1", Some(900)),
                     building_entry("e2", Some(300)),
                 ],
+                length_mins: None,
             }),
             ..Default::default()
         };
@@ -3154,6 +3159,7 @@ mod tests {
         let model = Model {
             session_status: SessionStatus::Building(crate::domain::session::BuildingSession {
                 entries: vec![building_entry("e1", None), building_entry("e2", None)],
+                length_mins: None,
             }),
             ..Default::default()
         };

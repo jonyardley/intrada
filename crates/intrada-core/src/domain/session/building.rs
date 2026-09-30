@@ -87,12 +87,19 @@ pub(super) fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
     }
 }
 
+fn fresh_building(model: &Model) -> BuildingSession {
+    BuildingSession {
+        entries: Vec::new(),
+        length_mins: model.practice_defaults.session_length_mins,
+    }
+}
+
 pub(super) fn start_building(model: &mut Model) -> Command<Effect, Event> {
     if !matches!(model.session_status, SessionStatus::Idle) {
         model.raise_error("A practice is already in progress".to_string());
         return crux_core::render::render();
     }
-    model.session_status = SessionStatus::Building(BuildingSession::default());
+    model.session_status = SessionStatus::Building(fresh_building(model));
     model.last_error = None;
     crux_core::render::render()
 }
@@ -160,6 +167,23 @@ pub(super) fn set_entry_duration(
     })
 }
 
+pub(super) fn set_session_length(
+    model: &mut Model,
+    length_mins: Option<u16>,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref mut building) = model.session_status else {
+        model.raise_error("A session length can only be set while building".to_string());
+        return crux_core::render::render();
+    };
+    if let Err(e) = validation::validate_session_length(&length_mins) {
+        model.raise_error(e.to_string());
+        return crux_core::render::render();
+    }
+    building.length_mins = length_mins;
+    model.last_error = None;
+    crux_core::render::render()
+}
+
 fn set_planned(
     model: &mut Model,
     entry_id: &str,
@@ -195,7 +219,7 @@ pub(super) fn start_building_with(model: &mut Model, item_id: String) -> Command
         model.raise_error(LibraryError::NotFound { id: item_id }.to_string());
         return crux_core::render::render();
     }
-    model.session_status = SessionStatus::Building(BuildingSession::default());
+    model.session_status = SessionStatus::Building(fresh_building(model));
     handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
 }
 
@@ -213,7 +237,7 @@ pub(super) fn start_building_from_suggestion(
         return crux_core::render::render();
     };
 
-    let mut building = BuildingSession::default();
+    let mut building = fresh_building(model);
     let group_id = ulid::Ulid::generate().to_string();
     for suggested in &suggestion.items {
         let position = building.entries.len();
@@ -249,7 +273,7 @@ pub(super) fn start_building_with_priorities(
         return crux_core::render::render();
     }
 
-    model.session_status = SessionStatus::Building(BuildingSession::default());
+    model.session_status = SessionStatus::Building(fresh_building(model));
     // `AddToSetlist` owns block formation, deduping and idempotency
     // (#939), so seeding folds over it rather than building entries a
     // second way. Every step's command is kept: dropping all but the

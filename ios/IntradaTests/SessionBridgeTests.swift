@@ -61,7 +61,7 @@ final class SessionBridgeTests: XCTestCase {
   func testRealBridgePracticeDefaultsReachTheCounterTheClickAndTheSheet() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
-    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour)
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)
     let requests = try bridge.update(.practiceDefaults(.save(saved)))
     XCTAssertTrue(
       requests.contains {
@@ -85,6 +85,26 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(active.currentRepSlots, 5)
     XCTAssertEqual(
       active.currentClickSounding, 0b1010, "2 and 4 in the 4/4 an item with no metre gets")
+  }
+
+  /// An optional u16 after an enum tag misdecodes on a field-order mismatch (#846, #1736).
+  func testRealBridgeSessionLengthReachesTheBuilder() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 25)
+    _ = try bridge.update(.practiceDefaults(.save(saved)))
+    XCTAssertEqual(try bridge.rendered().practiceDefaults, saved)
+    XCTAssertEqual(try bridge.rendered().limits.sessionLengthDefaultMins, 30)
+
+    _ = try bridge.update(.session(.startBuilding))
+    var building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertEqual(building.lengthMins, 25)
+    XCTAssertEqual(building.lengthSummary, "25 min today")
+
+    _ = try bridge.update(.session(.setSessionLength(lengthMins: 10)))
+    building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertEqual(building.lengthMins, 10)
+    XCTAssertEqual(try bridge.rendered().practiceDefaults.sessionLengthMins, 25)
   }
 
   /// Answers the session write the way GRDB does, so the core commits the

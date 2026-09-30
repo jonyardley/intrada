@@ -122,7 +122,8 @@
       Store(
         bridge: PreviewBridge(
           profile: .previewCellist,
-          practiceDefaults: PracticeDefaults(repTarget: 5, click: .twoAndFour)))
+          practiceDefaults: PracticeDefaults(
+            repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)))
     }
 
     /// An offline store with curated sample items (specific edge cases).
@@ -274,7 +275,8 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewExercise], takenElsewhere: []),
             ],
-            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: [])))
+            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
+            lengthSummary: nil, entryVariations: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -285,7 +287,8 @@
           items: [.previewPiece, .previewExercise, .previewMinimal],
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
-            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: []),
+            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
+            lengthSummary: nil, entryVariations: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -301,7 +304,8 @@
             text: nil, itemType: .exercise, key: nil, tags: [], priorityOnly: false),
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
-            totalDurationDisplay: nil, totalDurationSummary: nil, entryVariations: []),
+            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
+            lengthSummary: nil, entryVariations: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -327,7 +331,8 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
+            lengthSummary: nil, entryVariations: [])))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -352,7 +357,8 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
+            lengthSummary: nil, entryVariations: [])))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -370,7 +376,8 @@
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
                 durationDisplay: "12 min", entries: block, takenElsewhere: [])
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", entryVariations: [])))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
+            lengthSummary: nil, entryVariations: [])))
     }
 
     /// Player Focus: a piece mid-session, no reps.

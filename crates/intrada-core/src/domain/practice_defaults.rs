@@ -1,6 +1,7 @@
 //! The repetition target and metronome start a session item begins with,
-//! set once by the musician and stored on the device
-//! (`specs/practice-defaults.md`).
+//! and the length a new session starts at, set once by the musician and
+//! stored on the device (`specs/practice-defaults.md`,
+//! `specs/session-length.md`).
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,7 @@ impl ClickStart {
 pub struct PracticeDefaults {
     pub rep_target: u8,
     pub click: ClickStart,
+    pub session_length_mins: Option<u16>,
 }
 
 impl Default for PracticeDefaults {
@@ -43,6 +45,7 @@ impl Default for PracticeDefaults {
         PracticeDefaults {
             rep_target: validation::DEFAULT_REP_TARGET,
             click: ClickStart::EveryBeat,
+            session_length_mins: None,
         }
     }
 }
@@ -62,7 +65,9 @@ pub fn handle_practice_defaults_event(
 ) -> Command<Effect, Event> {
     match event {
         PracticeDefaultsEvent::Save(defaults) => {
-            if let Err(e) = validation::validate_rep_target(&Some(defaults.rep_target)) {
+            if let Err(e) = validation::validate_rep_target(&Some(defaults.rep_target))
+                .and_then(|()| validation::validate_session_length(&defaults.session_length_mins))
+            {
                 model.raise_error(e.to_string());
                 return crux_core::render::render();
             }
@@ -78,6 +83,9 @@ pub fn handle_practice_defaults_event(
                 rep_target: defaults
                     .rep_target
                     .clamp(validation::MIN_REP_TARGET, validation::MAX_REP_TARGET),
+                session_length_mins: defaults
+                    .session_length_mins
+                    .map(validation::clamp_session_length),
                 ..defaults
             };
             crux_core::render::render()
@@ -96,6 +104,7 @@ mod tests {
         PracticeDefaults {
             rep_target: 5,
             click: ClickStart::TwoAndFour,
+            session_length_mins: Some(25),
         }
     }
 
@@ -186,7 +195,7 @@ mod tests {
                 &mut model,
                 PracticeDefaultsEvent::Save(PracticeDefaults {
                     rep_target: target,
-                    click: ClickStart::EveryBeat,
+                    ..PracticeDefaults::default()
                 }),
             );
             assert_eq!(model.practice_defaults, fixture(), "target {target}");
@@ -210,6 +219,38 @@ mod tests {
         assert!(model.last_error.is_some());
         let _ = send(&mut model, PracticeDefaultsEvent::Save(fixture()));
         assert_eq!(model.last_error, None);
+    }
+
+    #[test]
+    fn a_session_length_off_the_stepper_refuses_the_whole_save() {
+        for length in [5, 32, 125] {
+            let mut model = Model::default();
+            let _ = send(&mut model, PracticeDefaultsEvent::Save(fixture()));
+            let mut cmd = send(
+                &mut model,
+                PracticeDefaultsEvent::Save(PracticeDefaults {
+                    rep_target: 7,
+                    session_length_mins: Some(length),
+                    ..fixture()
+                }),
+            );
+            assert_eq!(model.practice_defaults, fixture(), "length {length}");
+            assert!(model.last_error.is_some(), "length {length}");
+            assert_eq!(emits_save(&mut cmd), None, "length {length}");
+        }
+    }
+
+    #[test]
+    fn save_can_switch_the_session_length_off() {
+        let mut model = Model::default();
+        let _ = send(&mut model, PracticeDefaultsEvent::Save(fixture()));
+        let off = PracticeDefaults {
+            session_length_mins: None,
+            ..fixture()
+        };
+        let mut cmd = send(&mut model, PracticeDefaultsEvent::Save(off));
+        assert_eq!(model.practice_defaults.session_length_mins, None);
+        assert_eq!(emits_save(&mut cmd), Some(off));
     }
 
     #[test]
@@ -243,6 +284,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn loaded_brings_a_stored_session_length_back_onto_the_stepper() {
+        for (stored, expected) in [
+            (Some(5), Some(10)),
+            (Some(32), Some(30)),
+            (Some(300), Some(120)),
+            (None, None),
+        ] {
+            let mut model = Model::default();
+            let _ = send(
+                &mut model,
+                PracticeDefaultsEvent::Loaded(PracticeDefaults {
+                    session_length_mins: stored,
+                    ..fixture()
+                }),
+            );
+            assert_eq!(
+                model.practice_defaults.session_length_mins, expected,
+                "stored {stored:?}"
+            );
+        }
+    }
+
     // ── View ──
 
     #[test]
@@ -260,8 +324,8 @@ mod tests {
 
     // ── Wire ──
 
-    const PINNED_DEFAULTS_HEX: &str = "0501000000";
-    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0a00000000";
+    const PINNED_DEFAULTS_HEX: &str = "0501000000011900";
+    const PINNED_UNTOUCHED_DEFAULTS_HEX: &str = "0a0000000000";
 
     /// Positional bincode: a new field breaks every stored blob (#1345).
     /// Bump `Store.practiceDefaultsKey`, then re-pin.

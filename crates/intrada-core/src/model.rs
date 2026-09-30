@@ -323,6 +323,10 @@ pub struct LimitsView {
     pub planned_duration_min_secs: u32,
     pub planned_duration_max_secs: u32,
     pub planned_duration_default_secs: u32,
+    pub session_length_min_mins: u16,
+    pub session_length_max_mins: u16,
+    pub session_length_step_mins: u16,
+    pub session_length_default_mins: u16,
     pub score_min: u8,
     pub score_max: u8,
 }
@@ -341,6 +345,10 @@ impl Default for LimitsView {
             planned_duration_min_secs: validation::MIN_PLANNED_DURATION_SECS,
             planned_duration_max_secs: validation::MAX_PLANNED_DURATION_SECS,
             planned_duration_default_secs: validation::DEFAULT_PLANNED_DURATION_SECS,
+            session_length_min_mins: validation::MIN_SESSION_LENGTH_MINS,
+            session_length_max_mins: validation::MAX_SESSION_LENGTH_MINS,
+            session_length_step_mins: validation::SESSION_LENGTH_STEP_MINS,
+            session_length_default_mins: validation::DEFAULT_SESSION_LENGTH_MINS,
             score_min: validation::MIN_SCORE,
             score_max: validation::MAX_SCORE,
         }
@@ -759,6 +767,10 @@ pub struct BuildingSetlistView {
     /// so shells can fall back to counts-only copy.
     pub total_duration_display: Option<String>,
     pub total_duration_summary: Option<String>,
+    pub length_mins: Option<u16>,
+    /// "20 of 30 min planned", or "30 min today" before anything is planned;
+    /// `None` without a length (`specs/session-length.md`).
+    pub length_summary: Option<String>,
     /// The variations each entry can be tagged to, for the entries whose item
     /// has any. Looked up in the whole library, so a search cannot empty it.
     pub entry_variations: Vec<EntryVariationsView>,
@@ -974,6 +986,34 @@ mod tests {
             assert!(
                 crate::validation::validate_score(score).is_err(),
                 "a mark of {score} is outside the offered range but the core accepts it"
+            );
+        }
+    }
+
+    #[test]
+    fn offered_session_lengths_are_ones_the_core_accepts() {
+        let limits = LimitsView::default();
+        let accepts = |m: u16| crate::validation::validate_session_length(&Some(m)).is_ok();
+
+        for m in [
+            limits.session_length_min_mins,
+            limits.session_length_max_mins,
+            limits.session_length_default_mins,
+            limits.session_length_min_mins + limits.session_length_step_mins,
+        ] {
+            assert!(
+                accepts(m),
+                "the stepper offers {m} min, which the core refuses"
+            );
+        }
+        for m in [
+            limits.session_length_min_mins - limits.session_length_step_mins,
+            limits.session_length_max_mins + limits.session_length_step_mins,
+            limits.session_length_min_mins + 1,
+        ] {
+            assert!(
+                !accepts(m),
+                "{m} min is off the stepper but the core accepts it"
             );
         }
     }

@@ -107,6 +107,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     blocks,
                     total_duration_display,
                     total_duration_summary,
+                    length_mins: building.length_mins,
+                    length_summary: crate::view::session::format_length_summary(
+                        building.length_mins,
+                        planned_total_secs,
+                    ),
                     entry_variations,
                 }),
                 None,

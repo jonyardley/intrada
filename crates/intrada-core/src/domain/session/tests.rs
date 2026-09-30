@@ -5,6 +5,7 @@ use super::*;
 use crate::app::AppEffect;
 use crate::app::Intrada;
 use crate::domain::item::Item;
+use crate::domain::practice_defaults::{PracticeDefaults, PracticeDefaultsEvent};
 use crux_core::App;
 
 /// True when every `group_id` occupies a single contiguous run: the block
@@ -7177,4 +7178,153 @@ fn switching_variation_with_the_sheet_open_changes_nothing() {
     );
 
     assert_eq!(only_entry(&model).plays, before);
+}
+
+// ── Session length (#1736) ───────────────────────────────────────
+
+fn prefer_length(model: &mut Model, length_mins: Option<u16>) {
+    model.practice_defaults = PracticeDefaults {
+        session_length_mins: length_mins,
+        ..PracticeDefaults::default()
+    };
+}
+
+fn today_length(model: &Model) -> Option<u16> {
+    match &model.session_status {
+        SessionStatus::Building(b) => b.length_mins,
+        _ => panic!("expected Building state"),
+    }
+}
+
+type StartBuild = fn(&mut Model);
+
+fn set_today(model: &mut Model, length_mins: Option<u16>) {
+    update(
+        model,
+        Event::Session(SessionEvent::SetSessionLength { length_mins }),
+    );
+}
+
+#[test]
+fn every_way_into_the_builder_starts_at_the_preferred_length() {
+    let starts: [(&str, StartBuild); 4] = [
+        ("start building", |m| {
+            update(m, Event::Session(SessionEvent::StartBuilding))
+        }),
+        ("practise this", |m| {
+            update(
+                m,
+                Event::Session(SessionEvent::StartBuildingWith {
+                    item_id: "piece-P".to_string(),
+                }),
+            )
+        }),
+        ("up next", start_from_suggestion),
+        ("priorities", |m| {
+            update(
+                m,
+                Event::Session(SessionEvent::StartBuildingWithPriorities { now: Utc::now() }),
+            )
+        }),
+    ];
+    for (name, start) in starts {
+        for preferred in [Some(25), None] {
+            let mut m = suggestion_model();
+            prefer_length(&mut m, preferred);
+            start(&mut m);
+            assert_eq!(today_length(&m), preferred, "{name} with {preferred:?}");
+        }
+    }
+}
+
+#[test]
+fn todays_length_changes_the_build_and_leaves_the_preference_alone() {
+    let mut m = model_with_library();
+    prefer_length(&mut m, Some(40));
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+
+    set_today(&mut m, Some(10));
+    assert_eq!(today_length(&m), Some(10));
+    assert_eq!(m.practice_defaults.session_length_mins, Some(40));
+    assert_eq!(m.last_error, None);
+
+    set_today(&mut m, None);
+    assert_eq!(today_length(&m), None, "today can be switched off");
+    assert_eq!(m.practice_defaults.session_length_mins, Some(40));
+}
+
+#[test]
+fn todays_length_off_the_stepper_is_refused_and_keeps_the_last() {
+    for length in [0, 5, 32, 125] {
+        let mut m = model_with_library();
+        prefer_length(&mut m, Some(30));
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        set_today(&mut m, Some(length));
+        assert_eq!(today_length(&m), Some(30), "length {length}");
+        assert!(m.last_error.is_some(), "length {length}");
+    }
+}
+
+#[test]
+fn todays_length_is_refused_outside_building() {
+    let mut m = model_with_library();
+    set_today(&mut m, Some(30));
+    assert!(matches!(m.session_status, SessionStatus::Idle));
+    assert!(m.last_error.is_some());
+}
+
+#[test]
+fn a_new_preference_leaves_a_build_in_progress_alone() {
+    let mut m = model_with_library();
+    prefer_length(&mut m, Some(30));
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut m,
+        Event::PracticeDefaults(PracticeDefaultsEvent::Save(PracticeDefaults {
+            session_length_mins: Some(60),
+            ..PracticeDefaults::default()
+        })),
+    );
+    assert_eq!(today_length(&m), Some(30));
+}
+
+#[test]
+fn the_builder_view_carries_todays_length_against_the_planned_total() {
+    let mut m = model_with_library();
+    prefer_length(&mut m, Some(30));
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    let view = |m: &Model| Intrada.view(m).building_setlist.expect("building");
+
+    assert_eq!(view(&m).length_mins, Some(30));
+    assert_eq!(view(&m).length_summary.as_deref(), Some("30 min today"));
+
+    add(&mut m, "piece-1");
+    add(&mut m, "piece-2");
+    let first = building_entries(&m)[0].id.clone();
+    update(
+        &mut m,
+        Event::Session(SessionEvent::SetEntryDuration {
+            entry_id: first,
+            duration_secs: Some(1200),
+        }),
+    );
+    assert_eq!(
+        view(&m).length_summary.as_deref(),
+        Some("20 of 30 min planned"),
+        "the unplanned entry adds nothing"
+    );
+
+    set_today(&mut m, None);
+    assert_eq!(view(&m).length_mins, None);
+    assert_eq!(view(&m).length_summary, None);
+}
+
+#[test]
+fn set_session_length_round_trips_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::SetSessionLength {
+        length_mins: Some(45),
+    }));
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::SetSessionLength {
+        length_mins: None,
+    }));
 }
