@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::Once;
+
 use crux_core::{
     bridge::{Bridge, EffectId},
     Core,
@@ -30,34 +34,78 @@ impl CoreFFI {
     #[cfg_attr(feature = "uniffi", uniffi::constructor)]
     #[must_use]
     pub fn new() -> Self {
+        install_panic_hook();
         Self {
             core: Bridge::new(Core::new()),
         }
     }
 
     pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
-        let mut effects = Vec::new();
-        self.core
-            .update(data, &mut effects)
-            .map_err(|e| CoreError::Bridge(e.to_string()))?;
-        Ok(effects)
+        with_panic_location(|| {
+            let mut effects = Vec::new();
+            self.core
+                .update(data, &mut effects)
+                .map_err(|e| CoreError::Bridge(e.to_string()))?;
+            Ok(effects)
+        })
     }
 
     pub fn resolve(&self, id: u32, data: &[u8]) -> Result<Vec<u8>, CoreError> {
-        let mut effects = Vec::new();
-        self.core
-            .resolve(EffectId(id), data, &mut effects)
-            .map_err(|e| CoreError::Bridge(e.to_string()))?;
-        Ok(effects)
+        with_panic_location(|| {
+            let mut effects = Vec::new();
+            self.core
+                .resolve(EffectId(id), data, &mut effects)
+                .map_err(|e| CoreError::Bridge(e.to_string()))?;
+            Ok(effects)
+        })
     }
 
     pub fn view(&self) -> Result<Vec<u8>, CoreError> {
-        let mut view = Vec::new();
-        self.core
-            .view(&mut view)
-            .map_err(|e| CoreError::Bridge(e.to_string()))?;
-        Ok(view)
+        with_panic_location(|| {
+            let mut view = Vec::new();
+            self.core
+                .view(&mut view)
+                .map_err(|e| CoreError::Bridge(e.to_string()))?;
+            Ok(view)
+        })
     }
+}
+
+// ── Panic location ──
+
+// UniFFI builds its panic message from the payload alone and symbols are not
+// uploaded (#1610), so the location rides in the payload (#2020).
+thread_local! {
+    static PANIC_LOCATION: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+fn install_panic_hook() {
+    static INSTALL: Once = Once::new();
+    INSTALL.call_once(|| {
+        let previous = panic::take_hook();
+        panic::set_hook(Box::new(move |info| {
+            let location = info
+                .location()
+                .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
+            let _ = PANIC_LOCATION.try_with(|slot| *slot.borrow_mut() = location);
+            previous(info);
+        }));
+    });
+}
+
+fn with_panic_location<R>(work: impl FnOnce() -> R) -> R {
+    panic::catch_unwind(AssertUnwindSafe(work)).unwrap_or_else(|payload| {
+        let message = payload
+            .downcast_ref::<&str>()
+            .map(|s| (*s).to_string())
+            .or_else(|| payload.downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "unknown panic".to_string());
+        let located = match PANIC_LOCATION.with(|slot| slot.borrow_mut().take()) {
+            Some(location) => format!("{message} at {location}"),
+            None => message,
+        };
+        panic::resume_unwind(Box::new(located))
+    })
 }
 
 // ── Picker candidates ──
@@ -260,6 +308,32 @@ pub fn session_blob_version() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn panic_payload(work: impl FnOnce()) -> String {
+        let payload = panic::catch_unwind(AssertUnwindSafe(work)).expect_err("work should panic");
+        payload
+            .downcast_ref::<String>()
+            .cloned()
+            .expect("payload should be the String UniFFI downcasts")
+    }
+
+    #[test]
+    fn a_core_panic_payload_names_its_file_and_line() {
+        let _core = CoreFFI::new();
+        let line = line!() + 1;
+        let message = panic_payload(|| with_panic_location(|| panic!("index out of bounds")));
+        let expected = format!("index out of bounds at {}:{line}:", file!());
+        assert!(message.starts_with(&expected), "{message}");
+    }
+
+    #[test]
+    fn a_formatted_panic_message_keeps_its_text_alongside_the_location() {
+        let _core = CoreFFI::new();
+        let len = 3;
+        let message = panic_payload(|| with_panic_location(|| panic!("index {} of {len}", 7)));
+        let expected = format!("index 7 of 3 at {}:", file!());
+        assert!(message.starts_with(&expected), "{message}");
+    }
 
     #[test]
     fn bridge_serializes_initial_view() {
