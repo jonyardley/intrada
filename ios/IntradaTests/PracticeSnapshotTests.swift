@@ -23,6 +23,17 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         store: .previewPractice), as: config)
   }
 
+  // A day still to come reads "Yet to come", not a rest day (#2144).
+  func testPracticeScreenDayStillToCome() {
+    let week = PracticeWeekView.previewMidWeek
+    assertSnapshot(
+      of: host(
+        PracticeScreen(
+          referenceDate: PracticeSessionView.previewReferenceDate,
+          selectedDay: week.days[5].date),
+        store: Store(bridge: PreviewBridge(practiceWeeks: [week]))), as: config)
+  }
+
   func testPracticeScreenSuggestion() {
     assertSnapshot(
       of: host(
