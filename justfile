@@ -267,12 +267,12 @@ check-all: check ios-test
 
 # New worktree branched from fresh origin/main, a thin wrapper for
 # worktrunk's `wt switch --create`. Worktrunk's user config sets the path
-# (`../intrada-worktrees/<name>`), reflinks the gitignored warm caches
-# (target/, ios/build/, ios/generated) from the main checkout, and opens a
-# cmux workspace there. This keeps only what is intrada's own: the name rule,
-# the simulator-name collision check (the foo/foo.1 collision documented in
-# ios-testing.md) and #1204's own-green rule. ios/generated needs no hash
-# check here: `_ios-sync` regenerates whenever its stamp does not match.
+# (`../intrada-worktrees/<name>`), reflinks what `.worktreeinclude` names
+# from the main checkout (ios/generated and the Swift packages, never the
+# build folders, #2191), and opens a cmux workspace there. This keeps only
+# what is intrada's own: the name rule and the simulator-name collision check
+# (the foo/foo.1 collision documented in ios-testing.md). ios/generated needs
+# no hash check here: `_ios-sync` regenerates whenever its stamp does not match.
 [doc("Create a worktree from fresh origin/main with worktrunk (wt switch -c)")]
 [group('Worktrees')]
 worktree-new name:
@@ -304,13 +304,10 @@ worktree-new name:
     wt -C "$main_root" switch --create "{{name}}" --base origin/main
 
     target="$(git worktree list --porcelain | awk -v b="branch refs/heads/{{name}}" '/^worktree /{p=substr($0, 10)} $0 == b {print p}')"
-    # A new branch must earn its own green (#1204): the reflinked target/
-    # brings the main checkout's check-stamp with it.
     if [ -z "$target" ]; then
         echo "✗ wt reported success but no worktree has branch {{name}}" >&2
         exit 1
     fi
-    rm -f "$target/target/.check-stamp"
     echo "  cd $target && just check"
 
 # Companion to worktree-new: cleans the worktree's throwaway sim (if any),

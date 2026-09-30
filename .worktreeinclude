@@ -1,9 +1,10 @@
 # What worktrunk's `wt step copy-ignored` reflinks into a new worktree. Without
 # this file it copies every gitignored path, including .claude/worktrees (live
 # Claude Code worktrees), graphify-out (main checkout only) and files holding
-# the main checkout's absolute paths.
-target/
-ios/build/
+# the main checkout's absolute paths. Build folders stay out: stale and bound
+# to main's paths, they cost more than a cold build (#2191). ios/build/spm/
+# needs .gitignore to ignore ios/build/* rather than the folder itself.
+ios/build/spm/
 ios/generated/
 crates/intrada-ffi/generated/
 .env

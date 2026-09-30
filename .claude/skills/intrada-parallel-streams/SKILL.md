@@ -46,8 +46,8 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   assuming two shell-only streams are independent: about half the time they
   are not.
 - **One worktree per session, made by that session** (CLAUDE.md, Always step
-  3): `just worktree-new <name>` branches from fresh `origin/main` and seeds the
-  warm `target/` and `ios/build` caches (#1205). Close the session when its
+  3): `just worktree-new <name>` branches from fresh `origin/main` and seeds
+  `ios/generated` and the downloaded Swift packages, not the build folders (#2191). Close the session when its
   task ships. Every session starts in the main checkout and does not restart
   in the worktree: it makes the worktree and prefixes every shell command with
   `cd <worktree> && `

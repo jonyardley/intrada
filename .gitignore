@@ -41,7 +41,8 @@ crates/intrada-ffi/generated/
 crates/intrada-ffi/IntradaCoreFFI/
 # xcodegen-generated project + xcodebuild output (regenerated from project.yml)
 ios/*.xcodeproj/
-ios/build/
+# ios/build/* not ios/build/, so .worktreeinclude can reach ios/build/spm (#2191).
+ios/build/*
 # fastlane TestFlight lane output (build dir holds the .ipa/.xcarchive) + scratch.
 # Gemfile.lock is intentionally NOT ignored — commit it for reproducible CI.
 /build/

@@ -15,18 +15,21 @@ not a ban on reading.
 Worktrees are made with worktrunk (`wt`), the worktree tool across Jon's repos.
 `just worktree-new <name>` is a thin wrapper for `wt switch --create <name>
 --base origin/main`: it fetches first, refuses a name that would collide with
-another worktree's simulator name, and strips the copied check-stamp so a new
-branch earns its own green (#1204). Calling `wt switch -c <name>` directly works
-too, and skips those three.
+another worktree's simulator name. Calling `wt switch -c <name>` directly works
+too, and skips both.
 
 Worktrunk's user config (`~/.config/worktrunk/config.toml`, machine-local) does
 the rest:
 
 - **Where.** `../intrada-worktrees/<name>`, beside the main checkout.
 - **Warm caches.** A `pre-start` hook runs `wt step copy-ignored`, which
-  reflinks the main checkout's gitignored files (`target/`, `ios/build/`,
-  `ios/generated/`, `.env`, `.claude/settings.local.json`) into the new tree
-  before anything builds. A mismatched `ios/generated/` is harmless:
+  reflinks the gitignored files the main checkout's `.worktreeinclude` names
+  (`ios/generated/`, `ios/build/spm/`, `.env`, `.claude/settings.local.json`)
+  into the new tree before anything builds. `target/` and the Xcode build
+  folders stay out (#2191). The file is read from the main checkout's working
+  tree, so a change to it takes effect once that checkout is updated. The
+  copied Swift packages still resolve their Sentry binaries from the main
+  checkout's copy. A mismatched `ios/generated/` is harmless:
   `_ios-sync` regenerates whenever its stamp does not match the core source.
 - **A cmux workspace.** The same hook opens a workspace at the new tree and
   focuses it, for a worktree a session makes as much as one Jon makes. A
