@@ -91,7 +91,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
 
   func testClickSheetIrregularMetre() throws {
     let click = ClickController()
-    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]))
+    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: nil)
     click.apply(.groupStarts)
     let store = Store(bridge: SnapshotStubBridge())
     let limits = try XCTUnwrap(store.viewModel?.limits)
@@ -101,7 +101,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
 
   func testClickSheetAccessibilitySize() throws {
     let click = ClickController()
-    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]))
+    click.reseed(target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: nil)
     click.apply(.groupStarts)
     let store = Store(bridge: SnapshotStubBridge())
     let limits = try XCTUnwrap(store.viewModel?.limits)

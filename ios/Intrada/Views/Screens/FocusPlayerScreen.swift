@@ -75,13 +75,11 @@ struct FocusPlayerScreen: View {
           onPick: { switchVariation(active, to: $0) })
       }
     }
-    .task { click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre) }
+    .task { reseedClick() }
     .onChange(of: active?.reflection == nil) { _, closed in
       if closed { reflectionRefusal = nil }
     }
-    .onChange(of: active?.currentPosition) { _, _ in
-      click.reseed(target: active?.currentItemTempoBpm, metre: active?.currentItemMetre)
-    }
+    .onChange(of: active?.currentPosition) { _, _ in reseedClick() }
     // `initial: true` is what takes the hold for a session started in the
     // foreground, where the phase never changes (#1513).
     .onChange(of: scenePhase, initial: true) { _, phase in
@@ -92,6 +90,12 @@ struct FocusPlayerScreen: View {
       click.dispose()
       wakeLock.release()
     }
+  }
+
+  private func reseedClick() {
+    click.reseed(
+      target: active?.currentItemTempoBpm, metre: active?.currentItemMetre,
+      sounding: active?.currentClickSounding)
   }
 
   private func content(_ active: ActiveSessionView) -> some View {

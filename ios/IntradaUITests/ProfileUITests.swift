@@ -65,9 +65,47 @@ final class ProfileUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Cello"].exists, "the instrument survived")
     XCTAssertTrue(app.highlighterRow("Coral").exists, "the highlighter survived")
   }
+
+  /// The practice defaults the musician sets on the Profile screen are still
+  /// there after a relaunch (#1915).
+  func testPracticeDefaultsSurviveARelaunch() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--disable-animations", "--reset-profile"]
+    app.launch()
+
+    app.tabBars.buttons["Practice"].tap()
+    app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
+    XCTAssertTrue(
+      app.repTargetStepper(saying: "10 per item").waitForExistence(timeout: 5), "the reset default")
+    app.steppers["profile.repTarget"].buttons["Decrement"].firstMatch.tap()
+    app.control("profile.click.twoAndFour", spoken: "2 and 4").tap()
+    XCTAssertTrue(
+      app.repTargetStepper(saying: "9 per item").waitForExistence(timeout: 5), "the saved target")
+
+    app.terminate()
+    app.launchArguments = ["--disable-animations"]
+    app.launch()
+    app.tabBars.buttons["Practice"].tap()
+    app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
+    XCTAssertTrue(
+      app.repTargetStepper(saying: "9 per item").waitForExistence(timeout: 5), "the target survived"
+    )
+    XCTAssertTrue(
+      app.control("profile.click.twoAndFour", spoken: "2 and 4").isSelected,
+      "the metronome start survived")
+  }
 }
 
 extension XCUIApplication {
+  /// The stepper speaks its value, "Repetitions, 9 per item"; the text beside
+  /// it is hidden from VoiceOver so it is not read twice.
+  fileprivate func repTargetStepper(saying value: String) -> XCUIElement {
+    steppers.matching(
+      NSPredicate(
+        format: "identifier == %@ AND label == %@", "profile.repTarget", "Repetitions, \(value)")
+    ).firstMatch
+  }
+
   /// The profile's highlighter row reads as one element, "Highlighter, Coral".
   fileprivate func highlighterRow(_ colour: String) -> XCUIElement {
     descendants(matching: .any).matching(

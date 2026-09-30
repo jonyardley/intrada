@@ -33,6 +33,7 @@
     private let recentlyPractisedIds: [String]
     private let visibleIds: [String]?
     private let profile: ProfileView?
+    private let practiceDefaults: PracticeDefaults?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
@@ -42,7 +43,7 @@
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
       upNext: SuggestedSession? = nil, recentlyPractisedIds: [String] = [],
-      profile: ProfileView? = nil
+      profile: ProfileView? = nil, practiceDefaults: PracticeDefaults? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -57,6 +58,7 @@
       self.recentlyPractisedIds = recentlyPractisedIds
       self.visibleIds = visibleIds
       self.profile = profile
+      self.practiceDefaults = practiceDefaults
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -92,6 +94,7 @@
       viewModel.upNext = upNext
       viewModel.recentlyPractisedIds = recentlyPractisedIds
       if let profile { viewModel.profile = profile }
+      if let practiceDefaults { viewModel.practiceDefaults = practiceDefaults }
       return viewModel
     }
 
@@ -116,7 +119,10 @@
 
     /// A cellist called Jon on coral, greeted in the morning (#1692).
     static var previewProfile: Store {
-      Store(bridge: PreviewBridge(profile: .previewCellist))
+      Store(
+        bridge: PreviewBridge(
+          profile: .previewCellist,
+          practiceDefaults: PracticeDefaults(repTarget: 5, click: .twoAndFour)))
     }
 
     /// An offline store with curated sample items (specific edge cases).

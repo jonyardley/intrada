@@ -35,6 +35,21 @@ final class ProfileSnapshotTests: SnapshotTestCase {
       of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: axConfig)
   }
 
+  /// The Profile screen's own snapshot leaves this below the fold at the
+  /// largest text, so it is snapshotted alone there, scrolling as the screen
+  /// does (#1915).
+  func testPracticeDefaultsSectionAccessibilitySize() throws {
+    let limits = try XCTUnwrap(Store.preview.viewModel?.limits)
+    let section = ScrollView {
+      PracticeDefaultsSection(
+        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour), limits: limits,
+        onSave: { _ in }
+      )
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(of: host(section), as: axConfig)
+  }
+
   /// No name yet: a prompt to add one, not blank rows (#1692).
   func testProfileScreenEmpty() {
     assertSnapshot(of: host(NavigationStack { ProfileScreen() }), as: config)

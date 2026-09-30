@@ -40,8 +40,9 @@ final class ClickController {
   }
 
   /// Silences the click: its tempo and bar belonged to the item that just
-  /// finished. The metre opens with the piece's answer in it (T19).
-  func reseed(target: UInt16?, metre itemMetre: Metre?) {
+  /// finished. The metre opens with the piece's answer in it (T19), and the
+  /// beats with the core's, which carries the musician's default (#1915).
+  func reseed(target: UInt16?, metre itemMetre: Metre?, sounding itemSounding: UInt16?) {
     stop()
     unavailable = false
     metre = itemMetre ?? Metre(beats: 4, unit: 4, groups: nil)
@@ -49,7 +50,7 @@ final class ClickController {
     seededUnit = metre.unit
     soundsTarget = target.map { Int($0) == seeded } ?? false
     bpm = seeded
-    sounding = ClickPattern.everyBeat(of: metre)
+    sounding = itemSounding ?? ClickPattern.everyBeat(of: metre)
     configured = false
   }
 
