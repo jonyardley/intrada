@@ -429,7 +429,7 @@ lsp-setup: _ios-sync
 
 [doc("Open the app in Xcode, regenerating bindings if the core changed")]
 [group('iOS')]
-ios: _ios-sync
+ios: (_ios-sync "all")
     cd ios && xcodegen generate --use-cache
     xed ios/Intrada.xcodeproj
 
@@ -449,9 +449,9 @@ ios-logs:
 
 [doc("Force a full regenerate of both Swift packages and refresh the change stamp")]
 [group('iOS')]
-ios-gen: ios-typegen (ios-package "debug")
+ios-gen slices="all": ios-typegen (ios-package "debug" slices)
     @mkdir -p ios/generated
-    @just _ios-src-hash > ios/generated/.gen-stamp
+    @echo "$(just _ios-src-hash) {{slices}}" > ios/generated/.gen-stamp
     @echo "✓ bindings regenerated"
 
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
@@ -583,7 +583,7 @@ ios-test-ui-class class: _ios-sync
 # build so it can't disturb the products `_ios-build-for-testing` uploads.
 [doc("Compile a Release build without signing or tests, to catch Debug-only code")]
 [group('iOS')]
-ios-build-release: _ios-sync
+ios-build-release: (_ios-sync "all")
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
@@ -861,12 +861,19 @@ ios-typegen:
 
 [doc("Build the Rust core into ios/generated/IntradaCoreFFI with cargo-swift")]
 [group('iOS')]
-ios-package profile="debug":
+ios-package profile="debug" slices="all":
     #!/usr/bin/env bash
     set -euo pipefail
     cd crates/intrada-ffi
     if [ "{{profile}}" = "release" ]; then rel="--release"; else rel=""; fi
-    cargo swift package --name IntradaCoreFFI --platforms ios --lib-type static --features uniffi $rel --accept-all
+    # About 3 s against 5 s for all three slices (#2181). `all` stays for
+    # anything that can build for a device or an Intel simulator: Xcode, Release, CI.
+    case "{{slices}}" in
+        sim) where="--target aarch64-apple-ios-sim" ;;
+        all) where="--platforms ios" ;;
+        *) echo "✗ slices must be sim or all, not '{{slices}}'" >&2; exit 1 ;;
+    esac
+    cargo swift package --name IntradaCoreFFI $where --lib-type static --features uniffi $rel --accept-all
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
@@ -887,16 +894,18 @@ ios-package profile="debug":
     [ "$moved" = 1 ] || echo "⚠️  cargo-swift header layout changed — verify canImport(intrada_ffiFFI)"
     echo "✓ ios/generated/IntradaCoreFFI"
 
-# Regenerate bindings only if intrada-core / intrada-ffi changed since last gen.
+# Regenerate bindings only if intrada-core / intrada-ffi changed since last gen,
+# or the framework lacks a slice this caller needs: `all` satisfies `sim`.
 [private]
-_ios-sync:
+_ios-sync slices="sim":
     #!/usr/bin/env bash
     set -euo pipefail
     stamp=ios/generated/.gen-stamp
     current=$(just _ios-src-hash)
-    if [ ! -d ios/generated/IntradaCoreFFI ] || [ ! -d ios/generated/SharedTypes ] || [ "$(cat "$stamp" 2>/dev/null)" != "$current" ]; then
+    have="$(cat "$stamp" 2>/dev/null || true)"
+    if [ ! -d ios/generated/IntradaCoreFFI ] || [ ! -d ios/generated/SharedTypes ] || { [ "$have" != "$current all" ] && [ "$have" != "$current {{slices}}" ]; }; then
         echo "↻ core changed (or no bindings) — regenerating…"
-        just ios-gen
+        just ios-gen {{slices}}
     else
         echo "✓ bindings up to date"
     fi
