@@ -45,9 +45,9 @@ elif cmd == "clone":
         sys.exit(1)
     new(args[1])
 elif cmd == "bootstatus":
+    d = read(args[0]); d["state"] = "Booted"; write(args[0], d)
     if os.environ.get("STUB_FAIL_BOOT"):
         sys.exit(1)
-    d = read(args[0]); d["state"] = "Booted"; write(args[0], d)
 elif cmd == "shutdown":
     d = read(args[0])
     if d["state"] != "Booted":
@@ -91,7 +91,8 @@ fresh() {
 
 seed() {
   local udid="$1-seeded"
-  printf '{"name": "%s", "udid": "%s", "state": "%s"}' "$1" "$udid" "$2" >"$SIM_STATE/$udid"
+  printf '{"name": "%s", "udid": "%s", "state": "%s", "isAvailable": %s}' \
+    "$1" "$udid" "$2" "${3:-true}" >"$SIM_STATE/$udid"
 }
 
 udid_of() {
@@ -116,6 +117,7 @@ fresh first
 out="$(run wt-a)"
 expect "the first device prints its own UDID" true test "$out" = "$(udid_of wt-a)"
 expect "the first device is cloned from the template" true grep -q "^clone .* wt-a$" "$XCRUN_LOG"
+expect "the first device is not a blank fallback" false grep -q "^create wt-a " "$XCRUN_LOG"
 expect "the template is booted once while it is prepared" true test "$(calls bootstatus)" = 1
 expect "the prepared template carries its finished name" true test -n "$(udid_of "$template")"
 expect "the prepared template is left shut down" true test "$(state_of "$template")" = Shutdown
@@ -133,6 +135,7 @@ fresh booted
 seed "$template" Booted
 out="$(run wt-c)"
 expect "a booted template still yields a clone" true grep -q "^clone .* wt-c$" "$XCRUN_LOG"
+expect "a booted template is not replaced by a blank fallback" false grep -q "^create wt-c " "$XCRUN_LOG"
 expect "a booted template is shut down for the clone" true test "$(state_of "$template")" = Shutdown
 
 # ── Templates from an old pin or a dead prepare are deleted ──
@@ -146,6 +149,13 @@ expect "an old pin's template is deleted" true test -z "$(udid_of intrada-templa
 expect "a half-prepared template is deleted" true test -z "$(udid_of "$template-preparing")"
 expect "another worktree's device is left alone" true test -n "$(udid_of intrada-test-26-5-other-worktree)"
 
+fresh unavailable
+seed "$template" Shutdown false
+run wt-u >/dev/null
+expect "a template its runtime no longer supports is replaced" true \
+  test "$(udid_of "$template")" != "$template-seeded"
+expect "a clone comes from the replacement template" true grep -q "^clone .* wt-u$" "$XCRUN_LOG"
+
 # ── Every failure falls back to a blank device ──
 
 fresh clone-fails
@@ -158,6 +168,7 @@ fresh boot-fails
 out="$(STUB_FAIL_BOOT=1 run wt-f)"
 expect "a failed prepare still prints a device" true test "$out" = "$(udid_of wt-f)"
 expect "a failed prepare leaves no finished template" true test -z "$(udid_of "$template")"
+expect "a failed prepare deletes its unfinished device" true test -z "$(udid_of "$template-preparing")"
 expect "a failed prepare releases the template lock" false test -d "$IOS_SIM_TEMPLATE_LOCK_DIR"
 
 fresh lock-held

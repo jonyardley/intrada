@@ -226,10 +226,11 @@ Rules to keep two checkouts from colliding:
 - **A worktree's sim starts as a copy of a template** (#1904).
   `scripts/ios-sim-device.sh` clones `intrada-template-<device>-<runtime>`,
   which has already booted once, so the first run in a new worktree skips the
-  data migration: ready in 7 seconds against 19 for a blank device. The first
-  clone after a pin change prepares the template (about 20 seconds, under its
+  data migration: ready in 8 seconds against 19 for a blank device. The first
+  clone after a pin change prepares the template (about 30 seconds, under its
   own lock) and deletes the old pin's. Any failure falls back to a blank
-  device; delete the template by hand to rebuild it.
+  device. To rebuild the template, delete it and the next new worktree
+  prepares another: `xcrun simctl delete intrada-template-iPhone-16-iOS26-5`.
 - **Two overlapping runs in the *same* checkout are not safe** (#1192) — they'd
   share that checkout's simulator and DerivedData and crash each other's
   XCUITests. The recipes refuse to start when another `xcodebuild`/
