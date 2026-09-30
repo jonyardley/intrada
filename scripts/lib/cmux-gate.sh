@@ -36,8 +36,10 @@ cmux_gate_finish() {
 }
 
 # The cmux cockpit shows the result on the workspace's card, when installed.
+# Inside a cmux workspace only, as the card is per workspace. Its stdin is
+# closed so a reporter can never wait on the gate's terminal.
 cmux_gate_report() {
     local reporter="${CMUX_GATE_REPORTER:-$HOME/.config/cmux/scripts/report-gate.sh}"
     [ -x "$reporter" ] || return 0
-    "$reporter" "$1" "$CMUX_GATE_NAME" "$2" >/dev/null 2>&1 || true
+    "$reporter" "$1" "$CMUX_GATE_NAME" "$2" </dev/null >/dev/null 2>&1 || true
 }
