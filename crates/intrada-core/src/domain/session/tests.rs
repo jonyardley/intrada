@@ -276,7 +276,7 @@ fn suggestion_model() -> Model {
     m
 }
 
-fn start_from_suggestion(model: &mut Model) {
+fn build_from_suggestion(model: &mut Model) {
     update(
         model,
         Event::Session(SessionEvent::StartBuildingFromSuggestion { now: Utc::now() }),
@@ -286,7 +286,7 @@ fn start_from_suggestion(model: &mut Model) {
 #[test]
 fn start_building_from_suggestion_seeds_the_derived_block() {
     let mut m = suggestion_model();
-    start_from_suggestion(&mut m);
+    build_from_suggestion(&mut m);
 
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
     let e = building_entries(&m);
@@ -312,7 +312,7 @@ fn start_building_from_suggestion_caps_the_block_at_three_items() {
             ];
         }
     }
-    start_from_suggestion(&mut m);
+    build_from_suggestion(&mut m);
 
     assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
 }
@@ -322,7 +322,7 @@ fn start_building_from_suggestion_rejects_when_not_idle() {
     let mut m = suggestion_model();
     update(&mut m, Event::Session(SessionEvent::StartBuilding));
     add(&mut m, "ex-C");
-    start_from_suggestion(&mut m);
+    build_from_suggestion(&mut m);
 
     assert_eq!(
         m.last_error.as_deref(),
@@ -336,7 +336,7 @@ fn start_building_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
     // No piece has a related exercise linked, so there is no block to resume.
     let mut m = linked_model();
     m.items.retain(|i| i.id == "piece-Q" || i.id == "ex-D");
-    start_from_suggestion(&mut m);
+    build_from_suggestion(&mut m);
 
     assert!(
         matches!(m.session_status, SessionStatus::Idle),
@@ -360,7 +360,7 @@ fn start_building_from_suggestion_attributes_the_current_step() {
             }];
         }
     }
-    start_from_suggestion(&mut m);
+    build_from_suggestion(&mut m);
 
     let e = building_entries(&m);
     let seeded = e.iter().find(|x| x.item_id == "ex-A").expect("ex-A seeded");
@@ -393,6 +393,79 @@ fn start_building_from_suggestion_round_trips_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(Event::Session(
         SessionEvent::StartBuildingFromSuggestion { now: Utc::now() },
     ));
+}
+
+// ── Today's plan and the one-tap start (#57) ─────────────────────
+
+/// The pinned anchor's block (15 minutes, never practised) and piece-R's
+/// (10 minutes) fit a 25 minute length; nothing else qualifies.
+fn plan_model() -> Model {
+    let mut m = suggestion_model();
+    m.practice_defaults.session_length_mins = Some(25);
+    m
+}
+
+fn one_tap(model: &mut Model) -> Vec<ActiveSession> {
+    run(
+        model,
+        Event::Session(SessionEvent::StartFromSuggestion { now: Utc::now() }),
+    )
+}
+
+#[test]
+fn start_building_from_suggestion_seeds_every_planned_block() {
+    let mut m = plan_model();
+    build_from_suggestion(&mut m);
+
+    assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
+    assert_ne!(group_of(&m, "piece-P"), group_of(&m, "piece-R"));
+    assert!(groups_contiguous(building_entries(&m)));
+}
+
+#[test]
+fn start_from_suggestion_plays_the_plan_in_one_step() {
+    let mut m = plan_model();
+    let saves = one_tap(&mut m);
+
+    let played: Vec<&str> = session_entries(&m)
+        .iter()
+        .map(|e| e.item_id.as_str())
+        .collect();
+    assert_eq!(played, ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
+    assert_saved_what_is_active(&saves, &m);
+    assert_eq!(m.last_error, None);
+}
+
+#[test]
+fn start_from_suggestion_rejects_when_not_idle() {
+    let mut m = plan_model();
+    update(&mut m, Event::Session(SessionEvent::StartBuilding));
+    add(&mut m, "ex-D");
+    one_tap(&mut m);
+
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("A practice is already in progress")
+    );
+    assert_eq!(ids(&m), ["ex-D"], "the build in progress is untouched");
+}
+
+#[test]
+fn start_from_suggestion_is_a_no_op_with_nothing_to_suggest() {
+    let mut m = linked_model();
+    m.items.retain(|i| i.id == "piece-Q" || i.id == "ex-D");
+    let saves = one_tap(&mut m);
+
+    assert!(matches!(m.session_status, SessionStatus::Idle));
+    assert!(saves.is_empty());
+    assert_eq!(m.last_error, None, "nothing to suggest is not an error");
+}
+
+#[test]
+fn start_from_suggestion_round_trips_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::StartFromSuggestion {
+        now: Utc::now(),
+    }));
 }
 
 #[test]
@@ -7219,7 +7292,7 @@ fn every_way_into_the_builder_starts_at_the_preferred_length() {
                 }),
             )
         }),
-        ("up next", start_from_suggestion),
+        ("up next", build_from_suggestion),
         ("priorities", |m| {
             update(
                 m,

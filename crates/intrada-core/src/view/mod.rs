@@ -169,7 +169,10 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         analytics: cached.analytics.clone(),
         last_practised: cached.last_practised.clone(),
         profile: build_profile_view(&model.profile, clock.hour_of(now)),
-        up_next: cached.up_next.clone(),
+        up_next: crate::suggestion::plan(
+            &cached.up_next_blocks,
+            model.practice_defaults.session_length_mins,
+        ),
         photo_recognition: photo_recognition_view(&model.photo_recognition),
         limits: LimitsView {
             rep_target_default: model.practice_defaults.rep_target,

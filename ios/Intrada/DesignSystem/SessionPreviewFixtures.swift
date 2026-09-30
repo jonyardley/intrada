@@ -179,6 +179,16 @@
     }
   }
 
+  extension SuggestedPlan {
+    /// A plan of one block, as the hero shows with no preferred length.
+    static var previewStarred: SuggestedPlan {
+      let block = SuggestedSession.previewStarred
+      return SuggestedPlan(
+        blocks: [block], estimatedMinutes: block.estimatedMinutes,
+        itemCount: UInt32(block.items.count), lengthMins: nil)
+    }
+  }
+
   extension PracticeSessionView {
     /// Sunday 31 May 2026 (noon UTC), the "today" `PracticeWeekView.previewWeek`
     /// is read on: the same week as the sessions below (Thursday 28th, Saturday 30th).
