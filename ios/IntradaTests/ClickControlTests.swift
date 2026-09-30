@@ -116,14 +116,15 @@ struct ClickControllerTests {
   func theRowNamesATargetOnlyWhenTheClickSoundsIt(target: UInt16?, unit: UInt8, sounds: Bool) {
     let click = ClickController()
     click.reseed(
-      target: target, metre: Metre(beats: unit == 8 ? 6 : 4, unit: unit, groups: nil), sounding: nil
+      target: target, metre: Metre(beats: unit == 8 ? 6 : 4, unit: unit, groups: nil),
+      sounding: unit == 8 ? 0b111111 : 0b1111
     )
     #expect(click.soundsTarget == sounds)
   }
 
   @Test func aBarInAnotherUnitLeavesTheSeedAndKeepsAClampedTargetUnsounded() {
     let click = ClickController()
-    click.reseed(target: 240, metre: nil, sounding: nil)
+    click.reseed(target: 240, metre: nil, sounding: 0b1111)
 
     click.setMetre(Metre(beats: 6, unit: 8, groups: nil))
     #expect(!click.soundsTarget)
@@ -133,30 +134,30 @@ struct ClickControllerTests {
   @Test func movingToANewItemReseedsToThatItemsTempo() {
     let click = ClickController()
 
-    click.reseed(target: 66, metre: nil, sounding: nil)
+    click.reseed(target: 66, metre: nil, sounding: 0b1111)
     #expect(click.bpm == 66)
 
-    click.reseed(target: nil, metre: nil, sounding: nil)
+    click.reseed(target: nil, metre: nil, sounding: 0b1111)
     #expect(click.bpm == TempoScale.defaultBpm)
   }
 
   @Test func steppingMovesByTheSharedTempoStepAndStopsAtTheEnds() {
     let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: nil)
+    click.reseed(target: 66, metre: nil, sounding: 0b1111)
 
     click.step(by: TempoScale.step)
     #expect(click.bpm == 68)
     click.step(by: -TempoScale.step)
     #expect(click.bpm == 66)
 
-    click.reseed(target: UInt16(TempoScale.range.upperBound), metre: nil, sounding: nil)
+    click.reseed(target: UInt16(TempoScale.range.upperBound), metre: nil, sounding: 0b1111)
     click.step(by: TempoScale.step)
     #expect(click.bpm == TempoScale.range.upperBound)
   }
 
   @Test func steppingOffTheItemsTempoAndBackAgainIsNoticed() {
     let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: nil)
+    click.reseed(target: 66, metre: nil, sounding: 0b1111)
     #expect(click.isAtSeededTempo)
 
     click.step(by: TempoScale.step)
@@ -168,16 +169,17 @@ struct ClickControllerTests {
 
   @Test func aNewItemPutsTheRowBackOnItsOwnTempo() {
     let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: nil)
+    click.reseed(target: 66, metre: nil, sounding: 0b1111)
     click.step(by: TempoScale.step)
 
-    click.reseed(target: 120, metre: nil, sounding: nil)
+    click.reseed(target: 120, metre: nil, sounding: 0b1111)
     #expect(click.bpm == 120)
     #expect(click.isAtSeededTempo)
   }
 
   @Test func anItemStartsOnTheCoresBeatsAndABarChangeTakesOver() {
     let click = ClickController()
+    click.apply(.downbeat)
     click.reseed(target: 96, metre: nil, sounding: 0b1010)
     #expect(click.sounding == 0b1010)
     #expect(click.clickState == nil)
@@ -274,7 +276,7 @@ struct ClickPatternTests {
   /// the last sounding beat go silent.
   @Test func theControllerSeedsTheBarAndKeepsOneBeatSounding() {
     let click = ClickController()
-    click.reseed(target: 168, metre: sevenEight, sounding: nil)
+    click.reseed(target: 168, metre: sevenEight, sounding: 0b1111111)
     #expect(click.metre == sevenEight)
     #expect(click.sounding == 0b1111111)
     #expect(click.clickState == nil, "an untouched click asserts no metre")
@@ -326,7 +328,7 @@ struct ClickPatternTests {
 
   @Test func aQuaverClickStepsPastTheCrotchetCeiling() {
     let click = ClickController()
-    click.reseed(target: 240, metre: Metre(beats: 6, unit: 8, groups: [3, 3]), sounding: nil)
+    click.reseed(target: 240, metre: Metre(beats: 6, unit: 8, groups: [3, 3]), sounding: 0b111111)
     #expect(click.bpm == 240, "the seed is read in the metre's own unit")
 
     click.step(by: TempoScale.step)
@@ -335,7 +337,7 @@ struct ClickPatternTests {
 
   @Test func changingTheBeatValueKeepsTheNumberTheBandAllows() {
     let click = ClickController()
-    click.reseed(target: 132, metre: nil, sounding: nil)
+    click.reseed(target: 132, metre: nil, sounding: 0b1111)
 
     click.setMetre(Metre(beats: 6, unit: 8, groups: [3, 3]))
     #expect(click.bpm == 132, "the pulse does not change because the beat was renamed")

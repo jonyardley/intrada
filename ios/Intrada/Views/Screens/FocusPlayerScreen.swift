@@ -93,9 +93,13 @@ struct FocusPlayerScreen: View {
   }
 
   private func reseedClick() {
+    guard let active else {
+      click.stop()
+      return
+    }
     click.reseed(
-      target: active?.currentItemTempoBpm, metre: active?.currentItemMetre,
-      sounding: active?.currentClickSounding)
+      target: active.currentItemTempoBpm, metre: active.currentItemMetre,
+      sounding: active.currentClickSounding)
   }
 
   private func content(_ active: ActiveSessionView) -> some View {

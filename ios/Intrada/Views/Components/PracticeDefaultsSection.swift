@@ -1,8 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// The Profile screen's repetition target and metronome start (#1915). Every
-/// change goes to the core whole; the range comes from the core's limits.
 struct PracticeDefaultsSection: View {
   let defaults: PracticeDefaults
   let limits: LimitsView
@@ -27,7 +25,7 @@ struct PracticeDefaultsSection: View {
               .foregroundStyle(IntradaColor.inkSecondary)
           }
           .accessibilityHidden(true)
-          Spacer(minLength: 0)
+          if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
           Stepper(
             "Repetitions, \(defaults.repTarget) per item",
             value: Binding(
@@ -60,7 +58,7 @@ struct PracticeDefaultsSection: View {
         .padding(IntradaSpacing.card)
       }
       .cardSurface()
-      Text("Each new item in a session starts here. You can still change it on the item.")
+      Text("New items in a session start with these. Change them on any item.")
         .font(IntradaFont.micro)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
@@ -73,7 +71,7 @@ struct PracticeDefaultsSection: View {
 }
 
 extension ClickStart {
-  var title: String {
+  fileprivate var title: String {
     switch self {
     case .everyBeat: ClickPattern.everyBeat.title
     case .twoAndFour: ClickPattern.backbeat.title

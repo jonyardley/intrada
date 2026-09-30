@@ -77,8 +77,11 @@ final class ProfileUITests: XCTestCase {
     app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
     XCTAssertTrue(
       app.repTargetStepper(saying: "10 per item").waitForExistence(timeout: 5), "the reset default")
-    app.steppers["profile.repTarget"].buttons["Decrement"].firstMatch.tap()
-    app.control("profile.click.twoAndFour", spoken: "2 and 4").tap()
+    // The stepper's identifier overrides its buttons' own; decrement is first.
+    app.steppers["profile.repTarget"].buttons.element(boundBy: 0).tap()
+    let twoAndFour = app.control("profile.click.twoAndFour", spoken: "2 and 4")
+    twoAndFour.tap()
+    XCTAssertTrue(twoAndFour.isSelected, "the metronome start saved before the relaunch")
     XCTAssertTrue(
       app.repTargetStepper(saying: "9 per item").waitForExistence(timeout: 5), "the saved target")
 
