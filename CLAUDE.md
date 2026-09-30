@@ -162,7 +162,7 @@ if the approach is wrong before a third; `just claim` refuses the same at two me
 `epic`-labelled parent as GitHub sub-issues (`just epic-add EPIC N...`), one parent each, one
 level deep, the body naming the order. `just status` shows each epic's next open child and
 `just claim` names the epic. A plan that creates issues attaches them; whoever closes the last
-child closes the epic. The rules: [Epics](docs/roadmap.md#epics).
+child closes the epic. The rules: [Epics](docs/how-the-work-runs.md#epics).
 
 Test-first for non-UI Tier 2, all Tier 3 and `intrada-core` changes by default: a test
 retrofit to pass agrees with the implementation by construction (#1256). `reviewer` reviews

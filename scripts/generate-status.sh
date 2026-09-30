@@ -29,7 +29,7 @@ merged_prs=$(gh pr list --repo "$repo" --state merged --limit $((landed_limit * 
 claimed=$(gh issue list --repo "$repo" --label in-flight --state open \
   --limit "$claimed_limit" --json number,title,updatedAt)
 
-# The cut is gated on the milestone's headline, not on a date (docs/roadmap.md),
+# The cut is gated on the milestone's headline, not on a date (docs/how-the-work-runs.md),
 # so "is a release due" is only answerable next to the burn.
 #
 # Each read reports its own failure. An outage that printed an empty section
@@ -125,7 +125,7 @@ claimed_lines=$(printf '%s\n%s' "$claimed" "$open_prs" | jq -rs '
     last touched \(.updatedAt | split("T")[0])"
 ')
 
-# The headline is the description's first line (docs/roadmap.md): a sentence
+# The headline is the description's first line (docs/how-the-work-runs.md): a sentence
 # split runs past a newline and breaks the layout, and truncates "i.e." besides.
 release_lines=$(printf '%s' "$milestones" | jq -r '
   sort_by(.number) | .[] |
@@ -201,7 +201,7 @@ elif [ -n "$drafts_error" ]; then
   echo "    Could not read the releases, so drafts are not counted: $drafts_error"
 fi
 echo "    Cut when the headline works on the phone, then roll whatever is"
-echo "    still open into the next milestone. See docs/roadmap.md."
+echo "    still open into the next milestone. See docs/how-the-work-runs.md."
 
 section "EPICS (open, oldest first)" "$epic_lines"
 echo

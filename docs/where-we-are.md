@@ -1,37 +1,35 @@
 # Where we are
 
-*Orientation, hand-written, changed when the phase changes and not otherwise,
-so no two branches ever edit it at once. A release does not change it: its
-write-up is its GitHub release, generated from that release's milestone
-([`roadmap.md`](roadmap.md)). For what is in flight
-right now, run `just status`; it reads GitHub, which is the source of truth.
-Direction and phases: [`roadmap.md`](roadmap.md).*
+*Which release is out and what phase the work is in. Written by hand and
+changed only when the phase changes, so no two branches edit it at once. What
+is being built right now: `just status`, which reads GitHub. What comes next:
+[`roadmap.md`](roadmap.md).*
 
-**v0.14.0, "Nothing goes missing, and the screen tells the truth", is the
-latest release (2026-09-24, TestFlight build 23).** Its write-up, and those of
-v0.12.0 and v0.13.0, are their
-[GitHub releases](https://github.com/jonyardley/intrada/releases). v0.10.0 and
-v0.11.0 are tags without a release write-up.
+**The latest release is v0.14.0, "Nothing goes missing, and the screen tells
+the truth" (2026-09-24, TestFlight build 23).** Each release's write-up is its
+[GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
+on; v0.10.0 and v0.11.0 are tags without one.
 
-**The phase now is first run: get a new musician to their first marked
+**The phase now is the first run: get a new musician to their first marked
 session (#2121), then watch three of them do it (#2120).** It follows the
-vision rewrite of 2026-09-30 ([`VISION.md`](../VISION.md) v3); the ranking of
-everything after it is in [`roadmap.md`](roadmap.md#the-ranking).
+vision rewrite of 2026-09-30 ([`VISION.md`](../VISION.md)); the order of
+everything after it is in [the roadmap's ranking](roadmap.md#the-ranking).
 
-**The capture phase before it is done.** Chosen on 2026-09-07 at the end of the
-post-revert rethink ([`rethink-plan.md`](rethink-plan.md)), its releases were:
+**The capture phase before it is done.** It was chosen on 2026-09-07, at the
+end of the rethink after the coach was removed
+([`rethink-plan.md`](rethink-plan.md)), and shipped as:
 
 - **v0.10.0** (2026-09-09): add a piece with its chord chart and exercises in
-  one pass (#1390), the Focus Player's session timer, repetition counter and
-  click, and the first build that reports its crashes.
+  one pass (#1390), plus the practice screen's session timer, repetition
+  counter and click, and the first build that reports its crashes.
 - **v0.11.0** (2026-09-11): the paper and marker look.
-- **v0.12.0** (2026-09-12): the app knows who is practising, with a name,
-  an instrument and a highlighter colour.
+- **v0.12.0** (2026-09-12): the app knows who is practising, with a name, an
+  instrument and a highlighter colour.
 - **v0.13.0** (2026-09-16): variations belong to the exercise, and a session
   records what you actually played.
-- **v0.14.0** (2026-09-24): the September audit's data-loss and
-  wrong-number fixes (#1967).
+- **v0.14.0** (2026-09-24): the September audit's fixes for lost data and wrong
+  numbers (#1967).
 
-**Known gaps a tester will hit:** a crash names the build but not the line,
-because debug symbols are not uploaded (#1610), and several screens break at
-the largest text sizes (#2134).
+**Known gaps a tester will hit:** a crash report names the build but not the
+line of code, because debug symbols are not uploaded (#1610), and several
+screens break at the largest text sizes (#2134).
