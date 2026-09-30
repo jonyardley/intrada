@@ -360,6 +360,75 @@ expect 2 "a root that is not there" env HAPTICS_ROOT="$work/nowhere" bash "$repo
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-haptics.sh"
 
+# ── The bridge-test check ───────────────────────────────────────────────────
+
+bridge="$work/bridge"
+mkdir -p "$bridge/core" "$bridge/tests"
+bridge_check() {
+  BRIDGE_CORE_ROOT="$bridge/core" BRIDGE_VIEWMODEL="$bridge/core/model.rs" \
+    BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ALLOWLIST="$bridge/allow.txt" \
+    bash "$repo_root/scripts/check-bridge-tests.sh"
+}
+facet='#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]'
+cat >"$bridge/core/model.rs" <<EOF
+$facet
+pub struct ViewModel {
+    pub up_next: Option<Alpha>,
+    pub error_seq: u64,
+}
+$facet
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum Alpha { One }
+$facet
+/// Waiting on a test.
+pub struct Beta;
+EOF
+printf 'let a: Alpha = .one\nlet v = ViewModel()\n_ = view.upNext\n' >"$bridge/tests/SessionBridgeTests.swift"
+printf '# frozen\nBeta\nViewModel.errorSeq  # never read\n' >"$bridge/allow.txt"
+expect 0 "every type and field named or allowlisted" bridge_check
+
+printf '%s\n// Boxing changes the wire.\n#[allow(dead_code)]\npub enum Gamma { A }\n' "$facet" >"$bridge/core/gamma.rs"
+expect 1 "a new type behind a comment and an attribute, with no test" bridge_check
+printf '// Gamma is covered elsewhere\n' >>"$bridge/tests/SessionBridgeTests.swift"
+expect 1 "a new type named only in a comment" bridge_check
+printf 'let g: Gamma = .a\n' >"$bridge/tests/StubBridge.swift"
+expect 1 "a new type named only outside a LiveBridge test" bridge_check
+printf 'let g: Gamma = .a\n' >"$bridge/tests/RowsBridge.swift"
+expect 0 "a new type named in RowsBridge" bridge_check
+rm "$bridge/core/gamma.rs" "$bridge/tests/StubBridge.swift" "$bridge/tests/RowsBridge.swift"
+
+printf '#[cfg_attr(\n    feature = "facet_typegen",\n    derive(facet::Facet, Clone)\n)]\n#[serde(\n    rename_all = "camelCase"\n)]\npub struct Eta;\n' >"$bridge/core/eta.rs"
+expect 1 "a new type behind multi-line attributes, with no test" bridge_check
+printf '%s\npub(crate) struct Theta;\n' "$facet" >"$bridge/core/eta.rs"
+expect 2 "a derive the parser cannot follow to a type" bridge_check
+printf '#[effect(facet_typegen)]\npub enum Effect { Render }\n' >"$bridge/core/eta.rs"
+expect 1 "the effect enum, with no test" bridge_check
+rm "$bridge/core/eta.rs"
+
+cp "$bridge/core/model.rs" "$bridge/model.orig"
+perl -pi -e 's/^(    pub error_seq: u64,\n)/$1    pub notice_seq: u64,\n/' "$bridge/core/model.rs"
+expect 1 "a new ViewModel field with no test" bridge_check
+printf 'let n = noticeSeq\n_ = bridge.update(.noticeSeq(1))\n' >"$bridge/tests/LibraryBridgeTests.swift"
+expect 1 "a new field named only as a variable or an event case" bridge_check
+printf '_ = view.noticeSeq\n' >"$bridge/tests/LibraryBridgeTests.swift"
+expect 0 "a new field read off the view" bridge_check
+rm "$bridge/tests/LibraryBridgeTests.swift"
+mv "$bridge/model.orig" "$bridge/core/model.rs"
+
+printf 'let b = Beta()\n' >"$bridge/tests/LibraryBridgeTests.swift"
+expect 1 "an allowlisted type that a test now names" bridge_check
+rm "$bridge/tests/LibraryBridgeTests.swift"
+
+cp "$bridge/allow.txt" "$bridge/allow.orig"
+printf 'Delta\n' >>"$bridge/allow.txt"
+expect 1 "an allowlisted type no longer on the bridge" bridge_check
+mv "$bridge/allow.orig" "$bridge/allow.txt"
+
+expect 0 "the fixture back where it started" bridge_check
+expect 2 "a tests root that is not there" env BRIDGE_TESTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-bridge-tests.sh"
+
+expect 0 "the bridge this repo actually ships" bash "$repo_root/scripts/check-bridge-tests.sh"
+
 # ── The dash check ──────────────────────────────────────────────────────────
 
 em=$'\xe2\x80\x94'
