@@ -22,6 +22,10 @@ cmux_gate_finish() {
     cmux_gate_active || return 0
     "${CMUX_GATE_BIN:-cmux}" clear-progress >/dev/null 2>&1 || true
     elapsed=$((SECONDS - ${CMUX_GATE_STARTED:-$SECONDS}))
+    cmux_gate_report "$status" "$elapsed"
+    # An agent reports the gate at its turn end, so an alert per run rang the
+    # bell with nothing for Jon to do (#2195). His own runs still alert.
+    [ -n "${CLAUDECODE:-}" ] && return 0
     if [ "$status" -eq 0 ]; then
         title="✓ $CMUX_GATE_NAME passed"
     else
@@ -29,4 +33,11 @@ cmux_gate_finish() {
     fi
     "${CMUX_GATE_BIN:-cmux}" notify --title "$title" \
         --body "$((elapsed / 60))m $((elapsed % 60))s in $(basename "$PWD")" >/dev/null 2>&1 || true
+}
+
+# The cmux cockpit shows the result on the workspace's card, when installed.
+cmux_gate_report() {
+    local reporter="${CMUX_GATE_REPORTER:-$HOME/.config/cmux/scripts/report-gate.sh}"
+    [ -x "$reporter" ] || return 0
+    "$reporter" "$1" "$CMUX_GATE_NAME" "$2" >/dev/null 2>&1 || true
 }
