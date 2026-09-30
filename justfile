@@ -92,6 +92,7 @@ hygiene:
         "session-claims-test:bash scripts/tests/session-claims-test.sh"
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
+        "ios-sim-device-test:bash scripts/tests/ios-sim-device-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
     )
@@ -401,7 +402,7 @@ lsp-setup: _ios-sync
     xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
-    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
     cd .. && xcode-build-server config -project ios/Intrada.xcodeproj -scheme Intrada
     cd ios
     rm -rf build/dd-lsp
@@ -690,7 +691,7 @@ _ios-build-for-testing:
     xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
-    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
@@ -715,7 +716,7 @@ _ios-test-without-building filters retry parallel="0":
     cd ios
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
-    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    [ -n "$udid" ] || udid=$(bash ../scripts/ios-sim-device.sh "$name")
     # Booted here, not by xcodebuild: handed a shut-down device it boots it and
     # installs the app while SpringBoard is still starting, SpringBoard never
     # sees that install finish, and every launch is refused as "Busy" (#1648).
