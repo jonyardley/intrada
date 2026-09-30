@@ -208,7 +208,8 @@
             2, "Nocturne Op. 9 No. 2", .piece, score: 6, tempo: 54, repTarget: 5, repCount: 5),
         ],
         sessionScore: 7,
-        playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2")
+        playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2",
+        dayLabel: "Sat 30 May")
     }
 
     /// One exercise practised across three keys, so the detail screen lists a
@@ -219,7 +220,8 @@
         totalDurationDisplay: "20m 30s", totalDurationSummary: "20m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
-        playedSummary: "Major Scales in C major, G major and D major")
+        playedSummary: "Major Scales in C major, G major and D major",
+        dayLabel: "Fri 29 May")
     }
 
     /// One exercise practised in a single key, so the detail screen still
@@ -230,7 +232,8 @@
         totalDurationDisplay: "6m 0s", totalDurationSummary: "6m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
-        playedSummary: "Arpeggios in E\u{266d} major")
+        playedSummary: "Arpeggios in E\u{266d} major",
+        dayLabel: "Wed 27 May")
     }
 
     /// No session mark, and the two statuses a detail view must state plainly
@@ -243,7 +246,8 @@
         entries: [
           previewEntry(0, "Hanon No. 1", .exercise, score: 5, repTarget: 10, repCount: 4),
           previewEntry(1, "Major Scales", .exercise, status: .notAttempted),
-        ], sessionScore: nil, playedSummary: "Hanon No. 1")
+        ], sessionScore: nil, playedSummary: "Hanon No. 1",
+        dayLabel: "Thu 28 May")
     }
 
     private static func previewEntry(

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::analytics::ScoreChange;
+use crate::analytics::{LocalClock, ScoreChange};
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::session::{
     ActiveSession, EntryStatus, PracticeSession, SetlistEntry, SummarySession, VariationPlay,
@@ -343,8 +343,13 @@ fn session_changes(
         .collect()
 }
 
-pub fn session_to_view(session: &PracticeSession, labels: &VariationLabels) -> PracticeSessionView {
+pub fn session_to_view(
+    session: &PracticeSession,
+    labels: &VariationLabels,
+    clock: LocalClock,
+) -> PracticeSessionView {
     PracticeSessionView {
+        day_label: crate::practice_weeks::session_day_label(session, clock),
         id: session.id.clone(),
         started_at: session.started_at.to_rfc3339(),
         total_duration_display: format_duration_display(session.total_duration_secs),
@@ -1271,7 +1276,11 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_score: None,
         };
-        let view = session_to_view(&session, &VariationLabels::new());
+        let view = session_to_view(
+            &session,
+            &VariationLabels::new(),
+            LocalClock::from_now(Utc::now(), 0),
+        );
         // Precise (live-timer) form keeps seconds; the summary line drops them.
         assert_eq!(view.total_duration_display, "45m 0s");
         assert_eq!(view.total_duration_summary, "45m");
@@ -1304,7 +1313,11 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_score: Some(5),
         };
-        let view = session_to_view(&session, &VariationLabels::new());
+        let view = session_to_view(
+            &session,
+            &VariationLabels::new(),
+            LocalClock::from_now(Utc::now(), 0),
+        );
         assert_eq!(view.session_score, Some(5));
     }
 
@@ -1940,7 +1953,11 @@ mod tests {
             session_score: None,
         };
 
-        let view = session_to_view(&session, &VariationLabels::new());
+        let view = session_to_view(
+            &session,
+            &VariationLabels::new(),
+            LocalClock::from_now(Utc::now(), 0),
+        );
 
         assert_eq!(view.played_summary, "Nocturne in E\u{266d}");
     }

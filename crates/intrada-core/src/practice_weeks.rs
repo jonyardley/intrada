@@ -94,6 +94,22 @@ fn week_view(
     }
 }
 
+/// A session card's day line: `Today`, `Yesterday`, otherwise `Sat 30 May`,
+/// on the strip's clock so the card and the strip agree (#2053).
+pub(crate) fn session_day_label(session: &PracticeSession, clock: LocalClock) -> String {
+    let day = clock.session_day(session);
+    relative_day(day, clock.today)
+        .map_or_else(|| day.format("%a %-d %b").to_string(), str::to_string)
+}
+
+fn relative_day(day: NaiveDate, today: NaiveDate) -> Option<&'static str> {
+    match (today - day).num_days() {
+        0 => Some("Today"),
+        1 => Some("Yesterday"),
+        _ => None,
+    }
+}
+
 /// Today if practised, else the latest practice day before it, else today. A
 /// past week has no today, so it opens on its latest practice day, else Sunday.
 fn opening_day(days: &[PracticeDayView]) -> usize {
@@ -113,11 +129,7 @@ fn day_view(
     today: NaiveDate,
 ) -> PracticeDayView {
     let full_date = day.format("%A %-d %B").to_string();
-    let heading = match (today - day).num_days() {
-        0 => "Today".to_string(),
-        1 => "Yesterday".to_string(),
-        _ => full_date.clone(),
-    };
+    let heading = relative_day(day, today).map_or_else(|| full_date.clone(), str::to_string);
     PracticeDayView {
         date: day.format("%Y-%m-%d").to_string(),
         weekday_initial: day.format("%a").to_string().chars().take(1).collect(),
@@ -251,6 +263,43 @@ mod tests {
                 .map(|d| d.date.as_str())
                 .collect();
             assert_eq!(practised, vec![expected], "offset {offset}");
+        }
+    }
+
+    #[test]
+    fn a_session_card_names_its_day_at_todays_offset() {
+        // (offset, UTC start, label), today Sunday 31 May. 23:30 UTC on
+        // Saturday is 00:30 BST on Sunday.
+        let cases = [
+            (0, at(2026, 5, 31, 9, 0), "Today"),
+            (0, at(2026, 5, 30, 23, 30), "Yesterday"),
+            (60, at(2026, 5, 30, 23, 30), "Today"),
+            (60, at(2026, 5, 29, 23, 30), "Yesterday"),
+            (0, at(2026, 5, 29, 10, 0), "Fri 29 May"),
+            (-240, at(2026, 5, 30, 3, 0), "Fri 29 May"),
+            (0, at(2025, 12, 31, 10, 0), "Wed 31 Dec"),
+        ];
+        for (offset, started, expected) in cases {
+            let label = session_day_label(&session("s", started), clock(day(2026, 5, 31), offset));
+            assert_eq!(label, expected, "offset {offset}, start {started}");
+        }
+    }
+
+    #[test]
+    fn a_session_card_and_its_strip_day_name_the_same_day() {
+        let today = clock(day(2026, 5, 31), 60);
+        let sessions = vec![
+            session("sat-late", at(2026, 5, 30, 23, 30)),
+            session("fri-late", at(2026, 5, 29, 23, 30)),
+        ];
+        let week = &compute_practice_weeks(&sessions, today)[0];
+        for s in &sessions {
+            let strip_day = week
+                .days
+                .iter()
+                .find(|d| d.session_ids.contains(&s.id))
+                .expect("the strip files every session");
+            assert_eq!(session_day_label(s, today), strip_day.heading, "{}", s.id);
         }
     }
 

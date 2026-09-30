@@ -634,6 +634,8 @@ pub struct PracticeSessionView {
     /// so a long session is cut off honestly, at a fragment boundary with
     /// "and N more", instead of a mid-word ellipsis.
     pub played_summary: String,
+    /// `Today`, `Yesterday` or `Sat 30 May`, on the week strip's clock (#2053).
+    pub day_label: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
