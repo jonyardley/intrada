@@ -41,8 +41,8 @@ Every recipe that builds the app regenerates the Swift bindings only when
 `intrada-core` or `intrada-ffi` changed, so they stay in sync without slowing
 pure-Swift edits. `ios/generated/.gen-stamp` holds the core source hash and the
 framework slices built: the simulator-only recipes (`ios-run`, `ios-test` and
-the other test recipes) build the Apple silicon simulator slice alone, 2 s
-against 5 to 6 s (#2181), while `just ios` and `ios-build-release` need all
+the other test recipes) build the Apple silicon simulator slice alone, about 3 s
+against 5 s (#2181), while `just ios` and `ios-build-release` need all
 three and regenerate when the stamp says `sim`. `just ios-gen` forces a full
 regenerate of all three. A stale `.gen-stamp` is the tell when iOS tests behave oddly after a
 core type change.

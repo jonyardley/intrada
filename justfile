@@ -865,7 +865,7 @@ ios-package profile="debug" slices="all":
     set -euo pipefail
     cd crates/intrada-ffi
     if [ "{{profile}}" = "release" ]; then rel="--release"; else rel=""; fi
-    # 2 s against 5 to 6 s for all three slices (#2181). `all` stays for
+    # About 3 s against 5 s for all three slices (#2181). `all` stays for
     # anything that can build for a device or an Intel simulator: Xcode, Release, CI.
     case "{{slices}}" in
         sim) where="--target aarch64-apple-ios-sim" ;;
