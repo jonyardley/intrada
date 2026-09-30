@@ -432,6 +432,14 @@ fn start_from_suggestion_plays_the_plan_in_one_step() {
         .map(|e| e.item_id.as_str())
         .collect();
     assert_eq!(played, ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
+    let group = |id: &str| {
+        session_entries(&m)
+            .iter()
+            .find(|e| e.item_id == id)
+            .and_then(|e| e.group_id.clone())
+    };
+    assert_eq!(group("ex-A"), group("piece-P"));
+    assert_ne!(group("piece-P"), group("piece-R"));
     assert_saved_what_is_active(&saves, &m);
     assert_eq!(m.last_error, None);
 }

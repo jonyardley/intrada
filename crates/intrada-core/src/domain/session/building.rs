@@ -231,8 +231,6 @@ pub(super) fn start_building_from_suggestion(
     crux_core::render::render()
 }
 
-/// One tap from the hero to playing (#57): the plan seeded, then started
-/// through the same path as the builder's Start.
 pub(super) fn start_from_suggestion(
     model: &mut Model,
     now: DateTime<Utc>,
@@ -244,10 +242,7 @@ pub(super) fn start_from_suggestion(
     }
 }
 
-/// Seeds today's plan into a build, each block its own group. False when
-/// nothing was seeded: not an error when there is nothing to suggest, since
-/// the CTA cannot be on screen then and a race must not strand an empty
-/// builder.
+/// False when nothing was seeded; nothing to suggest is not an error (#1082).
 fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
     if !matches!(model.session_status, SessionStatus::Idle) {
         model.raise_error("A practice is already in progress".to_string());

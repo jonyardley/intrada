@@ -20,7 +20,6 @@ const MAX_SUGGESTED_EXERCISES: usize = 2;
 /// estimate has something honest to add for a brand-new piece.
 const UNPRACTISED_ESTIMATE_MINS: u32 = 5;
 
-/// Blocks a plan can hold, however long the preferred length.
 const MAX_PLAN_BLOCKS: usize = 4;
 
 /// How far past the preferred length a plan may run to take a whole block.
@@ -75,10 +74,7 @@ pub struct SuggestedPlan {
     pub length_mins: Option<u16>,
 }
 
-/// The blocks worth resuming, best first: empty when nothing qualifies, an
-/// empty library or no piece with a related exercise linked. The card is a
-/// suggestion and never a gate, so nothing simply leaves the Practice tab as
-/// it was. No two blocks share an item.
+/// Up next's ranking, best first, at most four blocks, no item in two.
 pub fn rank_blocks(items: &[LibraryItemView], clock: LocalClock) -> Vec<SuggestedSession> {
     let by_id: HashMap<&str, &LibraryItemView> = items.iter().map(|i| (i.id.as_str(), i)).collect();
 
@@ -111,10 +107,8 @@ pub fn rank_blocks(items: &[LibraryItemView], clock: LocalClock) -> Vec<Suggeste
         .collect()
 }
 
-/// The plan from ranked blocks: the lead block always, then, with a length,
-/// further blocks in order while the estimate stays within the length plus
-/// [`PLAN_SLACK_MINS`]. It stops at the first block that does not fit, so a
-/// short low-ranked block never jumps a longer higher-ranked one.
+/// Stops at the first misfit so a short low-ranked block never jumps a
+/// higher-ranked one.
 pub fn plan(blocks: &[SuggestedSession], length_mins: Option<u16>) -> Option<SuggestedPlan> {
     let (lead, rest) = blocks.split_first()?;
     let mut chosen = vec![lead.clone()];
@@ -892,6 +886,19 @@ mod tests {
         let second: Vec<&str> = blocks[1].items.iter().map(|i| i.item_id.as_str()).collect();
         assert_eq!(second, ["b-ex0", "b"]);
         assert_eq!(blocks[1].estimated_minutes, 2 * UNPRACTISED_ESTIMATE_MINS);
+    }
+
+    #[test]
+    fn a_block_whose_exercises_are_all_taken_is_the_piece_alone() {
+        let mut library = piece_with_exercises("a", "Arabesque", 1);
+        let mut second = LibraryItemView::fixture("b", "Berceuse", ItemKind::Piece);
+        second.linked_exercises = library[0].linked_exercises.clone();
+        library.push(second);
+
+        let blocks = rank_blocks(&library, clock());
+        let second: Vec<&str> = blocks[1].items.iter().map(|i| i.item_id.as_str()).collect();
+        assert_eq!(second, ["b"]);
+        assert_eq!(blocks[1].estimated_minutes, UNPRACTISED_ESTIMATE_MINS);
     }
 
     // ── Filling a plan ───────────────────────────────────────────────

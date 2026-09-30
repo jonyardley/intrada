@@ -44,7 +44,7 @@ pub struct SuggestedPlan {
   a length, it then adds blocks in order while the running estimate stays
   within the length plus five minutes, and stops at the first that does not
   fit, so a lower-ranked short block never jumps a higher-ranked long one.
-  Without a length it stops after the first block: no length nobody chose.
+  Without a length it stops after the first block: it never assumes a length.
 - The ranking is cached with the other projections (its inputs are the
   library and the clock); the fill runs at view time, so changing the
   preference changes the hero on the next render without a cache key.

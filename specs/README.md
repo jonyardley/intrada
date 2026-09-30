@@ -31,7 +31,8 @@ Accurate about how the app works or is being built now.
 | [`exercise-relations.md`](exercise-relations.md) | The single "Used in" list replacing the related-to breadcrumb (`UsedInCard.swift`) |
 | [`piece-related-exercises.md`](piece-related-exercises.md) | Writing your own exercise as the first action when adding exercises to a piece (`LibraryDetailScreen.swift`) |
 | [`practice-instruments.md`](practice-instruments.md) | The Focus Player's timer, rep counter and honest click (`click_sounding` in `domain/session.rs`) |
-| [`up-next-card.md`](up-next-card.md) | The "Up next" suggestion on the Practice tab (`compute_up_next` in `suggestion.rs`) |
+| [`up-next-card.md`](up-next-card.md) | The "Up next" suggestion on the Practice tab (`rank_blocks` in `suggestion.rs`) |
+| [`one-tap-start.md`](one-tap-start.md) | Today's plan on the Practice hero, filled to the preferred length and started in one tap (`plan` in `suggestion.rs`, `SessionEvent::StartFromSuggestion`) (#57, #999) |
 | [`getting-cold-signal.md`](getting-cold-signal.md) | Weighting the "not practised in a while" signal by how well learned a piece is (`staleness.rs`) |
 | [`reflection-draft.md`](reflection-draft.md) | The item-complete sheet's answers kept in the running practice's saved copy, so a crash reopens the sheet with them (#2137) |
 | [`api-removal.md`](api-removal.md) | The 2026-09-12 decision to remove the API and the sync, account and MCP-token client code (#1746, #1749); what went, what stays, what Jon tears down by hand |
