@@ -11,6 +11,12 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }), as: config)
   }
 
+  func testSessionBuilderEmptyWithLength() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingEmpty),
+      as: config)
+  }
+
   func testSessionBuilderPopulated() {
     assertSnapshot(
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)

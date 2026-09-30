@@ -123,7 +123,7 @@
         bridge: PreviewBridge(
           profile: .previewCellist,
           practiceDefaults: PracticeDefaults(
-            repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)))
+            repTarget: 5, click: .twoAndFour, sessionLengthMins: 40)))
     }
 
     /// An offline store with curated sample items (specific edge cases).
@@ -275,8 +275,18 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewExercise], takenElsewhere: []),
             ],
-            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [])))
+            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
+            lengthSummary: "30 min today", entryVariations: [])))
+    }
+
+    static var previewBuildingEmpty: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [], itemCount: 0, blocks: [],
+            totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
+            lengthSummary: "30 min today", entryVariations: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -331,8 +341,8 @@
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [])))
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
+            lengthSummary: "12 of 30 min planned", entryVariations: [])))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the

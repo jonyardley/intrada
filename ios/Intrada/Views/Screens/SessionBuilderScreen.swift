@@ -238,9 +238,25 @@ struct SessionBuilderScreen: View {
     }
   }
 
+  @ViewBuilder private var lengthCard: some View {
+    if let setlist, let limits = store.viewModel?.limits {
+      SessionLengthControl(
+        title: "Today's length",
+        lengthMins: setlist.lengthMins,
+        detail: nil,
+        valueLabel: setlist.lengthSummary ?? "",
+        limits: limits,
+        identifier: "builder.sessionLength"
+      ) { store.send(.session(.setSessionLength(lengthMins: $0))) }
+      .padding(IntradaSpacing.cardCompact)
+      .cardSurface(cornerRadius: IntradaRadius.control)
+    }
+  }
+
   @ViewBuilder private var content: some View {
     if blocks.isEmpty {
       VStack(spacing: IntradaSpacing.card) {
+        lengthCard
         Spacer()
         Text("Add pieces and exercises to build the session.")
           .font(IntradaFont.body)
@@ -254,47 +270,56 @@ struct SessionBuilderScreen: View {
       .padding(IntradaSpacing.card)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else {
-      List {
-        if hasGroups && !isEditing {
-          ungroupAllRow
+      VStack(spacing: 0) {
+        // Inside the List the card was squeezed, dropping the gap between its
+        // switch and stepper on the simulator (#1736), so it sits above.
+        if !isEditing {
+          lengthCard
+            .padding(.horizontal, IntradaSpacing.card)
+            .padding(.top, IntradaSpacing.card)
+        }
+        List {
+          if hasGroups && !isEditing {
+            ungroupAllRow
+              .listRowBackground(Color.clear)
+              .listRowSeparator(.hidden)
+              .listRowInsets(
+                EdgeInsets(
+                  top: 0, leading: IntradaSpacing.card, bottom: IntradaSpacing.controlGap,
+                  trailing: IntradaSpacing.card))
+          }
+          ForEach(rows) { row in
+            rowView(row)
+              .listRowBackground(Color.clear)
+              .listRowSeparator(.hidden)
+              .listRowInsets(insets(for: row))
+              .moveDisabled(!row.isInteractive)
+              .deleteDisabled(!row.isInteractive)
+          }
+          .onMove(perform: moveRows)
+          .onDelete(perform: deleteRows)
+
+          AddRowButton(title: "Add piece or exercise") { addingItems = true }
+            .accessibilityIdentifier("builder.addItems")
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(
               EdgeInsets(
-                top: 0, leading: IntradaSpacing.card, bottom: IntradaSpacing.controlGap,
-                trailing: IntradaSpacing.card))
+                top: IntradaSpacing.controlGap, leading: IntradaSpacing.card, bottom: 100,
+                trailing: IntradaSpacing.card)
+            )
+            .moveDisabled(true)
+            .deleteDisabled(true)
         }
-        ForEach(rows) { row in
-          rowView(row)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(insets(for: row))
-            .moveDisabled(!row.isInteractive)
-            .deleteDisabled(!row.isInteractive)
-        }
-        .onMove(perform: moveRows)
-        .onDelete(perform: deleteRows)
-
-        AddRowButton(title: "Add piece or exercise") { addingItems = true }
-          .accessibilityIdentifier("builder.addItems")
-          .listRowBackground(Color.clear)
-          .listRowSeparator(.hidden)
-          .listRowInsets(
-            EdgeInsets(
-              top: IntradaSpacing.controlGap, leading: IntradaSpacing.card, bottom: 100,
-              trailing: IntradaSpacing.card)
-          )
-          .moveDisabled(true)
-          .deleteDisabled(true)
+        .listStyle(.plain)
+        // A block's flattened rows must butt together to read as one card: no
+        // row spacing, and no 44pt minimum-height padding around short rows
+        // (the add-related footer). The in-card hairlines do the separating.
+        .listRowSpacing(0)
+        .environment(\.defaultMinListRowHeight, 1)
+        .scrollContentBackground(.hidden)
+        .environment(\.editMode, $editMode)
       }
-      .listStyle(.plain)
-      // A block's flattened rows must butt together to read as one card: no
-      // row spacing, and no 44pt minimum-height padding around short rows
-      // (the add-related footer) — the in-card hairlines do the separating.
-      .listRowSpacing(0)
-      .environment(\.defaultMinListRowHeight, 1)
-      .scrollContentBackground(.hidden)
-      .environment(\.editMode, $editMode)
     }
   }
 
