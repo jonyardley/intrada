@@ -221,8 +221,9 @@ final class Store {
     send(.setSort(sort))
   }
 
-  func forgetPersistedProfile() {
+  func forgetPersistedProfileAndDefaults() {
     profileSlot.clear()
+    practiceDefaultsSlot.clear()
   }
 
   func restorePersistedProfile() {

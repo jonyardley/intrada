@@ -22,6 +22,7 @@ struct ProfileScreen: View {
           VStack(alignment: .leading, spacing: IntradaSpacing.section) {
             hero
             highlighter
+            practiceDefaults
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.bottom, IntradaSpacing.section)
@@ -84,6 +85,15 @@ struct ProfileScreen: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel("Highlighter, \((profile?.colour ?? .butter).label)")
       .accessibilityIdentifier("profile.highlighter")
+    }
+  }
+
+  @ViewBuilder
+  private var practiceDefaults: some View {
+    if let defaults = store.viewModel?.practiceDefaults, let limits = store.viewModel?.limits {
+      PracticeDefaultsSection(defaults: defaults, limits: limits) { next in
+        store.send(.practiceDefaults(.save(next)))
+      }
     }
   }
 }
