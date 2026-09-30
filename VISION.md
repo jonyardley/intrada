@@ -25,7 +25,7 @@ Musicians practise but don't always progress. Hours pass at the instrument, yet 
 
 Intrada is a practice notebook: the place a musician's material lives, where today's practice starts, and where the record of what they actually played builds up. **The musician decides what matters; the app decides where today starts, keeps the record honest, and can always be overruled.**
 
-In July 2026 intrada became a practice coach that chose what you practised, gated each block on evidence and left the musician no way round it; it went too far too fast and was removed on 2026-08-14 (#1344). What broke it was the loss of control, not the ready-made plan. What survived, and what every release since has built on, is the notebook.
+In July 2026 intrada became a practice coach that chose what you practised, gated each block on evidence and left the musician no way round it; it went too far too fast and was removed on 2026-08-14 (#1344). In the 2026-09-30 review Jon placed the fault in the lost control; a ready-made plan the musician can change is kept. What survived, and what every release since has built on, is the notebook.
 
 ### Five layers
 
@@ -33,9 +33,9 @@ The layers explain what the notebook does and how the parts depend on each other
 
 **1. Capture.** Every piece, exercise, scale and pattern lives in intrada, with its keys, tempo, chord chart and the exercises that build it. Adding one takes one pass, typed or from a photo of the page. Nothing gets lost in a paper notebook.
 
-**2. Plan.** The musician builds a session from the library: pick, group, reorder and set its length, or start from the starred set or the Up next suggestion. The path from "I want to practise" to "I am practising" stays short: practice defaults and the preferred session length are remembered. Routines return as a saved starting point (#1348).
+**2. Plan.** The musician builds a session from the library: pick, group, reorder and set its length, or start from the starred set or today's plan. The path from "I want to practise" to "I am practising" stays short: practice defaults and the preferred session length are remembered. Routines return as a saved starting point (#1348).
 
-**3. Nudge.** The musician says what matters over the week: the starred items they want to improve and what the teacher set (#1926). The app adds what they would lose track of: what is going cold. From those it offers today's plan, filled to the session length, so starting takes one tap and no decision (#57). The plan is always shown before it starts and can always be changed or set aside for one built by hand. How it weighs the three sources, and whether it shows why each item is there, is still being explored (#2185).
+**3. Nudge.** The musician says what matters over the week: the starred items they want to improve and what the teacher set (#1926). The app adds what they would lose track of: what is going cold. From those it offers today's plan, filled to your session length when you have set one, so starting takes one tap and no decision (#57). The plan starts from stars and cold items; the teacher's week joins it once it exists (#1926), and how the three share the time, and whether the plan shows why each item is there, is still being explored (#2185). The plan is always shown before it starts and can always be changed or set aside for one built by hand. A new musician with nothing to draw on sees a Start here card instead (#2118), a rule reviewed after watching three new musicians (#2120).
 
 **4. Show.** Progress is real but gradual, so intrada makes it visible: a score and a tempo per item, per key, recorded only when there is evidence behind them (a tempo is kept when the musician set it or the click was sounding). The session record keeps what the musician wrote beside the numbers.
 
@@ -63,9 +63,9 @@ Musicians come with different motivations: mastery, one piece for a party, a ret
 
 The primary value intrada delivers is the feeling of making progress. Every feature should either enable progress or make it visible. If it does neither, it doesn't belong.
 
-### The Musician Decides
+### The Musician Has the Last Word
 
-The app proposes and remembers; the musician chooses. A suggestion can be dismissed, a default can be changed, and nothing blocks the next step on the app's judgement. This is the principle the coach broke.
+The musician decides what matters; the app may decide where today starts, but never hides its plan or blocks a change. A suggestion can be dismissed, a default can be changed, and nothing waits on the app's judgement. This is the principle the coach broke.
 
 ### Simplicity Over Features
 
@@ -85,7 +85,7 @@ A number shown as measurement must be one. Tempo, score and time are recorded wh
 
 ### Celebrate Comeback, Not Streak
 
-Intrada never shows a broken streak or a zero. A return is welcomed, and what went cold while you were away is shown as information, never as blame.
+Intrada never shows a broken streak or a zero. After a break, what went cold is shown as information, never as blame.
 
 ### No Journey Is Linear
 

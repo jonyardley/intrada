@@ -20,8 +20,8 @@ kept in the musician's hands: shown first, always changeable.
 **The capture line is delivered.** The direction chosen on 2026-09-07 shipped
 in v0.10.0 (a piece with its chord chart and exercises in one pass, #1390),
 and v0.11.0 to v0.14.0 built on it: the paper and marker look, a profile,
-variations that record what you played, and the September audit's fixes. **The next headline is a first run that gets a new
-musician to their first marked session (#2121)**, because so far the only
+variations that record what you played, and the September audit's fixes.
+**The next headline is a first run that gets a new musician to their first marked session (#2121)**, because so far the only
 regular user is the person building the app, and every later call needs
 evidence from others.
 
@@ -30,18 +30,18 @@ evidence from others.
 ## The ranking
 
 Work is picked from epics (see [Epics](#epics)), ranked here directly. The
-five layers and three pillars in the vision explain the product; they are not
-a ranking rule. When this list and an epic's horizon label disagree, this list
+five layers in the vision and the three pillars below explain the product;
+they are not a ranking rule. When this list and an epic's horizon label disagree, this list
 is the intent and the label is the one to fix.
 
 ### Now: the next release's headline
 
 - **#2121 A first run that gets a new musician to their first marked
   session.** Ends by watching three new musicians try it (#2120).
-- **#57 One-tap start and #999 today's plan**, resumed after this review:
-  the core half (#2182) is green and waiting, the screens half not started.
-  It opens on stars and cold items; how it weighs the teacher's week is
-  #2185.
+- **#57 One-tap start and #999 today's plan**: a plan filled from stars and
+  cold items, one tap to start it. How it weighs the teacher's week is #2185.
+  It and the Start here card (#2118) share the Practice screen's top card: a
+  new musician sees Start here until there is something to plan from.
 - Also closing out: the September audit backlog (#1967) and the core
   maintainability epic (#1995), each with a handful of children left.
 
@@ -60,8 +60,8 @@ is the intent and the label is the one to fix.
 
 ### Later
 
-- **#1978 Know what to practise next**: priorities and spacing. Its first
-  child, how today's plan weighs its sources (#2185), runs once one-tap start
+- **#1978 Know what to practise next**: priorities and spacing. Its open
+  question, how today's plan weighs its sources (#2185), runs once one-tap start
   has been lived with and the lesson trial (#1927) has reported.
 - **#1977 See the practice working** and **#1976 Score how it went.**
 - **#1979 One look everywhere** and **#1980 Make it yours, part two.**
@@ -144,7 +144,7 @@ one, not from the flat list of open issues: `just status` shows every open
 epic with its done count and its next open, unclaimed child.
 
 - **What earns one**: three or more issues that ship as separate PRs and have
-  an order worth writing down. A pillar, layer or journey label is a filter,
+  an order worth writing down. A layer or journey label is a filter,
   not an epic. Loose tidy-ups with no order between them stay single issues.
 - **Membership is a GitHub sub-issue**, attached with
   `just epic-add EPIC N...` in working order; `just epic-move` takes an issue
