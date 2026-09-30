@@ -28,7 +28,8 @@ with it, fix the label.
 ## Epics
 
 An epic holds a body of work: a roadmap line, an audit's backlog, a spec's
-phases or a tooling programme. The next piece of work is picked from an epic:
+phases or a tooling programme. The next piece of work is picked from an epic,
+never from the flat list of open issues:
 `just status` shows every open epic with its done count and its next open,
 unclaimed child.
 

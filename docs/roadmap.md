@@ -22,7 +22,8 @@ decision needs evidence from other musicians.
 ## The ranking
 
 Work is ranked here directly, by epic: a group of issues with a working order.
-Where this list and an issue's horizon label disagree, this list wins.
+Where this list and an issue's
+[horizon label](how-the-work-runs.md#horizons) disagree, this list wins.
 
 ### Now: the next release
 

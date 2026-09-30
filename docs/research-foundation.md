@@ -21,7 +21,7 @@ The spacing effect is one of the best-supported findings in learning science. Ma
 
 **Scheduling algorithms:** SM-2 was designed for verbal flashcard learning (Wozniak, 1987), and its interval growth parameters are calibrated for declarative memory. Musical skill learning involves procedural and motor memory, which consolidates differently (Walker & Stickgold, 2004). No published research validates SM-2 parameters for scheduling motor skills, so any intervals intrada uses would be informed guesses, refined from real use.
 
-**What intrada does:** it records when each item was last practised and shows the items going cold, which today's plan draws on (#57). Spacing reviews by how well an item is going is planned under #1978.
+**What intrada does:** it records when each item was last practised and shows the items going cold, which the Up next card draws on; today's plan will too (#57). Spacing reviews by how well an item is going is planned under #1978.
 
 ---
 
@@ -57,7 +57,7 @@ Valenzuela, Codina & Pestana (2018) studied the theory in conservatoire instrume
 
 Bonneville-Roussy & Evans (2024), studying 213 university music students across the UK and Canada, found that a teacher's support for autonomy predicted autonomous motivation, which in turn predicted both practice time and practice quality. Intrada should suggest and support, and leave the decisions to the musician.
 
-**What intrada does:** autonomy through the musician choosing what matters (stars now, the week's intent with #1926) and a plan they can always change; competence through tracking each item and key and showing the growth; and encouragement through messages about the process rather than the score.
+**What intrada does:** autonomy through the musician choosing what matters (stars now, the week's intent with #1926), and competence through tracking each item and key and showing the growth. A plan the musician can always change (#57) and encouragement about the process are planned.
 
 ---
 
@@ -67,9 +67,9 @@ Dweck's implicit theories framework (Dweck, 2006) distinguishes between a growth
 
 The growth mindset literature has faced legitimate scrutiny. A meta-analysis by Sisk et al. (2018) found that mindset interventions had only weak effects on academic achievement overall, though effects were larger for academically at-risk students. Dweck & Yeager (2019) responded that mindset interventions work best when they are sustained and embedded in supportive contexts, rather than delivered once.
 
-For intrada, the takeaway is that the *design of the tool itself* can reinforce growth-oriented beliefs, where a brief mindset intervention would not transform practice. Progress charts give objective evidence that effort leads to improvement. Encouragement tied to specific data points ("Your Db went from 2 to 4 over three weeks") is the kind of effort-linked feedback Dweck's research associates with adaptive motivation.
+For intrada, the takeaway is that the *design of the tool itself* can reinforce growth-oriented beliefs. Progress charts give objective evidence that effort leads to improvement. Encouragement tied to specific data points ("Your Db went from 2 to 4 over three weeks") is the kind of effort-linked feedback Dweck's research associates with adaptive motivation.
 
-**What intrada does about gaps in practice:** streaks create anxiety about breaking them, and can trigger shame-driven avoidance, particularly in musicians with ADHD. Intrada celebrates the return instead of counting the gap: "You've practised 4 of the last 7 days, which is good spacing for retention" rather than "5 day streak: don't break it!"
+**What intrada does about gaps in practice:** streaks create anxiety about breaking them, and can trigger shame-driven avoidance, particularly in musicians with ADHD. Intrada shows no streak; the weekly bars show how much was practised each week without counting a gap. Words that celebrate the return, such as "You've practised 4 of the last 7 days, which is good spacing for retention", are the intended tone, and are not built.
 
 > **Assumption:** The claim that streaks cause anxiety and avoidance is a design hypothesis, not a research finding. There is general psychology research on shame-avoidance cycles and ADHD emotional dysregulation (Barkley, 2015), but no published study directly compares streak-based and comeback-based tracking in practice apps. The choice follows self-determination theory (supporting autonomy) and practitioners' experience. It is a reasonable design decision, but should not be presented as proven.
 
@@ -134,7 +134,7 @@ So a musician can practise a passage, feel they made no progress, sleep, and com
 |-----------------|-------------------|
 | **Diagnose** | Later: patterns in the record show what the musician cannot self-diagnose, such as persistent weak keys, plateaus and effort that is not turning into progress |
 | **Decompose** | Tracking by key, and pieces linked to the exercises that build them, break a big goal into measurable parts |
-| **Sequence** | Today's plan starts from what the musician starred and what is going cold (#57), with spacing and priorities later (#1978); the musician can always change it |
+| **Sequence** | The Up next card suggests from what the musician starred and what is going cold; today's plan (#57), then spacing and priorities (#1978), are planned, always changeable |
 | **Regulate** | Scores, tempo and the session record give the outside view of progress that self-taught musicians lack |
 
 > **Open question:** How far a software tool can take on a teacher's regulating role is untested. The hypothesis is promising, because data and planning address the *information* gap in self-taught practice, but whether that leads to better outcomes than unstructured self-teaching is an empirical question intrada's own record could help answer.
@@ -155,7 +155,7 @@ The guided learning literature agrees. Kirschner, Sweller & Clark (2006) argued 
 
 ### What intrada does
 
-1. **Have a starting point ready.** Today's plan answers "what should I practise?" with a short plan the musician can start in one tap or change (#57), in place of a menu of everything.
+1. **Have a starting point ready.** The Up next card answers "what should I practise?" with one suggestion in place of a menu of everything. Today's plan will go further: a short plan the musician can start in one tap or change (#57).
 2. **Let the week narrow the choice.** The items the musician has starred, and later the week's intent (#1926), decide what today's plan draws from.
 3. **Show only what is needed now.** The full breadth of what could be practised stays available without being put up front: a musician starting a new exercise sees the keys they need now, not all twelve, with the next layer revealed as they master the first. This is an idea, not built.
 
@@ -201,12 +201,12 @@ The overlearning literature supports continuing correct repetitions beyond the f
 
 | App | Strengths | Weaknesses | Where intrada differs |
 |-----|-----------|------------|----------------------|
-| **Modacity** | Deliberate practice guidance, recording, mastery rating, good design | No spacing, no per-key tracking, expensive subscription, basic statistics | Tracking by key, a record that only shows what was measured, a ready plan the musician can change |
+| **Modacity** | Deliberate practice guidance, recording, mastery rating, good design | No spacing, no per-key tracking, expensive subscription, basic statistics | Tracking by key, a record that only shows what was measured |
 | **Tonic** | Social and community features, gamification, practice streaks | Social first rather than practice first, no deep progress metrics, no planning help | Practice quality over social metrics, progress per item and key, everything stays on the phone |
-| **Piano Practice Assistant** | True spaced repetition, section-level tracking, interleaved practice, grounded in research | Android only, piano only, little design polish, no goals | Any instrument, a polished app, the week's intent, an encouraging tone |
+| **Piano Practice Assistant** | True spaced repetition, section-level tracking, interleaved practice, grounded in research | Android only, piano only, little design polish | Any instrument, iPhone, an encouraging tone |
 | **Instrumentive** | Practice habit tracking, recording, metronome, similar to Modacity | Habit building over practice quality, limited analytics | Quality as well as habit, a richer record of each item |
 
-**Intrada's position:** quick capture, tracking by key, an honest record, a plan the musician stays in charge of, and design for every kind of mind, in a clean app for any instrument. Spacing and mixing items within a session (sections 1 and 2) are ideas, not built yet.
+**Intrada's position:** quick capture, tracking by key, an honest record and design for every kind of mind, in one app for any instrument. A plan the musician stays in charge of is next (#57). Spacing and mixing items within a session (sections 1 and 2) are ideas, not built yet.
 
 ---
 

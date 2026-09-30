@@ -41,12 +41,12 @@ today's practice starts, and where the record of what they actually played
 builds up. **The musician decides what matters; the app decides where today
 starts, keeps the record honest, and can always be overruled.**
 
-From July to August 2026 intrada was a practice coach. It chose what you
-practised, held each block until you showed evidence, and gave the musician no
-way round it. It was removed on 2026-08-14 (#1344). The mistake was taking the
-decision away from the musician; a ready-made plan the musician can change
-stays. The notebook underneath survived, and every release since has built on
-it.
+From July to August 2026 intrada was a practice coach. It chose what the
+musician practised, held each block until they showed evidence, and gave them
+no way round it. It was removed on 2026-08-14 (#1344). The mistake was taking
+the decision away from the musician. A ready-made plan stays, as long as the
+musician can change it. The notebook underneath survived, and every release
+since has built on it.
 
 ### Five layers
 
@@ -56,31 +56,33 @@ Each layer depends on the ones before it. The roadmap ranks the work itself.
    its keys, tempo, chord chart and the exercises that build it. Adding one
    takes a single pass, typed or from a photo of the page.
 2. **Plan.** The musician builds a session from the library: pick items, group
-   and reorder them, and set a length, or start from the starred set or today's
-   plan. Practice defaults and the preferred session length are remembered.
-   Routines, saved starting points for a session, are being rebuilt (#1348).
+   and reorder them, and set a length. Practice defaults and the preferred
+   session length are remembered. Routines, saved starting points for a
+   session, will be rebuilt (#1348).
 3. **Nudge.** Over the week, the musician says what matters: the items they
    have starred to improve and what the teacher set (#1926). The app adds what
-   they would lose track of, the items going cold. From those it offers today's
-   plan, filled to the musician's session length, so starting takes one tap
-   (#57). The plan is always shown before it starts, and can be changed or set
-   aside for one built by hand. More below.
+   they would lose track of, the items going cold. Today the Up next card
+   suggests a piece and its exercises from these. Next, the app will offer
+   today's plan, filled to the musician's session length, so starting takes
+   one tap (#57). More below.
 4. **Show.** Progress is real but gradual, so intrada makes it visible: a score
-   and a tempo for each item, key by key, recorded only when there is evidence
-   behind them. The session record keeps what the musician wrote beside the
+   for each key and a tempo for each item, recorded only when there is
+   evidence behind them. The session record keeps what the musician wrote beside the
    numbers.
 5. **Guide.** Later, and only once the first four are solid: patterns the
    musician can't see for themselves ("your flat keys lag your sharp ones"),
    then suggested exercises. See Future vision.
 
-### Today's plan
+### Today's plan (next)
 
-The first version of today's plan draws on starred items and items going cold.
-The teacher's week joins it once that exists (#1926). How the three share the
-time, and whether the plan says why each item is there, is still open (#2185).
+Today's plan will always be shown before it starts, and can be changed or set
+aside for a session built by hand. Its first version will draw on starred items
+and items going cold; the teacher's week joins once that exists (#1926). How
+the three share the time, and whether the plan says why each item is there, is
+still open (#2185).
 
-A new musician with nothing to plan from sees a Start here card instead
-(#2118). That rule is reviewed after watching three new musicians use the app
+A new musician with nothing to plan from will see a Start here card instead
+(#2118), a rule reviewed after watching three new musicians use the app
 (#2120).
 
 ---
@@ -139,8 +141,8 @@ practice and does its work before and after.
 
 Every decision between "I want to practise" and "I am practising" is a chance
 for the session not to happen, especially for musicians who find starting hard.
-Today's plan makes it one tap (#57). Remembered defaults and the starred set
-keep building your own session quick, and routines will join them (#1348).
+Remembered defaults keep building a session quick, and today's plan will make
+starting one tap (#57).
 
 ### Reflection closes the loop
 
@@ -151,7 +153,7 @@ the item comes with the week's intent (#1926).
 
 ### The record tells the truth
 
-A number shown as a measurement is one. Tempo, score and time are recorded when
+Every number intrada shows was measured. Tempo, score and time are recorded when
 there is evidence for them and left empty otherwise, so a chart never draws a
 default as if it had been played.
 
@@ -163,11 +165,11 @@ shown as information to act on.
 ### No journey is linear
 
 Musicians plateau, change direction, take breaks and restart. A break is part
-of practising, and coming back after six months picks up where you left off.
+of practising, and coming back after six months picks up where the musician left off.
 
 ### Designed for every mind
 
-Neurodivergent musicians shape every screen: a short path to start, time made
+Every screen is designed with neurodivergent musicians in mind: a short path to start, time made
 visible, comebacks celebrated, sessions of any length. Specific commitments:
 
 - no sounds that play by themselves;
@@ -187,7 +189,7 @@ Exercises are scales, arpeggios, patterns and technical studies.
 the weak ones stand out instead of being averaged away.
 
 **Variations.** A variation belongs to its exercise, and a session records the
-ones you played (#1739, [spec](specs/exercise-variations.md)). The remaining
+ones played (#1739, [spec](specs/exercise-variations.md)). The remaining
 wording and tidy-ups are in #1970.
 
 **Building a piece.** A jazz standard collects the exercises that build it: the
@@ -212,8 +214,8 @@ in the session builder; earlier sentences stay on the item as its history, and
 the dates say which week each belongs to (#1926). There are no separate lessons
 or goals to manage.
 
-This replaces a separate goals feature, planned in July 2026 and never built.
-Goals were built and removed twice before (#213, #769), and both times they
+This replaces the goals feature planned in July 2026, which was never built.
+Two earlier versions of goals were built and removed (#213, #769), and both
 turned into a chore of their own. The star on each item stays as the simplest
 way to say "this matters".
 
@@ -259,7 +261,7 @@ The studies, and how strong the evidence is for each, are in the
 Most practice apps either count minutes, which measures turning up rather than
 getting better, pile on features that feel like work, or put social features
 ahead of the practice itself. Intrada combines quick capture, tracking by key,
-an honest record and design for every kind of mind, in a clean app for any
+an honest record and design for every kind of mind, in one app for any
 instrument that works entirely on the phone. The comparison app by app is in
 the [research foundation](docs/research-foundation.md#12-competitive-landscape).
 
