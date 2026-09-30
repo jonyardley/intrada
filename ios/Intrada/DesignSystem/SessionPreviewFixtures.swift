@@ -191,8 +191,7 @@
       return PreviewCalendar.utc.date(from: components) ?? .distantPast
     }
 
-    /// Fixed past dates (not "now") so the card renders a deterministic absolute
-    /// date, reusable from snapshot tests as well as the canvas.
+    /// `dayLabel` matches `previewWeek`'s heading, read with 31 May as today.
     static var previewCompleted: PracticeSessionView {
       PracticeSessionView(
         id: "session-1", startedAt: "2026-05-30T09:00:00Z",
@@ -209,7 +208,7 @@
         ],
         sessionScore: 7,
         playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2",
-        dayLabel: "Sat 30 May")
+        dayLabel: "Yesterday")
     }
 
     /// One exercise practised across three keys, so the detail screen lists a

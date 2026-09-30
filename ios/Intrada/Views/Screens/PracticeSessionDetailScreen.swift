@@ -7,14 +7,10 @@ import SwiftUI
 struct PracticeSessionDetailScreen: View {
   let session: PracticeSessionView
 
-  @Environment(\.locale) private var locale
-  @Environment(\.calendar) private var calendar
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
-    ScreenScaffold(
-      title: session.dateDisplay(locale: locale, calendar: calendar), subtitle: subtitle
-    ) {
+    ScreenScaffold(title: session.dayLabel, subtitle: subtitle) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           if session.sessionScore != nil {
@@ -216,7 +212,6 @@ struct PracticeSessionDetailScreen: View {
     NavigationStack {
       PracticeSessionDetailScreen(session: .previewCompleted)
         .environment(Store.previewPractice)
-        .environment(\.calendar, PreviewCalendar.utc)
     }
   }
 
@@ -224,7 +219,6 @@ struct PracticeSessionDetailScreen: View {
     NavigationStack {
       PracticeSessionDetailScreen(session: .previewEndedEarly)
         .environment(Store.previewPractice)
-        .environment(\.calendar, PreviewCalendar.utc)
     }
   }
 
@@ -232,7 +226,6 @@ struct PracticeSessionDetailScreen: View {
     NavigationStack {
       PracticeSessionDetailScreen(session: .previewWithVariations)
         .environment(Store.previewPractice)
-        .environment(\.calendar, PreviewCalendar.utc)
     }
   }
 
@@ -240,7 +233,6 @@ struct PracticeSessionDetailScreen: View {
     NavigationStack {
       PracticeSessionDetailScreen(session: .previewWithOneVariation)
         .environment(Store.previewPractice)
-        .environment(\.calendar, PreviewCalendar.utc)
     }
   }
 #endif

@@ -5,12 +5,10 @@ import SwiftUI
 /// there's no type-coded left bar (unlike the single-type library rows).
 struct SessionCard: View {
   let session: PracticeSessionView
-  @Environment(\.locale) private var locale
-  @Environment(\.calendar) private var calendar
 
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
-      Text(dateDisplay)
+      Text(session.dayLabel)
         .font(IntradaFont.cardTitle())
         .foregroundStyle(IntradaColor.ink)
       Text(metaLine)
@@ -48,12 +46,8 @@ struct SessionCard: View {
     "\(session.totalDurationSummary) · \(session.itemCountDisplay)"
   }
 
-  private var dateDisplay: String {
-    session.dateDisplay(locale: locale, calendar: calendar)
-  }
-
   private var accessibilityLabel: String {
-    var parts = [dateDisplay, session.totalDurationSummary, session.itemCountDisplay]
+    var parts = [session.dayLabel, session.totalDurationSummary, session.itemCountDisplay]
     if !session.playedSummary.isEmpty { parts.append(session.playedSummary) }
     if session.completionStatus == .endedEarly { parts.append("ended early") }
     return parts.joined(separator: ", ")
