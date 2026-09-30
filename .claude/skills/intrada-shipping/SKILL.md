@@ -19,6 +19,9 @@ main while its reviewer was still thinking.
   `LibraryBridgeTests`, `SessionBridgeTests` or `VariationPlayBridgeTests`.
   A Rust round trip cannot see Rust and Swift disagreeing about the wire
   (#846, #1953); the reviewer blocks a bridge diff without one.
+  `scripts/check-bridge-tests.sh` fails a new type or ViewModel field that no
+  such test names (#2101); it sees a name, not an assertion, so the reviewer
+  still reads what the test checks.
 - **`reviewer` is pinned to Opus 5.5 high**, briefed with the worktree and the
   issue so it checks the diff against done looks like. Tier 1 and screens-only
   diffs take the pin, which is no reason to skip review (#1665). A diff on a
