@@ -134,12 +134,14 @@ pub(crate) fn play_would_survive_drop(entry: &SetlistEntry, play: &VariationPlay
 
 /// The first tap is what switches the counter on: it writes the target along
 /// with itself, so an untouched entry keeps all four rep fields `None` and
-/// banks nothing (design-principles T19). A target set in the builder is kept.
+/// banks nothing (design-principles T19). A target set in the builder is kept;
+/// otherwise the musician's default is written (#1915).
 pub(super) fn record_rep(
     model: &mut Model,
     action: RepAction,
     now: DateTime<Utc>,
 ) -> Command<Effect, Event> {
+    let default_rep_target = model.practice_defaults.rep_target;
     let SessionStatus::Active(ref mut active) = model.session_status else {
         return crux_core::render::render();
     };
@@ -158,9 +160,7 @@ pub(super) fn record_rep(
         return crux_core::render::render();
     }
 
-    let target = *play
-        .rep_target
-        .get_or_insert(validation::DEFAULT_REP_TARGET);
+    let target = *play.rep_target.get_or_insert(default_rep_target);
     let count = play.rep_count.unwrap_or(0);
     let new_count = match action {
         RepAction::Success => (count + 1).min(target),

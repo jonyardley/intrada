@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
+use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
 use crate::domain::session::{
     ClickState, CompletionStatus, EntryStatus, PracticeSession, ReflectionAnswers, RepEvent,
@@ -50,6 +51,8 @@ pub struct Model {
     pub practice_summaries: Tracked<HashMap<String, ItemPracticeSummary>>,
     /// Device data, not account data (`specs/profile.md`).
     pub profile: Profile,
+    /// Device data, like the profile (`specs/practice-defaults.md`).
+    pub practice_defaults: PracticeDefaults,
     /// Bumped each time an error is raised or surfaced, never because one is
     /// still standing, so a send accepted under the banner does not read as
     /// refused (#1056, #1936).
@@ -301,6 +304,7 @@ pub struct ViewModel {
     /// core's "already in progress" refusal (#981). Derived before the Library
     /// filter, like `up_next`.
     pub shows_priorities: bool,
+    pub practice_defaults: PracticeDefaults,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a
@@ -314,6 +318,7 @@ pub struct LimitsView {
     pub metre_units: Vec<u8>,
     pub rep_target_min: u8,
     pub rep_target_max: u8,
+    /// The musician's own default once set (#1915).
     pub rep_target_default: u8,
     pub planned_duration_min_secs: u32,
     pub planned_duration_max_secs: u32,
@@ -710,6 +715,9 @@ pub struct ActiveSessionView {
     pub current_item_tempo_bpm: Option<u16>,
     /// The piece's metre, the answer the click sheet opens with (T19).
     pub current_item_metre: Option<Metre>,
+    /// The beats the click starts on for this item: the musician's default,
+    /// fitted to the item's metre or 4/4 (`specs/practice-defaults.md`).
+    pub current_click_sounding: u16,
     /// The current item's variations with the picker's caption for each (#1784).
     pub current_variations: Vec<PickerVariationView>,
     /// `Some` while the item-complete sheet is open, including after a resume (#2137).

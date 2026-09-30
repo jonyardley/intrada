@@ -28,10 +28,10 @@ being offline.
    keep in sync.
 7. **No account gate on core functionality.** Only sync may require auth.
 8. **Relational data in GRDB; only small singletons in UserDefaults** (the
-   library sort, the profile, the crash-recovery blob), written through an
-   `AppEffect`. Each blob must take a versioned key and a Rust wire pin, so a
-   shape change fails a test instead of silently failing to decode (#1952); the
-   library sort does not yet (#2089).
+   library sort, the profile, the practice defaults, the crash-recovery blob),
+   written through an `AppEffect`. Each blob must take a versioned key and a
+   Rust wire pin, so a shape change fails a test instead of silently failing to
+   decode (#1952); the library sort does not yet (#2089).
 
 ## Local data migrations (GRDB, `LibraryStore`)
 

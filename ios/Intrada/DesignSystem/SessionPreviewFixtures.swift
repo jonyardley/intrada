@@ -327,6 +327,7 @@
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
         currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
+        currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil)
     }
 
@@ -349,6 +350,7 @@
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
         currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
+        currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil)
     }
 
@@ -373,6 +375,7 @@
         currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
         currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil,
+        currentClickSounding: 0b1111,
         currentVariations: [
           PickerVariationView(
             id: "variation-c", label: "C", caption: "Played this session · 3m 10s",
@@ -429,6 +432,7 @@
         currentItemNotes: nil,
         currentRelatedPieceTitle: "Moonlight Sonata",
         currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
+        currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil)
     }
   }

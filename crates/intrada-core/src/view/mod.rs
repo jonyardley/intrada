@@ -129,6 +129,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     &item_index,
                     &labels,
                     current_variations,
+                    &model.practice_defaults,
                 )),
                 None,
                 None,
@@ -165,11 +166,15 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         profile: build_profile_view(&model.profile, clock.hour_of(now)),
         up_next: cached.up_next.clone(),
         photo_recognition: photo_recognition_view(&model.photo_recognition),
-        limits: LimitsView::default(),
+        limits: LimitsView {
+            rep_target_default: model.practice_defaults.rep_target,
+            ..LimitsView::default()
+        },
         visible_ids,
         recently_practised_ids: cached.recently_practised_ids.clone(),
         shows_priorities: cached.has_priorities
             && matches!(model.session_status, SessionStatus::Idle),
+        practice_defaults: model.practice_defaults,
     }
 }
 

@@ -73,6 +73,7 @@ struct RootView: View {
         store.restorePersistedSort()
         if UITestFlags.resetProfile { store.forgetPersistedProfile() }
         store.restorePersistedProfile()
+        store.restorePersistedPracticeDefaults()
         store.loadRecoverableSession()
       }
     }

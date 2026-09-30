@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::analytics::{LocalClock, ScoreChange};
 use crate::domain::item::{Item, ItemKind};
+use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
     ActiveSession, EntryStatus, PracticeSession, SetlistEntry, SummarySession, VariationPlay,
 };
@@ -179,6 +180,7 @@ pub fn build_active_session_view(
     item_index: &HashMap<&str, &Item>,
     labels: &VariationLabels,
     current_variations: &[VariantView],
+    defaults: &PracticeDefaults,
 ) -> ActiveSessionView {
     let safe_index = active.current_index.min(active.entries.len() - 1);
     let current = active.current_entry();
@@ -203,6 +205,9 @@ pub fn build_active_session_view(
         .get(current.item_id.as_str())
         .and_then(|i| i.tempo.as_ref());
 
+    let current_item_metre = item_index
+        .get(current.item_id.as_str())
+        .and_then(|i| i.metre.clone());
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
         current_item_type: current.item_type.clone(),
@@ -223,7 +228,7 @@ pub fn build_active_session_view(
         current_rep_history: open.and_then(|p| p.rep_history.clone()),
         current_rep_slots: open
             .and_then(|p| p.rep_target)
-            .unwrap_or(crate::validation::DEFAULT_REP_TARGET),
+            .unwrap_or(defaults.rep_target),
         current_variation_id: open.and_then(|p| p.variation_id.clone()),
         current_variation_label: open
             .and_then(|p| p.variation_id.as_deref())
@@ -240,9 +245,10 @@ pub fn build_active_session_view(
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
-        current_item_metre: item_index
-            .get(current.item_id.as_str())
-            .and_then(|i| i.metre.clone()),
+        current_click_sounding: defaults
+            .click
+            .sounding(&current_item_metre.clone().unwrap_or_default()),
+        current_item_metre,
         current_variations: picker_variations(current, current_variations),
         reflection: active.reflection.as_ref().map(|draft| ReflectionView {
             answers: draft.answers.clone(),
@@ -608,8 +614,14 @@ mod tests {
             reflection: None,
         };
         assert_eq!(
-            build_active_session_view(&active, &items, &VariationLabels::new(), &[])
-                .current_item_metre,
+            build_active_session_view(
+                &active,
+                &items,
+                &VariationLabels::new(),
+                &[],
+                &PracticeDefaults::default()
+            )
+            .current_item_metre,
             Some(metre)
         );
         let second = ActiveSession {
@@ -617,16 +629,67 @@ mod tests {
             ..active
         };
         assert_eq!(
-            build_active_session_view(&second, &items, &VariationLabels::new(), &[])
-                .current_item_metre,
+            build_active_session_view(
+                &second,
+                &items,
+                &VariationLabels::new(),
+                &[],
+                &PracticeDefaults::default()
+            )
+            .current_item_metre,
             None
         );
+    }
+
+    #[test]
+    fn active_session_view_starts_the_click_on_the_default_fitted_to_the_bar() {
+        use crate::domain::practice_defaults::ClickStart;
+        let mut seven_eight = make_item("i1", "Take Five", ItemKind::Piece);
+        seven_eight.metre = Some(Metre {
+            beats: 7,
+            unit: 8,
+            groups: Some(vec![3, 2, 2]),
+        });
+        let mut common = make_item("i2", "Blues", ItemKind::Piece);
+        common.metre = Some(Metre::default());
+        let plain = make_item("i3", "Etude", ItemKind::Exercise);
+        let items: HashMap<&str, &Item> = [("i1", &seven_eight), ("i2", &common), ("i3", &plain)]
+            .into_iter()
+            .collect();
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Take Five", 0),
+                make_entry("e2", "i2", "Blues", 1),
+                make_entry("e3", "i3", "Etude", 2),
+            ],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            reflection: None,
+        };
+        let sounding = |index: usize, click: ClickStart| {
+            let at = ActiveSession {
+                current_index: index,
+                ..active.clone()
+            };
+            let defaults = PracticeDefaults {
+                click,
+                ..PracticeDefaults::default()
+            };
+            build_active_session_view(&at, &items, &VariationLabels::new(), &[], &defaults)
+                .current_click_sounding
+        };
+        assert_eq!(sounding(0, ClickStart::TwoAndFour), 0b111_1111);
+        assert_eq!(sounding(1, ClickStart::TwoAndFour), 0b1010);
+        assert_eq!(sounding(1, ClickStart::EveryBeat), 0b1111);
+        assert_eq!(sounding(2, ClickStart::TwoAndFour), 0b1010);
     }
 
     /// The resident counter draws against `current_rep_slots`, so a builder
     /// target of 7 must not render as ten slots.
     #[test]
-    fn active_session_view_draws_the_builder_target_or_the_default() {
+    fn active_session_view_draws_the_builder_target_or_the_musicians_default() {
         let mut targeted = make_entry("e1", "i1", "Scale", 0);
         targeted.planned_rep_target = Some(7);
         targeted.plays = vec![VariationPlay {
@@ -641,9 +704,19 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
+        let four = PracticeDefaults {
+            rep_target: 4,
+            ..PracticeDefaults::default()
+        };
         assert_eq!(
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[])
-                .current_rep_slots,
+            build_active_session_view(
+                &active,
+                &HashMap::new(),
+                &VariationLabels::new(),
+                &[],
+                &four
+            )
+            .current_rep_slots,
             7
         );
 
@@ -651,13 +724,15 @@ mod tests {
             current_index: 1,
             ..active
         };
-        let view =
-            build_active_session_view(&untouched, &HashMap::new(), &VariationLabels::new(), &[]);
-        assert_eq!(view.current_rep_target, None);
-        assert_eq!(
-            view.current_rep_slots,
-            crate::validation::DEFAULT_REP_TARGET
+        let view = build_active_session_view(
+            &untouched,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &four,
         );
+        assert_eq!(view.current_rep_target, None);
+        assert_eq!(view.current_rep_slots, 4);
     }
 
     #[test]
@@ -673,8 +748,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert_eq!(view.next_item_title.as_deref(), Some("Etude"));
     }
 
@@ -691,8 +771,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(view.next_item_title.is_none());
     }
 
@@ -708,8 +793,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert_eq!(view.current_item_intention.as_deref(), Some("evenness"));
     }
 
@@ -729,8 +819,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             view.current_related_piece_title.as_deref(),
             Some("Clair de Lune")
@@ -754,8 +849,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(view.current_related_piece_title.is_none());
     }
 
@@ -775,8 +875,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(
             view.current_related_piece_title.is_none(),
             "breadcrumb is for exercises related to a piece, not the piece itself"
@@ -816,7 +921,13 @@ mod tests {
             metre: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
-        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &item_index,
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert_eq!(view.current_item_tempo_marking.as_deref(), Some("Allegro"));
         assert_eq!(view.current_item_tempo_bpm, Some(132));
     }
@@ -831,8 +942,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(view.current_item_tempo_marking.is_none());
         assert!(view.current_item_tempo_bpm.is_none());
     }
@@ -859,7 +975,13 @@ mod tests {
             ..make_item("i2", "Etude", ItemKind::Exercise)
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item1), ("i2", &item2)]);
-        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &item_index,
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             view.current_item_notes.as_deref(),
             Some("Keep the bow arm relaxed")
@@ -878,7 +1000,13 @@ mod tests {
         };
         let item = make_item("i1", "Scale", ItemKind::Exercise);
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
-        let view = build_active_session_view(&active, &item_index, &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &item_index,
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(view.current_item_notes.is_none());
     }
 
@@ -922,8 +1050,13 @@ mod tests {
             VariantView::fixture("c", "C", 0),
             VariantView::fixture("g", "G", 1),
         ];
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             captions(&view),
             vec![("c", "Played this session · 4m 10s"), ("g", "Playing now")]
@@ -944,8 +1077,13 @@ mod tests {
             VariantView::fixture("g", "G", 1),
             VariantView::fixture("d", "D", 2),
         ];
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             captions(&view),
             vec![
@@ -965,8 +1103,13 @@ mod tests {
             VariantView::fixture("c", "C", 0),
             VariantView::fixture("g", "G", 1),
         ];
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(captions(&view)[0], ("c", "Not yet played"));
     }
 
@@ -978,8 +1121,13 @@ mod tests {
             VariantView::fixture("d", "D", 1).scored(5),
             VariantView::fixture("e", "E", 2),
         ];
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             captions(&view),
             vec![
@@ -1006,8 +1154,13 @@ mod tests {
             VariantView::fixture("c", "C", 0).scored(9),
             VariantView::fixture("g", "G", 1),
         ];
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(captions(&view)[0], ("c", "Played this session · 0s"));
     }
 
@@ -1022,8 +1175,13 @@ mod tests {
             ..make_item("i1", "Scale", ItemKind::Exercise)
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
-        let view =
-            build_active_session_view(&active, &item_index, &VariationLabels::new(), &variants);
+        let view = build_active_session_view(
+            &active,
+            &item_index,
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(view.current_variations.len(), 1);
         assert_eq!(
             view.current_item_notes.as_deref(),
@@ -1247,8 +1405,13 @@ mod tests {
             current_item_started_at: Utc::now(),
             reflection: None,
         };
-        let player =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &variants);
+        let player = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &variants,
+            &PracticeDefaults::default(),
+        );
         assert_eq!(
             picker_variations(&entry, &variants),
             player.current_variations
@@ -1967,8 +2130,13 @@ mod tests {
     #[test]
     fn active_view_carries_no_sheet_without_a_draft() {
         let active = session_on(vec![play_on("p1", "c", 250)]);
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
         assert!(view.reflection.is_none());
     }
 
@@ -1995,8 +2163,13 @@ mod tests {
             answers: answers.clone(),
         });
 
-        let view =
-            build_active_session_view(&active, &HashMap::new(), &VariationLabels::new(), &[]);
+        let view = build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &VariationLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        );
 
         assert_eq!(view.reflection, Some(ReflectionView { answers, reading }));
     }
