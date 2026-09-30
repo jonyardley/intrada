@@ -248,7 +248,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "profile-\(UUID().uuidString)"))
     let profile = Profile(name: "Jon", instrument: "Cello", iconChoice: nil, colour: .butter)
     defaults.set(Data(try profile.bincodeSerialize()), forKey: Store.profileDefaultsKey)
-    let practice = PracticeDefaults(repTarget: 5, click: .twoAndFour)
+    let practice = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)
     defaults.set(Data(try practice.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let store = Store(bridge: FakeBridge(), sortDefaults: defaults)
 
@@ -277,7 +277,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testSavePracticeDefaultsEffectWritesToDefaultsUnderItsOwnKey() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour)
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 7, effect: .app(.savePracticeDefaults(saved)))] }
     let store = Store(bridge: bridge, sortDefaults: defaults)
@@ -293,7 +293,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testRestorePersistedPracticeDefaultsReplaysLoaded() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "practice-\(UUID().uuidString)"))
-    let saved = PracticeDefaults(repTarget: 4, click: .twoAndFour)
+    let saved = PracticeDefaults(repTarget: 4, click: .twoAndFour, sessionLengthMins: nil)
     defaults.set(Data(try saved.bincodeSerialize()), forKey: Store.practiceDefaultsKey)
     let bridge = FakeBridge()
     var sentEvents: [Event] = []

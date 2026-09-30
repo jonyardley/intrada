@@ -308,6 +308,9 @@ pub struct ClickState {
 #[derive(Debug, Clone, Default)]
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
+    /// Today's length, copied from the preference when the build starts and
+    /// never carried onto `ActiveSession` (`specs/session-length.md`).
+    pub length_mins: Option<u16>,
 }
 
 /// State during active practice (Active phase).
@@ -396,6 +399,11 @@ pub enum SessionEvent {
     SetEntryDuration {
         entry_id: String,
         duration_secs: Option<u32>,
+    },
+    /// Today's length for the session being built; `None` switches it off.
+    /// Never changes the musician's preferred length.
+    SetSessionLength {
+        length_mins: Option<u16>,
     },
     AddToSetlist {
         item_id: String,
@@ -599,6 +607,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             duration_secs,
         } => building::set_entry_duration(model, entry_id, duration_secs),
+
+        SessionEvent::SetSessionLength { length_mins } => {
+            building::set_session_length(model, length_mins)
+        }
 
         SessionEvent::StartBuildingWith { item_id } => {
             building::start_building_with(model, item_id)

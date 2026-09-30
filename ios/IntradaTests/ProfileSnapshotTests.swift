@@ -41,7 +41,8 @@ final class ProfileSnapshotTests: SnapshotTestCase {
     let limits = try XCTUnwrap(Store.preview.viewModel?.limits)
     let section = ScrollView {
       PracticeDefaultsSection(
-        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour), limits: limits,
+        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil),
+        limits: limits,
         onSave: { _ in }
       )
       .padding(IntradaSpacing.card)

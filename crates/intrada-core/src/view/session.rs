@@ -38,6 +38,17 @@ pub fn format_planned_duration(secs: u64) -> String {
     }
 }
 
+/// How the planned entries sit against today's length. Minutes round down, so
+/// a total never reads as filling a length it falls short of.
+pub fn format_length_summary(length_mins: Option<u16>, planned_total_secs: u64) -> Option<String> {
+    let length = length_mins?;
+    Some(if planned_total_secs == 0 {
+        format!("{length} min today")
+    } else {
+        format!("{} of {length} min planned", planned_total_secs / 60)
+    })
+}
+
 /// Coarse "45m" / "2h 15m" total (Pencil's pattern) for session-summary lines:
 /// minutes floored, seconds dropped. Distinct from `format_duration_display`,
 /// which keeps seconds for the live timer and per-entry rows.
@@ -480,6 +491,27 @@ fn join_played_fragments(fragments: &[String], max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_length_line_counts_only_planned_minutes_against_today() {
+        let table: &[(Option<u16>, u64, Option<&str>)] = &[
+            (None, 0, None),
+            (None, 1200, None),
+            (Some(30), 0, Some("30 min today")),
+            (Some(30), 1200, Some("20 of 30 min planned")),
+            (Some(30), 1530, Some("25 of 30 min planned")),
+            (Some(30), 1800, Some("30 of 30 min planned")),
+            (Some(30), 2100, Some("35 of 30 min planned")),
+            (Some(120), 60, Some("1 of 120 min planned")),
+        ];
+        for (length, planned, expected) in table {
+            assert_eq!(
+                format_length_summary(*length, *planned).as_deref(),
+                *expected,
+                "{length:?} min with {planned}s planned"
+            );
+        }
+    }
     use crate::domain::metre::Metre;
     use crate::domain::session::{ClickState, CompletionStatus, RepEvent};
     use crate::model::Model;

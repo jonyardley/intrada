@@ -30,7 +30,12 @@ struct PracticeDefaultsSection: View {
             "Repetitions, \(defaults.repTarget) per item",
             value: Binding(
               get: { Int(defaults.repTarget) },
-              set: { save(PracticeDefaults(repTarget: UInt8($0), click: defaults.click)) }),
+              set: {
+                save(
+                  PracticeDefaults(
+                    repTarget: UInt8($0), click: defaults.click,
+                    sessionLengthMins: defaults.sessionLengthMins))
+              }),
             in: Int(limits.repTargetMin)...Int(limits.repTargetMax)
           )
           .labelsHidden()
@@ -49,7 +54,12 @@ struct PracticeDefaultsSection: View {
             options: [ClickStart.everyBeat, .twoAndFour],
             selection: Binding(
               get: { defaults.click },
-              set: { save(PracticeDefaults(repTarget: defaults.repTarget, click: $0)) }),
+              set: {
+                save(
+                  PracticeDefaults(
+                    repTarget: defaults.repTarget, click: $0,
+                    sessionLengthMins: defaults.sessionLengthMins))
+              }),
             label: \.title,
             identifier: { "profile.click.\($0.identifierSuffix)" },
             font: IntradaFont.segment,

@@ -30,6 +30,12 @@ pub const MIN_PLAY_SECONDS: u64 = 5;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
 pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 360;
+pub const MIN_SESSION_LENGTH_MINS: u16 = 10;
+pub const MAX_SESSION_LENGTH_MINS: u16 = 120;
+pub const SESSION_LENGTH_STEP_MINS: u16 = 5;
+/// Where the stepper starts when a length is switched on, never a length
+/// applied on its own: no length is `None` (`specs/session-length.md`).
+pub const DEFAULT_SESSION_LENGTH_MINS: u16 = 30;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 pub const MIN_METRE_BEATS: u8 = 2;
@@ -279,6 +285,30 @@ pub fn validate_planned_duration(planned_duration_secs: &Option<u32>) -> Result<
         }
     }
     Ok(())
+}
+
+pub fn validate_session_length(length_mins: &Option<u16>) -> Result<(), LibraryError> {
+    if let Some(m) = length_mins {
+        if !(MIN_SESSION_LENGTH_MINS..=MAX_SESSION_LENGTH_MINS).contains(m)
+            || m % SESSION_LENGTH_STEP_MINS != 0
+        {
+            return Err(LibraryError::Validation {
+                field: "session_length_mins".to_string(),
+                message: format!(
+                    "Session length must be between {MIN_SESSION_LENGTH_MINS} and {MAX_SESSION_LENGTH_MINS} minutes, in steps of {SESSION_LENGTH_STEP_MINS}"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// A stored length the range or step has since moved past, brought back
+/// onto it rather than thrown away.
+pub fn clamp_session_length(length_mins: u16) -> u16 {
+    let step = SESSION_LENGTH_STEP_MINS;
+    let rounded = length_mins.saturating_add(step / 2) / step * step;
+    rounded.clamp(MIN_SESSION_LENGTH_MINS, MAX_SESSION_LENGTH_MINS)
 }
 
 pub fn validate_achieved_tempo(tempo: &Option<u16>) -> Result<(), LibraryError> {
@@ -1867,6 +1897,47 @@ mod tests {
                 check("é".repeat(max + 1)).is_err(),
                 "{field}: one over the cap"
             );
+        }
+    }
+
+    // --- session length (#1736) ---
+
+    #[test]
+    fn session_length_accepts_the_stepper_s_values_and_refuses_the_rest() {
+        let table: &[(Option<u16>, bool)] = &[
+            (None, true),
+            (Some(10), true),
+            (Some(30), true),
+            (Some(45), true),
+            (Some(120), true),
+            (Some(0), false),
+            (Some(5), false),
+            (Some(32), false),
+            (Some(125), false),
+            (Some(u16::MAX), false),
+        ];
+        for (length, ok) in table {
+            assert_eq!(
+                validate_session_length(length).is_ok(),
+                *ok,
+                "{length:?} minutes"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stored_session_length_is_brought_back_onto_the_stepper() {
+        for (stored, expected) in [
+            (0, 10),
+            (5, 10),
+            (32, 30),
+            (33, 35),
+            (45, 45),
+            (300, 120),
+            (u16::MAX, 120),
+        ] {
+            assert_eq!(clamp_session_length(stored), expected, "{stored} minutes");
+            assert!(validate_session_length(&Some(expected)).is_ok());
         }
     }
 }

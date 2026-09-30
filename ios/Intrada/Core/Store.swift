@@ -39,7 +39,7 @@ final class Store {
   static let profileDefaultsKey = "intrada.profile.v1"
   /// Its own blob, never fields on `Profile`, so no profile is lost to a
   /// failed decode (#1915; pinned by `practice_defaults_blob_wire_is_pinned`).
-  static let practiceDefaultsKey = "intrada.practice-defaults.v1"  // gitleaks:allow
+  static let practiceDefaultsKey = "intrada.practice-defaults.v2"  // gitleaks:allow
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
   private let sortSlot: DefaultsSlot

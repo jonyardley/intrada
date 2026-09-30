@@ -89,7 +89,8 @@ profile, with a versioned key and a Rust wire pin (offline-first invariant 8).
 
 - **Write:** `Save` emits `AppEffect::SavePracticeDefaults`; `Store.swift`
   bincode-serialises it under `Store.practiceDefaultsKey`,
-  `intrada.practice-defaults.v1`.
+  `intrada.practice-defaults.v1`, `v2` since the session length joined it
+  (`specs/session-length.md`).
 - **Read:** at launch, beside the profile restore, the shell decodes the blob
   and sends `Loaded`. Missing or undecodable is a no-op; the defaults stand.
 
