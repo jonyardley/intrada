@@ -66,9 +66,24 @@ struct PracticeDefaultsSection: View {
             layout: .fullWidthTrack)
         }
         .padding(IntradaSpacing.card)
+        HairlineDivider()
+          .padding(.leading, IntradaSpacing.card)
+        SessionLengthControl(
+          title: "Session length",
+          lengthMins: defaults.sessionLengthMins,
+          detail: defaults.sessionLengthMins == nil ? "Off" : nil,
+          valueLabel: "\(defaults.sessionLengthMins ?? 0) min",
+          limits: limits,
+          identifier: "profile.sessionLength"
+        ) {
+          save(
+            PracticeDefaults(
+              repTarget: defaults.repTarget, click: defaults.click, sessionLengthMins: $0))
+        }
+        .padding(IntradaSpacing.card)
       }
       .cardSurface()
-      Text("New items in a session start with these. Change them on any item.")
+      Text("New sessions start with these. Change them in the session.")
         .font(IntradaFont.micro)
         .foregroundStyle(IntradaColor.inkSecondary)
     }

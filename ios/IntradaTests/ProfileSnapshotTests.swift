@@ -41,13 +41,13 @@ final class ProfileSnapshotTests: SnapshotTestCase {
     let limits = try XCTUnwrap(Store.preview.viewModel?.limits)
     let section = ScrollView {
       PracticeDefaultsSection(
-        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: nil),
+        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 40),
         limits: limits,
         onSave: { _ in }
       )
       .padding(IntradaSpacing.card)
     }
-    assertSnapshot(of: host(section), as: tallAxConfig(height: 1100))
+    assertSnapshot(of: host(section), as: tallAxConfig())
   }
 
   /// No name yet: a prompt to add one, not blank rows (#1692).
