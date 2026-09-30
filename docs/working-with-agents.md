@@ -76,8 +76,8 @@ writes in main, almost all a missing `cd` prefix, which the self-heal now adds
 for you (#1840).
 
 `just worktree-new <name>` wraps worktrunk's `wt switch --create`, branches from
-fresh `origin/main`, and worktrunk reflinks the warm `target/` and `ios/build`
-caches (#1205). Worktrees live at `../intrada-worktrees`. `just worktree-rm
+fresh `origin/main`, and worktrunk reflinks `ios/generated` and the downloaded
+Swift packages, never the build folders (#2191). Worktrees live at `../intrada-worktrees`. `just worktree-rm
 <name>` removes one and deletes its throwaway simulator. `graphify-out/` exists
 only in the main checkout: query it there by path from a worktree
 (`docs/reference.md`), never move the work there. Once you have a worktree,
