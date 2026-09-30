@@ -1,6 +1,14 @@
 import GRDB
 
 extension LibraryStore {
+  // A migration must not fail the whole upgrade over one row, so it skips the
+  // row and names it (#2019).
+  struct SkippedMigrationRow: Error, Equatable, CustomStringConvertible {
+    let migration: String
+    let rowId: String
+    var description: String { "\(migration) skipped row \(rowId)" }
+  }
+
   static let migrator: DatabaseMigrator = {
     var migrator = DatabaseMigrator()
     migrator.registerMigration("v1_item") { db in
@@ -61,7 +69,9 @@ extension LibraryStore {
         let id: String = row["id"]
         let entries: String = row["entries"]
         guard row["readable"] as Bool? == true else {
-          report(StoredCodecError(field: "entries"), "LibraryStore v5 rescale")
+          report(
+            SkippedMigrationRow(migration: "v5_rescale_entry_scores", rowId: id),
+            "LibraryStore v5 rescale")
           continue
         }
         let scorePaths = try String.fetchAll(
