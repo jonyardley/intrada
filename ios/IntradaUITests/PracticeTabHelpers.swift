@@ -1,5 +1,9 @@
 import XCTest
 
+/// A screen that follows a relaunch or a resume can take well past the usual waits
+/// while another session loads the machine (#1923).
+let contendedTimeout: TimeInterval = 30
+
 extension XCUIApplication {
   /// The seeded library has a piece with a related exercise, so the Practice
   /// hero is the Up next suggestion (#1082); "Build my own instead" opens the
@@ -44,7 +48,9 @@ extension XCUIApplication {
   /// clears nothing.
   @MainActor
   func discardSummary(file: StaticString = #filePath, line: UInt = #line) {
-    control("summary.discard", spoken: "Discard", timeout: 10, file: file, line: line).tap()
+    control(
+      "summary.discard", spoken: "Discard", timeout: contendedTimeout, file: file, line: line
+    ).tap()
     let confirm = alerts.buttons["Discard"]
     XCTAssertTrue(
       confirm.waitForExistence(timeout: 5), "the discard confirmation", file: file, line: line)
@@ -61,7 +67,10 @@ extension XCUIApplication {
   /// Ends a running session early, which lands on the summary.
   @MainActor
   func endSessionEarly(file: StaticString = #filePath, line: UInt = #line) {
-    control("player.options", spoken: "Session options", file: file, line: line).tap()
+    control(
+      "player.options", spoken: "Session options", timeout: contendedTimeout, file: file,
+      line: line
+    ).tap()
     let end = buttons["End session early"]
     XCTAssertTrue(
       end.waitForExistence(timeout: 5), "End session early", file: file, line: line)
