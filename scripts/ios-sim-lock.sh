@@ -72,21 +72,25 @@ ios_sim_lock_release() {
 # and every queued run waits out the full lock timeout (#2203). macOS ships no
 # `timeout`, hence the background wait and kill.
 ios_sim_boot_wait() {
-    local udid="$1" waited=0 pid
+    local udid="$1" device="${2:+$2 }($1)" waited=0 pid
     xcrun simctl bootstatus "$udid" -b &
     pid=$!
+    # A background job ignores Ctrl-C, so without this the wait outlives its run.
+    trap 'kill "$pid" 2>/dev/null; exit 130' INT TERM
     while kill -0 "$pid" 2>/dev/null; do
         if [ "$waited" -ge "$IOS_SIM_BOOT_TIMEOUT" ]; then
-            kill "$pid" 2>/dev/null
+            kill "$pid" 2>/dev/null || true
             sleep 1
             kill -9 "$pid" 2>/dev/null || true
             wait "$pid" 2>/dev/null || true
-            echo "✗ simulator $udid did not finish booting within ${IOS_SIM_BOOT_TIMEOUT}s; shut it down (xcrun simctl shutdown $udid) or restart the simulator service, then rerun" >&2
+            trap - INT TERM
+            echo "✗ simulator $device did not finish booting within ${IOS_SIM_BOOT_TIMEOUT}s; shut it down with xcrun simctl shutdown $udid, then rerun" >&2
             return 1
         fi
         sleep 1
         waited=$((waited + 1))
     done
+    trap - INT TERM
     wait "$pid"
 }
 

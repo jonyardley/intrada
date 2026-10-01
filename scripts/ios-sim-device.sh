@@ -59,7 +59,7 @@ ready_template() {
     # Unfinished until renamed, so a prepare killed mid-boot leaves a device the
     # next prepare deletes, never a template whose clones still migrate (#1904).
     udid="$(xcrun simctl create "$template-preparing" "$device" "$runtime")" || return 1
-    if ! ios_sim_boot_wait "$udid" >/dev/null; then
+    if ! ios_sim_boot_wait "$udid" "$template" >/dev/null; then
         xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
         xcrun simctl delete "$udid" >/dev/null 2>&1 || true
         return 1

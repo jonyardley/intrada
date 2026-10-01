@@ -721,7 +721,7 @@ _ios-test-without-building filters retry parallel="0":
     # installs the app while SpringBoard is still starting, SpringBoard never
     # sees that install finish, and every launch is refused as "Busy" (#1648).
     source ../scripts/ios-sim-lock.sh
-    ios_sim_boot_wait "$udid"
+    ios_sim_boot_wait "$udid" "$name"
     # With the UI tier sequential the device outlives the run, so the app's
     # UserDefaults would too, and a leftover crash-recovery blob satisfies the
     # resume prompt on its own, hiding a broken save seam (#1480).

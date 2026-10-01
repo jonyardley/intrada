@@ -62,7 +62,7 @@ trap ios_sim_lock_release EXIT
 
 # Wait for the boot to finish: an install landing while SpringBoard is still
 # starting leaves the app refusing every launch as "Busy" (#1648).
-ios_sim_boot_wait "$UDID"
+ios_sim_boot_wait "$UDID" "$SIM_DEVICE"
 
 APP=$(find "$DD/Build/Products" -name "Intrada.app" -type d | head -1)
 [ -n "$APP" ] || { echo "✗ no Intrada.app in $DD (build first)" >&2; exit 1; }

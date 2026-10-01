@@ -22,6 +22,7 @@ cat "$IOS_SIM_LOCK_DIR/holder" >>"$XCRUN_LOG.holder" 2>/dev/null || true
 if [ "$2" = bootstatus ]; then
   case "${BOOT_MODE:-ok}" in
     hang) echo "$$" >"$BOOT_PID"; exec sleep 60 ;;
+    deaf) trap '' TERM; echo "$$" >"$BOOT_PID"; exec sleep 60 ;;
     fail) exit 3 ;;
   esac
 fi
@@ -108,19 +109,35 @@ expect "a boot that finishes passes the wait" true boot_as ok
 expect "a boot that fails fails the wait" false boot_as fail
 
 hang_started=$(date +%s)
-BOOT_MODE=hang IOS_SIM_BOOT_TIMEOUT=2 ios_sim_boot_wait "$udid" 2>"$tmp/boot-err" && hang_status=0 || hang_status=$?
+BOOT_MODE=hang IOS_SIM_BOOT_TIMEOUT=2 ios_sim_boot_wait "$udid" "iPhone 16" 2>"$tmp/boot-err" && hang_status=0 || hang_status=$?
 hang_took=$(($(date +%s) - hang_started))
 expect "a boot that never finishes fails the wait" true test "$hang_status" -ne 0
 expect "a boot that never finishes is given up within the time limit" true test "$hang_took" -le 5
 expect "the stuck boot wait is killed, not left running" false kill -0 "$(cat "$BOOT_PID")"
-expect "the error names the stuck device" true grep -q "simulator $udid did not finish booting within 2s" "$tmp/boot-err"
+expect "the error names the stuck device" true \
+  grep -q "simulator iPhone 16 ($udid) did not finish booting within 2s" "$tmp/boot-err"
+
+deaf_started=$(date +%s)
+BOOT_MODE=deaf IOS_SIM_BOOT_TIMEOUT=1 ios_sim_boot_wait "$udid" 2>/dev/null || true
+expect "a stuck boot wait that ignores a polite kill is killed anyway" true \
+  test $(($(date +%s) - deaf_started)) -le 5
 
 rm -f "$BOOT_PID"
+locked_started=$(date +%s)
 BOOT_MODE=hang IOS_SIM_BOOT_TIMEOUT=1 bash -c \
   '. "$1" && ios_sim_lock_acquire && trap ios_sim_lock_release EXIT && set -e && ios_sim_boot_wait "$2"' \
   _ "$root/scripts/ios-sim-lock.sh" "$udid" 2>/dev/null || true
+expect "a run whose boot never finishes gives the lock up within the time limit" true \
+  test $(($(date +%s) - locked_started)) -le 5
 expect "a run whose boot never finishes frees the lock for the next" false test -d "$IOS_SIM_LOCK_DIR"
-expect "the lock-holding run's stuck boot wait is killed too" false kill -0 "$(cat "$BOOT_PID")"
+
+rm -f "$BOOT_PID"
+BOOT_MODE=hang bash -c '. "$1" && ios_sim_boot_wait "$2"' _ "$root/scripts/ios-sim-lock.sh" "$udid" &
+cancelled=$!
+while [ ! -s "$BOOT_PID" ]; do sleep 0.1; done
+kill -TERM "$cancelled"
+wait "$cancelled" 2>/dev/null || true
+expect "a cancelled run takes its boot wait down with it" false kill -0 "$(cat "$BOOT_PID")"
 
 # ── The idle shutdown, five timers side by side ──
 
