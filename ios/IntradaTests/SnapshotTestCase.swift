@@ -30,9 +30,29 @@ struct Boom: Error {}
 /// host sim can't change the image; references recorded on iOS 26.5 to match CI.
 @MainActor
 class SnapshotTestCase: XCTestCase {
+  private static var backChevronPrimed = false
+
   override func setUp() {
     super.setUp()
     IntradaFonts.register()
+    MainActor.assumeIsolated { Self.primeBackChevron() }
+  }
+
+  // UIKit keeps the back chevron size from the first pushed bar a process draws,
+  // so a default-size one goes first and no accessibility-size test sets it (#1744, #2161).
+  private static func primeBackChevron() {
+    guard !backChevronPrimed else { return }
+    backChevronPrimed = true
+    let pushed = NavigationStack(path: .constant(["prime"])) {
+      Color.clear.navigationDestination(for: String.self) { _ in Color.clear }
+    }
+    let vc = UIHostingController(rootView: pushed)
+    vc.overrideUserInterfaceStyle = .light
+    let rendered = XCTestExpectation(description: "default-size back chevron drawn")
+    Snapshotting<UIViewController, UIImage>.image(on: .iPhone13, traits: .init(displayScale: 2))
+      .snapshot(vc).run { _ in rendered.fulfill() }
+    XCTAssertEqual(
+      XCTWaiter().wait(for: [rendered], timeout: 10), .completed, "back chevron warm-up timed out")
   }
 
   func host(_ view: some View, store: Store = Store(bridge: SnapshotStubBridge()))
