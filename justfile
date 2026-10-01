@@ -720,7 +720,8 @@ _ios-test-without-building filters retry parallel="0":
     # Booted here, not by xcodebuild: handed a shut-down device it boots it and
     # installs the app while SpringBoard is still starting, SpringBoard never
     # sees that install finish, and every launch is refused as "Busy" (#1648).
-    xcrun simctl bootstatus "$udid" -b
+    source ../scripts/ios-sim-lock.sh
+    ios_sim_boot_wait "$udid" "$name"
     # The device's text size outlives every run, and the snapshots that size
     # themselves read it. Large is the iOS default the references were recorded
     # at; medium, the obvious "reset", fails the self-sizing ones (#1482, #2209).
