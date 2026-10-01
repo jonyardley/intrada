@@ -311,7 +311,7 @@ riding as the first commit of Phase A.
 The plan names the epic the issue sits under, which `just claim` prints. Any
 issue the plan creates that belongs to a body of work goes under its epic the
 same turn, in working order, with `just epic-add`; three or more new issues with an order and no epic to
-fit are a new epic ([Epics](roadmap.md#epics)).
+fit are a new epic ([Epics](how-the-work-runs.md#epics)).
 
 Every plan (plan comment, spec phase breakdown, handover) names, per task:
 

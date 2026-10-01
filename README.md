@@ -109,7 +109,8 @@ specs/                # Design specs for major features
 | [`specs/README.md`](specs/README.md) | Which specs are live and which are records of shipped behaviour |
 | [`docs/where-we-are.md`](docs/where-we-are.md) | Which release and phase we are on — hand-written, changed when they change |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
-| [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
+| [`docs/roadmap.md`](docs/roadmap.md) | Direction and the ranking of what gets built next |
+| [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md) | How issues, epics, the project board and releases are organised |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
 | [`docs/rebuild-review.md`](docs/rebuild-review.md) | Historical record: the 2026-07 pivot assessment and the retired coach design ([`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md)) |

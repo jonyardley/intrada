@@ -1,7 +1,7 @@
 # Research note: the metronome, with tempo as a tracked unit of measure
 
 *Stage 4.1 of [`docs/rethink-plan.md`](../rethink-plan.md). Candidate: #1366
-(roadmap Open Question 1, answered 2026-08-14). Evidence and shape only; no
+(roadmap Open Question 1, answered 2026-08-14 and now in the roadmap's git history). Evidence and shape only; no
 comparison against the other candidates and no recommendation. 2026-08-14.*
 
 ## 1. What it is

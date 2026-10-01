@@ -6,7 +6,7 @@ Evidence and shape only. Written 2026-08-14.*
 
 ## 1. What it is
 
-The deliberately-small goal shape ruled in roadmap Open Question 5
+The deliberately-small goal shape ruled in roadmap Open Question 5 (answered, now in the roadmap's git history)
 (re-resolved 2026-07-14) and VISION.md's "The Scheduling Intelligence":
 
 - An **outcome statement** ("learn Body and Soul", "improvise fluently over

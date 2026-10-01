@@ -87,7 +87,7 @@ posted. PR descriptions are not tracking. The comment ends with
 
 A deferred issue that belongs to the same body of work joins the PR's epic
 with `just epic-add EPIC N`; one that belongs elsewhere joins that epic, and a
-genuine one-off stays single (the Epics rules in `docs/roadmap.md`).
+genuine one-off stays single (the Epics rules in `docs/how-the-work-runs.md`).
 
 ## PR bodies and issues
 

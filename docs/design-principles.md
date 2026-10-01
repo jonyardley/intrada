@@ -477,7 +477,7 @@ which is the road the coach died on).
 
 ### T16 — A tempo is recorded when it was measured, never as a default
 
-**Status:** DECIDED 2026-08-27 (Jon, roadmap open question 3), implemented in
+**Status:** DECIDED 2026-08-27 (Jon, an answered roadmap question, #1420), implemented in
 jonyardley/intrada#1420. Supersedes the question that log entry originally
 asked.
 

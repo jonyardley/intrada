@@ -68,7 +68,7 @@ Missing:
   do not: no sections (#50), so the schedulable unit for a piece is the whole
   piece. Prior art (below) says the useful grain for pieces is the section.
 - **A settled memory signal.** Roadmap Open Question 3 (scoring + tempo
-  coupling) is unresolved: whether "how well do I know this" means score,
+  coupling, answered after this note in #1420) was unresolved: whether "how well do I know this" means score,
   or score-at-tempo, changes what the decay model decays.
 - **Sparse-data handling.** `score` is optional per entry; many entries carry
   time but no rating. Any model must degrade gracefully to "time since
