@@ -46,10 +46,13 @@ class SnapshotTestCase: XCTestCase {
     let pushed = NavigationStack(path: .constant(["prime"])) {
       Color.clear.navigationDestination(for: String.self) { _ in Color.clear }
     }
+    let vc = UIHostingController(rootView: pushed)
+    vc.overrideUserInterfaceStyle = .light
     let rendered = XCTestExpectation(description: "default-size back chevron drawn")
     Snapshotting<UIViewController, UIImage>.image(on: .iPhone13, traits: .init(displayScale: 2))
-      .snapshot(UIHostingController(rootView: pushed)).run { _ in rendered.fulfill() }
-    XCTAssertEqual(XCTWaiter().wait(for: [rendered], timeout: 10), .completed)
+      .snapshot(vc).run { _ in rendered.fulfill() }
+    XCTAssertEqual(
+      XCTWaiter().wait(for: [rendered], timeout: 10), .completed, "back chevron warm-up timed out")
   }
 
   func host(_ view: some View, store: Store = Store(bridge: SnapshotStubBridge()))
