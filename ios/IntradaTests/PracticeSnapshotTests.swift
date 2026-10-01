@@ -85,8 +85,18 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         traits: .init(displayScale: 2)))
   }
 
-  private func upNextHeroCard(_ suggestion: SuggestedSession) -> some View {
-    UpNextHero(suggestion: suggestion, onStart: {}, onBuildOwn: {})
+  /// Filled to a preferred length (#57, #999): "Today's plan", the plan's
+  /// totals, and the later blocks one line each under the lead.
+  func testUpNextHeroFilledPlan() {
+    assertSnapshot(
+      of: host(upNextHeroCard(.previewFilled)),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 640),
+        traits: .init(displayScale: 2)))
+  }
+
+  private func upNextHeroCard(_ plan: SuggestedPlan) -> some View {
+    UpNextHero(plan: plan, onStart: {}, onChange: {}, onBuildOwn: {})?
       .padding(IntradaSpacing.card)
       .background(IntradaColor.paperTop)
       .frame(width: 390)

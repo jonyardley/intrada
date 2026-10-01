@@ -48,7 +48,8 @@ is_large() {
 XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
 is_xl() {
   case "$1" in
-    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities) return 0 ;;
+    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities | \
+      testUpNextHeroFilledPlan) return 0 ;;
     *) return 1 ;;
   esac
 }

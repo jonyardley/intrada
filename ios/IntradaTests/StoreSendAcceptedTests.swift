@@ -56,4 +56,35 @@ struct StoreSendAcceptedTests {
     #expect(store.viewModel == nil)
     #expect(!store.sendAccepted(.setQuery(nil)))
   }
+
+  // ── An accepted no-op is not a landing (#1413) ──
+
+  @Test func anAcceptedNoOpDoesNotLand() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in render }
+    let store = Store(bridge: bridge)
+
+    #expect(!store.send(.setQuery(nil), onSuccess: .impact, when: { $0.activeSession != nil }))
+  }
+
+  @Test func landsWhenTheOutcomeArrives() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in render }
+    let store = Store(bridge: bridge)
+
+    #expect(store.send(.setQuery(nil), onSuccess: .impact, when: { _ in true }))
+  }
+
+  @Test func aRefusalNeverLands() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in render }
+    let store = Store(bridge: bridge)
+    bridge.nextViewModel = {
+      var vm = try emptyViewModel()
+      vm.errorSeq += 1
+      return vm
+    }
+
+    #expect(!store.send(.setQuery(nil), onSuccess: .impact, when: { _ in true }))
+  }
 }
