@@ -29,7 +29,7 @@
 
     private let analytics: AnalyticsView?
     private let lastPractised: LastPractisedView?
-    private let upNext: SuggestedSession?
+    private let upNext: SuggestedPlan?
     private let recentlyPractisedIds: [String]
     private let visibleIds: [String]?
     private let profile: ProfileView?
@@ -42,7 +42,7 @@
       buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
-      upNext: SuggestedSession? = nil, recentlyPractisedIds: [String] = [],
+      upNext: SuggestedPlan? = nil, recentlyPractisedIds: [String] = [],
       profile: ProfileView? = nil, practiceDefaults: PracticeDefaults? = nil
     ) {
       self.items = items

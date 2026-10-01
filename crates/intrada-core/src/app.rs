@@ -2146,15 +2146,41 @@ mod tests {
         model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
 
         let up_next = app.view(&model).up_next.expect("a suggestion");
-        assert_eq!(up_next.piece_id, "p1");
+        assert_eq!(up_next.blocks[0].piece_id, "p1");
         assert_eq!(
-            up_next
+            up_next.blocks[0]
                 .items
                 .iter()
                 .map(|i| i.item_id.as_str())
                 .collect::<Vec<_>>(),
             ["ex1", "p1"]
         );
+    }
+
+    #[test]
+    fn the_plan_follows_a_change_to_the_preferred_length() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+        let mut first = make_item("p1", "Arabesque", ItemKind::Piece, now);
+        first.linked_exercise_ids = vec!["ex1".to_string()];
+        let mut second = make_item("p2", "Berceuse", ItemKind::Piece, now);
+        second.linked_exercise_ids = vec!["ex2".to_string()];
+        model.items = vec![
+            first,
+            second,
+            make_item("ex1", "Scales", ItemKind::Exercise, now),
+            make_item("ex2", "Arpeggios", ItemKind::Exercise, now),
+        ]
+        .into();
+        crate::view::cache::refresh(&mut model, now);
+        assert_eq!(app.view(&model).up_next.expect("a plan").blocks.len(), 1);
+
+        // Not a projection input: the warm cache must still show the new plan.
+        model.practice_defaults.session_length_mins = Some(20);
+        let plan = app.view(&model).up_next.expect("a plan");
+        assert_eq!(plan.blocks.len(), 2);
+        assert_eq!(plan.length_mins, Some(20));
     }
 
     #[test]
@@ -2178,7 +2204,7 @@ mod tests {
             "the filter really does hide the piece from the list"
         );
         assert_eq!(
-            vm.view.up_next.expect("a suggestion").piece_id,
+            vm.view.up_next.expect("a suggestion").blocks[0].piece_id,
             "p1",
             "the suggestion is derived before the filter"
         );

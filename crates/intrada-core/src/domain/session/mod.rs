@@ -414,11 +414,16 @@ pub enum SessionEvent {
     StartBuildingWith {
         item_id: String,
     },
-    /// The Up next card's CTA: from Idle, start building seeded with the
-    /// suggested block (#1082). Carries only `now`, because the core
-    /// re-derives the suggestion rather than trusting the shell's copy of it,
+    /// "Change it first" on the Practice hero: from Idle, start building
+    /// seeded with today's plan (#1082, #57). Carries only `now`, because the
+    /// core re-derives the plan rather than trusting the shell's copy of it,
     /// and the derivation is clock-dependent.
     StartBuildingFromSuggestion {
+        now: DateTime<Utc>,
+    },
+    /// The Practice hero's Start: from Idle, seed today's plan and start
+    /// playing it in one step (#57). Carries only `now`, for the same reason.
+    StartFromSuggestion {
         now: DateTime<Utc>,
     },
     /// The Practice tab's "Practise your priorities" (#981): from Idle, start
@@ -620,6 +625,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::StartBuildingFromSuggestion { now } => {
             building::start_building_from_suggestion(model, now)
         }
+
+        SessionEvent::StartFromSuggestion { now } => building::start_from_suggestion(model, now),
 
         SessionEvent::StartBuildingWithPriorities { now } => {
             building::start_building_with_priorities(model, now)

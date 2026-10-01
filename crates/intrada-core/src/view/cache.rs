@@ -42,7 +42,9 @@ pub(crate) struct Projections {
     pub(crate) sorted: Vec<usize>,
     pub(crate) available_tags: Vec<String>,
     pub(crate) available_composers: Vec<String>,
-    pub(crate) up_next: Option<SuggestedSession>,
+    /// Ranked without the preferred length, which `view` fills to, so a
+    /// change to the preference needs no key of its own.
+    pub(crate) up_next_blocks: Vec<SuggestedSession>,
     pub(crate) has_priorities: bool,
     pub(crate) recently_practised_ids: Vec<String>,
     pub(crate) sessions: Vec<PracticeSessionView>,
@@ -103,7 +105,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
 
     // Derived before the filter: a narrowed library must not hide the
     // suggestion the Practice tab leads with (#1082).
-    let up_next = crate::suggestion::compute_up_next(&library, clock);
+    let up_next_blocks = crate::suggestion::rank_blocks(&library, clock);
 
     // Pre-filter for the same reason as `up_next`: a narrowed library must
     // not hide the "Practise your priorities" button (#981).
@@ -166,7 +168,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         sorted,
         available_tags,
         available_composers,
-        up_next,
+        up_next_blocks,
         has_priorities,
         recently_practised_ids,
         sessions,

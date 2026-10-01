@@ -158,16 +158,18 @@ pub(super) fn build_library_item_views(
     items
 }
 
-/// The Up next suggestion for a given instant. The seeding event re-derives
-/// through this rather than trusting anything the shell sends (#1082).
+/// Today's plan for a given instant. The seeding events re-derive through
+/// this rather than trusting anything the shell sends (#1082).
 pub(crate) fn derive_up_next(
     model: &Model,
     now: chrono::DateTime<chrono::Utc>,
-) -> Option<crate::suggestion::SuggestedSession> {
+) -> Option<crate::suggestion::SuggestedPlan> {
     let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
         model.items.iter().map(|i| (i.id.as_str(), i)).collect();
     let clock = crate::analytics::LocalClock::from_now(now, model.utc_offset_minutes);
-    crate::suggestion::compute_up_next(&build_library_item_views(model, &item_index), clock)
+    let blocks =
+        crate::suggestion::rank_blocks(&build_library_item_views(model, &item_index), clock);
+    crate::suggestion::plan(&blocks, model.practice_defaults.session_length_mins)
 }
 
 /// The starred items in the order "Practise your priorities" seeds them

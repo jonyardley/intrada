@@ -46,12 +46,12 @@ One derived projection, `ViewModel.up_next`, and one event that acts on it.
 ```text
 LibraryItemView[]  (unfiltered, already carries priority, per-piece marks,
      │              step ladders, last-practised)
-     │  compute_up_next(items, clock)          // pure, suggestion.rs
+     │  rank_blocks(items, clock)              // pure, suggestion.rs
      ▼
 SuggestedSession { piece, reason, estimated_minutes, items[2..=3] }
      │                                    each item: reason, mark, step
      ▼
-ViewModel.up_next: Option<SuggestedSession>
+ViewModel.up_next: Option<SuggestedPlan>  // since #57
      │  SessionEvent::StartBuildingFromSuggestion { now }
      ▼
 BuildingSession: one block, exercises first, the piece last, steps attributed
@@ -72,7 +72,7 @@ exactly as it does today.
 
 ## Key decisions
 
-1. **Input is the projected view list, not the model.** `compute_up_next` takes
+1. **Input is the projected view list, not the model.** `rank_blocks` takes
    `&[LibraryItemView]` and a `LocalClock`, nothing else. Cheaper than
    re-deriving from sessions, impossible to drift from the Library screens, and
    the whole thing is a pure function with one obvious fixture. Cost: staleness

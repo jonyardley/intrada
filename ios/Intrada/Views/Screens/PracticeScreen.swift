@@ -138,7 +138,7 @@ struct PracticeScreen: View {
   /// `nil` whenever nothing qualifies or the user has waved it away, which is
   /// what keeps the card a suggestion and never a gate (design-principles T15).
   private var suggestion: SuggestedSession? {
-    suggestionDismissed ? nil : store.viewModel?.upNext
+    suggestionDismissed ? nil : store.viewModel?.upNext?.blocks.first
   }
 
   @ViewBuilder private var heroSection: some View {

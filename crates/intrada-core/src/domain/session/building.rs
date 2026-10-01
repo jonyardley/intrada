@@ -227,34 +227,51 @@ pub(super) fn start_building_from_suggestion(
     model: &mut Model,
     now: DateTime<Utc>,
 ) -> Command<Effect, Event> {
+    seed_from_suggestion(model, now);
+    crux_core::render::render()
+}
+
+pub(super) fn start_from_suggestion(
+    model: &mut Model,
+    now: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    if seed_from_suggestion(model, now) {
+        start_session(model, now)
+    } else {
+        crux_core::render::render()
+    }
+}
+
+/// False when nothing was seeded; nothing to suggest is not an error (#1082).
+fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
     if !matches!(model.session_status, SessionStatus::Idle) {
         model.raise_error("A practice is already in progress".to_string());
-        return crux_core::render::render();
+        return false;
     }
-    // Nothing to suggest is not an error: the CTA cannot be on screen
-    // in that case, and a race must not strand an empty builder.
-    let Some(suggestion) = crate::view::library::derive_up_next(model, now) else {
-        return crux_core::render::render();
+    let Some(plan) = crate::view::library::derive_up_next(model, now) else {
+        return false;
     };
 
     let mut building = fresh_building(model);
-    let group_id = ulid::Ulid::generate().to_string();
-    for suggested in &suggestion.items {
-        let position = building.entries.len();
-        let mut entry = create_entry(
-            &suggested.item_id,
-            &suggested.item_title,
-            suggested.item_type.clone(),
-            position,
-        );
-        entry.group_id = Some(group_id.clone());
-        entry.planned_variation_id.clone_from(&suggested.variant_id);
-        building.entries.push(entry);
+    for block in &plan.blocks {
+        let group_id = ulid::Ulid::generate().to_string();
+        for suggested in &block.items {
+            let position = building.entries.len();
+            let mut entry = create_entry(
+                &suggested.item_id,
+                &suggested.item_title,
+                suggested.item_type.clone(),
+                position,
+            );
+            entry.group_id = Some(group_id.clone());
+            entry.planned_variation_id.clone_from(&suggested.variant_id);
+            building.entries.push(entry);
+        }
     }
 
     model.session_status = SessionStatus::Building(building);
     model.last_error = None;
-    crux_core::render::render()
+    true
 }
 
 pub(super) fn start_building_with_priorities(

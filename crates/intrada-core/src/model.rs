@@ -16,7 +16,7 @@ use crate::domain::session::{
 use crate::domain::Metre;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::recognition::PhotoDraft;
-use crate::suggestion::SuggestedSession;
+use crate::suggestion::SuggestedPlan;
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -288,9 +288,9 @@ pub struct ViewModel {
     pub analytics: Option<AnalyticsView>,
     pub last_practised: Option<LastPractisedView>,
     pub profile: ProfileView,
-    /// The one suggested session on the Practice tab (#1082). `None` whenever
+    /// Today's plan on the Practice tab (#1082, #57). `None` whenever
     /// nothing qualifies: it suggests, it never gates.
-    pub up_next: Option<SuggestedSession>,
+    pub up_next: Option<SuggestedPlan>,
     /// What the last photographed page was read into, for the confirm surface.
     pub photo_recognition: PhotoRecognitionView,
     pub limits: LimitsView,

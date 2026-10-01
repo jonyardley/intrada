@@ -391,6 +391,48 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertFalse(vm.showsPriorities, "a session is now being built")
   }
 
+  /// One tap from the hero to playing (#57): the plan crosses as a nested
+  /// vector with an optional u16 after it, the #846 shape, and the start event
+  /// carries a timestamp. Two blocks fit the 25 minute length.
+  func testRealBridgeOneTapStartPlaysTodaysPlan() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let saved = PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 25)
+    _ = try bridge.update(.practiceDefaults(.save(saved)))
+
+    for (title, kind) in [
+      ("Arabesque", ItemKind.piece), ("Berceuse", .piece), ("Scales", .exercise),
+      ("Arpeggios", .exercise),
+    ] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: kind, composer: nil, key: nil, modality: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    }
+    let ids = Dictionary(
+      uniqueKeysWithValues: try bridge.rendered().items.map { ($0.title, $0.id) })
+    for (piece, exercise) in [("Arabesque", "Scales"), ("Berceuse", "Arpeggios")] {
+      _ = try bridge.update(
+        .item(
+          .linkExercise(
+            pieceId: try XCTUnwrap(ids[piece]), exerciseId: try XCTUnwrap(ids[exercise]))))
+    }
+
+    let plan = try XCTUnwrap(try bridge.rendered().upNext)
+    XCTAssertEqual(plan.blocks.map(\.pieceTitle), ["Arabesque", "Berceuse"])
+    XCTAssertEqual(plan.itemCount, 4)
+    XCTAssertEqual(plan.lengthMins, 25)
+
+    _ = try bridge.update(.session(.startFromSuggestion(now: SessionClock.nowRFC3339())))
+    let vm = try bridge.rendered()
+    XCTAssertNil(vm.error)
+    XCTAssertNil(vm.buildingSetlist, "one tap goes past the builder")
+    XCTAssertEqual(
+      vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
+  }
+
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
   /// bridge through Building → Active → Summary → Idle, mirroring the
   /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here

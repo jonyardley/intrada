@@ -3,7 +3,7 @@
 //! derived from the same `LibraryItemView` projection the Library screens
 //! read, so the card and piece detail cannot disagree about a mark.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,11 @@ const MAX_SUGGESTED_EXERCISES: usize = 2;
 /// What to assume an item takes when it has never been practised, so the
 /// estimate has something honest to add for a brand-new piece.
 const UNPRACTISED_ESTIMATE_MINS: u32 = 5;
+
+const MAX_PLAN_BLOCKS: usize = 4;
+
+/// How far past the preferred length a plan may run to take a whole block.
+const PLAN_SLACK_MINS: u32 = 5;
 
 /// One block worth resuming: the anchor piece, why, and what to play.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -56,35 +61,90 @@ pub struct SuggestedItem {
     pub reason: String,
 }
 
-/// The block worth resuming, or `None` when nothing qualifies: an empty
-/// library, or no piece with a related exercise linked. The card is a
-/// suggestion and never a gate, so `None` simply leaves the Practice tab as
-/// it was.
-pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<SuggestedSession> {
+/// Today's plan: the blocks the Practice hero offers, filled to the
+/// musician's preferred length (#57, `specs/one-tap-start.md`).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SuggestedPlan {
+    /// At least one; the first is the lead block the hero features.
+    pub blocks: Vec<SuggestedSession>,
+    pub estimated_minutes: u32,
+    pub item_count: u32,
+    /// The preferred length the plan was filled to; `None` leaves it one block.
+    pub length_mins: Option<u16>,
+}
+
+/// Up next's ranking, best first, at most four blocks, no item in two.
+pub fn rank_blocks(items: &[LibraryItemView], clock: LocalClock) -> Vec<SuggestedSession> {
     let by_id: HashMap<&str, &LibraryItemView> = items.iter().map(|i| (i.id.as_str(), i)).collect();
 
-    let anchor = items
+    let mut anchors: Vec<&LibraryItemView> = items
         .iter()
         .filter(|i| i.item_type == ItemKind::Piece && !i.linked_exercises.is_empty())
-        .min_by(|a, b| {
-            b.priority
-                .cmp(&a.priority)
-                .then_with(|| {
-                    staleness_of(b, clock)
-                        .overdue_key()
-                        .cmp(&staleness_of(a, clock).overdue_key())
-                })
-                .then_with(|| latest_mark(a).cmp(&latest_mark(b)))
-                .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
-                .then_with(|| a.id.cmp(&b.id))
-        })?;
+        .collect();
+    anchors.sort_by(|a, b| {
+        b.priority
+            .cmp(&a.priority)
+            .then_with(|| {
+                staleness_of(b, clock)
+                    .overdue_key()
+                    .cmp(&staleness_of(a, clock).overdue_key())
+            })
+            .then_with(|| latest_mark(a).cmp(&latest_mark(b)))
+            .then_with(|| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+            .then_with(|| a.id.cmp(&b.id))
+    });
+    anchors.truncate(MAX_PLAN_BLOCKS);
 
+    let mut taken: HashSet<String> = HashSet::new();
+    anchors
+        .into_iter()
+        .map(|anchor| {
+            let block = block_for(anchor, &by_id, &taken, clock);
+            taken.extend(block.items.iter().map(|i| i.item_id.clone()));
+            block
+        })
+        .collect()
+}
+
+/// Stops at the first misfit so a short low-ranked block never jumps a
+/// higher-ranked one.
+pub fn plan(blocks: &[SuggestedSession], length_mins: Option<u16>) -> Option<SuggestedPlan> {
+    let (lead, rest) = blocks.split_first()?;
+    let mut chosen = vec![lead.clone()];
+    let mut minutes = lead.estimated_minutes;
+    if let Some(length) = length_mins {
+        let ceiling = u32::from(length) + PLAN_SLACK_MINS;
+        for block in rest {
+            if minutes + block.estimated_minutes > ceiling {
+                break;
+            }
+            minutes += block.estimated_minutes;
+            chosen.push(block.clone());
+        }
+    }
+    let item_count = chosen.iter().map(|b| b.items.len() as u32).sum();
+    Some(SuggestedPlan {
+        blocks: chosen,
+        estimated_minutes: minutes,
+        item_count,
+        length_mins,
+    })
+}
+
+fn block_for(
+    anchor: &LibraryItemView,
+    by_id: &HashMap<&str, &LibraryItemView>,
+    taken: &HashSet<String>,
+    clock: LocalClock,
+) -> SuggestedSession {
     // Ranked by the mark that will be shown, so the row the card puts first is
     // the row whose reason says why. `sort_by` is stable, which keeps the
     // user's own link order as the tie-break.
     let mut ranked: Vec<Suggestable> = anchor
         .linked_exercises
         .iter()
+        .filter(|ex| !taken.contains(&ex.id))
         .map(|ex| {
             // The first variation that is not yet solid. The ladder's "current
             // rung" went with #1739 decision 1; the same rule stays here as
@@ -151,7 +211,7 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         capitalise(&piece_staleness.clause())
     };
 
-    Some(SuggestedSession {
+    SuggestedSession {
         piece_id: anchor.id.clone(),
         piece_title: anchor.title.clone(),
         piece_subtitle: {
@@ -162,7 +222,7 @@ pub fn compute_up_next(items: &[LibraryItemView], clock: LocalClock) -> Option<S
         priority: anchor.priority,
         items: items_out,
         estimated_minutes,
-    })
+    }
 }
 
 /// A linked exercise plus the ladder rung it would practise, gathered once so
@@ -289,20 +349,23 @@ mod tests {
     }
 
     fn suggest(library: &[LibraryItemView]) -> SuggestedSession {
-        compute_up_next(library, clock()).expect("a suggestion")
+        rank_blocks(library, clock())
+            .into_iter()
+            .next()
+            .expect("a suggestion")
     }
 
     // ── Eligibility ──────────────────────────────────────────────────
 
     #[test]
     fn empty_library_suggests_nothing() {
-        assert_eq!(compute_up_next(&[], clock()), None);
+        assert!(rank_blocks(&[], clock()).is_empty());
     }
 
     #[test]
     fn piece_with_no_linked_exercises_is_never_suggested() {
         let library = vec![LibraryItemView::fixture("p1", "Prelude", ItemKind::Piece)];
-        assert_eq!(compute_up_next(&library, clock()), None);
+        assert!(rank_blocks(&library, clock()).is_empty());
     }
 
     #[test]
@@ -787,12 +850,143 @@ mod tests {
         );
     }
 
+    // ── Blocks for a plan ────────────────────────────────────────────
+
+    fn piece_ids(blocks: &[SuggestedSession]) -> Vec<&str> {
+        blocks.iter().map(|b| b.piece_id.as_str()).collect()
+    }
+
+    #[test]
+    fn blocks_follow_the_up_next_ranking() {
+        let mut library = piece_with_exercises("c", "Cello Suite", 1);
+        library.extend(piece_with_exercises("a", "Arabesque", 1));
+        library.extend(piece_with_exercises("b", "Berceuse", 1));
+
+        assert_eq!(piece_ids(&rank_blocks(&library, clock())), ["a", "b", "c"]);
+    }
+
+    #[test]
+    fn there_are_at_most_four_blocks() {
+        let library: Vec<_> = ["a", "b", "c", "d", "e", "f"]
+            .iter()
+            .flat_map(|id| piece_with_exercises(id, &id.to_uppercase(), 1))
+            .collect();
+
+        assert_eq!(rank_blocks(&library, clock()).len(), MAX_PLAN_BLOCKS);
+    }
+
+    #[test]
+    fn a_later_block_never_repeats_an_earlier_blocks_exercise() {
+        let mut library = piece_with_exercises("a", "Arabesque", 1);
+        library.extend(piece_with_exercises("b", "Berceuse", 1));
+        let shared = library[0].linked_exercises[0].clone();
+        library[2].linked_exercises.insert(0, shared);
+
+        let blocks = rank_blocks(&library, clock());
+        let second: Vec<&str> = blocks[1].items.iter().map(|i| i.item_id.as_str()).collect();
+        assert_eq!(second, ["b-ex0", "b"]);
+        assert_eq!(blocks[1].estimated_minutes, 2 * UNPRACTISED_ESTIMATE_MINS);
+    }
+
+    #[test]
+    fn a_block_whose_exercises_are_all_taken_is_the_piece_alone() {
+        let mut library = piece_with_exercises("a", "Arabesque", 1);
+        let mut second = LibraryItemView::fixture("b", "Berceuse", ItemKind::Piece);
+        second.linked_exercises = library[0].linked_exercises.clone();
+        library.push(second);
+
+        let blocks = rank_blocks(&library, clock());
+        let second: Vec<&str> = blocks[1].items.iter().map(|i| i.item_id.as_str()).collect();
+        assert_eq!(second, ["b"]);
+        assert_eq!(blocks[1].estimated_minutes, UNPRACTISED_ESTIMATE_MINS);
+    }
+
+    // ── Filling a plan ───────────────────────────────────────────────
+
+    fn block(id: &str, minutes: u32, items: usize) -> SuggestedSession {
+        SuggestedSession {
+            piece_id: id.to_string(),
+            piece_title: id.to_string(),
+            piece_subtitle: None,
+            reason: "Not practised yet".to_string(),
+            priority: false,
+            items: (0..items)
+                .map(|i| SuggestedItem {
+                    item_id: format!("{id}-{i}"),
+                    item_title: format!("{id} {i}"),
+                    item_type: ItemKind::Exercise,
+                    variant_id: None,
+                    variant_label: None,
+                    latest_score: None,
+                    reason: "Not marked yet".to_string(),
+                })
+                .collect(),
+            estimated_minutes: minutes,
+        }
+    }
+
+    fn planned(blocks: &[SuggestedSession], length_mins: Option<u16>) -> SuggestedPlan {
+        plan(blocks, length_mins).expect("a plan")
+    }
+
+    #[test]
+    fn nothing_to_suggest_is_no_plan() {
+        assert_eq!(plan(&[], Some(30)), None);
+    }
+
+    #[test]
+    fn without_a_length_the_plan_is_the_lead_block_alone() {
+        let blocks = [block("a", 15, 3), block("b", 15, 3)];
+        let plan = planned(&blocks, None);
+
+        assert_eq!(piece_ids(&plan.blocks), ["a"]);
+        assert_eq!(plan.length_mins, None);
+    }
+
+    #[test]
+    fn a_length_fills_the_plan_block_by_block() {
+        let blocks = [block("a", 15, 3), block("b", 15, 2), block("c", 15, 3)];
+        let plan = planned(&blocks, Some(30));
+
+        assert_eq!(piece_ids(&plan.blocks), ["a", "b"]);
+        assert_eq!(plan.estimated_minutes, 30);
+        assert_eq!(plan.item_count, 5);
+        assert_eq!(plan.length_mins, Some(30));
+    }
+
+    #[test]
+    fn a_block_may_run_five_minutes_past_the_length() {
+        let blocks = [block("a", 15, 3), block("b", 15, 3)];
+
+        assert_eq!(piece_ids(&planned(&blocks, Some(25)).blocks), ["a", "b"]);
+        assert_eq!(piece_ids(&planned(&blocks, Some(20)).blocks), ["a"]);
+    }
+
+    #[test]
+    fn a_lead_block_longer_than_the_length_is_still_the_plan() {
+        let blocks = [block("a", 20, 3)];
+        assert_eq!(planned(&blocks, Some(10)).estimated_minutes, 20);
+    }
+
+    #[test]
+    fn the_fill_stops_at_the_first_block_that_does_not_fit() {
+        // A short third block must not jump the higher-ranked second one.
+        let blocks = [block("a", 15, 3), block("b", 20, 3), block("c", 5, 1)];
+        assert_eq!(piece_ids(&planned(&blocks, Some(25)).blocks), ["a"]);
+    }
+
     // ── FFI wire ─────────────────────────────────────────────────────
 
     #[test]
     fn suggested_session_round_trips_on_ffi_bincode_wire() {
         let library = piece_with_exercises("p1", "Prelude", 2);
         crate::domain::types::assert_round_trips(suggest(&library));
+    }
+
+    #[test]
+    fn suggested_plan_round_trips_on_ffi_bincode_wire() {
+        let blocks = [block("a", 15, 3), block("b", 15, 2)];
+        crate::domain::types::assert_round_trips(planned(&blocks, Some(30)));
     }
 
     #[test]
