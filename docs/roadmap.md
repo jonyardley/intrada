@@ -29,10 +29,11 @@ Where this list and an issue's
 
 - **#2121 A first run that gets a new musician to their first marked
   session**, ending with watching three new musicians try it (#2120).
-- **#57 One-tap start and #999 today's plan**: a plan filled from starred and
-  cold items, started with one tap. It shares the top of the Practice screen
-  with the Start here card (#2118): a new musician sees Start here until there
-  is something to plan from.
+- **One-tap start (#57) and today's plan (#999) shipped** (#2182, #2202): with
+  a preferred length set, the Practice screen holds a plan filled to it, and
+  Start plays it in one tap. The Start here card (#2118) will share the top of
+  the Practice screen with it: a new musician sees Start here until there is
+  something to plan from.
 - **Closing out** the September audit backlog (#1967) and making the core
   easier to change (#1995), each with a handful of issues left.
 
