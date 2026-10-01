@@ -67,7 +67,7 @@ struct ProfileEditSheet: View {
     }
     // The sheet wears the swatch under the finger; the rest of the app
     // follows once the core has accepted the save.
-    .environment(\.marker, IntradaColor.marker(colour))
+    .marker(colour)
     .onAppear(perform: load)
   }
 

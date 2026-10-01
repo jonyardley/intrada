@@ -86,7 +86,20 @@ enum IntradaColor {
   static let playerBgMid = Color(hex: 0xF7F4EF)
   static let playerBgBottom = Color(hex: 0xEFEAE1)
   static let heroGradientTop = ink
-  static let heroGradientBottom = Color(hex: 0x4F3B28)
+  /// Each marker's hue at about 22% lightness (#1877), so light text and the marker
+  /// button still clear contrast. Butter keeps the original brown.
+  static func heroGradientBottom(_ colour: HighlighterColour) -> Color {
+    switch colour {
+    case .butter: Color(hex: 0x4F3B28)
+    case .coral: Color(hex: 0x4C2C24)
+    case .mint: Color(hex: 0x244C39)
+    case .sky: Color(hex: 0x243A4C)
+    case .lavender: Color(hex: 0x2E244C)
+    case .sage: Color(hex: 0x3D4923)
+    case .peach: Color(hex: 0x4C3824)
+    case .powder: Color(hex: 0x243D4C)
+    }
+  }
   /// Read `ItemKind.onHeroAccent`, not these directly.
   static let onHeroExercise = exerciseBadgeBg
   static let onHeroPiece = pieceBadgeBg
@@ -114,9 +127,11 @@ extension LinearGradient {
     colors: [IntradaColor.exerciseBadgeBg], startPoint: .top, endPoint: .bottom)
 
   /// The Practice one-tap hero card (CSS `165deg` ≈ top-trailing → bottom-leading).
-  static let practiceHero = LinearGradient(
-    colors: [IntradaColor.heroGradientTop, IntradaColor.heroGradientBottom],
-    startPoint: .topTrailing, endPoint: .bottomLeading)
+  static func practiceHero(_ colour: HighlighterColour) -> LinearGradient {
+    LinearGradient(
+      colors: [IntradaColor.heroGradientTop, IntradaColor.heroGradientBottom(colour)],
+      startPoint: .topTrailing, endPoint: .bottomLeading)
+  }
 
   static let ringSweep = LinearGradient(
     colors: [IntradaColor.ink], startPoint: .topLeading, endPoint: .bottomTrailing)

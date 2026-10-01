@@ -1090,3 +1090,17 @@ rather than opening the builder.
   something starred, T20's priorities action stacks under both, so three
   secondary text actions sit under one primary. They stay text, never a second
   filled button, which is the line T15 and T20 hold.
+
+### T33: The hero's ground follows the musician's colour
+
+**Status:** DECIDED 2026-10-01 (jonyardley/intrada#1877). The Practice hero and
+the Up next card fade from ink to a deep version of the chosen highlighter,
+not a fixed brown for everyone.
+
+- The lower stop is the highlighter's hue at 22% lightness: deep enough that
+  the light text, the reason lines on the item card and the highlighter button
+  all keep their contrast for every swatch. A test holds those three floors.
+- Butter keeps the original brown; its computed stop is indistinguishable.
+- Rejected: a greyer tint (the colour barely reads), both stops in the hue
+  (the whole card shifts, not just its fade), and a pastel ground with ink text
+  (the highlighter button disappears into it).

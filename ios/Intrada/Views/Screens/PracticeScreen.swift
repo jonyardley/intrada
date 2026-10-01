@@ -4,6 +4,7 @@ import SwiftUI
 struct PracticeScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.marker) private var marker
+  @Environment(\.heroGradient) private var heroGradient
 
   // Injected so the recovery card's date is deterministic in snapshots;
   // production uses "now".
@@ -267,7 +268,7 @@ struct PracticeScreen: View {
     }
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.section)
-    .background(LinearGradient.practiceHero)
+    .background(heroGradient)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
     .dropShadow(.hero)
   }
