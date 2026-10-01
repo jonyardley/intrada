@@ -47,9 +47,10 @@ struct LibraryStoreUnreadableValueTests {
 
     try store.save(loaded)
 
-    #expect(
-      try store.rawText("chord_chart", ofItem: "i1") == LibraryStore.encodeChordChart(chart))
-    #expect(try store.rawText("metre", ofItem: "i1") == LibraryStore.encodeMetre(metre))
+    // Decoded, not compared as text: JSONEncoder promises no key order, and a
+    // reordered string failed this on CI (#2202).
+    #expect(LibraryStore.decodeChordChart(try store.rawText("chord_chart", ofItem: "i1")) == chart)
+    #expect(LibraryStore.decodeMetre(try store.rawText("metre", ofItem: "i1")) == metre)
   }
 
   @Test func clearingAReadableValueClearsIt() throws {

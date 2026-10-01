@@ -31,7 +31,7 @@ is_large() {
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenPriorities | \
       testPracticeScreenQuietDay | testPracticeScreenSuggestionDismissed | \
       testPracticeScreenSuggestionDismissedPriorities | testPracticeScreenGreeting | \
-      testUpNextHeroNeverMarked | \
+      testUpNextHeroNeverMarked | testUpNextHeroFilledPlanAccessibilitySize | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testFocusPlayerWithVariations | testFocusPlayerWithVariationsAccessibilitySize | \
       testPracticeSessionDetailAccessibilitySize | \
@@ -41,14 +41,15 @@ is_large() {
   esac
 }
 
-# One tier above `is_large`: the Up next hero (#1082) is the largest unbroken
-# gradient the app draws — over half a full-screen reference — so it clears the
-# 300k bound even fully optimized. Keep this bucket to references that are
+# One tier above `is_large`: the Up next hero (#1082) and its filled plan card
+# (#57) are the largest unbroken gradients the app draws, each over half a
+# full-screen reference, so they clear the 300k bound even fully optimised. Keep this bucket to references that are
 # mostly one gradient; anything else belongs in `is_large` or under the default.
 XL_MAX_BYTES="${SNAPSHOT_XL_MAX_BYTES:-420000}"
 is_xl() {
   case "$1" in
-    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities) return 0 ;;
+    testPracticeScreenSuggestion | testPracticeScreenSuggestionPriorities | \
+      testUpNextHeroFilledPlan) return 0 ;;
     *) return 1 ;;
   esac
 }

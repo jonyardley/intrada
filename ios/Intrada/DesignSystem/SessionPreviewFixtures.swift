@@ -186,6 +186,26 @@
     }
   }
 
+  extension SuggestedSession {
+    /// A later block in a filled plan, which the hero shows as one line.
+    static var previewAutumnLeaves: SuggestedSession {
+      SuggestedSession(
+        pieceId: "piece-3", pieceTitle: "Autumn Leaves", pieceSubtitle: "Joseph Kosma",
+        reason: "Cold for 3 weeks", priority: false,
+        items: [
+          SuggestedItem(
+            itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
+            variantId: nil, variantLabel: nil, latestScore: 7,
+            reason: "Marked 7 of 10 last time"),
+          SuggestedItem(
+            itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
+            variantId: nil, variantLabel: nil, latestScore: 5,
+            reason: "Marked 5 of 10 last time"),
+        ],
+        estimatedMinutes: 10)
+    }
+  }
+
   extension SuggestedPlan {
     /// A plan of one block, as the hero shows with no preferred length.
     static var previewStarred: SuggestedPlan {
@@ -193,6 +213,22 @@
       return SuggestedPlan(
         blocks: [block], estimatedMinutes: block.estimatedMinutes,
         itemCount: UInt32(block.items.count), lengthMins: nil)
+    }
+
+    /// One block, no star, never marked: the longest copy the card has to fit.
+    static var previewFresh: SuggestedPlan {
+      let block = SuggestedSession.previewFresh
+      return SuggestedPlan(
+        blocks: [block], estimatedMinutes: block.estimatedMinutes,
+        itemCount: UInt32(block.items.count), lengthMins: nil)
+    }
+
+    /// Filled to a 30 minute preference: the lead block and two more.
+    static var previewFilled: SuggestedPlan {
+      let blocks = [SuggestedSession.previewStarred, .previewFresh, .previewAutumnLeaves]
+      return SuggestedPlan(
+        blocks: blocks, estimatedMinutes: blocks.reduce(0) { $0 + $1.estimatedMinutes },
+        itemCount: UInt32(blocks.reduce(0) { $0 + $1.items.count }), lengthMins: 30)
     }
   }
 

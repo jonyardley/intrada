@@ -32,6 +32,16 @@ extension Store {
     return accepted
   }
 
+  /// For an event the core may accept as a no-op (#1413): plays the haptic
+  /// only when the outcome the tap was for actually happened.
+  @discardableResult
+  func send(_ event: Event, onSuccess haptic: Haptic, when landed: (ViewModel) -> Bool) -> Bool {
+    let accepted = sendAccepted(event)
+    let didLand = accepted && viewModel.map(landed) == true
+    if didLand { haptic.play() }
+    return didLand
+  }
+
   /// False when the core refused the event (`errorSeq` moved), the bridge
   /// threw, or there is no ViewModel to confirm against (#1937).
   func sendAccepted(_ event: Event) -> Bool {

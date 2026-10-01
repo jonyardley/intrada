@@ -137,19 +137,24 @@ struct PracticeScreen: View {
 
   /// `nil` whenever nothing qualifies or the user has waved it away, which is
   /// what keeps the card a suggestion and never a gate (design-principles T15).
-  private var suggestion: SuggestedSession? {
-    suggestionDismissed ? nil : store.viewModel?.upNext?.blocks.first
+  private var plan: SuggestedPlan? {
+    suggestionDismissed ? nil : store.viewModel?.upNext
   }
 
   @ViewBuilder private var heroSection: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
-      if let suggestion {
-        UpNextHero(
-          suggestion: suggestion,
+      if let plan,
+        let suggestionHero = UpNextHero(
+          plan: plan,
           onStart: {
             store.send(
+              .session(.startFromSuggestion(now: SessionClock.nowRFC3339())),
+              onSuccess: .impact, when: { $0.activeSession != nil })
+          },
+          onChange: {
+            store.send(
               .session(.startBuildingFromSuggestion(now: SessionClock.nowRFC3339())),
-              onSuccess: .impact)
+              onSuccess: .impact, when: { $0.buildingSetlist != nil })
           },
           // "Build my own" is a decision, not a dismissal (#1617).
           onBuildOwn: {
@@ -157,7 +162,9 @@ struct PracticeScreen: View {
             store.send(.session(.startBuilding))
           }
         )
-        .transition(.opacity)
+      {
+        suggestionHero
+          .transition(.opacity)
       } else {
         hero
         if showsSuggestionRestore { suggestionRestoreButton }

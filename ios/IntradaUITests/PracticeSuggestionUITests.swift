@@ -1,8 +1,9 @@
 import XCTest
 
-/// The Up next suggestion's own two escape hatches: opening the builder in one
-/// tap when you say you'd rather build your own (#1617), and coming back to
-/// the suggestion afterwards rather than losing it for the app run (#1618).
+/// The Up next suggestion: Start plays today's plan in one tap (#57), "Change
+/// it first" opens it in the builder, "Build my own instead" opens a blank one
+/// (#1617), and the suggestion comes back afterwards rather than being lost for
+/// the app run (#1618).
 @MainActor
 final class PracticeSuggestionUITests: XCTestCase {
   override func setUp() {
@@ -15,6 +16,31 @@ final class PracticeSuggestionUITests: XCTestCase {
     app.launchArguments = ["--seed-sample-data", "--disable-animations"]
     app.launch()
     return app
+  }
+
+  func testStartPlaysThePlanInOneTap() {
+    let app = launchSeeded()
+    app.tabBars.buttons["Practice"].tap()
+
+    app.control("practice.start", spoken: "Start practising", timeout: 10).tap()
+
+    XCTAssertTrue(
+      app.element("player.skip").waitForExistence(timeout: 10),
+      "one tap lands in the player, with no builder in between")
+    // An in-progress session outlives the app in UserDefaults; a later
+    // unseeded launch would offer to resume it.
+    app.abandonSession()
+  }
+
+  func testChangeItFirstOpensThePlanInTheBuilder() {
+    let app = launchSeeded()
+    app.tabBars.buttons["Practice"].tap()
+
+    app.control("practice.changePlan", spoken: "Change it first", timeout: 10).tap()
+
+    XCTAssertTrue(
+      app.element("builder.row").waitForExistence(timeout: 10),
+      "the builder opens holding the plan, not empty")
   }
 
   func testBuildOwnInsteadOpensBuilderInOneTap() {
