@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Machine-wide advisory lock serialising iOS Simulator test runs (#1622).
+# Machine-wide advisory lock serialising iOS Simulator test runs and the
+# launch in just ios-run (#1622, #1923).
 # CoreSimulatorService and SpringBoard are machine-global, so two
 # xcodebuild/XCTest runs against DISTINCT simulator devices can still crash
 # each other's XCUITests (#1192, measured in #1621), so this lock is the sole

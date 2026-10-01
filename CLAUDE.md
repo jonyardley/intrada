@@ -44,8 +44,8 @@ just ios-test-full    # adds XCUITests; CI runs them on every PR, so /ship does 
   `just coverage`), so keep the justfile and `ci.yml` in step.
   Read every compile error before fixing the first: `cargo check --all-targets`, and the
   full `just ios-test` error list.
-- **The simulator is machine-global.** `just ios-test`/`ios-test-full` wait on a
-  machine-wide lock (`scripts/ios-sim-lock.sh`) rather than refusing when another session's
+- **The simulator is machine-global.** `just ios-test`/`ios-test-full`, and the launch in
+  `just ios-run` (up to 30 minutes, naming the holder), wait on a machine-wide lock (`scripts/ios-sim-lock.sh`) rather than refusing when another session's
   run is live, and leave their sim booted for the next run, shutting it down after ten idle
   minutes: a booted device on its own is no longer a signal of anything. Global resets are
   still denied; a device outside that flow (someone poking at Device Hub by hand) still

@@ -58,7 +58,7 @@ final class ProfileUITests: XCTestCase {
     XCTAssertTrue(
       app.descendants(matching: .any).matching(
         NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", ", Jon", "No sessions yet")
-      ).firstMatch.waitForExistence(timeout: 10),
+      ).firstMatch.waitForExistence(timeout: contendedTimeout),
       "the Practice header greets by name after a relaunch")
     app.control("practice.profile", spoken: "Profile").tap()
     XCTAssertTrue(app.staticTexts["Jon"].waitForExistence(timeout: 5), "the name survived")
