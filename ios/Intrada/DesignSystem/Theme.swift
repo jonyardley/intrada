@@ -86,7 +86,7 @@ enum IntradaColor {
   static let playerBgMid = Color(hex: 0xF7F4EF)
   static let playerBgBottom = Color(hex: 0xEFEAE1)
   static let heroGradientTop = ink
-  /// Each marker's hue at 22% lightness (#1877), so light text and the marker
+  /// Each marker's hue at about 22% lightness (#1877), so light text and the marker
   /// button still clear contrast. Butter keeps the original brown.
   static func heroGradientBottom(_ colour: HighlighterColour) -> Color {
     switch colour {
@@ -95,7 +95,7 @@ enum IntradaColor {
     case .mint: Color(hex: 0x244C39)
     case .sky: Color(hex: 0x243A4C)
     case .lavender: Color(hex: 0x2E244C)
-    case .sage: Color(hex: 0x404C24)
+    case .sage: Color(hex: 0x3D4923)
     case .peach: Color(hex: 0x4C3824)
     case .powder: Color(hex: 0x243D4C)
     }

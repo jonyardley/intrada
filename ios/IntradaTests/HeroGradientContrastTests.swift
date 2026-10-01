@@ -16,15 +16,21 @@ struct HeroGradientContrastTests {
     }
   }
 
-  /// The reason and meta lines sit at 75% white on the 12% paper wash of the
-  /// item card: the tightest pairing on either hero.
+  /// The item card is the 12% paper wash over the ground; its meta lines and
+  /// the variation labels in the kind accents are the tightest pairings.
   @Test func smallTextOnTheItemCardHoldsBodyContrast() {
     for colour in HighlighterColour.all {
       let card = over(
         rgb(IntradaColor.paperTop), IntradaOpacity.wash,
         rgb(IntradaColor.heroGradientBottom(colour)))
-      let text = over(rgb(IntradaColor.onAccent), IntradaOpacity.secondary, card)
-      #expect(contrast(text, card) >= 4.5, "\(colour.label)")
+      let texts = [
+        over(rgb(IntradaColor.onAccent), IntradaOpacity.secondary, card),
+        rgb(IntradaColor.onHeroPiece),
+        rgb(IntradaColor.onHeroExercise),
+      ]
+      for text in texts {
+        #expect(contrast(text, card) >= 4.5, "\(colour.label)")
+      }
     }
   }
 
