@@ -537,10 +537,11 @@ already-green HEAD (delete `target/.check-stamp` or
 `ios/build/.ios-test-stamp` to force a run); `scripts/ios-sim-lock.sh`
 serialises the test recipes and the boot and launch in `just ios-run`
 machine-wide, waiting rather than refusing while another agent's run holds it
-(#1622, #1923). Xcode previews, the tool servers and idle booted sims sit
-outside it, so the three UI test waits that timed out under that load (the
-Practice greeting after a relaunch, the session options in the player and
-Discard on the summary) wait up to 30 seconds. Simulator workflow in full:
+(#1622, #1923). Xcode previews, the Xcode and cmux automation servers and the
+app `just ios-run` leaves running sit outside it, so the three UI test waits
+that timed out while other sessions shared the machine (the Practice greeting
+after a relaunch, the session options in the player and Discard on the summary)
+wait up to 30 seconds. Simulator workflow in full:
 [`ios-testing.md`](ios-testing.md).
 
 **Format on edit.** `.claude/settings.json` runs `rustfmt` on every `.rs` and
