@@ -32,6 +32,7 @@ is_large() {
       testPracticeScreenQuietDay | testPracticeScreenSuggestionDismissed | \
       testPracticeScreenSuggestionDismissedPriorities | testPracticeScreenGreeting | \
       testUpNextHeroNeverMarked | testUpNextHeroFilledPlanAccessibilitySize | \
+      testUpNextHeroCoral | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testFocusPlayerWithVariations | testFocusPlayerWithVariationsAccessibilitySize | \
       testPracticeSessionDetailAccessibilitySize | \

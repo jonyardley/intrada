@@ -10,6 +10,7 @@ struct UpNextHero: View {
   let onChange: () -> Void
   let onBuildOwn: () -> Void
   @Environment(\.marker) private var marker
+  @Environment(\.heroGradient) private var heroGradient
 
   /// `nil` for a plan with no blocks, which the core never sends.
   init?(
@@ -37,7 +38,7 @@ struct UpNextHero: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(IntradaSpacing.section)
-    .background(LinearGradient.practiceHero)
+    .background(heroGradient)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
     .dropShadow(.hero)
     .accessibilityElement(children: .contain)

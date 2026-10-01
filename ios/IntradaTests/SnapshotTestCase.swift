@@ -49,7 +49,7 @@ class SnapshotTestCase: XCTestCase {
     // The marker follows the store's profile here as it does under RootView.
     let vc = UIHostingController(
       rootView: view.environment(store)
-        .environment(\.marker, IntradaColor.marker(store.viewModel?.profile.colour ?? .butter))
+        .marker(store.viewModel?.profile.colour ?? .butter)
         .environment(\.locale, Locale(identifier: "en_US"))
         .environment(\.calendar, PreviewCalendar.utc)
         .environment(\.intradaMotionDisabled, true))

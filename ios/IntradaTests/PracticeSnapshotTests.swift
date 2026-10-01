@@ -101,6 +101,15 @@ final class PracticeSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(upNextHeroCard(.previewFilled)), as: tallAxConfig(height: 2600))
   }
 
+  /// The ground follows the musician's swatch (#1877), not butter's brown.
+  func testUpNextHeroCoral() {
+    assertSnapshot(
+      of: host(upNextHeroCard(.previewFresh).marker(.coral)),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 370),
+        traits: .init(displayScale: 2)))
+  }
+
   private func upNextHeroCard(_ plan: SuggestedPlan) -> some View {
     UpNextHero(plan: plan, onStart: {}, onChange: {}, onBuildOwn: {})?
       .padding(IntradaSpacing.card)
