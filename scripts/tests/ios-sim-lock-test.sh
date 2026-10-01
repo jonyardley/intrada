@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Self-test for scripts/ios-sim-lock.sh and scripts/ios-sim-idle-shutdown.sh: a
-# live, a crashed and a mid-acquire lock holder, and the idle shutdown holding
-# off while a run holds the lock or has run since (#1885). A stub `xcrun`
-# records each shutdown with its time, so no real simulator is touched.
+# live, a crashed and a mid-acquire lock holder, the idle shutdown holding off
+# while a run holds the lock or has run since (#1885), and a boot wait that
+# never finishes (#2203). A stub `xcrun` records each shutdown with its time
+# and boots as BOOT_MODE says, so no real simulator is touched.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -18,6 +19,12 @@ cat >"$tmp/bin/xcrun" <<'EOF'
 #!/usr/bin/env bash
 echo "$(date +%s) $*" >>"$XCRUN_LOG"
 cat "$IOS_SIM_LOCK_DIR/holder" >>"$XCRUN_LOG.holder" 2>/dev/null || true
+if [ "$2" = bootstatus ]; then
+  case "${BOOT_MODE:-ok}" in
+    hang) echo "$$" >"$BOOT_PID"; exec sleep 60 ;;
+    fail) exit 3 ;;
+  esac
+fi
 EOF
 chmod +x "$tmp/bin/xcrun"
 export PATH="$tmp/bin:$PATH"
@@ -92,6 +99,28 @@ expect "a run marks its worktree's sim used while it queues" true \
   bash -c 'rm -f "$1" && . "$2" && ios_sim_lock_acquire_for_run && test -s "$1"' _ \
   "$IOS_SIM_LAST_RUN_MARKER" "$root/scripts/ios-sim-lock.sh"
 rm -rf "$IOS_SIM_LOCK_DIR"
+
+# ── The boot wait ──
+
+export XCRUN_LOG="$tmp/boot-xcrun" BOOT_PID="$tmp/boot-pid"
+boot_as() { BOOT_MODE="$1" ios_sim_boot_wait "$udid"; }
+expect "a boot that finishes passes the wait" true boot_as ok
+expect "a boot that fails fails the wait" false boot_as fail
+
+hang_started=$(date +%s)
+BOOT_MODE=hang IOS_SIM_BOOT_TIMEOUT=2 ios_sim_boot_wait "$udid" 2>"$tmp/boot-err" && hang_status=0 || hang_status=$?
+hang_took=$(($(date +%s) - hang_started))
+expect "a boot that never finishes fails the wait" true test "$hang_status" -ne 0
+expect "a boot that never finishes is given up within the time limit" true test "$hang_took" -le 5
+expect "the stuck boot wait is killed, not left running" false kill -0 "$(cat "$BOOT_PID")"
+expect "the error names the stuck device" true grep -q "simulator $udid did not finish booting within 2s" "$tmp/boot-err"
+
+rm -f "$BOOT_PID"
+BOOT_MODE=hang IOS_SIM_BOOT_TIMEOUT=1 bash -c \
+  '. "$1" && ios_sim_lock_acquire && trap ios_sim_lock_release EXIT && set -e && ios_sim_boot_wait "$2"' \
+  _ "$root/scripts/ios-sim-lock.sh" "$udid" 2>/dev/null || true
+expect "a run whose boot never finishes frees the lock for the next" false test -d "$IOS_SIM_LOCK_DIR"
+expect "the lock-holding run's stuck boot wait is killed too" false kill -0 "$(cat "$BOOT_PID")"
 
 # ── The idle shutdown, five timers side by side ──
 

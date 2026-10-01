@@ -21,14 +21,16 @@
 #   ios_sim_lock_acquire_for_run
 #   trap 'ios_sim_lock_release_with_idle_shutdown "$udid"' EXIT
 #
-# IOS_SIM_LOCK_DIR, IOS_SIM_LOCK_TIMEOUT, IOS_SIM_LOCK_POLL and
-# IOS_SIM_LAST_RUN_MARKER override the path, the wait and poll in seconds, and
-# the marker, all for tests, so this can be exercised without a 1800s wait.
+# IOS_SIM_LOCK_DIR, IOS_SIM_LOCK_TIMEOUT, IOS_SIM_LOCK_POLL,
+# IOS_SIM_LAST_RUN_MARKER and IOS_SIM_BOOT_TIMEOUT override the path, the wait
+# and poll in seconds, the marker and the boot wait, all for tests, so this can
+# be exercised without a 1800s wait.
 
 IOS_SIM_LOCK_DIR="${IOS_SIM_LOCK_DIR:-/tmp/intrada-ios-test.lock}"
 IOS_SIM_LOCK_TIMEOUT="${IOS_SIM_LOCK_TIMEOUT:-1800}"
 IOS_SIM_LOCK_POLL="${IOS_SIM_LOCK_POLL:-5}"
 IOS_SIM_LAST_RUN_MARKER="${IOS_SIM_LAST_RUN_MARKER:-ios/build/.sim-last-run}"
+IOS_SIM_BOOT_TIMEOUT="${IOS_SIM_BOOT_TIMEOUT:-300}"
 IOS_SIM_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # A crashed holder (kill -9, a yanked machine) never runs its EXIT trap, so a
@@ -64,6 +66,28 @@ ios_sim_lock_acquire() {
 
 ios_sim_lock_release() {
     rm -rf "$IOS_SIM_LOCK_DIR"
+}
+
+# A wedged boot keeps its waiter alive, so the stale check never frees the lock
+# and every queued run waits out the full lock timeout (#2203). macOS ships no
+# `timeout`, hence the background wait and kill.
+ios_sim_boot_wait() {
+    local udid="$1" waited=0 pid
+    xcrun simctl bootstatus "$udid" -b &
+    pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+        if [ "$waited" -ge "$IOS_SIM_BOOT_TIMEOUT" ]; then
+            kill "$pid" 2>/dev/null
+            sleep 1
+            kill -9 "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            echo "✗ simulator $udid did not finish booting within ${IOS_SIM_BOOT_TIMEOUT}s; shut it down (xcrun simctl shutdown $udid) or restart the simulator service, then rerun" >&2
+            return 1
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    wait "$pid"
 }
 
 ios_sim_mark_used() {
