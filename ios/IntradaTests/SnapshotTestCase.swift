@@ -35,11 +35,11 @@ class SnapshotTestCase: XCTestCase {
   override func setUp() {
     super.setUp()
     IntradaFonts.register()
-    primeBackChevron()
+    MainActor.assumeIsolated { primeBackChevron() }
   }
 
   // UIKit keeps the back chevron size from the first pushed bar a process draws,
-  // so whichever accessibility-size screen ran first fixed it for the rest (#1744, #2161).
+  // so a default-size one goes first and no accessibility-size test sets it (#1744, #2161).
   private func primeBackChevron() {
     guard !Self.backChevronPrimed else { return }
     Self.backChevronPrimed = true
