@@ -65,7 +65,6 @@ SortDirection
 SortField
 SuggestedFields
 SuggestedItem
-SuggestedSession
 SummaryView
 TempoDraftField
 TempoTrendPoint
@@ -84,7 +83,6 @@ ViewModel.availableComposers
 ViewModel.availableTags
 ViewModel.lastPractised
 ViewModel.profile
-ViewModel.upNext
 ViewModel.visibleExercises
 ViewModel.visiblePieces
 Effect  # decoded on every LiveBridge call, never named
