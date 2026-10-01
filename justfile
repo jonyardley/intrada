@@ -721,6 +721,10 @@ _ios-test-without-building filters retry parallel="0":
     # installs the app while SpringBoard is still starting, SpringBoard never
     # sees that install finish, and every launch is refused as "Busy" (#1648).
     xcrun simctl bootstatus "$udid" -b
+    # A run killed mid-flight can leave the device at another text size, and the
+    # snapshots that size themselves read it. Large is the iOS default CI records
+    # against; medium, the obvious "reset", fails 17 of them (#1482, #2209).
+    xcrun simctl ui "$udid" content_size large
     # With the UI tier sequential the device outlives the run, so the app's
     # UserDefaults would too, and a leftover crash-recovery blob satisfies the
     # resume prompt on its own, hiding a broken save seam (#1480).
