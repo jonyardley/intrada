@@ -1,14 +1,11 @@
 import SharedTypes
 import SwiftUI
 
-/// The Practice hero when the core has something to suggest (#1082): the lead
-/// piece, why it is being suggested, its two or three items with their reasons,
-/// any later blocks of today's plan (#57, #999) and one `Start · N min`. Every
-/// reason string is the core's: the shell renders, never composes
+/// Every reason string is the core's: the shell renders, never composes
 /// (design-principles T15).
 struct UpNextHero: View {
   let plan: SuggestedPlan
-  private let suggestion: SuggestedSession
+  private let lead: SuggestedSession
   let onStart: () -> Void
   let onChange: () -> Void
   let onBuildOwn: () -> Void
@@ -21,7 +18,7 @@ struct UpNextHero: View {
   ) {
     guard let lead = plan.blocks.first else { return nil }
     self.plan = plan
-    self.suggestion = lead
+    self.lead = lead
     self.onStart = onStart
     self.onChange = onChange
     self.onBuildOwn = onBuildOwn
@@ -50,15 +47,19 @@ struct UpNextHero: View {
   // announces "3 items · 15 min" detached from the piece it describes.
   private var headline: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      HStack(alignment: .firstTextBaseline) {
-        Eyebrow(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
-        Spacer(minLength: IntradaSpacing.controlGap)
-        Text(countLabel)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+      ViewThatFits(in: .horizontal) {
+        HStack(alignment: .firstTextBaseline) {
+          eyebrowLabel.fixedSize()
+          Spacer(minLength: IntradaSpacing.controlGap)
+          countText.fixedSize()
+        }
+        VStack(alignment: .leading, spacing: 2) {
+          eyebrowLabel
+          countText.fixedSize(horizontal: false, vertical: true)
+        }
       }
 
-      Text(suggestion.pieceTitle)
+      Text(lead.pieceTitle)
         .font(IntradaFont.pageTitle(27))
         .foregroundStyle(IntradaColor.paperTop)
         .lineLimit(3)
@@ -66,12 +67,12 @@ struct UpNextHero: View {
         .fixedSize(horizontal: false, vertical: true)
 
       HStack(alignment: .firstTextBaseline, spacing: 6) {
-        if suggestion.priority {
+        if lead.priority {
           Image(systemName: "star.fill")
             .iconSize(.caption)
             .foregroundStyle(marker)
         }
-        Text(suggestion.reason)
+        Text(lead.reason)
           .font(IntradaFont.subtitle)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.strong))
           .fixedSize(horizontal: false, vertical: true)
@@ -82,9 +83,19 @@ struct UpNextHero: View {
     .accessibilityLabel(headlineLabel)
   }
 
+  private var eyebrowLabel: some View {
+    Eyebrow(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+  }
+
+  private var countText: some View {
+    Text(countLabel)
+      .font(IntradaFont.meta)
+      .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+  }
+
   private var itemList: some View {
     VStack(spacing: 0) {
-      ForEach(Array(suggestion.items.enumerated()), id: \.element.itemId) { index, item in
+      ForEach(Array(lead.items.enumerated()), id: \.element.itemId) { index, item in
         if index > 0 {
           Rectangle()
             .fill(IntradaColor.paperTop.opacity(IntradaOpacity.wash))
@@ -123,16 +134,25 @@ struct UpNextHero: View {
     }
   }
 
+  // Stacks when title and totals do not share a line, so neither is squeezed.
   private func laterRow(_ block: SuggestedSession) -> some View {
-    HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.controlGap) {
-      Text(block.pieceTitle)
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.paperTop)
-        .fixedSize(horizontal: false, vertical: true)
-      Spacer(minLength: IntradaSpacing.controlGap)
-      Text(blockLabel(block))
-        .font(IntradaFont.meta)
-        .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+    let title = Text(block.pieceTitle)
+      .font(IntradaFont.bodyMedium)
+      .foregroundStyle(IntradaColor.paperTop)
+    let totals = Text(blockLabel(block))
+      .font(IntradaFont.meta)
+      .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+    return ViewThatFits(in: .horizontal) {
+      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.controlGap) {
+        title.fixedSize()
+        Spacer(minLength: IntradaSpacing.controlGap)
+        totals.fixedSize()
+      }
+      VStack(alignment: .leading, spacing: 2) {
+        title.fixedSize(horizontal: false, vertical: true)
+        totals.fixedSize(horizontal: false, vertical: true)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
     .accessibilityElement(children: .ignore)
@@ -196,8 +216,8 @@ struct UpNextHero: View {
     .accessibilityValue("\(itemCountLabel), about \(plan.estimatedMinutes) minutes")
   }
 
-  // ViewThatFits: at the largest text sizes the pair no longer fits one line,
-  // and a stacked pair beats either label truncating.
+  // The pair stacks whenever it does not fit one line: a stacked pair beats
+  // either label truncating.
   private var secondaryActions: some View {
     ViewThatFits(in: .horizontal) {
       HStack {
@@ -238,11 +258,18 @@ struct UpNextHero: View {
     "\(itemCountLabel) · \(plan.estimatedMinutes) min"
   }
 
+  private var spokenCount: String {
+    "\(itemCountLabel), \(plan.estimatedMinutes) minutes"
+  }
+
   private var headlineLabel: String {
-    var parts = [eyebrow, suggestion.pieceTitle]
-    if let composer = suggestion.pieceSubtitle { parts.append(composer) }
-    parts.append(spoken(suggestion.reason))
-    parts.append(countLabel.replacingOccurrences(of: " · ", with: ", "))
+    var parts = [eyebrow]
+    // Filled to a length, the totals are the plan's, not the lead piece's.
+    if plan.lengthMins != nil { parts.append(spokenCount) }
+    parts.append(lead.pieceTitle)
+    if let composer = lead.pieceSubtitle { parts.append(composer) }
+    parts.append(spoken(lead.reason))
+    if plan.lengthMins == nil { parts.append(spokenCount) }
     return parts.joined(separator: ", ")
   }
 

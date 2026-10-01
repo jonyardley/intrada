@@ -95,6 +95,12 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         traits: .init(displayScale: 2)))
   }
 
+  /// The largest accessibility size: the later rows and the two text actions
+  /// must stack rather than truncate.
+  func testUpNextHeroFilledPlanAccessibilitySize() {
+    assertSnapshot(of: host(upNextHeroCard(.previewFilled)), as: tallAxConfig(height: 2600))
+  }
+
   private func upNextHeroCard(_ plan: SuggestedPlan) -> some View {
     UpNextHero(plan: plan, onStart: {}, onChange: {}, onBuildOwn: {})?
       .padding(IntradaSpacing.card)

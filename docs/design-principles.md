@@ -1072,3 +1072,21 @@ the words stay readable and only the glyph dims:
 
 A future day now differs from a past one by that same step, ink against
 `inkSecondary`, the step a title has over its meta line elsewhere.
+
+### T32: The hero carries today's plan, and Start plays it
+
+**Status:** DECIDED 2026-10-01 (jonyardley/intrada#57, #999). Amends T15: the
+hero still carries the suggestion, but with a preferred session length the
+suggestion is a plan of several blocks, and Start begins playing it in one tap
+rather than opening the builder.
+
+- The eyebrow reads "Today's plan" with no minutes; the count line beside it
+  carries the plan's items and minutes. Two lengths on one line (the preference
+  and the estimate) read as a contradiction.
+- The lead block keeps its rows and reasons; later blocks are one line each,
+  with their items and minutes, so the total adds up on screen.
+- Changing the plan is the second path: "Change it first" opens the builder
+  with the plan in it, a text action beside "Build my own instead". With
+  something starred, T20's priorities action stacks under both, so three
+  secondary text actions sit under one primary. They stay text, never a second
+  filled button, which is the line T15 and T20 hold.

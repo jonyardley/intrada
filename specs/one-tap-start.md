@@ -69,12 +69,12 @@ and `BLOB_VERSION` stays as it is.
 
 ## Screens (the second PR)
 
-- The hero's eyebrow reads "Today's plan · 35 min" when the plan was filled
-  to a length, otherwise "Up next" as now; the count line reads the plan's
-  item count and minutes.
+- The hero's eyebrow reads "Today's plan" when the plan was filled to a
+  length, otherwise "Up next" as now; the count line beside it carries the
+  plan's item count and minutes, so the eyebrow repeats neither (T32).
 - The lead block keeps its piece title, reason and rows; later blocks show as
-  one line each (piece title and item count). The exact layout goes through
-  Claude Design first.
+  one line each: piece title, item count and minutes, so the total adds up on
+  screen (T32).
 - Start sends `StartFromSuggestion`; its haptic fires only when a session
   became active, which closes #1413 for this path.
 - "Change it first" sends `StartBuildingFromSuggestion`; "Build my own

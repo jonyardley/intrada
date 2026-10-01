@@ -27,6 +27,9 @@ final class PracticeSuggestionUITests: XCTestCase {
     XCTAssertTrue(
       app.element("player.skip").waitForExistence(timeout: 10),
       "one tap lands in the player, with no builder in between")
+    // An in-progress session outlives the app in UserDefaults; a later
+    // unseeded launch would offer to resume it.
+    app.abandonSession()
   }
 
   func testChangeItFirstOpensThePlanInTheBuilder() {
