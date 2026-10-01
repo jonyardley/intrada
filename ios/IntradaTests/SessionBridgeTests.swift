@@ -420,8 +420,8 @@ final class SessionBridgeTests: XCTestCase {
             pieceId: try XCTUnwrap(ids[piece]), exerciseId: try XCTUnwrap(ids[exercise]))))
     }
 
-    let plan = try XCTUnwrap(try bridge.rendered().upNext)
-    XCTAssertEqual(plan.blocks.map(\.pieceTitle), ["Arabesque", "Berceuse"])
+    let plan: SuggestedPlan = try XCTUnwrap(try bridge.rendered().upNext)
+    XCTAssertEqual(plan.blocks.map(\SuggestedSession.pieceTitle), ["Arabesque", "Berceuse"])
     XCTAssertEqual(plan.itemCount, 4)
     XCTAssertEqual(plan.lengthMins, 25)
 
