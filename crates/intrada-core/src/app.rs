@@ -1126,48 +1126,30 @@ mod tests {
 
     // --- T045: Performance benchmark ---
 
-    #[test]
-    fn test_performance_10k_items() {
-        let app = Intrada;
-        let mut model = Model::default();
+    /// `pieces` pieces and as many exercises, each piece linking five exercises
+    /// that exist so the reverse index is loaded, and `sessions` of five entries.
+    fn perf_model(pieces: usize, sessions: usize) -> Model {
         let now = chrono::Utc::now();
-
-        // Populate 10,000 items (5k pieces + 5k exercises).
-        // Each piece links 5 exercise ids that exist in the fixture (e00000–e04999),
-        // so the reverse-index path is load-tested — an O(n²) scan would be caught.
-        let start = std::time::Instant::now();
-        for i in 0..5000 {
-            let linked_exercise_ids: Vec<String> = (0..5)
-                .map(|k| format!("e{:05}", (i * 7 + k * 997) % 5000))
-                .collect();
+        let mut model = Model::default();
+        for i in 0..pieces {
             model.items.push(Item {
                 id: format!("p{i:05}"),
                 title: format!("Piece {i}"),
                 kind: ItemKind::Piece,
                 composer: Some(format!("Composer {}", i % 100)),
-                key: if i % 3 == 0 {
-                    Some("C Major".to_string())
-                } else {
-                    None
-                },
+                key: (i % 3 == 0).then(|| "C Major".to_string()),
                 modality: None,
-                tempo: if i % 5 == 0 {
-                    Some(crate::domain::types::Tempo {
-                        marking: Some("Allegro".to_string()),
-                        bpm: Some(120),
-                    })
-                } else {
-                    None
-                },
-                notes: if i % 7 == 0 {
-                    Some(format!("Notes for piece {i}"))
-                } else {
-                    None
-                },
+                tempo: (i % 5 == 0).then(|| crate::domain::types::Tempo {
+                    marking: Some("Allegro".to_string()),
+                    bpm: Some(120),
+                }),
+                notes: (i % 7 == 0).then(|| format!("Notes for piece {i}")),
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids,
+                linked_exercise_ids: (0..5)
+                    .map(|k| format!("e{:05}", (i * 7 + k * 997) % pieces))
+                    .collect(),
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
@@ -1175,17 +1157,13 @@ mod tests {
                 metre: None,
             });
         }
-        for i in 0..5000 {
+        for i in 0..pieces {
             model.items.push(Item {
                 id: format!("e{i:05}"),
                 title: format!("Exercise {i}"),
                 kind: ItemKind::Exercise,
                 composer: None,
-                key: if i % 4 == 0 {
-                    Some("G Major".to_string())
-                } else {
-                    None
-                },
+                key: (i % 4 == 0).then(|| "G Major".to_string()),
                 modality: None,
                 tempo: None,
                 notes: None,
@@ -1200,33 +1178,18 @@ mod tests {
                 metre: None,
             });
         }
-        let populate_time = start.elapsed();
-        // Heavier than a bare-item fixture: each of the 5k pieces builds 5 linked
-        // exercise-id strings to load-test the reverse index. This is fixture setup,
-        // not the gate — the bound is generous to absorb slow-CI debug-build variance.
-        assert!(
-            populate_time.as_millis() < 500,
-            "Populating 10k items took {}ms (target: <500ms)",
-            populate_time.as_millis()
-        );
-
-        // Populate 500 sessions with 5 entries each (2,500 entries total)
-        use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
-        };
-        let start = std::time::Instant::now();
-        for s in 0..500u32 {
-            let entries: Vec<SetlistEntry> = (0..5u32)
+        for s in 0..sessions {
+            let entries: Vec<SetlistEntry> = (0..5)
                 .map(|e| {
-                    let item_idx = ((s * 5 + e) % 10_000) as usize;
-                    let (item_id, item_title, item_type) = if item_idx < 5000 {
+                    let item_idx = (s * 5 + e) % (pieces * 2);
+                    let (item_id, item_title, item_type) = if item_idx < pieces {
                         (
                             format!("p{item_idx:05}"),
                             format!("Piece {item_idx}"),
                             ItemKind::Piece,
                         )
                     } else {
-                        let idx = item_idx - 5000;
+                        let idx = item_idx - pieces;
                         (
                             format!("e{idx:05}"),
                             format!("Exercise {idx}"),
@@ -1238,14 +1201,14 @@ mod tests {
                         item_id,
                         item_title,
                         item_type,
-                        position: e as usize,
+                        position: e,
                         duration_secs: 300,
                         status: EntryStatus::Completed,
                         plays: vec![VariationPlay {
                             id: format!("se{s:04}_{e}-play"),
                             seconds: 300,
-                            achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
-                            score: if e % 2 == 0 { Some(3) } else { None },
+                            achieved_tempo: (e % 3 == 0).then_some(120),
+                            score: (e % 2 == 0).then_some(3),
                             ..VariationPlay::fixture()
                         }],
                         ..SetlistEntry::fixture()
@@ -1264,76 +1227,121 @@ mod tests {
             });
         }
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
-        let session_populate_time = start.elapsed();
+        model
+    }
+
+    fn timed(work: &mut impl FnMut()) -> std::time::Duration {
+        let start = std::time::Instant::now();
+        work();
+        start.elapsed()
+    }
+
+    /// The quickest of three runs: other sessions building only ever slow a run
+    /// down, so the minimum is the nearest to the work itself (#2194).
+    fn fastest(mut work: impl FnMut()) -> std::time::Duration {
+        (0..3).map(|_| timed(&mut work)).min().unwrap_or_default()
+    }
+
+    /// Linear work grows about fourfold from a quarter of the items to all of
+    /// them and an O(n²) scan sixteenfold, so eightfold tells them apart without
+    /// trusting the wall clock of a busy machine (#2194). The sizes alternate so
+    /// both meet the same load and the same cores. Returns the full size's time.
+    fn assert_grows_linearly(
+        what: &str,
+        mut quarter: impl FnMut(),
+        mut full: impl FnMut(),
+    ) -> std::time::Duration {
+        let (mut q, mut f) = (std::time::Duration::MAX, std::time::Duration::MAX);
+        for _ in 0..3 {
+            q = q.min(timed(&mut quarter));
+            f = f.min(timed(&mut full));
+        }
         assert!(
-            session_populate_time.as_millis() < 200,
-            "Populating 500 sessions + cache took {}ms (target: <200ms)",
-            session_populate_time.as_millis()
+            f < q * 8,
+            "{what} grew {:.1}x ({}µs at 10,000 items against {}µs at 2,500; target: under 8x)",
+            f.as_secs_f64() / q.as_secs_f64(),
+            f.as_micros(),
+            q.as_micros()
+        );
+        f
+    }
+
+    #[test]
+    fn test_performance_10k_items() {
+        let app = Intrada;
+        let mut quarter = perf_model(1_250, 125);
+        let mut model = perf_model(5_000, 500);
+        assert_eq!(app.rendered(&model).items.len(), 10_000);
+
+        assert_grows_linearly(
+            "build_practice_summaries()",
+            || drop(build_practice_summaries(&quarter.sessions)),
+            || drop(build_practice_summaries(&model.sessions)),
         );
 
-        // Benchmark: view() with 10k items + 500 sessions
-        let start = std::time::Instant::now();
-        let vm = app.view(&model);
-        let view_time = start.elapsed();
-        assert_eq!(app.rendered(&model).items.len(), 10_000);
-        // O(n): forward resolution + the O(n) reverse index over 10k items + 25k
-        // links. A naive O(n²) reverse scan (5k exercises × 5k pieces = 25M) would
-        // run in seconds, so this still catches that regression with wide margin;
-        // the bound is loose only to absorb slow-CI debug-build wall-clock variance.
-        assert!(
-            view_time.as_millis() < 1000,
-            "view() with 10k items took {}ms (target: <1000ms)",
-            view_time.as_millis()
+        let cold = assert_grows_linearly(
+            "view()",
+            || drop(app.view(&quarter)),
+            || drop(app.view(&model)),
         );
 
         // The render every tap pays once the cache is filled (#1998).
-        crate::view::cache::refresh(&mut model, chrono::Utc::now());
-        let start = std::time::Instant::now();
-        let cached = app.view(&model);
-        let cached_time = start.elapsed();
-        assert_eq!(cached, vm);
+        let vm = app.view(&model);
+        let now = chrono::Utc::now();
+        crate::view::cache::refresh(&mut quarter, now);
+        crate::view::cache::refresh(&mut model, now);
+        assert_eq!(app.view(&model), vm);
+        let cached = assert_grows_linearly(
+            "cached view()",
+            || drop(app.view(&quarter)),
+            || drop(app.view(&model)),
+        );
         assert!(
-            cached_time.as_millis() < 250 && cached_time * 3 < view_time,
-            "cached view() with 10k items took {}ms against {}ms cold (target: <250ms and under a third)",
-            cached_time.as_millis(),
-            view_time.as_millis()
+            cached * 3 < cold,
+            "cached view() took {}µs against {}µs cold (target: under a third)",
+            cached.as_micros(),
+            cold.as_micros()
         );
 
-        // Benchmark: add one more item with 10k existing. The handler alone:
-        // `update` also rebuilds the view cache, bounded below (#1998).
-        let start = std::time::Instant::now();
-        let _cmd = app.handle_event(
-            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
-                title: "New Piece".to_string(),
-                kind: ItemKind::Piece,
-                composer: Some("New Composer".to_string()),
-                key: None,
-                modality: None,
-                tempo: None,
-                notes: None,
-                tags: vec![],
-                photo_id: None,
-                variant_labels: Vec::new(),
-            })),
-            &mut model,
-        );
-        let add_time = start.elapsed();
-        assert_eq!(model.items.len(), 10_001);
+        // The handlers alone: `update` also rebuilds the view cache, timed below.
+        let add = |model: &mut Model| {
+            let _cmd = app.handle_event(
+                Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                    title: "New Piece".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: Some("New Composer".to_string()),
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    photo_id: None,
+                    variant_labels: Vec::new(),
+                })),
+                model,
+            );
+        };
+        // Too quick for a ratio to mean anything, and an O(n²) handler would
+        // still take seconds, so a fixed bound holds even on a busy machine.
+        let add_time = fastest(|| add(&mut model));
+        assert_eq!(model.items.len(), 10_003);
         assert!(
             add_time.as_millis() < 100,
             "Adding item with 10k existing took {}ms (target: <100ms)",
             add_time.as_millis()
         );
 
-        // Benchmark: delete item with 10k existing
-        let start = std::time::Instant::now();
-        let _cmd = app.handle_event(
-            Event::Item(ItemEvent::Delete {
-                id: "p00042".to_string(),
-            }),
-            &mut model,
-        );
-        let delete_time = start.elapsed();
+        let delete = |model: &mut Model, next: &mut usize| {
+            *next += 1;
+            let _cmd = app.handle_event(
+                Event::Item(ItemEvent::Delete {
+                    id: format!("p{next:05}"),
+                }),
+                model,
+            );
+        };
+        let mut next = 0;
+        let delete_time = fastest(|| delete(&mut model, &mut next));
         assert_eq!(model.items.len(), 10_000);
         assert!(
             delete_time.as_millis() < 100,
@@ -1341,13 +1349,14 @@ mod tests {
             delete_time.as_millis()
         );
 
-        let start = std::time::Instant::now();
-        crate::view::cache::refresh(&mut model, chrono::Utc::now());
-        let rebuild_time = start.elapsed();
-        assert!(
-            rebuild_time.as_millis() < 1000,
-            "Rebuilding the view cache with 10k items took {}ms (target: <1000ms)",
-            rebuild_time.as_millis()
+        let rebuild = |model: &mut Model| {
+            model.projections = None;
+            crate::view::cache::refresh(model, now);
+        };
+        assert_grows_linearly(
+            "rebuilding the view cache",
+            || rebuild(&mut quarter),
+            || rebuild(&mut model),
         );
     }
 
