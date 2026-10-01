@@ -35,20 +35,21 @@ class SnapshotTestCase: XCTestCase {
   override func setUp() {
     super.setUp()
     IntradaFonts.register()
-    MainActor.assumeIsolated { primeBackChevron() }
+    MainActor.assumeIsolated { Self.primeBackChevron() }
   }
 
   // UIKit keeps the back chevron size from the first pushed bar a process draws,
   // so a default-size one goes first and no accessibility-size test sets it (#1744, #2161).
-  private func primeBackChevron() {
-    guard !Self.backChevronPrimed else { return }
-    Self.backChevronPrimed = true
+  private static func primeBackChevron() {
+    guard !backChevronPrimed else { return }
+    backChevronPrimed = true
     let pushed = NavigationStack(path: .constant(["prime"])) {
       Color.clear.navigationDestination(for: String.self) { _ in Color.clear }
     }
-    let rendered = expectation(description: "default-size back chevron drawn")
-    config.snapshot(host(pushed)).run { _ in rendered.fulfill() }
-    wait(for: [rendered], timeout: 10)
+    let rendered = XCTestExpectation(description: "default-size back chevron drawn")
+    Snapshotting<UIViewController, UIImage>.image(on: .iPhone13, traits: .init(displayScale: 2))
+      .snapshot(UIHostingController(rootView: pushed)).run { _ in rendered.fulfill() }
+    XCTAssertEqual(XCTWaiter().wait(for: [rendered], timeout: 10), .completed)
   }
 
   func host(_ view: some View, store: Store = Store(bridge: SnapshotStubBridge()))
