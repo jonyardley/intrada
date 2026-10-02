@@ -578,7 +578,7 @@ jobs:
     name: Snapshot Hygiene
     runs-on: ubuntu-latest
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true' || needs.changes.outputs.android == 'true'
     steps:
       - uses: actions/checkout@v7
       - name: Check snapshot references (orphans + size ceiling)
