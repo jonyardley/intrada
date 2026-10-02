@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
   @Environment(Store.self) private var store
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.intradaMotionDisabled) private var motionDisabled
 
   enum AppTab {
     case library, practice, routines, progress
@@ -15,6 +16,10 @@ struct RootView: View {
   /// Held here, not bound to the core's flag: saving the profile in step two
   /// clears that flag while step three is still to come.
   @State private var showingFirstRun = false
+  /// Paper from the first frame until launch knows whether the returning
+  /// splash plays, so the Library never shows ahead of it.
+  @State private var launch: ReturningSplash.Phase =
+    UITestFlags.seedSampleData || UITestFlags.animationsDisabled ? .done : .deciding
 
   init() {
     Self.applyTabBarAppearance()
@@ -79,6 +84,15 @@ struct RootView: View {
     .safeAreaInset(edge: .top, spacing: 0) {
       AppBannerStack()
     }
+    .overlay {
+      if !motionDisabled {
+        switch launch {
+        case .deciding: PaperBackground()
+        case .playing: ReturningSplash { launch = .done }
+        case .done: EmptyView()
+        }
+      }
+    }
     .task {
       store.reportUtcOffset()
       // Default (incl. plain DEBUG runs): the Library hydrates from the
@@ -97,6 +111,7 @@ struct RootView: View {
         if UITestFlags.skipWelcome { store.send(.firstRun(.skipWelcome)) }
         store.loadRecoverableSession()
       }
+      if launch == .deciding { launch = store.playsReturningSplash ? .playing : .done }
     }
     // Re-report on foreground: the offset moves under a resident app on DST
     // turnover or travel, and analytics' day boundary must move with it.

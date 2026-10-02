@@ -190,10 +190,7 @@ private struct WelcomeStep: View {
   /// splash only moves it, from under the icon up to its place here.
   private var title: some View {
     let travel = intro.map { (splashWordTop - titleTop) * (1 - $0.wordTravel) + $0.wordRise } ?? 0
-    return Text("Intrada")
-      .font(IntradaFont.pageTitle(40))
-      .foregroundStyle(IntradaColor.ink)
-      .markerSwipe(progress: intro?.swipe ?? 1)
+    return Wordmark(swipe: intro?.swipe ?? 1)
       .opacity(intro?.wordOpacity ?? 1)
       .offset(y: travel)
       .onGeometryChange(for: CGFloat.self) {

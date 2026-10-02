@@ -78,3 +78,75 @@ struct LaunchSplashTests {
     #expect(screen?["UIColorName"] as? String == "LaunchPaper")
   }
 }
+
+/// The returning launch's values at the design's cue times (#2278).
+struct ReturningSplashTests {
+  private func near(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 0.001 }
+  private func frame(_ t: Double) -> SplashFrame { .returning(at: t, reduceMotion: false) }
+
+  @Test func theStaveDrawsTopToBottomInHalfASecond() {
+    let early = frame(0.2).staff
+    #expect(early == early.sorted(by: >))
+    #expect(early[0] > early[4])
+    #expect(frame(0.51).staff == [1, 1, 1, 1, 1])
+  }
+
+  @Test func theIconSettlesWithoutOvershooting() {
+    #expect(near(frame(0).iconScale, 0.92))
+    #expect(stride(from: 0.0, through: 0.3, by: 0.01).allSatisfy { frame($0).iconScale <= 1 })
+    #expect(frame(0.3).iconScale == 1)
+    #expect(frame(0.3).iconOpacity == 1)
+  }
+
+  @Test func theKeyIsAlreadyLit() {
+    #expect(frame(0.1).keyFill == 1)
+    #expect(frame(0.1).keyDip == 0)
+  }
+
+  @Test func theWordmarkSettlesBeforeTheSwipeFinishes() {
+    #expect(frame(0.4).wordOpacity == 1)
+    #expect(frame(0.4).wordRise == 0)
+    #expect(frame(0.4).swipe < 1)
+    #expect(frame(0.55).swipe == 1)
+  }
+
+  @Test(arguments: [0.55, 0.75])
+  func everythingHoldsBeforeTheLift(t: Double) {
+    #expect(frame(t).splashOpacity == 1)
+    #expect(frame(t).splashLift == 0)
+    #expect(frame(t).paperOpacity == 1)
+  }
+
+  @Test func theSplashLiftsAwayAndThePaperClears() {
+    #expect(frame(1.05).splashOpacity == 0)
+    #expect(near(frame(1.05).splashLift, -12))
+    #expect(frame(0.85).paperOpacity == 1)
+    #expect(frame(1.2).paperOpacity == 0)
+    #expect(SplashFrame.returningDuration(reduceMotion: false) == 1.2)
+  }
+
+  @Test func reduceMotionOnlyFadesThePaper() {
+    let start = SplashFrame.returning(at: 0, reduceMotion: true)
+    #expect(start.iconOpacity == 0)
+    #expect(start.wordOpacity == 0)
+    #expect(start.staff == [0, 0, 0, 0, 0])
+    #expect(start.paperOpacity == 1)
+    let end = SplashFrame.returning(at: IntradaMotion.reduceFade, reduceMotion: true)
+    #expect(end.paperOpacity == 0)
+    #expect(SplashFrame.returningDuration(reduceMotion: true) == IntradaMotion.reduceFade)
+  }
+}
+
+/// Which launches play the returning splash (#2278).
+@MainActor
+struct ReturningSplashLaunchTests {
+  @Test func aReturningMusicianSeesIt() {
+    #expect(Store.previewStartHere.playsReturningSplash)
+  }
+
+  @Test func aSessionToReopenSkipsIt() {
+    let store = Store.previewStartHere
+    store.recoverableSession = Store.previewPracticeRecovery.recoverableSession
+    #expect(!store.playsReturningSplash)
+  }
+}
