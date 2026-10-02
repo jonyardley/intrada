@@ -19,6 +19,7 @@ struct PracticeScreen: View {
   // iPad split: a tapped card selects into the detail column instead of pushing.
   private var selection: Binding<String?>?
   @State private var showingProfile = false
+  @State private var addingItem = false
   // Measured from a cell, not hard-coded (#1730).
   @State private var weekStripHeight: CGFloat = 64
 
@@ -88,6 +89,14 @@ struct PracticeScreen: View {
           }
           heroSection
             .fadeUp(0)
+          if let firstRun = store.viewModel?.firstRun, firstRun.showsStartHere {
+            StartHereCard(
+              progress: firstRun,
+              onAdd: { addingItem = true },
+              onStartSession: { store.send(.session(.startBuilding)) }
+            )
+            .fadeUp(0)
+          }
           thisWeek
             .fadeUp(1)
           selectedDaySection
@@ -122,6 +131,13 @@ struct PracticeScreen: View {
     .navigationDestination(isPresented: $showingProfile) {
       ProfileScreen()
     }
+    .sheet(isPresented: $addingItem, onDismiss: discardPhotoDraft) {
+      LibraryAddScreen().environment(store)
+    }
+  }
+
+  private func discardPhotoDraft() {
+    store.send(.discardPhotoDraft)
   }
 
   private var buildingBinding: Binding<Bool> {

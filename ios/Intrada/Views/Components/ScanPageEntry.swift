@@ -12,8 +12,11 @@ struct ScanPageEntry: View {
   /// nothing, which would otherwise look exactly like a good scan.
   let readNothing: Bool
   let onCaptured: (String) -> Void
+  /// The welcome's Scan a page lands here with the camera already up.
+  var opensCamera = false
 
   @State private var captureState = PhotoCaptureState()
+  @State private var openedCamera = false
   @State private var failure: String?
   @State private var viewing = false
 
@@ -32,6 +35,11 @@ struct ScanPageEntry: View {
     }
     .cardSurface()
     .photoCapture($captureState, using: capture)
+    .onAppear {
+      guard opensCamera, !openedCamera, PhotoCaptureSources.canScan else { return }
+      openedCamera = true
+      captureState.scan()
+    }
   }
 
   @ViewBuilder private var content: some View {

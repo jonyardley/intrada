@@ -13,7 +13,7 @@ final class ProfileUITests: XCTestCase {
 
   func testEditSaveAndRelaunchKeepTheProfile() {
     let app = XCUIApplication()
-    app.launchArguments = ["--disable-animations", "--reset-profile"]
+    app.launchArguments = ["--disable-animations", "--reset-profile", "--skip-welcome"]
     app.launch()
 
     app.tabBars.buttons["Practice"].tap()
@@ -70,7 +70,7 @@ final class ProfileUITests: XCTestCase {
   /// there after a relaunch (#1915).
   func testPracticeDefaultsSurviveARelaunch() {
     let app = XCUIApplication()
-    app.launchArguments = ["--disable-animations", "--reset-profile"]
+    app.launchArguments = ["--disable-animations", "--reset-profile", "--skip-welcome"]
     app.launch()
 
     app.tabBars.buttons["Practice"].tap()

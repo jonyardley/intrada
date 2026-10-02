@@ -12,6 +12,9 @@ struct RootView: View {
   @State private var selectedTab: AppTab = .library
   /// One per app: `isIdleTimerDisabled` is process-global, so two would race.
   @State private var wakeLock = ScreenWakeLock.system()
+  /// Held here, not bound to the core's flag: saving the profile in step two
+  /// clears that flag while step three is still to come.
+  @State private var showingFirstRun = false
 
   init() {
     Self.applyTabBarAppearance()
@@ -55,6 +58,17 @@ struct RootView: View {
       PlayerHost().environment(store).environment(\.screenWakeLock, wakeLock)
         .marker(markerColour)
     }
+    .fullScreenCover(isPresented: $showingFirstRun) {
+      FirstRunScreen { added in
+        showingFirstRun = false
+        if added { selectedTab = .practice }
+      }
+      .environment(store)
+      .marker(markerColour)
+    }
+    .onChange(of: store.viewModel?.firstRun.showsWelcome == true, initial: true) { _, shows in
+      if shows { showingFirstRun = true }
+    }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).
     .safeAreaInset(edge: .top, spacing: 0) {
@@ -71,10 +85,11 @@ struct RootView: View {
       } else {
         store.send(.startApp)
         store.restorePersistedSort()
-        if UITestFlags.resetProfile { store.forgetPersistedProfileAndDefaults() }
+        if UITestFlags.resetProfile { store.forgetPersistedProfileDefaultsAndFirstRun() }
         store.restorePersistedProfile()
         store.restorePersistedPracticeDefaults()
         store.restorePersistedFirstRun()
+        if UITestFlags.skipWelcome { store.send(.firstRun(.skipWelcome)) }
         store.loadRecoverableSession()
       }
     }

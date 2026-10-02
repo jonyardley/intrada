@@ -34,6 +34,7 @@
     private let visibleIds: [String]?
     private let profile: ProfileView?
     private let practiceDefaults: PracticeDefaults?
+    private let firstRun: FirstRunView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
@@ -43,7 +44,8 @@
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, lastPractised: LastPractisedView? = nil,
       upNext: SuggestedPlan? = nil, recentlyPractisedIds: [String] = [],
-      profile: ProfileView? = nil, practiceDefaults: PracticeDefaults? = nil
+      profile: ProfileView? = nil, practiceDefaults: PracticeDefaults? = nil,
+      firstRun: FirstRunView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -59,6 +61,7 @@
       self.visibleIds = visibleIds
       self.profile = profile
       self.practiceDefaults = practiceDefaults
+      self.firstRun = firstRun
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -95,6 +98,7 @@
       viewModel.recentlyPractisedIds = recentlyPractisedIds
       if let profile { viewModel.profile = profile }
       if let practiceDefaults { viewModel.practiceDefaults = practiceDefaults }
+      if let firstRun { viewModel.firstRun = firstRun }
       return viewModel
     }
 
@@ -115,6 +119,16 @@
 
     static var previewPracticeEmpty: Store {
       Store(bridge: PreviewBridge(practiceWeeks: [.previewEmptyWeek]))
+    }
+
+    /// A new musician one piece in: the Start here card at 1 of 4 (#2118).
+    static var previewStartHere: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece], practiceWeeks: [.previewEmptyWeek],
+          firstRun: FirstRunView(
+            showsWelcome: false, showsStartHere: true, added: true, built: false,
+            played: false, marked: false, firstItemTitle: LibraryItemView.previewPiece.title)))
     }
 
     /// A cellist called Jon on coral, greeted in the morning (#1692).
