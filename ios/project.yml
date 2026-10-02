@@ -52,7 +52,6 @@ targets:
         # device during the transition; becomes com.intrada.app at parity.
         PRODUCT_BUNDLE_IDENTIFIER: com.intrada.native
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         # Orientations must be declared or App Store upload rejects the binary
         # (90474); iPad multitasking requires all four. iPhone stays portrait.
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
