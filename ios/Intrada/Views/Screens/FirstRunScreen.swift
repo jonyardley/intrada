@@ -10,7 +10,7 @@ struct FirstRunScreen: View {
   }
 
   /// The launch splash ahead of the welcome (#2277). `frozen` holds one moment
-  /// of it for snapshots and previews.
+  /// of it for snapshots.
   enum Intro {
     case none, play
     case frozen(at: Double)
@@ -77,7 +77,7 @@ struct FirstRunScreen: View {
         case .welcome:
           WelcomeStep(
             intro: intro,
-            splashWordTop: height / 2 - LaunchSplashLayer.centreLift + LaunchSplashLayer.wordGap,
+            splashWordTop: LaunchSplashLayer.wordTop(in: height),
             onSetUpProfile: { advance(to: .profile) },
             onSkip: {
               store.send(.firstRun(.skipWelcome))
@@ -100,6 +100,7 @@ struct FirstRunScreen: View {
         LaunchSplashLayer(frame: intro)
           .contentShape(Rectangle())
           .onTapGesture { introStart = nil }
+          .allowsHitTesting(intro.splashOpacity > 0)
       }
     }
     .coordinateSpace(.named(Self.space))

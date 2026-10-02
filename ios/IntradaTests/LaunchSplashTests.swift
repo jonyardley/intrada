@@ -72,7 +72,7 @@ struct LaunchSplashTests {
     #expect(end.splashOpacity == 0)
   }
 
-  /// The partial plist under `GENERATE_INFOPLIST_FILE` drops custom keys silently (#1399).
+  /// The generated plist overwrites this key if `UILaunchScreen_Generation` comes back.
   @Test func theLaunchScreenIsPaper() {
     let screen = Bundle.main.object(forInfoDictionaryKey: "UILaunchScreen") as? [String: Any]
     #expect(screen?["UIColorName"] as? String == "LaunchPaper")

@@ -65,6 +65,7 @@ struct RootView: View {
       }
       .environment(store)
       .marker(markerColour)
+      .presentationBackground(IntradaColor.paperTop)
     }
     .onChange(of: store.viewModel?.firstRun.showsWelcome == true, initial: true) { _, shows in
       // No slide-up, so the splash starts on the paper the launch screen showed.

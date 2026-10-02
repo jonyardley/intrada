@@ -3,8 +3,8 @@ import SwiftUI
 /// One moment of the first-launch splash (#2277): staff lines draw in, the
 /// icon pops on and presses a key, the wordmark appears and swipes, then the
 /// splash clears and the wordmark rises into the welcome as it builds.
-struct SplashFrame: Equatable {
-  struct Item: Equatable {
+struct SplashFrame {
+  struct Item {
     var opacity: Double
     var offset: CGFloat
   }
@@ -89,15 +89,18 @@ struct LaunchSplashLayer: View {
 
   /// The icon sits this far above the middle, and the wordmark's top this far
   /// below the icon's centre, as on the 390 by 844 design canvas.
-  static let centreLift: CGFloat = 42
-  static let wordGap: CGFloat = 82
+  private static let centreLift: CGFloat = 42
+  private static let wordGap: CGFloat = 82
+
+  static func iconCentre(in height: CGFloat) -> CGFloat { height / 2 - centreLift }
+  static func wordTop(in height: CGFloat) -> CGFloat { iconCentre(in: height) + wordGap }
 
   private static let lineSpacing: CGFloat = 9
   private static let lineHeight: CGFloat = 1.5
 
   var body: some View {
     GeometryReader { geo in
-      let centreY = geo.size.height / 2 - Self.centreLift
+      let centreY = Self.iconCentre(in: geo.size.height)
       ZStack {
         ForEach(frame.staff.indices, id: \.self) { i in
           Rectangle()
@@ -123,8 +126,8 @@ struct LaunchSplashLayer: View {
 /// The app icon's art: a piano keyboard on a highlighter tile, one key of it
 /// optionally pressed in the highlighter.
 struct AppIconTile: View {
-  var keyFill: Double = 0
-  var keyDip: CGFloat = 0
+  let keyFill: Double
+  let keyDip: CGFloat
   @Environment(\.marker) private var marker
 
   static let size: CGFloat = 92

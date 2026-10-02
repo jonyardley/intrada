@@ -333,6 +333,7 @@ enum IntradaMotion {
   /// `pop`: spring scale-in from 0.82 to 1 for rep ticks/dots; low damping overshoots.
   static let pop = Animation.spring(response: 0.35, dampingFraction: 0.62)
   /// Reduce Motion's cross-fade where a screen would otherwise animate in.
+  /// FIXME(#2239): only the welcome reads this; the reveals in `Motion.swift` still jump.
   static let reduceFade: Double = 0.15
 
   /// The per-item `fadeUp` animation for a given stagger index.
