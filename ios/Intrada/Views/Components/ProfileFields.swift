@@ -1,8 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// Name and instrument in one card, shared by the profile's edit sheet and the
-/// welcome's profile step.
 struct ProfileNameFields: View {
   @Binding var name: String
   @Binding var instrument: String
@@ -24,7 +22,6 @@ struct ProfileNameFields: View {
   }
 }
 
-/// The eight highlighter swatches under their eyebrow.
 struct HighlighterSwatches: View {
   @Binding var colour: HighlighterColour
 
@@ -68,31 +65,5 @@ struct HighlighterSwatches: View {
       .padding(.horizontal, IntradaSpacing.controlGap)
       .cardSurface()
     }
-  }
-}
-
-/// What a refused profile save leaves on screen.
-struct ProfileSaveRefusal {
-  let message: String
-  let field: ProfileField?
-}
-
-extension Store {
-  /// Sends the save and reads back the core's verdict: `nil` when it was
-  /// accepted, so the caller may dismiss (#1595).
-  func saveProfile(_ profile: Profile) -> ProfileSaveRefusal? {
-    let accepted = sendAccepted(.profile(.save(profile)))
-    guard
-      let message = viewModel?.error ?? (accepted ? nil : "Couldn't save your profile. Try again.")
-    else {
-      Haptic.success.play()
-      return nil
-    }
-    var field: ProfileField?
-    if case .profile(let faulted) = viewModel?.errorTarget { field = faulted }
-    send(.clearError)
-    Haptic.error.play()
-    UIAccessibility.post(notification: .announcement, argument: "Error: \(message)")
-    return ProfileSaveRefusal(message: message, field: field)
   }
 }

@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The full-width button in the musician's highlighter: the one call to action
-/// on a screen (Save session, Set up profile).
+/// The full-width button in the musician's highlighter: the one call to action on a screen.
 struct MarkerButton: View {
   let title: String
   let action: () -> Void

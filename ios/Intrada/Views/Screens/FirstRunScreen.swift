@@ -42,19 +42,17 @@ struct FirstRunScreen: View {
           FirstPieceStep(onFinish: onFinish)
         }
       }
-      .frame(maxWidth: FirstRunLayout.readableWidth)
+      .frame(maxWidth: Self.readableWidth)
       .transition(.opacity)
     }
   }
 
+  /// Keeps the steps a phone's width on iPad rather than stretched across it.
+  private static let readableWidth: CGFloat = 560
+
   private func advance(to next: Step) {
     withAnimation(IntradaMotion.standard) { step = next }
   }
-}
-
-enum FirstRunLayout {
-  /// Keeps the steps a phone's width on iPad rather than stretched across it.
-  static let readableWidth: CGFloat = 560
 }
 
 // ── Welcome ──
@@ -67,11 +65,7 @@ private struct WelcomeStep: View {
     VStack(spacing: 0) {
       HStack {
         Spacer()
-        Button("Skip", action: onSkip)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.inkSecondary)
-          .frame(minHeight: 44)
-          .accessibilityIdentifier("firstRun.skipWelcome")
+        SkipButton(identifier: "firstRun.skipWelcome", fillsWidth: false, action: onSkip)
       }
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
@@ -255,7 +249,7 @@ private struct FirstPieceStep: View {
         .padding(.vertical, IntradaSpacing.card)
     }
     .padding(.horizontal, IntradaSpacing.card)
-    // The read belongs to the sheet, as on the Library's add sheet.
+    // A page read but not added would otherwise fill the next add form.
     .sheet(item: $adding, onDismiss: addingEnded) { kind in
       LibraryAddScreen(
         defaultKind: kind == .exercise ? .exercise : .piece, opensCamera: kind == .scan
@@ -312,14 +306,19 @@ private struct FirstPieceRow: View {
 
 private struct SkipButton: View {
   let identifier: String
+  var fillsWidth = true
   let action: () -> Void
 
   var body: some View {
-    Button("Skip", action: action)
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .frame(maxWidth: .infinity, minHeight: 44)
-      .accessibilityIdentifier(identifier)
+    Button(action: action) {
+      Text("Skip")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: 44)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityIdentifier(identifier)
   }
 }
 

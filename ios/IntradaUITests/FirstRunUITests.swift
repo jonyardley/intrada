@@ -20,7 +20,15 @@ final class FirstRunUITests: XCTestCase {
     assertRelaunchSkipsTheWelcome(app)
   }
 
-  func testSavingTheProfileIsNotAskedAgain() {
+  func testSkippingTheWelcomeIsNotAskedAgain() {
+    let app = launchFresh()
+    app.control("firstRun.skipWelcome", spoken: "Skip", timeout: contendedTimeout).tap()
+    XCTAssertTrue(app.tabBars.buttons["Library"].waitForExistence(timeout: 5), "the app")
+
+    assertRelaunchSkipsTheWelcome(app)
+  }
+
+  func testSavingTheProfileStillOffersTheFirstPiece() {
     let app = launchFresh()
     app.control("firstRun.setUpProfile", spoken: "Set up profile", timeout: contendedTimeout).tap()
     // The swatches first: the keyboard pushes the lazy grid off screen.
