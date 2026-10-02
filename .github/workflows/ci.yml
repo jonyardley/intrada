@@ -506,17 +506,28 @@ jobs:
       - name: Generate the Kotlin bindings and native libraries
         run: just android-gen
       # compareRoborazziDebug, not testDebugUnitTest: without a Roborazzi task the snapshot test
-      # returns before composing. Linux renders text differently from the macOS reference, so a
-      # difference is uploaded to read, never failed on.
+      # returns before composing. The reference is recorded on macOS, so a difference here is
+      # reported and uploaded to read, never failed on.
       - name: Build and test
         working-directory: android
         run: ./gradlew ktfmtCheck :app:assembleDebug :app:compareRoborazziDebug
+      - name: Say what the snapshot compare saw
+        if: always()
+        run: |
+          summary=android/app/build/test-results/roborazzi/debug/results-summary.json
+          if [ -f "$summary" ]; then
+            echo "Roborazzi: $(jq -c .summary "$summary")" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Roborazzi wrote no summary, so the snapshot test did not compose" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Upload the Roborazzi render
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: android-roborazzi
-          path: android/app/build/outputs/roborazzi/
+          path: |
+            android/app/build/outputs/roborazzi/
+            android/app/build/test-results/roborazzi/
           retention-days: 7
           if-no-files-found: ignore
 
