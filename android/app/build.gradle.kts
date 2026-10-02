@@ -10,7 +10,7 @@ val generated = rootProject.layout.projectDirectory.dir("generated")
 
 android {
     namespace = "com.intrada.android"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = providers.gradleProperty("intrada.ndkVersion").get()
 
     defaultConfig {

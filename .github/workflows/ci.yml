@@ -530,7 +530,7 @@ jobs:
       - name: Install the SDK platform and NDK
         run: |
           ndk=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${ndk}"
+          sdkmanager "platforms;android-37" "build-tools;36.0.0" "ndk;${ndk}"
       # Without the key, setup-gradle cannot store the configuration cache, which
       # can hold secrets, so every run configures from scratch (27s cold, #2270).
       - uses: gradle/actions/setup-gradle@v6
