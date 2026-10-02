@@ -1127,6 +1127,11 @@ learns the app by making their first session, not by reading about it.
   way to set up a profile or skip. No tour, no swipe-through cards: Nielsen
   Norman Group's tutorial study and Apple's onboarding guidance, cited on
   #2121, both favour getting to real use fast over explaining first.
+- **One short splash ahead of it, once.** The first launch plays a four
+  second splash whose wordmark rises into the welcome's title (#2277). It
+  plays only on the launch that opens the welcome, a tap skips it, and Reduce
+  Motion fades the welcome in instead, so it never stands between a returning
+  musician and their practice.
 - **No sample content.** The app does not write pieces into the library for
   the musician to try, for the reason T21 keeps the app's suggestions out of
   the create form. Example content is its own question (#2115).

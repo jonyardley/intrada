@@ -59,15 +59,20 @@ struct RootView: View {
         .marker(markerColour)
     }
     .fullScreenCover(isPresented: $showingFirstRun) {
-      FirstRunScreen { added in
+      FirstRunScreen(intro: .play) { added in
         showingFirstRun = false
         if added { selectedTab = .practice }
       }
       .environment(store)
       .marker(markerColour)
+      .presentationBackground(IntradaColor.paperTop)
     }
     .onChange(of: store.viewModel?.firstRun.showsWelcome == true, initial: true) { _, shows in
-      if shows { showingFirstRun = true }
+      // No slide-up, so the splash starts on the paper the launch screen showed.
+      guard shows else { return }
+      var instant = Transaction()
+      instant.disablesAnimations = true
+      withTransaction(instant) { showingFirstRun = true }
     }
     // App-level surfaces below the status bar, above all tabs. Empty when there's
     // nothing to show, so it adds no inset (keeps the plain shell unchanged).

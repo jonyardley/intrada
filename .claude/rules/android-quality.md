@@ -78,7 +78,9 @@ Built with the screen, never retrofitted:
 - **System back and predictive back behave as Android users expect.** Never
   intercept back without a reason a musician would recognise (unsaved input).
 - **Surface, don't swallow.** Every `ViewModel.error` has a UI surface, and no
-  success feedback fires before the core confirms, as on iOS.
+  success feedback fires before the core confirms, as on iOS. The surface is
+  `ui/GlobalBanner.kt`, dismissed with `Event.ClearError`; a halted `Store`
+  shows iOS's standing banner above it (#2266).
 
 ## Snapshots
 

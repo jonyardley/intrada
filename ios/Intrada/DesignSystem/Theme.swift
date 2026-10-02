@@ -19,6 +19,8 @@ enum IntradaColor {
   /// paper, clearing the 3:1 floor for non-text graphical objects
   /// (WCAG 1.4.11). Never for text; `inkFaint` already fails that.
   static let inkFaintIcon = Color(hex: 0x8F8070)
+  /// The app icon's line art, warmer than `ink` so it holds on any highlighter.
+  static let iconInk = Color(hex: 0x3B2A1E)
 
   /// No brand hue: the interactive colour on paper is ink (#1676).
   static let accent = ink
@@ -301,6 +303,8 @@ struct IntradaShadow {
   static let heroButton = IntradaShadow(color: .black.opacity(0.25), radius: 16, y: 8)
   /// The Practice hero card, the only card that floats this far off the paper.
   static let hero = IntradaShadow(color: .black.opacity(0.18), radius: 20, y: 10)
+  static let appIcon = IntradaShadow(
+    color: IntradaColor.ink.opacity(IntradaOpacity.wash), radius: 10, y: 8)
 }
 
 /// Named motion tokens — the "engaging refresh" springs, the signature `fadeUp`
@@ -328,7 +332,8 @@ enum IntradaMotion {
   static let countUpDuration: Double = 1.5
   /// `pop`: spring scale-in from 0.82 to 1 for rep ticks/dots; low damping overshoots.
   static let pop = Animation.spring(response: 0.35, dampingFraction: 0.62)
-  /// FIXME(#2239): no modifier reads this; wire it in or delete it.
+  /// Reduce Motion's cross-fade where a screen would otherwise animate in.
+  /// FIXME(#2239): only the welcome reads this; the reveals in `Motion.swift` still jump.
   static let reduceFade: Double = 0.15
 
   /// The per-item `fadeUp` animation for a given stagger index.

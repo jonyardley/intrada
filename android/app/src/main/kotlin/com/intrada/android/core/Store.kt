@@ -1,6 +1,7 @@
 package com.intrada.android.core
 
 import android.util.Log
+import com.intrada.ffi.InternalException
 import com.intrada.shared.AppEffect
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
@@ -38,6 +39,12 @@ class Store(
     // (#1801).
     private val _libraryRows = MutableStateFlow<List<LibraryItemView>>(emptyList())
     val libraryRows: StateFlow<List<LibraryItemView>> = _libraryRows.asStateFlow()
+
+    // The core panicked, or the bridge failed twice running: nothing after that can work, so
+    // sends are refused without reaching the bridge and the screen shows a standing banner (#1946).
+    private val _halted = MutableStateFlow(false)
+    val halted: StateFlow<Boolean> = _halted.asStateFlow()
+    private var consecutiveBridgeFailures = 0
 
     private var diskTail: Job? = null
 
@@ -99,13 +106,29 @@ class Store(
         }
     }
 
-    private fun <T> bridged(work: () -> T): T? =
-        try {
-            work()
+    // UniFFI raises a Rust panic as InternalException; CoreException and a failed decode are not.
+    private fun <T> bridged(work: () -> T): T? {
+        if (_halted.value) return null
+        return try {
+            work().also { consecutiveBridgeFailures = 0 }
+        } catch (e: InternalException) {
+            failed("core panic: $e", panicked = true)
         } catch (e: Exception) {
-            log("bridge failed: $e")
-            null
+            failed("bridge failed: $e", panicked = false)
         }
+    }
+
+    private fun failed(message: String, panicked: Boolean): Nothing? {
+        consecutiveBridgeFailures += 1
+        log(message)
+        if (panicked || consecutiveBridgeFailures >= 2) _halted.value = true
+        return null
+    }
+
+    companion object {
+        const val HALTED_MESSAGE =
+            "The app has stopped responding · close and reopen it to carry on."
+    }
 }
 
 /** The rows the Library filter leaves showing, in the core's order (#1998). */

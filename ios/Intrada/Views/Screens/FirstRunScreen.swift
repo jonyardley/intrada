@@ -9,23 +9,75 @@ struct FirstRunScreen: View {
     case welcome, profile, firstPiece
   }
 
+  /// The launch splash ahead of the welcome (#2277). `frozen` holds one moment
+  /// of it for snapshots.
+  enum Intro {
+    case none, play
+    case frozen(at: Double)
+  }
+
   @Environment(Store.self) private var store
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.intradaMotionDisabled) private var motionDisabled
   @State private var step: Step
+  @State private var introStart: Date?
+  @State private var faded: Bool
+  @State private var height: CGFloat = 0
+  private let frozenAt: Double?
   /// `true` when a first piece was added, so the app opens on Practice.
   let onFinish: (_ added: Bool) -> Void
 
-  init(step: Step = .welcome, onFinish: @escaping (_ added: Bool) -> Void) {
+  init(
+    step: Step = .welcome, intro: Intro = .none,
+    onFinish: @escaping (_ added: Bool) -> Void
+  ) {
     _step = State(initialValue: step)
+    var plays = false
+    var frozenAt: Double?
+    switch intro {
+    case .none: break
+    case .play: plays = true
+    case .frozen(let t): frozenAt = t
+    }
+    _introStart = State(initialValue: plays ? .now : nil)
+    _faded = State(initialValue: !plays)
+    self.frozenAt = frozenAt
     self.onFinish = onFinish
   }
 
+  private var motionOff: Bool {
+    reduceMotion || motionDisabled || UITestFlags.animationsDisabled
+  }
+
   var body: some View {
+    TimelineView(.animation(paused: introStart == nil || motionOff)) { context in
+      content(intro: introFrame(at: context.date))
+    }
+    .opacity(faded ? 1 : 0)
+    .onAppear {
+      guard !faded else { return }
+      if motionOff {
+        withAnimation(.easeOut(duration: IntradaMotion.reduceFade)) { faded = true }
+      } else {
+        faded = true
+      }
+    }
+    .task(id: introStart) {
+      guard introStart != nil else { return }
+      try? await Task.sleep(for: .seconds(SplashFrame.duration))
+      introStart = nil
+    }
+  }
+
+  private func content(intro: SplashFrame?) -> some View {
     ZStack {
       PaperBackground()
       Group {
         switch step {
         case .welcome:
           WelcomeStep(
+            intro: intro,
+            splashWordTop: LaunchSplashLayer.wordTop(in: height),
             onSetUpProfile: { advance(to: .profile) },
             onSkip: {
               store.send(.firstRun(.skipWelcome))
@@ -44,8 +96,29 @@ struct FirstRunScreen: View {
       }
       .frame(maxWidth: Self.readableWidth)
       .transition(.opacity)
+      if let intro {
+        LaunchSplashLayer(frame: intro)
+          .contentShape(Rectangle())
+          .onTapGesture { introStart = nil }
+          .allowsHitTesting(intro.splashOpacity > 0)
+      }
+    }
+    .coordinateSpace(.named(Self.space))
+    .onGeometryChange(for: CGFloat.self) {
+      $0.size.height
+    } action: {
+      height = $0
     }
   }
+
+  private func introFrame(at date: Date) -> SplashFrame? {
+    if let frozenAt { return .at(frozenAt) }
+    guard let introStart, !motionOff else { return nil }
+    let t = date.timeIntervalSince(introStart)
+    return t < SplashFrame.duration ? .at(t) : nil
+  }
+
+  static let space = "firstRun"
 
   /// Keeps the steps a phone's width on iPad rather than stretched across it.
   private static let readableWidth: CGFloat = 560
@@ -58,47 +131,77 @@ struct FirstRunScreen: View {
 // ── Welcome ──
 
 private struct WelcomeStep: View {
+  let intro: SplashFrame?
+  /// Where the wordmark's top sits under the splash's icon.
+  let splashWordTop: CGFloat
   let onSetUpProfile: () -> Void
   let onSkip: () -> Void
+  @State private var titleTop: CGFloat = 0
 
   var body: some View {
     VStack(spacing: 0) {
       HStack {
         Spacer()
         SkipButton(identifier: "firstRun.skipWelcome", fillsWidth: false, action: onSkip)
+          .splashItem(intro, 4)
       }
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-          VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-            Text("Intrada")
-              .font(IntradaFont.pageTitle(40))
-              .foregroundStyle(IntradaColor.ink)
-              .markerSwipe()
-              .accessibilityAddTraits(.isHeader)
+          VStack(spacing: IntradaSpacing.cardCompact) {
+            title
             Text("A notebook for your practice.")
               .font(IntradaFont.bodyMedium)
               .foregroundStyle(IntradaColor.ink)
+              .multilineTextAlignment(.center)
+              .splashItem(intro, 0)
           }
+          .frame(maxWidth: .infinity)
           VStack(alignment: .leading, spacing: IntradaSpacing.card) {
             PillarLine(
               systemImage: "books.vertical", name: "Library",
-              line: "The pieces and exercises you're working on.")
+              line: "The pieces and exercises you're working on."
+            )
+            .splashItem(intro, 1)
             PillarLine(
               systemImage: "timer", name: "Practice",
-              line: "Build a session, play it through, mark how it went.")
+              line: "Build a session, play it through, mark how it went."
+            )
+            .splashItem(intro, 2)
             PillarLine(
               systemImage: "chart.line.uptrend.xyaxis", name: "Progress",
-              line: "What you've practised, week by week.")
+              line: "What you've practised, week by week."
+            )
+            .splashItem(intro, 3)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, IntradaSpacing.section)
       }
+      .scrollClipDisabled(intro != nil)
       MarkerButton("Set up profile", action: onSetUpProfile)
         .accessibilityIdentifier("firstRun.setUpProfile")
         .padding(.vertical, IntradaSpacing.card)
+        .splashItem(intro, 5)
     }
     .padding(.horizontal, IntradaSpacing.card)
+  }
+
+  /// The splash's wordmark and the welcome's title are this one view; the
+  /// splash only moves it, from under the icon up to its place here.
+  private var title: some View {
+    let travel = intro.map { (splashWordTop - titleTop) * (1 - $0.wordTravel) + $0.wordRise } ?? 0
+    return Text("Intrada")
+      .font(IntradaFont.pageTitle(40))
+      .foregroundStyle(IntradaColor.ink)
+      .markerSwipe(progress: intro?.swipe ?? 1)
+      .opacity(intro?.wordOpacity ?? 1)
+      .offset(y: travel)
+      .onGeometryChange(for: CGFloat.self) {
+        $0.frame(in: .named(FirstRunScreen.space)).minY
+      } action: {
+        titleTop = $0
+      }
+      .accessibilityAddTraits(.isHeader)
   }
 }
 
