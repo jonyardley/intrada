@@ -23,6 +23,18 @@ updates:
       - dependency-name: "uniffi"
       - dependency-name: "uniffi-*"
       - dependency-name: "uniffi_*"
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "weekly"
+    # JNA is coupled to the UniFFI runtime, so its bump arrives on its own and
+    # needs the bridge round-trip test before it merges (#2264).
+    groups:
+      android:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "net.java.dev.jna:*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

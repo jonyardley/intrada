@@ -11,6 +11,7 @@ val generated = rootProject.layout.projectDirectory.dir("generated")
 android {
     namespace = "com.intrada.android"
     compileSdk = 36
+    ndkVersion = providers.gradleProperty("intrada.ndkVersion").get()
 
     defaultConfig {
         applicationId = "com.intrada.android"
@@ -48,6 +49,14 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.systemProperty("jna.library.path", generated.dir("host").asFile.path)
+                it.inputs
+                    .dir(layout.projectDirectory.dir("src/test/snapshots"))
+                    .withPropertyName("snapshotReferences")
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                it.inputs
+                    .dir(generated.dir("host"))
+                    .withPropertyName("bridgeHostLibrary")
+                    .withPathSensitivity(PathSensitivity.NONE)
                 // Robolectric's SDK 36 sandbox reaches into FileDescriptor internals.
                 it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
             }
