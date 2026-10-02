@@ -1965,7 +1965,7 @@ mod tests {
     #[test]
     fn parse_bpm_reads_what_a_musician_types() {
         let refused = Err("BPM must be a whole number between 1 and 400");
-        let cases: [(&str, Result<Option<u16>, &str>); 15] = [
+        let cases: [(&str, Result<Option<u16>, &str>); 16] = [
             ("", Ok(None)),
             ("   ", Ok(None)),
             ("96", Ok(Some(96))),
@@ -1981,6 +1981,7 @@ mod tests {
             ("+96", refused),
             ("-5", refused),
             ("96 bpm", refused),
+            ("99999999999999999999", refused),
         ];
         for (typed, expected) in cases {
             let got = parse_bpm(typed).map_err(|e| match e {
@@ -1992,7 +1993,6 @@ mod tests {
             });
             assert_eq!(got, expected.map_err(str::to_string), "{typed:?}");
         }
-        assert!(parse_bpm("99999999999999999999").is_err());
     }
 
     #[test]

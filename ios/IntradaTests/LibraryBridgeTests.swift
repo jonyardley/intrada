@@ -152,8 +152,7 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertTrue(view.items.isEmpty, "nothing written")
   }
 
-  /// The typed BPM crosses as text and the core reads it (#2224): a good one
-  /// lands as a number, one it cannot read is refused on the tempo field.
+  /// A stub bridge cannot see a skewed `TempoInput` decode (#846, #2224).
   func testRealBridgeReadsTheTypedBpm() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)

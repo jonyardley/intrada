@@ -3225,21 +3225,74 @@ fn add_refuses_a_bpm_it_cannot_read_and_stores_nothing() {
 #[test]
 fn update_refuses_a_bpm_it_cannot_read_and_keeps_the_old_tempo() {
     let mut model = model_with_piece_and_exercise();
-    let before = model.items[0].tempo.clone();
+    let update = |bpm: &str| ItemEvent::Update {
+        id: "piece-1".to_string(),
+        input: UpdateItem {
+            tempo: typed_bpm(bpm),
+            ..Default::default()
+        },
+    };
+    send(&mut model, update("60"));
+
+    send(&mut model, update("12a"));
+
+    assert_eq!(model.items[0].tempo.as_ref().and_then(|t| t.bpm), Some(60));
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("BPM must be a whole number between 1 and 400")
+    );
+    assert_eq!(
+        model.last_error_target,
+        Some(FormErrorTarget::Piece {
+            field: FormErrorField::Tempo
+        })
+    );
+}
+
+#[test]
+fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
+    let mut model = model_with_piece_and_exercise();
+    let links_before = model.items[0].linked_exercise_ids.clone();
 
     send(
         &mut model,
-        ItemEvent::Update {
-            id: "piece-1".to_string(),
-            input: UpdateItem {
-                tempo: typed_bpm("9000"),
-                ..Default::default()
+        ItemEvent::AddLinkedExercise {
+            piece_id: "piece-1".to_string(),
+            input: CreateItem {
+                tempo: typed_bpm("12a"),
+                ..new_exercise_input("Guide tones")
             },
         },
     );
 
-    assert_eq!(model.items[0].tempo, before);
-    assert!(model.last_error.is_some());
+    assert_eq!(model.items.len(), 2, "nothing is written");
+    assert_eq!(model.items[0].linked_exercise_ids, links_before);
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("BPM must be a whole number between 1 and 400")
+    );
+}
+
+#[test]
+fn add_linked_exercise_reads_the_typed_bpm_onto_the_exercise() {
+    let mut model = model_with_piece_and_exercise();
+
+    send(
+        &mut model,
+        ItemEvent::AddLinkedExercise {
+            piece_id: "piece-1".to_string(),
+            input: CreateItem {
+                tempo: typed_bpm("80"),
+                ..new_exercise_input("Guide tones")
+            },
+        },
+    );
+
+    let exercise = model.items.iter().find(|i| i.title == "Guide tones");
+    assert_eq!(
+        exercise.and_then(|i| i.tempo.as_ref()).and_then(|t| t.bpm),
+        Some(80)
+    );
 }
 
 #[test]

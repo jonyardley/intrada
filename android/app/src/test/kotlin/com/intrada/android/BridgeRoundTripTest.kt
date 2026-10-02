@@ -58,7 +58,7 @@ class BridgeRoundTripTest {
         assertEquals(rows.size, view.visibleIds.size)
     }
 
-    // The BPM crosses as the typed text and the core reads it (#2224).
+    // A second decoder of the same wire: a skewed TempoInput shows only here (#846, #2224).
     @Test
     fun aTypedBpmCrossesAsTextAndLandsAsANumber() {
         val bridge = LiveBridge()
