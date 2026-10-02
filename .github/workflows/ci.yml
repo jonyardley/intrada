@@ -510,7 +510,7 @@ jobs:
       # difference once the upload has a diff to read (#2259).
       - name: Build and test
         working-directory: android
-        run: ./gradlew ktfmtCheck :app:assembleDebug :app:compareRoborazziDebug
+        run: ./gradlew ktfmtCheck :app:assembleDebug :app:lintDebug :app:detektDebug :app:detektDebugUnitTest :app:compareRoborazziDebug
       - name: Say what the snapshot compare saw
         if: always()
         run: |

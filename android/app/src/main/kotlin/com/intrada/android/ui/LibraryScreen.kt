@@ -61,10 +61,11 @@ fun LibraryScreen(
 }
 
 @Composable
-fun LibraryItemCard(item: LibraryItemView) {
+fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(IntradaRadius.card)
     Row(
-        Modifier.fillMaxWidth()
+        modifier
+            .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .clip(shape)
             .background(IntradaColor.cardFill)

@@ -46,7 +46,7 @@ class Store(
     }
 
     fun send(event: Event) {
-        process(bridged { bridge.update(event) } ?: emptyList())
+        process(bridged { bridge.update(event) }.orEmpty())
     }
 
     /** Waits until no disk job is queued, including jobs a resolve chains while this waits. */
@@ -67,8 +67,7 @@ class Store(
                 is Effect.Recognition -> {
                     log("recognition is not built on Android yet; answering Failed")
                     process(
-                        bridged { bridge.resolve(request.id, RecognitionOutput.Failed) }
-                            ?: emptyList()
+                        bridged { bridge.resolve(request.id, RecognitionOutput.Failed) }.orEmpty()
                     )
                 }
             }
@@ -89,7 +88,7 @@ class Store(
                         PersistenceOutput.Failed
                     }
                 }
-            process(bridged { bridge.resolve(id, output) } ?: emptyList())
+            process(bridged { bridge.resolve(id, output) }.orEmpty())
         }
     }
 

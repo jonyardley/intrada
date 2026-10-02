@@ -39,9 +39,15 @@ bars, read in Kotlin and Compose.
   shell has neither on its path, so a bare `gradlew` fails.
 - **Run `just android-gen` after a core change.** `just android-test` reuses
   the last bindings, while CI regenerates them.
-- **Before pushing, run `just android-test` and `just android-fmt`.** CI also
-  runs `ktfmtCheck` and `:app:assembleDebug`, which no local recipe runs yet
-  (#2263), so local green does not yet mean CI green.
+- **Before pushing, run `just android-check`, `just android-test` and
+  `just android-fmt`.** `android-check` runs CI's gates: ktfmt, the build with
+  Kotlin warnings as errors, Android lint with warnings as errors, and detekt
+  with the Compose rules (`android/config/detekt.yml`), which bans `!!`, plain
+  `as`, `lateinit` and Material imports. No baseline and no suppressions: fix
+  the finding (#2263).
+- **The generated bindings compile in `:bridge`**, outside the warnings gate,
+  because crux's typegen and UniFFI emit warnings we cannot fix at the source.
+  Hand-written Kotlin lives in `:app`.
 
 ## Tokens and look
 
