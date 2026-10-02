@@ -3,9 +3,10 @@ use super::*;
 
 pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event> {
     let input = validation::normalize_create_item(input);
-    if let Err(e) = validation::validate_create_item(&input) {
-        return refuse(model, &e);
-    }
+    let tempo = match validation::validate_create_item(&input) {
+        Ok(tempo) => tempo,
+        Err(e) => return refuse(model, &e),
+    };
 
     // A brand new item has no earlier variation to have already
     // migrated, so this is always eligible.
@@ -23,7 +24,7 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         composer: input.composer,
         key,
         modality: input.modality,
-        tempo: input.tempo,
+        tempo,
         notes: input.notes,
         tags: input.tags,
         linked_exercise_ids: vec![],
@@ -68,10 +69,13 @@ pub(super) fn add_linked_exercise(
         ..input
     };
     let input = validation::normalize_create_item(input);
-    if let Err(e) = validation::validate_create_item(&input) {
-        model.raise_error(e.to_string());
-        return crux_core::render::render();
-    }
+    let tempo = match validation::validate_create_item(&input) {
+        Ok(tempo) => tempo,
+        Err(e) => {
+            model.raise_error(e.to_string());
+            return crux_core::render::render();
+        }
+    };
 
     let now = chrono::Utc::now();
     let exercise = Item {
@@ -81,7 +85,7 @@ pub(super) fn add_linked_exercise(
         composer: input.composer,
         key: input.key,
         modality: input.modality,
-        tempo: input.tempo,
+        tempo,
         notes: input.notes,
         tags: input.tags,
         linked_exercise_ids: vec![],
@@ -125,12 +129,19 @@ pub(super) fn add_piece_in_full(
         kind: ItemKind::Piece,
         ..piece
     });
-    if let Err(e) = validation::validate_create_item(&piece_input) {
-        model.last_error_target = form_field(&e).map(|field| FormErrorTarget::Piece { field });
-        model.raise_error(e.to_string());
-        return crux_core::render::render();
-    }
+    let piece_tempo = match validation::validate_create_item(&piece_input) {
+        Ok(tempo) => tempo,
+        Err(e) => {
+            model.last_error_target = form_field(&e).map(|field| FormErrorTarget::Piece { field });
+            model.raise_error(e.to_string());
+            return crux_core::render::render();
+        }
+    };
 
+    enum Entry {
+        New(Box<CreateItem>, Option<Tempo>),
+        Existing(String),
+    }
     let mut entries = Vec::with_capacity(exercises.len());
     for (index, entry) in exercises.into_iter().enumerate() {
         match entry {
@@ -147,15 +158,18 @@ pub(super) fn add_piece_in_full(
                     kind: ItemKind::Exercise,
                     ..input
                 });
-                if let Err(e) = validation::validate_create_item(&input) {
-                    model.last_error_target = Some(FormErrorTarget::Exercise {
-                        index,
-                        field: form_field(&e),
-                    });
-                    model.raise_error(e.to_string());
-                    return crux_core::render::render();
-                }
-                entries.push(ScaffoldEntry::New(input));
+                let tempo = match validation::validate_create_item(&input) {
+                    Ok(tempo) => tempo,
+                    Err(e) => {
+                        model.last_error_target = Some(FormErrorTarget::Exercise {
+                            index,
+                            field: form_field(&e),
+                        });
+                        model.raise_error(e.to_string());
+                        return crux_core::render::render();
+                    }
+                };
+                entries.push(Entry::New(Box::new(input), tempo));
             }
             ScaffoldEntry::Existing { id } => {
                 if let Err(e) = validation::validate_exercise_link_target(&id, model) {
@@ -164,7 +178,7 @@ pub(super) fn add_piece_in_full(
                     model.raise_error(e.to_string());
                     return crux_core::render::render();
                 }
-                entries.push(ScaffoldEntry::Existing { id });
+                entries.push(Entry::Existing(id));
             }
         }
     }
@@ -199,7 +213,7 @@ pub(super) fn add_piece_in_full(
     let mut linked_ids: Vec<String> = Vec::new();
     for entry in entries {
         match entry {
-            ScaffoldEntry::New(input) => {
+            Entry::New(input, tempo) => {
                 let exercise = Item {
                     id: ulid::Ulid::generate().to_string(),
                     title: input.title,
@@ -207,7 +221,7 @@ pub(super) fn add_piece_in_full(
                     composer: input.composer,
                     key: input.key,
                     modality: input.modality,
-                    tempo: input.tempo,
+                    tempo,
                     notes: input.notes,
                     tags: input.tags,
                     linked_exercise_ids: vec![],
@@ -222,7 +236,7 @@ pub(super) fn add_piece_in_full(
                 linked_ids.push(exercise.id.clone());
                 created.push(exercise);
             }
-            ScaffoldEntry::Existing { id } => {
+            Entry::Existing(id) => {
                 if !linked_ids.contains(&id) {
                     linked_ids.push(id);
                 }
@@ -237,7 +251,7 @@ pub(super) fn add_piece_in_full(
         composer: piece_input.composer,
         key: piece_input.key,
         modality: piece_input.modality,
-        tempo: piece_input.tempo,
+        tempo: piece_tempo,
         notes: piece_input.notes,
         tags: piece_input.tags,
         linked_exercise_ids: linked_ids,

@@ -1,7 +1,7 @@
 use crate::domain::item::ItemKind;
 use crate::domain::profile::Profile;
 use crate::domain::session::SetlistEntry;
-use crate::domain::types::{CreateItem, Tempo, UpdateItem};
+use crate::domain::types::{CreateItem, Tempo, TempoInput, UpdateItem};
 use crate::error::LibraryError;
 use crate::model::Model;
 
@@ -69,16 +69,11 @@ pub(crate) fn distinct_ignoring_case<S: AsRef<str>>(
         .collect()
 }
 
-fn normalize_tempo(tempo: Option<Tempo>) -> Option<Tempo> {
-    tempo.and_then(|t| Tempo::from_parts(trimmed_nonempty(t.marking), t.bpm))
-}
-
 pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
     input.title = input.title.trim().to_string();
     input.composer = trimmed_nonempty(input.composer);
     input.key = trimmed_nonempty(input.key);
     input.notes = trimmed_nonempty(input.notes);
-    input.tempo = normalize_tempo(input.tempo);
     input.tags = distinct_ignoring_case(input.tags);
     input.variant_labels = normalize_variant_labels(input.variant_labels);
     input
@@ -89,7 +84,6 @@ pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
     input.composer = input.composer.map(trimmed_nonempty);
     input.key = input.key.map(trimmed_nonempty);
     input.notes = input.notes.map(trimmed_nonempty);
-    input.tempo = input.tempo.map(normalize_tempo);
     input.tags = input.tags.map(distinct_ignoring_case);
     input
 }
@@ -109,7 +103,8 @@ pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     Ok(())
 }
 
-pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
+/// Returns the tempo the form's text reads as, the one field parsed here.
+pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, LibraryError> {
     validate_title(&input.title)?;
     if let Some(photo_id) = input.photo_id.as_deref() {
         validate_photo_id(photo_id)?;
@@ -133,9 +128,10 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
         }
     }
     validate_tags(&input.tags)?;
-    if let Some(ref tempo) = input.tempo {
-        validate_tempo(tempo)?;
-    }
+    let tempo = match input.tempo {
+        Some(ref tempo) => parse_tempo(tempo)?,
+        None => None,
+    };
     // Shape (cap, duplicates, length) is checked separately against the
     // final label set once the caller has folded in a migrated key (#1783
     // decision, `migrate_key_into_labels`); this only guards the host.
@@ -145,7 +141,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
             message: "Only an exercise can have variations".to_string(),
         });
     }
-    Ok(())
+    Ok(tempo)
 }
 
 /// `ItemEvent::Add` is the only event that honours `CreateItem.variant_labels`
@@ -162,7 +158,8 @@ pub fn validate_no_variant_labels(input: &CreateItem) -> Result<(), LibraryError
     })
 }
 
-pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
+/// Returns the tempo to set, `None` when the update leaves it alone.
+pub fn validate_update_item(input: &UpdateItem) -> Result<Option<Option<Tempo>>, LibraryError> {
     if let Some(ref title) = input.title {
         validate_title(title)?;
     }
@@ -185,10 +182,7 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
     if let Some(ref tags) = input.tags {
         validate_tags(tags)?;
     }
-    if let Some(Some(ref tempo)) = input.tempo {
-        validate_tempo(tempo)?;
-    }
-    Ok(())
+    input.tempo.as_ref().map(parse_tempo).transpose()
 }
 
 pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError> {
@@ -323,6 +317,35 @@ pub fn validate_achieved_tempo(tempo: &Option<u16>) -> Result<(), LibraryError> 
         }
     }
     Ok(())
+}
+
+/// Blank is no BPM; anything else must be a whole number in range (#2224).
+pub fn parse_bpm(text: &str) -> Result<Option<u16>, LibraryError> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    match text.parse::<u16>() {
+        Ok(bpm)
+            if text.bytes().all(|b| b.is_ascii_digit()) && (MIN_BPM..=MAX_BPM).contains(&bpm) =>
+        {
+            Ok(Some(bpm))
+        }
+        _ => Err(LibraryError::Validation {
+            field: "tempo".to_string(),
+            message: format!("BPM must be a whole number between {MIN_BPM} and {MAX_BPM}"),
+        }),
+    }
+}
+
+/// Both parts blank is no tempo, which on an update clears it.
+pub fn parse_tempo(input: &TempoInput) -> Result<Option<Tempo>, LibraryError> {
+    let bpm = parse_bpm(input.bpm.as_deref().unwrap_or_default())?;
+    let Some(tempo) = Tempo::from_parts(trimmed_nonempty(input.marking.clone()), bpm) else {
+        return Ok(None);
+    };
+    validate_tempo(&tempo)?;
+    Ok(Some(tempo))
 }
 
 pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
@@ -647,7 +670,7 @@ mod tests {
             composer: Some("   ".to_string()),
             key: Some("  D major ".to_string()),
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("   ".to_string()),
                 bpm: None,
             }),
@@ -670,8 +693,12 @@ mod tests {
         );
         assert_eq!(out.key, Some("D major".to_string()));
         assert_eq!(out.notes, None, "whitespace-only notes collapses to None");
-        assert_eq!(out.tempo, None, "blank marking + no bpm drops the tempo");
         assert_eq!(out.tags, vec!["warm-up".to_string(), "scales".to_string()]);
+        assert_eq!(
+            validate_create_item(&out),
+            Ok(None),
+            "blank marking + no bpm drops the tempo"
+        );
     }
 
     #[test]
@@ -733,9 +760,9 @@ mod tests {
             composer: None,
             key: None,
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("  ".to_string()),
-                bpm: Some(120),
+                bpm: Some("120".to_string()),
             }),
             notes: None,
             tags: vec![],
@@ -743,11 +770,11 @@ mod tests {
             variant_labels: Vec::new(),
         };
         assert_eq!(
-            normalize_create_item(input).tempo,
-            Some(Tempo {
+            validate_create_item(&normalize_create_item(input)),
+            Ok(Some(Tempo {
                 marking: None,
                 bpm: Some(120)
-            })
+            }))
         );
     }
 
@@ -777,10 +804,10 @@ mod tests {
             title: Some("  Renamed ".to_string()),
             composer: Some(Some("   ".to_string())),
             key: Some(Some("  F# minor ".to_string())),
-            tempo: Some(Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("  ".to_string()),
                 bpm: None,
-            })),
+            }),
             tags: Some(vec![" a ".to_string(), "".to_string()]),
             ..Default::default()
         };
@@ -794,7 +821,11 @@ mod tests {
             "blank set-composer becomes a clear"
         );
         assert_eq!(out.key, Some(Some("F# minor".to_string())));
-        assert_eq!(out.tempo, Some(None), "blank tempo becomes a clear");
+        assert_eq!(
+            validate_update_item(&out),
+            Ok(Some(None)),
+            "blank tempo becomes a clear"
+        );
         assert_eq!(out.tags, Some(vec!["a".to_string()]));
     }
 
@@ -819,9 +850,9 @@ mod tests {
             composer: Some("Beethoven".to_string()),
             key: Some("C# minor".to_string()),
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("Adagio sostenuto".to_string()),
-                bpm: Some(60),
+                bpm: Some("60".to_string()),
             }),
             notes: Some("First movement".to_string()),
             tags: vec!["classical".to_string(), "piano".to_string()],
@@ -1012,9 +1043,9 @@ mod tests {
             composer: Some("Hanon".to_string()),
             key: Some("C major".to_string()),
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("Moderato".to_string()),
-                bpm: Some(100),
+                bpm: Some("100".to_string()),
             }),
             notes: Some("Practice daily".to_string()),
             tags: vec!["technique".to_string()],
@@ -1493,31 +1524,17 @@ mod tests {
     }
 
     #[test]
-    fn test_update_item_invalid_tempo() {
+    fn test_update_item_clear_tempo() {
         let input = UpdateItem {
-            tempo: Some(Some(Tempo {
-                marking: None,
-                bpm: None,
-            })),
+            tempo: Some(TempoInput::default()),
             ..Default::default()
         };
-        let err = validate_update_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "tempo");
-                assert_eq!(message, "Tempo must have at least a marking or BPM value");
-            }
-            _ => panic!("Expected Validation error"),
-        }
+        assert_eq!(validate_update_item(&input), Ok(Some(None)));
     }
 
     #[test]
-    fn test_update_item_clear_tempo() {
-        let input = UpdateItem {
-            tempo: Some(None),
-            ..Default::default()
-        };
-        assert!(validate_update_item(&input).is_ok());
+    fn test_update_item_leaves_tempo_alone() {
+        assert_eq!(validate_update_item(&UpdateItem::default()), Ok(None));
     }
 
     #[test]
@@ -1528,9 +1545,9 @@ mod tests {
             composer: Some("Bach".to_string()),
             key: None,
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("x".repeat(101)),
-                bpm: Some(120),
+                bpm: Some("120".to_string()),
             }),
             notes: None,
             tags: vec![],
@@ -1579,9 +1596,9 @@ mod tests {
             composer: None,
             key: None,
             modality: None,
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: None,
-                bpm: Some(500),
+                bpm: Some("500".to_string()),
             }),
             notes: None,
             tags: vec![],
@@ -1592,7 +1609,7 @@ mod tests {
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tempo");
-                assert_eq!(message, "BPM must be between 1 and 400");
+                assert_eq!(message, "BPM must be a whole number between 1 and 400");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1601,17 +1618,17 @@ mod tests {
     #[test]
     fn test_update_item_invalid_tempo_bpm() {
         let input = UpdateItem {
-            tempo: Some(Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: None,
-                bpm: Some(0),
-            })),
+                bpm: Some("12a".to_string()),
+            }),
             ..Default::default()
         };
         let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tempo");
-                assert_eq!(message, "BPM must be between 1 and 400");
+                assert_eq!(message, "BPM must be a whole number between 1 and 400");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1842,22 +1859,24 @@ mod tests {
         let table: [(&str, usize, Check); 13] = [
             ("title", MAX_TITLE, |s| validate_title(&s)),
             ("create composer", MAX_COMPOSER, |s| {
-                validate_create_item(&create_with(Some(s), None))
+                validate_create_item(&create_with(Some(s), None)).map(drop)
             }),
             ("create notes", MAX_NOTES, |s| {
-                validate_create_item(&create_with(None, Some(s)))
+                validate_create_item(&create_with(None, Some(s))).map(drop)
             }),
             ("update composer", MAX_COMPOSER, |s| {
                 validate_update_item(&UpdateItem {
                     composer: Some(Some(s)),
                     ..Default::default()
                 })
+                .map(drop)
             }),
             ("update notes", MAX_NOTES, |s| {
                 validate_update_item(&UpdateItem {
                     notes: Some(Some(s)),
                     ..Default::default()
                 })
+                .map(drop)
             }),
             ("session notes", MAX_NOTES, |s| {
                 validate_session_notes(&Some(s))
@@ -1939,5 +1958,60 @@ mod tests {
             assert_eq!(clamp_session_length(stored), expected, "{stored} minutes");
             assert!(validate_session_length(&Some(expected)).is_ok());
         }
+    }
+
+    // --- typed BPM (#2224) ---
+
+    #[test]
+    fn parse_bpm_reads_what_a_musician_types() {
+        let refused = Err("BPM must be a whole number between 1 and 400");
+        let cases: [(&str, Result<Option<u16>, &str>); 16] = [
+            ("", Ok(None)),
+            ("   ", Ok(None)),
+            ("96", Ok(Some(96))),
+            (" 96 ", Ok(Some(96))),
+            ("096", Ok(Some(96))),
+            ("1", Ok(Some(1))),
+            ("400", Ok(Some(400))),
+            ("0", refused),
+            ("401", refused),
+            ("9000", refused),
+            ("12a", refused),
+            ("96.5", refused),
+            ("+96", refused),
+            ("-5", refused),
+            ("96 bpm", refused),
+            ("99999999999999999999", refused),
+        ];
+        for (typed, expected) in cases {
+            let got = parse_bpm(typed).map_err(|e| match e {
+                LibraryError::Validation { field, message } => {
+                    assert_eq!(field, "tempo", "{typed:?}");
+                    message
+                }
+                other => panic!("{typed:?}: expected a validation error, got {other:?}"),
+            });
+            assert_eq!(got, expected.map_err(str::to_string), "{typed:?}");
+        }
+    }
+
+    #[test]
+    fn parse_tempo_clears_when_both_parts_are_blank() {
+        let blank = TempoInput {
+            marking: Some("  ".to_string()),
+            bpm: Some(" ".to_string()),
+        };
+        assert_eq!(parse_tempo(&blank), Ok(None));
+        let marked = TempoInput {
+            marking: Some(" Allegro ".to_string()),
+            bpm: Some("".to_string()),
+        };
+        assert_eq!(
+            parse_tempo(&marked),
+            Ok(Some(Tempo {
+                marking: Some("Allegro".to_string()),
+                bpm: None,
+            }))
+        );
     }
 }

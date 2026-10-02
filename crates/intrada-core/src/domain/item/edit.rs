@@ -2,9 +2,10 @@ use super::*;
 
 pub(super) fn update(model: &mut Model, id: String, input: UpdateItem) -> Command<Effect, Event> {
     let input = validation::normalize_update_item(input);
-    if let Err(e) = validation::validate_update_item(&input) {
-        return refuse(model, &e);
-    }
+    let tempo = match validation::validate_update_item(&input) {
+        Ok(tempo) => tempo,
+        Err(e) => return refuse(model, &e),
+    };
 
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
         model.raise_error(LibraryError::NotFound { id }.to_string());
@@ -49,7 +50,7 @@ pub(super) fn update(model: &mut Model, id: String, input: UpdateItem) -> Comman
     if let Some(modality) = input.modality {
         item.modality = modality;
     }
-    if let Some(tempo) = input.tempo {
+    if let Some(tempo) = tempo {
         item.tempo = tempo;
     }
     if let Some(notes) = input.notes {
