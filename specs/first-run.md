@@ -137,9 +137,8 @@ defaults (offline-first invariant 8).
 - `docs/design-principles.md` T34: the first run teaches by doing. No tour,
   no cards, no sample content (T21); one welcome, then a card whose ticks
   are the musician's own data.
-- `docs/tone-of-voice.md` V8: the welcome's maker's note is the one place a
-  person speaks. It is signed, it is Jon's sentence and not the app's, and
-  rule 4's ban on `I` still holds for every string the app says itself.
+- `docs/tone-of-voice.md` V8: the welcome has no maker's note. It speaks in
+  the app's own voice, and rule 4's ban on `I` holds there too.
 
 ## Deliberately not doing
 

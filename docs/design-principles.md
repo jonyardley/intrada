@@ -1112,7 +1112,7 @@ sample content and ticks from core data; the last two rulings are proposed with
 #2116 (spec [`../specs/first-run.md`](../specs/first-run.md)). A new musician
 learns the app by making their first session, not by reading about it.
 
-- **One welcome, then the work.** A single screen with the maker's note and a
+- **One welcome, then the work.** A single screen with one plain line on what the app is for and a
   way to set up a profile or skip. No tour, no swipe-through cards: Nielsen
   Norman Group's tutorial study and Apple's onboarding guidance, cited on
   #2121, both favour getting to real use fast over explaining first.
