@@ -101,8 +101,11 @@ jobs:
           prune_family "native-" 2
           prune_family "clippy-" 2
           prune_family "msrv-" 2
+          prune_family "android-" 2
           prune_family "release-testflight-" 2
 
+          # setup-gradle's gradle- entries change key with their content, and a
+          # stale one expires after seven days unused.
           # Left alone: the tool caches (cargo-swift-, xcodegen-, gitleaks-,
           # setup-ruby-) are a few MB each. Nothing writes buildkit- entries any
           # more, since the API image build no longer exports a layer cache.
