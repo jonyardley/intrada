@@ -16,6 +16,8 @@ object IntradaColor {
     val inkSecondary = Color(0xFF6E6A66)
     val pieceBar = Color(0xFFCBD6E0)
     val exerciseBar = Color(0xFFDCD3C0)
+    val danger = Color(0xFF9C4A3A)
+    val dangerBanner = danger.copy(alpha = 0.12f)
 }
 
 // System faces in place of Hanken Grotesk and DM Mono, which the Android app does not bundle yet.
@@ -36,9 +38,22 @@ object IntradaFont {
 
     val subtitle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp)
     val body = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 16.sp)
+    val bodyMedium =
+        TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Medium,
+            fontSize = 17.sp,
+        )
+    val metaMedium =
+        TextStyle(
+            fontFamily = FontFamily.SansSerif,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.5.sp,
+        )
 }
 
 object IntradaSpacing {
+    val controlGap = 8.dp
     val cardCompact = 12.dp
     val card = 16.dp
 }

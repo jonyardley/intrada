@@ -23,15 +23,40 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import com.intrada.android.core.Store
+import com.intrada.android.core.withIds
+import com.intrada.shared.Event
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 
 @Composable
+fun LibraryRoute(store: Store, modifier: Modifier = Modifier) {
+    val viewModel by store.viewModel.collectAsState()
+    val rows by store.libraryRows.collectAsState()
+    val halted by store.halted.collectAsState()
+    LibraryScreen(
+        rows.withIds(viewModel?.visibleIds.orEmpty()),
+        error = viewModel?.error,
+        halted = halted,
+        onDismissError = { store.send(Event.ClearError) },
+        modifier = modifier,
+    )
+}
+
+@Composable
 fun LibraryScreen(
     rows: List<LibraryItemView>,
+    error: String?,
+    halted: Boolean,
+    onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -40,6 +65,8 @@ fun LibraryScreen(
             .background(IntradaColor.paperTop)
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
+        if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
+        if (error != null) GlobalBanner(error, tag = "banner.error", onDismiss = onDismissError)
         Column(Modifier.padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.card)) {
             BasicText("Library", style = IntradaFont.pageTitle.copy(color = IntradaColor.ink))
         }
@@ -54,7 +81,9 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(IntradaSpacing.card),
                 verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
             ) {
-                items(rows, key = { it.id }) { LibraryItemCard(it) }
+                items(rows, key = { it.id }) {
+                    LibraryItemCard(it, Modifier.testTag("library.row"))
+                }
             }
         }
     }
@@ -70,6 +99,7 @@ fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
             .clip(shape)
             .background(IntradaColor.cardFill)
             .border(1.dp, IntradaColor.hairline, shape)
+            .clearAndSetSemantics { contentDescription = item.spokenLabel }
     ) {
         Box(Modifier.width(4.dp).fillMaxHeight().background(item.itemType.bar))
         Column(Modifier.padding(IntradaSpacing.card)) {
@@ -84,6 +114,17 @@ fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
         }
     }
 }
+
+// Priority, links, ladder, key and tempo stay out of the label until the card draws them (#2266).
+private val LibraryItemView.spokenLabel: String
+    get() = listOf(itemType.label, title, subtitle).filter { it.isNotEmpty() }.joinToString(", ")
+
+private val ItemKind.label
+    get() =
+        when (this) {
+            ItemKind.PIECE -> "Piece"
+            ItemKind.EXERCISE -> "Exercise"
+        }
 
 private val ItemKind.bar
     get() =
