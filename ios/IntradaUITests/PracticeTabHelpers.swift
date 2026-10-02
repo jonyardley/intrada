@@ -75,5 +75,8 @@ extension XCUIApplication {
     XCTAssertTrue(
       end.waitForExistence(timeout: 5), "End session early", file: file, line: line)
     end.tap()
+    // Under load a tap that lands while the menu is still opening is dropped
+    // and the menu stays up, so the summary never comes (#2269).
+    if !end.waitForNonExistence(timeout: 3), end.isHittable { end.tap() }
   }
 }
