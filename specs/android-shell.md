@@ -65,8 +65,8 @@ contract, shown below.
 
 | Layer | iOS today | Android | Note |
 |-|-|-|-|
-| Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` building `arm64-v8a` and `x86_64` (the second for the emulator only) plus UniFFI bindgen's Kotlin target at uniffi 0.29.4, JNA at runtime | The same bridge calls either side, the picker function included. |
-| Types | Swift `SharedTypes` | Kotlin `SharedTypes` via `typegen.kotlin(&config)` in the same `codegen.rs` binary, generated into `android/generated/` | Never hand-edited, on either shell. |
+| Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` building `arm64-v8a` and `x86_64` (the second for emulators on x86_64 hosts, CI included) plus UniFFI bindgen's Kotlin target at uniffi 0.29.4, JNA at runtime | The same bridge calls either side, the picker function included. |
+| Types | Swift `SharedTypes` | Kotlin package `com.intrada.shared` via `codegen --lang kotlin`, the bridge in `com.intrada.ffi`, both generated into `android/generated/` | Never hand-edited, on either shell. |
 | Store | `@Observable @MainActor Store` | A Kotlin `Store` class exposing `StateFlow<ViewModel>`, effects dispatched on `Dispatchers.IO`, hopping back to `Main` | Same update, process, resolve loop. |
 | Persistence | GRDB raw SQL, positional columns | `androidx.sqlite` with the bundled driver, raw SQL, the same schema and migration list | Not Room: Room wants entity classes, and the shell must stay a dumb pipe. |
 | Singletons and crash blob | `UserDefaults` holding bincode bytes | `SharedPreferences` holding the same bincode bytes | Same key-bump rule when the blob shape changes (#1345). |
@@ -116,9 +116,11 @@ Each phase becomes its own issue when it starts; none exist yet.
 
 ## Recipes
 
-Mirroring the `ios-*` set, not yet implemented: `android-typegen`,
-`android-package`, `android-gen`, `android-run`, `android-test`,
-`android-test-full`, `android-fmt`.
+Mirroring the `ios-*` set. `android-typegen`, `android-package` and
+`android-gen` exist (#2221); `android-run`, `android-test`,
+`android-test-full` and `android-fmt` are still to come. A machine needs
+`cargo-ndk` and the `aarch64-linux-android` and `x86_64-linux-android` Rust
+targets first.
 
 ## Deliberately not doing
 

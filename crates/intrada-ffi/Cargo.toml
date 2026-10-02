@@ -12,12 +12,18 @@ crate-type = ["cdylib", "lib", "staticlib"]
 name = "codegen"
 required-features = ["codegen"]
 
+[[bin]]
+name = "uniffi-bindgen"
+required-features = ["bindgen"]
+
 [features]
 # Generate Swift types from the core (used by the `codegen` bin). Pulls facet
 # reflection into intrada-core + crux_core.
 facet_typegen = ["intrada-core/facet_typegen", "crux_core/facet_typegen"]
 # Expose the bridge to Swift via UniFFI.
 uniffi = ["dep:uniffi"]
+# The Kotlin bridge generator, built from the same pinned uniffi as the bridge.
+bindgen = ["uniffi", "uniffi/cli"]
 # The typegen binary.
 codegen = ["dep:anyhow", "dep:clap", "dep:pretty_env_logger", "facet_typegen"]
 
