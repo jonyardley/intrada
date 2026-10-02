@@ -7,6 +7,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let detents: Set<PresentationDetent>
   private let confirmationLabel: String
   private let confirmationDisabled: Bool
+  private let dismissesOnDone: Bool
   private let onDone: () -> Void
   private let leadingAction: LeadingAction
   private let content: Content
@@ -18,6 +19,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
     detents: Set<PresentationDetent> = [.medium, .large],
     confirmationLabel: String = "Done",
     confirmationDisabled: Bool = false,
+    dismissesOnDone: Bool = true,
     onDone: @escaping () -> Void = {},
     @ViewBuilder leadingAction: () -> LeadingAction,
     @ViewBuilder content: () -> Content
@@ -26,6 +28,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
     self.detents = detents
     self.confirmationLabel = confirmationLabel
     self.confirmationDisabled = confirmationDisabled
+    self.dismissesOnDone = dismissesOnDone
     self.onDone = onDone
     self.leadingAction = leadingAction()
     self.content = content()
@@ -44,7 +47,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
         ToolbarItem(placement: .confirmationAction) {
           Button(confirmationLabel) {
             onDone()
-            dismiss()
+            if dismissesOnDone { dismiss() }
           }
           .disabled(confirmationDisabled)
           .accessibilityIdentifier("sheet.done")

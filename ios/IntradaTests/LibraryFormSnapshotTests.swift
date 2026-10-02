@@ -302,7 +302,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
         LibraryItemFixture.view(id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db"),
       ],
       linkedIds: ["exercise-1"],
-      onApply: { _, _ in })
+      onApply: { _, _ in .accepted })
     assertSnapshot(of: host(sheet), as: config)
   }
 
@@ -314,7 +314,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
         LibraryItemFixture.view(id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db"),
       ],
       linkedIds: ["exercise-1"],
-      onApply: { _, _ in })
+      onApply: { _, _ in .accepted })
     assertSnapshot(of: host(sheet), as: axConfig)
   }
 
@@ -328,7 +328,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
         .draft(
           id: UUID(), title: "Guide tones, ii to V to I", key: "C", modality: .major, bpm: "80")
       ],
-      onApply: { _, _ in })
+      onApply: { _, _ in .accepted })
     assertSnapshot(of: host(sheet), as: config)
   }
 
@@ -340,7 +340,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
         .previewPiece, .previewExercise, piece(id: "piece-9", "Blue Bossa", "Kenny Dorham"),
       ],
       linkedIds: [LibraryItemView.previewPiece.id],
-      onApply: { _, _ in })
+      onApply: { _, _ in .accepted })
     assertSnapshot(of: host(sheet), as: config)
   }
 

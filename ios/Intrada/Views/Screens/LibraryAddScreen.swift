@@ -171,12 +171,15 @@ struct LibraryAddScreen: View {
 
   // `Swift.Set`, because `SharedTypes` exports a domain `Set` that shadows the
   // standard library type in this file (#1348).
-  private func applyChosen(_ ids: Swift.Set<String>, _ drafts: [StagedExercise]) {
+  private func applyChosen(_ ids: Swift.Set<String>, _ drafts: [StagedExercise])
+    -> LinkApplyOutcome
+  {
     form.stagedExercises =
       drafts
       + store.libraryRows
       .filter { ids.contains($0.id) }
       .map { .existing(id: $0.id, title: $0.title, meta: $0.subtitle) }
+    return .accepted
   }
 
   private func send() {

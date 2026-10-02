@@ -91,7 +91,8 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
                   HairlineDivider()
                   FormField(
                     label: "Beats per minute", text: $form.bpm, keyboard: .numberPad,
-                    readWeakly: form.readFrom[.bpm], faulted: form.faults(.tempo))
+                    readWeakly: form.readFrom[.bpm], faulted: form.faults(.tempo),
+                    identifier: "itemForm.bpm")
                 }
                 .cardSurface()
                 .id(FormAnchor.field(.tempo))
