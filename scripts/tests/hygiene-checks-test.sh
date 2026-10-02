@@ -512,6 +512,17 @@ printf 'png' >"$snaps/android/snapshots/retired.png"
 expect 1 "an Android reference named only in a comment" snapshot_check
 rm "$snaps/android/snapshots/retired.png"
 
+printf '/*\n captureRoboImage("src/test/snapshots/boxed.png")\n*/\n' >"$snaps/android/kotlin/Boxed.kt"
+printf 'png' >"$snaps/android/snapshots/boxed.png"
+expect 1 "an Android reference named only in a block comment" snapshot_check
+rm "$snaps/android/kotlin/Boxed.kt" "$snaps/android/snapshots/boxed.png"
+
+printf 'captureRoboImage("src/test/old-snapshots/library.png")\n' >"$snaps/android/kotlin/Old.kt"
+printf 'png' >"$snaps/android/snapshots/detail.png"
+printf 'captureRoboImage("src/test/old-snapshots/detail.png")\n' >>"$snaps/android/kotlin/Old.kt"
+expect 1 "an Android reference named only under another folder" snapshot_check
+rm "$snaps/android/kotlin/Old.kt" "$snaps/android/snapshots/detail.png"
+
 head -c 200001 /dev/zero >"$snaps/android/snapshots/library.png"
 expect 1 "an Android reference over the ceiling" snapshot_check
 head -c 200000 /dev/zero >"$snaps/android/snapshots/library.png"
@@ -521,6 +532,12 @@ printf 'png' >"$snaps/android/snapshots/library.png"
 printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
 expect 1 "an iOS reference no test names" snapshot_check
 rm "$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
+
+expect 2 "an Android root that is not there" env SNAPSHOT_ANDROID_ROOT="$work/nowhere" \
+  bash "$repo_root/scripts/check-snapshots.sh"
+mkdir -p "$work/bare-android"
+expect 0 "an Android root with no references yet" env SNAPSHOT_IOS_ROOT="$snaps/ios" \
+  SNAPSHOT_ANDROID_ROOT="$work/bare-android" bash "$repo_root/scripts/check-snapshots.sh"
 
 expect 0 "the references this repo actually ships" bash "$repo_root/scripts/check-snapshots.sh"
 

@@ -87,7 +87,7 @@ if [ "$over" = "1" ]; then
 
    Inspect what tripped the check:
 
-     git diff origin/main...HEAD -- '*.rs' '*.swift' '*.kt' '*.ts' '*.tsx' \\
+     git diff origin/main...HEAD -- '*.rs' '*.swift' '*.kt' '*.kts' '*.ts' '*.tsx' \\
        | grep -E '^\+[[:space:]]*(//|/\*|\*)'
 
    If the comments are genuinely justified (incident write-up, vendored

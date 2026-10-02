@@ -89,10 +89,14 @@ else
   echo "no $SNAP_DIR; no iOS references to check"
 fi
 
+if [ ! -d "$ANDROID_ROOT" ]; then
+  echo "✗ check-snapshots: no $ANDROID_ROOT to read" >&2
+  exit 2
+fi
 ANDROID_SNAP_DIR="$ANDROID_ROOT/snapshots"
 if [ -d "$ANDROID_SNAP_DIR" ]; then
   named=$(find "$ANDROID_ROOT" -name '*.kt' -print0 |
-    xargs -0 perl -ne 's{//.*}{}; print "$1\n" while /"[^"]*?\b(snapshots\/[^"]+\.png)"/g' | sort -u)
+    xargs -0 perl -0777 -ne 's{/\*.*?\*/}{}gs; s{//[^\n]*}{}g; print "$1\n" while m{"(?:[^"\n]*/)?(snapshots/[^"\n]+\.png)"}g' | sort -u)
   while IFS= read -r png; do
     ref="${png#"$ANDROID_ROOT"/}"
     if ! grep -qxF "$ref" <<<"$named"; then
