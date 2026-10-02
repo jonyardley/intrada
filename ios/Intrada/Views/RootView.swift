@@ -62,6 +62,7 @@ struct RootView: View {
     .fullScreenCover(isPresented: playerBinding) {
       PlayerHost().environment(store).environment(\.screenWakeLock, wakeLock)
         .marker(markerColour)
+        .environment(\.scoreRange, scoreRange)
     }
     .fullScreenCover(isPresented: $showingFirstRun) {
       FirstRunScreen(intro: .play) { added in
@@ -119,6 +120,7 @@ struct RootView: View {
       if phase == .active { store.reportUtcOffset() }
     }
     .marker(markerColour)
+    .environment(\.scoreRange, scoreRange)
     .environment(\.openPractice, OpenPractice { selectedTab = .practice })
   }
 
@@ -126,6 +128,10 @@ struct RootView: View {
   /// cover so the whole app follows one swatch (#1677).
   private var markerColour: HighlighterColour {
     store.viewModel?.profile.colour ?? .butter
+  }
+
+  private var scoreRange: ClosedRange<Int> {
+    store.viewModel?.limits.scoreRange ?? EnvironmentValues().scoreRange
   }
 
   private var playerBinding: Binding<Bool> {

@@ -3,7 +3,7 @@ import SwiftUI
 struct ScoreRing: View {
   let score: Int?
   var size: CGFloat = 46
-  /// Hero variant: an "OF 10" caption under the numeral (piece/exercise detail).
+  /// Hero variant: an "OF <top mark>" caption under the numeral (piece/exercise detail).
   var showsScale: Bool = false
   /// Mastered variant: fills with `accent` instead of the usual `masteryFill`.
   var solid: Bool = false
@@ -13,11 +13,14 @@ struct ScoreRing: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.intradaMotionDisabled) private var motionDisabled
+  @Environment(\.scoreRange) private var range
   @State private var shown = false
 
   private var isUnrated: Bool { score == nil || score == 0 }
-  private var clampedScore: Int { score.map { max(1, min(10, $0)) } ?? 0 }
-  private var fraction: CGFloat { CGFloat(clampedScore) / 10 }
+  private var clampedScore: Int {
+    score.map { max(range.lowerBound, min(range.upperBound, $0)) } ?? 0
+  }
+  private var fraction: CGFloat { CGFloat(clampedScore) / CGFloat(range.upperBound) }
   private var lineWidth: CGFloat { max(3, size * 0.09) }
 
   private var animates: Bool {
@@ -55,7 +58,7 @@ struct ScoreRing: View {
             .font(IntradaFont.scoreNumeral(size * 0.36))
             .foregroundStyle(IntradaColor.ink)
           if showsScale {
-            Text("OF 10")
+            Text("OF \(range.upperBound)")
               .font(IntradaFont.eyebrow)
               .kerning(0.5)
               .foregroundStyle(IntradaColor.inkSecondary)
@@ -70,7 +73,20 @@ struct ScoreRing: View {
       withAnimation(.easeOut(duration: IntradaMotion.countUpDuration)) { shown = true }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(isUnrated ? "Not yet rated" : "Mark \(clampedScore) of 10")
+    .accessibilityLabel(isUnrated ? "Not yet rated" : "Mark \(clampedScore) of \(range.upperBound)")
+  }
+}
+
+// Previews and snapshot hosts have no store, so they get 1...10; the app sets
+// the core's bounds at the root (#2164).
+private struct ScoreRangeKey: EnvironmentKey {
+  static let defaultValue: ClosedRange<Int> = 1...10
+}
+
+extension EnvironmentValues {
+  var scoreRange: ClosedRange<Int> {
+    get { self[ScoreRangeKey.self] }
+    set { self[ScoreRangeKey.self] = newValue }
   }
 }
 

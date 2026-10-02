@@ -89,6 +89,7 @@ struct UsedInRow: View {
   var onLink: (() -> Void)? = nil
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.scoreRange) private var scoreRange
 
   private var isStandalone: Bool { usage.piece == nil }
   private var navigable: Bool { usage.piece != nil && !usage.pieceRemoved }
@@ -102,11 +103,11 @@ struct UsedInRow: View {
           NavigationLink(value: piece.id) { content }
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(usage.spokenRow)
+            .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
         } else {
           content
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(usage.spokenRow)
+            .accessibilityLabel(usage.spokenRow(topMark: scoreRange.upperBound))
         }
         if let onLink, !dynamicTypeSize.isAccessibilitySize {
           linkButton(onLink)

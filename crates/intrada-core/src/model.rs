@@ -541,8 +541,8 @@ pub struct VariantView {
 /// the picker's out-of-session fallback share (#1809).
 pub(crate) fn saved_mark_caption(latest_score: Option<u8>, is_solid: bool) -> String {
     match latest_score {
-        Some(score) if is_solid => format!("Solid · {score} of 10"),
-        Some(score) => format!("{score} of 10"),
+        Some(score) if is_solid => format!("Solid · {score} of {}", crate::validation::MAX_SCORE),
+        Some(score) => format!("{score} of {}", crate::validation::MAX_SCORE),
         None => "Not yet played".to_string(),
     }
 }

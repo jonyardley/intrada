@@ -31,6 +31,26 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(hero), as: config)
   }
 
+  func testScoreRingFollowsTheCoreLimits() {
+    let limits = LimitsView(
+      metreBeatsMin: 1, metreBeatsMax: 12, metreUnits: [4],
+      repTargetMin: 1, repTargetMax: 10, repTargetDefault: 3,
+      plannedDurationMinSecs: 60, plannedDurationMaxSecs: 3600, plannedDurationDefaultSecs: 300,
+      sessionLengthMinMins: 5, sessionLengthMaxMins: 120, sessionLengthStepMins: 5,
+      sessionLengthDefaultMins: 30,
+      scoreMin: 1, scoreMax: 5)
+    let rings = ZStack {
+      PaperBackground()
+      HStack(spacing: 24) {
+        ScoreRing(score: 4, size: 132, showsScale: true)
+        ScoreRing(score: 9, size: 132, showsScale: true)
+      }
+      .environment(\.scoreRange, limits.scoreRange)
+      .padding(16)
+    }
+    assertSnapshot(of: host(rings), as: config)
+  }
+
   func testAddRowButtonVariants() {
     let buttons = ZStack {
       PaperBackground()
