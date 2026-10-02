@@ -138,12 +138,14 @@ pin (offline-first invariant 8, #1952).
 
 **The blob is positional bincode, so any field added later breaks every saved
 copy (#1345).** The key is versioned from the first release:
-`intrada.profile.v1`. A core test pins the wire bytes of a fixture profile as
-hex; it fails the moment the shape changes. Adding a field is then: change the
-Rust type, bump the key to `v2` (a `v1` blob is simply not found and the
-defaults stand, which for a profile is an acceptable loss the first time and a
-reason to add a migration read the second), re-pin the hex, regenerate the
-bindings.
+`intrada.profile.v1`, built by the shell from `Profile::BLOB_VERSION`, which
+crosses the bridge as `profile_blob_version()` so the bump lives in the core
+beside the pin (#2026). A core test pins the wire bytes of a fixture profile as
+hex, with that version; it fails the moment the shape changes. Adding a field
+is then: change the Rust type, bump `BLOB_VERSION` and the test's
+`PINNED_BLOB_VERSION` to 2 (a `v1` blob is simply not found and the defaults
+stand, which for a profile is an acceptable loss the first time and a reason to
+add a migration read the second), re-pin the hex, regenerate the bindings.
 
 Sign-out leaves the profile alone. It is device data, like the UTC offset,
 not account data: the app works with no account at all, and the name was
