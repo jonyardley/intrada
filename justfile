@@ -93,6 +93,7 @@ hygiene:
         "handover-test:bash scripts/tests/handover-test.sh"
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
         "ios-sim-device-test:bash scripts/tests/ios-sim-device-test.sh"
+        "ios-failed-tests-test:bash scripts/tests/ios-failed-tests-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
     )
@@ -629,12 +630,12 @@ _ios-test-run tier:
     if [ "{{tier}}" = "fast" ]; then
         just _ios-test-without-building -only-testing:IntradaTests 0
     else
-        # Relaunch-in-new-process, not in-process: the flake this recovers
+        # The retry reruns failures in a new process: the flake it recovers
         # from kills the runner process (#1203). Fast tier (unit/snapshot,
         # deterministic) stays strict. Full tier runs both targets in one
         # `xcodebuild` call locally, so retry applies to both; CI's fanned-out
         # jobs (#1207) call `_ios-test-without-building` once per slice (unit,
-        # then the two UI slices) and scope retry to the UI slices only.
+        # then UI) and scope retry to the UI slice only.
         # Sequential, on the settled source device: a just-booted clone loses
         # SpringBoard's install-placeholder race and refuses the runner as
         # Busy, and the `bootstatus` wait cannot reach a clone because
@@ -704,7 +705,7 @@ _ios-build-for-testing:
 # it already names the bundles and their platform.
 # `filters` is a space-separated list of xcodebuild `-only-testing:` /
 # `-skip-testing:` flags, or "" to run everything the built products contain;
-# `retry` is "1" to add the relaunch-on-crash flags (#1203), else "0";
+# `retry` is "1" to rerun up to three failed tests once (#1203, #2269), else "0";
 # `parallel` is "1" to clone simulators and run test classes concurrently,
 # else "0". Shared by `_ios-test-run` (local, everything in one call),
 # `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
@@ -763,33 +764,56 @@ _ios-test-without-building filters retry parallel="0":
     if [ -n "{{filters}}" ]; then
         for f in {{filters}}; do flags+=("$f"); done
     fi
-    [ "{{retry}}" != "1" ] || flags+=(-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES)
+    # `expect` is the exact number that must pass with none failing, or 0 for
+    # "at least one passes".
+    run_tests() {
+        local expect="$1" status=0
+        shift
+        latest="build/dd/Logs/Test/run-$(date +%Y%m%d-%H%M%S)-$$-$expect.xcresult"
+        # `-collect-test-diagnostics never`: after a refused app launch xcodebuild
+        # otherwise spends a fixed 600s gathering a sysdiagnose-style bundle nobody
+        # reads, which is why a failed full tier took 12 to 21 minutes (#1480).
+        xcodebuild test-without-building -xctestrun "${runs[0]}" \
+            -destination "id=$udid" -derivedDataPath build/dd -quiet \
+            -collect-test-diagnostics never -resultBundlePath "$latest" \
+            "$@" || status=$?
+        # `-quiet` prints nothing on success, so a passing run is indistinguishable
+        # from one that never started, and a failing one never says how much of the
+        # suite got to run. Report the counts the result bundle holds either way:
+        # silence is not evidence, and reading it as "no tests ran" cost a session
+        # two bogus issues (#1536, #1537).
+        if [ ! -d "$latest" ]; then
+            echo "✗ no result bundle at ios/$latest: the run never got going." >&2
+            latest=""
+            [ "$status" -ne 0 ] || status=1
+            return "$status"
+        fi
+        # Zero passed is a failure even when xcodebuild is happy: that is the shape
+        # an empty run would take. A rerun must pass exactly what it was given, or
+        # a filter that matched nothing would go green.
+        if ! xcrun xcresulttool get test-results summary --path "$latest" \
+            | python3 -c 'import json,sys; s=json.load(sys.stdin); e=int(sys.argv[1]); print("{} passed, {} failed, {} skipped".format(s["passedTests"], s["failedTests"], s["skippedTests"])); sys.exit(1 if s["passedTests"] == 0 or (e and (s["passedTests"] != e or s["failedTests"])) else 0)' "$expect"; then
+            [ "$status" -ne 0 ] || status=1
+        fi
+        return "$status"
+    }
     status=0
-    # `-collect-test-diagnostics never`: after a refused app launch xcodebuild
-    # otherwise spends a fixed 600s gathering a sysdiagnose-style bundle nobody
-    # reads, which is why a failed full tier took 12 to 21 minutes (#1480).
-    xcodebuild test-without-building -xctestrun "${runs[0]}" \
-        -destination "id=$udid" -derivedDataPath build/dd -quiet \
-        -collect-test-diagnostics never \
-        "${flags[@]}" || status=$?
-    # `-quiet` prints nothing on success, so a passing run is indistinguishable
-    # from one that never started, and a failing one never says how much of the
-    # suite got to run. Report the counts the result bundle holds either way:
-    # silence is not evidence, and reading it as "no tests ran" cost a session
-    # two bogus issues (#1536, #1537).
-    latest="$(ls -td build/dd/Logs/Test/*.xcresult 2>/dev/null | head -1 || true)"
-    if [ -z "$latest" ]; then
-        echo "✗ no .xcresult under ios/build/dd/Logs/Test: the run produced no result bundle." >&2
-        [ "$status" -ne 0 ] || status=1
+    run_tests 0 "${flags[@]}" || status=$?
+    [ "$status" -ne 0 ] && [ "{{retry}}" = "1" ] && [ -n "$latest" ] || exit "$status"
+    # xcodebuild's own `-retry-tests-on-failure` reran the whole parallel suite
+    # after one flake, adding about 100s to a quarter of CI runs (#2269). More
+    # than three failures is a real break, not a flake, so it gets no rerun.
+    out="$(python3 ../scripts/ios-failed-tests.py "$latest")" || exit "$status"
+    failed=()
+    while read -r f; do [ -z "$f" ] || failed+=("$f"); done <<< "$out"
+    if [ "${#failed[@]}" -eq 0 ] || [ "${#failed[@]}" -gt 3 ]; then
         exit "$status"
     fi
-    # Zero passed is a failure even when xcodebuild is happy: that is the shape
-    # an empty run would take.
-    if ! xcrun xcresulttool get test-results summary --path "$latest" \
-        | python3 -c 'import json,sys; s=json.load(sys.stdin); print("{} passed, {} failed, {} skipped".format(s["passedTests"], s["failedTests"], s["skippedTests"])); sys.exit(1 if s["passedTests"] == 0 else 0)'; then
-        [ "$status" -ne 0 ] || status=1
-    fi
-    exit "$status"
+    echo "↻ rerunning ${#failed[@]} failed test(s) once, on $name"
+    # A parallel run shuts the source device down before cloning (#1480).
+    ios_sim_boot_wait "$udid" "$name"
+    xcrun simctl uninstall "$udid" com.intrada.native >/dev/null 2>&1 || true
+    run_tests "${#failed[@]}" -parallel-testing-enabled NO "${failed[@]}"
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout
