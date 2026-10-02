@@ -173,7 +173,7 @@ struct LibraryDetailScreen: View {
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
     -> LinkApplyOutcome
   {
-    let current = Swift.Set(item.linkedExercises.map(\.id))
+    let current = liveLinkedExerciseIds
     let toLink = selected.subtracting(current)
     let toUnlink = current.subtracting(selected)
     var ok = true
@@ -196,12 +196,20 @@ struct LibraryDetailScreen: View {
     guard ok else {
       return .refused(
         message: store.viewModel?.error ?? "Couldn't save. Try again.",
-        remainingDrafts: refusedDrafts)
+        remainingDrafts: refusedDrafts,
+        nowLinked: liveLinkedExerciseIds)
     }
     if !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
       Haptic.success.play()
     }
     return .accepted
+  }
+
+  // `item` is the value this screen was built with; a send made a moment ago
+  // has already reached the store's rows but not this copy.
+  private var liveLinkedExerciseIds: Swift.Set<String> {
+    let row = store.libraryRows.first { $0.id == item.id } ?? item
+    return Swift.Set(row.linkedExercises.map(\.id))
   }
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {

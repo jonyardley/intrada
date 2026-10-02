@@ -92,7 +92,8 @@ struct LinkedItemPickerSheet: View {
     switch onApply(selected, drafts) {
     case .accepted:
       dismiss()
-    case .refused(let message, let remainingDrafts):
+    case .refused(let message, let remainingDrafts, let nowLinked):
+      selected.formUnion(nowLinked)
       drafts = remainingDrafts
       refusal = message
     }
@@ -392,7 +393,7 @@ private struct PickerCopy {
 
 enum LinkApplyOutcome {
   case accepted
-  case refused(message: String, remainingDrafts: [StagedExercise])
+  case refused(message: String, remainingDrafts: [StagedExercise], nowLinked: Swift.Set<String>)
 }
 
 #if DEBUG
