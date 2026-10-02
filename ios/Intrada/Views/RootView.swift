@@ -111,7 +111,7 @@ struct RootView: View {
         if UITestFlags.skipWelcome { store.send(.firstRun(.skipWelcome)) }
         store.loadRecoverableSession()
       }
-      if launch == .deciding { launch = store.playsReturningSplash ? .playing : .done }
+      if launch == .deciding { launch = await ReturningSplash.decide(for: store) }
     }
     // Re-report on foreground: the offset moves under a resident app on DST
     // turnover or travel, and analytics' day boundary must move with it.

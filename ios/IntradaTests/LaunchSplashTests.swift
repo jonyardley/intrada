@@ -137,16 +137,36 @@ struct ReturningSplashTests {
   }
 }
 
-/// Which launches play the returning splash (#2278).
+/// Which launches play the returning splash (#2278), through the real bridge
+/// so the welcome is only known once the library and history load.
 @MainActor
 struct ReturningSplashLaunchTests {
-  @Test func aReturningMusicianSeesIt() {
-    #expect(Store.previewStartHere.playsReturningSplash)
+  private func defaults() -> UserDefaults {
+    UserDefaults(suiteName: "returning-splash-\(UUID().uuidString)") ?? .standard
   }
 
-  @Test func aSessionToReopenSkipsIt() {
+  @Test func aFreshInstallWaitsForTheWelcomeInstead() async {
+    let store = Store(bridge: LiveBridge(), sortDefaults: defaults())
+    store.send(.startApp)
+    #expect(await ReturningSplash.decide(for: store) == .done)
+  }
+
+  @Test func aReturningMusicianSeesIt() async {
+    let suite = defaults()
+    let first = Store(bridge: LiveBridge(), sortDefaults: suite)
+    first.send(.startApp)
+    await first.settle()
+    first.send(.firstRun(.skipWelcome))
+
+    let second = Store(bridge: LiveBridge(), sortDefaults: suite)
+    second.send(.startApp)
+    second.restorePersistedFirstRun()
+    #expect(await ReturningSplash.decide(for: second) == .playing)
+  }
+
+  @Test func aSessionToReopenSkipsIt() async {
     let store = Store.previewStartHere
     store.recoverableSession = Store.previewPracticeRecovery.recoverableSession
-    #expect(!store.playsReturningSplash)
+    #expect(await ReturningSplash.decide(for: store) == .done)
   }
 }

@@ -98,7 +98,7 @@ extension SplashFrame {
         staff: Array(repeating: 0, count: 5), iconScale: 1, iconOpacity: 0, keyFill: 1,
         keyDip: 0, wordOpacity: 0, wordRise: 0, swipe: 1, splashOpacity: 0, splashLift: 0,
         wordTravel: 0, items: [],
-        paperOpacity: 1 - tween(t, 0, IntradaMotion.reduceFade, { $0 }))
+        paperOpacity: 1 - tween(t, 0, IntradaMotion.reduceFade, Ease.enter))
     }
     let settle = tween(t, 0, 0.3, Ease.enter)
     let word = tween(t, 0.1, 0.4, Ease.enter)
@@ -127,6 +127,15 @@ extension SplashFrame {
 struct ReturningSplash: View {
   enum Phase { case deciding, playing, done }
 
+  /// The welcome has its own splash, and a session to reopen never waits on
+  /// one. The core only knows the welcome is due once the library and history
+  /// have loaded, so a fresh install waits for them (#2278).
+  static func decide(for store: Store) async -> Phase {
+    guard store.recoverableSession == nil else { return .done }
+    await store.settle()
+    return store.viewModel?.firstRun.showsWelcome == false ? .playing : .done
+  }
+
   let onFinish: () -> Void
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var start = Date.now
@@ -139,20 +148,10 @@ struct ReturningSplash: View {
     .contentShape(Rectangle())
     .onTapGesture(perform: onFinish)
     .task {
-      try? await Task.sleep(
-        for: .seconds(SplashFrame.returningDuration(reduceMotion: reduceMotion)))
+      let duration = SplashFrame.returningDuration(reduceMotion: reduceMotion)
+      guard (try? await Task.sleep(for: .seconds(duration))) != nil else { return }
       onFinish()
     }
-  }
-}
-
-extension Store {
-  /// The welcome has its own splash, and a session to reopen never waits on
-  /// one (#2278).
-  var playsReturningSplash: Bool {
-    guard let viewModel else { return false }
-    return !viewModel.firstRun.showsWelcome && recoverableSession == nil
-      && viewModel.activeSession == nil && viewModel.summary == nil
   }
 }
 
@@ -178,7 +177,7 @@ struct ReturningSplashLayer: View {
 
 /// The app's name in the highlighter, as both splashes and the welcome draw it.
 struct Wordmark: View {
-  var swipe: CGFloat = 1
+  let swipe: CGFloat
 
   var body: some View {
     Text("Intrada")
@@ -188,8 +187,8 @@ struct Wordmark: View {
   }
 }
 
-/// The staff and icon, drawn over the welcome while it is still hidden. The
-/// wordmark is the welcome's own title, moved by the same frame.
+/// The staff and icon of both splashes. Each draws its own wordmark: on first
+/// launch it is the welcome's title, moved by the same frame.
 struct LaunchSplashLayer: View {
   let frame: SplashFrame
 
