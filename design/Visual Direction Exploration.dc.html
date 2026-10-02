@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900&family=Instrument+Sans:wght@400;500&family=Caveat:wght@600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Libre+Franklin:wght@400;500;600&family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;700&family=EB+Garamond:wght@500;600&family=Work+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Chivo+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600&family=Karla:wght@400;500;600&family=Literata:opsz,wght@7..72,500;7..72,600&family=Manrope:wght@400;500;600;700&family=Crimson+Pro:wght@500;600&family=Figtree:wght@400;500;600;700&family=Lora:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Young+Serif&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Anton&family=Schibsted+Grotesk:wght@400;500;600;700&family=Gloock&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E9E9E6; -webkit-font-smoothing: antialiased; }
+  a { color: #4C3FA6; } a:hover { color: #2E2570; }
+  [data-lucide] { stroke-width: 2; }
+</style>
+</helmet>
+
+<section id="turn-9" style="padding:32px 64px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="font-size:13px;color:#4A4E5A;">Turn 9 — the token sheet moved to <a href="Intrada Reskin.dc.html">Intrada Reskin.dc.html</a>, and grew to cover the hero card, type badges, celebration toast, status colours, and the practice player backdrop.</div>
+</section>
+<section id="turn-8" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 8 · Softening the ink-marker skin</div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Less hard-edged, without going soft</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;">Palette and type held at 6f. Each tile changes one thing — radius, lift, marker edge, tonal layering — so you can pick the ingredient rather than a bundle; <a href="#8f">8f</a> is all of them at half strength. Below is a first sketch of the “choose your marker” idea: the app stays brown-ink-on-paper and the user picks the pastel.</p>
+    <div style="margin-top:22px;display:inline-flex;align-items:center;gap:14px;background:#F5F1E8;padding:12px 16px;border:1px solid #DDD7CA;">
+      <span style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;">Your marker</span>
+      <div style="display:flex;gap:8px;"><span style="width:26px;height:26px;border-radius:50%;background:#FFE9A3;box-shadow:0 0 0 2px #F5F1E8,0 0 0 3.5px #3B2A1E;"></span><span style="width:26px;height:26px;border-radius:50%;background:#FFB4A2;"></span><span style="width:26px;height:26px;border-radius:50%;background:#B9EBD3;"></span><span style="width:26px;height:26px;border-radius:50%;background:#A9D8FF;"></span><span style="width:26px;height:26px;border-radius:50%;background:#D6CCF5;"></span><span style="width:26px;height:26px;border-radius:50%;background:#CFDDB0;"></span><span style="width:26px;height:26px;border-radius:50%;background:#FFD6E7;"></span><span style="width:26px;height:26px;border-radius:50%;background:#F5D3B0;"></span></div>
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:40px;align-items:flex-start;">
+
+    <div id="8a" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8a</span><span style="font-size:15px;font-weight:500;">6f as-is (control)</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Square everything, flat white cards, hard marker edges. The starting point.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;background:linear-gradient(transparent 55%,#FFE9A3 55%,#FFE9A3 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#3B2A1E;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;border:1px solid #3B2A1E;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 0 · no shadow · hard marker</div>
+    </div>
+
+    <div id="8b" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8b</span><span style="font-size:15px;font-weight:500;">Slight radius</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">4px on cards and buttons, 3px on the marker ends. Barely visible, but corners stop catching the eye.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;box-shadow:inset 0 -0.42em 0 #FFE9A3;border-radius:3px;padding:0 3px;margin:0 -3px;">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;border-radius:4px;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;border-radius:3px;"><div style="width:70%;height:100%;background:#3B2A1E;border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;border-radius:4px;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;border:1px solid #3B2A1E;border-radius:4px;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 4 · no shadow · rounded marker</div>
+    </div>
+
+    <div id="8c" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8c</span><span style="font-size:15px;font-weight:500;">Paper lift</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Corners stay square; cards get a hairline and a whisper of shadow so they sit on the paper instead of being cut into it.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;background:linear-gradient(transparent 55%,#FFE9A3 55%,#FFE9A3 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;border:1px solid #E9E3D6;box-shadow:0 1px 2px rgba(59,42,30,0.06),0 4px 12px -8px rgba(59,42,30,0.12);padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#3B2A1E;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;box-shadow:0 1px 2px rgba(59,42,30,0.08);">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;border:1px solid #3B2A1E;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 0 · hairline + soft shadow</div>
+    </div>
+
+    <div id="8d" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8d</span><span style="font-size:15px;font-weight:500;">Marker bleed</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Only the marker changes: feathered top and bottom edges like real ink on fibrous paper. Everything else stays crisp.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;background:linear-gradient(transparent 48%,rgba(255,233,163,0.35) 50%,rgba(255,233,163,0.8) 56%,#FFE9A3 62%,#FFE9A3 86%,rgba(255,233,163,0.7) 91%,rgba(255,233,163,0.25) 95%,transparent 98%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#3B2A1E;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;background:linear-gradient(180deg,rgba(255,233,163,0.75),#FFE9A3 30%,#FFE9A3 70%,rgba(255,233,163,0.8));">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;border:1px solid #3B2A1E;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 0 · feathered marker</div>
+    </div>
+
+    <div id="8e" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8e</span><span style="font-size:15px;font-weight:500;">Tonal, no lines</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Cards are a tint step (#FBF8F1) instead of pure white; borders and rules go away; 6px radius. Softest without adding shadow.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;box-shadow:inset 0 -0.42em 0 #FFE9A3;border-radius:4px;padding:0 3px;margin:0 -3px;">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:transparent;"></div>
+        <div style="background:#FBF8F1;border-radius:6px;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;border-radius:3px;"><div style="width:70%;height:100%;background:#3B2A1E;border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;border-radius:6px;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;background:#FBF8F1;border-radius:6px;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 6 · tint cards · no rules</div>
+    </div>
+
+    <div id="8f" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">8f</span><span style="font-size:15px;font-weight:500;">Everything a little</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">8b + 8c + 8d together, each at half strength: 3px radius, faint lift, slight bleed. Probably the pragmatic pick.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;background:linear-gradient(transparent 50%,rgba(255,233,163,0.6) 53%,#FFE9A3 58%,#FFE9A3 89%,rgba(255,233,163,0.6) 93%,transparent 96%);border-radius:2px;">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;border-radius:3px;border:1px solid #ECE6DA;box-shadow:0 1px 2px rgba(59,42,30,0.05);padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;border-radius:2px;"><div style="width:70%;height:100%;background:#3B2A1E;border-radius:2px;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;border-radius:3px;box-shadow:0 1px 2px rgba(59,42,30,0.06);">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;padding:5px 10px;white-space:nowrap;border:1px solid #3B2A1E;border-radius:3px;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">radius 3 · faint lift · slight bleed</div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-7" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 7 · <a href="#6f">6f</a> applied to screens</div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Butter marker · brown ink, full screens</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;">Focus Player and Library in 6f. Rules applied: warm paper ground, white cards with square corners, brown ink only, the marker stroke for the one thing in focus, mono for numbers and meta, text labels instead of icon glyphs where it reads as print. Compare against the reference screens at the bottom.</p>
+  </div>
+  <div id="7a" style="display:flex;gap:24px;margin-top:40px;align-items:flex-start;flex-wrap:wrap;font-family:'Hanken Grotesk',sans-serif;scroll-margin-top:40px;">
+
+    <div data-screen-label="7a Focus Player 6f" style="width:370px;height:782px;border-radius:44px;overflow:hidden;position:relative;display:flex;flex-direction:column;background:#F5F1E8;color:#3B2A1E;border:1px solid #D9D2C3;">
+      <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 26px;flex:none;font-family:'DM Mono',monospace;font-size:13px;"><span>9:41</span><div style="display:flex;gap:6px;align-items:center;"><div style="width:22px;height:11px;border:1.3px solid #3B2A1E;padding:1.5px;"><div style="width:72%;height:100%;background:#3B2A1E;"></div></div></div></div>
+      <div style="flex:1;display:flex;flex-direction:column;padding:6px 22px 24px;min-height:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;"><span>Close</span><span>FOCUS 3/5</span><span>More</span></div>
+        <div style="display:flex;gap:4px;margin-top:14px;"><span style="flex:1;height:4px;background:#3B2A1E;"></span><span style="flex:1;height:4px;background:#3B2A1E;"></span><span style="flex:1;height:4px;background:#FFE9A3;"></span><span style="flex:1;height:4px;background:#E6DFCF;"></span><span style="flex:1;height:4px;background:#E6DFCF;"></span></div>
+        <div style="margin-top:26px;">
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;">Exercise · related to Clair de Lune</div>
+          <div style="margin-top:8px;"><span style="font-weight:600;font-size:28px;line-height:1.1;letter-spacing:-0.025em;background:linear-gradient(transparent 55%,#FFE9A3 55%,#FFE9A3 92%,transparent 92%);">Scales · D♭ major</span></div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0;">
+          <div style="position:relative;width:206px;height:206px;">
+            <svg width="206" height="206" viewBox="0 0 206 206" style="display:block;"><circle cx="103" cy="103" r="88" fill="none" stroke="#E6DFCF" stroke-width="6"/><circle cx="103" cy="103" r="88" fill="none" stroke="#3B2A1E" stroke-width="6" stroke-linecap="butt" stroke-dasharray="552.9" stroke-dashoffset="300" transform="rotate(-90 103 103)"/></svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'DM Mono',monospace;font-weight:500;font-size:46px;line-height:1;font-variant-numeric:tabular-nums;">3:12</div><div style="font-family:'DM Mono',monospace;font-size:12px;color:#7A6A5A;margin-top:8px;">of 7:00 · ♩=96</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:28px;">
+          <button style="background:none;border:none;width:56px;height:46px;font-family:'DM Mono',monospace;font-size:12px;color:#7A6A5A;cursor:pointer;">Back</button>
+          <button style="border:none;width:74px;height:74px;border-radius:50%;background:#FFE9A3;display:flex;align-items:center;justify-content:center;cursor:pointer;" style-active="transform:scale(0.93)"><span style="display:flex;gap:6px;"><span style="width:6px;height:24px;background:#3B2A1E;"></span><span style="width:6px;height:24px;background:#3B2A1E;"></span></span></button>
+          <button style="background:none;border:none;width:56px;height:46px;font-family:'DM Mono',monospace;font-size:12px;color:#7A6A5A;cursor:pointer;">Next</button>
+        </div>
+        <div style="margin-top:20px;background:#FFFFFF;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;font-weight:600;">Repetitions</span>
+            <span style="font-family:'DM Mono',monospace;font-size:12px;color:#7A6A5A;"><span style="color:#3B2A1E;">7</span> of 12</span>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:10px;"><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#3B2A1E;"></span><span style="flex:1;height:6px;background:#EDE8DC;"></span><span style="flex:1;height:6px;background:#EDE8DC;"></span><span style="flex:1;height:6px;background:#EDE8DC;"></span><span style="flex:1;height:6px;background:#EDE8DC;"></span><span style="flex:1;height:6px;background:#EDE8DC;"></span></div>
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button style="flex:1;border:none;background:#3B2A1E;color:#F5F1E8;padding:13px;font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:14px;cursor:pointer;" style-active="transform:scale(0.96)">Clean</button>
+            <button style="flex:1;border:1.5px solid #3B2A1E;background:none;color:#3B2A1E;padding:13px;font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:14px;cursor:pointer;" style-active="transform:scale(0.96)">Missed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div data-screen-label="7a Library 6f" style="width:370px;height:782px;border-radius:44px;overflow:hidden;position:relative;display:flex;flex-direction:column;background:#F5F1E8;color:#3B2A1E;border:1px solid #D9D2C3;">
+      <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 26px;flex:none;font-family:'DM Mono',monospace;font-size:13px;"><span>9:41</span><div style="display:flex;gap:6px;align-items:center;"><div style="width:22px;height:11px;border:1.3px solid #3B2A1E;padding:1.5px;"><div style="width:72%;height:100%;background:#3B2A1E;"></div></div></div></div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:10px 22px 0;">
+        <div><span style="font-weight:600;font-size:30px;line-height:1;letter-spacing:-0.025em;background:linear-gradient(transparent 55%,#FFE9A3 55%,#FFE9A3 92%,transparent 92%);">Library</span><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:8px;">8 pieces · 3 exercises</div></div>
+        <button aria-label="Add" style="width:44px;height:44px;border:1.5px solid #3B2A1E;background:none;color:#3B2A1E;font-size:22px;line-height:1;cursor:pointer;">+</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 22px 0;margin-top:14px;border-top:1px solid #DDD7CA;font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;"><span style="color:#3B2A1E;border-bottom:2px solid #3B2A1E;padding-bottom:2px;">All</span><span>Starred</span><div style="flex:1;"></div><span>Sort</span><span>Filter</span><span>Search</span></div>
+      <div style="flex:1;overflow:hidden;padding:14px 22px 0;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:#FFFFFF;padding:14px 16px;display:flex;align-items:center;gap:14px;"><div style="flex:1;"><div style="font-weight:600;font-size:16px;">Clair de Lune</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:3px;">Debussy · D♭ · ♩=66 · ★</div></div><div style="text-align:right;"><div style="font-family:'DM Mono',monospace;font-size:13px;">8<span style="color:#7A6A5A;">/10</span></div><div style="width:64px;height:6px;background:#EDE8DC;margin-top:6px;"><div style="width:80%;height:100%;background:#3B2A1E;"></div></div></div></div>
+        <div style="background:#FFFFFF;padding:14px 16px;display:flex;align-items:center;gap:14px;"><div style="flex:1;"><div style="font-weight:600;font-size:16px;">Scales · C major</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:3px;">Exercise · 2 oct. · ♩=120</div></div><div style="text-align:right;"><div style="font-family:'DM Mono',monospace;font-size:13px;">6<span style="color:#7A6A5A;">/10</span></div><div style="width:64px;height:6px;background:#EDE8DC;margin-top:6px;"><div style="width:60%;height:100%;background:#3B2A1E;"></div></div></div></div>
+        <div style="background:#FFFFFF;padding:14px 16px;display:flex;align-items:center;gap:14px;"><div style="flex:1;"><div style="font-weight:600;font-size:16px;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:3px;">Chopin · E♭ · ♩=132</div></div><div style="text-align:right;"><div style="font-family:'DM Mono',monospace;font-size:13px;">4<span style="color:#7A6A5A;">/10</span></div><div style="width:64px;height:6px;background:#EDE8DC;margin-top:6px;"><div style="width:40%;height:100%;background:#3B2A1E;"></div></div></div></div>
+        <div style="background:#FFFFFF;padding:14px 16px;display:flex;align-items:center;gap:14px;"><div style="flex:1;"><div style="font-weight:600;font-size:16px;">Gymnopédie No.1</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:3px;">Satie · D · ♩=80</div></div><div style="text-align:right;"><div style="font-family:'DM Mono',monospace;font-size:13px;">2<span style="color:#7A6A5A;">/10</span></div><div style="width:64px;height:6px;background:#EDE8DC;margin-top:6px;"><div style="width:20%;height:100%;background:#3B2A1E;"></div></div></div></div>
+        <div style="background:#FFFFFF;padding:14px 16px;display:flex;align-items:center;gap:14px;"><div style="flex:1;"><div style="font-weight:600;font-size:16px;">Arabesque No.1</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:3px;">Debussy · E · ♩=144</div></div><div style="text-align:right;"><div style="font-family:'DM Mono',monospace;font-size:13px;">1<span style="color:#7A6A5A;">/10</span></div><div style="width:64px;height:6px;background:#EDE8DC;margin-top:6px;"><div style="width:10%;height:100%;background:#3B2A1E;"></div></div></div></div>
+      </div>
+      <div style="display:flex;padding:14px 4px 26px;border-top:1px solid #DDD7CA;background:#F5F1E8;font-family:'DM Mono',monospace;font-size:11px;color:#7A6A5A;">
+        <div style="flex:1;text-align:center;"><span style="color:#3B2A1E;background:linear-gradient(transparent 50%,#FFE9A3 50%,#FFE9A3 95%,transparent 95%);padding:0 2px;">Library</span></div><div style="flex:1;text-align:center;">Practice</div><div style="flex:1;text-align:center;">Routines</div><div style="flex:1;text-align:center;">Progress</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-6" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 6 · Colour variations on <a href="#4c">4c</a></div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Same warm paper, different marker and ink</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;">Ground (#F5F1E8), white cards, Hanken Grotesk + DM Mono all held constant. <a href="#6a">6a</a>–<a href="#6c">6c</a> change only the marker colour; <a href="#6d">6d</a>–<a href="#6f">6f</a> also tint the ink to match.</p>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:40px;align-items:flex-start;">
+
+    <div id="6a" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6a</span><span style="font-size:15px;font-weight:500;">Mint marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Cool mint on warm paper. Softer than the blue; reads calm and slightly clinical.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#B9EBD3;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#B9EBD3 55%,#B9EBD3 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#B9EBD3;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #B9EBD3 · black ink</div>
+    </div>
+
+    <div id="6b" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6b</span><span style="font-size:15px;font-weight:500;">Coral marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Warm-on-warm: coral marker with the paper. Friendlier, more energy, still no brand colour anywhere else.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFB4A2;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#FFB4A2 55%,#FFB4A2 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#FFB4A2;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #FFB4A2 · black ink</div>
+    </div>
+
+    <div id="6c" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6c</span><span style="font-size:15px;font-weight:500;">Lavender marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">A pale lavender — a nod to today’s violet, but as a mark rather than a fill. Ink stays black.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#D6CCF5;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#D6CCF5 55%,#D6CCF5 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#D6CCF5;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #D6CCF5 · black ink</div>
+    </div>
+
+    <div id="6d" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6d</span><span style="font-size:15px;font-weight:500;">Blue marker · navy ink</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">4c’s blue marker, but the print is navy instead of black. Whole thing shifts cooler and more coherent.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#A9D8FF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#12305A;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#12305A;background:linear-gradient(transparent 55%,#A9D8FF 55%,#A9D8FF 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#5D6B80;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#12305A;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#5D6B80;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#12305A;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#12305A;background:#A9D8FF;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#12305A;border:1px solid #12305A;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #A9D8FF · navy ink #12305A</div>
+    </div>
+
+    <div id="6e" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6e</span><span style="font-size:15px;font-weight:500;">Sage marker · olive ink</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Muted sage marker with deep olive print. The quietest of the set; earthy, almost botanical.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#CFDDB0;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#2F3A22;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#2F3A22;background:linear-gradient(transparent 55%,#CFDDB0 55%,#CFDDB0 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6C7460;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#2F3A22;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6C7460;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#2F3A22;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#2F3A22;background:#CFDDB0;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#2F3A22;border:1px solid #2F3A22;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #CFDDB0 · olive ink #2F3A22</div>
+    </div>
+
+    <div id="6f" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">6f</span><span style="font-size:15px;font-weight:500;">Butter marker · brown ink</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Butter-yellow marker with dark brown print. Warmest option — close to a well-thumbed score.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFE9A3;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#3B2A1E;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#3B2A1E;background:linear-gradient(transparent 55%,#FFE9A3 55%,#FFE9A3 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#3B2A1E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#7A6A5A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#3B2A1E;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#3B2A1E;background:#FFE9A3;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#3B2A1E;border:1px solid #3B2A1E;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">marker #FFE9A3 · brown ink #3B2A1E</div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-5" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 5 · Six more around <a href="#3h">3h</a></div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Print + one desk tool, continued</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;"><a href="#5a">5a</a>–<a href="#5b">5b</a> stay with markers (two colours; serif print). <a href="#5c">5c</a>–<a href="#5f">5f</a> swap the tool: correction tape, rubber stamp, index card, grease pencil. Same rule throughout — colour is something done <em>to</em> the page, never the page itself.</p>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:40px;align-items:flex-start;">
+
+    <div id="5a" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5a</span><span style="font-size:15px;font-weight:500;">Two markers</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Yellow marks what matters, orange marks what’s live. Two highlighters, still no brand colour; Bricolage gives the print some character.</div>
+      <div style="background:#FFFFFF;border:1px solid #DADAD6;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFE45C;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFB061;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1A1A1A;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:29px;line-height:1.05;letter-spacing:-0.03em;color:#1A1A1A;background:linear-gradient(transparent 55%,#FFE45C 55%,#FFE45C 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6A6A66;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DADAD6;"></div>
+        <div style="padding:10px 0;border-bottom:1px solid #DADAD6;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:16.5px;color:#1A1A1A;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6A6A66;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#F2F2F0;"><div style="width:70%;height:100%;background:#FFB061;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#1A1A1A;background:#FFB061;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#1A1A1A;background:linear-gradient(transparent 40%,#FFE45C 40%,#FFE45C 95%,transparent 95%);padding:5px 2px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Bricolage Grotesque · Hanken · two highlighters</div>
+    </div>
+
+    <div id="5b" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5b</span><span style="font-size:15px;font-weight:500;">Newsprint · serif</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">3h exactly, but the print is a serif: Literata under the yellow marker. More broadsheet than software.</div>
+      <div style="background:#ECEAE4;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#ECEAE4;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFE45C;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Literata',serif;font-weight:500;font-size:30px;line-height:1.05;letter-spacing:-0.01em;color:#222222;background:linear-gradient(transparent 55%,#FFE45C 55%,#FFE45C 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#66645E;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#CFCDC5;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Literata',serif;font-weight:500;font-size:17px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#66645E;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#ECEAE4;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#FFE45C;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Literata',serif;font-style:italic;font-size:13px;color:#222222;padding:5px 0;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Literata · Hanken Grotesk · yellow highlighter</div>
+    </div>
+
+    <div id="5c" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5c</span><span style="font-size:15px;font-weight:500;">Correction tape</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Inverted: grey ground, and the “highlight” is a strip of white correction tape behind the text. Mono type, no colour at all.</div>
+      <div style="background:#DCDBD5;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#DCDBD5;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#8F8E88;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1E1E1E;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;line-height:1.1;letter-spacing:-0.02em;color:#1E1E1E;background:linear-gradient(transparent 8%,#FFFFFF 8%,#FFFFFF 100%,transparent 100%);padding:0 4px;box-decoration-break:clone;">Clair de Lune</span></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#55544F;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#1E1E1E;"></div>
+        <div style="padding:8px 0;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'JetBrains Mono',monospace;font-weight:500;font-size:15px;color:#1E1E1E;">Nocturne Op.9 No.2</div><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#55544F;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#1E1E1E;background:#FFFFFF;padding:2px 6px;">7/10</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#DCDBD5;background:#1E1E1E;padding:11px 16px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#1E1E1E;background:#FFFFFF;padding:5px 8px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">JetBrains Mono · correction tape</div>
+    </div>
+
+    <div id="5d" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5d</span><span style="font-size:15px;font-weight:500;">Rubber stamp</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Black print, one red ink stamp. Categories and the count are stamped — bordered uppercase, slightly askew — nothing else has colour.</div>
+      <div style="background:#F4F3EF;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F4F3EF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#C8102E;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1A1A1A;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:29px;line-height:1.05;letter-spacing:-0.03em;color:#1A1A1A;">Clair de Lune</span></div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#66655F;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#D3D2CC;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:600;font-size:16px;color:#1A1A1A;">Nocturne Op.9 No.2</div><div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#66655F;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="border:2px solid #C8102E;color:#C8102E;transform:rotate(-7deg);padding:3px 7px;font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.9;">7 of 10</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#FFFFFF;background:#1A1A1A;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C8102E;border:2px solid #C8102E;padding:4px 8px;transform:rotate(-3deg);opacity:0.9;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Schibsted Grotesk · red stamp</div>
+    </div>
+
+    <div id="5e" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5e</span><span style="font-size:15px;font-weight:500;">Index card</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Kraft board with white ruled index cards: a red head-rule, faint blue lines. The stationery carries the personality, the type stays plain.</div>
+      <div style="background:#E4D9C3;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#E4D9C3;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#D94F4F;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#2A2622;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#2A2622;">Clair de Lune</span></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6F675B;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#C9BCA2;"></div>
+        <div style="background:#FFFFFF repeating-linear-gradient(180deg,transparent 0 17px,#CFE0F2 17px 18px);border-top:3px solid #D94F4F;padding:11px 14px 13px;box-shadow:0 1px 2px rgba(0,0,0,0.12);display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#2A2622;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6F675B;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE9E0;"><div style="width:70%;height:100%;background:#2A2622;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#FFFFFF;background:#2A2622;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#2A2622;background:#FFFFFF;padding:6px 10px;box-shadow:0 1px 2px rgba(0,0,0,0.12);white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Hanken Grotesk · index cards</div>
+    </div>
+
+    <div id="5f" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">5f</span><span style="font-size:15px;font-weight:500;">Grease pencil</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Thick soft orange strokes instead of a fine marker — a chinagraph pencil on matte board. Heavier Geist to stand up to it.</div>
+      <div style="background:#F0EFEA;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F0EFEA;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#F28C28;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1D1D1B;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Geist',sans-serif;font-weight:700;font-size:29px;line-height:1.05;letter-spacing:-0.03em;color:#1D1D1B;box-shadow:inset 0 -9px 0 rgba(242,140,40,0.55);">Clair de Lune</span></div>
+          <div style="font-family:'Geist',sans-serif;font-size:12px;color:#6B6A64;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#D4D3CC;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;border-radius:3px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Geist',sans-serif;font-weight:600;font-size:16px;color:#1D1D1B;">Nocturne Op.9 No.2</div><div style="font-family:'Geist',sans-serif;font-size:12px;color:#6B6A64;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;height:8px;border-radius:4px;background:#EDECE6;"><div style="width:70%;height:100%;border-radius:4px;background:rgba(242,140,40,0.85);"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Geist',sans-serif;font-weight:700;font-size:13.5px;color:#1D1D1B;background:rgba(242,140,40,0.85);padding:11px 18px;border-radius:3px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Geist',sans-serif;font-weight:500;font-size:11.5px;color:#1D1D1B;box-shadow:inset 0 -6px 0 rgba(242,140,40,0.45);padding:3px 1px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Geist · grease pencil</div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-4" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 4 · Around <a href="#3h">3h</a> Newsprint &amp; Marker</div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Three close variations, three cousins</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;"><a href="#4a">4a</a>–<a href="#4c">4c</a> keep 3h’s logic (neutral ground, no accent colour, a marker stroke as the only chroma) and change marker colour, ground and typeface. <a href="#4d">4d</a>–<a href="#4f">4f</a> take the underlying idea — colour as <em>annotation on top of print</em>, not brand — to other desk tools: pencil, sticky note, biro.</p>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:40px;align-items:flex-start;">
+
+    <div id="4a" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4a</span><span style="font-size:15px;font-weight:500;">Newsprint · green marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">3h with a green highlighter and Geist. Slightly fresher, slightly more “software”; the marker still does all the colour work.</div>
+      <div style="background:#ECEAE4;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#ECEAE4;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#C6F26B;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Geist',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#C6F26B 55%,#C6F26B 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'Geist',sans-serif;font-size:12px;color:#66645E;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#CFCDC5;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Geist',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'Geist',sans-serif;font-size:12px;color:#66645E;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#ECEAE4;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Geist',sans-serif;font-weight:600;font-size:13.5px;color:#222222;background:#C6F26B;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Geist',sans-serif;font-weight:500;font-size:11.5px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Geist · green highlighter</div>
+    </div>
+
+    <div id="4b" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4b</span><span style="font-size:15px;font-weight:500;">White · pink marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Same idea on pure white with a pink marker and Schibsted. Cleaner and a touch more playful; the grey newsprint tone is gone.</div>
+      <div style="background:#FFFFFF;border:1px solid #DADAD6;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#F2F2F0;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFB0D0;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1A1A1A;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:29px;line-height:1.05;letter-spacing:-0.03em;color:#1A1A1A;background:linear-gradient(transparent 55%,#FFB0D0 55%,#FFB0D0 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#6A6A66;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DADAD6;"></div>
+        <div style="background:#F2F2F0;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:600;font-size:16px;color:#1A1A1A;">Nocturne Op.9 No.2</div><div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#6A6A66;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#DADAD6;"><div style="width:70%;height:100%;background:#1A1A1A;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#1A1A1A;background:#FFB0D0;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#1A1A1A;border:1px solid #1A1A1A;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Schibsted Grotesk · pink highlighter</div>
+    </div>
+
+    <div id="4c" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4c</span><span style="font-size:15px;font-weight:500;">Warm paper · blue marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">3h on warm off-white with a blue marker and mono meta. Closest to today’s warmth without the cream-and-violet pairing.</div>
+      <div style="background:#F5F1E8;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F5F1E8;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#A9D8FF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#A9D8FF 55%,#A9D8FF 92%,transparent 92%);">Clair de Lune</span></div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#DDD7CA;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#6B665C;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#EDE8DC;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#A9D8FF;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Hanken Grotesk · DM Mono · blue highlighter</div>
+    </div>
+
+    <div id="4d" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4d</span><span style="font-size:15px;font-weight:500;">Pencil</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Inspired by 3h’s “annotation, not accent” idea: graphite greys only, a dashed pencil underline for what’s active, red pencil for the count.</div>
+      <div style="background:#F1F0EC;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F1F0EC;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#8E8D88;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#C0392B;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:29px;line-height:1.05;letter-spacing:-0.02em;color:#2A2A28;border-bottom:2px dashed #8E8D88;padding-bottom:3px;">Clair de Lune</span></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#74736E;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#D6D5D0;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:16px;color:#2A2A28;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#74736E;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:600;color:#C0392B;font-variant-numeric:tabular-nums;">7<span style="color:#8E8D88;font-weight:400;">/10</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:13.5px;color:#FFFFFF;background:#2A2A28;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#2A2A28;border-bottom:2px dashed #8E8D88;padding:5px 0;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Hanken Grotesk · graphite + red pencil</div>
+    </div>
+
+    <div id="4e" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4e</span><span style="font-size:15px;font-weight:500;">Sticky note</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">The highlighter becomes a physical object: progress lives on a yellow note stuck to the row. Grey board ground, Schibsted throughout.</div>
+      <div style="background:#E6E5E0;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#E6E5E0;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFE86B;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1E1E1E;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:29px;line-height:1.05;letter-spacing:-0.03em;color:#1E1E1E;">Clair de Lune</span></div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#66665F;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#CCCBC4;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;box-shadow:0 1px 0 #CCCBC4;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:600;font-size:16px;color:#1E1E1E;">Nocturne Op.9 No.2</div><div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#66665F;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:48px;height:48px;background:#FFE86B;transform:rotate(-4deg);box-shadow:1px 2px 4px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:17px;color:#1E1E1E;">7<span style="font-size:11px;font-weight:500;margin-left:1px;">/10</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#1E1E1E;background:#FFE86B;padding:11px 18px;box-shadow:1px 2px 4px rgba(0,0,0,0.12);white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#1E1E1E;background:#FFFFFF;padding:6px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Schibsted Grotesk · post-it</div>
+    </div>
+
+    <div id="4f" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">4f</span><span style="font-size:15px;font-weight:500;">Biro</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Blue ballpoint as the only colour: underlines, a circled count, an outlined button. Everything else is black print on white.</div>
+      <div style="background:#FFFFFF;border:1px solid #D9D9D9;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#EFEFEF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1F3A93;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#161616;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div><span style="font-family:'Literata',serif;font-weight:500;font-size:29px;line-height:1.05;color:#161616;text-decoration:underline;text-decoration-color:#1F3A93;text-decoration-thickness:2px;text-underline-offset:5px;">Clair de Lune</span></div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6A6A6A;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#D9D9D9;"></div>
+        <div style="border-bottom:1px solid #D9D9D9;padding:12px 0;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Literata',serif;font-weight:500;font-size:17px;color:#161616;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#6A6A6A;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:40px;height:34px;border:2px solid #1F3A93;border-radius:50%;transform:rotate(-6deg);display:flex;align-items:center;justify-content:center;font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:14px;color:#1F3A93;">7</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:13.5px;color:#1F3A93;border:2px solid #1F3A93;padding:9px 16px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#161616;text-decoration:underline;text-decoration-color:#1F3A93;text-decoration-thickness:1.5px;text-underline-offset:3px;padding:5px 0;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Literata · Hanken Grotesk · biro blue</div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-3" style="padding:56px 64px 88px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;border-bottom:1px solid #D8D8D3;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Turn 3 · Second swatch batch · turn 2 removed at your request</div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Eight skins that break the formula</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:720px;">The last batch all shared the same recipe — off-white paper, dark ink, one accent, serif + sans — which is exactly the recipe that reads as “Claude-y”. This set breaks it: coloured grounds instead of paper, single-hue and duotone palettes, mono-only and condensed type, a highlighter instead of an accent. Same fragment on every tile. Point at any (<a href="#3a">3a</a>…<a href="#3h">3h</a>) and I'll take it to full screens.</p>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:40px;align-items:flex-start;">
+
+    <div id="ref" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#FBFAF7;color:#1C1D21;border:1px solid #1C1D21;font-weight:600;font-size:12px;">REF</span><span style="font-size:15px;font-weight:500;">Paper &amp; Score (current)</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">The control. Warm cream paper, Source Serif titles, Inter UI, violet accent with brass secondary, 12px radii.</div>
+      <div style="background:#F4F1E8;border:1px solid #E5DECD;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FCFAF3;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#E5DECD;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#4C3FA6;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#9E7B33;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#2B2A26;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;line-height:1;color:#2B2A26;">Clair de Lune</div>
+          <div style="font-family:'Inter',sans-serif;font-size:12px;color:#6E6557;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#E0D9C8;"></div>
+        <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:13px 14px 13px 18px;overflow:hidden;display:flex;align-items:center;gap:12px;">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#4C3FA6;"></div>
+          <div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-family:'Inter',sans-serif;font-size:12px;color:#6E6557;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E6DECB" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#4C3FA6" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Inter" font-weight="700" font-size="15" fill="#2B2A26">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:#F2EFE8;background:#4C3FA6;padding:11px 18px;border-radius:999px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:11px;color:#6E6557;background:#F0E7D6;border:1px solid #E5DECD;padding:4px 10px;border-radius:999px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Source Serif 4 · Inter</div>
+    </div>
+
+    <div id="3a" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3a</span><span style="font-size:15px;font-weight:500;">Butter &amp; Cobalt</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">The whole ground is a colour, not paper. Butter yellow with black ink and cobalt for action — sunny, confident, nothing like cream.</div>
+      <div style="background:#F7E9A6;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F7E9A6;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1B3EDB;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#141414;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:31px;line-height:1;letter-spacing:-0.03em;color:#141414;">Clair de Lune</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12.5px;color:#4B4632;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:2px;background:#141414;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:16.5px;color:#141414;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12.5px;color:#4B4632;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#EFE3B0" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#1B3EDB" stroke-width="4" stroke-linecap="butt" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk" font-weight="600" font-size="15" fill="#141414">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#FFFFFF;background:#1B3EDB;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:11.5px;color:#141414;border:1.5px solid #141414;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Bricolage Grotesque · Hanken Grotesk</div>
+    </div>
+
+    <div id="3b" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3b</span><span style="font-size:15px;font-weight:500;">Pistachio</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Pale green ground, deep forest ink, italic serif titles. No cards — hairline rules only. Quiet, botanical, faintly Italian.</div>
+      <div style="background:#E3EDDA;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#E3EDDA;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#C9D9BC;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1F4D2E;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1A2419;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:36px;line-height:1;letter-spacing:-0.01em;color:#1A2419;">Clair de Lune</div>
+          <div style="font-family:'Geist',sans-serif;font-size:12px;color:#4C6047;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#1F4D2E;"></div>
+        <div style="border-top:1px solid #1F4D2E;border-bottom:1px solid #1F4D2E;padding:13px 0;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Instrument Serif',serif;font-size:19px;color:#1A2419;">Nocturne Op.9 No.2</div><div style="font-family:'Geist',sans-serif;font-size:12px;color:#4C6047;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#C9D9BC;"><div style="width:70%;height:100%;background:#1F4D2E;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Geist',sans-serif;font-weight:600;font-size:13.5px;color:#E3EDDA;background:#1F4D2E;padding:11px 18px;border-radius:999px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:14px;color:#1F4D2E;padding:5px 0;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Instrument Serif italic · Geist</div>
+    </div>
+
+    <div id="3c" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3c</span><span style="font-size:15px;font-weight:500;">Powder &amp; Rust</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Cool powder-blue ground with a single rust ink for everything active. Cold/warm tension; the serif keeps it musical.</div>
+      <div style="background:#DCE6EF;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#DCE6EF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#F6F9FB;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#B4431B;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#0F1E2A;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Young Serif',serif;font-weight:400;font-size:29px;line-height:1.05;color:#0F1E2A;">Clair de Lune</div>
+          <div style="font-family:'Onest',sans-serif;font-size:12px;color:#4E6070;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#B7C6D3;"></div>
+        <div style="background:#F6F9FB;padding:13px 14px;border-radius:14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Young Serif',serif;font-size:16.5px;color:#0F1E2A;">Nocturne Op.9 No.2</div><div style="font-family:'Onest',sans-serif;font-size:12px;color:#4E6070;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#DCE6EF" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#B4431B" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Onest" font-weight="600" font-size="15" fill="#0F1E2A">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Onest',sans-serif;font-weight:600;font-size:13.5px;color:#FFFFFF;background:#B4431B;padding:11px 18px;border-radius:14px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Onest',sans-serif;font-weight:500;font-size:11.5px;color:#B4431B;background:#F6F9FB;padding:6px 10px;border-radius:14px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Young Serif · Onest</div>
+    </div>
+
+    <div id="3d" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3d</span><span style="font-size:15px;font-weight:500;">Ledger</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">A practice ledger: ruled paper, mono type everywhere, red pen for the one correction. Unfussy, honest, a bit nerdy.</div>
+      <div style="background:#F3F2EE repeating-linear-gradient(180deg,transparent 0 23px,#D9D6CC 23px 24px);border:1px solid #CFCCC2;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#F3F2EE;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#D9D6CC;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#D62828;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1E1E1E;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:24px;line-height:1;letter-spacing:-0.02em;color:#1E1E1E;">Clair de Lune</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5F5D57;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#1E1E1E;"></div>
+        <div style="padding:6px 0;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'JetBrains Mono',monospace;font-weight:500;font-size:15px;color:#1E1E1E;">Nocturne Op.9 No.2</div><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5F5D57;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#D62828;font-weight:700;">7<span style="color:#5F5D57;font-weight:400;">/10</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#F3F2EE;background:#1E1E1E;padding:11px 16px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#D62828;border-bottom:2px solid #D62828;padding:4px 0;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">JetBrains Mono only</div>
+    </div>
+
+    <div id="3e" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3e</span><span style="font-size:15px;font-weight:500;">Poster</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Condensed uppercase display, black on white, one fluorescent orange. Loud and graphic — a gig poster rather than a journal.</div>
+      <div style="background:#FFFFFF;border:2px solid #111111;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#EDEDED;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FF5A1F;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#111111;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Anton',sans-serif;font-weight:400;font-size:40px;line-height:.92;text-transform:uppercase;letter-spacing:0.005em;color:#111111;">Clair de Lune</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#555555;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:4px;background:#111111;"></div>
+        <div style="border-bottom:2px solid #111111;padding:10px 0;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Anton',sans-serif;font-size:22px;text-transform:uppercase;line-height:1;color:#111111;">Nocturne Op.9 No.2</div><div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#555555;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#EDEDED" stroke-width="6"/><circle cx="23" cy="23" r="18" fill="none" stroke="#FF5A1F" stroke-width="6" stroke-linecap="butt" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk" font-weight="600" font-size="15" fill="#111111">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:0.04em;color:#111111;background:#FF5A1F;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#FFFFFF;background:#111111;padding:6px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Anton · Schibsted Grotesk</div>
+    </div>
+
+    <div id="3f" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3f</span><span style="font-size:15px;font-weight:500;">One Hue: Indigo Tonal</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">A single blue hue in four tones — no second accent at all. Calm and coherent; progress is just a darker step of the same colour.</div>
+      <div style="background:#E7EAF3;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#E7EAF3;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#5F6E95;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#1D2B4F;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:29px;line-height:1.02;letter-spacing:-0.03em;color:#1D2B4F;">Clair de Lune</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#5F6E95;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#C5CCDF;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;border-radius:10px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:600;font-size:16px;color:#1D2B4F;">Nocturne Op.9 No.2</div><div style="font-family:'Schibsted Grotesk',sans-serif;font-size:12px;color:#5F6E95;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E7EAF3" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#1D2B4F" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk" font-weight="600" font-size="15" fill="#1D2B4F">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#FFFFFF;background:#1D2B4F;padding:11px 18px;border-radius:10px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Schibsted Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#1D2B4F;background:#D3D9EA;padding:6px 10px;border-radius:10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Schibsted Grotesk · one hue</div>
+    </div>
+
+    <div id="3g" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3g</span><span style="font-size:15px;font-weight:500;">Peach &amp; Bottle Green</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Duotone with no black: every mark is bottle green on a peach ground. Rich and retro; the Gloock display gives it a bookplate feel.</div>
+      <div style="background:#FBE3D2;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#FBE3D2;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#F4CDB4;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#2F6B57;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#0B3B2E;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Gloock',serif;font-weight:400;font-size:31px;line-height:1.02;color:#0B3B2E;">Clair de Lune</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#2F6B57;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#0B3B2E;"></div>
+        <div style="border:1px solid #0B3B2E;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Gloock',serif;font-size:17px;color:#0B3B2E;">Nocturne Op.9 No.2</div><div style="font-family:'DM Mono',monospace;font-size:11.5px;color:#2F6B57;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <svg width="40" height="40" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#F4CDB4" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#0B3B2E" stroke-width="4" stroke-linecap="butt" stroke-dasharray="113.1" stroke-dashoffset="34" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="DM Mono" font-weight="600" font-size="15" fill="#0B3B2E">7</text></svg>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'DM Mono',monospace;font-weight:500;font-size:13px;color:#FBE3D2;background:#0B3B2E;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:#0B3B2E;background:#F4CDB4;padding:6px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Gloock · DM Mono</div>
+    </div>
+
+    <div id="3h" style="width:312px;display:flex;flex-direction:column;gap:10px;scroll-margin-top:40px;">
+      <div style="display:flex;align-items:center;gap:10px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:#1C1D21;color:#FBFAF7;font-weight:600;font-size:12px;">3h</span><span style="font-size:15px;font-weight:500;">Newsprint &amp; Marker</span></div>
+      <div style="font-size:12.5px;line-height:1.5;color:#5A5E69;min-height:38px;">Grey newsprint ground, upright grotesk, and a highlighter stroke instead of an accent colour. The only colour is what you marked.</div>
+      <div style="background:#ECEAE4;padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:0;"><div style="width:34px;height:26px;background:#ECEAE4;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFFFFF;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#FFE45C;border:1px solid rgba(0,0,0,0.08);"></div><div style="width:34px;height:26px;background:#222222;border:1px solid rgba(0,0,0,0.08);"></div></div>
+        <div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:29px;line-height:1.05;letter-spacing:-0.025em;color:#222222;background:linear-gradient(transparent 55%,#FFE45C 55%,#FFE45C 92%,transparent 92%);display:inline;">Clair de Lune</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#66645E;margin-top:7px;">Debussy · D♭ · ♩=66</div>
+        </div>
+        <div style="height:1px;background:#CFCDC5;"></div>
+        <div style="background:#FFFFFF;padding:13px 14px;display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;"><div style="font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:16px;color:#222222;">Nocturne Op.9 No.2</div><div style="font-family:'Hanken Grotesk',sans-serif;font-size:12px;color:#66645E;margin-top:2px;">Chopin · 4 sessions</div></div>
+          <div style="width:64px;"><div style="height:6px;background:#ECEAE4;"><div style="width:70%;height:100%;background:#222222;"></div></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:13.5px;color:#222222;background:#FFE45C;padding:11px 18px;white-space:nowrap;flex-shrink:0;">Start practice</div>
+          <div style="font-family:'Hanken Grotesk',sans-serif;font-weight:500;font-size:11.5px;color:#222222;border:1px solid #222222;padding:5px 10px;white-space:nowrap;">Impressionist</div>
+        </div>
+      </div>
+      <div style="font-family:'Courier Prime',monospace;font-size:11.5px;color:#6B7080;">Hanken Grotesk · highlighter</div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-1" style="padding:56px 64px 96px;font-family:'Instrument Sans',system-ui,sans-serif;color:#1C1D21;">
+  <div style="max-width:900px;">
+    <div style="font-size:12px;color:#6B7080;">Reference · current build</div>
+    <h1 style="font-size:34px;font-weight:500;letter-spacing:-0.02em;margin:10px 0 0;">Paper &amp; Score, as it stands today</h1>
+    <p style="font-size:15px;line-height:1.6;color:#4A4E5A;margin:14px 0 0;max-width:760px;">Kept as the control to judge the swatch board against. The earlier full-screen skins (Blue Note, ECM, Real Book) are gone.</p>
+  </div>
+
+  <div style="display:flex;gap:64px;margin-top:48px;align-items:flex-start;flex-wrap:wrap;">
+
+    <!-- CONTROL -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:12px;color:#6B7080;height:64px;display:flex;align-items:flex-end;">Control · current Paper &amp; Score</div>
+      <div style="display:flex;gap:20px;align-items:flex-start;">
+        <dc-import name="Focus Player" hint-size="392px,804px"></dc-import>
+        <div style="width:392px;padding:11px;border-radius:54px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;font-family:'Inter',system-ui,sans-serif;">
+          <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+            <div style="padding:6px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;"><div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Library</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">8 pieces · 3 exercises</div></div><div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;"><div style="width:30px;height:30px;border-radius:50%;background:#4C3FA6;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="16" height="16" style="color:#F2EFE8;"></i></div></div></div>
+            <div style="height:1px;background:#E0D9C8;margin:12px 16px 0;"></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #E5DECD;"><span style="display:flex;align-items:center;justify-content:center;width:46px;height:34px;border-radius:999px;border:1px solid #E0D9C8;"><i data-lucide="star" width="16" height="16" style="color:#9A927F;"></i></span><span style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;color:#2B2A26;font-weight:600;font-size:15px;">All<i data-lucide="chevron-down" width="17" height="17" style="color:#6E6557;"></i></span><div style="flex:1;"></div><i data-lucide="arrow-up-down" width="19" height="19" style="color:#6E6557;"></i><i data-lucide="list-filter" width="19" height="19" style="color:#6E6557;"></i><i data-lucide="search" width="19" height="19" style="color:#6E6557;"></i></div>
+            <div style="flex:1;overflow:hidden;padding:10px 16px;display:flex;flex-direction:column;gap:12px;">
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#4C3FA6;"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Clair de Lune</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Debussy · D♭ · ♩=66</div><div style="margin-top:7px;display:flex;align-items:center;gap:6px;"><i data-lucide="star" width="13" height="13" style="color:#4C3FA6;fill:#4C3FA6;"></i><span style="font-size:11px;font-weight:500;color:#6E6557;background:#F0E7D6;border:1px solid #E5DECD;padding:3px 10px;border-radius:999px;">Impressionist</span></div></div><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E6DECB" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#4C3FA6" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="22.62" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Inter" font-weight="700" font-size="16" fill="#2B2A26">8</text></svg></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#9E7B33;"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Scales · C major</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Two octaves · ♩=120</div><div style="margin-top:7px;"><span style="font-size:11px;font-weight:500;color:#6E6557;background:#F0E7D6;border:1px solid #E5DECD;padding:3px 10px;border-radius:999px;">Technique</span></div></div><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E6DECB" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#4C3FA6" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="45.24" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Inter" font-weight="700" font-size="16" fill="#2B2A26">6</text></svg></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#4C3FA6;"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Chopin · E♭ · ♩=132</div><div style="margin-top:7px;"><span style="font-size:11px;font-weight:500;color:#6E6557;background:#F0E7D6;border:1px solid #E5DECD;padding:3px 10px;border-radius:999px;">Romantic</span></div></div><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E6DECB" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#4C3FA6" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="67.86" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Inter" font-weight="700" font-size="16" fill="#2B2A26">4</text></svg></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:#4C3FA6;"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Gymnopédie No.1</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Satie · D · ♩=80</div><div style="margin-top:7px;"><span style="font-size:11px;font-weight:500;color:#6E6557;background:#F0E7D6;border:1px solid #E5DECD;padding:3px 10px;border-radius:999px;">Minimalist</span></div></div><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#E6DECB" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="#4C3FA6" stroke-width="4" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="90.48" transform="rotate(-90 23 23)"/><text x="23" y="23" text-anchor="middle" dominant-baseline="central" font-family="Inter" font-weight="700" font-size="16" fill="#2B2A26">2</text></svg></div>
+            </div>
+            <div style="display:flex;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);border-top:1px solid rgba(176,168,146,0.3);">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Library</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Practice</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section></x-dc>
+</body>
+</html>

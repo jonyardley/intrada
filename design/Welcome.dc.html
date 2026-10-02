@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E9E9E6; color: #3B2A1E; font-family: 'Hanken Grotesk', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #7A6A5A; } a:hover { color: #3B2A1E; }
+  .mono { font-family: 'DM Mono', ui-monospace, Menlo, monospace; }
+  @keyframes swipeGrow { from { width: 0; } to { width: 132px; } }
+  @keyframes staffDraw { from { stroke-dashoffset: 340; } to { stroke-dashoffset: 0; } }
+  @keyframes wordFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes introOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-32px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .om-swipe, .om-staff, .om-word, .om-introfade { animation: none !important; }
+  }
+</style>
+</helmet>
+<section style="padding: 56px 64px 100px;">
+  <div style="max-width: 900px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: #7A6A5A;">First run · Welcome</div>
+    <h1 style="font-size: 34px; font-weight: 600; letter-spacing: -0.02em; margin: 0;">Welcome animation → Profile setup</h1>
+    <div style="font-size: 14px; line-height: 1.55; color: #5A5E69;">A highlighter draws under the wordmark, a staff line sketches in, then the intro lifts away to the same Profile screen from <a href="Profile and Greeting.dc.html">Profile and Greeting.dc.html</a>, now used as first-run setup. Skippable at any time; replays on every reload for review — use Skip or wait ~2.3s.</div>
+  </div>
+
+  <div style="margin-top: 32px; box-shadow: 0 1px 2px rgba(59,42,30,0.08), 0 0 0 1px #DDD7CA; border-radius: 3px; overflow: hidden; width: fit-content;">
+    <div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F7F4EF;">
+
+      <sc-if value="{{showIntro}}" hint-placeholder-val="{{true}}">
+        <div class="om-introfade" style="{{introStyle}} position: absolute; inset: 0; z-index: 10; background: #F7F4EF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;">
+          <div onClick="{{skip}}" style="position: absolute; top: 20px; right: 20px; font-family: 'DM Mono', monospace; font-size: 12.5px; color: #7A6A5A; cursor: pointer; padding: 8px 10px; min-height: 22px; display: flex; align-items: center;">Skip</div>
+          <svg width="140" height="26" viewBox="0 0 140 26" style="display: block;">
+            <path class="om-staff" d="M2 13 H138" stroke="#DDD7CA" stroke-width="1.5" fill="none" stroke-dasharray="340" style="animation: staffDraw 900ms ease-out forwards;"/>
+            <circle cx="70" cy="13" r="3.5" fill="#3B2A1E" style="animation: wordFade 400ms ease-out 700ms forwards; opacity: 0;"/>
+          </svg>
+          <div class="om-word" style="position: relative; font-size: 40px; font-weight: 600; letter-spacing: -0.02em; animation: wordFade 500ms ease-out 300ms forwards; opacity: 0;">
+            Intrada
+            <div class="om-swipe" style="position: absolute; left: 4px; bottom: 4px; height: 13px; width: 0; background: #FFE9A3; z-index: -1; animation: swipeGrow 700ms ease-out 550ms forwards;"></div>
+          </div>
+          <div class="mono" style="font-size: 12px; color: #7A6A5A; animation: wordFade 500ms ease-out 1400ms forwards; opacity: 0;">let's set up your practice</div>
+        </div>
+      </sc-if>
+
+      <div style="height: 54px;"></div>
+      <div style="height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 16px;">
+        <div style="font-weight: 600; font-size: 16px;">Set up your profile</div>
+      </div>
+      <div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px 0 4px;">
+          <div style="width: 88px; height: 88px; border-radius: 999px; background: {{m}}; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="44" height="44" style="display: block; color: #3B2A1E; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;"><g transform="translate(0 -1.5)"><path d="M12 8C14.5 8 15.8 9 15.8 10.8C15.8 12.3 14.3 12.8 14.3 14.2C14.3 15.4 16.4 15.9 16.4 18C16.4 20.2 14.3 21 12 21C9.7 21 7.6 20.2 7.6 18C7.6 15.9 9.7 15.4 9.7 14.2C9.7 12.8 8.2 12.3 8.2 10.8C8.2 9 9.5 8 12 8Z"/><path d="M12 8V4.4"/><circle cx="12" cy="3.4" r="1"/><path d="M10.4 15v2M13.6 15v2M12 21v3"/></g></svg>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border: 1px solid #ECE6DA; border-radius: 3px; box-shadow: 0 1px 1px rgba(59,42,30,0.05); overflow: hidden;">
+          <div style="padding: 10px 16px; display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 12px; font-weight: 500; color: #7A6A5A;">Name</div>
+            <input value="{{name}}" onChange="{{onNameChange}}" placeholder="Your name" style="font-size: 16px; color: #3B2A1E; border: none; outline: none; padding: 0; font-family: inherit; background: transparent;"/>
+          </div>
+          <div style="height: 1px; background: #ECE6DA; margin-left: 16px;"></div>
+          <div style="padding: 10px 16px; display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 12px; font-weight: 500; color: #7A6A5A;">Instrument</div>
+            <input value="{{instrument}}" onChange="{{onInstrumentChange}}" placeholder="e.g. Cello" style="font-size: 16px; color: #3B2A1E; border: none; outline: none; padding: 0; font-family: inherit; background: transparent;"/>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #A99C8C;">Highlighter</div>
+          <div style="background: #FFFFFF; border: 1px solid #ECE6DA; border-radius: 3px; box-shadow: 0 1px 1px rgba(59,42,30,0.05); overflow: hidden;">
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 0; padding: 14px 8px 12px;">
+              <sc-for list="{{swatches}}" as="s" hint-placeholder-count="8">
+                <div onClick="{{s.pick}}" style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-height: 44px;">
+                  <div style="width: 40px; height: 40px; border-radius: 999px; background: {{s.hex}}; box-shadow: {{s.ring}}; display: flex; align-items: center; justify-content: center;">
+                    <sc-if value="{{s.selected}}" hint-placeholder-val="{{false}}">
+                      <svg viewBox="0 0 24 24" width="18" height="18" style="display: block; fill: none; stroke: #3B2A1E; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </sc-if>
+                  </div>
+                  <div class="mono" style="font-size: 11px; color: {{s.labelColor}};">{{s.name}}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="position: absolute; left: 16px; right: 16px; bottom: 28px;">
+        <div onClick="{{finish}}" style="background: {{m}}; color: #3B2A1E; font-weight: 700; font-size: 15px; text-align: center; padding: 14px; border-radius: 3px;">Get started</div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const MARKERS = [["Butter","#FFE9A3"],["Coral","#FFB4A2"],["Mint","#B9EBD3"],["Sky","#A9D8FF"],["Lavender","#D6CCF5"],["Sage","#CFDDB0"],["Peach","#FFD7B0"],["Powder","#C7DCE8"]];
+
+class Component extends DCLogic {
+  state = { phase: 'intro', name: '', instrument: '', markerName: 'Butter' };
+
+  componentDidMount() {
+    this._t1 = setTimeout(() => this.setState({ phase: 'leaving' }), 2300);
+    this._t2 = setTimeout(() => this.setState({ phase: 'settings' }), 2700);
+  }
+  componentWillUnmount() {
+    clearTimeout(this._t1);
+    clearTimeout(this._t2);
+  }
+
+  renderVals() {
+    const { phase, name, instrument, markerName } = this.state;
+    const m = (MARKERS.find(x => x[0] === markerName) || MARKERS[0])[1];
+    const introStyle = phase === 'leaving'
+      ? 'animation: introOut 420ms ease-in forwards;'
+      : '';
+    return {
+      showIntro: phase !== 'settings',
+      introStyle,
+      m,
+      markerName,
+      name,
+      instrument,
+      onNameChange: e => this.setState({ name: e.target.value }),
+      onInstrumentChange: e => this.setState({ instrument: e.target.value }),
+      skip: () => { clearTimeout(this._t1); clearTimeout(this._t2); this.setState({ phase: 'settings' }); },
+      finish: () => this.setState({ phase: 'settings' }),
+      swatches: MARKERS.map(([mname, hex]) => ({
+        name: mname, hex,
+        selected: mname === markerName,
+        ring: mname === markerName ? '0 0 0 2px #FFFFFF, 0 0 0 3.5px #3B2A1E' : 'inset 0 0 0 1px rgba(59,42,30,0.14)',
+        labelColor: mname === markerName ? '#3B2A1E' : '#A99C8C',
+        pick: () => this.setState({ markerName: mname })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>
