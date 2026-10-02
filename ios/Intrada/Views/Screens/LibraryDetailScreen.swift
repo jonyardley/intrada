@@ -53,7 +53,10 @@ struct LibraryDetailScreen: View {
         kind: .piece,
         library: library,
         linkedIds: linkedPieceIds,
-        onApply: { ids, _ in applyPieceLinkChanges(ids) }
+        onApply: { ids, _ in
+          applyPieceLinkChanges(ids)
+          return .accepted
+        }
       )
       .environment(store)
     }
@@ -165,8 +168,11 @@ struct LibraryDetailScreen: View {
 
   // Links, unlinks and creates+links each draft (#1431); the haptic fires once
   // the core accepts them all, and a failed disk write arrives later on the
-  // banner (#846, #2004).
-  private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise]) {
+  // banner (#846, #2004). A refusal hands back only the drafts the core did not
+  // take, so a second Done never creates an accepted one twice (#2224).
+  private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
+    -> LinkApplyOutcome
+  {
     let current = Swift.Set(item.linkedExercises.map(\.id))
     let toLink = selected.subtracting(current)
     let toUnlink = current.subtracting(selected)
@@ -179,15 +185,23 @@ struct LibraryDetailScreen: View {
         ok = false
       }
     }
+    var refusedDrafts: [StagedExercise] = []
     for draft in drafts {
       guard case .new(let input) = draft.entry else { continue }
       if !store.sendAccepted(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
         ok = false
+        refusedDrafts.append(draft)
       }
     }
-    if ok && !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
+    guard ok else {
+      return .refused(
+        message: store.viewModel?.error ?? "Couldn't save. Try again.",
+        remainingDrafts: refusedDrafts)
+    }
+    if !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
       Haptic.success.play()
     }
+    return .accepted
   }
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {

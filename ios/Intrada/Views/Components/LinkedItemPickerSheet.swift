@@ -17,13 +17,16 @@ import SwiftUI
 ///
 /// For exercises, the picker also offers creating one inline (#1616): a
 /// drafted exercise and a toggled selection hand back together on Done.
+/// A refusal keeps the sheet open with the core's message and the drafts it
+/// did not take, so an accepted draft is never created twice (#2224).
 struct LinkedItemPickerSheet: View {
   let kind: ItemKind
   let library: [LibraryItemView]
   let linkedIds: [String]
-  let onApply: (Swift.Set<String>, [StagedExercise]) -> Void
+  let onApply: (Swift.Set<String>, [StagedExercise]) -> LinkApplyOutcome
 
   @Environment(\.dismiss) private var dismiss
+  @State private var refusal: String?
   @State private var selected: Swift.Set<String>
   @State private var drafts: [StagedExercise]
   @State private var creatingDraft = false
@@ -40,7 +43,7 @@ struct LinkedItemPickerSheet: View {
   init(
     kind: ItemKind, library: [LibraryItemView], linkedIds: [String],
     existingDrafts: [StagedExercise] = [],
-    onApply: @escaping (Swift.Set<String>, [StagedExercise]) -> Void
+    onApply: @escaping (Swift.Set<String>, [StagedExercise]) -> LinkApplyOutcome
   ) {
     self.kind = kind
     self.library = library
@@ -58,14 +61,20 @@ struct LinkedItemPickerSheet: View {
       by: sort, search: "", filter: PickerFilterArg(kind: kind))
     BottomSheet(
       title: copy.sheetTitle,
-      onDone: { onApply(selected, drafts) },
+      dismissesOnDone: false,
+      onDone: apply,
       leadingAction: { Button("Cancel") { dismiss() } },
       content: {
-        if ofKind.isEmpty && !allowsCreate {
-          PlaceholderContent(
-            systemImage: kind.iconName, message: copy.noneAtAll)
-        } else {
-          VStack(spacing: 0) {
+        VStack(spacing: 0) {
+          if let refusal {
+            FormErrorBanner(message: refusal)
+              .padding(.horizontal, IntradaSpacing.card)
+              .padding(.top, IntradaSpacing.cardCompact)
+          }
+          if ofKind.isEmpty && !allowsCreate {
+            PlaceholderContent(
+              systemImage: kind.iconName, message: copy.noneAtAll)
+          } else {
             if !ofKind.isEmpty { filterBar(availableTags: Self.tags(in: ofKind)) }
             selectedCount
             list(hasAnyOfKind: !ofKind.isEmpty)
@@ -75,6 +84,17 @@ struct LinkedItemPickerSheet: View {
     )
     .sheet(isPresented: $creatingDraft) {
       DraftExerciseSheet(onDone: { drafts.append($0) })
+    }
+  }
+
+  private func apply() {
+    refusal = nil
+    switch onApply(selected, drafts) {
+    case .accepted:
+      dismiss()
+    case .refused(let message, let remainingDrafts):
+      drafts = remainingDrafts
+      refusal = message
     }
   }
 
@@ -370,6 +390,11 @@ private struct PickerCopy {
   var spokenOff: String { kind == .piece ? "not linked, tap to link" : "not related, tap to add" }
 }
 
+enum LinkApplyOutcome {
+  case accepted
+  case refused(message: String, remainingDrafts: [StagedExercise])
+}
+
 #if DEBUG
   #Preview("Add or remove — one related") {
     LinkedItemPickerSheet(
@@ -384,15 +409,16 @@ private struct PickerCopy {
           modality: .major),
       ],
       linkedIds: ["exercise-1"],
-      onApply: { _, _ in })
+      onApply: { _, _ in .accepted })
   }
 
   #Preview("Empty") {
-    LinkedItemPickerSheet(kind: .exercise, library: [], linkedIds: [], onApply: { _, _ in })
+    LinkedItemPickerSheet(
+      kind: .exercise, library: [], linkedIds: [], onApply: { _, _ in .accepted })
   }
 
   #Preview("Link a piece — from the exercise side") {
     LinkedItemPickerSheet(
-      kind: .piece, library: [.previewPiece], linkedIds: [], onApply: { _, _ in })
+      kind: .piece, library: [.previewPiece], linkedIds: [], onApply: { _, _ in .accepted })
   }
 #endif
