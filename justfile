@@ -94,6 +94,7 @@ hygiene:
         "ios-sim-lock-test:bash scripts/tests/ios-sim-lock-test.sh"
         "ios-sim-device-test:bash scripts/tests/ios-sim-device-test.sh"
         "ios-failed-tests-test:bash scripts/tests/ios-failed-tests-test.sh"
+        "ios-ui-shards-test:bash scripts/tests/ios-ui-shards-test.sh"
         "cmux-gate-test:bash scripts/tests/cmux-gate-test.sh"
         "audit-sweep-test:bash scripts/tests/audit-sweep-test.sh"
     )
@@ -700,14 +701,15 @@ _ios-build-for-testing:
     # Written last, so it only exists for a build that actually succeeded (#1530).
     just _ios-inputs-fingerprint > build/dd/Build/Products/ios-inputs.sha256
 
-# Run already-built tests against THIS worktree's sim, without rebuilding.
+# Run already-built tests against THIS worktree's sim (and its five extra
+# devices when parallel), without rebuilding.
 # Driven by the `.xctestrun` the build wrote rather than `-project`/`-scheme`:
 # it already names the bundles and their platform.
 # `filters` is a space-separated list of xcodebuild `-only-testing:` /
 # `-skip-testing:` flags, or "" to run everything the built products contain;
 # `retry` is "1" to rerun up to three failed tests once (#1203, #2269), else "0";
-# `parallel` is "1" to clone simulators and run test classes concurrently,
-# else "0". Shared by `_ios-test-run` (local, everything in one call),
+# `parallel` is "1" to deal test classes across six booted simulators and run
+# them concurrently, else "0". Shared by `_ios-test-run` (local, everything in one call),
 # `ios-test-ui-class` and `ios-snapshots-record`, and CI's self-hosted gate,
 # which runs the unit and UI tiers as separate steps (#1207).
 [private]
@@ -747,36 +749,103 @@ _ios-test-without-building filters retry parallel="0":
         echo "  Running them anyway lets a deliberately broken line pass, which is how a good test gets deleted (#1530)." >&2
         exit 1
     fi
-    # Cloned simulators are opt-in per caller, defaulting off: a clone's test
-    # runner hits "Application failed preflight checks (Busy)" under memory
-    # pressure, which reds the gate for no test reason. Six measured on the
-    # self-hosted M4 over ten runs (#1824): UI step 175s median against 280s
-    # at four, no preflight failures, so the self-hosted CI gate opts in at
-    # six. The local full tier stays sequential since #1480. #1642 fixed the
-    # rename test that used to silently skip its own field-clearing under
-    # clone load and reddened main.
-    flags=()
-    if [ "{{parallel}}" = "1" ]; then
-        flags+=(-parallel-testing-enabled YES -maximum-concurrent-test-simulator-destinations 6)
-    else
-        flags+=(-parallel-testing-enabled NO)
-    fi
+    flags=(-parallel-testing-enabled NO)
     if [ -n "{{filters}}" ]; then
         for f in {{filters}}; do flags+=("$f"); done
     fi
-    # `expect` is the exact number that must pass with none failing, or 0 for
-    # "at least one passes".
-    run_tests() {
-        local expect="$1" status=0
-        shift
-        latest="build/dd/Logs/Test/run-$(date +%Y%m%d-%H%M%S)-$$-$expect.xcresult"
-        # `-collect-test-diagnostics never`: after a refused app launch xcodebuild
-        # otherwise spends a fixed 600s gathering a sysdiagnose-style bundle nobody
-        # reads, which is why a failed full tier took 12 to 21 minutes (#1480).
+    # Parallel is opt-in per caller, defaulting off: a second simulator's test
+    # runner hits "Application failed preflight checks (Busy)" under memory
+    # pressure, which reds the gate for no test reason. Six measured on the
+    # self-hosted M4 (#1824), so the CI gate opts in at six; the local full
+    # tier stays sequential since #1480. Six devices of our own rather than
+    # xcodebuild's clones: its clones ran their first test 60 to 86s into the
+    # step and one of six never started (#2269).
+    udids=("$udid")
+    if [ "{{parallel}}" = "1" ]; then
+        for i in 2 3 4 5 6; do
+            u="$(just _ios-test-sim-udid "$name-$i")"
+            [ -n "$u" ] || u=$(bash ../scripts/ios-sim-device.sh "$name-$i")
+            udids+=("$u")
+        done
+        pids=()
+        for u in "${udids[@]:1}"; do
+            ios_sim_boot_wait "$u" >/dev/null &
+            pids+=($!)
+        done
+        for p in "${pids[@]}"; do wait "$p"; done
+        for u in "${udids[@]:1}"; do
+            xcrun simctl ui "$u" content_size large
+            xcrun simctl uninstall "$u" com.intrada.native >/dev/null 2>&1 || true
+        done
+    fi
+    seconds=build/ui-class-seconds.tsv
+    listed=0
+    # `-collect-test-diagnostics never`: after a refused app launch xcodebuild
+    # otherwise spends a fixed 600s gathering a sysdiagnose-style bundle nobody
+    # reads, which is why a failed full tier took 12 to 21 minutes (#1480).
+    # Each device gets its own derived data, so concurrent runs share no logs.
+    xcodebuild_on() {
+        local device="$1" dd="$2" bundle="$3"
+        shift 3
         xcodebuild test-without-building -xctestrun "${runs[0]}" \
-            -destination "id=$udid" -derivedDataPath build/dd -quiet \
-            -collect-test-diagnostics never -resultBundlePath "$latest" \
-            "$@" || status=$?
+            -destination "id=$device" -derivedDataPath "$dd" -quiet \
+            -collect-test-diagnostics never -resultBundlePath "$bundle" "$@"
+    }
+    # Whole classes, longest first onto the least loaded device, by what each
+    # took last time on this machine. The listing honours the caller's filters,
+    # so a test target added later is dealt out rather than skipped (#1456).
+    run_dealt() {
+        local list=build/ui-test-list.json status=0 i part parts=() pids=() dealt=() made=()
+        rm -rf "$list" build/ui-test-list.xcresult
+        xcodebuild test-without-building -xctestrun "${runs[0]}" -destination "id=$udid" \
+            -derivedDataPath build/dd -quiet -enumerate-tests -test-enumeration-style flat \
+            -test-enumeration-format json -test-enumeration-output-path "$list" \
+            -resultBundlePath build/ui-test-list.xcresult "$@" || return 1
+        listed="$(python3 ../scripts/ios-ui-shards.py count "$list")" || return 1
+        while IFS= read -r line; do dealt+=("$line"); done < <(
+            python3 ../scripts/ios-ui-shards.py classes "$list" \
+                | python3 ../scripts/ios-ui-shards.py plan "${#udids[@]}" "$seconds")
+        for i in "${!udids[@]}"; do
+            [ -n "${dealt[$i]:-}" ] || continue
+            part="${latest%.xcresult}-$((i + 1)).xcresult"
+            parts+=("$part")
+            (
+                start=$(date +%s)
+                code=0
+                # shellcheck disable=SC2086
+                xcodebuild_on "${udids[$i]}" "build/dd-$((i + 1))" "$part" "$@" ${dealt[$i]} || code=$?
+                echo "  simulator $((i + 1)): $(($(date +%s) - start))s, exit $code, ${dealt[$i]//-only-testing:/}"
+                exit "$code"
+            ) &
+            pids+=($!)
+        done
+        [ "${#pids[@]}" -gt 0 ] || return 1
+        for p in "${pids[@]}"; do wait "$p" || status=1; done
+        # A device that wrote no bundle is named, and the rest still count; the
+        # total check below then fails the run for the tests it never ran.
+        for part in "${parts[@]}"; do
+            if [ -d "$part" ]; then made+=("$part"); else echo "✗ no result bundle from ios/$part" >&2; fi
+        done
+        if [ "${#made[@]}" -eq 1 ]; then
+            mv "${made[0]}" "$latest"
+        elif [ "${#made[@]}" -gt 1 ]; then
+            xcrun xcresulttool merge "${made[@]}" --output-path "$latest" >/dev/null || status=1
+            [ ! -d "$latest" ] || rm -rf "${made[@]}"
+        fi
+        return "$status"
+    }
+    # `expect` is the exact number that must pass with none failing, or 0 for
+    # "at least one passes". `spread` is "1" for one xcodebuild per device,
+    # else one on the source.
+    run_tests() {
+        local expect="$1" spread="$2" status=0
+        shift 2
+        latest="build/dd/Logs/Test/run-$(date +%Y%m%d-%H%M%S)-$$-$expect.xcresult"
+        if [ "$spread" = "1" ]; then
+            run_dealt "$@" || status=$?
+        else
+            xcodebuild_on "$udid" build/dd "$latest" "$@" || status=$?
+        fi
         # `-quiet` prints nothing on success, so a passing run is indistinguishable
         # from one that never started, and a failing one never says how much of the
         # suite got to run. Report the counts the result bundle holds either way:
@@ -790,15 +859,21 @@ _ios-test-without-building filters retry parallel="0":
         fi
         # Zero passed is a failure even when xcodebuild is happy: that is the shape
         # an empty run would take. A rerun must pass exactly what it was given, or
-        # a filter that matched nothing would go green.
+        # a filter that matched nothing would go green. A dealt run must account
+        # for every listed test, or one device running nothing hides behind the
+        # other five.
+        local total=0
+        [ "$spread" != "1" ] || total="$listed"
         if ! xcrun xcresulttool get test-results summary --path "$latest" \
-            | python3 -c 'import json,sys; s=json.load(sys.stdin); e=int(sys.argv[1]); print("{} passed, {} failed, {} skipped".format(s["passedTests"], s["failedTests"], s["skippedTests"])); sys.exit(1 if s["passedTests"] == 0 or (e and (s["passedTests"] != e or s["failedTests"])) else 0)' "$expect"; then
+            | python3 -c 'import json,sys; s=json.load(sys.stdin); e=int(sys.argv[1]); t=int(sys.argv[2]); ran=s["passedTests"]+s["failedTests"]+s["skippedTests"]; print("{} passed, {} failed, {} skipped".format(s["passedTests"], s["failedTests"], s["skippedTests"])); t and ran != t and print("✗ {} tests listed, {} reported".format(t, ran), file=sys.stderr); sys.exit(1 if s["passedTests"] == 0 or (e and (s["passedTests"] != e or s["failedTests"])) or (t and ran != t) else 0)' "$expect" "$total"; then
             [ "$status" -ne 0 ] || status=1
         fi
         return "$status"
     }
     status=0
-    run_tests 0 "${flags[@]}" || status=$?
+    run_tests 0 "{{parallel}}" "${flags[@]}" || status=$?
+    [ "{{parallel}}" != "1" ] || [ -z "$latest" ] \
+        || python3 ../scripts/ios-ui-shards.py record "$latest" "$seconds" || true
     [ "$status" -ne 0 ] && [ "{{retry}}" = "1" ] && [ -n "$latest" ] || exit "$status"
     # xcodebuild's own `-retry-tests-on-failure` reran the whole parallel suite
     # after one flake, adding about 100s to a quarter of CI runs (#2269). More
@@ -810,10 +885,9 @@ _ios-test-without-building filters retry parallel="0":
         exit "$status"
     fi
     echo "↻ rerunning ${#failed[@]} failed test(s) once, on $name"
-    # A parallel run shuts the source device down before cloning (#1480).
     ios_sim_boot_wait "$udid" "$name"
     xcrun simctl uninstall "$udid" com.intrada.native >/dev/null 2>&1 || true
-    run_tests "${#failed[@]}" -parallel-testing-enabled NO "${failed[@]}"
+    run_tests "${#failed[@]}" 0 -parallel-testing-enabled NO "${failed[@]}"
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout
@@ -854,10 +928,11 @@ _ios-test-guard:
 _ios-test-sim-name:
     @printf 'intrada-test-26-5-%s\n' "$(basename "$(git rev-parse --show-toplevel)" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
 
-# UDID of THIS worktree's snapshot sim, or empty if it doesn't exist yet.
+# UDID of THIS worktree's snapshot sim, or of the named one (the CI gate's
+# extra devices), or empty if it doesn't exist yet.
 [private]
-_ios-test-sim-udid:
-    @xcrun simctl list devices --json | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for v in d.values() for x in v if x['name']=='$(just _ios-test-sim-name)'), ''))"
+_ios-test-sim-udid device="":
+    @xcrun simctl list devices --json | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for v in d.values() for x in v if x['name']==sys.argv[1]), ''))" "{{ if device == "" { `just _ios-test-sim-name` } else { device } }}"
 
 # Delete THIS worktree's snapshot sim (created by `ios-test`). Only ever removes
 # the device named for the current worktree — never another worktree's or the
@@ -867,16 +942,18 @@ _ios-test-sim-udid:
 ios-test-sim-clean:
     #!/usr/bin/env bash
     set -euo pipefail
-    name="$(just _ios-test-sim-name)"
-    udid="$(just _ios-test-sim-udid)"
-    if [ -n "$udid" ]; then
-        # `simctl delete` refuses a booted device, and `ios-test` leaves its sim
-        # booted — shut it down first (ignore "already shutdown").
-        xcrun simctl shutdown "$udid" 2>/dev/null || true
-        xcrun simctl delete "$udid" && echo "✓ deleted $name ($udid)"
-    else
-        echo "✓ no sim named $name — nothing to clean"
-    fi
+    base="$(just _ios-test-sim-name)"
+    for name in "$base" "$base-2" "$base-3" "$base-4" "$base-5" "$base-6"; do
+        udid="$(just _ios-test-sim-udid "$name")"
+        if [ -n "$udid" ]; then
+            # `simctl delete` refuses a booted device, and `ios-test` leaves its sim
+            # booted, so shut it down first (ignore "already shutdown").
+            xcrun simctl shutdown "$udid" 2>/dev/null || true
+            xcrun simctl delete "$udid" && echo "✓ deleted $name ($udid)"
+        elif [ "$name" = "$base" ]; then
+            echo "✓ no sim named $name, nothing to clean"
+        fi
+    done
 
 [doc("Generate the Swift types into ios/generated/SharedTypes with facet")]
 [group('iOS')]

@@ -476,6 +476,14 @@ silently skipped its own field-clearing under load started reddening main;
 #1642 fixed that test and turned clones back on in the self-hosted gate.
 Raised to six on 2026-09-14 (#1824): ten runs on the M4 gave a 175s UI-step
 median against 280s at four, no preflight failures across the run.
+Since 2026-10-02 the six are the gate's own devices, not xcodebuild's clones
+(#2269). The clones ran their first test 60 to 86s into the step and one of six
+never started, so the gate keeps `intrada-test-26-5-intrada` and `-2` to `-6`
+booted between jobs, deals whole classes across them by what each took last
+time (`ios/build/ui-class-seconds.tsv`, longest first onto the least loaded),
+runs one `xcodebuild` per device, and merges the result bundles. The step log
+names each device's classes and time; `scripts/ios-ui-shards.py` does the
+dealing.
 `-collect-test-diagnostics never` applies to CI too, so a failing job's result
 bundle no longer carries a sysdiagnose, in exchange for not spending 600s
 collecting one after a refused launch (#1480).
