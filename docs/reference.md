@@ -26,6 +26,10 @@ just ios-test-full         # adds XCUITests; CI runs them on every PR, so /ship 
 just ios-snapshots-check   # fail orphaned / oversized snapshot references
 just ios-snapshots-optimize # drop Xcode's opaque alpha channel (~75% smaller)
 just check-all             # check + the fast ios-test tier
+just android-gen           # regenerate the Kotlin types, bridge and native libraries
+just android-run           # build + launch on the intrada-api36 emulator + screenshot
+just android-test          # JVM unit + Roborazzi snapshot tests, with counts
+just android-fmt           # format Kotlin sources and build scripts (ktfmt)
 just testflight            # signed Release .ipa → TestFlight (needs setup)
 just worktree-new <name>   # new worktree, seeded from the main checkout's warm caches
 just worktree-rm <name>    # clean up a worktree's sim, then remove it

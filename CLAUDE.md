@@ -6,12 +6,12 @@ in .claude/rules/. A rule leaves when a gate enforces it, when its incident is o
 old and has not recurred, or when its surface is deleted; silent-breach invariants never
 leave. Last reviewed: 2026-09-14. -->
 
-## Focus: native iOS only
+## Focus: two native shells on one core
 
-The native SwiftUI app on the Crux core is the **only** shell
-([`specs/native-ios.md`](specs/native-ios.md)). The Leptos web shell and the Tauri iOS host
-were deleted in 2026-07 (`docs/rebuild-review.md`): never resurrect them or assume they
-exist. **A request implying web work: confirm the platform first.**
+SwiftUI ([`specs/native-ios.md`](specs/native-ios.md)) ships; Compose in `android/`
+([`specs/android-shell.md`](specs/android-shell.md), #2220) is being built. The web and Tauri
+shells were deleted in 2026-07 (`docs/rebuild-review.md`): never resurrect them. **A request
+implying web work: confirm the platform first.**
 
 ## Project
 
@@ -23,7 +23,7 @@ score how it went. Pillars: **Plan** (library), **Practice** (the built session)
 reads GitHub. There is no status file, deliberately.
 
 Crates: `intrada-core` (pure Crux core, no I/O), `intrada-ffi` (UniFFI bridge generating the
-Swift bindings). `ios/` is the SwiftUI app (iOS 17+, GRDB on-device). Rust 2021, MSRV 1.90.
+Swift and Kotlin bindings). `ios/` (iOS 17+, GRDB), `android/` (API 28+). Rust 2021, MSRV 1.90.
 
 ## Commands
 
@@ -33,12 +33,13 @@ just ios              # regen bindings (if core changed) + open Xcode
 just ios-run          # build + launch on simulator + screenshot (seeded data)
 just ios-test         # unit + snapshot (fast tier)
 just ios-test-full    # adds XCUITests; CI runs them on every PR, so /ship does not (#2114)
+just android-run      # regen bindings + emulator + screenshot; android-test: JVM + snapshots
 ```
 
 - **Drive iOS through the `just` recipes, never a bare `xcodebuild` or an MCP build, run or test call.** Xcode's `RenderPreview` is the one exception ([`docs/ios-testing.md`](docs/ios-testing.md)).
   They carry the destination pin, `CODE_SIGNING_ALLOWED=NO`, the freshness fingerprint and
   the concurrency guard (#1536, #1537). A passing run prints its own counts; silence is
-  never the evidence.
+  never the evidence. Android: the `android-*` recipes, per `android-quality.md`.
 - **Run `just check` before pushing**, plus `just ios-fmt-check` for `ios/` (fix with
   `just ios-fmt`); local green means CI green bar MSRV and coverage (`just msrv`,
   `just coverage`), so keep the justfile and `ci.yml` in step.
@@ -61,18 +62,18 @@ for symbols; never rebuild it without `.graphifyignore`.
 ## Architecture (non-negotiables)
 
 ```text
-User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → Shell (Swift) → I/O
+User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → Shell → I/O
 ```
 
 1. **Core owns all logic.** The shell never understands domain types.
-2. **The shell is a dumb pipe.** It fulfils persistence via GRDB and renders the
-   `ViewModel`. No business rules, validation, domain decisions or domain state in Swift (UI
+2. **The shell is a dumb pipe.** It fulfils persistence and renders the `ViewModel`. No
+   business rules, validation, domain decisions or domain state in Swift or Kotlin (UI
    interaction state only): if you are tempted, it belongs in `intrada-core` as an `Event`
-   or `Command`. Crash recovery: UserDefaults (`AppEffect::SaveSessionInProgress`); local
-   data: GRDB (`PersistenceOperation`).
+   or `Command`. Crash recovery: UserDefaults or SharedPreferences (`AppEffect`); local
+   data: GRDB or `androidx.sqlite` (`PersistenceOperation`).
 3. **Typed bindings, no hand-written FFI.** `Event` / `Effect` / `ViewModel` cross the
-   bridge as generated bincode. Never hand-edit `ios/generated/`; fix the Rust type and
-   regenerate.
+   bridge as generated bincode. Never hand-edit `ios/generated/` or `android/generated/`; fix
+   the Rust type and regenerate both.
 
 - **Validation** lives in `crates/intrada-core/src/validation.rs`.
 - **Mutate response**: writes commit locally, no refetch. Temp-id for new entities,
