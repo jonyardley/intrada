@@ -67,7 +67,7 @@ struct StartHereCard: View {
       tick(state)
       Text(step.title)
         .font(state == .current ? IntradaFont.bodyMedium : IntradaFont.body)
-        .foregroundStyle(state == .later ? IntradaColor.inkFaint : IntradaColor.ink)
+        .foregroundStyle(state == .later ? IntradaColor.inkSecondary : IntradaColor.ink)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
       if state == .current {
