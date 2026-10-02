@@ -43,18 +43,35 @@ final class FirstRunUITests: XCTestCase {
     assertRelaunchSkipsTheWelcome(app)
   }
 
-  /// The reset clears the welcome flag with the profile, so the welcome is up
-  /// on an empty store whatever an earlier run left.
+  func testAddingAFirstPieceLandsOnPractice() {
+    let app = launchFresh()
+    app.control("firstRun.setUpProfile", spoken: "Set up profile", timeout: contendedTimeout).tap()
+    app.control("firstRun.skipProfile", spoken: "Skip").tap()
+    app.control("firstRun.typePiece", spoken: "Type a piece").tap()
+    let title = app.element("itemForm.title")
+    XCTAssertTrue(title.waitForExistence(timeout: 5), "the add form")
+    title.tap()
+    title.typeText("Clair de Lune")
+    app.control("itemForm.confirm", spoken: "Add").tap()
+
+    XCTAssertTrue(
+      app.control("practice.startHere.next", spoken: "Build a session", timeout: 10).exists,
+      "Practice, with the next step after the piece")
+    XCTAssertTrue(app.tabBars.buttons["Practice"].isSelected, "the app opens on Practice")
+  }
+
+  /// The reset clears the welcome flag with the profile and the store starts
+  /// empty, so the welcome is up whatever an earlier run left.
   private func launchFresh() -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["--disable-animations", "--reset-profile"]
+    app.launchArguments = ["--disable-animations", "--reset-profile", "--empty-store"]
     app.launch()
     return app
   }
 
   private func assertRelaunchSkipsTheWelcome(_ app: XCUIApplication) {
     app.terminate()
-    app.launchArguments = ["--disable-animations"]
+    app.launchArguments = ["--disable-animations", "--empty-store"]
     app.launch()
     XCTAssertTrue(
       app.tabBars.buttons["Practice"].waitForExistence(timeout: contendedTimeout), "the app")

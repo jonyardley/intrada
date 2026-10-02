@@ -57,7 +57,6 @@ struct StartHereCard: View {
       }
     }
     .cardSurface()
-    .accessibilityIdentifier("practice.startHere")
   }
 
   private enum RowState { case done, current, later }
