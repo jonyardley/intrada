@@ -5,15 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
-import com.intrada.android.core.withIds
-import com.intrada.android.ui.LibraryScreen
+import com.intrada.android.ui.LibraryRoute
 import com.intrada.shared.Event
 import java.util.TimeZone
 
@@ -39,11 +36,7 @@ class MainActivity : ComponentActivity() {
                 else Event.StartApp
             )
         }
-        setContent {
-            val viewModel by store.viewModel.collectAsState()
-            val rows by store.libraryRows.collectAsState()
-            LibraryScreen(rows.withIds(viewModel?.visibleIds.orEmpty()))
-        }
+        setContent { LibraryRoute(store) }
     }
 
     companion object {

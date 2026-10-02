@@ -1,7 +1,10 @@
 package com.intrada.android
 
+import com.intrada.android.core.ItemStore
 import com.intrada.shared.Item
 import com.intrada.shared.ItemKind
+import com.intrada.shared.PersistenceOperation
+import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Tempo
 
 object Fixtures {
@@ -47,4 +50,9 @@ object Fixtures {
                 composer = null,
             ),
         )
+
+    object FailingItemStore : ItemStore {
+        override fun run(operation: PersistenceOperation): PersistenceOutput =
+            error("disk unavailable")
+    }
 }
