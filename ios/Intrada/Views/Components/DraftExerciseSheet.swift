@@ -24,7 +24,9 @@ struct DraftExerciseSheet: View {
               HairlineDivider()
               KeyPicker(label: "Key", key: $key, modality: $modality)
               HairlineDivider()
-              FormField(label: "Beats per minute", text: $bpm, keyboard: .numberPad)
+              FormField(
+                label: "Beats per minute", text: $bpm, keyboard: .numberPad,
+                identifier: "draftExercise.bpm")
             }
             .cardSurface()
 
