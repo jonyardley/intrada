@@ -20,7 +20,6 @@ FormErrorField
 FormErrorTarget
 HighlighterColour
 InstrumentIcon
-ItemEvent
 ItemPracticeSummary
 ItemRanking
 LastPractisedView
@@ -31,7 +30,6 @@ LinkedExerciseView
 ListQuery
 Modality
 NeglectedItem
-PersistenceOperation
 PhotoDraft
 PhotoRecognitionStatus
 PhotoRecognitionView
@@ -82,6 +80,3 @@ ViewModel.availableComposers
 ViewModel.availableTags
 ViewModel.lastPractised
 ViewModel.profile
-ViewModel.visibleExercises
-ViewModel.visiblePieces
-Effect  # decoded on every LiveBridge call, never named

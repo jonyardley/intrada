@@ -363,10 +363,11 @@ expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-h
 # ── The bridge-test check ───────────────────────────────────────────────────
 
 bridge="$work/bridge"
-mkdir -p "$bridge/core" "$bridge/tests"
+mkdir -p "$bridge/core" "$bridge/tests" "$bridge/android"
 bridge_check() {
   BRIDGE_CORE_ROOT="$bridge/core" BRIDGE_VIEWMODEL="$bridge/core/model.rs" \
-    BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ALLOWLIST="$bridge/allow.txt" \
+    BRIDGE_TESTS_ROOT="$bridge/tests" BRIDGE_ANDROID_TESTS_ROOT="$bridge/android" \
+    BRIDGE_ALLOWLIST="$bridge/allow.txt" \
     bash "$repo_root/scripts/check-bridge-tests.sh"
 }
 facet='#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]'
@@ -385,6 +386,7 @@ pub struct Beta;
 EOF
 printf 'let a: Alpha = .one\nlet v = ViewModel()\n_ = view.upNext\n' >"$bridge/tests/SessionBridgeTests.swift"
 printf '# frozen\nBeta\nViewModel.errorSeq  # never read\n' >"$bridge/allow.txt"
+printf 'val bridge = LiveBridge()\n' >"$bridge/android/BridgeRoundTripTest.kt"
 expect 0 "every type and field named or allowlisted" bridge_check
 
 printf '%s\n// Boxing changes the wire.\n#[allow(dead_code)]\npub enum Gamma { A }\n' "$facet" >"$bridge/core/gamma.rs"
@@ -405,6 +407,13 @@ printf '#[effect(facet_typegen)]\npub enum Effect { Render }\n' >"$bridge/core/e
 expect 1 "the effect enum, with no test" bridge_check
 rm "$bridge/core/eta.rs"
 
+printf '%s\npub enum Iota { A }\n' "$facet" >"$bridge/core/iota.rs"
+printf 'val i = Iota.A\n' >"$bridge/android/StoreTest.kt"
+expect 1 "a new type named only in a Kotlin test that is not a round trip" bridge_check
+printf 'val i = Iota.A\n' >"$bridge/android/LibraryRoundTripTest.kt"
+expect 0 "a new type named in a Kotlin round trip test" bridge_check
+rm "$bridge/core/iota.rs" "$bridge/android/StoreTest.kt" "$bridge/android/LibraryRoundTripTest.kt"
+
 cp "$bridge/core/model.rs" "$bridge/model.orig"
 perl -pi -e 's/^(    pub error_seq: u64,\n)/$1    pub notice_seq: u64,\n/' "$bridge/core/model.rs"
 expect 1 "a new ViewModel field with no test" bridge_check
@@ -413,6 +422,9 @@ expect 1 "a new field named only as a variable or an event case" bridge_check
 printf '_ = view.noticeSeq\n' >"$bridge/tests/LibraryBridgeTests.swift"
 expect 0 "a new field read off the view" bridge_check
 rm "$bridge/tests/LibraryBridgeTests.swift"
+printf 'assertEquals(0uL, view.noticeSeq)\n' >"$bridge/android/LibraryRoundTripTest.kt"
+expect 0 "a new field read off the view in Kotlin" bridge_check
+rm "$bridge/android/LibraryRoundTripTest.kt"
 mv "$bridge/model.orig" "$bridge/core/model.rs"
 
 printf 'let b = Beta()\n' >"$bridge/tests/LibraryBridgeTests.swift"
@@ -426,8 +438,91 @@ mv "$bridge/allow.orig" "$bridge/allow.txt"
 
 expect 0 "the fixture back where it started" bridge_check
 expect 2 "a tests root that is not there" env BRIDGE_TESTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-bridge-tests.sh"
+expect 2 "an Android tests root that is not there" env BRIDGE_ANDROID_TESTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-bridge-tests.sh"
+mv "$bridge/android/BridgeRoundTripTest.kt" "$bridge/android/BridgeRoundTrip.kt"
+expect 2 "an Android tests root with no round trip test" bridge_check
+mv "$bridge/android/BridgeRoundTrip.kt" "$bridge/android/BridgeRoundTripTest.kt"
 
 expect 0 "the bridge this repo actually ships" bash "$repo_root/scripts/check-bridge-tests.sh"
+
+# ── The comment density check ───────────────────────────────────────────────
+
+density="$work/density"
+mkdir -p "$density"
+cd "$density"
+git init -q -b main .
+git config user.email "test@example.com"
+git config user.name "Hygiene self-test"
+git config commit.gpgsign false
+printf 'base\n' >README.md
+git add -A
+git commit -qm "base"
+git checkout -qb feature
+
+commented_source() {
+  for i in $(seq 1 30); do printf 'val v%s = %s\n' "$i" "$i"; done
+  for i in $(seq 1 10); do printf '// narrating line %s\n' "$i"; done
+}
+density_check() {
+  COMMENT_CHECK_BASE=main bash "$repo_root/scripts/check-comment-density.sh"
+}
+commit_only() {
+  git rm -rqf --ignore-unmatch src >/dev/null
+  mkdir -p src
+  commented_source >"src/$1"
+  git add -A
+  git commit -qm "$1"
+}
+
+commit_only Screen.txt
+expect 0 "a heavily commented file of a kind the check does not read" density_check
+commit_only Screen.kt
+expect 1 "a heavily commented Kotlin file" density_check
+commit_only build.gradle.kts
+expect 1 "a heavily commented Gradle Kotlin script" density_check
+commit_only Screen.swift
+expect 1 "a heavily commented Swift file" density_check
+expect 0 "the same file with the check bypassed" env SKIP_COMMENT_CHECK=1 COMMENT_CHECK_BASE=main \
+  bash "$repo_root/scripts/check-comment-density.sh"
+
+cd "$repo_root"
+
+# ── The snapshot check ──────────────────────────────────────────────────────
+
+snaps="$work/snaps"
+mkdir -p "$snaps/ios/__Snapshots__/LibrarySnapshotTests" "$snaps/android/kotlin" "$snaps/android/snapshots"
+snapshot_check() {
+  SNAPSHOT_IOS_ROOT="$snaps/ios" SNAPSHOT_ANDROID_ROOT="$snaps/android" \
+    bash "$repo_root/scripts/check-snapshots.sh"
+}
+printf 'func testLibrary() {}\n' >"$snaps/ios/LibrarySnapshotTests.swift"
+printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testLibrary.1.png"
+cat >"$snaps/android/kotlin/LibraryScreenSnapshotTest.kt" <<'EOF'
+fun library() = captureRoboImage("src/test/snapshots/library.png") { LibraryScreen(rows) }
+// captureRoboImage("src/test/snapshots/retired.png")
+EOF
+printf 'png' >"$snaps/android/snapshots/library.png"
+expect 0 "every reference named by a test and small" snapshot_check
+
+printf 'png' >"$snaps/android/snapshots/detail.png"
+expect 1 "an Android reference no test names" snapshot_check
+rm "$snaps/android/snapshots/detail.png"
+
+printf 'png' >"$snaps/android/snapshots/retired.png"
+expect 1 "an Android reference named only in a comment" snapshot_check
+rm "$snaps/android/snapshots/retired.png"
+
+head -c 200001 /dev/zero >"$snaps/android/snapshots/library.png"
+expect 1 "an Android reference over the ceiling" snapshot_check
+head -c 200000 /dev/zero >"$snaps/android/snapshots/library.png"
+expect 0 "an Android reference exactly at the ceiling" snapshot_check
+printf 'png' >"$snaps/android/snapshots/library.png"
+
+printf 'png' >"$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
+expect 1 "an iOS reference no test names" snapshot_check
+rm "$snaps/ios/__Snapshots__/LibrarySnapshotTests/testRetired.1.png"
+
+expect 0 "the references this repo actually ships" bash "$repo_root/scripts/check-snapshots.sh"
 
 # ── The dash check ──────────────────────────────────────────────────────────
 

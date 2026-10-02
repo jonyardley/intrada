@@ -7,6 +7,10 @@
 # weak one. The allowlist froze the gaps found on 2026-09-30 and only shrinks: an
 # entry that is now tested, or no longer exists, fails until it is removed.
 #
+# A Kotlin round trip through LiveBridge counts the way a Swift one does: it is
+# a second decoder of the same wire, and the check asks only that some shell
+# test names the type (#2265).
+#
 # The roots are overridable so the self-test can point them at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 
@@ -17,9 +21,10 @@ cd "$(git rev-parse --show-toplevel)"
 core="${BRIDGE_CORE_ROOT:-crates}"
 model="${BRIDGE_VIEWMODEL:-crates/intrada-core/src/model.rs}"
 tests="${BRIDGE_TESTS_ROOT:-ios/IntradaTests}"
+android_tests="${BRIDGE_ANDROID_TESTS_ROOT:-android/app/src/test/kotlin}"
 allowlist="${BRIDGE_ALLOWLIST:-scripts/bridge-tests-allowlist.txt}"
 
-for path in "$core" "$model" "$tests" "$allowlist"; do
+for path in "$core" "$model" "$tests" "$android_tests" "$allowlist"; do
   if [ ! -e "$path" ]; then
     echo "✗ check-bridge-tests: no $path to read" >&2
     exit 2
@@ -59,11 +64,13 @@ if [ -z "$types" ] || [ -z "$fields" ]; then
   exit 2
 fi
 
-bridge_files=$(find "$tests" \( -name '*BridgeTests.swift' -o -name 'RowsBridge.swift' \) | sort)
-if [ -z "$bridge_files" ]; then
-  echo "✗ check-bridge-tests: no LiveBridge tests under $tests" >&2
+swift_files=$(find "$tests" \( -name '*BridgeTests.swift' -o -name 'RowsBridge.swift' \) | sort)
+kotlin_files=$(find "$android_tests" -name '*RoundTripTest.kt' | sort)
+if [ -z "$swift_files" ] || [ -z "$kotlin_files" ]; then
+  echo "✗ check-bridge-tests: no LiveBridge tests under $tests or under $android_tests" >&2
   exit 2
 fi
+bridge_files=$(printf '%s\n%s\n' "$swift_files" "$kotlin_files")
 
 named=$(printf '%s\n' "$bridge_files" | tr '\n' '\0' |
   xargs -0 perl -ne 's{//.*}{}; print "$_\n" for /\b([A-Za-z_]\w*)\b/g' | sort -u)
@@ -92,7 +99,7 @@ status=0
 if [ ${#untested[@]} -gt 0 ]; then
   echo "✗ on the bridge with no LiveBridge test naming it (#846, #2101):" >&2
   printf '    %s\n' "${untested[@]}" >&2
-  echo "  Drive it through RowsBridge in a *BridgeTests.swift file and assert on what comes back." >&2
+  echo "  Drive it through RowsBridge in a *BridgeTests.swift file, or LiveBridge in a *RoundTripTest.kt file, and assert on what comes back." >&2
   status=1
 fi
 if [ ${#stale[@]} -gt 0 ]; then

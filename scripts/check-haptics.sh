@@ -5,6 +5,9 @@
 # sensoryFeedback modifier is allowed for .selection only: a selection tick
 # follows no send, so it has nothing to wait for.
 #
+# Swift only: the Android shell has no haptic helper yet, so there is no one
+# place a Kotlin haptic could be required to go through (#2265).
+#
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 
