@@ -506,8 +506,8 @@ jobs:
       - name: Generate the Kotlin bindings and native libraries
         run: just android-gen
       # compareRoborazziDebug, not testDebugUnitTest: without a Roborazzi task the snapshot test
-      # returns before composing. The reference is recorded on macOS, so a difference here is
-      # reported and uploaded to read, never failed on.
+      # returns before composing. Compare never fails by itself, so the next step fails on a
+      # difference once the upload has a diff to read (#2259).
       - name: Build and test
         working-directory: android
         run: ./gradlew ktfmtCheck :app:assembleDebug :app:compareRoborazziDebug
@@ -517,6 +517,11 @@ jobs:
           summary=android/app/build/test-results/roborazzi/debug/results-summary.json
           if [ -f "$summary" ]; then
             echo "Roborazzi: $(jq -c .summary "$summary")" | tee -a "$GITHUB_STEP_SUMMARY"
+            mismatched=$(jq '.summary.changed + .summary.added' "$summary")
+            if [ "$mismatched" -gt 0 ]; then
+              echo "::error::$mismatched Android snapshot(s) no longer match the reference; the diff is in the android-roborazzi artifact"
+              exit 1
+            fi
           else
             echo "Roborazzi wrote no summary, so the snapshot test did not compose" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
