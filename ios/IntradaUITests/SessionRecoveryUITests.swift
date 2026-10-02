@@ -26,7 +26,7 @@ final class SessionRecoveryUITests: XCTestCase {
 
     // Relaunch WITHOUT seeding (a seeded launch skips recovery on purpose).
     let relaunch = XCUIApplication()
-    relaunch.launchArguments = ["--disable-animations"]
+    relaunch.launchArguments = ["--disable-animations", "--skip-welcome"]
     relaunch.launch()
 
     relaunch.tabBars.buttons["Practice"].tap()
@@ -96,7 +96,7 @@ final class SessionRecoveryUITests: XCTestCase {
   /// Relaunch without seeding, since a seeded launch skips recovery on purpose.
   private func relaunchAndResume() -> XCUIApplication {
     let relaunch = XCUIApplication()
-    relaunch.launchArguments = []
+    relaunch.launchArguments = ["--skip-welcome"]
     relaunch.launch()
     relaunch.tabBars.buttons["Practice"].tap()
     relaunch.control("practice.resume", spoken: "Resume the interrupted session", timeout: 10)

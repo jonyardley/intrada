@@ -8,8 +8,17 @@ enum UITestFlags {
   static var seedSampleData: Bool { has("--seed-sample-data") }
 
   /// The profile outlives the app in UserDefaults, so a UI test that proves a
-  /// save survives a relaunch starts by forgetting the last run's.
+  /// save survives a relaunch starts by forgetting the last run's, and meets
+  /// the welcome again.
   static var resetProfile: Bool { has("--reset-profile") }
+
+  /// An unseeded relaunch on an empty store would otherwise open on the
+  /// welcome, which a real install only reaches with nothing to recover.
+  static var skipWelcome: Bool { has("--skip-welcome") }
+
+  /// The welcome needs an empty library and history, and a simulator clone
+  /// keeps whatever earlier tests wrote to disk (#2242).
+  static var emptyStore: Bool { has("--empty-store") }
 
   /// Foundation Models runs in a simulator when the *host Mac* has Apple
   /// Intelligence on, putting a slow, nondeterministic call in the unit suite.

@@ -41,8 +41,8 @@ struct ProfileEditSheet: View {
           ScrollView {
             VStack(alignment: .leading, spacing: IntradaSpacing.card) {
               iconCard
-              fields
-              swatches
+              ProfileNameFields(name: $name, instrument: $instrument, faultedField: faultedField)
+              HighlighterSwatches(colour: $colour)
             }
             .padding(IntradaSpacing.card)
           }
@@ -120,82 +120,16 @@ struct ProfileEditSheet: View {
     .cardSurface()
   }
 
-  private var fields: some View {
-    VStack(spacing: 0) {
-      FormField(
-        label: "Name", text: $name, placeholder: "Your name",
-        autocapitalization: .words, faulted: faultedField == .name,
-        identifier: "profileEdit.name")
-      HairlineDivider()
-      AutocompleteField(
-        label: "Instrument", text: $instrument, placeholder: "e.g. Cello",
-        suggestions: InstrumentNames.suggestions, faulted: faultedField == .instrument,
-        identifier: "profileEdit.instrument")
-    }
-    .cardSurface()
-  }
-
-  private var swatches: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Highlighter")
-      LazyVGrid(
-        columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 4),
-        spacing: IntradaSpacing.cardCompact
-      ) {
-        ForEach(HighlighterColour.all, id: \.self) { swatch in
-          Button {
-            colour = swatch
-            Haptic.selection.play()
-          } label: {
-            VStack(spacing: 6) {
-              Circle()
-                .fill(IntradaColor.marker(swatch))
-                .frame(width: 40, height: 40)
-                .overlay {
-                  if swatch == colour {
-                    Image(systemName: "checkmark")
-                      .iconSize(.inline, weight: .bold)
-                      .foregroundStyle(IntradaColor.onMarker)
-                  }
-                }
-              Text(swatch.label)
-                .font(IntradaFont.metaMedium)
-                .foregroundStyle(swatch == colour ? IntradaColor.ink : IntradaColor.inkSecondary)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(swatch.label)
-          .accessibilityIdentifier("profileEdit.highlighter.\(swatch)")
-          .accessibilityAddTraits(swatch == colour ? .isSelected : [])
-        }
-      }
-      .padding(.vertical, IntradaSpacing.cardCompact)
-      .padding(.horizontal, IntradaSpacing.controlGap)
-      .cardSurface()
-    }
-  }
-
   // Never dismiss or celebrate until the core has accepted (#1595).
   private func save() {
     formError = nil
     faultedField = nil
-    let accepted = store.sendAccepted(
-      .profile(
-        .save(Profile(name: name, instrument: instrument, iconChoice: iconChoice, colour: colour))))
-    if let error = store.viewModel?.error
-      ?? (accepted ? nil : "Couldn't save your profile. Try again.")
-    {
-      if case .profile(let field) = store.viewModel?.errorTarget {
-        faultedField = field
-      }
-      withAnimation { formError = error }
-      store.send(.clearError)
-      Haptic.error.play()
-      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
+    let profile = Profile(
+      name: name, instrument: instrument, iconChoice: iconChoice, colour: colour)
+    if let refusal = store.saveProfile(profile) {
+      faultedField = refusal.field
+      withAnimation { formError = refusal.message }
     } else {
-      Haptic.success.play()
       dismiss()
     }
   }

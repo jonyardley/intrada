@@ -11,9 +11,11 @@ struct LibraryAddScreen: View {
   @State private var expandsExercises = false
   @State private var editingChart = false
   @State private var choosingExercises = false
+  private var opensCamera = false
 
-  init(defaultKind: ItemKind = .piece) {
+  init(defaultKind: ItemKind = .piece, opensCamera: Bool = false) {
     _form = State(initialValue: ItemFormModel(kind: defaultKind))
+    self.opensCamera = opensCamera
   }
 
   #if DEBUG
@@ -40,7 +42,8 @@ struct LibraryAddScreen: View {
           photoId: recognition?.photoId,
           status: recognition?.status ?? .idle,
           readNothing: recognition?.readNothing ?? false,
-          onCaptured: { store.send(.item(.readPhoto(photoId: $0))) })
+          onCaptured: { store.send(.item(.readPhoto(photoId: $0))) },
+          opensCamera: opensCamera)
       },
       sections: {
         if showsSections {

@@ -19,6 +19,7 @@ struct IntradaApp: App {
 
   private static func openOnDiskStore() -> LibraryStore? {
     do {
+      if UITestFlags.emptyStore { return try LibraryStore.inMemory() }
       return try LibraryStore.onDisk()
     } catch {
       report(error, "store-open")

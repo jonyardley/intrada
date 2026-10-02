@@ -9,7 +9,6 @@ import SwiftUI
 struct SessionSummaryScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.marker) private var marker
   @State private var note = ""
   @State private var entryNotes: [String: String] = [:]
   @State private var expandedEntryId: String?
@@ -301,18 +300,9 @@ struct SessionSummaryScreen: View {
 
   private var controls: some View {
     VStack(spacing: 10) {
-      Button {
+      MarkerButton("Save session") {
         store.send(.session(.saveSession(now: SessionClock.nowRFC3339())))
-      } label: {
-        Text("Save session")
-          .font(IntradaFont.button)
-          .foregroundStyle(IntradaColor.onMarker)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, IntradaSpacing.card)
-          .background(marker)
-          .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }
-      .buttonStyle(PressRebound())
       .accessibilityIdentifier("summary.save")
       Button("Discard") { confirmingDiscard = true }
         .font(IntradaFont.bodyMedium)
