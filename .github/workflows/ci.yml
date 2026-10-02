@@ -113,7 +113,7 @@ jobs:
       # rather than an unpinned `brew install xcodegen` (#1556). Each half
       # fails loudly when its pin is missing, so a reworded cache key cannot
       # turn the guard into a green no-op.
-      - name: Version pins agree (cargo-swift, xcodegen and sentry-cli across files)
+      - name: Version pins agree (cargo-swift, xcodegen, sentry-cli and the Android NDK across files)
         run: |
           swift_pinned=$(grep -oE '"cargo:cargo-swift" = "[^"]+"' mise.toml | cut -d'"' -f4)
           if [ -z "$swift_pinned" ]; then
@@ -163,6 +163,31 @@ jobs:
             echo "sentry-cli pins disagree across the workflows: $sentry_pins"
             exit 1
           fi
+          # The NDK is pinned once, in android/gradle.properties, and both the
+          # android-package recipe and the android job must read it from there
+          # rather than spell a version of their own (#2264).
+          ndk_pin=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
+          if ! printf '%s' "$ndk_pin" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "no exact intrada.ndkVersion in android/gradle.properties: the guard would be a no-op"
+            exit 1
+          fi
+          if ! grep -qxE '[[:space:]]*ndk="\$\(sed .*intrada.*android/gradle\.properties\)"' justfile; then
+            echo "the android-package recipe no longer reads the NDK pin from android/gradle.properties"
+            exit 1
+          fi
+          if ! grep -qxE '[[:space:]]*ndk=\$\(sed .*intrada.*android/gradle\.properties\)' .github/workflows/ci.yml \
+            || ! grep -qxE '[[:space:]]*sdkmanager .*"ndk;\$\{ndk\}"' .github/workflows/ci.yml; then
+            echo "the android job no longer installs the NDK pinned in android/gradle.properties"
+            exit 1
+          fi
+          ndk_spelt=$(grep -ohE '(ndk[;/]|NDK_VERSION: "?)[0-9]+\.[0-9]+\.[0-9]+' \
+            justfile .github/workflows/*.yml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u || true)
+          for v in $ndk_spelt; do
+            if [ "$v" != "$ndk_pin" ]; then
+              echo "an NDK version $v is spelt outside android/gradle.properties, which pins $ndk_pin"
+              exit 1
+            fi
+          done
 
   test:
     name: Test
@@ -481,8 +506,6 @@ jobs:
     timeout-minutes: 30
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.android == 'true'
-    env:
-      ANDROID_NDK_VERSION: "28.2.13676358"
     steps:
       - uses: actions/checkout@v7
       # rust-toolchain.toml lists no targets, so the two Android ones are added here.
@@ -506,8 +529,8 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Install the SDK platform and NDK
         run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${ANDROID_NDK_VERSION}"
-          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+          ndk=$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${ndk}"
       # Without the key, setup-gradle cannot store the configuration cache, which
       # can hold secrets, so every run configures from scratch (27s cold, #2270).
       - uses: gradle/actions/setup-gradle@v6

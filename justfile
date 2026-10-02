@@ -1039,11 +1039,12 @@ android-package profile="debug":
         *) echo "✗ profile must be debug or release, not '{{profile}}'" >&2; exit 1 ;;
     esac
     sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
-    if [ -z "${ANDROID_NDK_HOME:-}" ]; then
-        ANDROID_NDK_HOME="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
-        export ANDROID_NDK_HOME
-    fi
-    [ -d "${ANDROID_NDK_HOME:-}" ] || { echo "✗ no NDK under $sdk/ndk; set ANDROID_NDK_HOME" >&2; exit 1; }
+    ndk="$(sed -n 's/^intrada\.ndkVersion=//p' android/gradle.properties)"
+    [ -n "$ndk" ] || { echo "✗ no intrada.ndkVersion in android/gradle.properties" >&2; exit 1; }
+    # The pin wins over a preset ANDROID_NDK_HOME: CI's runner image sets one to its own NDK.
+    export ANDROID_NDK_HOME="$sdk/ndk/$ndk" ANDROID_NDK_ROOT="$sdk/ndk/$ndk"
+    grep -qx "Pkg.Revision *= *$ndk" "$ANDROID_NDK_HOME/source.properties" 2>/dev/null \
+        || { echo "✗ NDK $ndk is not installed; run: sdkmanager \"ndk;$ndk\"" >&2; exit 1; }
     rm -rf android/generated/jniLibs android/generated/host android/generated/kotlin/com/intrada/ffi
     # x86_64 serves emulators on x86_64 hosts, CI included; devices and Apple silicon use arm64-v8a.
     cargo ndk -t arm64-v8a -t x86_64 -o android/generated/jniLibs build -p intrada-ffi --lib --features uniffi $rel
@@ -1120,6 +1121,15 @@ android-check:
     source android/env.sh
     android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest
     echo "✓ Android gates pass"
+
+[doc("Rewrite the Gradle lockfiles after an Android dependency change")]
+[group('Android')]
+android-lock:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source android/env.sh
+    android/gradlew -q -p android --write-locks :app:dependencies :bridge:dependencies >/dev/null
+    echo "✓ Android lockfiles rewritten"
 
 [doc("Format the Android Kotlin sources and build scripts with ktfmt")]
 [group('Android')]
