@@ -1,5 +1,6 @@
 use super::*;
 use crate::app::Intrada;
+use crate::domain::types::TempoInput;
 use crate::model::{FormErrorField, FormErrorTarget, Model};
 use crux_core::App;
 
@@ -3164,4 +3165,185 @@ fn editing_a_piece_keeps_what_a_musician_types_and_refuses_what_is_too_long() {
             assert_eq!(after, &before, "{why}: nothing changed");
         }
     }
+}
+
+// ── Typed BPM (#2224) ──
+
+fn typed_bpm(bpm: &str) -> Option<TempoInput> {
+    Some(TempoInput {
+        marking: None,
+        bpm: Some(bpm.to_string()),
+    })
+}
+
+#[test]
+fn add_reads_the_typed_bpm_onto_the_item() {
+    let mut model = Model::default();
+
+    send(
+        &mut model,
+        ItemEvent::Add(CreateItem {
+            tempo: typed_bpm(" 96 "),
+            ..one_pass_piece_input("Clair de Lune")
+        }),
+    );
+
+    assert_eq!(
+        model.items[0].tempo,
+        Some(Tempo {
+            marking: None,
+            bpm: Some(96)
+        })
+    );
+}
+
+#[test]
+fn add_refuses_a_bpm_it_cannot_read_and_stores_nothing() {
+    let mut model = Model::default();
+
+    send(
+        &mut model,
+        ItemEvent::Add(CreateItem {
+            tempo: typed_bpm("12a"),
+            ..one_pass_piece_input("Clair de Lune")
+        }),
+    );
+
+    assert!(model.items.is_empty());
+    assert_eq!(
+        model.last_error.as_deref(),
+        Some("BPM must be a whole number between 1 and 400")
+    );
+    assert_eq!(
+        model.last_error_target,
+        Some(FormErrorTarget::Piece {
+            field: FormErrorField::Tempo
+        })
+    );
+}
+
+#[test]
+fn update_refuses_a_bpm_it_cannot_read_and_keeps_the_old_tempo() {
+    let mut model = model_with_piece_and_exercise();
+    let before = model.items[0].tempo.clone();
+
+    send(
+        &mut model,
+        ItemEvent::Update {
+            id: "piece-1".to_string(),
+            input: UpdateItem {
+                tempo: typed_bpm("9000"),
+                ..Default::default()
+            },
+        },
+    );
+
+    assert_eq!(model.items[0].tempo, before);
+    assert!(model.last_error.is_some());
+}
+
+#[test]
+fn update_sets_and_clears_the_tempo_from_typed_text() {
+    let mut model = model_with_piece_and_exercise();
+    let update = |tempo| ItemEvent::Update {
+        id: "piece-1".to_string(),
+        input: UpdateItem {
+            tempo: Some(tempo),
+            ..Default::default()
+        },
+    };
+
+    send(&mut model, update(typed_bpm("72").unwrap_or_default()));
+    assert_eq!(model.items[0].tempo.as_ref().and_then(|t| t.bpm), Some(72));
+
+    send(&mut model, update(TempoInput::default()));
+    assert_eq!(model.items[0].tempo, None);
+}
+
+#[test]
+fn add_piece_in_full_points_at_the_row_whose_bpm_it_cannot_read() {
+    let mut model = model_with_piece_and_exercise();
+
+    send(
+        &mut model,
+        ItemEvent::AddPieceInFull {
+            piece: one_pass_piece_input("Autumn Leaves"),
+            chart: None,
+            exercises: vec![
+                ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("80"),
+                    ..new_exercise_input("Shell voicings")
+                }),
+                ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("96.5"),
+                    ..new_exercise_input("Guide tones")
+                }),
+            ],
+        },
+    );
+
+    assert_eq!(
+        model.last_error_target,
+        Some(FormErrorTarget::Exercise {
+            index: 1,
+            field: Some(FormErrorField::Tempo)
+        })
+    );
+    assert_eq!(model.items.len(), 2, "nothing is written");
+}
+
+#[test]
+fn add_piece_in_full_reads_the_typed_bpm_onto_piece_and_rows() {
+    let mut model = Model::default();
+
+    send(
+        &mut model,
+        ItemEvent::AddPieceInFull {
+            piece: CreateItem {
+                tempo: typed_bpm("120"),
+                ..one_pass_piece_input("Autumn Leaves")
+            },
+            chart: None,
+            exercises: vec![ScaffoldEntry::New(CreateItem {
+                tempo: typed_bpm("80"),
+                ..new_exercise_input("Shell voicings")
+            })],
+        },
+    );
+
+    let bpm_of = |title: &str| {
+        model
+            .items
+            .iter()
+            .find(|i| i.title == title)
+            .and_then(|i| i.tempo.as_ref())
+            .and_then(|t| t.bpm)
+    };
+    assert_eq!(bpm_of("Autumn Leaves"), Some(120));
+    assert_eq!(bpm_of("Shell voicings"), Some(80));
+}
+
+#[test]
+fn typed_tempo_round_trips_on_the_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(ItemEvent::AddPieceInFull {
+        piece: CreateItem {
+            tempo: Some(TempoInput {
+                marking: Some("Allegro".to_string()),
+                bpm: Some("12a".to_string()),
+            }),
+            ..one_pass_piece_input("Autumn Leaves")
+        },
+        chart: None,
+        exercises: vec![ScaffoldEntry::New(CreateItem {
+            tempo: typed_bpm(""),
+            ..new_exercise_input("Shell voicings")
+        })],
+    });
+    crate::domain::types::assert_round_trips(ItemEvent::Update {
+        id: "piece-1".to_string(),
+        input: UpdateItem {
+            tempo: Some(TempoInput::default()),
+            ..Default::default()
+        },
+    });
 }

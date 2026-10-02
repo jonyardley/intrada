@@ -20,7 +20,6 @@ FormErrorField
 FormErrorTarget
 HighlighterColour
 InstrumentIcon
-Item
 ItemEvent
 ItemPracticeSummary
 ItemRanking

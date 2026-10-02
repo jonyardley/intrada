@@ -3,12 +3,16 @@ package com.intrada.android
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
 import com.intrada.shared.AppEffect
+import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.ItemEvent
+import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.TempoInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,6 +56,32 @@ class BridgeRoundTripTest {
         val view = bridge.view()
         assertTrue(rows.any { it.title == "Clair de Lune" && it.subtitle == "Claude Debussy" })
         assertEquals(rows.size, view.visibleIds.size)
+    }
+
+    // The BPM crosses as the typed text and the core reads it (#2224).
+    @Test
+    fun aTypedBpmCrossesAsTextAndLandsAsANumber() {
+        val bridge = LiveBridge()
+
+        val saved =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.Add(
+                            CreateItem(
+                                title = "Nocturne",
+                                kind = ItemKind.PIECE,
+                                tempo = TempoInput(marking = "Lento", bpm = " 60 "),
+                                tags = emptyList(),
+                                variantLabels = emptyList(),
+                            ),
+                        ),
+                    ),
+                ).mapNotNull { ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value }
+                .single()
+
+        assertEquals("Lento", saved.tempo?.marking)
+        assertEquals(60.toUShort(), saved.tempo?.bpm)
     }
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =

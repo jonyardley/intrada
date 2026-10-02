@@ -35,7 +35,8 @@ final class LibraryBridgeTests: XCTestCase {
           id: id,
           input: UpdateItem(
             title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .some(nil),
-            modality: .some(nil), tempo: .some(nil), notes: .some(nil), tags: nil, priority: nil))))
+            modality: .some(nil), tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
+            tags: nil, priority: nil))))
 
     let afterEdit = try bridge.rendered()
     XCTAssertEqual(
@@ -149,6 +150,35 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertNotNil(view.error)
     XCTAssertEqual(view.errorTarget, .piece(field: .variations))
     XCTAssertTrue(view.items.isEmpty, "nothing written")
+  }
+
+  /// The typed BPM crosses as text and the core reads it (#2224): a good one
+  /// lands as a number, one it cannot read is refused on the tempo field.
+  func testRealBridgeReadsTheTypedBpm() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let add = { (title: String, bpm: String) in
+      try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .piece, composer: nil, key: nil, modality: nil,
+              tempo: TempoInput(marking: nil, bpm: bpm), notes: nil, tags: [], photoId: nil,
+              variantLabels: []))))
+    }
+
+    let saved = try add("Nocturne", " 92 ").compactMap { request -> Item? in
+      guard case .persistence(.saveItem(let item)) = request.effect else { return nil }
+      return item
+    }
+    XCTAssertEqual(saved.map(\.tempo), [Tempo(marking: nil, bpm: 92)])
+    XCTAssertNil(try bridge.rendered().error)
+
+    _ = try add("Etude", "12a")
+    let refused = try bridge.rendered()
+    XCTAssertEqual(refused.error, "BPM must be a whole number between 1 and 400")
+    XCTAssertEqual(refused.errorTarget, .piece(field: .tempo))
+    XCTAssertNil(refused.items.first { $0.title == "Etude" }, "nothing written")
   }
 
   /// The Add form has no saved exercise to read `showsKey` from, so it asks
@@ -602,7 +632,8 @@ final class LibraryBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Db Major Scale", kind: .exercise, composer: nil, key: "Db",
-            modality: .major, tempo: Tempo(marking: "Andante", bpm: 72), notes: nil, tags: [],
+            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "72"), notes: nil,
+            tags: [],
             photoId: nil, variantLabels: []))))
     let items = try bridge.rendered().items
     let pieceId = try XCTUnwrap(items.first { $0.title == "Clair de Lune" }?.id)
@@ -652,7 +683,7 @@ final class LibraryBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Nocturne", kind: .piece, composer: "Chopin", key: "E\u{266D}",
-            modality: .major, tempo: Tempo(marking: "Andante", bpm: 92), notes: "Slowly",
+            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "92"), notes: "Slowly",
             tags: ["romantic"], photoId: nil, variantLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
@@ -699,7 +730,7 @@ final class LibraryBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Nocturne in E-flat", kind: .piece, composer: "Chopin", key: "E\u{266D}",
-            modality: .major, tempo: Tempo(marking: "Andante", bpm: 92),
+            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "92"),
             notes: "Practise slowly, hands separately", tags: ["romantic", "chopin"],
             photoId: photoId, variantLabels: []))))
 
@@ -739,7 +770,8 @@ final class LibraryBridgeTests: XCTestCase {
           input: UpdateItem(
             title: "Nocturne in E-flat (revised)", kind: .piece,
             composer: .some("Chopin (ed. Cortot)"), key: .some("D"), modality: .some(nil),
-            tempo: .some(nil), notes: .some(nil), tags: ["romantic", "edited"], priority: true))))
+            tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
+            tags: ["romantic", "edited"], priority: true))))
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "the full patch must decode cleanly (#846)")

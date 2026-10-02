@@ -1532,7 +1532,7 @@ mod tests {
                     .or_else(|| Some("Unknown".to_string())),
                 key: None,
                 modality: None,
-                tempo: draft.tempo.as_ref().map(|f| f.value.clone()),
+                tempo: draft.tempo.as_ref().map(|f| f.value.clone().into()),
                 notes: None,
                 tags: vec![],
                 photo_id: None,

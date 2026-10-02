@@ -28,6 +28,25 @@ impl Tempo {
     }
 }
 
+/// A tempo as typed on a form: the BPM arrives as the raw text, so the core
+/// refuses what it cannot read instead of the shell dropping it (#2224).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct TempoInput {
+    pub marking: Option<String>,
+    pub bpm: Option<String>,
+}
+
+#[cfg(test)]
+impl From<Tempo> for TempoInput {
+    fn from(tempo: Tempo) -> Self {
+        Self {
+            marking: tempo.marking,
+            bpm: tempo.bpm.map(|b| b.to_string()),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateItem {
@@ -37,7 +56,7 @@ pub struct CreateItem {
     pub key: Option<String>,
     #[serde(default)]
     pub modality: Option<Modality>,
-    pub tempo: Option<Tempo>,
+    pub tempo: Option<TempoInput>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
     /// The page the fields were read off (#1436). Appended last, because the
@@ -58,7 +77,8 @@ pub struct CreateItem {
 }
 
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
-/// `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set.
+/// `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set. `tempo` is
+/// two-state: `None` = skip, and a `TempoInput` with both parts blank clears.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
@@ -67,7 +87,7 @@ pub struct UpdateItem {
     pub composer: Option<Option<String>>,
     pub key: Option<Option<String>>,
     pub modality: Option<Option<Modality>>,
-    pub tempo: Option<Option<Tempo>>,
+    pub tempo: Option<TempoInput>,
     pub notes: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
     pub priority: Option<bool>,
@@ -208,10 +228,10 @@ mod tests {
             composer: Some(Some("Bach".to_string())),
             key: Some(None),
             modality: Some(Some(Modality::Minor)),
-            tempo: Some(Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: Some("Allegro".to_string()),
-                bpm: Some(120),
-            })),
+                bpm: Some("120".to_string()),
+            }),
             notes: Some(None),
             tags: Some(vec!["etude".to_string()]),
             priority: Some(true),
@@ -241,7 +261,7 @@ mod tests {
                 composer: Some(Some("Bach".to_string())),
                 key: Some(None),
                 modality: Some(Some(Modality::Minor)),
-                tempo: Some(None),
+                tempo: Some(TempoInput::default()),
                 notes: Some(Some("phrasing".to_string())),
                 tags: Some(vec!["etude".to_string()]),
                 priority: Some(true),
@@ -257,9 +277,9 @@ mod tests {
             composer: Some("Debussy".to_string()),
             key: Some("Db".to_string()),
             modality: Some(Modality::Major),
-            tempo: Some(Tempo {
+            tempo: Some(TempoInput {
                 marking: None,
-                bpm: Some(72),
+                bpm: Some("72".to_string()),
             }),
             notes: None,
             tags: vec!["impressionist".to_string()],
@@ -296,9 +316,9 @@ mod tests {
                 composer: None,
                 key: Some("G".to_string()),
                 modality: Some(Modality::Minor),
-                tempo: Some(Tempo {
+                tempo: Some(TempoInput {
                     marking: Some("Andante".to_string()),
-                    bpm: Some(96),
+                    bpm: Some("96".to_string()),
                 }),
                 notes: Some("3rds and 7ths".to_string()),
                 tags: vec!["voicings".to_string()],

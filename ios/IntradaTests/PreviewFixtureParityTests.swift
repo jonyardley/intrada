@@ -150,12 +150,12 @@ struct PreviewFixtureParityTests {
     _ = try bridge.update(.startApp)
     let pieceId = try add(
       bridge, title: title, kind: .piece, key: key, modality: modality,
-      tempo: Tempo(marking: marking, bpm: bpm), labels: [])
+      tempo: TempoInput(marking: marking, bpm: bpm.map(String.init)), labels: [])
     for exercise in exercises {
       let exerciseId = try add(
         bridge, title: exercise.title, kind: .exercise, key: exercise.key,
         modality: exercise.modality,
-        tempo: exercise.tempoBpm.map { Tempo(marking: nil, bpm: $0) }, labels: [])
+        tempo: exercise.tempoBpm.map { TempoInput(marking: nil, bpm: String($0)) }, labels: [])
       _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
     }
     return try item(bridge, pieceId)
@@ -169,12 +169,14 @@ struct PreviewFixtureParityTests {
     _ = try bridge.update(.startApp)
     let id = try addScoredExercise(
       bridge, title: title, key: key, modality: modality,
-      tempo: tempoBpm.map { Tempo(marking: nil, bpm: $0) }, labels: labels, scores: scores)
+      tempo: tempoBpm.map { TempoInput(marking: nil, bpm: String($0)) }, labels: labels,
+      scores: scores)
     return try item(bridge, id)
   }
 
   private func addScoredExercise(
-    _ bridge: RowsBridge, title: String, key: String?, modality: Modality?, tempo: Tempo? = nil,
+    _ bridge: RowsBridge, title: String, key: String?, modality: Modality?,
+    tempo: TempoInput? = nil,
     labels: [String], scores: [String: UInt8]
   ) throws -> String {
     let id = try add(
@@ -220,7 +222,7 @@ struct PreviewFixtureParityTests {
 
   private func add(
     _ bridge: RowsBridge, title: String, kind: ItemKind, key: String?, modality: Modality?,
-    tempo: Tempo?, labels: [String]
+    tempo: TempoInput?, labels: [String]
   ) throws -> String {
     _ = try bridge.update(
       .item(

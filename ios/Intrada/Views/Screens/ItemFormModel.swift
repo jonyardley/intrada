@@ -254,7 +254,7 @@ final class ItemFormModel {
       composer: emptyToNil(composer),
       key: emptyToNil(key),
       modality: modality,
-      tempo: buildTempo(),
+      tempo: typedTempo(),
       notes: emptyToNil(notes),
       tags: tags,
       photoId: photoId,
@@ -278,7 +278,7 @@ final class ItemFormModel {
       // sent then would be refused as a second key while those rows stand.
       key: loadedVariations && !showsKey ? nil : .some(emptyToNil(key)),
       modality: .some(modality),
-      tempo: .some(buildTempo()),
+      tempo: typedTempo(),
       notes: .some(emptyToNil(notes)),
       tags: tags,
       priority: nil)
@@ -289,11 +289,8 @@ final class ItemFormModel {
     return trimmed.isEmpty ? nil : trimmed
   }
 
-  private func buildTempo() -> Tempo? {
-    let mark = emptyToNil(marking)
-    let beats = UInt16(bpm.trimmingCharacters(in: .whitespaces))
-    if mark == nil && beats == nil { return nil }
-    return Tempo(marking: mark, bpm: beats)
+  private func typedTempo() -> TempoInput {
+    TempoInput(marking: marking, bpm: bpm)
   }
 }
 
@@ -359,8 +356,6 @@ enum StagedExercise: Identifiable, Hashable {
 
   var entry: ScaffoldEntry {
     switch self {
-    // Trimmed here rather than relying on the sheet to have done it, so the
-    // tempo survives whoever builds the case.
     case .draft(_, let title, let key, let modality, let bpm):
       .new(
         CreateItem(
@@ -369,9 +364,7 @@ enum StagedExercise: Identifiable, Hashable {
           composer: nil,
           key: key.isEmpty ? nil : key,
           modality: modality,
-          tempo: UInt16(bpm.trimmingCharacters(in: .whitespaces)).map {
-            Tempo(marking: nil, bpm: $0)
-          },
+          tempo: TempoInput(marking: nil, bpm: bpm),
           notes: nil,
           tags: [],
           photoId: nil,
