@@ -46,6 +46,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       native: ${{ steps.filter.outputs.native }}
+      android: ${{ steps.filter.outputs.android }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -70,14 +71,24 @@ jobs:
               - '.github/workflows/ci.yml'
               - 'mise.toml'
               - '.cargo/config.toml'
+            android:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - 'crates/intrada-core/**'
+              - 'crates/intrada-ffi/**'
+              - 'android/**'
+              - 'justfile'
+              - '.github/workflows/ci.yml'
       # A filter that wrongly saw nothing would skip main's Mac gate in
       # silence, so each run says what it saw (#2113).
       - name: Say what the filter saw
         env:
           RUST: ${{ steps.filter.outputs.rust }}
           NATIVE: ${{ steps.filter.outputs.native }}
+          ANDROID: ${{ steps.filter.outputs.android }}
         run: |
-          echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Path filter on ${GITHUB_EVENT_NAME}: rust=${RUST} native=${NATIVE} android=${ANDROID}" >> "$GITHUB_STEP_SUMMARY"
       # Drift installs clippy/rustfmt for the env's version, then cargo resolves
       # to the file's: "clippy is not installed", or a silent second download.
       # Checks every workflow's RUST_VERSION, not just this file's — so a
@@ -457,6 +468,57 @@ jobs:
             echo "✗ the self-hosted iOS gate did not succeed (result: $self); it never runs for a fork pull request (#1962)" >&2
             exit 1
           fi
+
+  android:
+    name: Android (build + unit test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.android == 'true'
+    env:
+      ANDROID_NDK_VERSION: "28.2.13676358"
+    steps:
+      - uses: actions/checkout@v7
+      # rust-toolchain.toml lists no targets, so the two Android ones are added here.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-linux-android,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "android"
+          cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@v2.87.20
+        with:
+          tool: just,cargo-ndk@4.1.2
+      # 21, not 17: Robolectric's API 36 sandbox needs it for the snapshot test.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v4
+      - name: Install the SDK platform and NDK
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${ANDROID_NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Generate the Kotlin bindings and native libraries
+        run: just android-gen
+      # compareRoborazziDebug, not testDebugUnitTest: without a Roborazzi task the snapshot test
+      # returns before composing. Linux renders text differently from the macOS reference, so a
+      # difference is uploaded to read, never failed on.
+      - name: Build and test
+        working-directory: android
+        run: ./gradlew ktfmtCheck :app:assembleDebug :app:compareRoborazziDebug
+      - name: Upload the Roborazzi render
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-roborazzi
+          path: android/app/build/outputs/roborazzi/
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Cheap (<5s, no macOS) guard that keeps the snapshot-reference suite from
   # bloating git history: every PNG must map to a current test (no orphans) and
