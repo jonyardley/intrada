@@ -1,6 +1,6 @@
-# Intrada — project notes
+# Intrada: project notes
 
-## Process — READ FIRST, every iteration
+## Process: read first, every iteration
 - **`design-process.md` is the canonical process** for organising design files and
   keeping one authoritative view. Follow it on every change: single ownership per
   surface, components + canonical pillar screens in the design system, journeys in
@@ -14,26 +14,28 @@
   colour, chosen by the musician from eight (butter #FFE9A3 by default). Hanken
   Grotesk for titles and body, DM Mono for metadata.
   `ios/Intrada/DesignSystem/Theme.swift` holds every value.
-- **Dark mode is parked, not dropped** — revisit once the app reaches MVP. A dark
+- **Dark mode is parked, not dropped**: revisit once the app reaches MVP. A dark
   variant of the Focus Player / Library / Practice exists in `Intrada Concepts.dc.html`
   (the "After dark" section) as proof the tokens invert cleanly.
 
 ## Files
-- `design-process.md` — **design file process & guidelines.** The rules for where
+- `design-process.md`: **design file process and guidelines.** The rules for where
   things live and how to keep files in sync. Reference it before designing or
   folding in.
-- `Intrada Design System.dc.html`: the design system page, with the component
-  catalogue and motion. It is behind the app until #1678 rebuilds it from
-  `briefs/2026-10-design-system-rebuild.md`; where it and `Theme.swift` disagree,
-  `Theme.swift` wins.
-- `Focus Player.dc.html` — a **shared screen** extracted to one importable DC (the
-  Option-B pattern): mounted via `<dc-import name="Focus Player">` in both the design
-  system and the related-items journey. Edit it here, once. New shared screens follow
+- `Intrada Design System.dc.html`: the design system page, a picture of
+  `Theme.swift` rebuilt from `briefs/2026-10-design-system-rebuild.md` (#1678).
+  Paper #F7F4EF, near-neutral ink #2A2725, the eight highlighters with their hero
+  gradients, Hanken Grotesk and DM Mono, 3pt corners and the faint card lift
+  (ink at 5%, blur 1, y 1). Its values come only from that brief; where it and
+  `Theme.swift` disagree, `Theme.swift` wins.
+- `Focus Player.dc.html`: a **shared screen** extracted to one importable DC (the
+  Option-B pattern), mounted via `<dc-import name="Focus Player">` in the
+  related-items journey. The design system page no longer embeds screens. Edit it here, once. New shared screens follow
   the same pattern (see `design-process.md` §9).
-- `Drill Loop.dc.html` — **practice-coach Session A journey** (3 Aug 2026): A2 during
+- `Drill Loop.dc.html`: **practice-coach Session A journey** (3 Aug 2026): A2 during
   play + A3 after a repetition (full, mobile + iPad), A1 Home + A4 block boundary
   (rough passes for Phase 2a). History: the coach work was removed in #1344, and its
-  primitives leave the design system with #1678.
+  primitives left the design system with #1678.
 - `Visual Direction Exploration.dc.html`: the exploration that chose the 8f look
   (#1676).
 - `Intrada Reskin.dc.html`: the 8f token sheet.
@@ -41,7 +43,7 @@
 - `Welcome.dc.html`: the welcome animation into profile setup.
 - `Faint Ink 1941.dc.html`: metadata text moving from faint ink to secondary ink
   (#1941).
-- `Intrada Concepts.dc.html` — exploratory/validated screen concepts (Progress, Focus
+- `Intrada Concepts.dc.html`: exploratory/validated screen concepts (Progress, Focus
   Player with rep counter, one-tap+calendar Practice, Library mastery, session-summary
   celebration, after-dark variant, live motion lab).
 
