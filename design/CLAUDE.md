@@ -46,9 +46,10 @@
   celebration, after-dark variant, live motion lab).
 
 ## Motion
-- Named tokens live in the design system: `fadeUp` (signature page-load reveal),
-  `pop`, `barGrow`, `toastIn`, `slideIn`, plus a Reduce-Motion rule.
+- Named tokens live in `Theme.swift` (`IntradaMotion`): `standard`, `snappy`,
+  `gentle`, `fadeUp`, `barGrow`, `countUp`, `pop`, and the `press` dip. Under
+  Reduce Motion every reveal renders its final state with no animation (#2239).
 - **Retired (do not reintroduce):** `breathe` (ambient ring glow) and `metro` (tempo
-  pulse dot) — read as distraction, pulled. `glowPulse` (primary-CTA halo) is IN REVIEW.
+  pulse dot): read as distraction, pulled.
 - Keep rings/content calm and static; motion earns its place only when it carries
   meaning (progress, state change, celebration).

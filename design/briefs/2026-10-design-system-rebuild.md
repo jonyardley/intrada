@@ -123,6 +123,7 @@ with Dynamic Type from its anchor.
 | subtitle | DM Mono | 14 | Regular | Footnote |
 | meta | DM Mono | 14 | Regular | Caption |
 | chart | system monospaced | Footnote | Regular | Footnote |
+| chartEditor | system monospaced | Body | Regular | Body |
 
 A section title is the eyebrow in `inkFaint`. A field label (Key, Tempo) is
 `metaMedium`, quieter than its value.
@@ -196,7 +197,7 @@ Show these, by these names, and nothing else as a component.
    `GlobalBanner` (danger with `exclamationmark.triangle.fill`, notice with
    `info.circle`), `FormErrorBanner`, `PlaceholderContent`, `ProfileBadge`,
    `InstrumentGlyph`, `.markerSwipe()`, `.scrimCapsule()`, `FieldMark`
-   (`doc.viewfinder`), `.scrollEdgeShadow()`.
+   (`doc.viewfinder`), `FaultMark`, `.scrollEdgeShadow()`.
 2. **Reusable views** (`ios/Intrada/Views/Components`): `SectionHeader` and
    `Eyebrow`, `TypeBadge`, `LibraryItemCard`, `SegmentedPills`,
    `SegmentedProgress`, `BottomSheet`, `ScoreRing`, `ScoreSelector`,

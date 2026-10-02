@@ -305,7 +305,7 @@ struct IntradaShadow {
 
 /// Named motion tokens — the "engaging refresh" springs, the signature `fadeUp`
 /// screen-entrance, and the one-shot reveal timings. The *modifiers* that consume
-/// these (`.fadeUp`, `.pop`, the count-up/ring-draw) live in `Motion.swift`; this
+/// these (`.fadeUp`, `.pop`, the count-up) live in `Motion.swift`; this
 /// is the token layer, the way `IntradaColor` is for colour. Under Reduce Motion
 /// the modifiers skip the animation and render the final state.
 enum IntradaMotion {
@@ -328,7 +328,7 @@ enum IntradaMotion {
   static let countUpDuration: Double = 1.5
   /// `pop`: spring scale-in from 0.82 to 1 for rep ticks/dots; low damping overshoots.
   static let pop = Animation.spring(response: 0.35, dampingFraction: 0.62)
-  /// Not read by any modifier: under Reduce Motion they jump to the final state.
+  /// FIXME(#2239): no modifier reads this; wire it in or delete it.
   static let reduceFade: Double = 0.15
 
   /// The per-item `fadeUp` animation for a given stagger index.

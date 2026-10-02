@@ -145,8 +145,8 @@ resident.
 ### T3 — Decode-by-colour vs accessibility
 **Status:** DECIDED (revisit) 2026-05-31.
 **Colour is always an accelerator, never the sole carrier of meaning.** Every
-type signal must also carry a shape or text cue (dot, badge text, icon). Today
-`TypeBadge` (glyph and text in a tinted pill, T29) already satisfies this.
+type signal must also carry a shape or text cue (dot, badge text, icon). As of 2 October
+2026 `TypeBadge` (glyph and text in a tinted pill, T29) already satisfies this.
 Marked for possible revisit, but the rule holds for now.
 
 ### T4 — Direct manipulation vs one UI codebase (web + iOS)
