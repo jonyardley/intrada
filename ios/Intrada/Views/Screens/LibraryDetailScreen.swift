@@ -176,28 +176,30 @@ struct LibraryDetailScreen: View {
     let current = liveLinkedExerciseIds
     let toLink = selected.subtracting(current)
     let toUnlink = current.subtracting(selected)
-    var ok = true
+    // Each accepted send clears the core's error, so the first refusal's
+    // message is taken the moment it lands.
+    var refusal: String?
+    func send(_ event: Event) -> Bool {
+      if store.sendAccepted(event) { return true }
+      if refusal == nil { refusal = store.viewModel?.error ?? "Couldn't save. Try again." }
+      return false
+    }
     for id in toLink {
-      if !store.sendAccepted(.item(.linkExercise(pieceId: item.id, exerciseId: id))) { ok = false }
+      _ = send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
     }
     for id in toUnlink {
-      if !store.sendAccepted(.item(.unlinkExercise(pieceId: item.id, exerciseId: id))) {
-        ok = false
-      }
+      _ = send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
     }
     var refusedDrafts: [StagedExercise] = []
     for draft in drafts {
       guard case .new(let input) = draft.entry else { continue }
-      if !store.sendAccepted(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
-        ok = false
+      if !send(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
         refusedDrafts.append(draft)
       }
     }
-    guard ok else {
+    if let refusal {
       return .refused(
-        message: store.viewModel?.error ?? "Couldn't save. Try again.",
-        remainingDrafts: refusedDrafts,
-        nowLinked: liveLinkedExerciseIds)
+        message: refusal, remainingDrafts: refusedDrafts, nowLinked: liveLinkedExerciseIds)
     }
     if !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
       Haptic.success.play()

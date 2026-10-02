@@ -83,7 +83,10 @@ struct LinkedItemPickerSheet: View {
       }
     )
     .sheet(isPresented: $creatingDraft) {
-      DraftExerciseSheet(onDone: { drafts.append($0) })
+      DraftExerciseSheet(onDone: {
+        drafts.append($0)
+        refusal = nil
+      })
     }
   }
 
@@ -287,7 +290,10 @@ struct LinkedItemPickerSheet: View {
         }
         DraftItemRow(
           title: draft.title, meta: draft.meta,
-          onRemove: { drafts.removeAll { $0.id == draft.id } })
+          onRemove: {
+            drafts.removeAll { $0.id == draft.id }
+            refusal = nil
+          })
       }
     }
   }

@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Shared bottom-sheet chrome. The inline title renders in Hanken Grotesk via RootView's
-/// global nav-bar appearance; Done runs `onDone`, then dismisses unless
-/// `dismissesOnDone` is false and the caller decides.
+/// global nav-bar appearance; Done runs `onDone` then dismisses.
 struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let title: String
   private let detents: Set<PresentationDetent>
