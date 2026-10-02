@@ -53,6 +53,11 @@ pub struct Profile {
 }
 
 impl Profile {
+    /// The blob is positional bincode, so a build reads only a blob of its
+    /// own shape. The shell names its storage key by this number, so a shape
+    /// change bumps it here and nowhere else (#2026).
+    pub const BLOB_VERSION: u32 = 1;
+
     pub fn icon(&self) -> InstrumentIcon {
         self.icon_choice
             .unwrap_or_else(|| suggest_icon(&self.instrument))
@@ -535,8 +540,11 @@ mod tests {
     /// tail of either enum, or a new variant appended, moves a pinned byte.
     const PINNED_TAIL_PROFILE_HEX: &str = "000000000000000000000000000000000007000000";
 
-    /// Positional bincode: a new field breaks every stored blob (#1345).
-    /// Bump `Store.profileDefaultsKey`, then re-pin.
+    const PINNED_BLOB_VERSION: u32 = 1;
+
+    /// Positional bincode: a new field breaks every stored blob (#1345). The
+    /// shell's key follows `BLOB_VERSION` (#2026); the test cannot tell a
+    /// re-pin with a bump from one without, so the failure message is the protocol.
     #[test]
     fn profile_blob_wire_is_pinned() {
         use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
@@ -549,8 +557,9 @@ mod tests {
         BincodeFfiFormat::serialize(&mut bytes, &profile).expect("serialize");
         let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
-            hex, PINNED_PROFILE_HEX,
-            "the profile blob changed shape: bump Store.profileDefaultsKey, then re-pin"
+            (Profile::BLOB_VERSION, hex.as_str()),
+            (PINNED_BLOB_VERSION, PINNED_PROFILE_HEX),
+            "the profile blob changed shape: bump Profile::BLOB_VERSION and PINNED_BLOB_VERSION, then re-pin the hex. Never only the hex."
         );
         let back: Profile =
             BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
@@ -566,8 +575,9 @@ mod tests {
         BincodeFfiFormat::serialize(&mut bytes, &tail).expect("serialize");
         let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
         assert_eq!(
-            hex, PINNED_TAIL_PROFILE_HEX,
-            "tail variants moved: bump the key, re-pin"
+            (Profile::BLOB_VERSION, hex.as_str()),
+            (PINNED_BLOB_VERSION, PINNED_TAIL_PROFILE_HEX),
+            "tail variants moved: bump Profile::BLOB_VERSION and PINNED_BLOB_VERSION, then re-pin the hex"
         );
         let mut bytes = Vec::new();
         BincodeFfiFormat::serialize(&mut bytes, &InstrumentIcon::Other).expect("serialize");

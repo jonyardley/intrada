@@ -305,6 +305,14 @@ pub fn session_blob_version() -> u32 {
     crate::domain::session::ActiveSession::BLOB_VERSION
 }
 
+/// The shell builds the profile blob's storage key from this, so a shape
+/// change in the core retires the old key on its own (#2026).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn profile_blob_version() -> u32 {
+    crate::domain::profile::Profile::BLOB_VERSION
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
