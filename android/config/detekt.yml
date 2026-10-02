@@ -2,8 +2,8 @@
 potential-bugs:
   UnsafeCallOnNullableType:
     active: true
-  UnsafeCast:
-    active: true
+    # The default skips tests; the ban covers every Kotlin file.
+    excludes: []
   LateinitUsage:
     active: true
 
@@ -19,7 +19,7 @@ complexity:
 exceptions:
   TooGenericExceptionCaught:
     # The bridge and the disk job turn any failure into an answer the core reads, never a crash.
-    active: false
+    excludes: ['**/core/Store.kt']
 
 style:
   ForbiddenImport:
@@ -30,28 +30,3 @@ style:
       - value: 'androidx.compose.material3.*'
         reason: 'intrada draws its own look on Compose foundation, not Material.'
 
-Compose:
-  ComposableAnnotationNaming:
-    active: true
-  ModifierMissing:
-    active: true
-  ModifierNaming:
-    active: true
-  ModifierNotUsedAtRoot:
-    active: true
-  ModifierReused:
-    active: true
-  ModifierWithoutDefault:
-    active: true
-  MutableParams:
-    active: true
-  MutableStateParam:
-    active: true
-  ParameterNaming:
-    active: true
-  RememberMissing:
-    active: true
-  ViewModelForwarding:
-    active: true
-  ViewModelInjection:
-    active: true

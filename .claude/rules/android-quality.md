@@ -42,12 +42,12 @@ bars, read in Kotlin and Compose.
 - **Before pushing, run `just android-check`, `just android-test` and
   `just android-fmt`.** `android-check` runs CI's gates: ktfmt, the build with
   Kotlin warnings as errors, Android lint with warnings as errors, and detekt
-  with the Compose rules (`android/config/detekt.yml`), which bans `!!`, plain
-  `as`, `lateinit` and Material imports. No baseline and no suppressions: fix
-  the finding (#2263).
+  with the Compose rules (`android/config/detekt.yml`), which bans `!!`,
+  `lateinit` and Material imports; plain `as` stays a review rule. No baseline
+  and no suppressions: fix the finding (#2263).
 - **The generated bindings compile in `:bridge`**, outside the warnings gate,
-  because crux's typegen and UniFFI emit warnings we cannot fix at the source.
-  Hand-written Kotlin lives in `:app`.
+  because crux's typegen emits warnings we cannot fix at the source (a
+  redundant `?` on non-null types). Hand-written Kotlin lives in `:app`.
 
 ## Tokens and look
 

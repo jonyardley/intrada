@@ -1017,7 +1017,7 @@ android-check:
     #!/usr/bin/env bash
     set -euo pipefail
     source android/env.sh
-    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:lintDebug :app:detektDebug :app:detektDebugUnitTest
+    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest
     echo "✓ Android gates pass"
 
 [doc("Format the Android Kotlin sources and build scripts with ktfmt")]

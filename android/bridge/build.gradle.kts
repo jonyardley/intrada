@@ -1,11 +1,14 @@
 import javax.inject.Inject
 
-plugins { alias(libs.plugins.android.library) }
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.ktfmt)
+}
 
 val generated = rootProject.layout.projectDirectory.dir("generated")
 
 // The generated Kotlin lives in its own module so the app's warnings-as-errors gate covers only
-// hand-written code: crux's typegen and UniFFI emit warnings we cannot fix at the source (#2263).
+// hand-written code: crux's typegen emits warnings we cannot fix at the source (#2263).
 android {
     namespace = "com.intrada.bridge"
     compileSdk = 36
@@ -53,5 +56,7 @@ androidComponents {
         )
     }
 }
+
+ktfmt { kotlinLangStyle() }
 
 dependencies { api("${libs.jna.get()}@aar") }
