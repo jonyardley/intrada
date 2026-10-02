@@ -407,7 +407,8 @@ this change; only what the musician reads and hears did.
 
 ### V8: The welcome's maker's note is the one place a person speaks
 
-**Decided 2026-09-24 (Jon, #2121).** Rule 4 bans the app saying `I`. The
+**Proposed 2026-10-02 (#2116), for Jon to confirm.** The plan on #2121 keeps
+the maker's note and asks for this decision. Rule 4 bans the app saying `I`. The
 welcome keeps the maker's note from the old web welcome, which says it:
 "Knowing how to practise well is hard. I've struggled with it. So I built
 this."

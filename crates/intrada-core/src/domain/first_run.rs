@@ -43,10 +43,12 @@ pub struct FirstRunView {
 
 pub fn handle_first_run_event(event: FirstRunEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        FirstRunEvent::SkipWelcome => Command::all([dismiss_welcome(model), render()]),
+        FirstRunEvent::SkipWelcome => {
+            Command::all([dismiss_welcome(model), crux_core::render::render()])
+        }
         FirstRunEvent::Loaded(first_run) => {
             model.first_run = first_run;
-            render()
+            crux_core::render::render()
         }
     }
 }
@@ -59,10 +61,6 @@ pub fn dismiss_welcome(model: &mut Model) -> Command<Effect, Event> {
     }
     model.first_run.welcome_seen = true;
     Command::notify_shell(AppEffect::SaveFirstRun(model.first_run)).into()
-}
-
-fn render() -> Command<Effect, Event> {
-    crux_core::render::render()
 }
 
 pub fn build_first_run_view(model: &Model) -> FirstRunView {
@@ -235,8 +233,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn starting_todays_plan_ticks_built_without_the_builder() {
+    fn started_from_todays_plan() -> Model {
         let mut piece = item("p1", "Clair de Lune", 0);
         piece.linked_exercise_ids = vec!["ex1".to_string()];
         let exercise = Item {
@@ -252,7 +249,46 @@ mod tests {
             &mut model,
         );
         assert!(matches!(model.session_status, SessionStatus::Active(_)));
-        assert!(view(&model).built);
+        model
+    }
+
+    #[test]
+    fn starting_todays_plan_ticks_built_without_the_builder() {
+        assert!(view(&started_from_todays_plan()).built);
+    }
+
+    #[test]
+    fn a_discarded_session_drops_built() {
+        let mut model = started_from_todays_plan();
+        let _ = Intrada.update(
+            Event::Session(crate::domain::session::SessionEvent::EndSessionEarly {
+                now: Utc::now(),
+                reading: crate::domain::session::TempoReading::silent(),
+            }),
+            &mut model,
+        );
+        assert!(matches!(model.session_status, SessionStatus::Summary(_)));
+        assert!(
+            view(&model).built,
+            "the summary is still the session in hand"
+        );
+        let _ = Intrada.update(
+            Event::Session(crate::domain::session::SessionEvent::DiscardSession),
+            &mut model,
+        );
+        assert!(!view(&model).built, "nothing was kept");
+    }
+
+    #[test]
+    fn a_session_the_store_is_still_writing_counts() {
+        let mut model = launched(vec![item("p1", "Clair de Lune", 0)], vec![]);
+        model.saving_session = Some(session(vec![entry(EntryStatus::Completed, Some(7))], None));
+        let v = view(&model);
+        assert!(v.built && v.played && v.marked);
+        assert!(
+            !v.shows_start_here,
+            "the card does not flicker back while the save lands"
+        );
     }
 
     #[test]

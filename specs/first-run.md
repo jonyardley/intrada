@@ -143,6 +143,11 @@ defaults (offline-first invariant 8).
 
 ## Deliberately not doing
 
+- The five-card carousel in `specs/onboarding-welcome.md`, the web-era
+  record this replaces; T34 says why.
+- Seeded runs (`--seed-sample-data`) skip the store, so neither list ever
+  counts as loaded and neither the welcome nor the card shows there.
+
 - Screens: the welcome, the profile step, the first piece and the card
   (#2117, #2118), and the empty-tab buttons (#2119). The save, the restore at
   launch and the preview fixtures ride with this PR, since the shell's effect

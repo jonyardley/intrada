@@ -54,7 +54,7 @@ pub struct Model {
     pub profile: Profile,
     /// Device data, like the profile (`specs/practice-defaults.md`).
     pub practice_defaults: PracticeDefaults,
-    /// Device data, like the profile (`specs/first-run.md`).
+    /// Device data, never synced (`specs/first-run.md`).
     pub first_run: FirstRun,
     /// Bumped each time an error is raised or surfaced, never because one is
     /// still standing, so a send accepted under the banner does not read as
