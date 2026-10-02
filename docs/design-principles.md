@@ -36,17 +36,19 @@ them isn't lost. (See `.claude/rules/ios-ui.md` for the enforcement
 rules and primitive catalogue.)
 
 - **Paper, ink and one marker.** Off-white paper, white cards with a 3pt
-  corner and a faint lift, brown ink for text on paper. See T24.
+  corner and a faint lift, near-neutral ink for text on paper. See T24 and
+  T27.
 - **Type is colour-coded.** Blue-grey = Piece, sand = Exercise. The
   mapping repeats across card bars and badges; inline dots and checks are ink
   for both kinds. Colour is
   an *accelerator* for recognition, never the only signal (see accessibility
   tension below).
-- **One bright colour.** The butter highlighter is the only bright colour:
-  primary buttons, the swipe under page titles, the celebration glyph.
+- **One bright colour.** The musician's highlighter is the only bright
+  colour: one of eight pastels they choose, butter by default (#1677). It fills
+  primary buttons, the swipe under page titles and the celebration glyph.
   Interactive colour on paper is ink.
 - **Warmth bias in semantics.** Danger is a brick red, success an olive green,
-  both pulled toward brown ink. The palette leans warm even where convention is
+  both pulled toward brown. The palette leans warm even where convention is
   harsh.
 - **Grotesk for words, mono for metadata.** Hanken Grotesk for titles and body;
   DM Mono for the composer, key and tempo line, like a printed programme.
@@ -143,8 +145,8 @@ resident.
 ### T3 — Decode-by-colour vs accessibility
 **Status:** DECIDED (revisit) 2026-05-31.
 **Colour is always an accelerator, never the sole carrier of meaning.** Every
-type signal must also carry a shape or text cue (dot, badge text, icon). Today's
-`InlineTypeIndicator` (dot + colour) and `TypeBadge` (text) already satisfy this.
+type signal must also carry a shape or text cue (dot, badge text, icon). Today
+`TypeBadge` (glyph and text in a tinted pill, T29) already satisfies this.
 Marked for possible revisit, but the rule holds for now.
 
 ### T4 — Direct manipulation vs one UI codebase (web + iOS)
@@ -887,6 +889,11 @@ to dim into. Only the leading glyph dims, to a new `inkFaintIcon` token
 graphical object. The visual difference is now the glyph alone; VoiceOver
 still speaks the weak state explicitly, so contrast is not the only channel.
 
+*Note, 2 October 2026:* measured against the current `Theme.swift` hexes with
+the WCAG formula, `inkFaint` is 2.45:1 on paper (2.69:1 on cards), and
+`inkFaintIcon` is 3.49:1 on paper and 3.83:1 on `cardFill`. The figures above
+are what was recorded at the time; the decision stands.
+
 ### T24: One marker on paper replaces indigo and serif
 
 **Status:** DECIDED 2026-09-11 (jonyardley/intrada#1676). The Claude Design
@@ -1009,6 +1016,10 @@ The terracotta accent (`IntradaColor.accent`, resolving to `ink` everywhere it
 is used today) is untouched: which of its roughly twenty call sites become
 terracotta and which stay ink is a per-site decision still open as the third
 piece of #1723.
+
+*Note, 2 October 2026:* there is no terracotta accent. `Theme.swift` defines
+`accent` as `ink` with no brand hue (#1676), so every interactive colour on
+paper is ink.
 
 ### T28: Header actions are native toolbar items; the page's own add and identity stay by the title
 
