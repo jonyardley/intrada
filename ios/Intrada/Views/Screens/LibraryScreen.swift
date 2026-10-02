@@ -5,6 +5,7 @@ struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var adding = false
+  @State private var addOpensCamera = false
   // iPad split mode: when set, rows select into the shared binding (detail pane)
   // instead of pushing a stack. nil on compact — the unchanged push navigation.
   private var selection: Binding<String?>? = nil
@@ -28,18 +29,23 @@ struct LibraryScreen: View {
   var body: some View {
     ScreenScaffold(
       title: "Library", subtitle: subtitle,
-      trailing: .init(label: "Add item", identifier: "library.add", action: { adding = true })
+      trailing: .init(label: "Add item", identifier: "library.add", action: { add() })
     ) {
       VStack(spacing: 0) {
-        BrowseControlsBar(previewSearch: previewSearch, showsStarFilter: true)
+        if !items.isEmpty {
+          BrowseControlsBar(previewSearch: previewSearch, showsStarFilter: true)
+        }
         content
       }
     }
     // The read belongs to the sheet. `onDismiss`, not the add screen's own
     // `onDisappear`, which the scanner's full-screen cover also triggers.
     .sheet(isPresented: $adding, onDismiss: { store.send(.discardPhotoDraft) }) {
-      LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
-        .environment(store)
+      LibraryAddScreen(
+        defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece,
+        opensCamera: addOpensCamera
+      )
+      .environment(store)
     }
     // Key on the id (not the value) so an edit — which changes the item's hash —
     // doesn't break the pushed destination; the detail re-reads the fresh item.
@@ -52,7 +58,17 @@ struct LibraryScreen: View {
 
   @ViewBuilder private var content: some View {
     let rows = visibleItems
-    if rows.isEmpty {
+    if items.isEmpty {
+      PlaceholderContent(
+        systemImage: "books.vertical",
+        message: "Pieces and exercises will live here.",
+        actions: [
+          .init(title: "Add piece or exercise", identifier: "library.empty.add") { add() },
+          .init(title: "Scan a page", identifier: "library.empty.scan") {
+            add(opensCamera: true)
+          },
+        ])
+    } else if rows.isEmpty {
       PlaceholderContent(
         systemImage: emptyIcon,
         message: emptyMessage)
@@ -105,6 +121,11 @@ struct LibraryScreen: View {
       .buttonStyle(.plain)
       .accessibilityIdentifier("library.row")
     }
+  }
+
+  private func add(opensCamera: Bool = false) {
+    addOpensCamera = opensCamera
+    adding = true
   }
 
   // Read the item fresh at tap time — a render-captured value can go stale.

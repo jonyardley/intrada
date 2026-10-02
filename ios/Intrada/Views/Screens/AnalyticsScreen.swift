@@ -42,7 +42,12 @@ struct AnalyticsScreen: View {
     } else {
       PlaceholderContent(
         systemImage: "chart.line.uptrend.xyaxis",
-        message: "Progress will appear here once you start practising.")
+        message: "Minutes and marks will show here, week by week.",
+        actions: [
+          .init(title: "Build a session", identifier: "progress.empty.build") {
+            store.send(.session(.startBuilding))
+          }
+        ])
     }
   }
 
