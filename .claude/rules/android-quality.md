@@ -45,6 +45,10 @@ bars, read in Kotlin and Compose.
   with the Compose rules (`android/config/detekt.yml`), which bans `!!`,
   `lateinit` and Material imports; plain `as` stays a review rule. No baseline
   and no suppressions: fix the finding (#2263).
+- **The comment density, bridge test and snapshot checks read Kotlin and the
+  Android snapshot references** (#2265, #2241). The haptics and faint ink
+  checks stay Swift only: the Android shell has no haptic helper and its theme
+  has no faint ink token, so neither rule has anything in Kotlin to hold.
 - **The generated bindings compile in `:bridge`**, outside the warnings gate,
   because crux's typegen emits warnings we cannot fix at the source (a
   redundant `?` on non-null types). Hand-written Kotlin lives in `:app`.
