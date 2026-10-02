@@ -916,3 +916,44 @@ _ios-sync slices="sim":
 [private]
 _ios-src-hash:
     @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1
+
+# ── Android ──
+
+[doc("Generate the Kotlin types into android/generated/kotlin with facet")]
+[group('Android')]
+android-typegen:
+    # crux's Kotlin typegen clears its own package but not the bincode runtime
+    # beside it, so pre-clean the lot as ios-typegen does.
+    rm -rf android/generated/kotlin/com/intrada/shared android/generated/kotlin/com/novi
+    RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir android/generated/kotlin --lang kotlin
+
+[doc("Build the core for Android and the host, then generate the Kotlin bridge")]
+[group('Android')]
+android-package profile="debug":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{profile}}" = "release" ]; then rel="--release"; dir=release; else rel=""; dir=debug; fi
+    sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+    if [ -z "${ANDROID_NDK_HOME:-}" ]; then
+        ANDROID_NDK_HOME="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | tail -1)"
+        export ANDROID_NDK_HOME
+    fi
+    [ -d "${ANDROID_NDK_HOME:-}" ] || { echo "✗ no NDK under $sdk/ndk; set ANDROID_NDK_HOME" >&2; exit 1; }
+    rm -rf android/generated/jniLibs android/generated/host android/generated/kotlin/com/intrada/ffi
+    # x86_64 serves the Intel emulator only; devices and the Apple silicon emulator use arm64-v8a.
+    cargo ndk -t arm64-v8a -t x86_64 -o android/generated/jniLibs build -p intrada-ffi --lib --features uniffi $rel
+    # The host build serves JVM unit tests, which load the bridge without an emulator.
+    cargo build -p intrada-ffi --lib --features uniffi $rel
+    mkdir -p android/generated/host
+    case "$(uname -s)" in Darwin) ext=dylib ;; *) ext=so ;; esac
+    cp "target/$dir/libintrada_ffi.$ext" android/generated/host/
+    # Library mode reads the bridge from the built library, through the bindgen
+    # pinned in intrada-ffi, so it cannot skew from the uniffi 0.29.4 runtime.
+    cargo run -p intrada-ffi --bin uniffi-bindgen --features bindgen -- generate \
+        --library "android/generated/host/libintrada_ffi.$ext" --language kotlin \
+        --config crates/intrada-ffi/uniffi.toml --out-dir android/generated/kotlin --no-format
+
+[doc("Regenerate the Kotlin types, the Kotlin bridge and the native libraries")]
+[group('Android')]
+android-gen profile="debug": android-typegen (android-package profile)
+    @echo "✓ Android bindings regenerated"
