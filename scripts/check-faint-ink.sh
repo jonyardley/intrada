@@ -7,6 +7,9 @@
 # A `//` inside a string literal is read as a comment, so a use after one on
 # the same line slips through: deliberate, not tracked.
 #
+# Swift only: the Android theme has no faint ink token, so there is nothing in
+# Kotlin to keep off text (#2265).
+#
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
 

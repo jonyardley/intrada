@@ -3,7 +3,8 @@
 # See CLAUDE.md "Comments" — code should be self-explanatory; comments are
 # for non-obvious WHY, not narration. Bypass locally with
 # `SKIP_COMMENT_CHECK=1`; in CI, bypass with the `comments-justified` PR
-# label (#1433).
+# label (#1433). Kotlin counts like Swift: the two shells share one comment
+# policy and one comment syntax (#2265).
 
 set -euo pipefail
 
@@ -37,7 +38,7 @@ range="$base...HEAD"
 # 100%-identical file relocated by `git mv` (or an agent recreating the same
 # content elsewhere) reads as pure new content instead of a zero-line rename.
 diff_out=$(git diff "$range" -- \
-  '*.rs' '*.swift' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
+  '*.rs' '*.swift' '*.kt' '*.kts' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
 if [ -z "$diff_out" ]; then
   exit 0
 fi
@@ -86,7 +87,7 @@ if [ "$over" = "1" ]; then
 
    Inspect what tripped the check:
 
-     git diff origin/main...HEAD -- '*.rs' '*.swift' '*.ts' '*.tsx' \\
+     git diff origin/main...HEAD -- '*.rs' '*.swift' '*.kt' '*.kts' '*.ts' '*.tsx' \\
        | grep -E '^\+[[:space:]]*(//|/\*|\*)'
 
    If the comments are genuinely justified (incident write-up, vendored
