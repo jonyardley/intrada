@@ -34,9 +34,9 @@ final class Store {
   /// Positional bincode: any change to `ActiveSession`'s graph takes a new key,
   /// named by the core's `ActiveSession::BLOB_VERSION` so the bump never lives here (#1345, #1116).
   static let sessionInProgressKey = "intrada.session-in-progress.v\(sessionBlobVersion())"
-  /// Positional bincode too: a field added to `Profile` takes a new key
-  /// (`specs/profile.md`; pinned by the core's `profile_blob_wire_is_pinned`).
-  static let profileDefaultsKey = "intrada.profile.v1"
+  /// Positional bincode too: a field added to `Profile` takes a new key,
+  /// named by the core's `Profile::BLOB_VERSION` so the bump never lives here (#2026).
+  static let profileDefaultsKey = "intrada.profile.v\(profileBlobVersion())"
   /// Its own blob, never fields on `Profile`, so no profile is lost to a
   /// failed decode (#1915; pinned by `practice_defaults_blob_wire_is_pinned`).
   static let practiceDefaultsKey = "intrada.practice-defaults.v2"  // gitleaks:allow
