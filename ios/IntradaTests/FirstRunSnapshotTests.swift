@@ -21,6 +21,11 @@ final class FirstRunSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(FirstRunScreen { _ in }), as: splitConfig)
   }
 
+  /// The splash with its swipe drawn, before the handoff (#2277).
+  func testLaunchSplash() {
+    assertSnapshot(of: host(FirstRunScreen(intro: .frozen(at: 2.8)) { _ in }), as: config)
+  }
+
   func testProfileStep() {
     assertSnapshot(of: host(FirstRunScreen(step: .profile) { _ in }), as: config)
   }
