@@ -19,6 +19,10 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
   }
 
+  func testAnalyticsScreenAccessibilitySize() {
+    assertSnapshot(of: host(AnalyticsScreen()), as: axConfig)
+  }
+
   func testProgressScreenPopulated() {
     assertSnapshot(of: host(AnalyticsScreen(), store: .previewProgress), as: config)
   }

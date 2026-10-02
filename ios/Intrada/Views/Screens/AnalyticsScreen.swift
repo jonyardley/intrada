@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AnalyticsScreen: View {
   @Environment(Store.self) private var store
+  @Environment(\.openPractice) private var openPractice
 
   private var analytics: AnalyticsView? { store.viewModel?.analytics }
 
@@ -42,7 +43,11 @@ struct AnalyticsScreen: View {
     } else {
       PlaceholderContent(
         systemImage: "chart.line.uptrend.xyaxis",
-        message: "Progress will appear here once you start practising.")
+        message: "Minutes and marks will show here, week by week.",
+        actions: [
+          .buildSession(
+            identifier: "progress.empty.build", store: store, openPractice: openPractice)
+        ])
     }
   }
 
