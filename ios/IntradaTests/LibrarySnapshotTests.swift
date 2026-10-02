@@ -17,6 +17,10 @@ final class LibrarySnapshotTests: SnapshotTestCase {
       of: host(LibrarySplitView(), store: .previewLibrary), as: splitConfig)
   }
 
+  func testLibrarySplitViewEmptyLibrary() {
+    assertSnapshot(of: host(LibrarySplitView()), as: splitConfig)
+  }
+
   /// The column line must stop below the top strip, not run past the tabs
   /// (#1682); see `LibrarySplitAlignmentTests` for header alignment.
   func testLibrarySplitViewWithSelection() {
@@ -51,6 +55,42 @@ final class LibrarySnapshotTests: SnapshotTestCase {
       of: host(
         NavigationStack { LibraryScreen(previewSearch: "clair").navigationBarHiddenAtRoot() },
         store: .previewLibrarySearching), as: config)
+  }
+
+  /// The empty Library's buttons must stay readable, scrolling if need be.
+  func testLibraryScreenEmptyAccessibilitySize() {
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }), as: axConfig)
+  }
+
+  /// A search that matches nothing keeps sort, filter and search on screen, so
+  /// it can be cleared; only an empty library hides them.
+  func testLibraryScreenSearchMatchesNothing() {
+    let store = Store(
+      bridge: PreviewBridge(
+        items: [.previewPiece, .previewExercise, .previewMinimal],
+        activeQuery: ListQuery(
+          text: "zzz", itemType: nil, key: nil, tags: [], priorityOnly: false),
+        visibleIds: []))
+    assertSnapshot(
+      of: host(
+        NavigationStack { LibraryScreen(previewSearch: "zzz").navigationBarHiddenAtRoot() },
+        store: store), as: config)
+  }
+
+  /// A search left over from deleting the last match keeps its row, or it
+  /// filters the next item added with nothing on screen to clear it.
+  func testLibraryScreenEmptyWithSearch() {
+    let store = Store(
+      bridge: PreviewBridge(
+        items: [],
+        activeQuery: ListQuery(
+          text: "zzz", itemType: nil, key: nil, tags: [], priorityOnly: false),
+        visibleIds: []))
+    assertSnapshot(
+      of: host(
+        NavigationStack { LibraryScreen(previewSearch: "zzz").navigationBarHiddenAtRoot() },
+        store: store), as: config)
   }
 
   /// The search field just after reveal, before any text lands (#1825, moved from `LibrarySearchUITests`).

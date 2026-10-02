@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AnalyticsScreen: View {
   @Environment(Store.self) private var store
+  @Environment(\.openPractice) private var openPractice
 
   private var analytics: AnalyticsView? { store.viewModel?.analytics }
 
@@ -44,9 +45,8 @@ struct AnalyticsScreen: View {
         systemImage: "chart.line.uptrend.xyaxis",
         message: "Minutes and marks will show here, week by week.",
         actions: [
-          .init(title: "Build a session", identifier: "progress.empty.build") {
-            store.send(.session(.startBuilding))
-          }
+          .buildSession(
+            identifier: "progress.empty.build", store: store, openPractice: openPractice)
         ])
     }
   }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RoutinesScreen: View {
   @Environment(Store.self) private var store
+  @Environment(\.openPractice) private var openPractice
 
   var body: some View {
     ScreenScaffold(title: "Routines") {
@@ -9,9 +10,8 @@ struct RoutinesScreen: View {
         systemImage: "music.note.list",
         message: "Build reusable routines from the library.",
         actions: [
-          .init(title: "Build a session", identifier: "routines.empty.build") {
-            store.send(.session(.startBuilding))
-          }
+          .buildSession(
+            identifier: "routines.empty.build", store: store, openPractice: openPractice)
         ])
     }
   }

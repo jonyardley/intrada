@@ -99,6 +99,7 @@ struct RootView: View {
       if phase == .active { store.reportUtcOffset() }
     }
     .marker(markerColour)
+    .environment(\.openPractice, OpenPractice { selectedTab = .practice })
   }
 
   /// The core's chosen highlighter, applied above every tab and the player
@@ -161,3 +162,34 @@ struct RootView: View {
       .environment(Store.previewSeeded)
   }
 #endif
+
+/// Switches to the Practice tab. RootView follows `buildingSetlist` only when it
+/// changes, so a build already open needs the tab switched by hand.
+struct OpenPractice: Sendable {
+  let callAsFunction: @MainActor @Sendable () -> Void
+}
+
+private struct OpenPracticeKey: EnvironmentKey {
+  static let defaultValue = OpenPractice {}
+}
+
+extension EnvironmentValues {
+  var openPractice: OpenPractice {
+    get { self[OpenPracticeKey.self] }
+    set { self[OpenPracticeKey.self] = newValue }
+  }
+}
+
+extension PlaceholderAction {
+  @MainActor static func buildSession(identifier: String, store: Store, openPractice: OpenPractice)
+    -> PlaceholderAction
+  {
+    PlaceholderAction(title: "Build a session", identifier: identifier) {
+      if store.viewModel?.buildingSetlist != nil {
+        openPractice.callAsFunction()
+      } else {
+        store.send(.session(.startBuilding))
+      }
+    }
+  }
+}

@@ -3,7 +3,7 @@ import SwiftUI
 struct PlaceholderAction {
   let title: String
   let identifier: String
-  let action: () -> Void
+  let action: @MainActor () -> Void
 }
 
 /// A centred "nothing here yet" body: tinted glyph, one line of muted copy, and
@@ -14,7 +14,18 @@ struct PlaceholderContent: View {
   var glyphTint: Color = IntradaColor.accent.opacity(IntradaOpacity.dimmed)
   var actions: [PlaceholderAction] = []
 
+  // Scrolls only when it cannot fit: at accessibility sizes the buttons would
+  // otherwise squeeze the message and their own labels into truncation.
   var body: some View {
+    GeometryReader { proxy in
+      ScrollView {
+        stack.frame(minHeight: proxy.size.height)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+    }
+  }
+
+  private var stack: some View {
     VStack(spacing: IntradaSpacing.section) {
       VStack(spacing: IntradaSpacing.cardCompact) {
         Image(systemName: systemImage)
@@ -49,7 +60,7 @@ struct PlaceholderContent: View {
       }
     }
     .padding(32)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .frame(maxWidth: .infinity)
   }
 }
 
