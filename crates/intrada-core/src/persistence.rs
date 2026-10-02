@@ -56,6 +56,7 @@ pub struct ListSync {
     writes_out: u32,
     loads_out: u32,
     stale: bool,
+    loaded: bool,
 }
 
 #[derive(Debug, PartialEq)]
@@ -85,9 +86,16 @@ impl ListSync {
         due
     }
 
+    /// True once a load has replaced the list, so an empty list means empty
+    /// and not unanswered.
+    pub fn has_loaded(&self) -> bool {
+        self.loaded
+    }
+
     pub fn load_landed(&mut self) -> Landed {
         self.loads_out = self.loads_out.saturating_sub(1);
         if !self.stale && self.writes_out == 0 {
+            self.loaded = true;
             return Landed::Apply;
         }
         self.stale = true;

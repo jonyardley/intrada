@@ -74,6 +74,7 @@ struct RootView: View {
         if UITestFlags.resetProfile { store.forgetPersistedProfileAndDefaults() }
         store.restorePersistedProfile()
         store.restorePersistedPracticeDefaults()
+        store.restorePersistedFirstRun()
         store.loadRecoverableSession()
       }
     }

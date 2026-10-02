@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
+use crate::domain::first_run::{FirstRun, FirstRunView};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
@@ -53,6 +54,8 @@ pub struct Model {
     pub profile: Profile,
     /// Device data, like the profile (`specs/practice-defaults.md`).
     pub practice_defaults: PracticeDefaults,
+    /// Device data, like the profile (`specs/first-run.md`).
+    pub first_run: FirstRun,
     /// Bumped each time an error is raised or surfaced, never because one is
     /// still standing, so a send accepted under the banner does not read as
     /// refused (#1056, #1936).
@@ -305,6 +308,7 @@ pub struct ViewModel {
     /// filter, like `up_next`.
     pub shows_priorities: bool,
     pub practice_defaults: PracticeDefaults,
+    pub first_run: FirstRunView,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a

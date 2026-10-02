@@ -404,3 +404,16 @@ they have.
 The code keeps `Click` in its identifiers, file names and the audio engine.
 The language leads and the type follows, so nothing there needed to move for
 this change; only what the musician reads and hears did.
+
+### V8: The welcome's maker's note is the one place a person speaks
+
+**Decided 2026-09-24 (Jon, #2121).** Rule 4 bans the app saying `I`. The
+welcome keeps the maker's note from the old web welcome, which says it:
+"Knowing how to practise well is hard. I've struggled with it. So I built
+this."
+
+That `I` is Jon, not the app, so the note is signed with his name and set
+apart from the screen's own words. It appears once, on the welcome, and
+nowhere else. Every string the app says for itself still follows rule 4: no
+`I`, no `we`, and the button reads `Set up profile`, never `Get started`
+(rule 3).

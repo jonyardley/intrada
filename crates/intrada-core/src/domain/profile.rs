@@ -204,6 +204,7 @@ pub fn handle_profile_event(event: ProfileEvent, model: &mut Model) -> Command<E
             model.clear_error();
             Command::all([
                 Command::notify_shell(AppEffect::SaveProfile(profile)).into(),
+                crate::domain::first_run::dismiss_welcome(model),
                 crux_core::render::render(),
             ])
         }

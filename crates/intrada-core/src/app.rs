@@ -7,6 +7,7 @@ use crux_core::render::RenderOperation;
 use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
 
+use crate::domain::first_run::{handle_first_run_event, FirstRun, FirstRunEvent};
 use crate::domain::item::{handle_item_event, ItemEvent};
 use crate::domain::practice_defaults::{
     handle_practice_defaults_event, PracticeDefaults, PracticeDefaultsEvent,
@@ -46,6 +47,7 @@ pub enum Event {
     Session(SessionEvent),
     Profile(ProfileEvent),
     PracticeDefaults(PracticeDefaultsEvent),
+    FirstRun(FirstRunEvent),
 
     // ── Error handling ──────────────────────────────────────────────
     ClearError,
@@ -112,6 +114,9 @@ pub enum AppEffect {
     /// Persist the practice defaults (UserDefaults, key versioned per
     /// `specs/practice-defaults.md`). Fire-and-forget; output is `()`.
     SavePracticeDefaults(PracticeDefaults),
+    /// Persist whether the welcome was dismissed (UserDefaults, key versioned
+    /// per `specs/first-run.md`). Fire-and-forget; output is `()`.
+    SaveFirstRun(FirstRun),
     /// Every library row in the Library's order. Sent only when a row changed,
     /// so a tap mid-practice does not replace them (#1801).
     LibraryChanged(Vec<crate::model::LibraryItemView>),
@@ -196,6 +201,7 @@ impl Intrada {
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Profile(profile_event) => handle_profile_event(profile_event, model),
+            Event::FirstRun(first_run_event) => handle_first_run_event(first_run_event, model),
             Event::PracticeDefaults(defaults_event) => {
                 handle_practice_defaults_event(defaults_event, model)
             }

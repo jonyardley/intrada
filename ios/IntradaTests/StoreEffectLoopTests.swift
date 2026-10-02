@@ -323,6 +323,60 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(sentEvents.isEmpty, "nothing stored, no event")
   }
 
+  // ── First run persistence ──────────────────────────────────────────────
+
+  func testSaveFirstRunEffectWritesToDefaultsUnderItsOwnKey() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "first-run-\(UUID().uuidString)"))
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 7, effect: .app(.saveFirstRun(FirstRun(welcomeSeen: true))))]
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.send(.setQuery(nil))
+
+    let data = try XCTUnwrap(defaults.data(forKey: Store.firstRunKey))
+    XCTAssertEqual(
+      try FirstRun.bincodeDeserialize(input: [UInt8](data)), FirstRun(welcomeSeen: true))
+    XCTAssertNil(
+      defaults.data(forKey: Store.profileDefaultsKey), "the profile blob is never touched")
+    XCTAssertTrue(bridge.emptyResolved.isEmpty, "the app effect must not be resolved (#882)")
+  }
+
+  func testRestorePersistedFirstRunNoopWhenAbsent() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "first-run-\(UUID().uuidString)"))
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedFirstRun()
+
+    XCTAssertTrue(sentEvents.isEmpty, "nothing stored, no event")
+  }
+
+  /// Skip on one launch, a fresh core on the next: the welcome stays away,
+  /// through the real bridge both times (#846).
+  func testWelcomeStaysDismissedAcrossARestart() async throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "first-run-\(UUID().uuidString)"))
+    let first = Store(bridge: LiveBridge(), sortDefaults: defaults)
+    first.send(.startApp)
+    await first.settle()
+    XCTAssertEqual(first.viewModel?.firstRun.showsWelcome, true, "an empty install greets")
+
+    first.send(.firstRun(.skipWelcome))
+    XCTAssertEqual(first.viewModel?.firstRun.showsWelcome, false)
+
+    let second = Store(bridge: LiveBridge(), sortDefaults: defaults)
+    second.send(.startApp)
+    second.restorePersistedFirstRun()
+    await second.settle()
+    XCTAssertEqual(second.viewModel?.firstRun.showsWelcome, false, "dismissed stays dismissed")
+  }
+
   // ── Failure-soft (guarded) ─────────────────────────────────────────────
 
   func testUpdateThrowIsSwallowedWithoutCrashing() {

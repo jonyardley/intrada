@@ -1,4 +1,5 @@
 use crate::analytics::LocalClock;
+use crate::domain::first_run::build_first_run_view;
 use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
@@ -183,6 +184,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         shows_priorities: cached.has_priorities
             && matches!(model.session_status, SessionStatus::Idle),
         practice_defaults: model.practice_defaults,
+        first_run: build_first_run_view(model),
     }
 }
 

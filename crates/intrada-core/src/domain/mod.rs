@@ -1,4 +1,5 @@
 pub mod chart;
+pub mod first_run;
 pub mod item;
 pub mod key;
 pub mod metre;
