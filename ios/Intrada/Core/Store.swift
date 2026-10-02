@@ -40,12 +40,14 @@ final class Store {
   /// Its own blob, never fields on `Profile`, so no profile is lost to a
   /// failed decode (#1915; pinned by `practice_defaults_blob_wire_is_pinned`).
   static let practiceDefaultsKey = "intrada.practice-defaults.v2"  // gitleaks:allow
+  static let firstRunKey = "intrada.first-run.v\(firstRunBlobVersion())"
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
   private let sortSlot: DefaultsSlot
   private let sessionSlot: DefaultsSlot
   private let profileSlot: DefaultsSlot
   private let practiceDefaultsSlot: DefaultsSlot
+  private let firstRunSlot: DefaultsSlot
   private var diskTail: Task<Void, Never>?
 
   init(
@@ -71,6 +73,7 @@ final class Store {
     sessionSlot = DefaultsSlot(key: Self.sessionInProgressKey, defaults: sortDefaults)
     profileSlot = DefaultsSlot(key: Self.profileDefaultsKey, defaults: sortDefaults)
     practiceDefaultsSlot = DefaultsSlot(key: Self.practiceDefaultsKey, defaults: sortDefaults)
+    firstRunSlot = DefaultsSlot(key: Self.firstRunKey, defaults: sortDefaults)
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
     self.viewModel = bridged { try bridge.view() }
@@ -160,6 +163,10 @@ final class Store {
       if let bytes = guarded({ try defaults.bincodeSerialize() }) {
         practiceDefaultsSlot.write(bytes)
       }
+    case .saveFirstRun(let firstRun):
+      if let bytes = guarded({ try firstRun.bincodeSerialize() }) {
+        firstRunSlot.write(bytes)
+      }
     case .libraryChanged(let rows):
       libraryRows = rows
     case .historyChanged(let sessions):
@@ -238,6 +245,13 @@ final class Store {
       let defaults = guarded({ try PracticeDefaults.bincodeDeserialize(input: bytes) })
     else { return }
     send(.practiceDefaults(.loaded(defaults)))
+  }
+
+  func restorePersistedFirstRun() {
+    guard let bytes = firstRunSlot.read(),
+      let firstRun = guarded({ try FirstRun.bincodeDeserialize(input: bytes) })
+    else { return }
+    send(.firstRun(.loaded(firstRun)))
   }
 
   // A bridge failure means a serialization/protocol break (e.g. stale bindings

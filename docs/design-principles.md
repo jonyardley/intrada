@@ -1104,3 +1104,27 @@ not a fixed brown for everyone.
 - Rejected: a greyer tint (the colour barely reads), both stops in the hue
   (the whole card shifts, not just its fade), and a pastel ground with ink text
   (the highlighter button disappears into it).
+
+### T34: The first run teaches by doing
+
+**Status:** DECIDED 2026-09-24 (jonyardley/intrada#2121) for the welcome, no
+sample content and ticks from core data; the last two rulings are proposed with
+#2116 (spec [`../specs/first-run.md`](../specs/first-run.md)). A new musician
+learns the app by making their first session, not by reading about it.
+
+- **One welcome, then the work.** A single screen with one plain line on what the app is for and a
+  way to set up a profile or skip. No tour, no swipe-through cards: Nielsen
+  Norman Group's tutorial study and Apple's onboarding guidance, cited on
+  #2121, both favour getting to real use fast over explaining first.
+- **No sample content.** The app does not write pieces into the library for
+  the musician to try, for the reason T21 keeps the app's suggestions out of
+  the create form. Example content is its own question (#2115).
+- **The Start here card ticks from the musician's own data.** Added, built,
+  played and marked are read from the library and the history, so a tick can
+  never disagree with them and nothing about progress is stored. Built means a
+  session has started: a setlist left half made in the builder is not kept, so
+  it earns no tick.
+- **Musicians who already use the app never see the welcome.** It needs an
+  empty library, an empty history and no saved profile, as well as not having
+  been dismissed. The Start here card is different: it stays until a session
+  is marked, so a musician who has never marked one sees it after updating.

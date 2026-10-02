@@ -404,3 +404,15 @@ they have.
 The code keeps `Click` in its identifiers, file names and the audio engine.
 The language leads and the type follows, so nothing there needed to move for
 this change; only what the musician reads and hears did.
+
+### V8: The welcome has no maker's note
+
+**Decided 2026-10-02 (Jon, #2116).** The plan on #2121 kept the old web
+welcome's maker's note, "Knowing how to practise well is hard. I've struggled
+with it. So I built this." Dropped: a personal note in the first person reads
+as cringe, and signing it does not change that.
+
+The welcome speaks in the app's own voice like every other screen. Rule 4
+holds without exception: no `I`, no `we`. It names what the app is for in one
+plain line, and the button reads `Set up profile`, never `Get started`
+(rule 3).

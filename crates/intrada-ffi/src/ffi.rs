@@ -313,6 +313,13 @@ pub fn profile_blob_version() -> u32 {
     crate::domain::profile::Profile::BLOB_VERSION
 }
 
+/// The shell builds the first-run blob's storage key from this (#2116).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn first_run_blob_version() -> u32 {
+    crate::domain::first_run::FirstRun::BLOB_VERSION
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
