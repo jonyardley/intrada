@@ -73,6 +73,8 @@ struct VariationsSection: View {
 private struct VariationRingItem: View {
   let variation: VariantView
 
+  @Environment(\.scoreRange) private var scoreRange
+
   var body: some View {
     VStack(spacing: 6) {
       ScoreRing(
@@ -98,7 +100,8 @@ private struct VariationRingItem: View {
   private var accessibilityLabel: String {
     guard let score = variation.latestScore else { return "\(variation.label), not yet attempted" }
     return variation.isSolid
-      ? "\(variation.label), solid, \(score) of 10" : "\(variation.label), \(score) of 10"
+      ? "\(variation.label), solid, \(score) of \(scoreRange.upperBound)"
+      : "\(variation.label), \(score) of \(scoreRange.upperBound)"
   }
 }
 

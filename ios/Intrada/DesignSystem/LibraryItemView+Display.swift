@@ -120,7 +120,7 @@ extension ExerciseUsageView {
   /// decorative (#1468). A row with no practice stops at "not practised
   /// together yet" — the ring's unrated rest says the same thing, and "not yet
   /// rated" after it would be the fact twice.
-  var spokenRow: String {
+  func spokenRow(topMark: Int) -> String {
     var parts = [rowTitle]
     if pieceRemoved { parts.append("removed from the library") }
     guard sessionCount > 0 else {
@@ -128,7 +128,7 @@ extension ExerciseUsageView {
       return parts.joined(separator: ", ")
     }
     if let score = latestScore {
-      parts.append("mark \(score) of 10")
+      parts.append("mark \(score) of \(topMark)")
     } else {
       parts.append("not yet rated")
     }
