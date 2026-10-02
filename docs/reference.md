@@ -30,6 +30,7 @@ just android-gen           # regenerate the Kotlin types, bridge and native libr
 just android-run           # build + launch on the intrada-api36 emulator + screenshot
 just android-test          # JVM unit + Roborazzi snapshot tests, with counts
 just android-fmt           # format Kotlin sources and build scripts (ktfmt)
+just android-check         # CI's Android gates: ktfmt, warnings as errors, lint, detekt
 just testflight            # signed Release .ipa → TestFlight (needs setup)
 just worktree-new <name>   # new worktree, seeded from the main checkout's warm caches
 just worktree-rm <name>    # clean up a worktree's sim, then remove it

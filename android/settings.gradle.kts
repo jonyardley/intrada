@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "intrada"
-include(":app")
+include(":app", ":bridge")

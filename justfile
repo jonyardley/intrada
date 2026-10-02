@@ -1011,6 +1011,15 @@ android-test:
     echo "Android tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
     exit $status
 
+[doc("Run CI's Android gates: ktfmt, the build with warnings as errors, Android lint and detekt")]
+[group('Android')]
+android-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source android/env.sh
+    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest
+    echo "✓ Android gates pass"
+
 [doc("Format the Android Kotlin sources and build scripts with ktfmt")]
 [group('Android')]
 android-fmt:

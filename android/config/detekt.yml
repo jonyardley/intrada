@@ -1,0 +1,32 @@
+# Builds on detekt's defaults; .claude/rules/android-quality.md names the patterns banned here.
+potential-bugs:
+  UnsafeCallOnNullableType:
+    active: true
+    # The default skips tests; the ban covers every Kotlin file.
+    excludes: []
+  LateinitUsage:
+    active: true
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  LongParameterList:
+    # Test fixtures take one defaulted argument per field (CLAUDE.md, Testing).
+    ignoreDefaultParameters: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    # The bridge and the disk job turn any failure into an answer the core reads, never a crash.
+    excludes: ['**/core/Store.kt']
+
+style:
+  ForbiddenImport:
+    active: true
+    forbiddenImports:
+      - value: 'androidx.compose.material.*'
+        reason: 'intrada draws its own look on Compose foundation, not Material.'
+      - value: 'androidx.compose.material3.*'
+        reason: 'intrada draws its own look on Compose foundation, not Material.'
+

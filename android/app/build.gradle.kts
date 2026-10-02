@@ -1,10 +1,9 @@
-import javax.inject.Inject
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.ktfmt)
+    alias(libs.plugins.detekt)
 }
 
 val generated = rootProject.layout.projectDirectory.dir("generated")
@@ -30,8 +29,18 @@ android {
 
     buildFeatures { compose = true }
 
-    sourceSets {
-        getByName("main") { jniLibs.directories.add(generated.dir("jniLibs").asFile.path) }
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+        checkTestSources = true
+        // These turn red when Google ships a release, not on a change; bumps are their own PRs.
+        disable +=
+            setOf(
+                "AndroidGradlePluginVersion",
+                "GradleDependency",
+                "NewerVersionAvailable",
+                "OldTargetApi",
+            )
     }
 
     testOptions {
@@ -46,39 +55,14 @@ android {
     }
 }
 
-// crux's typegen writes a build.gradle.kts beside the sources, which the compiler would read as
-// Kotlin, so only the .kt files are copied in.
-abstract class SyncGeneratedKotlin : DefaultTask() {
-    @get:InputDirectory abstract val source: DirectoryProperty
-
-    @get:OutputDirectory abstract val output: DirectoryProperty
-
-    @get:Inject abstract val fs: FileSystemOperations
-
-    @TaskAction
-    fun sync() {
-        fs.sync {
-            from(source) { include("**/*.kt") }
-            into(output)
-        }
-    }
-}
-
-val syncGeneratedKotlin =
-    tasks.register<SyncGeneratedKotlin>("syncGeneratedKotlin") {
-        source.set(generated.dir("kotlin"))
-    }
-
-androidComponents {
-    onVariants { variant ->
-        variant.sources.kotlin?.addGeneratedSourceDirectory(
-            syncGeneratedKotlin,
-            SyncGeneratedKotlin::output,
-        )
-    }
-}
+kotlin { compilerOptions { allWarningsAsErrors = true } }
 
 ktfmt { kotlinLangStyle() }
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt.yml"))
+}
 
 dependencies {
     implementation(platform(libs.compose.bom))
@@ -87,7 +71,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.coroutines.android)
-    implementation("${libs.jna.get()}@aar")
+    implementation(project(":bridge"))
 
     testImplementation(libs.jna)
     testImplementation(libs.junit)
@@ -99,4 +83,6 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+
+    detektPlugins(libs.compose.rules.detekt)
 }
