@@ -26,6 +26,12 @@ final class FirstRunSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(FirstRunScreen(intro: .frozen(at: 2.8)) { _ in }), as: config)
   }
 
+  /// The returning splash settled, with its swipe still drawing (#2278).
+  func testReturningSplash() {
+    assertSnapshot(
+      of: host(ReturningSplashLayer(frame: .returning(at: 0.4, reduceMotion: false))), as: config)
+  }
+
   func testProfileStep() {
     assertSnapshot(of: host(FirstRunScreen(step: .profile) { _ in }), as: config)
   }

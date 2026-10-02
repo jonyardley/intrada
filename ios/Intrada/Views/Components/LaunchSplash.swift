@@ -23,6 +23,8 @@ struct SplashFrame {
   var wordTravel: CGFloat
   /// Tagline, the three pillars, Skip, then the button.
   var items: [Item]
+  /// The returning splash's paper, which fades to show the app beneath.
+  var paperOpacity: Double = 1
 
   static let markCue = 0.9
   static let nameCue = 1.9
@@ -82,8 +84,111 @@ struct SplashFrame {
   }
 }
 
-/// The staff and icon, drawn over the welcome while it is still hidden. The
-/// wordmark is the welcome's own title, moved by the same frame.
+// ── Returning launch (#2278) ──
+
+extension SplashFrame {
+  static func returningDuration(reduceMotion: Bool) -> Double {
+    reduceMotion ? IntradaMotion.reduceFade : 1.2
+  }
+
+  /// Under Reduce Motion only the paper fades, and nothing moves.
+  static func returning(at t: Double, reduceMotion: Bool) -> SplashFrame {
+    guard !reduceMotion else {
+      return SplashFrame(
+        staff: Array(repeating: 0, count: 5), iconScale: 1, iconOpacity: 0, keyFill: 1,
+        keyDip: 0, wordOpacity: 0, wordRise: 0, swipe: 1, splashOpacity: 0, splashLift: 0,
+        wordTravel: 0, items: [],
+        paperOpacity: 1 - tween(t, 0, IntradaMotion.reduceFade, Ease.enter))
+    }
+    let settle = tween(t, 0, 0.3, Ease.enter)
+    let word = tween(t, 0.1, 0.4, Ease.enter)
+    let out = tween(t, 0.75, 1.05, Ease.enter)
+    return SplashFrame(
+      staff: (0..<5).map { i in
+        let start = Double(i) * 0.04
+        return CGFloat(tween(t, start, start + 0.35, Ease.draw))
+      },
+      iconScale: lerp(0.92, 1, settle),
+      iconOpacity: settle,
+      keyFill: 1,
+      keyDip: 0,
+      wordOpacity: word,
+      wordRise: lerp(8, 0, word),
+      swipe: CGFloat(tween(t, 0.2, 0.55, Ease.draw)),
+      splashOpacity: 1 - out,
+      splashLift: lerp(0, -12, out),
+      wordTravel: 0,
+      items: [],
+      paperOpacity: 1 - tween(t, 0.85, 1.2, Ease.enter))
+  }
+}
+
+/// Plays once over the app on a returning cold launch, and a tap skips it.
+struct ReturningSplash: View {
+  enum Phase { case deciding, playing, done }
+
+  /// The welcome has its own splash, and a session to reopen never waits on
+  /// one. The core only knows the welcome is due once the library and history
+  /// have loaded, so a fresh install waits for them (#2278).
+  static func decide(for store: Store) async -> Phase {
+    guard store.recoverableSession == nil else { return .done }
+    await store.settle()
+    return store.viewModel?.firstRun.showsWelcome == false ? .playing : .done
+  }
+
+  let onFinish: () -> Void
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var start = Date.now
+
+  var body: some View {
+    TimelineView(.animation) { context in
+      ReturningSplashLayer(
+        frame: .returning(at: context.date.timeIntervalSince(start), reduceMotion: reduceMotion))
+    }
+    .contentShape(Rectangle())
+    .onTapGesture(perform: onFinish)
+    .task {
+      let duration = SplashFrame.returningDuration(reduceMotion: reduceMotion)
+      guard (try? await Task.sleep(for: .seconds(duration))) != nil else { return }
+      onFinish()
+    }
+  }
+}
+
+struct ReturningSplashLayer: View {
+  let frame: SplashFrame
+
+  var body: some View {
+    ZStack {
+      PaperBackground().opacity(frame.paperOpacity)
+      LaunchSplashLayer(frame: frame)
+      GeometryReader { geo in
+        Wordmark(swipe: frame.swipe)
+          .frame(width: geo.size.width)
+          .offset(
+            y: LaunchSplashLayer.wordTop(in: geo.size.height) + frame.wordRise + frame.splashLift
+          )
+          .opacity(frame.wordOpacity * frame.splashOpacity)
+      }
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+/// The app's name in the highlighter, as both splashes and the welcome draw it.
+struct Wordmark: View {
+  let swipe: CGFloat
+
+  var body: some View {
+    Text("Intrada")
+      .font(IntradaFont.pageTitle(40))
+      .foregroundStyle(IntradaColor.ink)
+      .markerSwipe(progress: swipe)
+  }
+}
+
+/// The staff and icon of both splashes. Each draws its own wordmark: on first
+/// launch it is the welcome's title, moved by the same frame.
 struct LaunchSplashLayer: View {
   let frame: SplashFrame
 
@@ -185,5 +290,9 @@ extension View {
       PaperBackground()
       LaunchSplashLayer(frame: .at(2.8))
     }
+  }
+
+  #Preview("Returning") {
+    ReturningSplashLayer(frame: .returning(at: 0.4, reduceMotion: false))
   }
 #endif
