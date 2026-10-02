@@ -74,10 +74,14 @@ class BridgeRoundTripTest {
                                 tempo = TempoInput(marking = "Lento", bpm = " 60 "),
                                 tags = emptyList(),
                                 variantLabels = emptyList(),
-                            ),
-                        ),
-                    ),
-                ).mapNotNull { ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value }
+                            )
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
                 .single()
 
         assertEquals("Lento", saved.tempo?.marking)
