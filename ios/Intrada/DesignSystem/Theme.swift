@@ -305,10 +305,9 @@ struct IntradaShadow {
 
 /// Named motion tokens — the "engaging refresh" springs, the signature `fadeUp`
 /// screen-entrance, and the one-shot reveal timings. The *modifiers* that consume
-/// these (`.fadeUp`, `.pop`, the count-up/ring-draw) live in `Motion.swift`; this
-/// is the token layer, the way `IntradaColor` is for colour. Every animation here
-/// must collapse to a 150ms fade (or its final state) under Reduce Motion — the
-/// modifiers enforce that.
+/// these (`.fadeUp`, `.pop`, the count-up) live in `Motion.swift`; this
+/// is the token layer, the way `IntradaColor` is for colour. Under Reduce Motion
+/// the modifiers skip the animation and render the final state.
 enum IntradaMotion {
   // Named springs (response · dampingFraction), from the design system.
   static let standard = Animation.spring(response: 0.35, dampingFraction: 0.85)
@@ -327,9 +326,9 @@ enum IntradaMotion {
   static let barGrowStagger: Double = 0.06
   /// MasteryDial count-up + ring-draw (ease-out cubic over 1.5s).
   static let countUpDuration: Double = 1.5
-  /// `pop` — spring scale-in (0.55→1.09→1) for rep ticks/dots; low damping overshoots.
+  /// `pop`: spring scale-in from 0.82 to 1 for rep ticks/dots; low damping overshoots.
   static let pop = Animation.spring(response: 0.35, dampingFraction: 0.62)
-  /// Reduce-Motion collapse target.
+  /// FIXME(#2239): no modifier reads this; wire it in or delete it.
   static let reduceFade: Double = 0.15
 
   /// The per-item `fadeUp` animation for a given stagger index.
@@ -339,8 +338,6 @@ enum IntradaMotion {
 }
 
 extension Color {
-  /// Build a `Color` from a packed `0xRRGGBB` literal so tokens read like the
-  /// Pencil hex values they mirror.
   init(hex: UInt32) {
     let r = Double((hex >> 16) & 0xFF) / 255
     let g = Double((hex >> 8) & 0xFF) / 255

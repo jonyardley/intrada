@@ -5,10 +5,10 @@ paths:
 
 # Paper & Score: the design system rules
 
-Off-white paper, brown ink, one highlighter as the only bright colour, butter
-by default and the musician's own choice through `@Environment(\.marker)`
-(#1677); Hanken Grotesk for titles and body, DM Mono for metadata (T24 in
-`docs/design-principles.md`). Every token lives in
+Off-white paper, near-neutral ink (T27), one highlighter as the only bright
+colour, butter by default and the musician's own choice of eight through
+`@Environment(\.marker)` (#1677); Hanken Grotesk for titles and body, DM Mono
+for metadata (T24 in `docs/design-principles.md`). Every token lives in
 `ios/Intrada/DesignSystem/Theme.swift`; the shareable export is
 `design/intrada-design-system.dc.html`, derived from it (behind the app until
 #1678).
@@ -37,8 +37,8 @@ shipped, and were each reworked, the same way).
    height, a 2pt baseline nudge) stay literal.
 2. Reuse before creating: check `ios/Intrada/DesignSystem/` and
    `ios/Intrada/Views/Components/` first. Primitives to reach for: `TagChip`,
-   `TypeBadge`, `ScoreRing`, `BottomSheet`, `SegmentedPills`, `CardSurface`,
-   `CardShadow`, `GlobalBanner`, `FormErrorBanner`, `PlaceholderContent`,
+   `TypeBadge`, `ScoreRing`, `BottomSheet`, `SegmentedPills`, `.cardSurface()`,
+   `.cardShadow()`, `GlobalBanner`, `FormErrorBanner`, `PlaceholderContent`,
    `ScreenScaffold`, `SectionHeader`, `HairlineDivider`, `SegmentedProgress`,
    `Eyebrow`.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
@@ -46,11 +46,12 @@ shipped, and were each reworked, the same way).
 4. If a primitive almost fits, add a parameter to it (as `SegmentedPills` and
    `LibraryItemCard` do). Never ship a parallel one-off: hand-rolled copies of
    an existing primitive are the number one source of visual drift.
-5. Typography through `IntradaFont` (`.pageTitle`, `.cardTitle`,
-   `.sectionTitle`, `.fieldLabel`), spacing through `IntradaSpacing`
-   (`controlGap`, `cardCompact`, `card`), SF Symbols through `IntradaIconSize`,
-   alpha through `IntradaOpacity`, shadows through `IntradaShadow`, motion
-   through `Motion.swift`.
+5. Typography through `IntradaFont` (`.pageTitle`, `.cardTitle`, `.eyebrow`
+   through `SectionHeader` for section titles, `.metaMedium` for field labels),
+   spacing through `IntradaSpacing` (`controlGap`, `cardCompact`, `card`,
+   `section`), SF Symbols through `IntradaIconSize`, alpha through
+   `IntradaOpacity`, shadows through `IntradaShadow`, motion through
+   `Motion.swift`.
 
 Deviation is allowed only in an explicit redesign, which is a flagged
 conversation (Claude Design first, then the plan comment) and produces updated tokens
