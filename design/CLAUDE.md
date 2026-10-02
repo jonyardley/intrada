@@ -40,7 +40,7 @@
   (#1676).
 - `Intrada Reskin.dc.html`: the 8f token sheet.
 - `App Icon.dc.html`: the final app icon and the swipe placements tried for it.
-- `Welcome.dc.html`: the welcome animation into profile setup.
+- `Welcome.dc.html`: the shipped first run (welcome, profile, first piece, Start here card), with the unbuilt animated intro kept below.
 - `Faint Ink 1941.dc.html`: metadata text moving from faint ink to secondary ink
   (#1941).
 - `Intrada Concepts.dc.html`: exploratory/validated screen concepts (Progress, Focus
