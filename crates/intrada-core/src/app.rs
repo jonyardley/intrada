@@ -2452,6 +2452,47 @@ mod tests {
     }
 
     #[test]
+    fn an_unfinished_session_is_offered_only_while_none_is_played_or_summarised() {
+        use crate::domain::session::{SessionEvent, TempoReading};
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![make_item("p1", "Sonata", ItemKind::Piece, now)].into(),
+            ..Default::default()
+        };
+        let offers = |model: &Model| app.view(model).offers_recovery;
+
+        assert!(offers(&model), "nothing under way");
+
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        let _ = app.update(
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "p1".to_string(),
+            }),
+            &mut model,
+        );
+        assert!(offers(&model), "building a session holds nothing to lose");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::StartSession { now }),
+            &mut model,
+        );
+        assert!(app.view(&model).active_session.is_some());
+        assert!(!offers(&model), "a session is being played");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::EndSessionEarly {
+                now,
+                reading: TempoReading::silent(),
+            }),
+            &mut model,
+        );
+        assert!(app.view(&model).summary.is_some());
+        assert!(!offers(&model), "a finished session is on screen");
+    }
+
+    #[test]
     fn the_solid_count_counts_the_solid_variations() {
         let app = Intrada;
         let now = chrono::Utc::now();
