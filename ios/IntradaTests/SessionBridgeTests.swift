@@ -513,12 +513,14 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNotNil(building.buildingSetlist, "startBuilding + add should open a setlist")
     XCTAssertEqual(building.buildingSetlist?.entries.count, 1)
     XCTAssertNil(building.activeSession)
+    XCTAssertTrue(building.offersRecovery, "building a session holds nothing to lose")
 
     _ = try bridge.update(.session(.startSession(now: "2026-06-16T10:00:00Z")))
     let active = try bridge.rendered()
     XCTAssertNotNil(active.activeSession, "startSession should enter the player")
     XCTAssertNil(active.buildingSetlist, "the builder should close on start")
     XCTAssertNil(active.summary)
+    XCTAssertFalse(active.offersRecovery, "a played session is never replaced by a recovered one")
     XCTAssertEqual(active.activeSession?.currentItemNotes, "Watch the thumb crossing")
 
     // Advancing past the last item is the only way a session finishes (#1761).
@@ -530,6 +532,7 @@ final class SessionBridgeTests: XCTestCase {
     let summary = try bridge.rendered()
     XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
     XCTAssertNil(summary.activeSession)
+    XCTAssertFalse(summary.offersRecovery, "nor is a finished one still on screen")
     XCTAssertEqual(summary.summary?.completedCount, 1, "the one item played counts as done")
 
     // Optional-payload events crossing bincode (the absent-vs-present wire

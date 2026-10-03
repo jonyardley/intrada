@@ -183,6 +183,10 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         recently_practised_ids: cached.recently_practised_ids.clone(),
         shows_priorities: cached.has_priorities
             && matches!(model.session_status, SessionStatus::Idle),
+        offers_recovery: !matches!(
+            model.session_status,
+            SessionStatus::Active(_) | SessionStatus::Summary(_)
+        ),
         practice_defaults: model.practice_defaults,
         first_run: build_first_run_view(model),
     }
