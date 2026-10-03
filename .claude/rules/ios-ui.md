@@ -50,8 +50,10 @@ shipped, and were each reworked, the same way).
    `.pageTitle`, `.title`, `.cardTitle`, `.body`, `.label` in secondary ink
    for every section title, field label and toggle title (through
    `SectionTitle` and `FieldLabel`, the field's inside its card),
-   `.secondary` for words, `.figure` for a number alone, `.small`. Nothing in
-   capitals, and no screen passes a size of its own;
+   `.bodyMedium` for emphasis, `.secondary` for words, `.figure` for a number
+   alone, `.button`, `.segment`, `.small`, `.smallMedium` and `.badge`, and the
+   display numerals `.timer` and `.scoreNumeral`. Nothing in capitals, and no
+   screen passes a size of its own;
    spacing through `IntradaSpacing` (`controlGap`, `cardCompact`, `card`,
    `section`), SF Symbols through `IntradaIconSize`, alpha through
    `IntradaOpacity`, shadows through `IntradaShadow`, motion through

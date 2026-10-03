@@ -256,9 +256,7 @@ struct SessionSummaryScreen: View {
 
   private func sessionScoreRow(_ summary: SummaryView) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Text("Overall")
-        .font(IntradaFont.label)
-        .foregroundStyle(IntradaColor.inkSecondary)
+      FieldLabel("Overall")
       if let scoreRange {
         ScoreSelector(
           score: summary.sessionScore.map(Int.init) ?? 0,

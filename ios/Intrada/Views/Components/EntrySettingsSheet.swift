@@ -140,9 +140,7 @@ struct EntrySettingsSheet: View {
         }
       }
     }
-    .padding(.vertical, 10)
-    .padding(.horizontal, IntradaSpacing.card)
-    .cardSurface()
+    .fieldCardSurface()
   }
 
   private var durationSection: some View {
@@ -165,9 +163,7 @@ struct EntrySettingsSheet: View {
         }
       }
     }
-    .padding(.vertical, 10)
-    .padding(.horizontal, IntradaSpacing.card)
-    .cardSurface()
+    .fieldCardSurface()
   }
 
   @ViewBuilder private func settingToggle(

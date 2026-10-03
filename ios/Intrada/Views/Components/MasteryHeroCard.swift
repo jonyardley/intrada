@@ -43,7 +43,7 @@ struct MasteryHeroCard: View {
           Image(systemName: "chart.line.uptrend.xyaxis")
           Text(change)
         }
-        .font(IntradaFont.label)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.success)
       }
       Text("Climbing steadily across \(itemsCovered) pieces.")

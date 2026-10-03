@@ -524,7 +524,9 @@ struct SessionBuilderScreen: View {
   }
 
   private var groupPill: some View {
-    SectionTitle("Group", tint: IntradaColor.pieceBadgeFg)
+    Text("Group")
+      .font(IntradaFont.badge)
+      .foregroundStyle(IntradaColor.pieceBadgeFg)
       .padding(.horizontal, 6).padding(.vertical, 2)
       .background(
         IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))

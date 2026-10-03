@@ -1049,10 +1049,10 @@ fill although it never shows: without one, the toolbar items render flat.
 by T35 on 2026-10-03. The item details screen had five label styles with no
 order between them. Now there are three:
 
-- **A section** is named by the small-capitals eyebrow (`SectionHeader`) inside
+- **A section** (replaced by T35) is named by the small-capitals eyebrow (`SectionHeader`) inside
   its card: Notes, Chord chart and Related exercises match Keys and Variations.
   A count sits beside the name as "· 3", and an Edit action at the trailing edge.
-- **A field label** such as Key or Tempo is `metaMedium`, quieter than its value.
+- **A field label** (replaced by T35) such as Key or Tempo is `metaMedium`, quieter than its value.
 - **A tag** is a pill, and the piece or exercise badge is the first pill in the
   same scrolling row, tinted by type. The badge is a pill wherever it appears,
   the Practice player included, so one shape means "what kind of thing this is".
@@ -1164,7 +1164,7 @@ own, and a field's label had four looks. It read as busy and machine made.
   for card titles, body, fields and emphasis, 15 for section titles, field
   labels, secondary lines and buttons, 13 for tabs, badges and chips. Weight
   and colour carry the hierarchy inside a size. No screen passes a size; the
-  timer and the score and mastery numerals are the only figures sized by the
+  timer, the tempo readouts and the score and mastery numerals are the only figures sized by the
   dial or readout they sit in. Rejected: four sizes, which left the key picker
   and the session headline with only the page title to reach for.
 - **Every label looks the same.** A section's title, a field's label and a

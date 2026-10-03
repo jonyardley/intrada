@@ -5,7 +5,7 @@ import SwiftUI
 struct SectionTitle: View {
   let text: String
   // Override for a section title on a dark or coloured surface (the Practice
-  // hero, the dark summary headline); a trailing `.foregroundStyle` can't
+  // and Up next heroes); a trailing `.foregroundStyle` can't
   // override the inner Text, so the tint must be set here.
   var tint: Color = IntradaColor.inkSecondary
   init(_ text: String, tint: Color = IntradaColor.inkSecondary) {

@@ -58,7 +58,7 @@ struct RecentSessions: View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       ScoreRing(score: session.score, size: 38)
       Text(session.dateText)
-        .font(IntradaFont.label)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer()
     }

@@ -475,7 +475,7 @@ private struct TimerRing: View {
           .foregroundStyle(IntradaColor.ink)
         if let planned {
           Text("of \(SessionClock.clockDisplay(planned))")
-            .font(IntradaFont.figure)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }

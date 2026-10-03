@@ -89,7 +89,7 @@ struct KeyPicker: View {
       }
 
       Image(systemName: "chevron.down")
-        .font(IntradaFont.label)
+        .iconSize(.inline, weight: .medium)
         .foregroundStyle(IntradaColor.inkFaintIcon)
         .rotationEffect(.degrees(expanded ? 180 : 0))
         // Keep clear distance from the clear (×) button so a tap aimed at the

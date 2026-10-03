@@ -151,14 +151,17 @@ extension RadialGradient {
 /// PostScript names, not `.weight()`, which is synthetic over a variable axis.
 /// Five sizes (30, 20, 17, 15, 13); weight and colour carry the rest (T35).
 enum IntradaFont {
+  static let pageTitleSize: CGFloat = 30
+  static let cardTitleSize: CGFloat = 17
+
   // ── 30 ──
-  static let pageTitle = Font.custom(Hanken.semibold, size: 30, relativeTo: .largeTitle)
+  static let pageTitle = Font.custom(Hanken.semibold, size: pageTitleSize, relativeTo: .largeTitle)
 
   // ── 20 ──
   static let title = Font.custom(Hanken.semibold, size: 20, relativeTo: .title3)
 
   // ── 17 ──
-  static let cardTitle = Font.custom(Hanken.semibold, size: 17, relativeTo: .headline)
+  static let cardTitle = Font.custom(Hanken.semibold, size: cardTitleSize, relativeTo: .headline)
   static let body = Font.custom(Hanken.regular, size: 17, relativeTo: .body)
   static let bodyMedium = Font.custom(Hanken.medium, size: 17, relativeTo: .body)
 

@@ -359,9 +359,7 @@ private struct DetailRow: View {
 
   var body: some View {
     HStack {
-      Text(label)
-        .font(IntradaFont.label)
-        .foregroundStyle(IntradaColor.inkSecondary)
+      FieldLabel(label)
       Spacer(minLength: 16)
       Text(value)
         .font(IntradaFont.body)

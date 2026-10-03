@@ -20,7 +20,7 @@ struct MasteryDelta: View {
         .frame(width: 8, height: 8)
       VStack(alignment: .leading, spacing: 2) {
         Text(title)
-          .font(IntradaFont.label)
+          .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.ink)
         if let subtitle {
           Text(subtitle)

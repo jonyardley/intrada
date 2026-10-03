@@ -32,10 +32,16 @@ struct FieldCard<Content: View>: View {
       FieldLabel(label)
       content
     }
-    .padding(.vertical, 10)
-    .padding(.horizontal, IntradaSpacing.card)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .cardSurface()
+    .fieldCardSurface()
+  }
+}
+
+extension View {
+  func fieldCardSurface() -> some View {
+    padding(.vertical, 10)
+      .padding(.horizontal, IntradaSpacing.card)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .cardSurface()
   }
 }
 

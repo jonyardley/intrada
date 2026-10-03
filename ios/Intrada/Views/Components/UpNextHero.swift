@@ -26,7 +26,7 @@ struct UpNextHero: View {
   }
 
   private var laterBlocks: ArraySlice<SuggestedSession> { plan.blocks.dropFirst() }
-  private var eyebrow: String { plan.lengthMins == nil ? "Up next" : "Today's plan" }
+  private var heading: String { plan.lengthMins == nil ? "Up next" : "Today's plan" }
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.card) {
@@ -44,18 +44,18 @@ struct UpNextHero: View {
     .accessibilityElement(children: .contain)
   }
 
-  // Eyebrow, title, count and reason read as one sentence: split up, VoiceOver
+  // Heading, title, count and reason read as one sentence: split up, VoiceOver
   // announces "3 items · 15 min" detached from the piece it describes.
   private var headline: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .firstTextBaseline) {
-          eyebrowLabel.fixedSize()
+          headingLabel.fixedSize()
           Spacer(minLength: IntradaSpacing.controlGap)
           countText.fixedSize()
         }
         VStack(alignment: .leading, spacing: 2) {
-          eyebrowLabel
+          headingLabel
           countText.fixedSize(horizontal: false, vertical: true)
         }
       }
@@ -84,8 +84,8 @@ struct UpNextHero: View {
     .accessibilityLabel(headlineLabel)
   }
 
-  private var eyebrowLabel: some View {
-    SectionTitle(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+  private var headingLabel: some View {
+    SectionTitle(heading, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
   private var countText: some View {
@@ -264,7 +264,7 @@ struct UpNextHero: View {
   }
 
   private var headlineLabel: String {
-    var parts = [eyebrow]
+    var parts = [heading]
     // Filled to a length, the totals are the plan's, not the lead piece's.
     if plan.lengthMins != nil { parts.append(spokenCount) }
     parts.append(lead.pieceTitle)
