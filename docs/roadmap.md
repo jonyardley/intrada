@@ -13,11 +13,11 @@ intrada is a practice notebook. **The musician decides what matters; the app
 decides where today starts, keeps the record honest and can always be
 overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 
-Capturing material is done: v0.10.0 added a piece with its chord chart and
-exercises in one pass (#1390), and v0.11.0 to v0.14.0 built on it. **Next is a
-first run that gets a new musician to their first marked session (#2121).** So
-far the person building the app is its only regular user, and every later
-decision needs evidence from other musicians.
+Capturing material is done, and v0.15.0 shipped a first run that gets a new
+musician to their first marked session (#2121). **Next is finishing the data
+model: a piece in sections, practised in variations shared across the
+library, with exercises linked to the sections they prepare (#50).** Every
+later feature reads that shape, so it settles before more is built on it.
 
 ## The ranking
 
@@ -25,28 +25,35 @@ Work is ranked here directly, by epic: a group of issues with a working order.
 Where this list and an issue's
 [horizon label](how-the-work-runs.md#horizons) disagree, this list wins.
 
-### Now: the next release
+### Now: v0.16.0
 
-- **#2121 A first run that gets a new musician to their first marked
-  session**, ending with watching three new musicians try it (#2120).
-- **One-tap start (#57) and today's plan (#999) shipped** (#2182, #2202): with
-  a preferred length set, the Practice screen holds a plan filled to it, and
-  Start plays it in one tap. The Start here card (#2118) will share the top of
-  the Practice screen with it: a new musician sees Start here until there is
-  something to plan from.
-- **Closing out** the September audit backlog (#1967) and making the core
-  easier to change (#1995), each with a handful of issues left.
+- **#50 Practise a piece in sections and its variations**, steps 1 to 4:
+  sections (#2245), variations replacing steps (#2246), the item screen
+  (#2247) and exercises linked to sections (#2248). #2246 also makes a
+  variation a real key (#2106) and records the tempo of every repetition
+  (#2107), so the saved session in progress changes once. The builder, live
+  session and scoring (#2249) and section scores (#2250) lead v0.17.0.
+- **Core tidy-ups beside it**: the unshown streak (#2190), the unread session
+  start time (#2170) and the saved library sort's version (#2089).
+- **The clock that keeps ticking after an item ends** (#2297).
+- **Watching three new musicians do a first run** (#2120), with the welcome's
+  follow-ups (#2294, #2295, #2296).
+- **Moving rules out of the Swift shell** (#2223) carries on, except #2228,
+  #2230, #2231 and #2232, which wait for #2246 and #2248 because they rewrite
+  the code those replace.
 
 ### Next, in order
 
-1. **#1926 A week's practice set with intent.** It replaces the goals feature,
+1. **#50 continued**: the builder, live session and scoring by section and
+   variation (#2249), then section scores and charts by kind (#2250).
+2. **#1926 A week's practice set with intent.** It replaces the goals feature,
    starting with a two-lesson trial (#1927) and a research note (#1928).
-2. **#2134 Every screen holds together at the largest text sizes.**
-3. **#1975 Play the session through**, starting with session start feeling
+3. **#2134 Every screen holds together at the largest text sizes.**
+4. **#1975 Play the session through**, starting with session start feeling
    slow (#1801).
-4. **#1974 Build a session your way**, including routines (#1348).
-5. **#1970 Practise an exercise in its keys.**
-6. **#1972 Add a piece in one pass** and **#1973 the Library**, refined when
+5. **#1974 Build a session your way**, including routines (#1348).
+6. **#1970 Practise an exercise in its keys.**
+7. **#1972 Add a piece in one pass** and **#1973 the Library**, refined when
    use shows a gap.
 
 ### Later
@@ -77,8 +84,9 @@ intrada is a native iPhone app, built in SwiftUI on a shared Rust core, that
 keeps everything on the phone ([`specs/native-ios.md`](../specs/native-ios.md)).
 There is no web app and no sync: the server that once carried sync was removed
 (#1746), so the spec's sync plans are history, and syncing between devices
-would start from a new spec. An Android app on the same core is specced for later
-([`specs/android-shell.md`](../specs/android-shell.md)), with no build started.
+would start from a new spec. An Android app on the same core is being built
+alongside (#2220, [`specs/android-shell.md`](../specs/android-shell.md)), and is
+not ranked here.
 
 ## Open questions
 
