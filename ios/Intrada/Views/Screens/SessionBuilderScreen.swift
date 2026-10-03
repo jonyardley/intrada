@@ -9,7 +9,6 @@ struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @Environment(\.dynamicTypeSize) private var typeSize
-  @ScaledMetric(relativeTo: .body) private var startBarClearance: CGFloat = 100
   @State private var confirmingCancel = false
   // `SharedTypes`' domain `Set` (setlists) shadows `Swift.Set` here.
   @State private var collapsedGroups: Swift.Set<String> = []
@@ -185,10 +184,10 @@ struct SessionBuilderScreen: View {
       },
       trailingContent: { headerActions },
       content: {
-        ZStack(alignment: .bottom) {
-          content
-          if !entries.isEmpty { startBar }
-        }
+        content
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !entries.isEmpty { startBar }
+          }
       }
     )
     // A native back button (or its edge-swipe) would pop past `cancel()`'s
@@ -277,6 +276,7 @@ struct SessionBuilderScreen: View {
         // switch and stepper on the simulator (#1736), so it sits above.
         if !isEditing {
           lengthCard
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.top, IntradaSpacing.card)
         }
@@ -308,7 +308,7 @@ struct SessionBuilderScreen: View {
             .listRowInsets(
               EdgeInsets(
                 top: IntradaSpacing.controlGap, leading: IntradaSpacing.card,
-                bottom: startBarClearance,
+                bottom: IntradaSpacing.card,
                 trailing: IntradaSpacing.card)
             )
             .moveDisabled(true)

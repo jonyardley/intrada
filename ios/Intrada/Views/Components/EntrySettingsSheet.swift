@@ -52,7 +52,9 @@ struct EntrySettingsSheet: View {
   }
 
   var body: some View {
-    BottomSheet(title: entry.itemTitle, detents: [.medium]) {
+    BottomSheet(
+      title: entry.itemTitle, detents: typeSize.isAccessibilitySize ? [.medium, .large] : [.medium]
+    ) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection

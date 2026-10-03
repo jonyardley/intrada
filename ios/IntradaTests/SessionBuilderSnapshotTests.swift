@@ -41,6 +41,29 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: axConfig)
   }
 
+  func testAddToSessionSheetLargestStandardSizeLongKeyAndTempo() {
+    var item = LibraryItemView.previewPiece
+    item.key = "C#"
+    item.modality = .minor
+    item.tempoMarking = "Allegro ma non troppo e molto espressivo"
+    item.tempoBpm = 132
+    let store = Store(
+      bridge: PreviewBridge(
+        items: [item, .previewExercise],
+        buildingSetlist: BuildingSetlistView(
+          entries: [.previewExercise], itemCount: 1, blocks: [],
+          totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
+          lengthSummary: nil, entryVariations: [])))
+    assertSnapshot(
+      of: host(AddToSessionSheet(), store: store),
+      as: .image(
+        on: .iPhone13, perceptualPrecision: 0.98,
+        traits: UITraitCollection { traits in
+          traits.displayScale = 2
+          traits.preferredContentSizeCategory = .extraExtraExtraLarge
+        }))
+  }
+
   func testAddToSessionSheetRecentlyPractised() {
     assertSnapshot(
       of: host(AddToSessionSheet(), store: .previewBuildingRecentlyPractised), as: config)
@@ -80,9 +103,9 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
   func testEntrySettingsSheetAccessibilitySize() throws {
     let store = Store.previewBuildingGrouped
     let limits = try XCTUnwrap(store.viewModel?.limits)
+    var entry = SetlistEntryView.previewGroupedScalesConfigured
+    entry.itemTitle = "Piano Concerto No. 2 in C minor"
     assertSnapshot(
-      of: host(
-        EntrySettingsSheet(entry: .previewGroupedScalesConfigured, limits: limits), store: store
-      ), as: axConfig)
+      of: host(EntrySettingsSheet(entry: entry, limits: limits), store: store), as: axConfig)
   }
 }

@@ -7,7 +7,6 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let confirmationLabel: String
   private let confirmationDisabled: Bool
   private let dismissesOnDone: Bool
-  private let titleWrapsAtLargeText: Bool
   private let onDone: () -> Void
   private let leadingAction: LeadingAction
   private let content: Content
@@ -21,7 +20,6 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
     confirmationLabel: String = "Done",
     confirmationDisabled: Bool = false,
     dismissesOnDone: Bool = true,
-    titleWrapsAtLargeText: Bool = false,
     onDone: @escaping () -> Void = {},
     @ViewBuilder leadingAction: () -> LeadingAction,
     @ViewBuilder content: () -> Content
@@ -31,7 +29,6 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
     self.confirmationLabel = confirmationLabel
     self.confirmationDisabled = confirmationDisabled
     self.dismissesOnDone = dismissesOnDone
-    self.titleWrapsAtLargeText = titleWrapsAtLargeText
     self.onDone = onDone
     self.leadingAction = leadingAction()
     self.content = content()
@@ -73,7 +70,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
 
   // The inline bar truncates a long title at accessibility sizes (#2125).
   private var titleInContent: Bool {
-    titleWrapsAtLargeText && typeSize.isAccessibilitySize
+    typeSize.isAccessibilitySize
   }
 }
 
