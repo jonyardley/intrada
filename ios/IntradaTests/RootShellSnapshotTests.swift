@@ -12,7 +12,7 @@ final class RootShellSnapshotTests: SnapshotTestCase {
   }
 
   func testRootShellAccessibilitySize() {
-    assertSnapshot(of: host(RootView()), as: axConfig)
+    assertSnapshot(of: host(RootView()), as: tallAxConfig())
   }
 
   /// The tab shell after the core has panicked (#1946): the last screen stays
