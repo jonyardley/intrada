@@ -221,7 +221,7 @@ jobs:
             chmod +x "$RUNNER_TEMP/sentry-cli"
           fi
 
-          "$RUNNER_TEMP/sentry-cli" debug-files upload --type dsym "$zip"
+          "$RUNNER_TEMP/sentry-cli" debug-files upload --type dsym --wait-for 300 "$zip"
       - name: Upload IPA artifact
         if: always()
         uses: actions/upload-artifact@v7

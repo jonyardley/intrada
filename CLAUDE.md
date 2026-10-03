@@ -18,8 +18,8 @@ implying web work: confirm the platform first.**
 intrada is a **practice notebook** for musicians: build a session from the music library,
 group and reorder what you'll practise, play it through with a timer and rep counting, and
 score how it went. Pillars: **Plan** (library), **Practice** (the built session), **Track**
-(analytics). Direction: [`docs/roadmap.md`](docs/roadmap.md); release and phase:
-[`docs/where-we-are.md`](docs/where-we-are.md); what is in flight: `just status`, which
+(analytics). Direction: [`docs/roadmap.md`](docs/roadmap.md); phase:
+[`docs/where-we-are.md`](docs/where-we-are.md); release: `gh release list`; what is in flight: `just status`, which
 reads GitHub. There is no status file, deliberately.
 
 Crates: `intrada-core` (pure Crux core, no I/O), `intrada-ffi` (UniFFI bridge generating the

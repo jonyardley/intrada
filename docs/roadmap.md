@@ -1,7 +1,8 @@
 # intrada: roadmap
 
-*What gets built next, and in what order. The released build and the current
-phase are in [`where-we-are.md`](where-we-are.md); what is being built right
+*What gets built next, and in what order. The current phase is in
+[`where-we-are.md`](where-we-are.md) and the released build in
+`gh release list`; what is being built right
 now is `just status`, the
 [project board](https://github.com/users/jonyardley/projects/2) and the
 [open issues](https://github.com/jonyardley/intrada/issues). How issues, epics
