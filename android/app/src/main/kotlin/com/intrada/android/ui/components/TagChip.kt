@@ -13,19 +13,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import com.intrada.android.R
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
@@ -100,7 +96,3 @@ private fun Chip(
         }
     }
 }
-
-@Composable
-@ReadOnlyComposable
-private fun IntradaIconSize.scaled(): Dp = min(points * LocalDensity.current.fontScale, maxPoints)

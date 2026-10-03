@@ -30,9 +30,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
+import com.intrada.android.ui.components.bar
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.android.ui.components.label
 import com.intrada.shared.Event
-import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 
 @Composable
@@ -111,17 +112,3 @@ fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
 // Priority, links, ladder, key and tempo stay out of the label until the card draws them (#2266).
 private val LibraryItemView.spokenLabel: String
     get() = listOf(itemType.label, title, subtitle).filter { it.isNotEmpty() }.joinToString(", ")
-
-private val ItemKind.label
-    get() =
-        when (this) {
-            ItemKind.PIECE -> "Piece"
-            ItemKind.EXERCISE -> "Exercise"
-        }
-
-private val ItemKind.bar
-    get() =
-        when (this) {
-            ItemKind.PIECE -> IntradaGradient.pieceBar
-            ItemKind.EXERCISE -> IntradaGradient.exerciseBar
-        }

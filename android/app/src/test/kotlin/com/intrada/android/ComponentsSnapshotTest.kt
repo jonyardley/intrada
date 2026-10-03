@@ -22,13 +22,19 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.HairlineDivider
+import com.intrada.android.ui.components.InstrumentGlyph
+import com.intrada.android.ui.components.ProfileBadge
 import com.intrada.android.ui.components.ScrimCapsule
 import com.intrada.android.ui.components.TagChip
 import com.intrada.android.ui.components.TagChipStyle
 import com.intrada.android.ui.components.cardShadow
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.shared.HighlighterColour
+import com.intrada.shared.InstrumentIcon
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -102,6 +108,71 @@ class ComponentsSnapshotTest {
         }
     }
 
+    @Test
+    fun instrumentGlyphs() {
+        captureRoboImage("src/test/snapshots/instrument-glyph.png") {
+            Paper {
+                Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
+                    InstrumentIcon.entries.chunked(GLYPHS_PER_ROW).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)
+                        ) {
+                            row.forEach { InstrumentGlyph(it, size = IntradaGlyph.bar) }
+                        }
+                    }
+                    InstrumentGlyph(InstrumentIcon.CELLO)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun profileBadges() {
+        captureRoboImage("src/test/snapshots/profile-badge.png") {
+            Paper {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ProfileBadge(InstrumentIcon.CELLO, IntradaColor.marker, size = IntradaGlyph.bar)
+                    ProfileBadge(InstrumentIcon.CELLO, IntradaColor.marker(HighlighterColour.MINT))
+                    ProfileBadge(
+                        InstrumentIcon.OTHER,
+                        IntradaColor.marker(HighlighterColour.LAVENDER),
+                        size = IntradaGlyph.hero,
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun formErrorBanner() {
+        captureRoboImage("src/test/snapshots/form-error-banner.png") { FormErrorBanners() }
+    }
+
+    @Test
+    fun formErrorBannerAtTheLargestFontScale() {
+        captureRoboImage("src/test/snapshots/form-error-banner-largest-font.png") {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
+            ) {
+                FormErrorBanners()
+            }
+        }
+    }
+
+    @Composable
+    private fun FormErrorBanners() {
+        Paper {
+            Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
+                FormErrorBanner("Title is required")
+                FormErrorBanner("Composer must be between 1 and 200 characters")
+            }
+        }
+    }
+
     @Composable
     private fun TagChips() {
         Paper {
@@ -136,5 +207,6 @@ class ComponentsSnapshotTest {
 
     private companion object {
         const val LARGEST_FONT_SCALE = 2f
+        const val GLYPHS_PER_ROW = 7
     }
 }

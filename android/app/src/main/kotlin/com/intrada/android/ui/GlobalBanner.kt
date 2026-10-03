@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,10 +26,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import com.intrada.android.R
+import com.intrada.android.ui.components.scaled
 
 private val touchTarget = 48.dp
 
@@ -107,7 +105,3 @@ private fun BannerIcon(
         colorFilter = ColorFilter.tint(ink),
     )
 }
-
-@Composable
-@ReadOnlyComposable
-private fun IntradaIconSize.scaled(): Dp = min(points * LocalDensity.current.fontScale, maxPoints)
