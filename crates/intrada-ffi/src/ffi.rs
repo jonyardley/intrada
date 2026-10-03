@@ -415,6 +415,13 @@ pub fn profile_blob_version() -> u32 {
     crate::domain::profile::Profile::BLOB_VERSION
 }
 
+/// The shell builds the library sort's storage key from this (#2089).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn library_sort_blob_version() -> u32 {
+    crate::domain::types::LibrarySort::BLOB_VERSION
+}
+
 /// The shell builds the first-run blob's storage key from this (#2116).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 #[must_use]

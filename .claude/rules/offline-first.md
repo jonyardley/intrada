@@ -32,7 +32,7 @@ being offline.
    blob),
    written through an `AppEffect`. Each blob must take a versioned key and a
    Rust wire pin, so a shape change fails a test instead of silently failing to
-   decode (#1952); the library sort does not yet (#2089).
+   decode (#1952).
 
 ## Local data migrations (GRDB, `LibraryStore`)
 

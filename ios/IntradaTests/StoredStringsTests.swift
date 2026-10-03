@@ -55,7 +55,9 @@ struct StoredStringsTests {
   }
 
   @Test func defaultsKeys() {
-    #expect(Store.sortDefaultsKey == "intrada.library-sort")
+    #expect(Store.sortDefaultsKey == "intrada.library-sort.v\(librarySortBlobVersion())")
+    #expect(Store.legacySortDefaultsKey == "intrada.library-sort")
+    #expect(Store.legacySortMovesToKey == "intrada.library-sort.v1")
     #expect(Store.profileDefaultsKey == "intrada.profile.v\(profileBlobVersion())")
     #expect(Store.firstRunKey == "intrada.first-run.v\(firstRunBlobVersion())")
     #expect(Store.practiceDefaultsKey == "intrada.practice-defaults.v2")  // gitleaks:allow
