@@ -1,5 +1,5 @@
 use crate::domain::item::ItemKind;
-use crate::domain::profile::Profile;
+use crate::domain::profile::{suggest_icon, Profile};
 use crate::domain::section::{BarRange, BarsInput, SectionDraft, SectionEdit};
 use crate::domain::session::SetlistEntry;
 use crate::domain::types::{CreateItem, Tempo, TempoInput, UpdateItem};
@@ -736,6 +736,9 @@ pub fn validate_play_capacity(entry: &SetlistEntry) -> Result<(), LibraryError> 
 pub fn normalize_profile(mut profile: Profile) -> Profile {
     profile.name = profile.name.trim().to_string();
     profile.instrument = profile.instrument.trim().to_string();
+    if profile.icon_choice == Some(suggest_icon(&profile.instrument)) {
+        profile.icon_choice = None;
+    }
     profile
 }
 
