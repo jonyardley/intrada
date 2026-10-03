@@ -50,6 +50,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -69,6 +70,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -88,6 +90,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -122,6 +125,7 @@ fn linked_model() -> Model {
         priority: false,
         chord_chart: None,
         variants: vec![],
+        sections: vec![],
         photo_id: None,
         metre: None,
     };
@@ -3323,6 +3327,7 @@ fn set_entry_variant_rejects_a_variant_of_another_item() {
         }],
         photo_id: None,
         metre: None,
+        sections: vec![],
     });
 
     update(

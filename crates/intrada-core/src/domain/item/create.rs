@@ -35,6 +35,7 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         variants,
         photo_id: input.photo_id,
         metre: None,
+        sections: vec![],
     };
 
     model.items.push(item.clone());
@@ -94,6 +95,7 @@ pub(super) fn add_linked_exercise(
         priority: false,
         chord_chart: None,
         variants: vec![],
+        sections: vec![],
         // No scan surface writes an exercise yet, but a `CreateItem`
         // carrying one must not mean two different things by event.
         photo_id: input.photo_id,
@@ -230,6 +232,7 @@ pub(super) fn add_piece_in_full(
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: input.photo_id,
                     metre: None,
                 };
@@ -260,6 +263,7 @@ pub(super) fn add_piece_in_full(
         priority: false,
         chord_chart: chart,
         variants: vec![],
+        sections: vec![],
         photo_id: piece_input.photo_id,
         metre: None,
     };

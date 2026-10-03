@@ -5,6 +5,7 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::metre::Metre;
+pub use super::section::{BarRange, BarsInput, Section, SectionEdit, SectionKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
 pub use super::variant::Variant;
 use super::variant::VariantEdit;
@@ -79,6 +80,10 @@ pub struct Item {
     /// from (#1499). `None` means the piece does not declare one.
     #[serde(default)]
     pub metre: Option<Metre>,
+    /// Ordered sections, tombstones included, persisted to the `section`
+    /// child table like `variants` (#2245).
+    #[serde(default)]
+    pub sections: Vec<Section>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -182,6 +187,13 @@ pub enum ItemEvent {
         id: String,
         variants: Vec<VariantEdit>,
     },
+    /// The item screen's whole section list in one write (#2245): rows claim
+    /// a section by id, a row with no id is new, a live section left out is
+    /// tombstoned. Refused whole on the first invalid row. Appended last.
+    UpdateSections {
+        id: String,
+        sections: Vec<SectionEdit>,
+    },
 }
 
 /// One exercise a new piece is created with: written alongside it, or chosen
@@ -264,6 +276,7 @@ fn form_field(error: &LibraryError) -> Option<FormErrorField> {
         "notes" => Some(FormErrorField::Notes),
         "tags" => Some(FormErrorField::Tags),
         "labels" | "variant_labels" => Some(FormErrorField::Variations),
+        "sections" => Some(FormErrorField::Sections),
         _ => None,
     }
 }
@@ -273,6 +286,7 @@ mod edit;
 mod links;
 mod metre;
 mod photo;
+mod sections;
 #[cfg(test)]
 mod tests;
 mod variations;
@@ -313,6 +327,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::SetVariants { id, labels } => variations::set_variants(model, id, labels),
         ItemEvent::UpdateVariants { id, variants } => {
             variations::update_ladder(model, id, variants)
+        }
+        ItemEvent::UpdateSections { id, sections } => {
+            sections::update_sections(model, id, sections)
         }
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)

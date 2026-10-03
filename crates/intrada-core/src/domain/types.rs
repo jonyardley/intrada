@@ -551,6 +551,31 @@ mod tests {
             ],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
+            sections: vec![
+                crate::domain::section::Section {
+                    id: "s-1".to_string(),
+                    name: "A1".to_string(),
+                    bars: Some(crate::domain::section::BarRange { first: 1, last: 16 }),
+                    kind: crate::domain::section::SectionKind::Form,
+                    target_bpm: Some(96),
+                    position: 0,
+                    updated_at: at,
+                    deleted_at: None,
+                },
+                crate::domain::section::Section {
+                    id: "s-2".to_string(),
+                    name: String::new(),
+                    bars: Some(crate::domain::section::BarRange {
+                        first: 12,
+                        last: 14,
+                    }),
+                    kind: crate::domain::section::SectionKind::TroubleSpot,
+                    target_bpm: None,
+                    position: 1,
+                    updated_at: at,
+                    deleted_at: Some(at),
+                },
+            ],
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));

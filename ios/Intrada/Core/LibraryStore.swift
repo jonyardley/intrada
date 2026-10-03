@@ -45,10 +45,15 @@ final class LibraryStore: ItemStore {
       // Variants load tombstones included: the core owns reconciliation
       // (resurrect-by-label) and history labels resolve through them (#1083).
       let variantsByItem = try Self.variantsByItem(db)
+      let sectionsByItem = try Self.sectionsByItem(db)
       return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map { row in Self.item(from: row, variants: variantsByItem[row["id"]] ?? []) }
+      .map { row in
+        Self.item(
+          from: row, variants: variantsByItem[row["id"]] ?? [],
+          sections: sectionsByItem[row["id"]] ?? [])
+      }
     }
   }
 
@@ -119,6 +124,26 @@ final class LibraryStore: ItemStore {
             deleted_at = excluded.deleted_at
           """,
         arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt, v.deletedAt])
+    }
+    for s in item.sections {
+      try db.execute(
+        sql: """
+          INSERT INTO section
+            (id, item_id, name, bar_first, bar_last, kind, target_bpm, position, updated_at,
+             deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            item_id = excluded.item_id, name = excluded.name,
+            bar_first = excluded.bar_first, bar_last = excluded.bar_last,
+            kind = excluded.kind, target_bpm = excluded.target_bpm,
+            position = excluded.position, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          s.id, item.id, s.name, s.bars.map { Int($0.first) }, s.bars.map { Int($0.last) },
+          Self.sectionKinds.encode(s.kind), s.targetBpm.map { Int($0) }, Int(s.position),
+          s.updatedAt, s.deletedAt,
+        ])
     }
   }
 
@@ -211,6 +236,19 @@ final class LibraryStore: ItemStore {
     var byItem: [String: [Variant]] = [:]
     for row in rows {
       byItem[row["item_id"], default: []].append(variant(from: row))
+    }
+    return byItem
+  }
+
+  /// Sections grouped by item in score order, tombstones included, like
+  /// `variantsByItem` (#2245).
+  private static func sectionsByItem(_ db: Database) throws -> [String: [Section]] {
+    let rows = try Row.fetchAll(
+      db,
+      sql: "SELECT * FROM section ORDER BY item_id, position, id")
+    var byItem: [String: [Section]] = [:]
+    for row in rows {
+      byItem[row["item_id"], default: []].append(section(from: row))
     }
     return byItem
   }

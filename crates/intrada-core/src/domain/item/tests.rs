@@ -22,6 +22,7 @@ fn make_piece(id: &str) -> Item {
         priority: false,
         chord_chart: None,
         variants: vec![],
+        sections: vec![],
         photo_id: None,
         metre: None,
     }
@@ -45,6 +46,7 @@ fn make_exercise(id: &str) -> Item {
         priority: false,
         chord_chart: None,
         variants: vec![],
+        sections: vec![],
         photo_id: None,
         metre: None,
     }
@@ -3399,4 +3401,507 @@ fn typed_tempo_round_trips_on_the_ffi_bincode_wire() {
             ..Default::default()
         },
     });
+}
+// ── UpdateSections ──
+
+fn row(id: Option<&str>, name: &str, bars: BarsInput) -> SectionEdit {
+    SectionEdit {
+        id: id.map(str::to_string),
+        name: name.to_string(),
+        bars,
+        kind: SectionKind::Form,
+        target_bpm: String::new(),
+    }
+}
+
+fn typed(raw: &str) -> BarsInput {
+    BarsInput::Typed(raw.to_string())
+}
+
+fn update_sections(
+    model: &mut Model,
+    id: &str,
+    sections: Vec<SectionEdit>,
+) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::UpdateSections {
+            id: id.to_string(),
+            sections,
+        },
+    )
+}
+
+fn piece_sections(model: &Model) -> Vec<Section> {
+    model
+        .items
+        .iter()
+        .find(|i| i.id == "piece-1")
+        .map(|i| i.sections.clone())
+        .unwrap_or_default()
+}
+
+fn live_sections(model: &Model) -> Vec<Section> {
+    let mut live: Vec<Section> = piece_sections(model)
+        .into_iter()
+        .filter(|s| s.deleted_at.is_none())
+        .collect();
+    live.sort_by_key(|s| s.position);
+    live
+}
+
+fn section_id(model: &Model, name: &str) -> String {
+    live_sections(model)
+        .into_iter()
+        .find(|s| s.name == name)
+        .unwrap_or_else(|| panic!("live section {name}"))
+        .id
+}
+
+fn piece_view(model: &Model) -> crate::model::LibraryItemView {
+    Intrada
+        .rendered(model)
+        .items
+        .into_iter()
+        .find(|i| i.id == "piece-1")
+        .expect("piece in view")
+}
+
+fn bars(first: u16, last: u16) -> Option<BarRange> {
+    Some(BarRange { first, last })
+}
+
+/// Bars a musician types or dictates, read through the event that consumes
+/// them (#1256): stored bars, or `None` when the field was left blank.
+#[test]
+fn typed_bars_a_musician_would_write_are_read() {
+    for (raw, expected) in [
+        ("1-16", bars(1, 16)),
+        ("1 - 16", bars(1, 16)),
+        ("1\u{2013}16", bars(1, 16)),
+        ("1 to 16", bars(1, 16)),
+        ("bars 5 to 12", bars(5, 12)),
+        ("Bars 5-12", bars(5, 12)),
+        ("bar 12", bars(12, 12)),
+        ("12", bars(12, 12)),
+        ("bb. 5-12", bars(5, 12)),
+        ("mm. 5-12", bars(5, 12)),
+        ("", None),
+        ("   ", None),
+    ] {
+        let mut model = model_with_piece_and_exercise();
+        let mut cmd = update_sections(&mut model, "piece-1", vec![row(None, "A", typed(raw))]);
+
+        assert!(model.last_error.is_none(), "{raw:?} refused");
+        assert!(emits_save(&mut cmd, "piece-1"), "{raw:?} not saved");
+        let live = live_sections(&model);
+        assert_eq!(live.len(), 1, "{raw:?}");
+        assert_eq!(live[0].bars, expected, "{raw:?}");
+    }
+}
+
+#[test]
+fn typed_bars_that_are_not_one_range_are_refused_and_nothing_saves() {
+    for raw in [
+        "16-1",
+        "0-4",
+        "1-",
+        "-4",
+        "1-16, 20-24",
+        "12-14 left hand",
+        "five to twelve",
+        "10000",
+        "1.5-3",
+    ] {
+        let mut model = model_with_piece_and_exercise();
+        let mut cmd = update_sections(&mut model, "piece-1", vec![row(None, "A", typed(raw))]);
+
+        assert!(model.last_error.is_some(), "{raw:?} accepted");
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Sections
+            }),
+            "{raw:?}"
+        );
+        assert!(!emits_save(&mut cmd, "piece-1"), "{raw:?} saved");
+        assert!(piece_sections(&model).is_empty(), "{raw:?}");
+    }
+}
+
+#[test]
+fn picked_bars_follow_the_same_rules_as_typed_ones() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A", BarsInput::Picked { first: 9, last: 4 })],
+    );
+    assert!(model.last_error.is_some(), "a reversed pick is refused");
+
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A", BarsInput::Picked { first: 4, last: 9 })],
+    );
+    assert!(model.last_error.is_none());
+    assert_eq!(live_sections(&model)[0].bars, bars(4, 9));
+}
+
+#[test]
+fn a_piece_takes_a_form_and_a_nameless_trouble_spot() {
+    let mut model = model_with_piece_and_exercise();
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A1", typed("1-16")),
+            row(None, "B", BarsInput::Blank),
+            row(None, "A2", BarsInput::Blank),
+            SectionEdit {
+                kind: SectionKind::TroubleSpot,
+                target_bpm: " 72 ".to_string(),
+                ..row(None, "", typed("bars 12 to 14"))
+            },
+        ],
+    );
+
+    assert!(model.last_error.is_none());
+    assert!(emits_save(&mut cmd, "piece-1"));
+    let live = live_sections(&model);
+    let names: Vec<&str> = live.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, vec!["A1", "B", "A2", ""]);
+    assert_eq!(live[3].kind, SectionKind::TroubleSpot);
+    assert_eq!(live[3].bars, bars(12, 14));
+    assert_eq!(live[3].target_bpm, Some(72));
+    assert_eq!(live[0].target_bpm, None, "blank is the piece's tempo");
+}
+
+#[test]
+fn an_exercise_takes_sections_too() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(&mut model, "ex-1", vec![row(None, "Up", BarsInput::Blank)]);
+
+    assert!(model.last_error.is_none());
+    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+    assert_eq!(ex.sections.len(), 1);
+}
+
+#[test]
+fn rename_rebar_kind_target_reorder_add_and_remove_land_in_one_write() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A", typed("1-8")),
+            row(None, "B", typed("9-16")),
+            row(None, "C", typed("17-24")),
+        ],
+    );
+    let a = section_id(&model, "A");
+    let b = section_id(&model, "B");
+    let c = section_id(&model, "C");
+
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            SectionEdit {
+                kind: SectionKind::TroubleSpot,
+                target_bpm: "60".to_string(),
+                ..row(Some(&b), "B'", typed("9-12"))
+            },
+            row(Some(&a), "A", typed("1-8")),
+            row(None, "Coda", BarsInput::Blank),
+        ],
+    );
+
+    assert!(model.last_error.is_none());
+    assert!(emits_save(&mut cmd, "piece-1"));
+    let live = live_sections(&model);
+    let shape: Vec<(&str, &str)> = live
+        .iter()
+        .map(|s| (s.id.as_str(), s.name.as_str()))
+        .collect();
+    assert_eq!(shape[0], (b.as_str(), "B'"));
+    assert_eq!(shape[1], (a.as_str(), "A"));
+    assert_eq!(shape[2].1, "Coda");
+    assert_eq!(live[0].bars, bars(9, 12));
+    assert_eq!(live[0].kind, SectionKind::TroubleSpot);
+    assert_eq!(live[0].target_bpm, Some(60));
+
+    let removed = piece_sections(&model)
+        .into_iter()
+        .find(|s| s.id == c)
+        .expect("a removed section stays as a tombstone");
+    assert!(removed.deleted_at.is_some());
+}
+
+#[test]
+fn a_swap_of_two_names_keeps_each_id() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A", BarsInput::Blank),
+            row(None, "B", BarsInput::Blank),
+        ],
+    );
+    let a = section_id(&model, "A");
+    let b = section_id(&model, "B");
+
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(Some(&a), "B", BarsInput::Blank),
+            row(Some(&b), "A", BarsInput::Blank),
+        ],
+    );
+
+    let live = live_sections(&model);
+    assert_eq!(live[0].id, a);
+    assert_eq!(live[0].name, "B");
+    assert_eq!(live[1].id, b);
+    assert_eq!(
+        piece_sections(&model).len(),
+        2,
+        "a swap is not remove plus add"
+    );
+}
+
+#[test]
+fn duplicate_names_are_two_sections() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A", typed("1-8")),
+            row(None, "B", typed("9-16")),
+            row(None, "A", typed("17-24")),
+        ],
+    );
+
+    assert!(model.last_error.is_none());
+    assert_eq!(live_sections(&model).len(), 3);
+}
+
+#[test]
+fn a_refused_row_saves_nothing_even_after_valid_ones() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A", BarsInput::Blank)],
+    );
+    let before = piece_sections(&model);
+
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "B", BarsInput::Blank),
+            row(None, "C", typed("16-1")),
+        ],
+    );
+
+    assert!(model.last_error.is_some());
+    assert!(!emits_save(&mut cmd, "piece-1"));
+    assert_eq!(piece_sections(&model), before);
+}
+
+#[test]
+fn a_nameless_row_with_no_bars_is_refused() {
+    let mut model = model_with_piece_and_exercise();
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "  ", BarsInput::Blank)],
+    );
+
+    assert!(model.last_error.is_some());
+    assert!(!emits_save(&mut cmd, "piece-1"));
+}
+
+#[test]
+fn a_long_name_and_an_unreadable_target_are_refused() {
+    let mut model = model_with_piece_and_exercise();
+    let long = "x".repeat(crate::validation::MAX_SECTION_NAME + 1);
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, &long, BarsInput::Blank)],
+    );
+    assert!(model.last_error.is_some(), "name over the limit");
+
+    for target in ["0", "401", "fast", "72.5"] {
+        let mut model = model_with_piece_and_exercise();
+        let _ = update_sections(
+            &mut model,
+            "piece-1",
+            vec![SectionEdit {
+                target_bpm: target.to_string(),
+                ..row(None, "A", BarsInput::Blank)
+            }],
+        );
+        assert_eq!(
+            model.last_error_target,
+            Some(FormErrorTarget::Piece {
+                field: FormErrorField::Sections
+            }),
+            "{target:?}"
+        );
+    }
+}
+
+#[test]
+fn an_identical_list_writes_nothing_and_keeps_updated_at() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A", typed("1-8")),
+            row(None, "B", BarsInput::Blank),
+        ],
+    );
+    let a = section_id(&model, "A");
+    let b = section_id(&model, "B");
+    let before = model
+        .items
+        .iter()
+        .find(|i| i.id == "piece-1")
+        .unwrap()
+        .clone();
+
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(Some(&a), " A ", typed("bars 1 to 8")),
+            row(Some(&b), "B", BarsInput::Blank),
+        ],
+    );
+
+    assert!(model.last_error.is_none());
+    assert!(!emits_save(&mut cmd, "piece-1"));
+    let after = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+    assert_eq!(after, &before);
+}
+
+#[test]
+fn an_empty_list_tombstones_every_section() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A", BarsInput::Blank)],
+    );
+
+    let mut cmd = update_sections(&mut model, "piece-1", vec![]);
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert!(live_sections(&model).is_empty());
+    assert_eq!(piece_sections(&model).len(), 1);
+}
+
+#[test]
+fn an_unknown_item_is_not_found() {
+    let mut model = model_with_piece_and_exercise();
+    let mut cmd = update_sections(
+        &mut model,
+        "missing",
+        vec![row(None, "A", BarsInput::Blank)],
+    );
+
+    assert!(model.last_error.is_some());
+    assert!(!emits_save(&mut cmd, "missing"));
+}
+
+#[test]
+fn the_view_hides_tombstones_orders_by_position_and_labels_by_bars() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "Gone", BarsInput::Blank),
+            row(None, "A1", typed("1-16")),
+            row(None, "", typed("bar 12")),
+            row(None, "", typed("12-14")),
+            row(None, "B", BarsInput::Blank),
+        ],
+    );
+    let gone = section_id(&model, "Gone");
+    let a1 = section_id(&model, "A1");
+    let b = section_id(&model, "B");
+    let spots: Vec<String> = live_sections(&model)
+        .into_iter()
+        .filter(|s| s.name.is_empty())
+        .map(|s| s.id)
+        .collect();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(Some(&b), "B", BarsInput::Blank),
+            row(Some(&a1), "A1", typed("1-16")),
+            row(Some(&spots[0]), "", typed("bar 12")),
+            row(Some(&spots[1]), "", typed("12-14")),
+        ],
+    );
+    assert!(piece_sections(&model).iter().any(|s| s.id == gone));
+
+    let views = piece_view(&model).sections;
+    let labels: Vec<(&str, Option<&str>)> = views
+        .iter()
+        .map(|v| (v.label.as_str(), v.bars_caption.as_deref()))
+        .collect();
+    assert_eq!(
+        labels,
+        vec![
+            ("B", None),
+            ("A1", Some("Bars 1 to 16")),
+            ("Bar 12", None),
+            ("Bars 12 to 14", None),
+        ]
+    );
+    assert_eq!(views[1].first_bar, Some(1));
+    assert_eq!(views[1].last_bar, Some(16));
+    assert_eq!(views[3].name, "");
+}
+
+#[test]
+fn update_sections_and_an_item_with_sections_round_trip_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::UpdateSections {
+        id: "piece-1".to_string(),
+        sections: vec![
+            row(Some("s-1"), "A1", typed("1\u{2013}16")),
+            SectionEdit {
+                kind: SectionKind::TroubleSpot,
+                target_bpm: "72".to_string(),
+                ..row(
+                    None,
+                    "",
+                    BarsInput::Picked {
+                        first: 12,
+                        last: 14,
+                    },
+                )
+            },
+            row(None, "B", BarsInput::Blank),
+        ],
+    }));
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A1", typed("1-16")), row(None, "", typed("12"))],
+    );
+    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+    crate::domain::types::assert_round_trips(piece.clone());
+    crate::domain::types::assert_round_trips(piece_view(&model));
 }

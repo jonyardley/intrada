@@ -300,6 +300,27 @@ extension LibraryStore {
           WHERE chord_chart IS NOT NULL AND json_extract(chord_chart, '$.metre') IS NOT NULL
           """)
     }
+    migrator.registerMigration("v18_section") { db in
+      // A child table like `variant`, for per-row LWW and tombstones (#2245).
+      // Additive: an upgraded install has no rows, so every item loads with
+      // no sections.
+      try db.execute(
+        sql: """
+          CREATE TABLE section (
+            id TEXT PRIMARY KEY NOT NULL,
+            item_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            bar_first INTEGER,
+            bar_last INTEGER,
+            kind TEXT NOT NULL,
+            target_bpm INTEGER,
+            position INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(sql: "CREATE INDEX index_section_on_item_id ON section(item_id)")
+    }
     return migrator
   }()
 }

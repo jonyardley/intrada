@@ -379,6 +379,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -543,6 +544,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
         };
@@ -585,6 +587,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -607,6 +610,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -629,6 +633,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -648,6 +653,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -723,6 +729,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -742,6 +749,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -806,6 +814,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -825,6 +834,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -861,6 +871,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -880,6 +891,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -915,6 +927,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -958,6 +971,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -996,6 +1010,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1159,6 +1174,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             });
@@ -1180,6 +1196,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             });
@@ -1390,6 +1407,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1409,6 +1427,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1515,6 +1534,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1625,6 +1645,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1696,6 +1717,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -1795,6 +1817,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         });
@@ -2144,6 +2167,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -3259,6 +3283,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -3331,6 +3356,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -3400,6 +3426,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -3454,6 +3481,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -3473,6 +3501,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -3527,6 +3556,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -3549,6 +3579,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -3568,6 +3599,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -3587,6 +3619,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -3958,6 +3991,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -4425,6 +4459,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
@@ -4444,6 +4479,7 @@ mod tests {
                     priority: false,
                     chord_chart: None,
                     variants: vec![],
+                    sections: vec![],
                     photo_id: None,
                     metre: None,
                 },
