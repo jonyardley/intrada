@@ -41,12 +41,11 @@ dash_re="$em|$en"
 
 # Prose and comment surfaces only. The label-separator exception (#1231) lives
 # here as an exemption: the two structured docs that use it as house style are
-# excluded, along with the archived specs kept only for reference.
+# excluded.
 files=$(git -c core.quotePath=false diff "$range" --name-only -- \
   '*.md' '*.rs' '*.swift' '*.sh' '*.py' '*.yml' '*.yaml' \
   ':(exclude)CLAUDE.md' \
   ':(exclude)design/CLAUDE.md' \
-  ':(exclude)specs/_archive/**' \
   2>/dev/null || true)
 
 if [ -z "$files" ]; then
@@ -89,7 +88,7 @@ EOF
 americanisms='analyze|analyzed|analyzes|analyzing|behavior|behaviors|center|centered|centers|color|colors|defense|favor|favors|favorite|fulfillment|maximize|minimize|optimize|optimized|optimizing|organize|organized|organizing|organization|organizations|prioritize|prioritized|prioritizing|recognize|recognized|recognizing|standardize|standardized|summarize|summarized|summarizing|traveled|traveling'
 
 prose_added=$(git -c core.quotePath=false diff -M -U0 --diff-filter=d "$range" -- \
-  '*.md' ':(exclude)specs/_archive/**' 2>/dev/null | perl -ne '
+  '*.md' 2>/dev/null | perl -ne '
     if (m{^\+\+\+ b/(.*)$}) { print "\n" if defined $f; $f = $1; print "$f\t"; next }
     print join(" ", $1 .. $1 + (defined $2 ? $2 : 1) - 1), " "
       if defined $f && /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/;
