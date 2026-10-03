@@ -35,15 +35,13 @@ struct UsedInCard: View {
   }
 
   private var pieceCountCaption: String? {
-    let pieces = usage.filter { $0.piece != nil && !$0.pieceRemoved }.count
+    let pieces = usage.filter(\.pieceInLibrary).count
     guard pieces > 0 else { return nil }
     return "\(pieces) \(pieces == 1 ? "piece" : "pieces")"
   }
 
-  /// Only a piece you have practised alongside but never declared gets the
-  /// button: the fact is already true, the button turns it into an intent.
   private func linkAction(for row: ExerciseUsageView) -> (() -> Void)? {
-    guard let piece = row.piece, !row.linked, !row.pieceRemoved else { return nil }
+    guard row.offersLink, let piece = row.piece else { return nil }
     return { onLink(piece.id) }
   }
 
@@ -92,7 +90,7 @@ struct UsedInRow: View {
   @Environment(\.scoreRange) private var scoreRange
 
   private var isStandalone: Bool { usage.piece == nil }
-  private var navigable: Bool { usage.piece != nil && !usage.pieceRemoved }
+  private var navigable: Bool { usage.pieceInLibrary }
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {

@@ -21,12 +21,14 @@ struct ExerciseUsageDisplayTests {
     latestScore: UInt8? = nil,
     sessionCount: UInt64 = 0,
     lastPracticedAt: String? = nil,
-    pieceRemoved: Bool = false
+    pieceRemoved: Bool = false,
+    offersLink: Bool = false
   ) -> ExerciseUsageView {
     ExerciseUsageView(
       piece: PieceRefView(id: "piece-1", title: title, subtitle: subtitle),
       linked: linked, latestScore: latestScore, sessionCount: sessionCount,
-      lastPracticedAt: lastPracticedAt, pieceRemoved: pieceRemoved)
+      lastPracticedAt: lastPracticedAt, pieceRemoved: pieceRemoved,
+      pieceInLibrary: !pieceRemoved, offersLink: offersLink)
   }
 
   @Test("A linked piece with no practice says so rather than counting to zero")

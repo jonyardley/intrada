@@ -690,6 +690,49 @@ final class SessionBridgeTests: XCTestCase {
     return bridge
   }
 
+  /// A piece practised alongside but no longer linked offers the link button;
+  /// linking it again withdraws the offer (#2233).
+  func testRealBridgeUsedInOffersTheLinkOnlyWhileUnlinked() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    var ids: [String: String] = [:]
+    for (title, kind) in [("Clair de Lune", ItemKind.piece), ("Hanon No. 1", .exercise)] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: kind, composer: nil, key: nil, modality: nil, tempo: nil,
+              notes: nil, tags: [], photoId: nil, variantLabels: []))))
+      ids[title] = try XCTUnwrap(try bridge.rendered().items.first { $0.title == title }?.id)
+    }
+    let pieceId = try XCTUnwrap(ids["Clair de Lune"])
+    let exerciseId = try XCTUnwrap(ids["Hanon No. 1"])
+    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
+    for minute in 1...3 where try bridge.rendered().summary == nil {
+      let now = "2026-09-04T09:0\(minute):00Z"
+      _ = try bridge.update(
+        .session(.nextItem(now: now, nextItemStartedAt: now, reading: .silent)))
+    }
+    XCTAssertNotNil(try bridge.rendered().summary, "the block plays through to the summary")
+    try acknowledgeSave(
+      bridge, try bridge.update(.session(.saveSession(now: "2026-09-04T09:06:00Z"))))
+    _ = try bridge.update(.item(.unlinkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+
+    func row() throws -> ExerciseUsageView {
+      let exercise = try XCTUnwrap(try bridge.rendered().items.first { $0.id == exerciseId })
+      return try XCTUnwrap(exercise.usedIn.first { $0.piece?.id == pieceId })
+    }
+    XCTAssertNil(try bridge.rendered().error)
+    XCTAssertTrue(try row().offersLink, "practised alongside, no longer linked")
+    XCTAssertTrue(try row().pieceInLibrary)
+
+    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    XCTAssertFalse(try row().offersLink, "linked again, so nothing to offer")
+  }
+
   /// `moveRelated` crosses the wire and swaps the block's exercises; the
   /// piece still closes the block (#1957).
   func testRealBridgeMoveRelatedSwapsTheBlocksExercises() throws {

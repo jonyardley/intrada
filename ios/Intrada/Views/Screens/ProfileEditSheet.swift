@@ -76,7 +76,7 @@ struct ProfileEditSheet: View {
     guard let profile else { return }
     name = profile.name
     instrument = profile.instrument
-    iconChoice = profile.icon == profile.suggestedIcon ? nil : profile.icon
+    iconChoice = profile.iconChosen ? profile.icon : nil
     colour = profile.colour
   }
 

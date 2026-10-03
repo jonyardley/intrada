@@ -10,12 +10,16 @@ does not change this file (#1932). Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on; v0.10.0 and v0.11.0 are tags without one.
 
-**The phase now is the first run: get a new musician to their first marked
-session (#2121), then watch three of them do it (#2120).** It follows the
-vision rewrite of 2026-09-30 ([`VISION.md`](../VISION.md)); the order of
-everything after it is in [the roadmap's ranking](roadmap.md#the-ranking).
+**The phase now is finishing the data model (#50), chosen on 2026-10-03:**
+sections, variations shared across the library, and exercises linked to
+sections, so later features build on a settled shape. Alongside it, three new
+musicians try the first run (#2120). The order of everything after it is in
+[the roadmap's ranking](roadmap.md#the-ranking).
 
-**The capture phase before it is done.** It was chosen on 2026-09-07, at the
+**The first-run phase before it shipped in v0.15.0** (#2121): a welcome, a
+profile step, a first piece, and a Start here card on Practice.
+
+**The capture phase before that is done.** It was chosen on 2026-09-07, at the
 end of the rethink after the coach was removed
 ([`rethink-plan.md`](rethink-plan.md)), and shipped as:
 

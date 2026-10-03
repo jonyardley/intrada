@@ -3928,6 +3928,62 @@ mod tests {
         assert!(ex1.used_in[1].piece_removed);
     }
 
+    /// A removed piece cannot take a link; "On its own" has no piece (#2233).
+    #[test]
+    fn used_in_offers_the_link_only_for_a_live_practised_unlinked_piece() {
+        let now = chrono::Utc::now();
+        let mut linked = ctx_item("p-linked", "Linked", ItemKind::Piece, None);
+        linked.linked_exercise_ids = vec!["ex-1".to_string()];
+
+        let model = Model {
+            items: vec![
+                linked,
+                ctx_item("p-alongside", "Alongside", ItemKind::Piece, None),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ]
+            .into(),
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(6), Some("g1")),
+                    ctx_entry(
+                        "p-alongside",
+                        "Alongside",
+                        ItemKind::Piece,
+                        None,
+                        Some("g1"),
+                    ),
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g2")),
+                    ctx_entry("p-gone", "Deleted piece", ItemKind::Piece, None, Some("g2")),
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(8), None),
+                ],
+            )]
+            .into(),
+            ..Default::default()
+        };
+
+        let vm = Intrada.rendered(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let rows: Vec<(&str, bool, bool)> = ex1
+            .used_in
+            .iter()
+            .map(|r| {
+                let id = r.piece.as_ref().map(|p| p.id.as_str()).unwrap_or("solo");
+                (id, r.piece_in_library, r.offers_link)
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                ("p-alongside", true, true),
+                ("p-linked", true, false),
+                ("p-gone", false, false),
+                ("solo", false, false),
+            ]
+        );
+    }
+
     // ── Exercise context derivation (#1087 B1) ───────────────────────────
 
     fn ctx_entry(

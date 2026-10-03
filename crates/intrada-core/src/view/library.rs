@@ -369,6 +369,8 @@ pub(crate) fn build_exercise_usage(
             )
         });
         let piece_removed = piece.as_ref().is_some_and(|(_, removed)| *removed);
+        let piece_in_library = piece.is_some() && !piece_removed;
+        let offers_link = piece_in_library && !record.linked;
         by_exercise
             .entry(exercise_id)
             .or_default()
@@ -379,6 +381,8 @@ pub(crate) fn build_exercise_usage(
                 session_count: record.session_ids.len(),
                 last_practiced_at: record.last_practiced_at,
                 piece_removed,
+                piece_in_library,
+                offers_link,
             });
     }
 

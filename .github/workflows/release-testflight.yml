@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
           cargo --version
-      - uses: taiki-e/install-action@v2.87.20
+      - uses: taiki-e/install-action@v2.87.22
         with:
           tool: just
       - name: Cache cargo-swift
