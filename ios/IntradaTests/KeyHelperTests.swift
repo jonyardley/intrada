@@ -4,12 +4,21 @@ import XCTest
 @testable import Intrada
 
 final class KeyHelperTests: XCTestCase {
-  func testSelectionMatchesStructuredTonicOnly() {
+  func testSelectionReadsTheCoresRule() {
     XCTAssertEqual(
       KeyHelper.selection(key: "F#", modality: .major),
       KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
-    XCTAssertNil(KeyHelper.selection(key: "F# major", modality: nil))
+    XCTAssertEqual(
+      KeyHelper.selection(key: "F# major", modality: nil),
+      KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
     XCTAssertNil(KeyHelper.selection(key: "", modality: nil))
+  }
+
+  func testPresetsFollowTheCircleFromC() {
+    XCTAssertEqual(
+      KeyHelper.circle(.major), ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"])
+    XCTAssertEqual(
+      KeyHelper.circle(.minor), ["A", "E", "B", "F#", "C#", "G#", "Eb", "Bb", "F", "C", "G", "D"])
   }
 
   func testPrettifyConvertsAccidentalsOnly() {
@@ -28,44 +37,56 @@ final class KeyHelperTests: XCTestCase {
     XCTAssertNil(KeyHelper.display(key: nil, modality: .major))
   }
 
-  func testTapSelectsThenFlipsEnharmonic() {
-    let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 6, mode: .major)
+  func testTapSelectsThenFlipsEnharmonic() throws {
+    let first = try XCTUnwrap(
+      KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 6, mode: .major))
     XCTAssertEqual(first.tonic, "Gb")
     XCTAssertEqual(first.modality, .major)
     XCTAssertFalse(first.flipped)
-    let second = KeyHelper.nextOnTap(
-      currentKey: first.tonic, currentModality: first.modality, ring: 6, mode: .major)
+    let second = try XCTUnwrap(
+      KeyHelper.nextOnTap(
+        currentKey: first.tonic, currentModality: first.modality, ring: 6, mode: .major))
     XCTAssertEqual(second.tonic, "F#")
     XCTAssertTrue(second.flipped)
-    let third = KeyHelper.nextOnTap(
-      currentKey: second.tonic, currentModality: second.modality, ring: 6, mode: .major)
+    let third = try XCTUnwrap(
+      KeyHelper.nextOnTap(
+        currentKey: second.tonic, currentModality: second.modality, ring: 6, mode: .major))
     XCTAssertEqual(third.tonic, "Gb")
     XCTAssertTrue(third.flipped)
   }
 
-  func testTapFlipsEnharmonicOnMinorSpoke() {
-    let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 5, mode: .minor)
+  func testTapFlipsEnharmonicOnMinorSpoke() throws {
+    let first = try XCTUnwrap(
+      KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 5, mode: .minor))
     XCTAssertEqual(first.tonic, "G#")
     XCTAssertFalse(first.flipped)
-    let second = KeyHelper.nextOnTap(
-      currentKey: first.tonic, currentModality: first.modality, ring: 5, mode: .minor)
+    let second = try XCTUnwrap(
+      KeyHelper.nextOnTap(
+        currentKey: first.tonic, currentModality: first.modality, ring: 5, mode: .minor))
     XCTAssertEqual(second.tonic, "Ab")
     XCTAssertTrue(second.flipped)
   }
 
-  func testTapOnNonEnharmonicSpokeNeverFlips() {
-    let result = KeyHelper.nextOnTap(
-      currentKey: "C", currentModality: .major, ring: 0, mode: .major)
+  func testTapOnNonEnharmonicSpokeNeverFlips() throws {
+    let result = try XCTUnwrap(
+      KeyHelper.nextOnTap(currentKey: "C", currentModality: .major, ring: 0, mode: .major))
     XCTAssertEqual(result.tonic, "C")
     XCTAssertFalse(result.flipped)
   }
 
-  func testTapSwitchingSpokeIsAFreshSelection() {
-    let result = KeyHelper.nextOnTap(
-      currentKey: "F#", currentModality: .major, ring: 0, mode: .major)
+  func testTapSwitchingSpokeIsAFreshSelection() throws {
+    let result = try XCTUnwrap(
+      KeyHelper.nextOnTap(currentKey: "F#", currentModality: .major, ring: 0, mode: .major))
     XCTAssertEqual(result.tonic, "C")
     XCTAssertEqual(result.modality, .major)
     XCTAssertFalse(result.flipped)
+  }
+
+  func testATapOffTheWheelIsIgnored() {
+    XCTAssertNil(
+      KeyHelper.nextOnTap(currentKey: "C", currentModality: .major, ring: 12, mode: .major))
+    XCTAssertNil(
+      KeyHelper.nextOnTap(currentKey: "C", currentModality: .major, ring: -1, mode: .major))
   }
 
   func testEnharmonicAltOnlyExistsForAmbiguousSpokes() {
