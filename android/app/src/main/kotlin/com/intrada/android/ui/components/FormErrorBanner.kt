@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -32,7 +33,9 @@ import com.intrada.android.ui.IntradaSpacing
 fun FormErrorBanner(message: String, modifier: Modifier = Modifier) {
     val text = IntradaFont.bodyMedium.copy(color = IntradaColor.danger)
     val density = LocalDensity.current
-    val firstLine = with(density) { rememberTextMeasurer().measure("A", text).size.height.toDp() }
+    val measurer = rememberTextMeasurer()
+    val firstLine =
+        remember(text, density) { with(density) { measurer.measure("A", text).size.height.toDp() } }
     val glyph = with(density) { text.fontSize.toDp() }
     val shape = RoundedCornerShape(IntradaRadius.card)
     Row(

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
 import com.intrada.android.ui.components.scaled
@@ -41,8 +43,11 @@ fun GlobalBanner(
 ) {
     val ink = IntradaColor.danger
     val text = IntradaFont.bodyMedium.copy(color = ink)
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
     val firstLine =
-        with(LocalDensity.current) { rememberTextMeasurer().measure("A", text).size.height.toDp() }
+        remember(text, density) { with(density) { measurer.measure("A", text).size.height.toDp() } }
+    val glyph = with(density) { text.fontSize.toDp() }
     Row(
         modifier
             .fillMaxWidth()
@@ -76,7 +81,7 @@ fun GlobalBanner(
                 verticalAlignment = Alignment.Top,
             ) {
                 Box(Modifier.height(firstLine), contentAlignment = Alignment.Center) {
-                    BannerIcon(R.drawable.ic_warning_triangle, IntradaIconSize.control, ink)
+                    BannerIcon(R.drawable.ic_warning_triangle, glyph, ink)
                 }
                 BasicText(message, Modifier.weight(1f), style = text)
             }
@@ -86,7 +91,7 @@ fun GlobalBanner(
                 Modifier.size(touchTarget).clickable(onClick = onDismiss),
                 contentAlignment = Alignment.Center,
             ) {
-                BannerIcon(R.drawable.ic_close, IntradaIconSize.caption, ink)
+                BannerIcon(R.drawable.ic_close, IntradaIconSize.caption.scaled(), ink)
             }
         }
     }
@@ -95,13 +100,13 @@ fun GlobalBanner(
 @Composable
 private fun BannerIcon(
     @DrawableRes id: Int,
-    size: IntradaIconSize,
+    size: Dp,
     ink: Color,
 ) {
     Image(
         painterResource(id),
         contentDescription = null,
-        modifier = Modifier.size(size.scaled()),
+        modifier = Modifier.size(size),
         colorFilter = ColorFilter.tint(ink),
     )
 }

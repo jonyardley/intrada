@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ fun TagChip(
         Box(
             modifier
                 .heightIn(min = 48.dp)
+                .widthIn(min = 48.dp)
                 .clickable(onClickLabel = "remove", role = Role.Button, onClick = onRemove)
                 .clearAndSetSemantics { contentDescription = text },
             contentAlignment = Alignment.Center,

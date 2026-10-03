@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -28,12 +29,17 @@ fun ScrimCapsule(
     Box(
         modifier
             .heightIn(min = 48.dp)
-            .clip(CircleShape)
-            .background(IntradaColor.viewerBackdrop.copy(alpha = IntradaOpacity.strong))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
+            .widthIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.onAccent))
+        Box(
+            Modifier.clip(CircleShape)
+                .background(IntradaColor.viewerBackdrop.copy(alpha = IntradaOpacity.strong))
+                .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(label, style = IntradaFont.bodyMedium.copy(color = IntradaColor.onAccent))
+        }
     }
 }
