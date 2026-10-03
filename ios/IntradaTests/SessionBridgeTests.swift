@@ -56,6 +56,54 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(limits.scoreMax, 10)
   }
 
+  /// The click's band and bars end the limits and its seed ends the active
+  /// session, so a field-order mismatch garbles both silently (#846, #2225).
+  func testRealBridgeClickLimitsAndSeedDecode() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let limits = try bridge.rendered().limits
+    XCTAssertEqual(limits.clickTempoStep, 2)
+    XCTAssertEqual(limits.clickTempoDefault, 96)
+    XCTAssertEqual(
+      limits.clickTempoBands,
+      [
+        TempoBand(unit: 2, min: 20, max: 104), TempoBand(unit: 4, min: 40, max: 208),
+        TempoBand(unit: 8, min: 80, max: 416),
+      ])
+    XCTAssertEqual(limits.clickMetrePresets.first, Metre(beats: 3, unit: 4, groups: nil))
+    XCTAssertEqual(
+      limits.clickBars.first { $0.beats == 7 && $0.groups == [3, 2, 2] },
+      ClickBarOption(
+        beats: 7, groups: [3, 2, 2],
+        presets: [
+          ClickPresetOption(preset: .everyBeat, sounding: 0b111_1111),
+          ClickPresetOption(preset: .groupStarts, sounding: 0b010_1001),
+          ClickPresetOption(preset: .downbeat, sounding: 1),
+        ]))
+
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Gigue", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: TempoInput(marking: nil, bpm: "240"), notes: nil, tags: [], photoId: nil,
+            variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    let fourEight = Metre(beats: 4, unit: 8, groups: [2, 2])
+    _ = try bridge.update(.item(.setMetre(id: id, metre: fourEight)))
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-10-02T09:00:00Z")))
+
+    let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertEqual(active.clickSeedMetre, fourEight)
+    XCTAssertEqual(active.clickSeedBpm, 240)
+    XCTAssertTrue(active.clickSeedSoundsTarget)
+    XCTAssertEqual(
+      active.clickSeedPresets.map(\.sounding), [0b1111, 0b0101, 1],
+      "a grouping the bars table does not list still gets its patterns")
+  }
+
   /// The saved defaults reach the counter, the click and the item sheet across
   /// the bincode wire; a u8 beside an enum tag misdecodes on a field-order mismatch (#846, #1915).
   func testRealBridgePracticeDefaultsReachTheCounterTheClickAndTheSheet() throws {

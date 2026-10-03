@@ -220,6 +220,31 @@ toggle, so the readout cannot also open the pattern sheet.
 It also buys the travelling indicator room to be legible from a music stand,
 which a readout-inline row could not.
 
+## The click's band and presets come from the core (#2225)
+
+The click's tempo band, step and default, the named bars, the groupings each
+beat count offers and the patterns each bar offers live in
+`crates/intrada-core/src/domain/metre.rs` and reach both shells through
+`LimitsView`, so the Android click cannot drift from the iOS one.
+
+- **The band is crotchets 40 to 208, default 96, step 2**, projected once per
+  beat unit through `Metre::displayed_bpm`: minim 20 to 104, quaver 80 to 416.
+  The shell clamps against the band whose unit matches the bar it is showing.
+- **The bars are a table**: every beat count from 2 to 12, ungrouped and in each
+  offered grouping, with its patterns and their masks. Patterns do not depend
+  on the unit, so the table carries none. An item can hold a valid grouping
+  the table does not list (4/8 as 2+2), so `ActiveSessionView` also carries the
+  starting bar's own patterns. Pattern names stay shell copy, keyed by
+  `ClickPreset`.
+- **Seeding is the core's answer.** `ActiveSessionView` carries the bar the
+  click opens on (4/4 when the item declares none), the item's BPM inside that
+  bar's band, and whether that is still the item's own number.
+- **The last sounding beat stays on in the shell.** The core could only rule on
+  each tap through an event, which would make the click's live state core state;
+  `validate_click_state` already refuses a silent bar at the hand-off.
+- **The drag's feel stays in the shell**: points of travel per step is tuned to
+  the thumb, and Android tunes its own.
+
 ## The click engine
 
 `ClickEngine.schedule(beats:pulse:)` is already pure and beat-indexed, which is

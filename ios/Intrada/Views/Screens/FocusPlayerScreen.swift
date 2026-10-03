@@ -98,7 +98,7 @@ struct FocusPlayerScreen: View {
       return
     }
     click.reseed(
-      target: active.currentItemTempoBpm, metre: active.currentItemMetre,
+      target: active.currentItemTempoBpm, metre: active.clickSeedMetre,
       sounding: active.currentClickSounding)
   }
 
