@@ -240,8 +240,7 @@ final class LibraryStore: ItemStore {
     return byItem
   }
 
-  /// Sections grouped by item in score order, tombstones included, like
-  /// `variantsByItem` (#2245).
+  /// Tombstones included: the core reconciles (#2245).
   private static func sectionsByItem(_ db: Database) throws -> [String: [Section]] {
     let rows = try Row.fetchAll(
       db,

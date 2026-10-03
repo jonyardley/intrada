@@ -490,13 +490,12 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
     let items = try store.loadItems()
     let piece = try XCTUnwrap(items.first { $0.id == "p1" })
-    var expected = LibraryItemFixture.record(
+    let expected = LibraryItemFixture.record(
       id: "p1", title: "Waltz", kind: .piece, composer: "Chopin", key: "A", modality: .minor,
       tempo: Tempo(marking: "Lento", bpm: 60), notes: "slow", tags: ["rubato"],
       linkedExerciseIds: ["e1"], createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z", priority: true,
       metre: Metre(beats: 3, unit: 4, groups: nil))
-    expected.sections = []
     XCTAssertEqual(piece, expected, "an upgraded piece loads exactly as before, with no sections")
     let exercise = try XCTUnwrap(items.first { $0.id == "e1" })
     XCTAssertEqual(exercise.variants.map(\.label), ["C"])

@@ -89,10 +89,7 @@ impl Section {
     }
 }
 
-/// Reconcile by id only: duplicate names are two sections (rondo form). An
-/// id that names no stored row mints a fresh one; a live row the list leaves
-/// out is tombstoned; tombstones already there carry through untouched.
-/// `updated_at` bumps only on rows that changed (per-row LWW).
+/// By id only, so repeated names stay separate sections (#2245).
 pub(crate) fn reconcile_sections(
     existing: Vec<Section>,
     drafts: Vec<SectionDraft>,

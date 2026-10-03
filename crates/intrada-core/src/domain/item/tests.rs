@@ -3479,6 +3479,8 @@ fn typed_bars_a_musician_would_write_are_read() {
         ("1-16", bars(1, 16)),
         ("1 - 16", bars(1, 16)),
         ("1\u{2013}16", bars(1, 16)),
+        ("1\u{2014}16", bars(1, 16)),
+        ("1\u{2212}16", bars(1, 16)),
         ("1 to 16", bars(1, 16)),
         ("bars 5 to 12", bars(5, 12)),
         ("Bars 5-12", bars(5, 12)),
@@ -3636,6 +3638,56 @@ fn rename_rebar_kind_target_reorder_add_and_remove_land_in_one_write() {
         .find(|s| s.id == c)
         .expect("a removed section stays as a tombstone");
     assert!(removed.deleted_at.is_some());
+    assert_eq!(
+        Some(removed.updated_at),
+        removed.deleted_at,
+        "the tombstone carries its own LWW stamp"
+    );
+}
+
+#[test]
+fn a_row_naming_a_tombstone_revives_it() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(None, "A", BarsInput::Blank)],
+    );
+    let a = section_id(&model, "A");
+    let _ = update_sections(&mut model, "piece-1", vec![]);
+
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(Some(&a), "A", BarsInput::Blank)],
+    );
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    let live = live_sections(&model);
+    assert_eq!(live.len(), 1);
+    assert_eq!(live[0].id, a);
+}
+
+#[test]
+fn the_view_orders_by_position_whatever_order_the_store_loaded() {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![
+            row(None, "A", BarsInput::Blank),
+            row(None, "B", BarsInput::Blank),
+        ],
+    );
+    let piece = model.items.iter_mut().find(|i| i.id == "piece-1").unwrap();
+    piece.sections.reverse();
+
+    let labels: Vec<String> = piece_view(&model)
+        .sections
+        .into_iter()
+        .map(|s| s.label)
+        .collect();
+    assert_eq!(labels, vec!["A", "B"]);
 }
 
 #[test]

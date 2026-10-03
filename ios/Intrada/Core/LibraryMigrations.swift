@@ -301,9 +301,6 @@ extension LibraryStore {
           """)
     }
     migrator.registerMigration("v18_section") { db in
-      // A child table like `variant`, for per-row LWW and tombstones (#2245).
-      // Additive: an upgraded install has no rows, so every item loads with
-      // no sections.
       try db.execute(
         sql: """
           CREATE TABLE section (

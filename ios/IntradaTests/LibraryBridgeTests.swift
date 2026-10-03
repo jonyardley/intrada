@@ -191,13 +191,23 @@ final class LibraryBridgeTests: XCTestCase {
         .updateSections(
           id: item.id,
           sections: [
-            SectionEdit(id: nil, name: "A", bars: .typed("16-1"), kind: .form, targetBpm: "")
+            SectionEdit(id: nil, name: "A", bars: .typed("1-8"), kind: .form, targetBpm: "")
+          ])))
+    let before = try bridge.rendered().items.first?.sections
+
+    _ = try bridge.update(
+      .item(
+        .updateSections(
+          id: item.id,
+          sections: [
+            SectionEdit(id: nil, name: "B", bars: .typed("16-1"), kind: .form, targetBpm: "")
           ])))
 
     let view = try bridge.rendered()
     XCTAssertNotNil(view.error)
     XCTAssertEqual(view.errorTarget, .piece(field: .sections))
-    XCTAssertEqual(view.items.first?.sections, [], "nothing written")
+    XCTAssertEqual(view.items.first?.sections, before, "nothing written")
+    XCTAssertEqual(before?.map(\.label), ["A"])
   }
 
   /// The new `FormErrorField` case decodes on the wire (#846, #1831): a

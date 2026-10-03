@@ -80,8 +80,7 @@ pub struct Item {
     /// from (#1499). `None` means the piece does not declare one.
     #[serde(default)]
     pub metre: Option<Metre>,
-    /// Ordered sections, tombstones included, persisted to the `section`
-    /// child table like `variants` (#2245).
+    /// Tombstones included (#2245).
     #[serde(default)]
     pub sections: Vec<Section>,
 }

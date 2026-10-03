@@ -58,7 +58,8 @@ against a chord chart's length.
 `validation::parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError>`
 reads what a musician types or says: "1-16", "1 to 16", "bars 5 to 12",
 "bar 12", "bb. 5-12", "mm. 5-12", or a bare "12". It accepts a hyphen, an en
-dash (iOS smart punctuation turns "1-16" into one) and "to". Blank is `None`.
+or em dash or a minus sign (iOS Smart Dashes and pasted text bring them in)
+and "to". Blank is `None`.
 It refuses a reversed range ("16-1"), bar 0, a half range ("1-"), more than one
 range ("1-16, 20-24"), words around the range ("12-14 left hand") and anything
 past `MAX_BAR`. Refusal names the field `sections` and maps to a new

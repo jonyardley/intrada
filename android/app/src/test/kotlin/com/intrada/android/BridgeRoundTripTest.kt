@@ -3,6 +3,8 @@ package com.intrada.android
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
 import com.intrada.shared.AppEffect
+import com.intrada.shared.BarRange
+import com.intrada.shared.BarsInput
 import com.intrada.shared.ClickBarOption
 import com.intrada.shared.ClickPreset
 import com.intrada.shared.ClickPresetOption
@@ -15,6 +17,9 @@ import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.Section
+import com.intrada.shared.SectionEdit
+import com.intrada.shared.SectionKind
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
@@ -92,6 +97,72 @@ class BridgeRoundTripTest {
 
         assertEquals("Lento", saved.tempo?.marking)
         assertEquals(60.toUShort(), saved.tempo?.bpm)
+    }
+
+    // Sections cross on a second decoder: a skewed BarsInput or SectionView shows only here (#846,
+    // #2245).
+    @Test
+    fun sectionsCrossTheBridgeTypedAndPicked() {
+        val bridge = LiveBridge()
+        val added =
+            bridge.update(
+                Event.Item(
+                    ItemEvent.Add(
+                        CreateItem(
+                            title = "Rondo",
+                            kind = ItemKind.PIECE,
+                            tags = emptyList(),
+                            variantLabels = emptyList(),
+                        )
+                    )
+                )
+            )
+        val id =
+            added
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+                .id
+
+        val saved =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.UpdateSections(
+                            id,
+                            listOf(
+                                SectionEdit(
+                                    null,
+                                    "A1",
+                                    BarsInput.Typed("1-16"),
+                                    SectionKind.FORM,
+                                    "",
+                                ),
+                                SectionEdit(
+                                    null,
+                                    "",
+                                    BarsInput.Picked(12.toUShort(), 14.toUShort()),
+                                    SectionKind.TROUBLESPOT,
+                                    "72",
+                                ),
+                            ),
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+
+        val sections: List<Section> = saved.sections
+        assertEquals(
+            listOf(BarRange(1.toUShort(), 16.toUShort()), BarRange(12.toUShort(), 14.toUShort())),
+            sections.map { it.bars },
+        )
+        assertEquals(72.toUShort(), sections.last().targetBpm)
     }
 
     // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after

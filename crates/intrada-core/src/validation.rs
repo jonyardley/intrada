@@ -535,11 +535,10 @@ fn sections_error(message: impl Into<String>) -> LibraryError {
 }
 
 /// One range of bars as a musician types or dictates it: "1-16", "1 to 16",
-/// "bars 5 to 12", "bar 12", "bb. 5-12", "mm. 5-12" or a bare "12". iOS smart
-/// punctuation turns "1-16" into an en dash, so that reads too. Blank is no
-/// bars. Words around the range are refused here; reading bars out of a
-/// sentence is #2307's.
-pub fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
+/// "bars 5 to 12", "bar 12", "bb. 5-12", "mm. 5-12" or a bare "12". En and em
+/// dashes and the minus sign read as a hyphen, since iOS Smart Dashes and
+/// pasted text bring them in. Reading bars out of a sentence is #2307's.
+pub(crate) fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
     let lowered = raw.trim().to_lowercase();
     if lowered.is_empty() {
         return Ok(None);
@@ -548,7 +547,7 @@ pub fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
         .iter()
         .find_map(|prefix| lowered.strip_prefix(prefix))
         .unwrap_or(&lowered)
-        .replace('\u{2013}', "-");
+        .replace(['\u{2013}', '\u{2014}', '\u{2212}'], "-");
     let words: Vec<&str> = rest.split_whitespace().collect();
     let (first, last) = match (rest.split_once('-'), words.as_slice()) {
         (Some((first, last)), _) => (first.trim(), last.trim()),
@@ -560,7 +559,7 @@ pub fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
 }
 
 fn unreadable_bars() -> LibraryError {
-    sections_error("Bars read like 1-16, 1 to 16 or bar 12")
+    sections_error("Write bars as 1-16, 1 to 16 or bar 12")
 }
 
 fn parse_bar(text: &str) -> Result<u16, LibraryError> {
@@ -573,7 +572,7 @@ fn parse_bar(text: &str) -> Result<u16, LibraryError> {
         .ok_or_else(|| sections_error(format!("Bars go up to {MAX_BAR}")))
 }
 
-pub fn validate_bar_range(first: u16, last: u16) -> Result<BarRange, LibraryError> {
+pub(crate) fn validate_bar_range(first: u16, last: u16) -> Result<BarRange, LibraryError> {
     if first == 0 {
         return Err(sections_error("Bars start at 1"));
     }
@@ -608,7 +607,9 @@ pub(crate) fn validate_section_edits(
                 return Err(sections_error("A section needs a name or bars"));
             }
             let target_bpm = parse_bpm(&edit.target_bpm).map_err(|e| match e {
-                LibraryError::Validation { message, .. } => sections_error(message),
+                LibraryError::Validation { .. } => sections_error(format!(
+                    "A section's target tempo must be a whole number between {MIN_BPM} and {MAX_BPM}"
+                )),
                 other => other,
             })?;
             Ok(SectionDraft {
