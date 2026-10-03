@@ -187,6 +187,28 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertFalse(exerciseFormShowsKey(liveVariantCount: 1))
   }
 
+  /// The draft crosses as Swift's own bincode (#2229): a Rust round trip cannot
+  /// see Swift and Rust disagreeing about `PhotoDraft`'s bytes.
+  func testFillFormFromReadDecodesTheDraftSwiftSerialised() throws {
+    let fields: [FormFieldNow] = [
+      FormFieldNow(field: .title, text: "The name I gave it", holdsRead: false),
+      FormFieldNow(field: .composer, text: "", holdsRead: false),
+      FormFieldNow(field: .marking, text: "", holdsRead: false),
+      FormFieldNow(field: .bpm, text: "", holdsRead: false),
+    ]
+
+    let fills = try fillFormFromRead(
+      draft: Data(PhotoDraft.readPage.bincodeSerialize()), fields: fields)
+
+    XCTAssertEqual(
+      fills,
+      [
+        FormFieldFill(field: .composer, value: "Joseph Kosmo", weak: true),
+        FormFieldFill(field: .marking, value: "Moderato", weak: false),
+        FormFieldFill(field: .bpm, value: "120", weak: false),
+      ])
+  }
+
   /// The Edit form's two events against the real core (#1783): a key folded into
   /// a new ladder must not come back as a second key, and a key typed after
   /// clearing the rows must not be refused while they still stand.

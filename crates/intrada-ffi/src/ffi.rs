@@ -3,7 +3,7 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::Once;
 
 use crux_core::{
-    bridge::{Bridge, EffectId},
+    bridge::{BincodeFfiFormat, Bridge, EffectId, FfiFormat},
     Core,
 };
 
@@ -399,6 +399,86 @@ pub fn key_wheel_selection(key: String, mode: Option<WheelMode>) -> Option<Wheel
     })
 }
 
+// ── Filling the form from a read ──
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FormReadField {
+    Title,
+    Composer,
+    Marking,
+    Bpm,
+    Chart,
+}
+
+impl From<FormReadField> for crate::ReadField {
+    fn from(field: FormReadField) -> Self {
+        match field {
+            FormReadField::Title => Self::Title,
+            FormReadField::Composer => Self::Composer,
+            FormReadField::Marking => Self::Marking,
+            FormReadField::Bpm => Self::Bpm,
+            FormReadField::Chart => Self::Chart,
+        }
+    }
+}
+
+impl From<crate::ReadField> for FormReadField {
+    fn from(field: crate::ReadField) -> Self {
+        match field {
+            crate::ReadField::Title => Self::Title,
+            crate::ReadField::Composer => Self::Composer,
+            crate::ReadField::Marking => Self::Marking,
+            crate::ReadField::Bpm => Self::Bpm,
+            crate::ReadField::Chart => Self::Chart,
+        }
+    }
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormFieldNow {
+    pub field: FormReadField,
+    pub text: String,
+    pub holds_read: bool,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormFieldFill {
+    pub field: FormReadField,
+    pub value: String,
+    pub weak: bool,
+}
+
+/// The add form is unsaved, so it asks on each read rather than the core
+/// holding it (#2229). The draft crosses as the generated bincode the view
+/// model gave the shell, so there is one description of it, not a mirror here.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn fill_form_from_read(
+    draft: Vec<u8>,
+    fields: Vec<FormFieldNow>,
+) -> Result<Vec<FormFieldFill>, CoreError> {
+    let draft: crate::PhotoDraft = BincodeFfiFormat::deserialize(&draft)
+        .map_err(|e| CoreError::Bridge(format!("photo draft: {e}")))?;
+    let fields: Vec<crate::FieldNow> = fields
+        .into_iter()
+        .map(|now| crate::FieldNow {
+            field: now.field.into(),
+            text: now.text,
+            holds_read: now.holds_read,
+        })
+        .collect();
+    Ok(crate::fill_form(&draft, &fields)
+        .into_iter()
+        .map(|fill| FormFieldFill {
+            field: fill.field.into(),
+            value: fill.value,
+            weak: fill.weak,
+        })
+        .collect())
+}
+
 /// The shell builds the crash-recovery blob's storage key from this, so a
 /// shape change in the core retires the old key on its own (#1116).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
@@ -724,5 +804,77 @@ mod tests {
             ),
             (WheelMode::Minor, "Eb", Some("D#"))
         );
+    }
+
+    fn draft_bytes(draft: &crate::PhotoDraft) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, draft).expect("serialize");
+        bytes
+    }
+
+    fn blank(field: FormReadField) -> FormFieldNow {
+        FormFieldNow {
+            field,
+            text: String::new(),
+            holds_read: false,
+        }
+    }
+
+    /// The draft the shell holds crosses as bytes and reaches the core's rule
+    /// intact: the tempo still splits and each weak mark survives (#2229).
+    #[test]
+    fn fill_form_from_read_decodes_the_draft_the_view_model_sent() {
+        let draft = crate::PhotoDraft {
+            title: Some(crate::TextDraftField {
+                value: "Autumn Leaves".to_string(),
+                source: crate::DraftSource::Recognised,
+                confidence: 0.9,
+                weak: false,
+            }),
+            composer: None,
+            tempo: Some(crate::TempoDraftField {
+                value: crate::Tempo {
+                    marking: Some("Moderato".to_string()),
+                    bpm: Some(120),
+                },
+                source: crate::DraftSource::Suggested,
+                confidence: 0.3,
+                weak: true,
+            }),
+            chart_text: None,
+        };
+        let fields = vec![
+            blank(FormReadField::Title),
+            FormFieldNow {
+                field: FormReadField::Marking,
+                text: "Slowly".to_string(),
+                holds_read: false,
+            },
+            blank(FormReadField::Bpm),
+        ];
+
+        let fills = fill_form_from_read(draft_bytes(&draft), fields).expect("decodes");
+
+        assert_eq!(
+            fills,
+            vec![
+                FormFieldFill {
+                    field: FormReadField::Title,
+                    value: "Autumn Leaves".to_string(),
+                    weak: false,
+                },
+                FormFieldFill {
+                    field: FormReadField::Bpm,
+                    value: "120".to_string(),
+                    weak: true,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn fill_form_from_read_refuses_bytes_that_are_not_a_draft() {
+        let result = fill_form_from_read(vec![7, 0, 0], vec![blank(FormReadField::Title)]);
+        assert!(matches!(result, Err(CoreError::Bridge(_))));
     }
 }

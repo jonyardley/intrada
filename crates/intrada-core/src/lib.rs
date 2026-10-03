@@ -31,8 +31,9 @@ pub use model::{
 };
 pub use persistence::{PersistenceOperation, PersistenceOutput};
 pub use recognition::{
-    read_fields, DraftSource, PageReading, PhotoDraft, RecognisedLine, RecognitionOperation,
-    RecognitionOutput, SuggestedFields, TempoDraftField, TextDraftField, LOW_CONFIDENCE,
+    fill_form, read_fields, DraftSource, FieldFill, FieldNow, PageReading, PhotoDraft, ReadField,
+    RecognisedLine, RecognitionOperation, RecognitionOutput, SuggestedFields, TempoDraftField,
+    TextDraftField, LOW_CONFIDENCE,
 };
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE,
