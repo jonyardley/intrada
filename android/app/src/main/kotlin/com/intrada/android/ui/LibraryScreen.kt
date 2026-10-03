@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
@@ -58,30 +55,24 @@ fun LibraryScreen(
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(IntradaColor.paperTop)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-    ) {
-        if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-        if (error != null) GlobalBanner(error, tag = "banner.error", onDismiss = onDismissError)
-        Column(Modifier.padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.card)) {
-            BasicText("Library", style = IntradaFont.pageTitle().copy(color = IntradaColor.ink))
-        }
-        if (rows.isEmpty()) {
-            BasicText(
-                "Pieces and exercises will live here.",
-                Modifier.padding(IntradaSpacing.card),
-                style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
-            )
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(IntradaSpacing.card),
-                verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
-            ) {
-                items(rows, key = { it.id }) {
-                    LibraryItemCard(it, Modifier.testTag("library.row"))
+    ScreenScaffold("Library", modifier) {
+        Column(Modifier.fillMaxSize()) {
+            if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
+            if (error != null) GlobalBanner(error, tag = "banner.error", onDismiss = onDismissError)
+            if (rows.isEmpty()) {
+                BasicText(
+                    "Pieces and exercises will live here.",
+                    Modifier.padding(IntradaSpacing.card),
+                    style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
+                )
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(IntradaSpacing.card),
+                    verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
+                ) {
+                    items(rows, key = { it.id }) {
+                        LibraryItemCard(it, Modifier.testTag("library.row"))
+                    }
                 }
             }
         }
