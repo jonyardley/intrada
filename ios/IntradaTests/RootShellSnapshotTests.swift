@@ -11,6 +11,7 @@ final class RootShellSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(RootView()), as: config)
   }
 
+  // In a phone-sized frame the scrolling empty Library draws blank, unlike the simulator (#2322).
   func testRootShellAccessibilitySize() {
     assertSnapshot(of: host(RootView()), as: tallAxConfig())
   }
