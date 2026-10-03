@@ -10,9 +10,6 @@ support.js
 design/intrada-design-system.html
 design/assets/
 
-# Retired docs: reference only, they drown the live doc graph
-.specify/
-
 # Images (snapshot test references, icons): no semantic value in the graph,
 # and each image costs its own vision-extraction agent
 *.png

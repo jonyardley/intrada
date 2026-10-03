@@ -86,5 +86,5 @@ cannot be found and should not be recreated from them.
 | [`reflection-loop/`](reflection-loop/) | The three session-level reflection boxes and `UpdateSessionReflection`. Shipped, then retired by #1766 (see `retire-shell-dead-session-fields.md`); they survive only as unread columns in the on-device `session` table |
 
 The SpecKit-era folders and the retired single-file specs (`seo-prerender.md`,
-`mcp-server.md`, `account-settings-and-deletion.md`) were deleted in the 2026-10
-cleanup; recover them from git history. Do not run `/speckit-*` commands.
+`mcp-server.md`, `account-settings-and-deletion.md`) were deleted in #2319;
+recover them with `git log --diff-filter=D -- specs/_archive`. Do not run `/speckit-*` commands.

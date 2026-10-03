@@ -121,8 +121,8 @@ The graph lives in the **main checkout** at `graphify-out/` (gitignored, so
 worktrees don't carry it). Find the main checkout from any worktree via
 `git rev-parse --path-format=absolute --git-common-dir`, then take its parent.
 
-Scope is controlled by the committed `.graphifyignore`: vendored and minified JS,
-`.specify/`, and generated schemas are excluded.
+Scope is controlled by the committed `.graphifyignore`: vendored and minified JS
+and generated schemas are excluded.
 
 ```bash
 graphify query "<question>"   # from the main checkout root

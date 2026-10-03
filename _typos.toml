@@ -23,8 +23,6 @@ extend-exclude = [
     # The design tool's own bundled runtime and tokens, shipped inside the
     # Claude Design handoff export. Minified, never hand-edited (#1390)
     "design/_ds/",
-    # Retired docs, reference only (mirrors .graphifyignore)
-    ".specify/",
     # Generated scan artefacts (e.g. gitleaks/clippy SARIF left in the workspace)
     "*.sarif",
 ]
