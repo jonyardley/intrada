@@ -548,7 +548,8 @@ final class StoreEffectLoopTests: XCTestCase {
 
     let requests = try bridge.update(
       .profile(
-        .save(Profile(name: "  Jon ", instrument: "Double bass", iconChoice: .cello, colour: .coral))))
+        .save(
+          Profile(name: "  Jon ", instrument: "Double bass", iconChoice: .cello, colour: .coral))))
     let saved = requests.compactMap { request -> Profile? in
       if case .app(.saveProfile(let profile)) = request.effect { return profile }
       return nil

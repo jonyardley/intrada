@@ -343,8 +343,12 @@ mod tests {
                 ..fixture()
             },
         );
+        assert_eq!(
+            model.profile.instrument, "Grand piano",
+            "the save was accepted"
+        );
         assert_eq!(model.profile.icon_choice, None);
-        assert_eq!(emits_save(&mut cmd).and_then(|p| p.icon_choice), None);
+        assert_eq!(emits_save(&mut cmd).map(|p| p.icon_choice), Some(None));
 
         let _ = save(
             &mut model,
