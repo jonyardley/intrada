@@ -14,6 +14,21 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         store: .previewActive), as: config)
   }
 
+  // The stop sits 42 seconds in, far from the snapshot's fixed instant, so a ring
+  // that ignored it would read differently (#2297).
+  func testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen() throws {
+    var active = ActiveSessionView.previewActive
+    let start = try XCTUnwrap(SessionClock.parseRFC3339(active.currentItemStartedAt))
+    active.reflection = ReflectionView(
+      answers: ReflectionAnswers(marks: [], note: "", tempos: []),
+      reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
+      stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)))
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: active))), as: config)
+  }
+
   func testClickControlStates() {
     // Flat player paper, not the radial wash: the gradient is not what's under
     // test here and it is most of a reference's bytes (snapshot hygiene).

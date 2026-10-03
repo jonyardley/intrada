@@ -262,9 +262,11 @@ struct FocusPlayerScreen: View {
   }
 
   @ViewBuilder private func timerRing(_ active: ActiveSessionView, start: Date) -> some View {
-    if let referenceDate {
+    if let held = SessionClock.heldAt(
+      stoppedAt: active.reflection?.stoppedAt, reference: referenceDate)
+    {
       timerBody(
-        elapsed: Int(referenceDate.timeIntervalSince(start)),
+        elapsed: Int(held.timeIntervalSince(start)),
         planned: active.currentPlannedDurationSecs)
     } else {
       TimelineView(.periodic(from: start, by: 1)) { context in

@@ -20,6 +20,18 @@ final class SessionClockTests: XCTestCase {
     XCTAssertLessThan(abs(date.timeIntervalSince(expected)), 1, message)
   }
 
+  func testTheSheetsStopMomentHoldsTheTimerOverASnapshotsInstant() {
+    let later = expected.addingTimeInterval(3600)
+    assertSameSecond(
+      SessionClock.heldAt(stoppedAt: "2026-06-05T14:30:00+00:00", reference: later), "the stop wins"
+    )
+  }
+
+  func testWithNoSheetTheTimerHoldsOnlyForASnapshot() {
+    XCTAssertNil(SessionClock.heldAt(stoppedAt: nil, reference: nil), "a live timer runs")
+    XCTAssertEqual(SessionClock.heldAt(stoppedAt: nil, reference: expected), expected)
+  }
+
   // The load-bearing case: chrono `to_rfc3339()` emits microsecond fractions
   // with a `+00:00` offset — exactly what ISO8601DateFormatter rejects (#846 class).
   func testParsesChronoMicrosecondOffsetForm() {
