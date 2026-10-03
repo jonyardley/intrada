@@ -45,7 +45,7 @@ struct FocusPlayerScreen: View {
         ReflectionSheet(
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
           tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
-          tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
+          currentClick: target.sheetClick, plays: target.plays,
           limits: limits,
           refusal: reflectionRefusal, seed: target.seed,
           onSave: { result in handleReflection(target, result) },
@@ -365,12 +365,10 @@ struct FocusPlayerScreen: View {
     let elapsedDisplay: String
     let tempoTargetBpm: UInt16?
     /// The click at the stamp, kept in the draft so a resume still seeds the
-    /// unstamped rows from it; `NextItem` sends it again (#1761, #2137).
+    /// unstamped rows from it with `sheetClick`; `NextItem` sends it again (#1761, #2137).
     let reading: TempoReading
     var startingTempoBpm: Int { Int(reading.bpm) }
-    /// The unit the stepper counts in, which is the click's when the player
-    /// chose one and crotchets when they did not.
-    var tempoUnit: UInt8 { reading.click?.metre.unit ?? 4 }
+    let sheetClick: ClickState
     /// What was played, oldest first, one row per variation (#1739). The last
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
@@ -390,7 +388,9 @@ struct FocusPlayerScreen: View {
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(seconds),
       tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
-      plays: ReflectionPlay.rows(entry.plays), seed: ReflectionHandoff.seed(draft.answers))
+      sheetClick: ReflectionHandoff.sheetClick(draft.reading, active: active),
+      plays: ReflectionPlay.rows(entry.plays),
+      seed: ReflectionHandoff.seed(draft.answers))
   }
 
   private func presentReflection(_ active: ActiveSessionView) {

@@ -133,4 +133,50 @@ struct ReflectionHandoffTests {
 
     #expect(ReflectionHandoff.draft(result, plays: plays).tempos.isEmpty)
   }
+
+  // ── The stepper's beat value (#2304) ──
+
+  @Test func anUntouchedClickOnAQuaverBarCountsAndSavesInQuavers() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Gigue", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: TempoInput(marking: nil, bpm: "240"), notes: nil, tags: [], photoId: nil,
+            variantLabels: []))))
+    let itemId = try #require(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(
+      .item(.setMetre(id: itemId, metre: Metre(beats: 6, unit: 8, groups: [3, 3]))))
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    _ = try bridge.update(.session(.startSession(now: "2026-10-03T10:00:00Z")))
+    let seed = try #require(try bridge.rendered().activeSession)
+    let untouched = TempoReading(bpm: seed.clickSeedBpm, clickSounding: false, click: nil)
+    _ = try bridge.update(
+      .session(.prepareReflection(now: "2026-10-03T10:05:00Z", reading: untouched)))
+
+    let active = try #require(try bridge.rendered().activeSession)
+    let reading = try #require(active.reflection?.reading)
+    let click = ReflectionHandoff.sheetClick(reading, active: active)
+    let limits = try bridge.rendered().limits
+    #expect(click.metre.unit == 8)
+    #expect(limits.clickBand(unit: click.metre.unit).contains(240), "quaver = 240 opens as itself")
+
+    let entry = try #require(active.entries.first)
+    let plays = ReflectionPlay.rows(entry.plays)
+    let result = ReflectionResult(
+      marks: [:], note: "",
+      tempos: plays.map {
+        ReflectionRowTempo(playId: $0.id, tempo: 250, userSet: true, click: click)
+      })
+    let handoff = ReflectionHandoff.plan(
+      entryId: entry.id, now: "2026-10-03T10:05:00Z",
+      nextItemStartedAt: "2026-10-03T10:05:30Z", reading: reading, plays: plays, result: result)
+
+    #expect(ReflectionHandoff.run(handoff, send: accepting(bridge)))
+    let saved = try #require(try bridge.rendered().summary?.entries.first?.plays.last)
+    #expect(saved.achievedTempo == 125, "quaver = 250 is crotchet = 125")
+  }
 }

@@ -84,10 +84,10 @@ struct ReflectionSheet: View {
   let elapsedDisplay: String?
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
-  /// The beat value an unstamped row's stepper counts in, and reads `♪` for (#1499).
-  let tempoUnit: UInt8
-  /// The metre an unstamped row counts in, sent as that row's `click` (#1761).
+  /// The bar an unstamped row counts in, reads `♪` for and sends as its `click`, so the
+  /// range shown and the scale saved cannot disagree (#1499, #1761, #2304).
   let currentClick: ClickState?
+  private var tempoUnit: UInt8 { currentClick?.metre.unit ?? 4 }
   /// What was played, in order. One row is the sheet that shipped before
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
@@ -110,7 +110,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
-    startingTempoBpm: Int? = nil, tempoUnit: UInt8 = 4,
+    startingTempoBpm: Int? = nil,
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
     limits: LimitsView,
@@ -123,7 +123,6 @@ struct ReflectionSheet: View {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
-    self.tempoUnit = tempoUnit
     self.currentClick = currentClick
     self.plays = plays
     self.limits = limits
@@ -141,7 +140,8 @@ struct ReflectionSheet: View {
           TrackedTempo(
             startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm
               ?? Int(limits.clickTempoDefault),
-            band: limits.clickBand(unit: play.clickPattern?.metre.unit ?? tempoUnit))
+            band: limits.clickBand(
+              unit: play.clickPattern?.metre.unit ?? currentClick?.metre.unit ?? 4))
         )
       }, uniquingKeysWith: { first, _ in first })
     for row in seed?.tempos ?? [] where row.userSet {
