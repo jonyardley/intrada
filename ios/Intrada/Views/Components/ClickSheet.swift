@@ -14,12 +14,6 @@ struct ClickSheet: View {
   @State private var unit: UInt8
   @State private var grouping: [UInt8]?
 
-  private static let presets: [Metre] = [
-    Metre(beats: 3, unit: 4, groups: nil),
-    Metre(beats: 4, unit: 4, groups: nil),
-    Metre(beats: 6, unit: 8, groups: [3, 3]),
-  ]
-
   enum MetreChoice: Hashable {
     case metre(Metre)
     case other
@@ -30,7 +24,7 @@ struct ClickSheet: View {
     self.bpm = bpm
     self.limits = limits
     let metre = click.metre
-    _choice = State(initialValue: Self.presets.contains(metre) ? .metre(metre) : .other)
+    _choice = State(initialValue: limits.clickMetrePresets.contains(metre) ? .metre(metre) : .other)
     _beats = State(initialValue: Int(metre.beats))
     _unit = State(initialValue: metre.unit)
     _grouping = State(initialValue: metre.groups)
@@ -68,7 +62,7 @@ struct ClickSheet: View {
   }
 
   private var metreChoices: [MetreChoice] {
-    Self.presets.map(MetreChoice.metre) + [.other]
+    limits.clickMetrePresets.map(MetreChoice.metre) + [.other]
   }
 
   private var metreSection: some View {
@@ -139,7 +133,7 @@ struct ClickSheet: View {
           hint: { TempoUnit.spokenName($0) },
           layout: .fullWidthTrack)
       }
-      let groupings = Self.groupings(for: beats)
+      let groupings = limits.clickGroupings(beats: beats)
       if !groupings.isEmpty {
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
           Eyebrow("Grouped")
@@ -162,22 +156,6 @@ struct ClickSheet: View {
     click.setMetre(Metre(beats: UInt8(beats), unit: unit, groups: grouping))
   }
 
-  /// The groupings a musician would reach for; anything else stays ungrouped.
-  /// Offered here, validated in the core.
-  static func groupings(for beats: Int) -> [[UInt8]] {
-    switch beats {
-    case 5: [[3, 2], [2, 3]]
-    case 6: [[3, 3], [2, 2, 2]]
-    case 7: [[3, 2, 2], [2, 3, 2], [2, 2, 3]]
-    case 8: [[3, 3, 2], [3, 2, 3], [2, 3, 3]]
-    case 9: [[3, 3, 3], [2, 2, 2, 3]]
-    case 10: [[3, 3, 2, 2], [2, 3, 2, 3]]
-    case 11: [[3, 3, 3, 2], [2, 2, 3, 2, 2]]
-    case 12: [[3, 3, 3, 3], [2, 2, 2, 2, 2, 2]]
-    default: []
-    }
-  }
-
   private var soundsOnSection: some View {
     let metre = click.metre
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
@@ -185,10 +163,10 @@ struct ClickSheet: View {
       // Optional option type so a hand-toggled mask matching no preset simply
       // selects nothing, as the grouping picker above does for "Not grouped".
       SegmentedPills(
-        options: ClickPattern.offered(for: metre).map(Optional.some),
+        options: click.presets.map { Optional.some($0.preset) },
         selection: Binding(
-          get: { ClickPattern.matching(click.sounding, in: metre) },
-          set: { if let pattern = $0 { click.apply(pattern) } }),
+          get: { click.matchingPreset },
+          set: { if let preset = $0 { click.apply(preset) } }),
         label: { $0?.title ?? "" },
         identifier: { $0.map { "clickSheet.pattern.\($0)" } ?? "" },
         layout: .fullWidthTrack)

@@ -45,7 +45,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
         plays: [.preview("p1", nil, "7:00")],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -57,7 +57,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
         plays: [.preview("p1", nil, "7:00")],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -73,7 +73,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           .preview("p2", "G major", "3:20", 10, 10),
           .preview("p3", "D major", "5:10", 4, 10),
         ],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -88,7 +88,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "0:02", isMarkable: false),
         ],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -100,7 +100,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
         plays: [.preview("p1", nil, "7:00")],
-        scoreRange: 1...10,
+        limits: .preview,
         refusal: "Notes must not exceed 5000 characters",
         onSave: { _ in }, onSkip: {})
     }
@@ -116,7 +116,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "3:20", 10, 10),
         ],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     .dynamicTypeSize(.accessibility1)
@@ -136,7 +136,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
             tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
           .preview("p2", "G major", "3:20", 10, 10),
         ],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -154,7 +154,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
             tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
           .preview("p2", "G major", "3:20", 10, 10),
         ],
-        scoreRange: 1...10,
+        limits: .preview,
         onSave: { _ in }, onSkip: {})
     }
     .dynamicTypeSize(.accessibility1)

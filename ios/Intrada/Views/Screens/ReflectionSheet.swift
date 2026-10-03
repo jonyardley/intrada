@@ -8,17 +8,17 @@ import SwiftUI
 struct TrackedTempo {
   private(set) var bpm: Int
   private(set) var userSet = false
-  /// The beat value `bpm` counts in, so a quaver tempo is not clamped against
-  /// the crotchet band (#1499).
-  private let unit: UInt8
+  /// The core's band in the unit `bpm` counts in, so a quaver tempo is not
+  /// clamped against the crotchet band (#1499, #2225).
+  private let band: ClosedRange<Int>
 
-  init(startingBpm: Int, unit: UInt8 = 4) {
-    self.unit = unit
-    bpm = TempoScale.clamp(startingBpm, unit: unit)
+  init(startingBpm: Int, band: ClosedRange<Int>) {
+    self.band = band
+    bpm = min(band.upperBound, max(band.lowerBound, startingBpm))
   }
 
   mutating func set(_ next: Int) {
-    bpm = TempoScale.clamp(next, unit: unit)
+    bpm = min(band.upperBound, max(band.lowerBound, next))
     userSet = true
   }
 }
@@ -92,7 +92,7 @@ struct ReflectionSheet: View {
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
   let plays: [ReflectionPlay]
-  let scoreRange: ClosedRange<Int>
+  let limits: LimitsView
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
   let onSave: (ReflectionResult) -> Void
@@ -110,10 +110,10 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
-    startingTempoBpm: Int = TempoScale.defaultBpm, tempoUnit: UInt8 = 4,
+    startingTempoBpm: Int? = nil, tempoUnit: UInt8 = 4,
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
-    scoreRange: ClosedRange<Int>,
+    limits: LimitsView,
     refusal: String? = nil,
     seed: ReflectionResult? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
@@ -126,7 +126,7 @@ struct ReflectionSheet: View {
     self.tempoUnit = tempoUnit
     self.currentClick = currentClick
     self.plays = plays
-    self.scoreRange = scoreRange
+    self.limits = limits
     self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
@@ -139,8 +139,9 @@ struct ReflectionSheet: View {
         (
           play.id,
           TrackedTempo(
-            startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm,
-            unit: play.clickPattern?.metre.unit ?? tempoUnit)
+            startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm
+              ?? Int(limits.clickTempoDefault),
+            band: limits.clickBand(unit: play.clickPattern?.metre.unit ?? tempoUnit))
         )
       }, uniquingKeysWith: { first, _ in first })
     for row in seed?.tempos ?? [] where row.userSet {
@@ -176,7 +177,7 @@ struct ReflectionSheet: View {
           // The core gives every practised entry at least one play, and its sole play always predicts markable (#1758).
           eyebrow("Mark").padding(.top, IntradaSpacing.section)
           ScoreSelector(
-            score: mark(for: only.id), range: scoreRange,
+            score: mark(for: only.id), range: limits.scoreRange,
             accessibilityLabel: "Mark for \(itemTitle)"
           ) { next in
             setMark(next, for: only.id)
@@ -187,9 +188,12 @@ struct ReflectionSheet: View {
           Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, IntradaSpacing.card)
-          TempoStepper(value: tempoBinding(for: only.id), unit: stepperUnit(for: only))
-            .accessibilityIdentifier("reflection.tempo")
-            .padding(.top, IntradaSpacing.controlGap)
+          TempoStepper(
+            value: tempoBinding(for: only.id), unit: stepperUnit(for: only),
+            step: limits.clickStep, band: limits.clickBand(unit: stepperUnit(for: only))
+          )
+          .accessibilityIdentifier("reflection.tempo")
+          .padding(.top, IntradaSpacing.controlGap)
         }
 
         eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
@@ -275,7 +279,7 @@ struct ReflectionSheet: View {
           }
           if play.isMarkable {
             ScoreSelector(
-              score: mark(for: play.id), range: scoreRange,
+              score: mark(for: play.id), range: limits.scoreRange,
               accessibilityLabel: "Mark for \(play.title)"
             ) { next in
               setMark(next, for: play.id)
@@ -283,6 +287,7 @@ struct ReflectionSheet: View {
             .accessibilityIdentifier("reflection.mark")
             TempoStepper(
               value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
+              step: limits.clickStep, band: limits.clickBand(unit: stepperUnit(for: play)),
               accessibilityLabel: "Tempo for \(play.title)"
             )
             .accessibilityIdentifier("reflection.tempo")
@@ -331,7 +336,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
-          plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], scoreRange: 1...10,
+          plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], limits: .preview,
           onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.medium, .large])
@@ -348,7 +353,7 @@ struct ReflectionSheet: View {
             ReflectionPlay.preview("p2", "G major", "3:20", 10, 10),
             ReflectionPlay.preview("p3", "D major", "5:10", 4, 10),
           ],
-          scoreRange: 1...10,
+          limits: .preview,
           onSave: { _ in }, onSkip: {}
         )
         .presentationDetents([.large])

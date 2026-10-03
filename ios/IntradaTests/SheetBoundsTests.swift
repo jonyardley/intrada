@@ -17,7 +17,8 @@ struct SheetBoundsTests {
     scoreMin: 2, scoreMax: 6,
     clickTempoStep: 2, clickTempoDefault: 96,
     clickTempoBands: [TempoBand(unit: 4, min: 40, max: 208)],
-    clickMetrePresets: [], clickBars: [])
+    clickMetrePresets: LimitsView.preview.clickMetrePresets,
+    clickBars: LimitsView.preview.clickBars)
 
   private func clickSheet() -> ClickSheet {
     ClickSheet(click: ClickController(), bpm: 120, limits: limits)
