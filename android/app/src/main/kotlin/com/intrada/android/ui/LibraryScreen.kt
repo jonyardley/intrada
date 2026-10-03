@@ -1,7 +1,6 @@
 package com.intrada.android.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,19 +19,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
+import com.intrada.android.ui.components.cardSurface
 import com.intrada.shared.Event
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
@@ -91,15 +89,10 @@ fun LibraryScreen(
 
 @Composable
 fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(IntradaRadius.card)
     Row(
-        modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clip(shape)
-            .background(IntradaColor.cardFill)
-            .border(1.dp, IntradaColor.hairline, shape)
-            .clearAndSetSemantics { contentDescription = item.spokenLabel }
+        modifier.fillMaxWidth().height(IntrinsicSize.Min).cardSurface().clearAndSetSemantics {
+            contentDescription = item.spokenLabel
+        }
     ) {
         Box(Modifier.width(4.dp).fillMaxHeight().background(item.itemType.bar))
         Column(Modifier.padding(IntradaSpacing.card)) {
