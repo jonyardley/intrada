@@ -6,13 +6,6 @@ import SwiftUI
 /// `LibraryEditScreen`. The shell only collects values; the core validates.
 @Observable
 final class ItemFormModel {
-  /// The fields a photographed page can fill (#1436). Key and notes are not
-  /// among them: nothing on a page reliably says either.
-  /// `chart` is always empty until phase D of `specs/piece-from-photo.md`.
-  enum ReadField: Hashable {
-    case title, composer, marking, bpm, chart
-  }
-
   var kind: ItemKind
   var key = ""
   var modality: Modality?
@@ -30,7 +23,7 @@ final class ItemFormModel {
   /// Which fields still hold what the photo was read into, and whether that
   /// read was weak. Typing takes a field off: it is the user's from that
   /// keystroke on, so it must stop claiming to be the page's.
-  private(set) var readFrom: [ReadField: Bool] = [:]
+  private(set) var readFrom: [FormReadField: Bool] = [:]
 
   // Written through `edited` so the mark clears on the keystroke, not on
   // submit; `fill(from:)` sets the storage directly.
@@ -126,40 +119,37 @@ final class ItemFormModel {
     loadedVariations = !item.variants.isEmpty
   }
 
-  /// A field is written when empty, or when it still holds an earlier read:
-  /// what the user typed is theirs, but a second scan must replace what the
-  /// first one wrote, and `isEmpty` alone cannot tell those apart.
+  /// The core decides which fields take the read (#2229). A failed call can
+  /// only be a wire break (#846), so it fills nothing and is reported.
   /// Nothing here is saved; pressing Add is what writes.
   func fill(from draft: PhotoDraft) {
-    func take(_ field: ReadField, _ value: String, weak: Bool, into store: (String) -> Void) {
-      store(value)
-      readFrom[field] = weak
+    let fields = [
+      FormFieldNow(field: .title, text: storedTitle, holdsRead: readFrom[.title] != nil),
+      FormFieldNow(field: .composer, text: storedComposer, holdsRead: readFrom[.composer] != nil),
+      FormFieldNow(field: .marking, text: storedMarking, holdsRead: readFrom[.marking] != nil),
+      FormFieldNow(field: .bpm, text: storedBpm, holdsRead: readFrom[.bpm] != nil),
+      FormFieldNow(field: .chart, text: storedChart, holdsRead: readFrom[.chart] != nil),
+    ]
+    let fills: [FormFieldFill]
+    do {
+      fills = try fillFormFromRead(draft: Data(draft.bincodeSerialize()), fields: fields)
+    } catch {
+      report(error, "bridge")
+      return
     }
-
-    if let read = draft.title, replaceable(.title, storedTitle) {
-      take(.title, read.value, weak: read.weak) { storedTitle = $0 }
-    }
-    if let read = draft.composer, replaceable(.composer, storedComposer) {
-      take(.composer, read.value, weak: read.weak) { storedComposer = $0 }
-    }
-    if let read = draft.tempo {
-      if let marking = read.value.marking, replaceable(.marking, storedMarking) {
-        take(.marking, marking, weak: read.weak) { storedMarking = $0 }
+    for fill in fills {
+      switch fill.field {
+      case .title: storedTitle = fill.value
+      case .composer: storedComposer = fill.value
+      case .marking: storedMarking = fill.value
+      case .bpm: storedBpm = fill.value
+      case .chart: storedChart = fill.value
       }
-      if let beats = read.value.bpm, replaceable(.bpm, storedBpm) {
-        take(.bpm, String(beats), weak: read.weak) { storedBpm = $0 }
-      }
-    }
-    if let read = draft.chartText, replaceable(.chart, storedChart) {
-      take(.chart, read.value, weak: read.weak) { storedChart = $0 }
+      readFrom[fill.field] = fill.weak
     }
   }
 
-  private func replaceable(_ field: ReadField, _ current: String) -> Bool {
-    current.isEmpty || readFrom[field] != nil
-  }
-
-  private func edited(_ field: ReadField) {
+  private func edited(_ field: FormReadField) {
     readFrom[field] = nil
     switch field {
     case .title: cleared(.title)
