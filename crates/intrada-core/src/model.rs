@@ -482,6 +482,12 @@ pub struct ExerciseUsageView {
     /// `false` for the "On its own" bucket.
     #[serde(default)]
     pub piece_removed: bool,
+    /// The row names a piece still in the library: it opens, and it counts
+    /// towards the card's piece total.
+    pub piece_in_library: bool,
+    /// The row shows the link button: a piece in the library, practised
+    /// alongside but not linked.
+    pub offers_link: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1175,6 +1181,8 @@ mod tests {
             session_count: 2,
             last_practiced_at: Some("2026-07-01T00:00:00+00:00".to_string()),
             piece_removed: true,
+            piece_in_library: false,
+            offers_link: true,
         });
     }
 
