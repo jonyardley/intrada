@@ -8,6 +8,7 @@ struct PracticeSessionDetailScreen: View {
   let session: PracticeSessionView
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.scoreRange) private var scoreRange
 
   var body: some View {
     ScreenScaffold(title: session.dayLabel, subtitle: subtitle) {
@@ -200,7 +201,7 @@ struct PracticeSessionDetailScreen: View {
       parts.append(singleVariationLine(play))
     }
     if entry.status == .completed, let score = entry.scoreSummary {
-      parts.append("marked \(score) out of 10")
+      parts.append("marked \(score) out of \(scoreRange.upperBound)")
     }
     if let notes = entry.notes, !notes.isEmpty { parts.append(notes) }
     return parts.joined(separator: ", ")

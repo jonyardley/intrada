@@ -268,7 +268,10 @@ fn piece_mark_clause(mark: Option<u8>) -> String {
 }
 
 fn marked_clause(mark: u8) -> String {
-    format!("Marked {mark} of 10 last time")
+    format!(
+        "Marked {mark} of {} last time",
+        crate::validation::MAX_SCORE
+    )
 }
 
 fn capitalise(clause: &str) -> String {

@@ -224,6 +224,8 @@ private struct LinkedExerciseTitle: View {
 private struct LinkedExerciseRow: View {
   let exercise: LinkedExerciseView
 
+  @Environment(\.scoreRange) private var scoreRange
+
   var body: some View {
     HStack(spacing: IntradaSpacing.card) {
       LinkedExerciseTitle(exercise: exercise)
@@ -246,7 +248,7 @@ private struct LinkedExerciseRow: View {
     var parts = ["Exercise", exercise.title]
     if let meta = exercise.metaSpoken { parts.append(meta) }
     if let score = exercise.pieceContextScore {
-      parts.append("Mark \(score) of 10 on this piece")
+      parts.append("Mark \(score) of \(scoreRange.upperBound) on this piece")
     } else {
       parts.append("Not yet rated on this piece")
     }

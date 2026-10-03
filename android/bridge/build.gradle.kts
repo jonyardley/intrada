@@ -11,7 +11,7 @@ val generated = rootProject.layout.projectDirectory.dir("generated")
 // hand-written code: crux's typegen emits warnings we cannot fix at the source (#2263).
 android {
     namespace = "com.intrada.bridge"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig { minSdk = 28 }
 

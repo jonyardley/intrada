@@ -173,7 +173,7 @@ struct UpNextHero: View {
         .padding(.top, 6)
 
       VStack(alignment: .leading, spacing: 2) {
-        Text(titleLine(item))
+        titleLine(item)
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.paperTop)
           .fixedSize(horizontal: false, vertical: true)
@@ -189,13 +189,13 @@ struct UpNextHero: View {
     .accessibilityLabel(rowLabel(item))
   }
 
-  private func titleLine(_ item: SuggestedItem) -> AttributedString {
-    var line = AttributedString(item.itemTitle)
-    guard let variation = item.variantLabel else { return line }
-    var suffix = AttributedString(" · \(variation)")
-    suffix.foregroundColor = item.itemType.onHeroAccent
-    line.append(suffix)
-    return line
+  // Built from Text pieces: an AttributedString costs about 34 ms to convert on the
+  // first Practice draw (#1801).
+  private func titleLine(_ item: SuggestedItem) -> Text {
+    let title = Text(verbatim: item.itemTitle)
+    guard let variation = item.variantLabel else { return title }
+    let suffix = Text(verbatim: " · \(variation)").foregroundStyle(item.itemType.onHeroAccent)
+    return Text("\(title)\(suffix)")
   }
 
   private var startButton: some View {
