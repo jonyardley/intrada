@@ -16,7 +16,7 @@ struct FormSectionRow: View {
     Button(action: action) {
       HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
         Text(title)
-          .font(IntradaFont.cardTitle())
+          .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: .infinity, alignment: .leading)

@@ -58,11 +58,11 @@ struct ScaffoldPreviewSheet: View {
   private var header: some View {
     HStack(spacing: 6) {
       Image(systemName: "key")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
         .accessibilityHidden(true)
       Text("Worked out from these changes, in \(preview.key)")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,11 +98,11 @@ struct ScaffoldPreviewSheet: View {
   private var fallbackLegend: some View {
     HStack(alignment: .top, spacing: 6) {
       Image(systemName: "arrow.turn.down.right")
-        .font(IntradaFont.micro)
+        .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
         .accessibilityHidden(true)
       Text("Fallback flags a change mapped to its arpeggio, not a scale.")
-        .font(IntradaFont.micro)
+        .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .padding(.horizontal, IntradaSpacing.controlGap)
@@ -124,7 +124,7 @@ private struct SpecRow: View {
       VStack(alignment: .leading, spacing: 3) {
         titleLayout {
           Text(spec.title)
-            .font(IntradaFont.cardTitle())
+            .font(IntradaFont.cardTitle)
             .foregroundStyle(IntradaColor.ink)
           if spec.alreadyLinked {
             FlagBadge(text: "Already added", tint: IntradaColor.inkSecondary)
@@ -134,7 +134,7 @@ private struct SpecRow: View {
           }
         }
         Text(spec.rationale)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .fixedSize(horizontal: false, vertical: true)
         if selectable && typeSize.isAccessibilitySize {
@@ -197,9 +197,7 @@ private struct FlagBadge: View {
 
   var body: some View {
     Text(text)
-      .font(IntradaFont.micro)
-      .textCase(.uppercase)
-      .kerning(0.4)
+      .font(IntradaFont.smallMedium)
       .foregroundStyle(tint)
       .padding(.horizontal, 6)
       .padding(.vertical, 2)

@@ -13,11 +13,11 @@ struct InstrumentIconPicker: View {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
           if suggested != .other {
-            Eyebrow("Matches \(suggested.tileLabel.lowercased())")
+            SectionTitle("Matches \(suggested.tileLabel.lowercased())")
             grid(of: [suggested])
               .padding(.bottom, IntradaSpacing.cardCompact)
           }
-          Eyebrow("All icons")
+          SectionTitle("All icons")
           grid(of: InstrumentIcon.all.filter { suggested == .other || $0 != suggested })
         }
         .padding(.horizontal, IntradaSpacing.card)
@@ -54,7 +54,7 @@ struct InstrumentIconPicker: View {
         InstrumentGlyph(icon: icon, size: IntradaGlyph.bar)
           .foregroundStyle(IntradaColor.ink)
         Text(icon.tileLabel)
-          .font(IntradaFont.metaMedium)
+          .font(IntradaFont.smallMedium)
           .foregroundStyle(selected ? IntradaColor.ink : IntradaColor.inkSecondary)
           .lineLimit(stacked ? nil : 1)
           .minimumScaleFactor(stacked ? 1 : 0.8)

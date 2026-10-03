@@ -20,12 +20,10 @@ struct SessionLengthControl: View {
           set: { on in onChange(on ? limits.sessionLengthDefaultMins : nil) })
       ) {
         VStack(alignment: .leading, spacing: 2) {
-          Text(title)
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.ink)
+          FieldLabel(title)
           if let detail {
             Text(detail)
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }

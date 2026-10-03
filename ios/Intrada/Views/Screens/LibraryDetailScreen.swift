@@ -86,7 +86,7 @@ struct LibraryDetailScreen: View {
 
   private func notesSection(_ notes: String) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Notes")
+      SectionTitle("Notes")
       Text(notes)
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkSecondary)
@@ -360,7 +360,7 @@ private struct DetailRow: View {
   var body: some View {
     HStack {
       Text(label)
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.label)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer(minLength: 16)
       Text(value)

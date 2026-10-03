@@ -45,12 +45,12 @@ private struct WeekDayCell: View {
     Button(action: onTap) {
       VStack(spacing: 5) {
         Text(day.weekdayInitial)
-          .font(IntradaFont.micro)
+          .font(IntradaFont.small)
           .fontWeight(isSelected || day.isToday ? .semibold : .regular)
           .foregroundStyle(
             isSelected || day.isToday ? IntradaColor.accent : IntradaColor.inkSecondary)
         Text(String(day.dayNumber))
-          .font(IntradaFont.metaMedium)
+          .font(IntradaFont.smallMedium)
           .foregroundStyle(dayNumberColor)
           .lineLimit(1)
           .minimumScaleFactor(0.6)

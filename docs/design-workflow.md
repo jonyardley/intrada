@@ -41,7 +41,7 @@ standalone.
 
 `design/intrada-design-system.html` is Claude Design's "standalone HTML" bundle:
 one `<script type="__bundler/template">` holding the whole page as a JSON string,
-plus every font, icon and image inlined as an asset (hence about 4.9 MB, well
+plus every font, icon and image inlined as an asset (hence about 360 KB, well
 over DesignSync's 256 KiB `get_file` cap). Two routes:
 
 - **Claude Design's own Share → Export → Standalone HTML**, driven in a browser

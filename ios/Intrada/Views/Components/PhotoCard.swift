@@ -61,9 +61,7 @@ struct PhotoCard: View {
 
   private var header: some View {
     HStack {
-      Text("Photo")
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
+      SectionTitle("Photo")
       Spacer()
       Menu {
         if PhotoCaptureSources.canScan {

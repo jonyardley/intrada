@@ -20,11 +20,11 @@ struct MasteryDelta: View {
         .frame(width: 8, height: 8)
       VStack(alignment: .leading, spacing: 2) {
         Text(title)
-          .font(IntradaFont.cardTitle(14))
+          .font(IntradaFont.label)
           .foregroundStyle(IntradaColor.ink)
         if let subtitle {
           Text(subtitle)
-            .font(IntradaFont.micro)
+            .font(IntradaFont.small)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
@@ -40,7 +40,7 @@ struct MasteryDelta: View {
         Text("\(now)")
           .foregroundStyle(IntradaColor.success)
       }
-      .font(IntradaFont.cardTitle(16))
+      .font(IntradaFont.cardTitle)
     }
     .padding(.vertical, 11)
     .padding(.horizontal, 14)
@@ -93,7 +93,7 @@ struct MasteryDeltaToast: View {
           .foregroundStyle(IntradaColor.celebrationInk)
         if let subtitle {
           Text(subtitle)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.celebrationInk.opacity(IntradaOpacity.strong))
         }
       }
@@ -106,7 +106,7 @@ struct MasteryDeltaToast: View {
           .foregroundStyle(marker)
         Text("\(now)")
       }
-      .font(IntradaFont.pageTitle(22))
+      .font(IntradaFont.title)
       .foregroundStyle(IntradaColor.celebrationInk)
     }
     .padding(.vertical, 14)

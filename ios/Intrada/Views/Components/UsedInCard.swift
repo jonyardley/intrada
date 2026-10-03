@@ -48,7 +48,7 @@ struct UsedInCard: View {
   private var emptyState: some View {
     VStack(spacing: IntradaSpacing.controlGap) {
       Text("On its own")
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.ink)
       Text("Not tied to a piece. Link one when it's serving a piece you're learning.")
         .font(IntradaFont.body)
@@ -142,11 +142,11 @@ struct UsedInRow: View {
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 3) {
         Text(usage.rowTitle)
-          .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle())
+          .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle)
           .foregroundStyle(usage.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
           .fixedSize(horizontal: false, vertical: true)
         Text(usage.metaLine(locale: locale, calendar: calendar))
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .fixedSize(horizontal: false, vertical: true)
       }

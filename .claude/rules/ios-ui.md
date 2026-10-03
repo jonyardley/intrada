@@ -7,8 +7,8 @@ paths:
 
 Off-white paper, near-neutral ink (T27), one highlighter as the only bright
 colour, butter by default and the musician's own choice of eight through
-`@Environment(\.marker)` (#1677); Hanken Grotesk for titles and body, DM Mono
-for metadata (T24 in `docs/design-principles.md`). Every token lives in
+`@Environment(\.marker)` (#1677); Hanken Grotesk for every word, DM Mono
+for figures only (T24 and T35 in `docs/design-principles.md`). Every token lives in
 `ios/Intrada/DesignSystem/Theme.swift`; the shareable export is
 `design/intrada-design-system.dc.html`, derived from it (behind the app until
 #1678).
@@ -40,14 +40,18 @@ shipped, and were each reworked, the same way).
    `TypeBadge`, `ScoreRing`, `BottomSheet`, `SegmentedPills`, `.cardSurface()`,
    `.cardShadow()`, `GlobalBanner`, `FormErrorBanner`, `PlaceholderContent`,
    `ScreenScaffold`, `SectionHeader`, `HairlineDivider`, `SegmentedProgress`,
-   `Eyebrow`.
+   `SectionTitle`, `FieldCard`, `FieldLabel`.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
    safe areas and background.
 4. If a primitive almost fits, add a parameter to it (as `SegmentedPills` and
    `LibraryItemCard` do). Never ship a parallel one-off: hand-rolled copies of
    an existing primitive are the number one source of visual drift.
-5. Typography through `IntradaFont` (`.pageTitle`, `.cardTitle`, `.eyebrow`
-   through `SectionHeader` for section titles, `.metaMedium` for field labels),
+5. Typography through `IntradaFont`, five sizes and no others (T35):
+   `.pageTitle`, `.title`, `.cardTitle`, `.body`, `.label` in secondary ink
+   for every section title, field label and toggle title (through
+   `SectionTitle` and `FieldLabel`, the field's inside its card),
+   `.secondary` for words, `.figure` for a number alone, `.small`. Nothing in
+   capitals, and no screen passes a size of its own;
    spacing through `IntradaSpacing` (`controlGap`, `cardCompact`, `card`,
    `section`), SF Symbols through `IntradaIconSize`, alpha through
    `IntradaOpacity`, shadows through `IntradaShadow`, motion through

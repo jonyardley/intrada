@@ -236,7 +236,7 @@ struct PracticeScreen: View {
           .accessibilityHidden(true)
         Text("Show suggestion")
       }
-      .font(IntradaFont.subtitle)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.controlGap)
@@ -252,11 +252,11 @@ struct PracticeScreen: View {
       // visually, so read separately it would reach VoiceOver detached from
       // the piece it describes.
       VStack(spacing: IntradaSpacing.cardCompact) {
-        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+        SectionTitle(heroEyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
 
         if let lastPractised {
           Text(lastPractised.itemTitle)
-            .font(IntradaFont.pageTitle(25))
+            .font(IntradaFont.title)
             .foregroundStyle(IntradaColor.paperTop)
             .multilineTextAlignment(.center)
             .lineLimit(2)

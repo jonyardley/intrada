@@ -15,14 +15,14 @@ struct RecoveryPromptCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Session in progress", tint: IntradaColor.inkSecondary)
+      SectionTitle("Session in progress")
 
       Text("Pick up where you left off?")
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.ink)
 
       Text(meta)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
 
       HStack(spacing: IntradaSpacing.controlGap) {

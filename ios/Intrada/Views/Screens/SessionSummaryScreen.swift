@@ -62,10 +62,10 @@ struct SessionSummaryScreen: View {
   private func headline(_ summary: SummaryView) -> some View {
     VStack(alignment: .leading, spacing: 4) {
       Text(summary.totalDurationDisplay)
-        .font(IntradaFont.pageTitle(34))
+        .font(IntradaFont.pageTitle)
         .foregroundStyle(IntradaColor.ink)
       Text(headlineSubtitle(summary))
-        .font(IntradaFont.subtitle)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,7 +80,7 @@ struct SessionSummaryScreen: View {
 
   private func recap(_ summary: SummaryView) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("What you played")
+      SectionTitle("What you played")
       VStack(spacing: 0) {
         ForEach(Array(summary.entries.enumerated()), id: \.element.id) { index, entry in
           row(entry)
@@ -102,18 +102,18 @@ struct SessionSummaryScreen: View {
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(unfinished ? IntradaColor.inkSecondary : IntradaColor.ink)
           Text(metaLine(entry, unfinished: unfinished))
-            .font(IntradaFont.micro)
+            .font(IntradaFont.small)
             .foregroundStyle(IntradaColor.inkSecondary)
           if let aim = entry.intention, !aim.isEmpty {
             Text("“\(aim)”")
-              .font(IntradaFont.micro).italic()
+              .font(IntradaFont.small).italic()
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
         Spacer()
         if !unfinished {
           Text(entry.durationDisplay)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.figure)
             .monospacedDigit()
             .foregroundStyle(IntradaColor.inkSecondary)
         }
@@ -138,7 +138,7 @@ struct SessionSummaryScreen: View {
         noteField(entry)
       } else if written.isEmpty {
         Button("Add a note") { expand(entry) }
-          .font(IntradaFont.micro)
+          .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.accent)
           .frame(minHeight: 44, alignment: .leading)
           .contentShape(Rectangle())
@@ -148,7 +148,7 @@ struct SessionSummaryScreen: View {
           expand(entry)
         } label: {
           Text(written)
-            .font(IntradaFont.micro)
+            .font(IntradaFont.small)
             .foregroundStyle(IntradaColor.inkSecondary)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -173,7 +173,7 @@ struct SessionSummaryScreen: View {
       axis: .vertical
     )
     .lineLimit(2...4)
-    .font(IntradaFont.field)
+    .font(IntradaFont.body)
     .foregroundStyle(IntradaColor.ink)
     .padding(IntradaSpacing.cardCompact)
     .cardSurface(cornerRadius: IntradaRadius.control)
@@ -229,11 +229,11 @@ struct SessionSummaryScreen: View {
         if entry.plays.count > 1 {
           HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.controlGap) {
             Text(play.displayLabel)
-              .font(IntradaFont.micro)
+              .font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
               .frame(maxWidth: .infinity, alignment: .leading)
             Text(play.metaParts.joined(separator: " · "))
-              .font(IntradaFont.micro)
+              .font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
@@ -257,7 +257,7 @@ struct SessionSummaryScreen: View {
   private func sessionScoreRow(_ summary: SummaryView) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Text("Overall")
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.label)
         .foregroundStyle(IntradaColor.inkSecondary)
       if let scoreRange {
         ScoreSelector(
@@ -278,7 +278,7 @@ struct SessionSummaryScreen: View {
       "A note on the whole session…", text: $note, axis: .vertical
     )
     .lineLimit(2...4)
-    .font(IntradaFont.field)
+    .font(IntradaFont.body)
     .foregroundStyle(IntradaColor.ink)
     .padding(IntradaSpacing.cardCompact)
     .background(IntradaColor.cardFill)

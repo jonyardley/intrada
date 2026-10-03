@@ -11,7 +11,7 @@ struct ExerciseHero: View {
       // Names the hero as the score across every piece, so it can't be read as
       // one piece's: the distinction the "Used in" rows below make (#1087 B2).
       if !item.usedIn.isEmpty {
-        Eyebrow("Overall")
+        SectionTitle("Overall")
       }
     }
     .frame(maxWidth: .infinity)

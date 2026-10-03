@@ -158,12 +158,12 @@ struct ReflectionSheet: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         VStack(spacing: 8) {
-          Eyebrow(Self.heading(elapsedDisplay: elapsedDisplay), tint: IntradaColor.exerciseBadgeFg)
+          SectionTitle(Self.heading(elapsedDisplay: elapsedDisplay))
           Text("How did it go?")
-            .font(IntradaFont.pageTitle(24)).foregroundStyle(IntradaColor.ink)
+            .font(IntradaFont.title).foregroundStyle(IntradaColor.ink)
             .multilineTextAlignment(.center)
           Text(itemTitle)
-            .font(IntradaFont.subtitle).foregroundStyle(IntradaColor.inkSecondary)
+            .font(IntradaFont.secondary).foregroundStyle(IntradaColor.inkSecondary)
             .lineLimit(1).truncationMode(.tail)
             .multilineTextAlignment(.center)
         }
@@ -185,7 +185,7 @@ struct ReflectionSheet: View {
           .accessibilityIdentifier("reflection.mark")
           .padding(.top, IntradaSpacing.controlGap)
 
-          Eyebrow(singlePlayTempoEyebrow, tint: IntradaColor.inkSecondary)
+          SectionTitle(singlePlayTempoEyebrow)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, IntradaSpacing.card)
           TempoStepper(
@@ -199,7 +199,7 @@ struct ReflectionSheet: View {
         eyebrow("Reflection · optional").padding(.top, IntradaSpacing.card)
         TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
           .lineLimit(3...5)
-          .font(IntradaFont.field)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .padding(IntradaSpacing.cardCompact)
           .cardSurface(cornerRadius: IntradaRadius.control)
@@ -274,7 +274,7 @@ struct ReflectionSheet: View {
               .foregroundStyle(IntradaColor.ink)
               .frame(maxWidth: .infinity, alignment: .leading)
             Text(play.meta)
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
           if play.isMarkable {
@@ -326,7 +326,7 @@ struct ReflectionSheet: View {
   }
 
   private func eyebrow(_ text: String) -> some View {
-    Eyebrow(text).frame(maxWidth: .infinity, alignment: .leading)
+    SectionTitle(text).frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

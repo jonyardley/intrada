@@ -181,7 +181,7 @@ struct Wordmark: View {
 
   var body: some View {
     Text("Intrada")
-      .font(IntradaFont.pageTitle(40))
+      .font(IntradaFont.pageTitle)
       .foregroundStyle(IntradaColor.ink)
       .markerSwipe(progress: swipe)
   }

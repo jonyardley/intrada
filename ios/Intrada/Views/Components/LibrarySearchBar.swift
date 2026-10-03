@@ -15,7 +15,7 @@ struct LibrarySearchBar: View {
           .iconSize(.inline, weight: .medium)
           .foregroundStyle(IntradaColor.inkFaintIcon)
         TextField("Search library", text: $text)
-          .font(IntradaFont.field)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .focused(focused)
           .submitLabel(.search)

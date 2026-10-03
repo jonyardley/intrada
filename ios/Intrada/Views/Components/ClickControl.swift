@@ -109,7 +109,7 @@ struct ClickControl: View {
   private var readoutRow: some View {
     HStack(spacing: IntradaSpacing.controlGap / 2) {
       Label(readout, systemImage: "metronome")
-        .font(isDragging ? IntradaFont.cardTitle(20) : IntradaFont.bodyMedium)
+        .font(isDragging ? IntradaFont.title : IntradaFont.bodyMedium)
         .monospacedDigit()
         // "♩ = 208" is one notation token; at the largest text sizes it wraps
         // between the glyph and the number, which reads as two facts.

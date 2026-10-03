@@ -50,8 +50,13 @@ rules and primitive catalogue.)
 - **Warmth bias in semantics.** Danger is a brick red, success an olive green,
   both pulled toward brown. The palette leans warm even where convention is
   harsh.
-- **Grotesk for words, mono for metadata.** Hanken Grotesk for titles and body;
-  DM Mono for the composer, key and tempo line, like a printed programme.
+- **Grotesk for words, mono for figures.** Hanken Grotesk for every word,
+  composer and key included; DM Mono only for a value that is a number alone,
+  a clock, a duration, a count, like a metronome readout (T35).
+- **Five sizes, one reading size.** 30, 20, 17, 15 and 13 point. Headings,
+  emphasis and body share 17 and differ by weight; every label, a section's,
+  a field's or a toggle's, is 15 medium in secondary ink; nothing is set in
+  capitals (T35).
 - **Reuse before creating; extend, don't clone.** Hand-rolled markup that
   duplicates a primitive is the top source of visual drift.
 
@@ -1040,8 +1045,9 @@ fill although it never shows: without one, the toolbar items render flat.
 
 ### T29: Section, field and tag each have one look; the type badge is a tag
 
-**Status:** DECIDED 2026-09-15 (jonyardley/intrada#1876). The item details
-screen had five label styles with no order between them. Now there are three:
+**Status:** DECIDED 2026-09-15 (jonyardley/intrada#1876); the looks amended
+by T35 on 2026-10-03. The item details screen had five label styles with no
+order between them. Now there are three:
 
 - **A section** is named by the small-capitals eyebrow (`SectionHeader`) inside
   its card: Notes, Chord chart and Related exercises match Keys and Variations.
@@ -1144,3 +1150,37 @@ learns the app by making their first session, not by reading about it.
   empty library, an empty history and no saved profile, as well as not having
   been dismissed. The Start here card is different: it stays until a session
   is marked, so a musician who has never marked one sees it after updating.
+
+### T35: Five sizes, sentence case, and one place for a field's label
+
+**Status:** DECIDED 2026-10-03 (jonyardley/intrada#1881, which also settles
+#1729 and #1907). Options and mocks:
+https://claude.ai/artifact/HWjTrCTuGsAe5cYnac8UXx. The type jumped from a 32
+point title to a 12 point pale capitals label with nothing between, thirteen
+named sizes sat inside six points, screens passed in fourteen sizes of their
+own, and a field's label had four looks. It read as busy and machine made.
+
+- **Five sizes.** 30 for the page title, 20 for a hero or the key picker, 17
+  for card titles, body, fields and emphasis, 15 for section titles, field
+  labels, secondary lines and buttons, 13 for tabs, badges and chips. Weight
+  and colour carry the hierarchy inside a size. No screen passes a size; the
+  timer and the score and mastery numerals are the only figures sized by the
+  dial or readout they sit in. Rejected: four sizes, which left the key picker
+  and the session headline with only the page title to reach for.
+- **Every label looks the same.** A section's title, a field's label and a
+  toggle's title are all 15 point medium in secondary ink, in sentence case
+  (`IntradaFont.label`; `SectionTitle` and `FieldLabel` look identical), at the
+  top of what they name. Values, and anything the musician reads or sets, are
+  17 point in full ink. The one exception is the dark Practice and Up next
+  cards, whose labels stay light on dark. Replaces T29's small capitals eyebrow
+  and retires the faint ink token it needed. Rejected: a 20 point heading,
+  which competes with card titles; softened capitals, which keeps the look this
+  replaces. Rejected: ink section titles beside grey field labels, which read
+  as two kinds of label inside cards that look alike (Jon, 2026-10-03).
+- **A field's label sits inside its card, above the value** (`FieldCard`,
+  `FieldLabel`), on every form and sheet. Rejected: labels above and outside
+  the card, which doubles the height of a form; label left and value right,
+  where long titles and notes do not fit. A read-only fact row on a details
+  screen keeps label left and value right.
+- **Mono is for figures.** A clock, a duration or a count set alone; a line
+  that mixes words and numbers is Hanken with even-width figures.

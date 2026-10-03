@@ -61,7 +61,7 @@ struct UpNextHero: View {
       }
 
       Text(lead.pieceTitle)
-        .font(IntradaFont.pageTitle(27))
+        .font(IntradaFont.title)
         .foregroundStyle(IntradaColor.paperTop)
         .lineLimit(3)
         .minimumScaleFactor(0.75)
@@ -74,7 +74,7 @@ struct UpNextHero: View {
             .foregroundStyle(marker)
         }
         Text(lead.reason)
-          .font(IntradaFont.subtitle)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.strong))
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -85,12 +85,12 @@ struct UpNextHero: View {
   }
 
   private var eyebrowLabel: some View {
-    Eyebrow(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+    SectionTitle(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
   private var countText: some View {
     Text(countLabel)
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
@@ -116,7 +116,7 @@ struct UpNextHero: View {
 
   private var laterList: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+      SectionTitle("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
       VStack(spacing: 0) {
         ForEach(Array(laterBlocks.enumerated()), id: \.element.pieceId) { index, block in
           if index > 0 {
@@ -141,7 +141,7 @@ struct UpNextHero: View {
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.paperTop)
     let totals = Text(blockLabel(block))
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
     return ViewThatFits(in: .horizontal) {
       HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.controlGap) {
@@ -178,7 +178,7 @@ struct UpNextHero: View {
           .foregroundStyle(IntradaColor.paperTop)
           .fixedSize(horizontal: false, vertical: true)
         Text(item.reason)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -231,7 +231,7 @@ struct UpNextHero: View {
         buildOwnButton
       }
     }
-    .font(IntradaFont.subtitle)
+    .font(IntradaFont.secondary)
     .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 

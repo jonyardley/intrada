@@ -31,7 +31,7 @@ struct DraftExerciseSheet: View {
             .cardSurface()
 
             Text("It joins the list here.")
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(IntradaColor.inkSecondary)
               .fixedSize(horizontal: false, vertical: true)
           }

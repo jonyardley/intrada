@@ -41,18 +41,18 @@ struct ProfileScreen: View {
       VStack(spacing: 4) {
         if let name = profile?.name, !name.isEmpty {
           Text(name)
-            .font(IntradaFont.pageTitle())
+            .font(IntradaFont.pageTitle)
             .foregroundStyle(IntradaColor.ink)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .padding(.horizontal, 4)
         } else {
           Text("Add a name")
-            .font(IntradaFont.pageTitle())
+            .font(IntradaFont.pageTitle)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
         Text(instrumentLine)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
     }
@@ -69,7 +69,7 @@ struct ProfileScreen: View {
 
   private var highlighter: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Highlighter")
+      SectionTitle("Highlighter")
       HStack(spacing: IntradaSpacing.cardCompact) {
         Circle()
           .fill(IntradaColor.marker(profile?.colour ?? .butter))

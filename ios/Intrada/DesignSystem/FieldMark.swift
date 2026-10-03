@@ -12,7 +12,7 @@ struct FieldMark: View {
         .iconSize(.caption, weight: .medium)
         .foregroundStyle(weak ? IntradaColor.inkFaintIcon : IntradaColor.inkSecondary)
       Text("From the photo")
-        .font(IntradaFont.micro)
+        .font(IntradaFont.small)
         .fontWeight(.medium)
         .foregroundStyle(IntradaColor.inkSecondary)
     }

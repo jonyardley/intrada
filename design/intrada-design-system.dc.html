@@ -22,7 +22,6 @@
     --viewerBackdrop: #1A1917;
     --ink: #2A2725;
     --inkSecondary: #6E6A66;
-    --inkFaint: #A99C8C;
     --inkFaintIcon: #8F8070;
     --inkFainter: #C2B8AA;
     --danger: #9C4A3A;
@@ -59,21 +58,21 @@
   @media (max-width: 760px) {
     .ds-shell { display: block; }
     .ds-nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--hairline); flex-direction: row; flex-wrap: wrap; }
-    .ds-nav .brand, .ds-nav .navfoot, .ds-nav .eyebrow { display: none; }
+    .ds-nav .brand, .ds-nav .navfoot, .ds-nav .section-title { display: none; }
     .ds-main { padding: 24px 16px 96px; }
   }
 
   section { scroll-margin-top: 24px; margin-top: 96px; }
   section:first-child { margin-top: 0; }
-  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--inkFaint); }
-  .ds-nav .eyebrow { padding: 16px 12px 4px; }
+  .section-title { font-size: 15px; font-weight: 500; color: var(--inkSecondary); }
+  .ds-nav .section-title { padding: 16px 12px 4px; }
   h1 { font-weight: 600; font-size: 56px; line-height: 1.05; letter-spacing: -0.02em; margin: 12px 0 0; }
-  h2 { font-weight: 600; font-size: 32px; letter-spacing: -0.01em; margin: 8px 0 0; }
-  h3 { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--inkFaint); margin: 40px 0 12px; }
-  p.lede { font-size: 16px; line-height: 1.6; color: var(--inkSecondary); max-width: 600px; margin: 12px 0 0; }
-  p.note { font-size: 13.5px; line-height: 1.6; color: var(--inkSecondary); max-width: 600px; margin: 12px 0 0; }
+  h2 { font-weight: 600; font-size: 30px; letter-spacing: -0.01em; margin: 8px 0 0; }
+  h3 { font-size: 15px; font-weight: 500; color: var(--inkSecondary); margin: 40px 0 12px; }
+  p.lede { font-size: 17px; line-height: 1.6; color: var(--inkSecondary); max-width: 600px; margin: 12px 0 0; }
+  p.note { font-size: 15px; line-height: 1.6; color: var(--inkSecondary); max-width: 600px; margin: 12px 0 0; }
   code, .mono { font-family: var(--mono); font-size: 14px; }
-  .meta { font-family: var(--mono); font-size: 13px; color: var(--inkSecondary); }
+  .meta { font-size: 15px; color: var(--inkSecondary); font-variant-numeric: tabular-nums; }
 
   .swipe { background: linear-gradient(to bottom, transparent 50%, rgba(255,233,163,0.6) 53%, var(--butter) 58%, var(--butter) 89%, rgba(255,233,163,0.6) 93%, transparent 96%); border-radius: 3px; padding: 0 4px; }
 
@@ -84,7 +83,7 @@
   .g4 { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--inkFaint); padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
+  th { text-align: left; font-size: 15px; font-weight: 500; color: var(--inkSecondary); padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
   td { padding: 12px 16px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
   tr:last-child td { border-bottom: 0; }
   .tablewrap { overflow-x: auto; }
@@ -118,28 +117,28 @@
     <a href="#overview" class="brand" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink);margin-bottom:16px;">
       <img src="assets/app-icon-default.png" width="36" height="36" alt="Intrada" style="border-radius:8px;flex:none;display:block;box-shadow:var(--shadow-lifted);">
       <div style="line-height:1.15;">
-        <div style="font-weight:600;font-size:18px;">Intrada</div>
-        <div class="eyebrow" style="padding:0;margin-top:2px;">Design system</div>
+        <div style="font-weight:600;font-size:17px;">Intrada</div>
+        <div class="section-title" style="padding:0;margin-top:2px;">Design system</div>
       </div>
     </a>
-    <div class="eyebrow">Foundations</div>
+    <div class="section-title">Foundations</div>
     <a class="link" href="#overview">Overview</a>
     <a class="link" href="#colour">Colour</a>
     <a class="link" href="#highlighters">Highlighters</a>
     <a class="link" href="#type">Typography</a>
     <a class="link" href="#spacing">Spacing and radius</a>
     <a class="link" href="#surface">Surface and lift</a>
-    <div class="eyebrow">System</div>
+    <div class="section-title">System</div>
     <a class="link" href="#icons">Iconography</a>
     <a class="link" href="#components">Components</a>
     <a class="link" href="#states">States and motion</a>
-    <div class="navfoot meta" style="margin-top:auto;padding:12px;font-size:12px;line-height:1.5;">A picture of<br>ios/Intrada/DesignSystem/<br>Theme.swift</div>
+    <div class="navfoot meta" style="margin-top:auto;padding:12px;font-size:13px;line-height:1.5;">A picture of<br>ios/Intrada/DesignSystem/<br>Theme.swift</div>
   </nav>
 
   <main class="ds-main">
 
     <section id="overview">
-      <div class="eyebrow">Design system</div>
+      <div class="section-title">Design system</div>
       <h1><span class="swipe">Paper and ink</span></h1>
       <p class="lede">What the iOS app draws today, taken from <code>Theme.swift</code>. Warm paper, near-neutral ink, one highlighter the musician picks, and white cards with 3pt corners and a faint lift. This page is a picture of the app, not a proposal.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;">
@@ -150,7 +149,7 @@
     </section>
 
     <section id="colour">
-      <div class="eyebrow">Foundations</div>
+      <div class="section-title">Foundations</div>
       <h2>Colour</h2>
       <p class="lede">There is no brand hue. The interactive colour on paper is ink; the only bright colour is the musician's highlighter.</p>
 
@@ -174,7 +173,6 @@
         <tr><th>Name</th><th>Value</th><th>Role</th></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#2A2725;"></span><code>ink</code></div></td><td class="meta">#2A2725</td><td>Text, and every interactive colour on paper</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#6E6A66;"></span><code>inkSecondary</code></div></td><td class="meta">#6E6A66</td><td>Metadata and secondary text</td></tr>
-        <tr><td><div class="namecell"><span class="chip" style="background:#A99C8C;"></span><code>inkFaint</code></div></td><td class="meta">#A99C8C</td><td>Eyebrow labels only, never body or metadata</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#8F8070;"></span><code>inkFaintIcon</code></div></td><td class="meta">#8F8070</td><td>A dimmed glyph with no text of its own; never text</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#C2B8AA;"></span><code>inkFainter</code></div></td><td class="meta">#C2B8AA</td><td>Placeholder and unavailable glyphs</td></tr>
         <tr><td><div class="namecell"><span class="chip" style="background:#2A2725;"></span><code>accent</code></div></td><td class="meta">= ink</td><td>No brand hue: the interactive colour is ink</td></tr>
@@ -207,55 +205,54 @@
         <tr><th>Colour</th><th>On paper #F7F4EF</th><th>On card #FFFFFF</th><th>Floor it must clear</th></tr>
         <tr><td><span style="color:var(--ink);font-weight:600;">ink</span></td><td class="meta">13.52:1</td><td class="meta">14.84:1</td><td>4.5:1 text</td></tr>
         <tr><td><span style="color:var(--inkSecondary);font-weight:600;">inkSecondary</span></td><td class="meta">4.89:1</td><td class="meta">5.36:1</td><td>4.5:1 text</td></tr>
-        <tr><td><span style="color:var(--inkFaint);font-weight:600;">inkFaint</span></td><td class="meta">2.45:1</td><td class="meta">2.69:1</td><td>none: eyebrows only, by decision</td></tr>
         <tr><td><span style="color:var(--inkFaintIcon);font-weight:600;">inkFaintIcon</span></td><td class="meta">3.49:1</td><td class="meta">3.83:1</td><td>3:1 non-text glyph</td></tr>
       </table></div>
     </section>
 
     <section id="highlighters">
-      <div class="eyebrow">Foundations</div>
+      <div class="section-title">Foundations</div>
       <h2>The eight highlighters</h2>
       <p class="lede">The musician picks one; it is the only bright colour in the app. Butter is the default. It fills primary buttons, the hero's start button, the swipe under page titles and the celebration glyph, always with ink on it. A highlighter is never text or an outline.</p>
       <p class="note">The Practice hero card runs from <code>ink</code> at the top trailing corner to the highlighter's own deep stop at the bottom leading corner. The ratio on each card is ink on the highlighter fill.</p>
 
       <div class="grid g4" style="margin-top:24px;">
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4F3B28);"><span style="font-weight:600;font-size:18px;">Butter</span><span class="go" style="background:#FFE9A3;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4F3B28);"><span style="font-weight:600;font-size:17px;">Butter</span><span class="go" style="background:#FFE9A3;">Start</span></div>
           <div class="hl-row"><span>Butter <span class="meta">default</span></span><span class="meta">12.32:1</span></div>
           <div class="meta">#FFE9A3 · hero #4F3B28</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4C2C24);"><span style="font-weight:600;font-size:18px;">Coral</span><span class="go" style="background:#FFB4A2;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4C2C24);"><span style="font-weight:600;font-size:17px;">Coral</span><span class="go" style="background:#FFB4A2;">Start</span></div>
           <div class="hl-row"><span>Coral</span><span class="meta">8.69:1</span></div>
           <div class="meta">#FFB4A2 · hero #4C2C24</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #244C39);"><span style="font-weight:600;font-size:18px;">Mint</span><span class="go" style="background:#B9EBD3;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #244C39);"><span style="font-weight:600;font-size:17px;">Mint</span><span class="go" style="background:#B9EBD3;">Start</span></div>
           <div class="hl-row"><span>Mint</span><span class="meta">11.22:1</span></div>
           <div class="meta">#B9EBD3 · hero #244C39</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #243A4C);"><span style="font-weight:600;font-size:18px;">Sky</span><span class="go" style="background:#A9D8FF;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #243A4C);"><span style="font-weight:600;font-size:17px;">Sky</span><span class="go" style="background:#A9D8FF;">Start</span></div>
           <div class="hl-row"><span>Sky</span><span class="meta">9.86:1</span></div>
           <div class="meta">#A9D8FF · hero #243A4C</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #2E244C);"><span style="font-weight:600;font-size:18px;">Lavender</span><span class="go" style="background:#D6CCF5;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #2E244C);"><span style="font-weight:600;font-size:17px;">Lavender</span><span class="go" style="background:#D6CCF5;">Start</span></div>
           <div class="hl-row"><span>Lavender</span><span class="meta">9.76:1</span></div>
           <div class="meta">#D6CCF5 · hero #2E244C</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #3D4923);"><span style="font-weight:600;font-size:18px;">Sage</span><span class="go" style="background:#CFDDB0;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #3D4923);"><span style="font-weight:600;font-size:17px;">Sage</span><span class="go" style="background:#CFDDB0;">Start</span></div>
           <div class="hl-row"><span>Sage</span><span class="meta">10.33:1</span></div>
           <div class="meta">#CFDDB0 · hero #3D4923</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4C3824);"><span style="font-weight:600;font-size:18px;">Peach</span><span class="go" style="background:#FFD7B0;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #4C3824);"><span style="font-weight:600;font-size:17px;">Peach</span><span class="go" style="background:#FFD7B0;">Start</span></div>
           <div class="hl-row"><span>Peach</span><span class="meta">11.02:1</span></div>
           <div class="meta">#FFD7B0 · hero #4C3824</div>
         </div>
         <div class="card pad">
-          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #243D4C);"><span style="font-weight:600;font-size:18px;">Powder</span><span class="go" style="background:#C7DCE8;">Start</span></div>
+          <div class="hl-hero" style="background:linear-gradient(to bottom left, #2A2725, #243D4C);"><span style="font-weight:600;font-size:17px;">Powder</span><span class="go" style="background:#C7DCE8;">Start</span></div>
           <div class="hl-row"><span>Powder</span><span class="meta">10.48:1</span></div>
           <div class="meta">#C7DCE8 · hero #243D4C</div>
         </div>
@@ -263,51 +260,50 @@
 
       <h3>The title swipe</h3>
       <div class="card pad">
-        <div style="font-size:32px;font-weight:600;"><span class="swipe">Practice</span></div>
+        <div style="font-size:30px;font-weight:600;"><span class="swipe">Practice</span></div>
         <p class="note" style="margin-top:12px;">The highlighter as a band behind the lower half of the title: clear to 50%, soft at 53%, full from 58% to 89%, soft at 93%, clear from 96%, with 3pt corners. Soft is 60% opacity. <code>.markerSwipe()</code></p>
       </div>
     </section>
 
     <section id="type">
-      <div class="eyebrow">Foundations</div>
+      <div class="section-title">Foundations</div>
       <h2>Typography</h2>
-      <p class="lede">Hanken Grotesk for titles and body, DM Mono for metadata. Every style scales with Dynamic Type from its anchor.</p>
+      <p class="lede">Hanken Grotesk for titles and body, DM Mono for figures. Five sizes, 30, 20, 17, 15 and 13; weight and colour carry the hierarchy inside a size. Every style scales with Dynamic Type from its anchor.</p>
       <div class="card tablewrap" style="margin-top:24px;"><table>
         <tr><th>Style</th><th>Specimen</th><th>Face and size</th><th>Anchor</th></tr>
-        <tr><td><code>pageTitle</code></td><td style="font-size:32px;font-weight:600;">Library</td><td class="meta">Hanken 32 SemiBold</td><td>Large Title</td></tr>
-        <tr><td><code>cardTitle</code></td><td style="font-size:18px;font-weight:600;">Clair de Lune</td><td class="meta">Hanken 18 SemiBold</td><td>Title 3</td></tr>
+        <tr><td><code>pageTitle</code></td><td style="font-size:30px;font-weight:600;">Library</td><td class="meta">Hanken 30 SemiBold</td><td>Large Title</td></tr>
+        <tr><td><code>title</code></td><td style="font-size:20px;font-weight:600;">D flat major</td><td class="meta">Hanken 20 SemiBold</td><td>Title 3</td></tr>
+        <tr><td><code>cardTitle</code></td><td style="font-size:17px;font-weight:600;">Clair de Lune</td><td class="meta">Hanken 17 SemiBold</td><td>Headline</td></tr>
+        <tr><td><code>body</code></td><td style="font-size:17px;">Slow hands, even tone.</td><td class="meta">Hanken 17 Regular</td><td>Body</td></tr>
+        <tr><td><code>bodyMedium</code></td><td style="font-size:17px;font-weight:500;">Scales in thirds</td><td class="meta">Hanken 17 Medium</td><td>Body</td></tr>
+        <tr><td><code>label</code></td><td style="font-size:15px;font-weight:500;color:var(--inkSecondary);">Tempo</td><td class="meta">Hanken 15 Medium, inkSecondary, sentence case; every section title, field label and toggle title</td><td>Subheadline</td></tr>
+        <tr><td><code>secondary</code></td><td style="font-size:15px;color:var(--inkSecondary);font-variant-numeric:tabular-nums;">Debussy · 12 min</td><td class="meta">Hanken 15 Regular, tabular digits</td><td>Subheadline</td></tr>
+        <tr><td><code>figure</code></td><td style="font-family:var(--mono);font-size:15px;">12:30</td><td class="meta">DM Mono 15 Regular</td><td>Subheadline</td></tr>
+        <tr><td><code>button</code></td><td style="font-size:15px;font-weight:700;">Start session</td><td class="meta">Hanken 15 Bold</td><td>Subheadline</td></tr>
+        <tr><td><code>segment</code></td><td style="font-size:15px;font-weight:500;">Week</td><td class="meta">Hanken 15 Medium</td><td>Subheadline</td></tr>
+        <tr><td><code>small</code></td><td style="font-size:13px;">Last played Tuesday</td><td class="meta">Hanken 13 Regular</td><td>Caption</td></tr>
+        <tr><td><code>smallMedium</code></td><td style="font-size:13px;font-weight:500;">Practice</td><td class="meta">Hanken 13 Medium</td><td>Caption</td></tr>
+        <tr><td><code>badge</code></td><td style="font-size:13px;font-weight:600;">Piece</td><td class="meta">Hanken 13 SemiBold</td><td>Caption</td></tr>
         <tr><td><code>timer</code></td><td style="font-size:56px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;">4:32</td><td class="meta">Hanken 56 SemiBold, tabular digits</td><td>Large Title</td></tr>
         <tr><td><code>scoreNumeral</code></td><td style="font-size:32px;font-weight:600;">4</td><td class="meta">Hanken SemiBold, size set per use</td><td>Title 3</td></tr>
-        <tr><td><code>body</code></td><td style="font-size:16px;">Slow hands, even tone.</td><td class="meta">Hanken 16 Regular</td><td>Body</td></tr>
-        <tr><td><code>bodyMedium</code></td><td style="font-size:17px;font-weight:500;">Scales in thirds</td><td class="meta">Hanken 17 Medium</td><td>Body</td></tr>
-        <tr><td><code>button</code></td><td style="font-size:15px;font-weight:700;">Start session</td><td class="meta">Hanken 15 Bold</td><td>Subheadline</td></tr>
-        <tr><td><code>field</code></td><td style="font-size:17px;">Ballade No. 1</td><td class="meta">Hanken 17 Regular</td><td>Callout</td></tr>
-        <tr><td><code>segment</code></td><td style="font-size:15px;font-weight:500;">Week</td><td class="meta">Hanken 15 Medium</td><td>Subheadline</td></tr>
-        <tr><td><code>metaMedium</code></td><td style="font-size:13.5px;font-weight:500;color:var(--inkSecondary);">Tempo</td><td class="meta">Hanken 13.5 Medium</td><td>Caption</td></tr>
-        <tr><td><code>badge</code></td><td style="font-size:13px;font-weight:600;">Piece</td><td class="meta">Hanken 13 SemiBold</td><td>Caption</td></tr>
-        <tr><td><code>tab</code></td><td style="font-size:13px;font-weight:500;">Practice</td><td class="meta">Hanken 13 Medium</td><td>Footnote</td></tr>
-        <tr><td><code>eyebrow</code></td><td><span class="eyebrow">Up next</span></td><td class="meta">Hanken 12 SemiBold, uppercase, tracking 1.5</td><td>Caption 2</td></tr>
-        <tr><td><code>micro</code></td><td style="font-size:12px;">Last played Tuesday</td><td class="meta">Hanken 12 Regular</td><td>Caption 2</td></tr>
-        <tr><td><code>subtitle</code></td><td style="font-family:var(--mono);font-size:14px;color:var(--inkSecondary);">Debussy · 1905</td><td class="meta">DM Mono 14 Regular</td><td>Footnote</td></tr>
-        <tr><td><code>meta</code></td><td style="font-family:var(--mono);font-size:14px;color:var(--inkSecondary);">12 min · 3 items</td><td class="meta">DM Mono 14 Regular</td><td>Caption</td></tr>
         <tr><td><code>chart</code></td><td style="font-family:ui-monospace,monospace;font-size:13px;color:var(--inkSecondary);">Mon Tue Wed</td><td class="meta">system monospaced, Footnote, Regular</td><td>Footnote</td></tr>
       </table></div>
-      <p class="note">A section title is the eyebrow in <code>inkFaint</code>. A field label (Key, Tempo) is <code>metaMedium</code>, quieter than its value. The <code>chart</code> specimen uses the browser's monospace; the app uses the system face.</p>
+      <p class="note">Nothing is set in capitals. Every label, a section's title, a field's label or a toggle's title, is <code>label</code> in secondary ink, in sentence case, at the top of what it names; <code>SectionTitle</code> and <code>FieldLabel</code> look the same, and a field's label sits inside its card above the value (<code>FieldCard</code>). Values, and anything read or set, are 17 in ink. Only the dark Practice and Up next cards keep their labels light on dark. Mono is for a figure set alone, a clock, a duration or a count; a line that mixes words and numbers is <code>secondary</code>. The display numerals <code>timer</code> and <code>scoreNumeral</code> are the only styles sized by the dial or readout they sit in. The <code>chart</code> specimen uses the browser's monospace; the app uses the system face.</p>
     </section>
 
     <section id="spacing">
-      <div class="eyebrow">Foundations</div>
+      <div class="section-title">Foundations</div>
       <h2>Spacing and radius</h2>
       <div class="grid g2" style="margin-top:24px;">
         <div class="card pad">
-          <div class="eyebrow" style="margin-bottom:12px;">Spacing</div>
+          <div class="section-title" style="margin-bottom:12px;">Spacing</div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;"><span style="width:8px;height:16px;background:var(--butter);border-radius:3px;"></span><code>controlGap</code><span class="meta" style="margin-left:auto;">8pt</span></div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;"><span style="width:12px;height:16px;background:var(--butter);border-radius:3px;"></span><code>cardCompact</code><span class="meta" style="margin-left:auto;">12pt</span></div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;"><span style="width:16px;height:16px;background:var(--butter);border-radius:3px;"></span><code>card</code><span class="meta" style="margin-left:auto;">16pt</span></div>
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;"><span style="width:24px;height:16px;background:var(--butter);border-radius:3px;"></span><code>section</code><span class="meta" style="margin-left:auto;">24pt</span></div>
         </div>
         <div class="card pad">
-          <div class="eyebrow" style="margin-bottom:12px;">Radius</div>
+          <div class="section-title" style="margin-bottom:12px;">Radius</div>
           <div style="display:flex;gap:24px;align-items:center;">
             <div style="text-align:center;"><div style="width:72px;height:72px;border-radius:3px;background:var(--surfaceSunken);border:1px solid var(--hairline);"></div><div class="meta" style="margin-top:8px;">3pt</div></div>
             <div style="text-align:center;"><div style="width:96px;height:36px;border-radius:999px;background:var(--surfaceSunken);border:1px solid var(--hairline);"></div><div class="meta" style="margin-top:8px;">pill</div></div>
@@ -328,7 +324,7 @@
     </section>
 
     <section id="surface">
-      <div class="eyebrow">Foundations</div>
+      <div class="section-title">Foundations</div>
       <h2>Surface and lift</h2>
       <p class="lede">Cards are white with a 1pt <code>hairline</code> edge, 3pt corners and a faint lift. They are not flat.</p>
       <div class="grid g4" style="margin-top:24px;">
@@ -344,7 +340,7 @@
     </section>
 
     <section id="icons">
-      <div class="eyebrow">System</div>
+      <div class="section-title">System</div>
       <h2>Iconography</h2>
       <p class="lede">SF Symbols, scaling with Dynamic Type up to a cap. A web page cannot draw SF Symbols, so this page names each glyph instead of showing it.</p>
       <div class="grid g2" style="margin-top:24px;">
@@ -383,7 +379,7 @@
     </section>
 
     <section id="components">
-      <div class="eyebrow">System</div>
+      <div class="section-title">System</div>
       <h2>Components</h2>
       <p class="lede">Everything the app builds its screens from, by its code name. Nothing else is a component.</p>
 
@@ -409,7 +405,8 @@
       <h3>Reusable views · ios/Intrada/Views/Components</h3>
       <div class="card tablewrap"><table>
         <tr><th>Component</th><th>Glyph</th></tr>
-        <tr><td><code>SectionHeader</code> and <code>Eyebrow</code></td><td></td></tr>
+        <tr><td><code>SectionHeader</code> and <code>SectionTitle</code></td><td></td></tr>
+        <tr><td><code>FieldCard</code> and <code>FieldLabel</code></td><td></td></tr>
         <tr><td><code>TypeBadge</code></td><td><span class="sym">music.note</span> <span class="sym">dumbbell.fill</span></td></tr>
         <tr><td><code>LibraryItemCard</code></td><td></td></tr>
         <tr><td><code>SegmentedPills</code></td><td></td></tr>
@@ -436,9 +433,9 @@
       <h3>Drawn from the tokens</h3>
       <div class="grid g2">
         <div class="card pad">
-          <div class="eyebrow">Up next</div>
+          <div class="section-title">Up next</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;">
-            <div><div style="font-size:18px;font-weight:600;">Clair de Lune</div><div class="meta" style="font-size:14px;">Debussy · 12 min</div></div>
+            <div><div style="font-size:17px;font-weight:600;">Clair de Lune</div><div class="meta">Debussy · 12 min</div></div>
             <span class="pill" style="background:var(--pieceBadgeBg);"><span class="sym" style="background:transparent;padding:0;color:var(--ink);">music.note</span>Piece</span>
           </div>
           <div style="height:1px;background:var(--hairline);margin:16px 0;"></div>
@@ -462,9 +459,11 @@
 
         <div class="card pad">
           <div style="background:rgba(156,74,58,0.12);color:var(--danger);border-radius:3px;padding:12px;font-size:15px;font-weight:500;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><span class="sym" style="background:transparent;padding:0;color:var(--danger);">exclamationmark.triangle.fill</span>Couldn't save that piece.</div>
-          <div style="margin-top:12px;font-size:13.5px;font-weight:500;color:var(--inkSecondary);">Title</div>
-          <div style="margin-top:4px;padding:12px;border-radius:3px;background:rgba(156,74,58,0.10);border:1px solid rgba(156,74,58,0.25);font-size:17px;color:var(--inkFainter);">Add a title</div>
-          <div class="meta" style="margin-top:12px;">FormErrorBanner · FormField with dangerWash and dangerEdge</div>
+          <div style="margin-top:12px;padding:10px 16px;border-radius:3px;background:rgba(156,74,58,0.10);border:1px solid rgba(156,74,58,0.25);">
+            <div style="font-size:15px;font-weight:500;color:var(--danger);">Title</div>
+            <div style="margin-top:4px;font-size:17px;color:var(--inkFainter);">Add a title</div>
+          </div>
+          <div class="meta" style="margin-top:12px;">FormErrorBanner · FormField, its FieldLabel in danger, on dangerWash with dangerEdge</div>
         </div>
 
         <div class="card pad">
@@ -493,7 +492,7 @@
     </section>
 
     <section id="states">
-      <div class="eyebrow">System</div>
+      <div class="section-title">System</div>
       <h2>States and motion</h2>
       <div class="card tablewrap" style="margin-top:24px;"><table>
         <tr><th>Token</th><th>Value</th></tr>
@@ -509,7 +508,7 @@
 
       <div class="grid g2" style="margin-top:16px;">
         <div class="card pad">
-          <div style="display:flex;justify-content:space-between;align-items:center;"><span class="eyebrow">fadeUp</span><button id="ds-replay" class="btn quiet" style="padding:8px 12px;">Replay</button></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span class="section-title">fadeUp</span><button id="ds-replay" class="btn quiet" style="padding:8px 12px;">Replay</button></div>
           <div id="ds-reveal" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
             <div style="background:var(--surfaceSunken);border-radius:3px;padding:12px;font-weight:500;">Scales in thirds</div>
             <div style="background:var(--surfaceSunken);border-radius:3px;padding:12px;font-weight:500;">Clair de Lune</div>
@@ -517,7 +516,7 @@
           </div>
         </div>
         <div class="card pad">
-          <div style="display:flex;justify-content:space-between;align-items:center;"><span class="eyebrow">barGrow</span><button id="ds-replaybars" class="btn quiet" style="padding:8px 12px;">Replay</button></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span class="section-title">barGrow</span><button id="ds-replaybars" class="btn quiet" style="padding:8px 12px;">Replay</button></div>
           <div id="ds-bars" style="display:flex;align-items:flex-end;gap:8px;height:96px;margin-top:12px;">
             <div style="flex:1;height:100%;background:#EDE8DC;border-radius:3px;display:flex;align-items:flex-end;"><div class="bar" style="width:100%;height:40%;background:var(--ink);border-radius:3px;transform-origin:bottom;"></div></div>
             <div style="flex:1;height:100%;background:#EDE8DC;border-radius:3px;display:flex;align-items:flex-end;"><div class="bar" style="width:100%;height:70%;background:var(--ink);border-radius:3px;transform-origin:bottom;"></div></div>
@@ -528,7 +527,7 @@
           <div class="meta" style="margin-top:8px;">Ink bars on <code>consistencyTrack</code>, to show the motion only.</div>
         </div>
         <div class="card pad">
-          <span class="eyebrow">press</span>
+          <span class="section-title">press</span>
           <div style="margin-top:12px;"><button class="btn">Press and hold</button></div>
           <div class="meta" style="margin-top:12px;">Dips to 0.94; the spring back is approximated with a CSS curve.</div>
         </div>
@@ -545,7 +544,7 @@
         <img src="assets/app-icon-default.png" width="28" height="28" alt="Intrada" style="border-radius:6px;flex:none;display:block;">
         <div style="font-size:13px;color:var(--inkSecondary);">Intrada design system</div>
       </div>
-      <div class="meta">Rebuilt 2026-10-02 from the app (#1678)</div>
+      <div class="meta">Rebuilt 2026-10-02 from the app (#1678), type updated 2026-10-03 (#1881)</div>
     </footer>
 
     <div data-end></div>

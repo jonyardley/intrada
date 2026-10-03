@@ -216,7 +216,7 @@ private struct PillarLine: View {
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(name)
-          .font(IntradaFont.cardTitle())
+          .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
         Text(line)
           .font(IntradaFont.body)
@@ -252,7 +252,7 @@ private struct ProfileStep: View {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           HStack(alignment: .center, spacing: IntradaSpacing.card) {
             Text("Your profile")
-              .font(IntradaFont.pageTitle())
+              .font(IntradaFont.pageTitle)
               .foregroundStyle(IntradaColor.ink)
               .markerSwipe()
               .accessibilityAddTraits(.isHeader)
@@ -314,7 +314,7 @@ private struct FirstPieceStep: View {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
             Text("Your first piece")
-              .font(IntradaFont.pageTitle())
+              .font(IntradaFont.pageTitle)
               .foregroundStyle(IntradaColor.ink)
               .markerSwipe()
               .accessibilityAddTraits(.isHeader)
@@ -383,7 +383,7 @@ private struct FirstPieceRow: View {
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.ink)
           Text(line)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
         }

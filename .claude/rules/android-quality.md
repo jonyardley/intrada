@@ -47,8 +47,8 @@ bars, read in Kotlin and Compose.
   and no suppressions: fix the finding (#2263).
 - **The comment density, bridge test and snapshot checks read Kotlin and the
   Android snapshot references** (#2265, #2241), and so does the faint ink
-  check, which allows the token only in the theme until Android has an eyebrow
-  (#2309). The haptics check stays Swift only: the Android shell has no haptic
+  check, which allows the token only in the theme (#2309); iOS has no faint
+  text since T35. The haptics check stays Swift only: the Android shell has no haptic
   helper.
 - **The generated bindings compile in `:bridge`**, outside the warnings gate,
   because crux's typegen emits warnings we cannot fix at the source (a

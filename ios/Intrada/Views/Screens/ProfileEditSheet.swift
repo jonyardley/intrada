@@ -102,11 +102,9 @@ struct ProfileEditSheet: View {
     return layout {
       ProfileBadge(icon: shownIcon)
       VStack(alignment: .leading, spacing: 3) {
-        Text("Icon")
-          .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkSecondary)
+        FieldLabel("Icon")
         Text(iconCaption)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       if !stacked {

@@ -72,10 +72,10 @@ struct ChordChartEditSheet: View {
   private var keyCaption: some View {
     HStack(spacing: 6) {
       Image(systemName: "key")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .accessibilityHidden(true)
       Text("Derives in \(keyDisplay)")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
     }
     .foregroundStyle(IntradaColor.inkSecondary)
     .accessibilityElement(children: .combine)
@@ -122,7 +122,7 @@ struct ChordChartEditSheet: View {
         .foregroundStyle(IntradaColor.danger)
         .accessibilityHidden(true)
       Text(message)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.ink)
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -137,9 +137,9 @@ struct ChordChartEditSheet: View {
 
   private var formatHint: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Eyebrow("Format")
+      SectionTitle("Format")
       Text("[Section] labels · one bar between | pipes")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       Text("Cm7  F7  Bbmaj7  Aø7  D7alt")
         .font(IntradaFont.chart)
