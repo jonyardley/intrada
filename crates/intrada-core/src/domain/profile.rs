@@ -91,7 +91,50 @@ pub struct ProfileView {
     pub icon_chosen: bool,
     pub colour: HighlighterColour,
     pub greeting: String,
+    pub instrument_names: Vec<String>,
 }
+
+const INSTRUMENT_NAMES: &[&str] = &[
+    "Accordion",
+    "Alto saxophone",
+    "Bagpipes",
+    "Banjo",
+    "Baritone",
+    "Bass guitar",
+    "Bassoon",
+    "Cello",
+    "Clarinet",
+    "Cor anglais",
+    "Cornet",
+    "Double bass",
+    "Drums",
+    "Electric guitar",
+    "Euphonium",
+    "Flute",
+    "French horn",
+    "Guitar",
+    "Harp",
+    "Harpsichord",
+    "Mandolin",
+    "Marimba",
+    "Oboe",
+    "Organ",
+    "Percussion",
+    "Piano",
+    "Piccolo",
+    "Recorder",
+    "Saxophone",
+    "Soprano",
+    "Tenor saxophone",
+    "Timpani",
+    "Trombone",
+    "Trumpet",
+    "Tuba",
+    "Ukulele",
+    "Viola",
+    "Violin",
+    "Voice",
+];
 
 // Order-sensitive: a keyword inside a longer name ("alto" in "alto sax",
 // "piccolo" in "piccolo trumpet") sits below every row claiming the longer one.
@@ -191,6 +234,7 @@ pub fn build_profile_view(profile: &Profile, local_hour: u32) -> ProfileView {
             .is_some_and(|choice| choice != suggested_icon),
         colour: profile.colour,
         greeting: greeting(&profile.name, local_hour),
+        instrument_names: INSTRUMENT_NAMES.iter().map(|n| n.to_string()).collect(),
     }
 }
 
@@ -381,6 +425,23 @@ mod tests {
             !chosen("Piano", Some(InstrumentIcon::Piano)),
             "a blob stored before the save cleared it still reads as following the instrument"
         );
+    }
+
+    #[test]
+    fn every_offered_instrument_name_finds_an_icon_bar_the_bagpipes() {
+        let view = build_profile_view(&fixture(), 9);
+        assert_eq!(view.instrument_names.len(), INSTRUMENT_NAMES.len());
+        let unmatched: Vec<&str> = view
+            .instrument_names
+            .iter()
+            .map(String::as_str)
+            .filter(|name| suggest_icon(name) == InstrumentIcon::Other)
+            .collect();
+        assert_eq!(unmatched, ["Bagpipes"]);
+        let mut sorted = view.instrument_names.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted, view.instrument_names, "alphabetical, no repeats");
     }
 
     // ── Greeting ──

@@ -2,6 +2,7 @@ import SharedTypes
 import SwiftUI
 
 struct ProfileNameFields: View {
+  @Environment(Store.self) private var store
   @Binding var name: String
   @Binding var instrument: String
   var faultedField: ProfileField?
@@ -15,7 +16,8 @@ struct ProfileNameFields: View {
       HairlineDivider()
       AutocompleteField(
         label: "Instrument", text: $instrument, placeholder: "e.g. Cello",
-        suggestions: InstrumentNames.suggestions, faulted: faultedField == .instrument,
+        suggestions: store.viewModel?.profile.instrumentNames ?? [],
+        faulted: faultedField == .instrument,
         identifier: "profileEdit.instrument")
     }
     .cardSurface()
