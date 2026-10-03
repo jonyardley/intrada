@@ -7,7 +7,7 @@ use crux_core::{
     Core,
 };
 
-use crate::{Intrada, ItemKind, LibrarySort, SortDirection, SortField};
+use crate::{Intrada, ItemKind, LibrarySort, Modality, SortDirection, SortField};
 
 // Returned (not panicked) so the shell handles it per the no-`try!` contract —
 // the crux `counter` example panics but says to do this in production.
@@ -295,6 +295,108 @@ pub fn sort_and_filter_picker_candidates(
 #[must_use]
 pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
     crate::domain::variant::shows_key_field(live_variant_count as usize)
+}
+
+// ── Key wheel ──
+
+/// The core stays UniFFI-agnostic, so the modality crosses the plain call as
+/// its own enum.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WheelMode {
+    Major,
+    Minor,
+}
+
+impl From<WheelMode> for Modality {
+    fn from(mode: WheelMode) -> Self {
+        match mode {
+            WheelMode::Major => Self::Major,
+            WheelMode::Minor => Self::Minor,
+        }
+    }
+}
+
+impl From<Modality> for WheelMode {
+    fn from(modality: Modality) -> Self {
+        match modality {
+            Modality::Major => Self::Major,
+            Modality::Minor => Self::Minor,
+        }
+    }
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelWedge {
+    pub ring: u8,
+    pub mode: WheelMode,
+    pub primary: String,
+    pub alt: Option<String>,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelTap {
+    pub tonic: String,
+    pub mode: WheelMode,
+    pub flipped: bool,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelSelection {
+    pub ring: u8,
+    pub mode: WheelMode,
+    pub spelling: String,
+}
+
+/// The picker edits an unsaved form, so it asks with plain calls rather than
+/// an `Event` round trip per tap (#2226).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_wheel() -> Vec<WheelWedge> {
+    crate::domain::key::wheel()
+        .into_iter()
+        .map(|w| WheelWedge {
+            ring: w.ring,
+            mode: w.modality.into(),
+            primary: w.primary.to_string(),
+            alt: w.alt.map(str::to_string),
+        })
+        .collect()
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_next_on_tap(
+    current_key: String,
+    current_mode: Option<WheelMode>,
+    ring: u8,
+    mode: WheelMode,
+) -> Option<WheelTap> {
+    crate::domain::key::next_on_tap(
+        &current_key,
+        current_mode.map(Into::into),
+        ring,
+        mode.into(),
+    )
+    .map(|t| WheelTap {
+        tonic: t.tonic,
+        mode: t.modality.into(),
+        flipped: t.flipped,
+    })
+}
+
+/// Which spoke the form's unsaved key lights.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_wheel_selection(key: String, mode: Option<WheelMode>) -> Option<WheelSelection> {
+    crate::domain::key::wheel_selection(&key, mode.map(Into::into)).map(|s| WheelSelection {
+        ring: s.ring,
+        mode: s.modality.into(),
+        spelling: s.spelling,
+    })
 }
 
 /// The shell builds the crash-recovery blob's storage key from this, so a
@@ -585,5 +687,35 @@ mod tests {
                 "field {field:?} direction {direction:?} should order {expected:?}"
             );
         }
+    }
+
+    #[test]
+    fn the_six_oclock_spoke_flips_gb_to_f_sharp_across_the_plain_call() {
+        let first =
+            key_next_on_tap(String::new(), None, 6, WheelMode::Major).expect("on the wheel");
+        assert_eq!((first.tonic.as_str(), first.flipped), ("Gb", false));
+        let second = key_next_on_tap(first.tonic, Some(first.mode), 6, WheelMode::Major)
+            .expect("on the wheel");
+        assert_eq!(
+            (second.tonic.as_str(), second.mode, second.flipped),
+            ("F#", WheelMode::Major, true)
+        );
+        assert_eq!(
+            key_wheel_selection(second.tonic, Some(WheelMode::Major)),
+            Some(WheelSelection {
+                ring: 6,
+                mode: WheelMode::Major,
+                spelling: "F#".into()
+            })
+        );
+        let minor_six = &key_wheel()[18];
+        assert_eq!(
+            (
+                minor_six.mode,
+                minor_six.primary.as_str(),
+                minor_six.alt.as_deref()
+            ),
+            (WheelMode::Minor, "Eb", Some("D#"))
+        );
     }
 }
