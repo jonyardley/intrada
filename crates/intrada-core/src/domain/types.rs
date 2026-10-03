@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use super::item::{Item, ItemKind, Modality};
+use super::item::{Item, ItemKind};
+use super::key::Key;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -53,9 +54,7 @@ pub struct CreateItem {
     pub title: String,
     pub kind: ItemKind,
     pub composer: Option<String>,
-    pub key: Option<String>,
-    #[serde(default)]
-    pub modality: Option<Modality>,
+    pub key: Option<Key>,
     pub tempo: Option<TempoInput>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
@@ -65,15 +64,14 @@ pub struct CreateItem {
     /// the form is the one they practise from.
     #[serde(default)]
     pub photo_id: Option<String>,
-    /// Variations added inline while creating an exercise (#1783), reconciled
-    /// through the same `reconcile_variants` as `SetVariants`. Only
+    /// Variations chosen while creating the item, as labels: a live library
+    /// row with the label is reused, any other is minted (#2246). Only
     /// `ItemEvent::Add` honours this: a `CreateItem` reaching
     /// `AddLinkedExercise` or `AddPieceInFull` never carries any (#1436's
     /// `photo_id` sets the precedent for a shared field meaning one thing by
-    /// event). Empty for a piece; validated non-empty only against
-    /// `ItemKind::Exercise`.
+    /// event).
     #[serde(default)]
-    pub variant_labels: Vec<String>,
+    pub variation_labels: Vec<String>,
 }
 
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
@@ -85,8 +83,7 @@ pub struct UpdateItem {
     pub title: Option<String>,
     pub kind: Option<ItemKind>,
     pub composer: Option<Option<String>>,
-    pub key: Option<Option<String>>,
-    pub modality: Option<Option<Modality>>,
+    pub key: Option<Option<Key>>,
     pub tempo: Option<TempoInput>,
     pub notes: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
@@ -108,7 +105,7 @@ pub struct SessionsData {
 pub struct ListQuery {
     pub text: Option<String>,
     pub item_type: Option<ItemKind>,
-    pub key: Option<String>,
+    pub key: Option<Key>,
     /// Empty vec means "no filter". Avoids `Option<Vec<T>>` which
     /// serde-reflection (used by Crux typegen) cannot handle.
     pub tags: Vec<String>,
@@ -276,7 +273,6 @@ mod tests {
             kind: Some(ItemKind::Exercise),
             composer: Some(Some("Bach".to_string())),
             key: Some(None),
-            modality: Some(Some(Modality::Minor)),
             tempo: Some(TempoInput {
                 marking: Some("Allegro".to_string()),
                 bpm: Some("120".to_string()),
@@ -292,7 +288,6 @@ mod tests {
         assert_round_trips(UpdateItem {
             title: Some("Renamed".to_string()),
             composer: Some(None),
-            modality: Some(Some(Modality::Minor)),
             ..UpdateItem::default()
         });
     }
@@ -309,7 +304,6 @@ mod tests {
                 kind: Some(ItemKind::Exercise),
                 composer: Some(Some("Bach".to_string())),
                 key: Some(None),
-                modality: Some(Some(Modality::Minor)),
                 tempo: Some(TempoInput::default()),
                 notes: Some(Some("phrasing".to_string())),
                 tags: Some(vec!["etude".to_string()]),
@@ -324,8 +318,7 @@ mod tests {
             title: "Clair de Lune".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
-            key: Some("Db".to_string()),
-            modality: Some(Modality::Major),
+            key: crate::domain::key::Key::parse("Db major"),
             tempo: Some(TempoInput {
                 marking: None,
                 bpm: Some("72".to_string()),
@@ -333,7 +326,7 @@ mod tests {
             notes: None,
             tags: vec!["impressionist".to_string()],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         });
     }
 
@@ -363,8 +356,7 @@ mod tests {
                 title: "Shell voicings".to_string(),
                 kind: ItemKind::Exercise,
                 composer: None,
-                key: Some("G".to_string()),
-                modality: Some(Modality::Minor),
+                key: crate::domain::key::Key::parse("G minor"),
                 tempo: Some(TempoInput {
                     marking: Some("Andante".to_string()),
                     bpm: Some("96".to_string()),
@@ -372,7 +364,7 @@ mod tests {
                 notes: Some("3rds and 7ths".to_string()),
                 tags: vec!["voicings".to_string()],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             },
         });
         assert_round_trips(ItemEvent::AddLinkedExercise {
@@ -382,12 +374,11 @@ mod tests {
                 kind: ItemKind::Exercise,
                 composer: None,
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             },
         });
     }
@@ -397,8 +388,7 @@ mod tests {
         // PracticeSession crosses the bridge as a SaveSession persistence Effect;
         // its optional-heavy SetlistEntry + rep_history is exactly the #846 risk.
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, RepAction, RepEvent, SetlistEntry,
-            VariationPlay,
+            CompletionStatus, EntryStatus, Play, PracticeSession, RepAction, RepEvent, SetlistEntry,
         };
         use crate::persistence::PersistenceOperation;
         let now = chrono::Utc::now();
@@ -414,30 +404,37 @@ mod tests {
             intention: Some("evenness".to_string()),
             planned_duration_secs: Some(300),
             group_id: None,
-            planned_variation_id: Some("v-1".to_string()),
             planned_rep_target: Some(5),
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 id: "play-1".to_string(),
-                variation_id: Some("v-1".to_string()),
+                section_id: None,
+                key: crate::domain::key::Key::parse("Bb minor"),
+                variation_ids: vec!["v-1".to_string()],
+                tempo_changes: vec![],
                 started_at: now,
                 seconds: 300,
                 rep_target: Some(5),
                 rep_count: Some(5),
-                rep_target_reached: Some(true),
                 rep_history: Some(vec![
                     RepEvent {
                         action: RepAction::Success,
                         at: now,
+                        click_sounding: None,
+                        tempo: None,
                     },
                     RepEvent {
                         action: RepAction::Missed,
                         at: now,
+                        click_sounding: None,
+                        tempo: None,
                     },
                 ]),
                 achieved_tempo: Some(120),
                 click_pattern: None,
                 score: Some(4),
             }],
+            planned_section_ids: vec![],
+            planned_variation_ids: vec![],
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -448,6 +445,7 @@ mod tests {
             total_duration_secs: 300,
             completion_status: CompletionStatus::Completed,
             session_score: Some(8),
+            capture_version: None,
         }));
     }
 
@@ -500,21 +498,17 @@ mod tests {
             entry_id: "e1".to_string(),
             duration_secs: None,
         });
-        assert_round_trips(SessionEvent::SetEntryVariant {
+        assert_round_trips(SessionEvent::SetEntryPlan {
             entry_id: "e1".to_string(),
-            variant_id: Some("v-1".to_string()),
-        });
-        assert_round_trips(SessionEvent::SetEntryVariant {
-            entry_id: "e1".to_string(),
-            variant_id: None,
+            section_ids: vec!["s-1".to_string()],
+            variation_ids: vec!["v-1".to_string()],
         });
     }
 
     #[test]
-    fn save_item_ops_with_variants_round_trip_on_ffi_bincode_wire() {
-        // The ladder rides SaveItem/SaveItems to the GRDB store; a tombstoned
-        // step exercises the Option<DateTime> side of the wire (#846 class).
-        use crate::domain::variant::Variant;
+    fn save_item_and_variation_ops_round_trip_on_ffi_bincode_wire() {
+        // Keys, variation ids and a tombstoned section ride SaveItem and
+        // SaveItems to the GRDB store (#846 class).
         use crate::persistence::PersistenceOperation;
         use chrono::TimeZone;
         let at = chrono::Utc.timestamp_opt(1_700_000_000, 0).unwrap();
@@ -524,7 +518,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -533,22 +526,6 @@ mod tests {
             updated_at: at,
             priority: false,
             chord_chart: None,
-            variants: vec![
-                Variant {
-                    id: "v-1".to_string(),
-                    label: "B♭".to_string(),
-                    position: 0,
-                    updated_at: at,
-                    deleted_at: None,
-                },
-                Variant {
-                    id: "v-2".to_string(),
-                    label: "E♭".to_string(),
-                    position: 1,
-                    updated_at: at,
-                    deleted_at: Some(at),
-                },
-            ],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
             sections: vec![
@@ -576,9 +553,20 @@ mod tests {
                     deleted_at: Some(at),
                 },
             ],
+            keys: vec![crate::domain::key::Key::C_MAJOR],
+            variation_ids: vec!["v-1".to_string()],
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));
+        let row = crate::domain::variation::Variation {
+            id: "v-1".to_string(),
+            label: "Hands separately".to_string(),
+            updated_at: at,
+            deleted_at: Some(at),
+        };
+        assert_round_trips(PersistenceOperation::SaveVariations(vec![row.clone()]));
+        assert_round_trips(PersistenceOperation::LoadVariations);
+        assert_round_trips(crate::persistence::PersistenceOutput::Variations(vec![row]));
     }
 
     #[test]
@@ -596,28 +584,10 @@ mod tests {
             intention: None,
             planned_duration_secs: None,
             group_id: Some("block-1".to_string()),
-            planned_variation_id: Some("v-1".to_string()),
             planned_rep_target: None,
             plays: Vec::new(),
-        });
-    }
-
-    #[test]
-    fn update_variants_event_round_trips_on_ffi_bincode_wire() {
-        use crate::domain::item::ItemEvent;
-        use crate::domain::variant::VariantEdit;
-        assert_round_trips(ItemEvent::UpdateVariants {
-            id: "ex-1".to_string(),
-            variants: vec![
-                VariantEdit {
-                    id: Some("v1".to_string()),
-                    label: "C".to_string(),
-                },
-                VariantEdit {
-                    id: None,
-                    label: "Land on the 3rd".to_string(),
-                },
-            ],
+            planned_section_ids: vec![],
+            planned_variation_ids: vec![],
         });
     }
 
@@ -652,6 +622,7 @@ mod tests {
             total_duration_secs: 3600,
             completion_status: CompletionStatus::Completed,
             session_score: Some(7),
+            capture_version: None,
         });
     }
 }

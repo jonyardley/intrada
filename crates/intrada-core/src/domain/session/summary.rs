@@ -167,6 +167,7 @@ pub(super) fn save_session(model: &mut Model, now: DateTime<Utc>) -> Command<Eff
         total_duration_secs,
         completion_status: summary.completion_status.clone(),
         session_score: summary.session_score,
+        capture_version: Some(CAPTURE_VERSION),
     };
 
     model.saving_session = Some(practice_session.clone());

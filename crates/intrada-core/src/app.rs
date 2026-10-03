@@ -8,7 +8,7 @@ use crux_core::{App, Command};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::first_run::{handle_first_run_event, FirstRun, FirstRunEvent};
-use crate::domain::item::{handle_item_event, ItemEvent};
+use crate::domain::item::{handle_item_event, handle_variation_event, ItemEvent, VariationEvent};
 use crate::domain::practice_defaults::{
     handle_practice_defaults_event, PracticeDefaults, PracticeDefaultsEvent,
 };
@@ -77,6 +77,11 @@ pub enum Event {
     },
     /// The user finished with (or backed out of) the recognised draft.
     DiscardPhotoDraft,
+
+    // ── Appended (#2246) ─────────────────────────────────────────────
+    Variation(VariationEvent),
+    VariationsStoreLoaded(PersistenceOutput),
+    VariationsStoreWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -184,12 +189,14 @@ impl Intrada {
             Event::StartApp => Command::all([
                 persistence::load_items(model),
                 persistence::load_sessions(model),
+                persistence::load_variations(model),
             ]),
             Event::SetUtcOffset { minutes } => {
                 model.utc_offset_minutes = minutes;
                 crux_core::render::render()
             }
             Event::LoadSampleData => {
+                model.variations = crate::sample::sample_variations().into();
                 model.items = crate::sample::sample_items().into();
                 model.sessions = crate::sample::sample_sessions().into();
                 model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -199,6 +206,7 @@ impl Intrada {
 
             // ── Domain handlers ──────────────────────────────────────
             Event::Item(item_event) => handle_item_event(item_event, model),
+            Event::Variation(variation_event) => handle_variation_event(variation_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Profile(profile_event) => handle_profile_event(profile_event, model),
             Event::FirstRun(first_run_event) => handle_first_run_event(first_run_event, model),
@@ -237,7 +245,9 @@ impl Intrada {
                     persistence::Landed::Drop => Command::done(),
                     persistence::Landed::Reload => persistence::load_items(model),
                 },
-                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => {
+                PersistenceOutput::Ack
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::Variations(_) => {
                     persistence::items_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
@@ -256,7 +266,9 @@ impl Intrada {
                         model.surface_storage_error();
                         crux_core::render::render()
                     }
-                    PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                    PersistenceOutput::Items(_)
+                    | PersistenceOutput::Sessions(_)
+                    | PersistenceOutput::Variations(_) => Command::done(),
                 };
                 // A refused write reloads to roll back the un-persisted change (#825).
                 if model.items_sync.write_settled(refused) {
@@ -275,7 +287,9 @@ impl Intrada {
                     persistence::Landed::Drop => Command::done(),
                     persistence::Landed::Reload => persistence::load_sessions(model),
                 },
-                PersistenceOutput::Items(_) | PersistenceOutput::Ack => {
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Ack
+                | PersistenceOutput::Variations(_) => {
                     persistence::sessions_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
@@ -289,9 +303,9 @@ impl Intrada {
                         model.record_ack();
                         (crate::domain::session::save_acknowledged(model), false)
                     }
-                    PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => {
-                        (Command::done(), false)
-                    }
+                    PersistenceOutput::Items(_)
+                    | PersistenceOutput::Sessions(_)
+                    | PersistenceOutput::Variations(_) => (Command::done(), false),
                     PersistenceOutput::Failed => {
                         match crate::domain::session::save_refused(model) {
                             Some(handed_back) => (handed_back, false),
@@ -338,6 +352,58 @@ impl Intrada {
                 model.photo_recognition = crate::model::PhotoRecognition::Idle;
                 crux_core::render::render()
             }
+
+            Event::VariationsStoreLoaded(output) => match output {
+                PersistenceOutput::Variations(rows) => match model.variations_sync.load_landed() {
+                    persistence::Landed::Apply => {
+                        let seeded =
+                            crate::domain::variation::seed_if_empty(&rows, chrono::Utc::now());
+                        model.variations = rows.into();
+                        match seeded {
+                            Some(seeded) => {
+                                model.variations.extend(seeded.iter().cloned());
+                                Command::all([
+                                    persistence::save_variations(model, seeded),
+                                    crux_core::render::render(),
+                                ])
+                            }
+                            None => crux_core::render::render(),
+                        }
+                    }
+                    persistence::Landed::Drop => Command::done(),
+                    persistence::Landed::Reload => persistence::load_variations(model),
+                },
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::Ack => {
+                    persistence::variations_load_ended(model, Command::done())
+                }
+                PersistenceOutput::Failed => {
+                    model.surface_storage_error();
+                    persistence::variations_load_ended(model, crux_core::render::render())
+                }
+            },
+            Event::VariationsStoreWritten(output) => {
+                let refused = matches!(output, PersistenceOutput::Failed);
+                let shown = match output {
+                    PersistenceOutput::Ack => {
+                        model.record_ack();
+                        Command::done()
+                    }
+                    PersistenceOutput::Failed => {
+                        model.surface_storage_error();
+                        crux_core::render::render()
+                    }
+                    PersistenceOutput::Items(_)
+                    | PersistenceOutput::Sessions(_)
+                    | PersistenceOutput::Variations(_) => Command::done(),
+                };
+                if model.variations_sync.write_settled(refused) {
+                    Command::all([shown, persistence::load_variations(model)])
+                } else {
+                    shown
+                }
+            }
         }
     }
 }
@@ -346,14 +412,15 @@ impl Intrada {
 mod tests {
     use super::*;
     use crate::domain::item::{Item, ItemKind};
-    use crate::domain::session::VariationPlay;
+    use crate::domain::key::Key;
+    use crate::domain::session::Play;
     use crate::domain::session::{
         CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
     };
     use crate::domain::types::{SortDirection, SortField};
     use crate::model::{ItemPracticeSummary, LibraryItemView};
     use crate::view::library::{
-        build_exercise_usage, build_variant_score_index, build_variant_views, derive_priorities,
+        build_exercise_usage, build_scored_plays, build_variation_views, derive_priorities,
     };
 
     #[test]
@@ -368,8 +435,7 @@ mod tests {
             title: "Autumn Leaves".to_string(),
             kind: ItemKind::Piece,
             composer: None,
-            key: Some("G".to_string()),
-            modality: Some(crate::domain::item::Modality::Minor),
+            key: Key::parse("G"),
             tempo: None,
             notes: None,
             tags: vec![],
@@ -378,7 +444,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -467,20 +534,31 @@ mod tests {
     }
 
     #[test]
-    fn load_sample_data_gives_scales_a_step_ladder_with_progress() {
+    fn load_sample_data_gives_scales_keys_and_a_variation_with_progress() {
         let app = Intrada;
         let mut model = Model::default();
         let _ = app.update(Event::LoadSampleData, &mut model);
 
         let vm = app.rendered(&model);
         let scales = vm.items.iter().find(|i| i.id == "sample-scales").unwrap();
-        assert!(
-            scales.variants.len() >= 3,
-            "the demo exercise carries a keys ladder"
+        let keys: Vec<(&str, Option<u8>)> = scales
+            .keys
+            .iter()
+            .map(|k| (k.label.as_str(), k.latest_score))
+            .collect();
+        assert_eq!(
+            keys,
+            vec![
+                ("C major", Some(8)),
+                ("G major", Some(7)),
+                ("D major", None),
+                ("A major", None),
+                ("E major", None),
+            ]
         );
-        let first = &scales.variants[0];
-        assert!(first.is_solid, "the first demo variation reads as Solid");
-        assert!(first.latest_score.is_some());
+        assert_eq!(scales.variations.len(), 1);
+        assert_eq!(scales.variations[0].latest_score, Some(6));
+        assert_eq!(vm.variations.len(), 4, "the built-ins seed the library");
     }
 
     #[test]
@@ -534,7 +612,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -543,7 +620,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
@@ -574,7 +652,6 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: Some("Beethoven".to_string()),
                     key: None,
-                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
                         bpm: Some(132),
@@ -586,7 +663,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -597,7 +675,6 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: None,
                         bpm: Some(96),
@@ -609,7 +686,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -620,7 +698,6 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Largo".to_string()),
                         bpm: None,
@@ -632,7 +709,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -643,7 +721,6 @@ mod tests {
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -652,7 +729,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -719,7 +797,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -728,7 +805,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -739,7 +817,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -748,7 +825,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -804,7 +882,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -813,7 +890,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -824,7 +902,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -833,7 +910,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -861,7 +939,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["classical".to_string(), "piano".to_string()],
@@ -870,7 +947,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -881,7 +959,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["romantic".to_string(), "piano".to_string()],
@@ -890,7 +967,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -917,7 +995,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
@@ -926,7 +1003,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -961,7 +1039,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
@@ -970,7 +1047,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1000,7 +1078,6 @@ mod tests {
             kind,
             composer: composer.map(str::to_string),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1009,7 +1086,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1047,12 +1125,11 @@ mod tests {
                 kind: ItemKind::Exercise,
                 composer: Some("   ".to_string()),
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec!["  warm-up ".to_string()],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -1068,12 +1145,11 @@ mod tests {
                 kind: ItemKind::Exercise,
                 composer: Some("  Hanon ".to_string()),
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -1091,12 +1167,11 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("   ".to_string()),
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -1117,13 +1192,12 @@ mod tests {
                 title: "Ménuet en Sol".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Dvořák".to_string()),
-                key: Some("ré mineur".to_string()),
-                modality: None,
+                key: crate::domain::key::Key::parse("ré mineur"),
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
                 tags: vec!["日本語タグ".to_string()],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -1132,7 +1206,6 @@ mod tests {
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].title, "Ménuet en Sol");
         assert_eq!(model.items[0].composer, Some("Dvořák".to_string()));
-        assert_eq!(model.items[0].key, Some("ré mineur".to_string()));
         assert_eq!(
             model.items[0].notes,
             Some("Pièce très jolie — «superbe»".to_string())
@@ -1158,8 +1231,7 @@ mod tests {
                 title: format!("Piece {i}"),
                 kind: ItemKind::Piece,
                 composer: Some(format!("Composer {}", i % 100)),
-                key: (i % 3 == 0).then(|| "C Major".to_string()),
-                modality: None,
+                key: (i % 3 == 0).then_some(Key::C_MAJOR),
                 tempo: (i % 5 == 0).then(|| crate::domain::types::Tempo {
                     marking: Some("Allegro".to_string()),
                     bpm: Some(120),
@@ -1173,7 +1245,8 @@ mod tests {
                     .collect(),
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variation_ids: vec![],
+                keys: vec![],
                 sections: vec![],
                 photo_id: None,
                 metre: None,
@@ -1185,8 +1258,7 @@ mod tests {
                 title: format!("Exercise {i}"),
                 kind: ItemKind::Exercise,
                 composer: None,
-                key: (i % 4 == 0).then(|| "G Major".to_string()),
-                modality: None,
+                key: (i % 4 == 0).then(|| Key::parse("G major")).flatten(),
                 tempo: None,
                 notes: None,
                 tags: vec![format!("etag{}", i % 10)],
@@ -1195,7 +1267,8 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variation_ids: vec![],
+                keys: vec![],
                 sections: vec![],
                 photo_id: None,
                 metre: None,
@@ -1227,12 +1300,12 @@ mod tests {
                         position: e,
                         duration_secs: 300,
                         status: EntryStatus::Completed,
-                        plays: vec![VariationPlay {
+                        plays: vec![Play {
                             id: format!("se{s:04}_{e}-play"),
                             seconds: 300,
                             achieved_tempo: (e % 3 == 0).then_some(120),
                             score: (e % 2 == 0).then_some(3),
-                            ..VariationPlay::fixture()
+                            ..Play::fixture()
                         }],
                         ..SetlistEntry::fixture()
                     }
@@ -1247,6 +1320,7 @@ mod tests {
                 session_notes: None,
                 entries,
                 session_score: None,
+                capture_version: None,
             });
         }
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -1334,12 +1408,11 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: Some("New Composer".to_string()),
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
                     photo_id: None,
-                    variant_labels: Vec::new(),
+                    variation_labels: Vec::new(),
                 })),
                 model,
             );
@@ -1397,7 +1470,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1406,7 +1478,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1417,7 +1490,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1426,7 +1498,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1459,13 +1532,14 @@ mod tests {
                     intention: None,
                     planned_duration_secs: None,
                     group_id: None,
-                    planned_variation_id: None,
+                    planned_section_ids: vec![],
+                    planned_variation_ids: vec![],
                     planned_rep_target: None,
-                    plays: vec![VariationPlay {
+                    plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: None,
-                        ..VariationPlay::fixture()
+                        ..Play::fixture()
                     }],
                 },
                 SetlistEntry {
@@ -1480,16 +1554,18 @@ mod tests {
                     intention: None,
                     planned_duration_secs: None,
                     group_id: None,
-                    planned_variation_id: None,
+                    planned_section_ids: vec![],
+                    planned_variation_ids: vec![],
                     planned_rep_target: None,
-                    plays: vec![VariationPlay {
+                    plays: vec![Play {
                         seconds: 900,
                         achieved_tempo: None,
                         score: None,
-                        ..VariationPlay::fixture()
+                        ..Play::fixture()
                     }],
                 },
             ],
+            capture_version: None,
         });
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
 
@@ -1524,7 +1600,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1533,7 +1608,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1564,15 +1640,17 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     seconds: 1800,
                     achieved_tempo: None,
                     score: Some(3),
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
             }],
+            capture_version: None,
         });
 
         // Session 2: newer, score 5
@@ -1596,15 +1674,17 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     seconds: 900,
                     achieved_tempo: None,
                     score: Some(5),
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
             }],
+            capture_version: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -1639,7 +1719,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1648,7 +1727,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1679,15 +1759,17 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     seconds: 1800,
                     achieved_tempo: None,
                     score: None,
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
             }],
+            capture_version: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -1711,7 +1793,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1720,7 +1801,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1752,13 +1834,14 @@ mod tests {
                     intention: None,
                     planned_duration_secs: None,
                     group_id: None,
-                    planned_variation_id: None,
+                    planned_section_ids: vec![],
+                    planned_variation_ids: vec![],
                     planned_rep_target: None,
-                    plays: vec![VariationPlay {
+                    plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: Some(2),
-                        ..VariationPlay::fixture()
+                        ..Play::fixture()
                     }],
                 },
                 SetlistEntry {
@@ -1773,16 +1856,18 @@ mod tests {
                     intention: None,
                     planned_duration_secs: None,
                     group_id: None,
-                    planned_variation_id: None,
+                    planned_section_ids: vec![],
+                    planned_variation_ids: vec![],
                     planned_rep_target: None,
-                    plays: vec![VariationPlay {
+                    plays: vec![Play {
                         seconds: 1800,
                         achieved_tempo: None,
                         score: Some(4),
-                        ..VariationPlay::fixture()
+                        ..Play::fixture()
                     }],
                 },
             ],
+            capture_version: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -1811,7 +1896,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1820,7 +1904,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1851,11 +1936,13 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
                 // A skipped entry records no play, so it never carries a mark.
                 plays: Vec::new(),
             }],
+            capture_version: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -1921,26 +2008,37 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     seconds: 300,
                     achieved_tempo: tempo,
                     score,
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
             }],
+            capture_version: None,
         }
     }
 
-    fn test_variant(id: &str, label: &str, position: usize) -> crate::domain::variant::Variant {
-        crate::domain::variant::Variant {
-            id: id.to_string(),
-            label: label.to_string(),
-            position,
-            updated_at: chrono::Utc::now(),
-            deleted_at: None,
-        }
+    /// The item uses one library variation per label, ids `v0`, `v1`...
+    fn give_variations(
+        item: &mut Item,
+        labels: &[&str],
+    ) -> Vec<crate::domain::variation::Variation> {
+        let rows: Vec<_> = labels
+            .iter()
+            .enumerate()
+            .map(|(i, label)| crate::domain::variation::Variation {
+                id: format!("v{i}"),
+                label: label.to_string(),
+                updated_at: chrono::Utc::now(),
+                deleted_at: None,
+            })
+            .collect();
+        item.variation_ids = rows.iter().map(|v| v.id.clone()).collect();
+        rows
     }
 
     fn make_session_on_variation(
@@ -1950,7 +2048,7 @@ mod tests {
         score: u8,
     ) -> PracticeSession {
         let mut session = make_session(id, item_id, Some(score), None);
-        session.entries[0].plays[0].variation_id = Some(variation_id.to_string());
+        session.entries[0].plays[0].variation_ids = vec![variation_id.to_string()];
         session
     }
 
@@ -2052,15 +2150,17 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: None,
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     seconds: 60,
                     achieved_tempo: None,
                     score: None,
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
             }],
+            capture_version: None,
         };
 
         let summaries = build_practice_summaries(&[mk("s1", earlier), mk("s2", later)]);
@@ -2161,7 +2261,6 @@ mod tests {
             kind,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2170,7 +2269,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -2285,17 +2385,7 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut scales = make_item("ex1", "Scales", ItemKind::Exercise, now);
-        scales.variants = ["C", "G"]
-            .iter()
-            .enumerate()
-            .map(|(position, label)| crate::domain::variant::Variant {
-                id: format!("ex1-{position}"),
-                label: label.to_string(),
-                position,
-                updated_at: now,
-                deleted_at: None,
-            })
-            .collect();
+        model.variations = give_variations(&mut scales, &["Slow", "Dotted rhythms"]).into();
         model.items = vec![make_item("p1", "Sonata", ItemKind::Piece, now), scales].into();
         model.sessions = vec![make_session("s1", "ex1", Some(8), None)].into();
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -2452,32 +2542,81 @@ mod tests {
     }
 
     #[test]
-    fn the_solid_count_counts_the_solid_variations() {
+    fn an_items_variations_read_the_marks_of_the_plays_on_them() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
-        exercise.variants = ["C", "G", "D"]
-            .iter()
-            .enumerate()
-            .map(|(i, label)| test_variant(&format!("v{i}"), label, i))
-            .collect();
+        let library = give_variations(&mut exercise, &["Slow", "Dotted rhythms", "Back to front"]);
         let mut model = Model {
             items: vec![exercise].into(),
+            variations: library.into(),
             ..Default::default()
         };
-        let solid_count = |model: &Model| app.rendered(model).items[0].solid_variation_count;
-        assert_eq!(solid_count(&model), 0, "nothing marked");
+        let marks = |model: &Model| -> Vec<Option<u8>> {
+            app.rendered(model).items[0]
+                .variations
+                .iter()
+                .map(|v| v.latest_score)
+                .collect()
+        };
+        assert_eq!(marks(&model), vec![None, None, None], "nothing marked");
 
         model.sessions = vec![
             make_session_on_variation("s1", "ex1", "v0", 9),
             make_session_on_variation("s2", "ex1", "v1", 3),
-            make_session_on_variation("s3", "ex1", "v2", 8),
         ]
         .into();
+        assert_eq!(marks(&model), vec![Some(9), Some(3), None]);
+    }
+
+    /// A deleted variation leaves every item's list but keeps its row, so the
+    /// plays on it still say what they were (#2246).
+    #[test]
+    fn a_deleted_variation_leaves_the_items_list() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
+        let mut library = give_variations(&mut exercise, &["Slow", "Dotted rhythms"]);
+        library[0].deleted_at = Some(now);
+        let model = Model {
+            items: vec![exercise].into(),
+            variations: library.into(),
+            ..Default::default()
+        };
+
         let vm = app.rendered(&model);
-        let flagged = vm.items[0].variants.iter().filter(|v| v.is_solid).count();
-        assert_eq!(flagged, 2, "v0 and v2 are solid, v1 is not");
-        assert_eq!(solid_count(&model), flagged);
+        let labels: Vec<&str> = vm.items[0]
+            .variations
+            .iter()
+            .map(|v| v.label.as_str())
+            .collect();
+        assert_eq!(labels, ["Dotted rhythms"]);
+        let offered: Vec<&str> = vm.variations.iter().map(|v| v.label.as_str()).collect();
+        assert_eq!(offered, ["Dotted rhythms"]);
+    }
+
+    /// Either spelling counts towards a key's mark (#2106).
+    #[test]
+    fn an_items_keys_read_the_marks_of_plays_in_either_spelling() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
+        exercise.keys = vec![Key::parse("Eb major").unwrap(), Key::C_MAJOR];
+        let mut session = make_session("s1", "ex1", Some(7), None);
+        session.entries[0].plays[0].key = Key::parse("D# major");
+        let model = Model {
+            items: vec![exercise].into(),
+            sessions: vec![session].into(),
+            ..Default::default()
+        };
+
+        let vm = app.rendered(&model);
+        let keys: Vec<(&str, Option<u8>)> = vm.items[0]
+            .keys
+            .iter()
+            .map(|k| (k.label.as_str(), k.latest_score))
+            .collect();
+        assert_eq!(keys, vec![("E\u{266d} major", Some(7)), ("C major", None)]);
     }
 
     #[test]
@@ -2486,10 +2625,11 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
-        exercise.variants = vec![test_variant("v0", "C", 0), test_variant("v1", "G", 1)];
+        let library = give_variations(&mut exercise, &["C", "G"]);
         let plain = make_item("p1", "Sonata", ItemKind::Piece, now);
         let mut model = Model {
             items: vec![exercise, plain].into(),
+            variations: library.into(),
             ..Default::default()
         };
         let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
@@ -2992,6 +3132,7 @@ mod tests {
                 entries: vec![],
                 session_notes: None,
                 session_score: None,
+                capture_version: None,
             },
             PracticeSession {
                 id: "s2".to_string(),
@@ -3002,6 +3143,7 @@ mod tests {
                 entries: vec![],
                 session_notes: None,
                 session_score: None,
+                capture_version: None,
             },
         ]
         .into();
@@ -3249,12 +3391,11 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Bach".to_string()),
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
@@ -3277,7 +3418,6 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: None,
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -3286,7 +3426,8 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variation_ids: vec![],
+                keys: vec![],
                 sections: vec![],
                 photo_id: None,
                 metre: None,
@@ -3311,8 +3452,7 @@ mod tests {
     }
 
     #[test]
-    fn test_add_item_carries_modality() {
-        use crate::domain::item::Modality;
+    fn test_add_item_carries_its_key() {
         let app = Intrada;
         let mut model = Model::default();
 
@@ -3321,92 +3461,61 @@ mod tests {
                 title: "Clair de Lune".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Debussy".to_string()),
-                key: Some("Db".to_string()),
-                modality: Some(Modality::Major),
+                key: Key::parse("Db major"),
                 tempo: None,
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             })),
             &mut model,
         );
 
-        assert_eq!(model.items[0].key.as_deref(), Some("Db"));
-        assert_eq!(model.items[0].modality, Some(Modality::Major));
+        assert_eq!(model.items[0].key, Key::parse("Db major"));
         let vm = app.rendered(&model);
-        assert_eq!(vm.items[0].modality, Some(Modality::Major));
+        assert_eq!(vm.items[0].key_label.as_deref(), Some("D\u{266d} major"));
+        assert_eq!(
+            vm.items[0]
+                .key_selection
+                .as_ref()
+                .map(|s| s.spelling.as_str()),
+            Some("Db")
+        );
     }
 
     #[test]
-    fn test_update_modality_is_three_state() {
-        use crate::domain::item::Modality;
+    fn test_update_key_is_three_state() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut model = Model {
             items: vec![Item {
-                id: "p1".to_string(),
-                title: "Etude".to_string(),
-                kind: ItemKind::Piece,
-                composer: None,
-                key: Some("F#".to_string()),
-                modality: Some(Modality::Major),
-                tempo: None,
-                notes: None,
-                tags: vec![],
-                created_at: now,
-                updated_at: now,
-                linked_exercise_ids: vec![],
-                priority: false,
-                chord_chart: None,
-                variants: vec![],
-                sections: vec![],
-                photo_id: None,
-                metre: None,
+                key: Key::parse("F# major"),
+                ..make_item("p1", "Etude", ItemKind::Piece, now)
             }]
             .into(),
             ..Model::default()
         };
-
-        let update = |m: &mut Model, input: crate::domain::types::UpdateItem| {
+        let update = |m: &mut Model, key: Option<Option<Key>>| {
             let _ = app.update(
                 Event::Item(ItemEvent::Update {
                     id: "p1".to_string(),
-                    input,
+                    input: crate::domain::types::UpdateItem {
+                        key,
+                        ..Default::default()
+                    },
                 }),
                 m,
             );
         };
 
-        // set → Minor
-        update(
-            &mut model,
-            crate::domain::types::UpdateItem {
-                modality: Some(Some(Modality::Minor)),
-                ..Default::default()
-            },
-        );
-        assert_eq!(model.items[0].modality, Some(Modality::Minor));
+        update(&mut model, Some(Key::parse("F# minor")));
+        assert_eq!(model.items[0].key, Key::parse("F# minor"));
 
-        // skip (modality absent) → unchanged
-        update(
-            &mut model,
-            crate::domain::types::UpdateItem {
-                priority: Some(true),
-                ..Default::default()
-            },
-        );
-        assert_eq!(model.items[0].modality, Some(Modality::Minor));
+        update(&mut model, None);
+        assert_eq!(model.items[0].key, Key::parse("F# minor"), "skip leaves it");
 
-        // clear → None
-        update(
-            &mut model,
-            crate::domain::types::UpdateItem {
-                modality: Some(None),
-                ..Default::default()
-            },
-        );
-        assert_eq!(model.items[0].modality, None);
+        update(&mut model, Some(None));
+        assert_eq!(model.items[0].key, None, "clear");
     }
 
     #[test]
@@ -3420,7 +3529,6 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: None,
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -3429,7 +3537,8 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variation_ids: vec![],
+                keys: vec![],
                 sections: vec![],
                 photo_id: None,
                 metre: None,
@@ -3475,7 +3584,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -3484,7 +3592,8 @@ mod tests {
             linked_exercise_ids: vec!["ex-1".to_string()],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -3495,7 +3604,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -3504,7 +3612,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -3542,8 +3651,7 @@ mod tests {
                     title: "Sonata".to_string(),
                     kind: ItemKind::Piece,
                     composer: None,
-                    key: Some("C".to_string()),
-                    modality: None,
+                    key: crate::domain::key::Key::parse("C"),
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
                         bpm: Some(120),
@@ -3559,7 +3667,8 @@ mod tests {
                     ],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -3569,8 +3678,7 @@ mod tests {
                     title: "Scales".to_string(),
                     kind: ItemKind::Exercise,
                     composer: None,
-                    key: Some("G".to_string()),
-                    modality: Some(crate::domain::item::Modality::Minor),
+                    key: Key::parse("G minor"),
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
                         bpm: Some(80),
@@ -3582,7 +3690,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -3593,7 +3702,6 @@ mod tests {
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -3602,7 +3710,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -3613,7 +3722,6 @@ mod tests {
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -3622,7 +3730,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -3644,17 +3753,17 @@ mod tests {
         assert_eq!(piece_view.linked_exercises[0].id, "ex-1", "ex-1 is first");
         assert_eq!(piece_view.linked_exercises[1].id, "ex-2", "ex-2 is second");
         assert_eq!(piece_view.linked_exercises[0].title, "Scales");
-        assert_eq!(piece_view.linked_exercises[0].key, Some("G".to_string()));
+        assert_eq!(piece_view.linked_exercises[0].key, Key::parse("G minor"));
         assert_eq!(
-            piece_view.linked_exercises[0].modality,
-            Some(crate::domain::item::Modality::Minor)
+            piece_view.linked_exercises[0].key_label.as_deref(),
+            Some("G minor")
         );
         assert_eq!(
             piece_view.linked_exercises[0].tempo_marking.as_deref(),
             Some("Allegro")
         );
         assert_eq!(piece_view.linked_exercises[0].tempo_bpm, Some(80));
-        assert_eq!(piece_view.linked_exercises[1].modality, None);
+        assert_eq!(piece_view.linked_exercises[1].key_label, None);
         assert_eq!(piece_view.linked_exercises[1].tempo_bpm, None);
         assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");
 
@@ -4005,13 +4114,14 @@ mod tests {
             intention: None,
             planned_duration_secs: None,
             group_id: group.map(String::from),
-            planned_variation_id: None,
+            planned_section_ids: vec![],
+            planned_variation_ids: vec![],
             planned_rep_target: None,
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 seconds: 300,
                 achieved_tempo: None,
                 score,
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
         }
     }
@@ -4030,6 +4140,7 @@ mod tests {
             session_notes: None,
             session_score: None,
             entries,
+            capture_version: None,
         }
     }
 
@@ -4041,7 +4152,6 @@ mod tests {
             kind,
             composer: composer.map(String::from),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -4050,7 +4160,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -4064,14 +4175,16 @@ mod tests {
         let app = Intrada;
         let mut entry = variant_entry("ex-1", "ex-1-v0", None);
         entry.plays[0].seconds = 250;
-        entry.plays.push(VariationPlay {
+        entry.plays.push(Play {
             id: "play-2".to_string(),
-            variation_id: Some("ex-1-v1".to_string()),
+            variation_ids: vec!["ex-1-v1".to_string()],
             seconds: 0,
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         });
+        let (exercise, library) = exercise_with_variants("ex-1", &["C", "G"]);
         let model = Model {
-            items: vec![exercise_with_variants("ex-1", &["C", "G"])].into(),
+            items: vec![exercise].into(),
+            variations: library.into(),
             session_status: SessionStatus::Active(crate::domain::session::ActiveSession {
                 id: "as1".to_string(),
                 entries: vec![entry],
@@ -4107,38 +4220,44 @@ mod tests {
 
     fn variant_entry(item_id: &str, variant_id: &str, score: Option<u8>) -> SetlistEntry {
         let mut e = ctx_entry(item_id, "Scales", ItemKind::Exercise, score, None);
-        e.planned_variation_id = Some(variant_id.to_string());
-        e.plays[0].variation_id = Some(variant_id.to_string());
+        e.planned_variation_ids = vec![variant_id.to_string()];
+        e.plays[0].variation_ids = vec![variant_id.to_string()];
         e
     }
 
-    fn exercise_with_variants(id: &str, labels: &[&str]) -> Item {
+    fn exercise_with_variants(
+        id: &str,
+        labels: &[&str],
+    ) -> (Item, Vec<crate::domain::variation::Variation>) {
         let mut ex = ctx_item(id, "Scales", ItemKind::Exercise, None);
         let now = chrono::Utc::now();
-        ex.variants = labels
+        let library: Vec<_> = labels
             .iter()
             .enumerate()
-            .map(|(i, l)| crate::domain::item::Variant {
+            .map(|(i, l)| crate::domain::variation::Variation {
                 id: format!("{id}-v{i}"),
                 label: l.to_string(),
-                position: i,
                 updated_at: now,
                 deleted_at: None,
             })
             .collect();
-        ex
+        ex.variation_ids = library.iter().map(|v| v.id.clone()).collect();
+        (ex, library)
     }
 
     fn derived_variants(
         item: &Item,
+        library: &[crate::domain::variation::Variation],
         sessions: &[PracticeSession],
-    ) -> Vec<crate::model::VariantView> {
-        build_variant_views(item, &build_variant_score_index(sessions))
+    ) -> Vec<crate::model::VariationView> {
+        let scored = build_scored_plays(sessions);
+        let plays = scored.get(item.id.as_str()).map_or(&[][..], Vec::as_slice);
+        build_variation_views(item, library, plays)
     }
 
     #[test]
-    fn variant_views_derive_latest_score_and_solidity() {
-        let ex = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
+    fn variation_views_derive_the_latest_score() {
+        let (ex, library) = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
         let t0 = chrono::Utc::now() - chrono::Duration::days(2);
         let t1 = chrono::Utc::now();
         let sessions = vec![
@@ -4153,7 +4272,7 @@ mod tests {
             ),
         ];
 
-        let variations = derived_variants(&ex, &sessions);
+        let variations = derived_variants(&ex, &library, &sessions);
 
         assert_eq!(variations.len(), 3);
         assert_eq!(
@@ -4161,21 +4280,18 @@ mod tests {
             Some(9),
             "latest session wins over older"
         );
-        assert!(variations[0].is_solid, "score >= threshold is solid");
         assert_eq!(variations[1].latest_score, Some(5));
-        assert!(!variations[1].is_solid);
         assert_eq!(
             variations[2].latest_score, None,
             "unpractised variation has no score"
         );
-        assert!(!variations[2].is_solid);
     }
 
     /// The Library row and the practice session's Switch variation sheet read
     /// the same saved-mark caption, written once in the core (#1809).
     #[test]
     fn variant_views_caption_the_saved_mark() {
-        let ex = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
+        let (ex, library) = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
         let now = chrono::Utc::now();
         let sessions = vec![ctx_session(
             "s1",
@@ -4186,17 +4302,17 @@ mod tests {
             ],
         )];
 
-        let captions: Vec<String> = derived_variants(&ex, &sessions)
+        let captions: Vec<String> = derived_variants(&ex, &library, &sessions)
             .into_iter()
             .map(|v| v.caption)
             .collect();
 
-        assert_eq!(captions, ["Solid · 9 of 10", "5 of 10", "Not yet played"]);
+        assert_eq!(captions, ["9 of 10", "5 of 10", "Not yet played"]);
     }
 
     #[test]
     fn variant_views_scope_scores_to_this_item() {
-        let ex = exercise_with_variants("ex-1", &["F"]);
+        let (ex, library) = exercise_with_variants("ex-1", &["F"]);
         let now = chrono::Utc::now();
         // A different item reusing the same variant-id string must not leak in.
         let sessions = vec![ctx_session(
@@ -4204,7 +4320,7 @@ mod tests {
             now,
             vec![variant_entry("other", "ex-1-v0", Some(10))],
         )];
-        let variations = derived_variants(&ex, &sessions);
+        let variations = derived_variants(&ex, &library, &sessions);
         assert_eq!(
             variations[0].latest_score, None,
             "scores are scoped to this item"
@@ -4509,7 +4625,6 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -4518,7 +4633,8 @@ mod tests {
                     linked_exercise_ids: vec!["item-b".to_string()],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -4529,7 +4645,6 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
-                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -4538,7 +4653,8 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: None,
                     metre: None,
@@ -4564,33 +4680,30 @@ mod tests {
     // ── Variation ladder view derivation (#1083 C1) ─────────────────────────
 
     fn laddered_exercise(id: &str) -> Item {
-        use crate::domain::variant::Variant;
         let now = chrono::Utc::now();
         let mut item = make_item(id, "Shells", ItemKind::Exercise, now);
-        item.variants = vec![
-            Variant {
-                id: "v-f".to_string(),
-                label: "F".to_string(),
-                position: 1,
-                updated_at: now,
-                deleted_at: None,
-            },
-            Variant {
-                id: "v-c".to_string(),
-                label: "C".to_string(),
-                position: 0,
-                updated_at: now,
-                deleted_at: None,
-            },
-            Variant {
-                id: "v-g".to_string(),
-                label: "G".to_string(),
-                position: 2,
-                updated_at: now,
-                deleted_at: Some(now),
-            },
-        ];
+        item.variation_ids = vec!["v-c".to_string(), "v-f".to_string(), "v-g".to_string()];
         item
+    }
+
+    /// `v-g` is deleted.
+    fn step_library() -> Vec<crate::domain::variation::Variation> {
+        let now = chrono::Utc::now();
+        [
+            ("v-c", "Slow", None),
+            ("v-f", "Dotted rhythms", None),
+            ("v-g", "Back to front", Some(now)),
+        ]
+        .into_iter()
+        .map(
+            |(id, label, deleted_at)| crate::domain::variation::Variation {
+                id: id.to_string(),
+                label: label.to_string(),
+                updated_at: now,
+                deleted_at,
+            },
+        )
+        .collect()
     }
 
     fn step_session(
@@ -4620,16 +4733,18 @@ mod tests {
                 intention: None,
                 planned_duration_secs: None,
                 group_id: None,
-                planned_variation_id: variant_id.map(str::to_string),
                 planned_rep_target: None,
-                plays: vec![VariationPlay {
+                plays: vec![Play {
                     id: format!("{id}-e1-play"),
-                    variation_id: variant_id.map(str::to_string),
+                    variation_ids: variant_id.map(str::to_string).into_iter().collect(),
                     seconds: 300,
                     score,
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 }],
+                planned_section_ids: vec![],
+                planned_variation_ids: vec![],
             }],
+            capture_version: None,
         }
     }
 
@@ -4638,6 +4753,7 @@ mod tests {
         let mut model = Model {
             items: vec![laddered_exercise("ex-1")].into(),
             sessions: sessions.into(),
+            variations: step_library().into(),
             ..Default::default()
         };
         model.practice_summaries = build_practice_summaries(&model.sessions).into();
@@ -4658,17 +4774,16 @@ mod tests {
     }
 
     #[test]
-    fn view_exposes_live_steps_sorted_by_position_tombstones_excluded() {
+    fn view_exposes_live_variations_in_the_order_chosen_deleted_ones_excluded() {
         let vm = step_view_model(vec![]);
 
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(
-            ex.variants
+            ex.variations
                 .iter()
-                .map(|v| (v.id.as_str(), v.label.as_str(), v.position))
+                .map(|v| (v.id.as_str(), v.label.as_str()))
                 .collect::<Vec<_>>(),
-            vec![("v-c", "C", 0), ("v-f", "F", 1)],
-            "live variations only, in ladder order"
+            vec![("v-c", "Slow"), ("v-f", "Dotted rhythms")],
         );
     }
 
@@ -4696,170 +4811,13 @@ mod tests {
         ]);
 
         let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        let c = ex.variants.iter().find(|v| v.id == "v-c").unwrap();
+        let c = ex.variations.iter().find(|v| v.id == "v-c").unwrap();
         assert_eq!(c.latest_score, Some(7));
         assert_eq!(c.score_history.len(), 2);
         assert_eq!(c.score_history[0].score, 7, "history is newest-first");
-        let f = ex.variants.iter().find(|v| v.id == "v-f").unwrap();
+        let f = ex.variations.iter().find(|v| v.id == "v-f").unwrap();
         assert_eq!(f.latest_score, Some(3));
         assert_eq!(f.score_history.len(), 1);
-    }
-
-    #[test]
-    fn view_marks_solid_steps() {
-        let t0 = chrono::Utc::now();
-        let vm = step_view_model(vec![
-            step_session("s1", "ex-1", Some("v-c"), Some(8), t0),
-            step_session(
-                "s2",
-                "ex-1",
-                Some("v-f"),
-                Some(7),
-                t0 + chrono::Duration::days(1),
-            ),
-        ]);
-
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        let c = ex.variants.iter().find(|v| v.id == "v-c").unwrap();
-        assert!(c.is_solid, "8 of 10 is solid");
-        let f = ex.variants.iter().find(|v| v.id == "v-f").unwrap();
-        assert!(!f.is_solid, "7 of 10 is not yet solid");
-    }
-
-    #[test]
-    fn view_marks_a_ladder_of_key_names_as_keys() {
-        let vm = step_view_model(vec![]);
-
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(ex.ladder_is_keys, "C and F are both keys");
-    }
-
-    #[test]
-    fn view_one_non_key_rung_makes_the_whole_ladder_steps() {
-        let app = Intrada;
-        let mut exercise = laddered_exercise("ex-1");
-        exercise.variants[0].label = "Hands together".to_string();
-        let model = Model {
-            items: vec![exercise].into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(!ex.ladder_is_keys, "one non-key rung and \"keys\" is a lie");
-    }
-
-    /// A rung the user removed is not on screen, so it cannot change the word.
-    #[test]
-    fn view_a_tombstoned_non_key_rung_leaves_the_ladder_reading_as_keys() {
-        let app = Intrada;
-        let mut exercise = laddered_exercise("ex-1");
-        let tombstoned = exercise
-            .variants
-            .iter_mut()
-            .find(|v| v.deleted_at.is_some())
-            .unwrap();
-        tombstoned.label = "Hands together".to_string();
-        let model = Model {
-            items: vec![exercise].into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(ex.ladder_is_keys, "the removed rung is not on the ladder");
-    }
-
-    #[test]
-    fn view_an_item_with_no_ladder_is_not_keys() {
-        let app = Intrada;
-        let model = Model {
-            items: vec![make_item(
-                "p-1",
-                "Clair de Lune",
-                ItemKind::Piece,
-                chrono::Utc::now(),
-            )]
-            .into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
-        assert!(!piece.ladder_is_keys, "no rungs is not a ladder of keys");
-    }
-
-    #[test]
-    fn view_an_exercise_with_live_variations_hides_the_key_field() {
-        let app = Intrada;
-        let model = Model {
-            items: vec![laddered_exercise("ex-1")].into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(
-            !ex.shows_key,
-            "two live rungs, one tombstoned, still hides Key"
-        );
-    }
-
-    #[test]
-    fn view_an_un_laddered_exercise_shows_the_key_field() {
-        let app = Intrada;
-        let model = Model {
-            items: vec![make_item(
-                "ex-1",
-                "Shells",
-                ItemKind::Exercise,
-                chrono::Utc::now(),
-            )]
-            .into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(ex.shows_key, "no rungs, nothing to hide the field for");
-    }
-
-    #[test]
-    fn view_a_piece_shows_the_key_field() {
-        let app = Intrada;
-        let model = Model {
-            items: vec![make_item(
-                "p-1",
-                "Clair de Lune",
-                ItemKind::Piece,
-                chrono::Utc::now(),
-            )]
-            .into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let piece = vm.items.iter().find(|i| i.id == "p-1").unwrap();
-        assert!(piece.shows_key, "a piece never has a ladder to hide it for");
-    }
-
-    /// A tombstoned rung left alone once the last live one goes: the field
-    /// comes back, mirroring `ladder_is_all_keys`'s own tombstone handling.
-    #[test]
-    fn view_an_exercise_with_only_tombstoned_variations_shows_the_key_field() {
-        let app = Intrada;
-        let mut exercise = laddered_exercise("ex-1");
-        for v in &mut exercise.variants {
-            v.deleted_at = Some(chrono::Utc::now());
-        }
-        let model = Model {
-            items: vec![exercise].into(),
-            ..Default::default()
-        };
-
-        let vm = app.rendered(&model);
-        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert!(ex.shows_key, "nothing live on the ladder");
     }
 
     /// Positional bincode has no "absent": a new `LibraryItemView` field that
@@ -4867,9 +4825,17 @@ mod tests {
     #[test]
     fn library_item_view_round_trips_on_the_ffi_bincode_wire() {
         let mut view = LibraryItemView::fixture("ex-1", "Shells", ItemKind::Exercise);
-        view.variants = vec![crate::model::VariantView::fixture("v-c", "C", 0)];
-        view.ladder_is_keys = true;
-        view.shows_key = false;
+        let key = Key::parse("Bb minor").unwrap();
+        view.key = Some(key);
+        view.key_label = Some(key.label());
+        view.variations = vec![crate::model::VariationView::fixture("v-c", "Slow").scored(6)];
+        view.keys = vec![crate::model::ItemKeyView {
+            key,
+            label: key.label(),
+            latest_score: Some(6),
+            caption: "6 of 10".to_string(),
+        }];
+        view.key_selection = crate::domain::key::wheel_selection(&key);
         crate::domain::types::assert_round_trips(view);
     }
 
@@ -4883,10 +4849,8 @@ mod tests {
             chrono::Utc::now(),
         )]);
 
-        assert_eq!(
-            vm.sessions[0].entries[0].plays[0].variation_id.as_deref(),
-            Some("v-c"),
-            "history entries carry their variation through the view"
-        );
+        let play = &vm.sessions[0].entries[0].plays[0];
+        assert_eq!(play.variation_ids, vec!["v-c".to_string()]);
+        assert_eq!(play.label.as_deref(), Some("Slow"));
     }
 }

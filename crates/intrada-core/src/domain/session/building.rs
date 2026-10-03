@@ -26,7 +26,8 @@ pub(super) fn create_entry(
         intention: None,
         planned_duration_secs: None,
         group_id: None,
-        planned_variation_id: None,
+        planned_section_ids: Vec::new(),
+        planned_variation_ids: Vec::new(),
         planned_rep_target: None,
         plays: Vec::new(),
     }
@@ -113,34 +114,36 @@ pub(super) fn set_entry_intention(
     set_planned(model, &entry_id, check, |entry| entry.intention = intention)
 }
 
-pub(super) fn set_entry_variant(
+pub(super) fn set_entry_plan(
     model: &mut Model,
     entry_id: String,
-    variant_id: Option<String>,
+    section_ids: Vec<String>,
+    variation_ids: Vec<String>,
 ) -> Command<Effect, Event> {
     // The plan is a Building-phase thing: once practice starts, the
-    // record is the plays and `SwitchVariation` is what changes it
-    // (#1739 decision 5).
+    // record is the plays and `SwitchPlay` is what changes it (#1739
+    // decision 5).
     if !matches!(model.session_status, SessionStatus::Building(_)) {
-        model.raise_error("A variation can only be planned while building".to_string());
+        model.raise_error("A plan can only be set while building".to_string());
         return crux_core::render::render();
     }
 
-    let Some(entry) = entry_for_variant(model, &entry_id) else {
+    let Some(entry) = entry_for_plan(model, &entry_id) else {
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
 
-    if let Err(e) = validation::validate_entry_variation(entry, &variant_id, model) {
+    if let Err(e) = validation::validate_entry_plan(entry, &section_ids, &variation_ids, model) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
 
-    let Some(entry) = entry_for_variant_mut(model, &entry_id) else {
+    let Some(entry) = entry_for_plan_mut(model, &entry_id) else {
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
-    entry.planned_variation_id = variant_id;
+    entry.planned_section_ids = section_ids;
+    entry.planned_variation_ids = variation_ids;
     model.last_error = None;
     crux_core::render::render()
 }
@@ -264,7 +267,6 @@ fn seed_from_suggestion(model: &mut Model, now: DateTime<Utc>) -> bool {
                 position,
             );
             entry.group_id = Some(group_id.clone());
-            entry.planned_variation_id.clone_from(&suggested.variant_id);
             building.entries.push(entry);
         }
     }
@@ -619,7 +621,7 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
     };
 
     if let Some(entry) = active.entries.first_mut() {
-        open_first_play(entry, &model.items, now);
+        open_first_play(entry, now);
     }
 
     let persist = persist_active(&active);

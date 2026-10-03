@@ -1,7 +1,6 @@
 use super::plays::*;
 use super::*;
 use crate::app::{AppEffect, Effect, Event};
-use crate::domain::item::Item;
 use crate::model::Model;
 use crate::validation;
 use chrono::{DateTime, Utc};
@@ -53,13 +52,8 @@ pub(super) fn next_item(
     let now = active.reflection.take().map_or(now, |draft| draft.now);
 
     if active.current_index >= active.entries.len() - 1 {
-        let (summary, stamp) = transition_to_summary(
-            active,
-            &model.items,
-            now,
-            &reading,
-            CompletionStatus::Completed,
-        );
+        let (summary, stamp) =
+            transition_to_summary(active, now, &reading, CompletionStatus::Completed);
         return finish(model, summary, stamp);
     }
 
@@ -69,13 +63,12 @@ pub(super) fn next_item(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, &model.items, active.current_item_started_at);
+        open_first_play(entry, active.current_item_started_at);
         stamp = close_open_play(entry, now, Some(&reading));
-        freeze_rep_state(entry);
         drop_incidental_play(entry);
     }
 
-    advance(active, &model.items, next_item_started_at);
+    advance(active, next_item_started_at);
     model.last_error = None;
 
     let persist = persist_active(active);
@@ -98,8 +91,7 @@ pub(super) fn skip_item(model: &mut Model, now: DateTime<Utc>) -> Command<Effect
         // exactly as rep state did before plays existed. Time alone
         // does not count here: the clock ran while they decided to skip.
         close_open_play(entry, now, None);
-        freeze_rep_state(entry);
-        entry.plays.retain(VariationPlay::recorded_something);
+        entry.plays.retain(Play::recorded_something);
         // Only a completed entry carries a tempo, and the tempo history
         // reads plays without the entry's status (#1761 rule 7).
         for play in &mut entry.plays {
@@ -122,7 +114,7 @@ pub(super) fn skip_item(model: &mut Model, now: DateTime<Utc>) -> Command<Effect
         return finish(model, summary, TempoStamp::NothingToKeep);
     }
 
-    advance(active, &model.items, now);
+    advance(active, now);
     model.last_error = None;
     persist_active(active)
 }
@@ -138,20 +130,15 @@ pub(super) fn end_session_early(
     };
 
     let now = active.reflection.take().map_or(now, |draft| draft.now);
-    let (summary, stamp) = transition_to_summary(
-        active,
-        &model.items,
-        now,
-        &reading,
-        CompletionStatus::EndedEarly,
-    );
+    let (summary, stamp) =
+        transition_to_summary(active, now, &reading, CompletionStatus::EndedEarly);
     finish(model, summary, stamp)
 }
 
-pub(super) fn switch_variation(
+pub(super) fn switch_play(
     model: &mut Model,
     entry_id: String,
-    variation_id: Option<String>,
+    way: PlayWay,
     now: DateTime<Utc>,
     reading: TempoReading,
 ) -> Command<Effect, Event> {
@@ -164,20 +151,20 @@ pub(super) fn switch_variation(
         return crux_core::render::render();
     }
 
-    let Some(entry) = entry_for_variant(model, &entry_id) else {
+    let Some(entry) = entry_for_plan(model, &entry_id) else {
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
 
-    // Switching to the variation already open writes nothing, so a
-    // stray tap cannot clear the dots (#1739 decision 6). Checked
-    // before capacity, or a full entry could not re-tap its own row.
-    if entry.open_play().map(|p| p.variation_id.as_deref()) == Some(variation_id.as_deref()) {
+    // Switching to the way already open writes nothing, so a stray tap
+    // cannot clear the dots (#1739 decision 6). Checked before capacity,
+    // or a full entry could not re-tap its own row.
+    if entry.open_play().is_some_and(|p| p.is_played(&way)) {
         model.last_error = None;
         return crux_core::render::render();
     }
 
-    if let Err(e) = validation::validate_entry_variation(entry, &variation_id, model) {
+    if let Err(e) = validation::validate_play_way(entry, &way, model) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -195,11 +182,8 @@ pub(super) fn switch_variation(
     };
 
     let stamp = close_open_play(entry, now, Some(&reading));
-    freeze_rep_state(entry);
     let rep_target = entry.planned_rep_target;
-    entry
-        .plays
-        .push(VariationPlay::opened(variation_id, rep_target, now));
+    entry.plays.push(Play::opened(way, rep_target, now));
 
     model.last_error = None;
     let persist = persist_active(active);
@@ -266,12 +250,12 @@ pub(super) fn recover_session(
     crux_core::render::render()
 }
 
-fn advance(active: &mut ActiveSession, items: &[Item], started_at: DateTime<Utc>) {
+fn advance(active: &mut ActiveSession, started_at: DateTime<Utc>) {
     active.current_index += 1;
     active.current_item_started_at = started_at;
     active.reflection = None;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
-        open_first_play(entry, items, started_at);
+        open_first_play(entry, started_at);
     }
 }
 

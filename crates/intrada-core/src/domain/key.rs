@@ -2,6 +2,178 @@ use serde::{Deserialize, Serialize};
 
 use super::item::Modality;
 
+/// A key as one value everywhere (#2106): the written key, a chart's key, an
+/// item's keys and a play's. The spelling is the letter and accidental, so C
+/// sharp stays C sharp; counting and comparing go through `pitch_class`.
+/// `mode: None` is a key written with no mode, and nothing guesses major.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct Key {
+    pub letter: Letter,
+    pub accidental: Accidental,
+    pub mode: Option<Modality>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum Letter {
+    C,
+    D,
+    E,
+    F,
+    G,
+    A,
+    B,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum Accidental {
+    Natural,
+    Sharp,
+    Flat,
+}
+
+impl Letter {
+    fn from_char(c: char) -> Option<Self> {
+        Some(match c.to_ascii_uppercase() {
+            'C' => Self::C,
+            'D' => Self::D,
+            'E' => Self::E,
+            'F' => Self::F,
+            'G' => Self::G,
+            'A' => Self::A,
+            'B' => Self::B,
+            _ => return None,
+        })
+    }
+
+    fn as_char(self) -> char {
+        match self {
+            Self::C => 'C',
+            Self::D => 'D',
+            Self::E => 'E',
+            Self::F => 'F',
+            Self::G => 'G',
+            Self::A => 'A',
+            Self::B => 'B',
+        }
+    }
+
+    fn natural_pitch(self) -> u8 {
+        match self {
+            Self::C => 0,
+            Self::D => 2,
+            Self::E => 4,
+            Self::F => 5,
+            Self::G => 7,
+            Self::A => 9,
+            Self::B => 11,
+        }
+    }
+}
+
+impl Key {
+    pub const C_MAJOR: Key = Key {
+        letter: Letter::C,
+        accidental: Accidental::Natural,
+        mode: Some(Modality::Major),
+    };
+
+    /// What musicians type: "Eb", "E flat major", "F-sharp minor", "C♯". A
+    /// chord symbol ("F#m") and modes beyond major and minor (#830) are refused.
+    pub fn parse(raw: &str) -> Option<Key> {
+        let ascii = raw.replace('\u{266F}', "#").replace('\u{266D}', "b");
+        let lower = ascii.trim().to_ascii_lowercase();
+        let (rest, mode) = strip_mode(&lower);
+        let mut chars = rest.trim_end().chars();
+        let letter = Letter::from_char(chars.next()?)?;
+        let sign = chars.as_str().trim_start();
+        let sign = sign.strip_prefix('-').map_or(sign, str::trim_start);
+        let accidental = match sign {
+            "" => Accidental::Natural,
+            "#" | "sharp" => Accidental::Sharp,
+            "b" | "flat" => Accidental::Flat,
+            _ => return None,
+        };
+        Some(Key {
+            letter,
+            accidental,
+            mode,
+        })
+    }
+
+    pub fn pitch_class(&self) -> u8 {
+        let natural = self.letter.natural_pitch();
+        match self.accidental {
+            Accidental::Natural => natural,
+            Accidental::Sharp => (natural + 1) % 12,
+            Accidental::Flat => (natural + 11) % 12,
+        }
+    }
+
+    /// Both spellings are one key: E flat major and D sharp major agree.
+    pub fn same_key(&self, other: &Key) -> bool {
+        self.pitch_class() == other.pitch_class() && self.mode == other.mode
+    }
+
+    /// The tonic as stored and as the wheel names it: "C", "Eb", "F#".
+    pub fn spelling(&self) -> String {
+        let sign = match self.accidental {
+            Accidental::Natural => "",
+            Accidental::Sharp => "#",
+            Accidental::Flat => "b",
+        };
+        format!("{}{sign}", self.letter.as_char())
+    }
+
+    /// As the musician reads it: "E♭ major", "F♯ minor", "C".
+    pub fn label(&self) -> String {
+        let sign = match self.accidental {
+            Accidental::Natural => "",
+            Accidental::Sharp => "\u{266F}",
+            Accidental::Flat => "\u{266D}",
+        };
+        let tonic = format!("{}{sign}", self.letter.as_char());
+        match self.mode {
+            Some(Modality::Major) => format!("{tonic} major"),
+            Some(Modality::Minor) => format!("{tonic} minor"),
+            None => tonic,
+        }
+    }
+}
+
+/// The trailing mode word, if any, with what comes before it.
+fn strip_mode(lower: &str) -> (&str, Option<Modality>) {
+    if let Some(rest) = lower.strip_suffix("major") {
+        (rest, Some(Modality::Major))
+    } else if let Some(rest) = lower.strip_suffix("minor") {
+        (rest, Some(Modality::Minor))
+    } else {
+        (lower, None)
+    }
+}
+
+/// The item's `key` and `modality` columns into a key (#2106). A mode word in
+/// the text, written before the two were split (#2074), wins over the column.
+/// Text the core cannot read is `None`; the shell keeps it in the column.
+pub fn key_from_stored(text: Option<&str>, modality: Option<Modality>) -> Option<Key> {
+    let key = Key::parse(text?)?;
+    Some(Key {
+        mode: key.mode.or(modality),
+        ..key
+    })
+}
+
+/// The two columns a key is stored in.
+pub fn key_to_stored(key: &Key) -> (String, Option<Modality>) {
+    (key.spelling(), key.mode)
+}
+
+// ── The wheel ─────────────────────────────────────────────────────────
+
 const CIRCLE_MAJOR: [&str; 12] = [
     "C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F",
 ];
@@ -19,12 +191,10 @@ pub struct KeyWheelSelection {
     pub spelling: String,
 }
 
-/// A legacy freeform key ("F# major") is parsed so it still lights its wedge
-/// and heals into tonic plus modality on the next save (#2074).
-pub fn wheel_selection(key: &str, modality: Option<Modality>) -> Option<KeyWheelSelection> {
-    modality
-        .and_then(|mode| ring_for(key, mode))
-        .or_else(|| parse_freeform(key))
+/// The spoke a key lights. A key with no mode, or a spelling off the wheel
+/// (E sharp major), lights none.
+pub fn wheel_selection(key: &Key) -> Option<KeyWheelSelection> {
+    ring_for(&key.spelling(), key.mode?)
 }
 
 /// One spoke of the picker's wheel: the circle's default spelling and, on the
@@ -60,25 +230,20 @@ pub fn wheel() -> Vec<KeyWedge> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyTap {
-    pub tonic: String,
-    pub modality: Modality,
+    pub key: Key,
     pub flipped: bool,
 }
 
 /// Tapping the selected enharmonic spoke flips its spelling; any other tap
 /// selects the spoke's default. `None` for a ring off the wheel.
-pub fn next_on_tap(
-    current_key: &str,
-    current_modality: Option<Modality>,
-    ring: u8,
-    mode: Modality,
-) -> Option<KeyTap> {
+pub fn next_on_tap(current: Option<&Key>, ring: u8, mode: Modality) -> Option<KeyTap> {
     let ring = usize::from(ring);
     let primary = match mode {
         Modality::Major => CIRCLE_MAJOR.get(ring)?,
         Modality::Minor => CIRCLE_MINOR.get(ring)?,
     };
-    let flip_to = wheel_selection(current_key, current_modality)
+    let flip_to = current
+        .and_then(wheel_selection)
         .filter(|sel| usize::from(sel.ring) == ring && sel.modality == mode)
         .and_then(|sel| {
             enharmonic_alt(ring, mode).map(|alt| {
@@ -89,9 +254,12 @@ pub fn next_on_tap(
                 }
             })
         });
+    let tonic = Key::parse(flip_to.unwrap_or(primary))?;
     Some(KeyTap {
-        tonic: flip_to.unwrap_or(primary).to_string(),
-        modality: mode,
+        key: Key {
+            mode: Some(mode),
+            ..tonic
+        },
         flipped: flip_to.is_some(),
     })
 }
@@ -108,108 +276,180 @@ fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
     }
 }
 
-fn ring_for(tonic: &str, mode: Modality) -> Option<KeyWheelSelection> {
-    let spelling = normalise_tonic(tonic)?;
+fn ring_for(spelling: &str, mode: Modality) -> Option<KeyWheelSelection> {
     let circle = match mode {
         Modality::Major => &CIRCLE_MAJOR,
         Modality::Minor => &CIRCLE_MINOR,
     };
     (0..12)
-        .find(|&ring| circle[ring] == spelling || enharmonic_alt(ring, mode) == Some(&spelling))
+        .find(|&ring| circle[ring] == spelling || enharmonic_alt(ring, mode) == Some(spelling))
         .map(|ring| KeyWheelSelection {
             ring: ring as u8,
             modality: mode,
-            spelling,
+            spelling: spelling.to_string(),
         })
-}
-
-fn parse_freeform(raw: &str) -> Option<KeyWheelSelection> {
-    let ascii = raw.trim().replace('\u{266F}', "#").replace('\u{266D}', "b");
-    let lower = ascii.to_ascii_lowercase();
-    let (mode, tonic) = match lower.strip_suffix("minor") {
-        Some(tonic) => (Modality::Minor, tonic),
-        None => (Modality::Major, lower.strip_suffix("major")?),
-    };
-    ring_for(&ascii[..tonic.len()], mode)
-}
-
-fn normalise_tonic(raw: &str) -> Option<String> {
-    let mut chars = raw.trim().chars();
-    let letter = chars.next()?.to_ascii_uppercase();
-    if !('A'..='G').contains(&letter) {
-        return None;
-    }
-    let accidental = match (chars.next(), chars.next()) {
-        (None, _) => "",
-        (Some('#'), None) => "#",
-        (Some('b' | 'B'), None) => "b",
-        _ => return None,
-    };
-    Some(format!("{letter}{accidental}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Accidental::{Flat, Natural, Sharp};
+    use Modality::{Major, Minor};
 
-    fn sel(ring: u8, modality: Modality, spelling: &str) -> Option<KeyWheelSelection> {
-        Some(KeyWheelSelection {
-            ring,
-            modality,
-            spelling: spelling.to_string(),
+    fn key(letter: Letter, accidental: Accidental, mode: Option<Modality>) -> Option<Key> {
+        Some(Key {
+            letter,
+            accidental,
+            mode,
         })
     }
 
+    /// Everything `is_key_label` accepted as a step, every stored key text the
+    /// wheel and the freeform field wrote, and what musicians type instead.
     #[test]
-    fn stored_keys_land_on_their_wedge() {
-        use Modality::{Major, Minor};
-        let cases: &[(&str, Option<Modality>, Option<KeyWheelSelection>)] = &[
-            ("C", Some(Major), sel(0, Major, "C")),
-            ("A", Some(Minor), sel(0, Minor, "A")),
-            ("F#", Some(Major), sel(6, Major, "F#")),
-            ("Gb", Some(Major), sel(6, Major, "Gb")),
-            ("Eb", Some(Minor), sel(6, Minor, "Eb")),
-            ("Cb", Some(Major), sel(5, Major, "Cb")),
-            ("Ab", Some(Minor), sel(5, Minor, "Ab")),
-            ("f#", Some(Major), sel(6, Major, "F#")),
-            (" db ", Some(Major), sel(7, Major, "Db")),
-            ("F# major", None, sel(6, Major, "F#")),
-            ("A minor", None, sel(0, Minor, "A")),
-            ("c MAJOR", None, sel(0, Major, "C")),
-            ("f# MINOR", None, sel(3, Minor, "F#")),
-            ("C\u{266F} minor", None, sel(4, Minor, "C#")),
-            ("B\u{266D} major", None, sel(10, Major, "Bb")),
-            ("Gb major", None, sel(6, Major, "Gb")),
-            ("F# major", Some(Minor), sel(6, Major, "F#")),
-            ("", None, None),
-            ("   ", None, None),
-            ("", Some(Major), None),
-            ("Lydian", None, None),
-            ("H major", None, None),
-            ("C## major", None, None),
-            ("C dorian", None, None),
-            ("F#", None, None),
-            ("E#", Some(Major), None),
-            ("\u{130} major", None, None),
+    fn parse_reads_what_musicians_type() {
+        let cases: &[(&str, Option<Key>)] = &[
+            ("C", key(Letter::C, Natural, None)),
+            ("F#", key(Letter::F, Sharp, None)),
+            ("Bb", key(Letter::B, Flat, None)),
+            ("F\u{266F}", key(Letter::F, Sharp, None)),
+            ("B\u{266D}", key(Letter::B, Flat, None)),
+            ("c", key(Letter::C, Natural, None)),
+            (" D ", key(Letter::D, Natural, None)),
+            ("b", key(Letter::B, Natural, None)),
+            ("bb", key(Letter::B, Flat, None)),
+            ("C major", key(Letter::C, Natural, Some(Major))),
+            ("f# minor", key(Letter::F, Sharp, Some(Minor))),
+            ("D\u{266F} major", key(Letter::D, Sharp, Some(Major))),
+            ("G# major", key(Letter::G, Sharp, Some(Major))),
+            ("Db minor", key(Letter::D, Flat, Some(Minor))),
+            ("E flat major", key(Letter::E, Flat, Some(Major))),
+            ("F sharp minor", key(Letter::F, Sharp, Some(Minor))),
+            ("A flat", key(Letter::A, Flat, None)),
+            ("c sharp", key(Letter::C, Sharp, None)),
+            ("E-flat major", key(Letter::E, Flat, Some(Major))),
+            ("F-sharp minor", key(Letter::F, Sharp, Some(Minor))),
+            ("c MAJOR", key(Letter::C, Natural, Some(Major))),
+            ("Gb major", key(Letter::G, Flat, Some(Major))),
+            ("E#", key(Letter::E, Sharp, None)),
+            ("Root position", None),
+            ("1st inversion", None),
+            ("Hands together", None),
+            ("Variation 1", None),
+            ("Am", None),
+            ("F#m", None),
+            ("C dorian", None),
+            ("G mixolydian", None),
+            ("C/E", None),
+            ("H", None),
+            ("H major", None),
+            ("C## major", None),
+            ("", None),
+            ("   ", None),
+            ("major", None),
+            ("Lydian", None),
+            ("E flatten major", None),
+            ("F sharpish minor", None),
+            ("r\u{e9} mineur", None),
+            ("\u{130} major", None),
         ];
-        for (key, modality, expected) in cases {
+        for (raw, expected) in cases {
+            assert_eq!(&Key::parse(raw), expected, "{raw:?}");
+        }
+    }
+
+    #[test]
+    fn enharmonic_spellings_are_one_key_and_keep_their_spelling() {
+        let pairs = [
+            ("Eb major", "D# major"),
+            ("F# major", "Gb major"),
+            ("C# minor", "Db minor"),
+            ("B", "Cb"),
+            ("E#", "F"),
+        ];
+        for (a, b) in pairs {
+            let (a, b) = (Key::parse(a).unwrap(), Key::parse(b).unwrap());
+            assert!(a.same_key(&b), "{a:?} and {b:?}");
+            assert_ne!(a.spelling(), b.spelling());
+        }
+        let e_flat_major = Key::parse("Eb major").unwrap();
+        assert!(!e_flat_major.same_key(&Key::parse("Eb minor").unwrap()));
+        assert!(!e_flat_major.same_key(&Key::parse("Eb").unwrap()));
+        assert!(!e_flat_major.same_key(&Key::parse("E major").unwrap()));
+    }
+
+    #[test]
+    fn a_key_reads_with_its_signs() {
+        assert_eq!(Key::parse("Eb major").unwrap().label(), "E\u{266D} major");
+        assert_eq!(Key::parse("f# minor").unwrap().label(), "F\u{266F} minor");
+        assert_eq!(Key::parse("c").unwrap().label(), "C");
+        assert_eq!(Key::parse("c sharp").unwrap().spelling(), "C#");
+    }
+
+    /// What the wheel and the freeform field left in the two columns.
+    #[test]
+    fn stored_keys_read_back() {
+        let cases: &[(Option<&str>, Option<Modality>, Option<Key>)] = &[
+            (Some("C"), Some(Major), key(Letter::C, Natural, Some(Major))),
+            (Some("Eb"), Some(Minor), key(Letter::E, Flat, Some(Minor))),
+            (Some("f#"), Some(Major), key(Letter::F, Sharp, Some(Major))),
+            (Some(" db "), Some(Major), key(Letter::D, Flat, Some(Major))),
+            (Some("F#"), None, key(Letter::F, Sharp, None)),
+            (Some("F# major"), None, key(Letter::F, Sharp, Some(Major))),
+            (
+                Some("F# major"),
+                Some(Minor),
+                key(Letter::F, Sharp, Some(Major)),
+            ),
+            (
+                Some("B\u{266D} major"),
+                None,
+                key(Letter::B, Flat, Some(Major)),
+            ),
+            (Some("C dorian"), None, None),
+            (Some(""), Some(Major), None),
+            (None, Some(Major), None),
+            (None, None, None),
+        ];
+        for (text, modality, expected) in cases {
             assert_eq!(
-                &wheel_selection(key, *modality),
+                &key_from_stored(*text, *modality),
                 expected,
-                "{key:?} with {modality:?}"
+                "{text:?} {modality:?}"
             );
         }
     }
 
-    fn tap(key: &str, modality: Option<Modality>, ring: u8, mode: Modality) -> (String, bool) {
-        let t = next_on_tap(key, modality, ring, mode).expect("ring on the wheel");
-        assert_eq!(t.modality, mode);
-        (t.tonic, t.flipped)
+    #[test]
+    fn every_wheel_spoke_round_trips_through_its_columns() {
+        for wedge in wheel() {
+            for spelling in std::iter::once(wedge.primary).chain(wedge.alt) {
+                let tapped = key_from_stored(Some(spelling), Some(wedge.modality)).unwrap();
+                let (text, modality) = key_to_stored(&tapped);
+                assert_eq!(text, spelling);
+                assert_eq!(key_from_stored(Some(&text), modality), Some(tapped));
+                let sel = wheel_selection(&tapped).expect("a spoke lights");
+                assert_eq!((sel.ring, sel.modality), (wedge.ring, wedge.modality));
+                assert_eq!(sel.spelling, spelling);
+            }
+        }
+    }
+
+    #[test]
+    fn a_key_with_no_mode_or_off_the_wheel_lights_no_spoke() {
+        assert_eq!(wheel_selection(&Key::parse("F#").unwrap()), None);
+        assert_eq!(wheel_selection(&Key::parse("E# major").unwrap()), None);
+    }
+
+    fn tap(current: Option<&str>, ring: u8, mode: Modality) -> (String, bool) {
+        let current = current.map(|c| Key::parse(c).unwrap());
+        let t = next_on_tap(current.as_ref(), ring, mode).expect("ring on the wheel");
+        assert_eq!(t.key.mode, Some(mode));
+        (t.key.spelling(), t.flipped)
     }
 
     #[test]
     fn a_second_tap_on_an_enharmonic_spoke_flips_its_spelling() {
-        use Modality::{Major, Minor};
         let cases: &[(u8, Modality, &str, &str)] = &[
             (5, Major, "B", "Cb"),
             (6, Major, "Gb", "F#"),
@@ -219,18 +459,15 @@ mod tests {
             (7, Minor, "Bb", "A#"),
         ];
         for &(ring, mode, primary, alt) in cases {
+            let word = if mode == Major { "major" } else { "minor" };
+            assert_eq!(tap(None, ring, mode), (primary.into(), false));
             assert_eq!(
-                tap("", None, ring, mode),
-                (primary.into(), false),
-                "{ring} {mode:?}"
-            );
-            assert_eq!(
-                tap(primary, Some(mode), ring, mode),
+                tap(Some(&format!("{primary} {word}")), ring, mode),
                 (alt.into(), true),
                 "{ring} {mode:?}"
             );
             assert_eq!(
-                tap(alt, Some(mode), ring, mode),
+                tap(Some(&format!("{alt} {word}")), ring, mode),
                 (primary.into(), true),
                 "{ring} {mode:?}"
             );
@@ -239,14 +476,13 @@ mod tests {
 
     #[test]
     fn other_taps_select_the_spokes_default() {
-        use Modality::{Major, Minor};
-        assert_eq!(tap("C", Some(Major), 0, Major), ("C".into(), false));
-        assert_eq!(tap("C", Some(Major), 1, Major), ("G".into(), false));
-        assert_eq!(tap("F#", Some(Major), 6, Minor), ("Eb".into(), false));
-        assert_eq!(tap("D#", Some(Minor), 7, Minor), ("Bb".into(), false));
-        assert_eq!(tap("F# major", None, 6, Major), ("Gb".into(), true));
-        assert_eq!(next_on_tap("C", Some(Major), 12, Major), None);
-        assert_eq!(next_on_tap("A", Some(Minor), 12, Minor), None);
+        assert_eq!(tap(Some("C major"), 0, Major), ("C".into(), false));
+        assert_eq!(tap(Some("C major"), 1, Major), ("G".into(), false));
+        assert_eq!(tap(Some("F# major"), 6, Minor), ("Eb".into(), false));
+        assert_eq!(tap(Some("D# minor"), 7, Minor), ("Bb".into(), false));
+        assert_eq!(tap(Some("F#"), 6, Major), ("Gb".into(), false));
+        assert_eq!(next_on_tap(None, 12, Major), None);
+        assert_eq!(next_on_tap(None, 12, Minor), None);
     }
 
     #[test]
@@ -254,35 +490,12 @@ mod tests {
         let wedges = wheel();
         assert_eq!(wedges.len(), 24);
         for (i, w) in wedges.iter().enumerate() {
-            let mode = if i < 12 {
-                Modality::Major
-            } else {
-                Modality::Minor
-            };
+            let mode = if i < 12 { Major } else { Minor };
             assert_eq!((w.ring as usize, w.modality), (i % 12, mode));
         }
         let alts: Vec<_> = wedges.iter().filter_map(|w| w.alt).collect();
         assert_eq!(alts, ["Cb", "F#", "C#", "Ab", "D#", "A#"]);
         assert_eq!(wedges[6].primary, "Gb");
         assert_eq!(wedges[18].primary, "Eb");
-    }
-
-    #[test]
-    fn every_wedge_spelling_round_trips() {
-        for mode in [Modality::Major, Modality::Minor] {
-            let circle = match mode {
-                Modality::Major => CIRCLE_MAJOR,
-                Modality::Minor => CIRCLE_MINOR,
-            };
-            for (ring, tonic) in circle.iter().enumerate() {
-                assert_eq!(
-                    wheel_selection(tonic, Some(mode)),
-                    sel(ring as u8, mode, tonic)
-                );
-                if let Some(alt) = enharmonic_alt(ring, mode) {
-                    assert_eq!(wheel_selection(alt, Some(mode)), sel(ring as u8, mode, alt));
-                }
-            }
-        }
     }
 }

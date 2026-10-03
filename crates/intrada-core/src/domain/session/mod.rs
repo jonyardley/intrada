@@ -1,5 +1,6 @@
 use crate::app::{Effect, Event};
 use crate::domain::item::ItemKind;
+use crate::domain::key::Key;
 use crate::domain::metre::Metre;
 use crate::model::Model;
 use crate::validation;
@@ -34,7 +35,6 @@ pub enum CompletionStatus {
 }
 
 /// A single action in the rep history sequence.
-///
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -43,60 +43,102 @@ pub enum RepAction {
     Missed,
     /// Successful rep: count incremented.
     Success,
+    /// Reverses the last got it or miss still standing, so a correction is
+    /// never recorded as a failure (#2107). Appended last.
+    Undo,
 }
 
-/// One tap on the pass counter and when it landed. Sequence alone cannot tell
-/// a steady ten from a hard-won one (#1367).
+/// One tap on the pass counter, when it landed and what the click was doing.
+/// Sequence alone cannot tell a steady ten from a hard-won one (#1367). Only a
+/// tap with the click sounding is tempo evidence (T16); `None` on taps from
+/// before #2107, and `tempo: None` when the setting gave no crotchet tempo.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct RepEvent {
     pub action: RepAction,
     pub at: DateTime<Utc>,
+    pub tempo: Option<u16>,
+    pub click_sounding: Option<bool>,
+}
+
+/// Where the tempo rested during a play, in crotchets (#2107).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct TempoChange {
+    pub at: DateTime<Utc>,
+    pub tempo: u16,
+    pub click_sounding: bool,
 }
 
 // ── Domain Types ───────────────────────────────────────────────────────
 
-/// One stretch of an item spent on one variation (#1739): what was played,
-/// as against `SetlistEntry::planned_variation_id`, which is what was planned.
-/// Switching mid item closes the open play and opens another, so an entry
-/// practised in C and then D holds two.
+/// One stretch of an item played one way (#1739, #2246): what was played, as
+/// against the entry's plan. Switching mid item closes the open play and opens
+/// another, so an entry practised in C and then D holds two.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct VariationPlay {
+pub struct Play {
     pub id: String,
-    /// A live variant of the entry's item; `None` means unattributed, which is
-    /// what a piece, and an exercise with no variations, always records.
-    pub variation_id: Option<String>,
+    /// `None` is the whole piece.
+    pub section_id: Option<String>,
+    /// `None` is the written key, or no key.
+    pub key: Option<Key>,
+    /// Library variations; empty is plain.
+    pub variation_ids: Vec<String>,
     pub started_at: DateTime<Utc>,
     pub seconds: u64,
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
-    pub rep_target_reached: Option<bool>,
     pub rep_history: Option<Vec<RepEvent>>,
+    pub tempo_changes: Vec<TempoChange>,
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
     pub score: Option<u8>,
 }
 
-impl VariationPlay {
-    pub fn opened(
-        variation_id: Option<String>,
-        rep_target: Option<u8>,
-        started_at: DateTime<Utc>,
-    ) -> Self {
+/// How a play is played: the part of the item, the key and the variations.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct PlayWay {
+    pub section_id: Option<String>,
+    pub key: Option<Key>,
+    pub variation_ids: Vec<String>,
+}
+
+impl Play {
+    pub fn opened(way: PlayWay, rep_target: Option<u8>, started_at: DateTime<Utc>) -> Self {
         Self {
             id: ulid::Ulid::generate().to_string(),
-            variation_id,
+            section_id: way.section_id,
+            key: way.key,
+            variation_ids: way.variation_ids,
             started_at,
             seconds: 0,
             rep_target,
             rep_count: None,
-            rep_target_reached: None,
             rep_history: None,
+            tempo_changes: Vec::new(),
             achieved_tempo: None,
             click_pattern: None,
             score: None,
         }
+    }
+
+    /// The whole item, no variations; any key. The piece's own score reads
+    /// only these (#50 decision 6).
+    pub fn is_plain_run_through(&self) -> bool {
+        self.section_id.is_none() && self.variation_ids.is_empty()
+    }
+
+    /// The same section, key spelling and set of variations, in any order.
+    pub fn is_played(&self, way: &PlayWay) -> bool {
+        let sorted = |ids: &[String]| {
+            let mut ids = ids.to_vec();
+            ids.sort();
+            ids
+        };
+        self.section_id == way.section_id
+            && self.key == way.key
+            && sorted(&self.variation_ids) == sorted(&way.variation_ids)
     }
 
     /// A mark or a banked repetition. Time alone is not a record: the clock
@@ -132,36 +174,37 @@ pub struct SetlistEntry {
     /// its related exercises share one `group_id`. A block is the contiguous run
     /// of entries with the same id; `None` = standalone.
     pub group_id: Option<String>,
-    /// The variation the builder planned to practise; the plan, not the record
-    /// (#1739 decision 5). `None` = no plan. Dropped server-side until the sync
-    /// engine, like `group_id` (invariant 6 scoped).
-    pub planned_variation_id: Option<String>,
-    /// The repetition target set in the builder, a plan on the same footing as
-    /// `planned_variation_id`. Every play the entry opens starts from it, so a
-    /// switch redraws the same number of slots for the new variation.
+    /// The section the builder planned, at most one for now (#2246); a list so
+    /// segments (#2315) need no second shape. The plan, not the record:
+    /// planned against played is the clearest sign of avoiding a hard part.
+    pub planned_section_ids: Vec<String>,
+    pub planned_variation_ids: Vec<String>,
+    /// The repetition target set in the builder. Every play the entry opens
+    /// starts from it, so a switch redraws the same number of slots.
     pub planned_rep_target: Option<u8>,
     /// What was actually practised, in order. Empty for an entry never
     /// attempted; every practised entry has at least one, a piece included
     /// (#1739 decision 3).
-    pub plays: Vec<VariationPlay>,
+    pub plays: Vec<Play>,
 }
 
 impl SetlistEntry {
-    pub fn open_play(&self) -> Option<&VariationPlay> {
+    pub fn open_play(&self) -> Option<&Play> {
         self.plays.last()
     }
 
-    pub fn open_play_mut(&mut self) -> Option<&mut VariationPlay> {
+    pub fn open_play_mut(&mut self) -> Option<&mut Play> {
         self.plays.last_mut()
     }
 
     /// The one place several marks collapse into one (#1739 decision 9): the
-    /// mean of the plays that carry a score, rounded to nearest. Per-variation
-    /// history reads the plays and never this.
+    /// mean of the plain full run-throughs that carry a score, rounded to
+    /// nearest (#2246). A section or a variation is not the piece.
     pub fn score_summary(&self) -> Option<u8> {
         let scored: Vec<u16> = self
             .plays
             .iter()
+            .filter(|p| p.is_plain_run_through())
             .filter_map(|p| p.score)
             .map(u16::from)
             .collect();
@@ -175,17 +218,19 @@ impl SetlistEntry {
 }
 
 #[cfg(test)]
-impl VariationPlay {
+impl Play {
     pub(crate) fn fixture() -> Self {
         Self {
             id: "play-1".to_string(),
-            variation_id: None,
+            section_id: None,
+            key: None,
+            variation_ids: Vec::new(),
             started_at: DateTime::<Utc>::from_timestamp(0, 0).expect("epoch"),
             seconds: 60,
             rep_target: None,
             rep_count: None,
-            rep_target_reached: None,
             rep_history: None,
+            tempo_changes: Vec::new(),
             achieved_tempo: None,
             click_pattern: None,
             score: None,
@@ -208,7 +253,8 @@ impl SetlistEntry {
             intention: None,
             planned_duration_secs: None,
             group_id: None,
-            planned_variation_id: None,
+            planned_section_ids: Vec::new(),
+            planned_variation_ids: Vec::new(),
             planned_rep_target: None,
             plays: Vec::new(),
         }
@@ -228,7 +274,14 @@ pub struct PracticeSession {
     pub completion_status: CompletionStatus,
     #[serde(default)]
     pub session_score: Option<u8>,
+    /// What this record captures, stamped `CAPTURE_VERSION` on every save so
+    /// later reads know which fields to trust; `None` before #2246.
+    #[serde(default)]
+    pub capture_version: Option<u32>,
 }
+
+/// 1: plays carry a section, a key and variations, taps their tempo (#2246).
+pub const CAPTURE_VERSION: u32 = 1;
 
 /// What the click was doing at the instant a play closed. Facts only: the
 /// core rules on what they evidence (design-principles T16, #1761).
@@ -328,15 +381,15 @@ pub struct ActiveSession {
     pub reflection: Option<ReflectionDraft>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 4;
+const RETIRED_BLOB_VERSION_MAX: u32 = 5;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 4 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 5;
+    /// 5 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 6;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -380,14 +433,13 @@ pub enum SessionEvent {
         entry_id: String,
         intention: Option<String>,
     },
-    /// Plan which variation an entry will be practised on; `None` clears
-    /// (#1083, narrowed by #1739 decision 5). Building phase only: once
-    /// practice starts the record is the plays, and `SwitchVariation` is what
-    /// changes it. The variation must be a live variant of the entry's item.
-    /// Local-first only until sync.
-    SetEntryVariant {
+    /// Plan the section (at most one) and the variations an entry will be
+    /// practised on; empty lists clear (#2246). Building phase only: once
+    /// practice starts the record is the plays, and `SwitchPlay` changes it.
+    SetEntryPlan {
         entry_id: String,
-        variant_id: Option<String>,
+        section_ids: Vec<String>,
+        variation_ids: Vec<String>,
     },
     /// Set or clear the rep target for an entry during building phase.
     /// `None` disables the counter; `Some(n)` enables it with target `n`.
@@ -505,21 +557,25 @@ pub enum SessionEvent {
         now: DateTime<Utc>,
         reading: TempoReading,
     },
-    /// Bank a pass on the current entry (capped at target). The first tap on
-    /// an untouched entry writes the target too; see `record_rep`.
+    /// Bank a pass on the current entry, past the target too (#2107). The
+    /// first tap on an untouched entry writes the target; see `record_rep`.
     RepGotIt {
         now: DateTime<Utc>,
+        reading: TempoReading,
     },
     /// Step back a pass on the current entry (floor 0).
     RepMissed {
         now: DateTime<Utc>,
+        reading: TempoReading,
     },
-    /// Close the open play and open another on `variation_id` (#1739 decision
-    /// 6). Switching to the variation already open writes nothing, so a stray
-    /// tap cannot reset the repetition counter. Active phase only.
-    SwitchVariation {
+    /// Close the open play and open another played this way (#1739 decision
+    /// 6, #2246). Changing nothing writes nothing, so a stray tap cannot reset
+    /// the repetition counter. Active phase only.
+    SwitchPlay {
         entry_id: String,
-        variation_id: Option<String>,
+        section_id: Option<String>,
+        key: Option<Key>,
+        variation_ids: Vec<String>,
         now: DateTime<Utc>,
         reading: TempoReading,
     },
@@ -574,6 +630,23 @@ pub enum SessionEvent {
     UpdateSessionScore {
         score: Option<u8>,
     },
+
+    // === Active Phase, appended (#2107) ===
+    /// Reverse the last got it or miss still standing on the open play.
+    RepUndo {
+        now: DateTime<Utc>,
+        reading: TempoReading,
+    },
+    /// The click's tempo moved. A change under two seconds after the last,
+    /// with no tap between, replaces it, so a stepper climb keeps where it
+    /// rested and the core needs no timer.
+    TempoChanged {
+        now: DateTime<Utc>,
+        reading: TempoReading,
+    },
+    /// The shell found a practice saved by an older build, whose shape this
+    /// one cannot read, and deleted it (#2246).
+    RetiredSessionFound,
 }
 
 mod active;
@@ -583,9 +656,12 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-use plays::record_rep;
+use plays::{record_rep, record_tempo_change};
 
-pub(crate) use plays::play_would_survive_drop;
+pub(crate) const RETIRED_SESSION_NOTICE: &str =
+    "A practice left open before the update couldn't be picked up again.";
+
+pub(crate) use plays::{play_would_survive_drop, standing_taps};
 pub(crate) use summary::{save_acknowledged, save_refused};
 
 // ── Event Handler ──────────────────────────────────────────────────────
@@ -600,10 +676,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             intention,
         } => building::set_entry_intention(model, entry_id, intention),
 
-        SessionEvent::SetEntryVariant {
+        SessionEvent::SetEntryPlan {
             entry_id,
-            variant_id,
-        } => building::set_entry_variant(model, entry_id, variant_id),
+            section_ids,
+            variation_ids,
+        } => building::set_entry_plan(model, entry_id, section_ids, variation_ids),
 
         SessionEvent::SetRepTarget { entry_id, target } => {
             building::set_rep_target(model, entry_id, target)
@@ -681,16 +758,38 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active::end_session_early(model, now, reading)
         }
 
-        SessionEvent::RepGotIt { now } => record_rep(model, RepAction::Success, now),
+        SessionEvent::RepGotIt { now, reading } => {
+            record_rep(model, RepAction::Success, now, &reading)
+        }
 
-        SessionEvent::RepMissed { now } => record_rep(model, RepAction::Missed, now),
+        SessionEvent::RepMissed { now, reading } => {
+            record_rep(model, RepAction::Missed, now, &reading)
+        }
 
-        SessionEvent::SwitchVariation {
+        SessionEvent::RepUndo { now, reading } => record_rep(model, RepAction::Undo, now, &reading),
+
+        SessionEvent::TempoChanged { now, reading } => record_tempo_change(model, now, &reading),
+
+        SessionEvent::SwitchPlay {
             entry_id,
-            variation_id,
+            section_id,
+            key,
+            variation_ids,
             now,
             reading,
-        } => active::switch_variation(model, entry_id, variation_id, now, reading),
+        } => {
+            let way = PlayWay {
+                section_id,
+                key,
+                variation_ids,
+            };
+            active::switch_play(model, entry_id, way, now, reading)
+        }
+
+        SessionEvent::RetiredSessionFound => {
+            model.raise_notice(RETIRED_SESSION_NOTICE);
+            crux_core::render::render()
+        }
 
         SessionEvent::UpdateReflectionDraft { answers } => {
             active::update_reflection_draft(model, answers)

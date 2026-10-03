@@ -1,4 +1,3 @@
-use super::variations::migrate_key_into_labels;
 use super::*;
 
 pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event> {
@@ -8,22 +7,15 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         Err(e) => return refuse(model, &e),
     };
 
-    // A brand new item has no earlier variation to have already
-    // migrated, so this is always eligible.
-    let (variant_labels, key) = migrate_key_into_labels(input.key, input.variant_labels, true);
-    if let Err(e) = validation::validate_variant_labels(&variant_labels) {
-        return refuse(model, &e);
-    }
-
     let now = chrono::Utc::now();
-    let variants = crate::domain::variant::reconcile_variants(vec![], &variant_labels, now);
+    let (variation_ids, minted) =
+        crate::domain::variation::ids_for_labels(&model.variations, &input.variation_labels, now);
     let item = Item {
         id: ulid::Ulid::generate().to_string(),
         title: input.title,
         kind: input.kind,
         composer: input.composer,
-        key,
-        modality: input.modality,
+        key: input.key,
         tempo,
         notes: input.notes,
         tags: input.tags,
@@ -32,20 +24,25 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         updated_at: now,
         priority: false,
         chord_chart: None,
-        variants,
         photo_id: input.photo_id,
         metre: None,
         sections: vec![],
+        variation_ids,
+        keys: vec![],
     };
 
     model.items.push(item.clone());
     model.last_error = None;
 
     model.clear_error();
-    Command::all([
-        crate::persistence::save_item(model, item),
-        crux_core::render::render(),
-    ])
+    let mut writes = Vec::new();
+    if !minted.is_empty() {
+        model.variations.extend(minted.iter().cloned());
+        writes.push(crate::persistence::save_variations(model, minted));
+    }
+    writes.push(crate::persistence::save_item(model, item));
+    writes.push(crux_core::render::render());
+    Command::all(writes)
 }
 
 pub(super) fn add_linked_exercise(
@@ -57,7 +54,7 @@ pub(super) fn add_linked_exercise(
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
-    if let Err(e) = validation::validate_no_variant_labels(&input) {
+    if let Err(e) = validation::validate_no_variation_labels(&input) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -85,7 +82,6 @@ pub(super) fn add_linked_exercise(
         kind: input.kind,
         composer: input.composer,
         key: input.key,
-        modality: input.modality,
         tempo,
         notes: input.notes,
         tags: input.tags,
@@ -94,8 +90,9 @@ pub(super) fn add_linked_exercise(
         updated_at: now,
         priority: false,
         chord_chart: None,
-        variants: vec![],
         sections: vec![],
+        variation_ids: vec![],
+        keys: vec![],
         // No scan surface writes an exercise yet, but a `CreateItem`
         // carrying one must not mean two different things by event.
         photo_id: input.photo_id,
@@ -148,7 +145,7 @@ pub(super) fn add_piece_in_full(
     for (index, entry) in exercises.into_iter().enumerate() {
         match entry {
             ScaffoldEntry::New(input) => {
-                if let Err(e) = validation::validate_no_variant_labels(&input) {
+                if let Err(e) = validation::validate_no_variation_labels(&input) {
                     model.last_error_target = Some(FormErrorTarget::Exercise {
                         index,
                         field: form_field(&e),
@@ -189,9 +186,8 @@ pub(super) fn add_piece_in_full(
     // is carrying.
     let chart = match chart.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
         Some(raw) => {
-            let key = piece_input.key.clone().unwrap_or_else(|| "C".to_string());
-            let modality = piece_input.modality.unwrap_or(Modality::Major);
-            match crate::domain::chart::parse_chart(raw, &key, modality) {
+            let key = piece_input.key.unwrap_or(Key::C_MAJOR);
+            match crate::domain::chart::parse_chart(raw, key) {
                 Ok(chart) => Some(chart),
                 Err(e) => {
                     model.last_error_target = Some(if e.bar == 0 {
@@ -222,7 +218,6 @@ pub(super) fn add_piece_in_full(
                     kind: input.kind,
                     composer: input.composer,
                     key: input.key,
-                    modality: input.modality,
                     tempo,
                     notes: input.notes,
                     tags: input.tags,
@@ -231,7 +226,8 @@ pub(super) fn add_piece_in_full(
                     updated_at: now,
                     priority: false,
                     chord_chart: None,
-                    variants: vec![],
+                    variation_ids: vec![],
+                    keys: vec![],
                     sections: vec![],
                     photo_id: input.photo_id,
                     metre: None,
@@ -253,7 +249,6 @@ pub(super) fn add_piece_in_full(
         kind: ItemKind::Piece,
         composer: piece_input.composer,
         key: piece_input.key,
-        modality: piece_input.modality,
         tempo: piece_tempo,
         notes: piece_input.notes,
         tags: piece_input.tags,
@@ -262,7 +257,8 @@ pub(super) fn add_piece_in_full(
         updated_at: now,
         priority: false,
         chord_chart: chart,
-        variants: vec![],
+        variation_ids: vec![],
+        keys: vec![],
         sections: vec![],
         photo_id: piece_input.photo_id,
         metre: None,

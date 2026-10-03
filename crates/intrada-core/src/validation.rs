@@ -1,8 +1,10 @@
 use crate::domain::item::ItemKind;
+use crate::domain::key::Key;
 use crate::domain::profile::{suggest_icon, Profile};
 use crate::domain::section::{BarRange, BarsInput, SectionDraft, SectionEdit};
-use crate::domain::session::SetlistEntry;
+use crate::domain::session::{PlayWay, SetlistEntry};
 use crate::domain::types::{CreateItem, Tempo, TempoInput, UpdateItem};
+use crate::domain::variation::Variation;
 use crate::error::LibraryError;
 use crate::model::Model;
 
@@ -22,8 +24,10 @@ pub const DEFAULT_REP_TARGET: u8 = 10;
 pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;
-pub const MAX_VARIANT_LABEL: usize = 100;
-pub const MAX_VARIANTS: usize = 24;
+pub const MAX_VARIATION_LABEL: usize = 100;
+/// Per item, and per play.
+pub const MAX_VARIATIONS: usize = 24;
+pub const MAX_KEYS: usize = 24;
 pub const MAX_SECTION_NAME: usize = 100;
 pub const MAX_BAR: u16 = 9999;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
@@ -75,17 +79,15 @@ pub(crate) fn distinct_ignoring_case<S: AsRef<str>>(
 pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
     input.title = input.title.trim().to_string();
     input.composer = trimmed_nonempty(input.composer);
-    input.key = trimmed_nonempty(input.key);
     input.notes = trimmed_nonempty(input.notes);
     input.tags = distinct_ignoring_case(input.tags);
-    input.variant_labels = normalize_variant_labels(input.variant_labels);
+    input.variation_labels = distinct_ignoring_case(input.variation_labels);
     input
 }
 
 pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
     input.title = input.title.map(|t| t.trim().to_string());
     input.composer = input.composer.map(trimmed_nonempty);
-    input.key = input.key.map(trimmed_nonempty);
     input.notes = input.notes.map(trimmed_nonempty);
     input.tags = input.tags.map(distinct_ignoring_case);
     input
@@ -135,29 +137,22 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
         Some(ref tempo) => parse_tempo(tempo)?,
         None => None,
     };
-    // Shape (cap, duplicates, length) is checked separately against the
-    // final label set once the caller has folded in a migrated key (#1783
-    // decision, `migrate_key_into_labels`); this only guards the host.
-    if !input.variant_labels.is_empty() && input.kind != ItemKind::Exercise {
-        return Err(LibraryError::Validation {
-            field: "variant_labels".to_string(),
-            message: "Only an exercise can have variations".to_string(),
-        });
-    }
+    validate_variation_labels(&input.variation_labels)?;
     Ok(tempo)
 }
 
-/// `ItemEvent::Add` is the only event that honours `CreateItem.variant_labels`
-/// (#1783): `AddLinkedExercise` and `AddPieceInFull` create exercises too, and
-/// silently dropping a caller's labels there would be the #846 shape, a field
-/// that validates but never lands. Both reject instead.
-pub fn validate_no_variant_labels(input: &CreateItem) -> Result<(), LibraryError> {
-    if input.variant_labels.is_empty() {
+/// `ItemEvent::Add` is the only event that honours
+/// `CreateItem.variation_labels` (#1783): `AddLinkedExercise` and
+/// `AddPieceInFull` create items too, and silently dropping a caller's labels
+/// there would be the #846 shape, a field that validates but never lands.
+/// Both reject instead.
+pub fn validate_no_variation_labels(input: &CreateItem) -> Result<(), LibraryError> {
+    if input.variation_labels.is_empty() {
         return Ok(());
     }
     Err(LibraryError::Validation {
-        field: "variant_labels".to_string(),
-        message: "Variations can only be added when creating an exercise directly".to_string(),
+        field: "variation_labels".to_string(),
+        message: "Variations can only be added when creating an item directly".to_string(),
     })
 }
 
@@ -623,86 +618,141 @@ pub(crate) fn validate_section_edits(
         .collect()
 }
 
-pub fn validate_variant_host(id: &str, model: &Model) -> Result<(), LibraryError> {
-    let item = model
-        .items
-        .iter()
-        .find(|i| i.id == id)
-        .ok_or_else(|| LibraryError::NotFound { id: id.to_string() })?;
-
-    if item.kind != ItemKind::Exercise {
-        return Err(LibraryError::Validation {
-            field: "id".to_string(),
-            message: "Only an exercise can have variations".to_string(),
-        });
-    }
-
-    Ok(())
-}
-
-pub(crate) fn normalize_variant_labels(labels: Vec<String>) -> Vec<String> {
-    labels.into_iter().map(|l| l.trim().to_string()).collect()
-}
-
-pub fn validate_variant_labels(labels: &[String]) -> Result<(), LibraryError> {
-    if labels.len() > MAX_VARIANTS {
+pub fn validate_variation_label(label: &str) -> Result<(), LibraryError> {
+    if label.is_empty() || exceeds_chars(label, MAX_VARIATION_LABEL) {
         return Err(LibraryError::Validation {
             field: "labels".to_string(),
-            message: format!("An exercise can have at most {MAX_VARIANTS} variations"),
+            message: format!(
+                "Each variation label must be between 1 and {MAX_VARIATION_LABEL} characters"
+            ),
         });
     }
-
-    let mut seen = std::collections::HashSet::new();
-    for label in labels {
-        if label.is_empty() || exceeds_chars(label, MAX_VARIANT_LABEL) {
-            return Err(LibraryError::Validation {
-                field: "labels".to_string(),
-                message: format!(
-                    "Each variation label must be between 1 and {MAX_VARIANT_LABEL} characters"
-                ),
-            });
-        }
-        if !seen.insert(label.to_lowercase()) {
-            return Err(LibraryError::Validation {
-                field: "labels".to_string(),
-                message: format!("Duplicate variation \u{201c}{label}\u{201d}"),
-            });
-        }
-    }
-
     Ok(())
 }
 
-/// A variation named against an entry must be a live variant of that entry's
-/// own item. `None` is always allowed and means unattributed, which is what a
-/// piece records (#1739).
-pub fn validate_entry_variation(
+pub fn validate_variation_labels(labels: &[String]) -> Result<(), LibraryError> {
+    if labels.len() > MAX_VARIATIONS {
+        return Err(LibraryError::Validation {
+            field: "labels".to_string(),
+            message: format!("An item can have at most {MAX_VARIATIONS} variations"),
+        });
+    }
+    labels
+        .iter()
+        .try_for_each(|label| validate_variation_label(label))
+}
+
+/// A label already on another live row would make two rows one name, which a
+/// picker cannot tell apart.
+pub fn validate_variation_label_free(
+    library: &[Variation],
+    label: &str,
+    except_id: &str,
+) -> Result<(), LibraryError> {
+    match crate::domain::variation::live_with_label(library, label) {
+        Some(v) if v.id != except_id => Err(LibraryError::Validation {
+            field: "labels".to_string(),
+            message: format!("There is already a variation called \u{201c}{label}\u{201d}"),
+        }),
+        _ => Ok(()),
+    }
+}
+
+/// Live library rows, no repeats, within the cap.
+pub fn validate_variation_ids(model: &Model, ids: &[String]) -> Result<(), LibraryError> {
+    let invalid = |message: &str| LibraryError::Validation {
+        field: "variation_ids".to_string(),
+        message: message.to_string(),
+    };
+    if ids.len() > MAX_VARIATIONS {
+        return Err(invalid(&format!(
+            "At most {MAX_VARIATIONS} variations at once"
+        )));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for id in ids {
+        if !seen.insert(id.as_str()) {
+            return Err(invalid("A variation is listed twice"));
+        }
+        if !crate::domain::variation::is_live(&model.variations, id) {
+            return Err(invalid("That variation is no longer in the library"));
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_keys(keys: &[Key]) -> Result<(), LibraryError> {
+    if keys.len() > MAX_KEYS {
+        return Err(LibraryError::Validation {
+            field: "keys".to_string(),
+            message: format!("An item can have at most {MAX_KEYS} keys"),
+        });
+    }
+    if keys
+        .iter()
+        .enumerate()
+        .any(|(i, k)| keys[..i].iter().any(|seen| seen.same_key(k)))
+    {
+        return Err(LibraryError::Validation {
+            field: "keys".to_string(),
+            message: "A key is listed twice".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// A section named against an entry must be a live section of its item.
+fn validate_entry_section(
     entry: &SetlistEntry,
-    variation_id: &Option<String>,
+    section_id: &str,
     model: &Model,
 ) -> Result<(), LibraryError> {
-    let Some(vid) = variation_id else {
-        return Ok(());
-    };
-
-    let owns_live_variant = model
+    let live = model
         .items
         .iter()
         .find(|i| i.id == entry.item_id)
         .is_some_and(|item| {
-            item.variants
+            item.sections
                 .iter()
-                .any(|v| v.id == *vid && v.deleted_at.is_none())
+                .any(|s| s.id == section_id && s.deleted_at.is_none())
         });
+    if live {
+        return Ok(());
+    }
+    Err(LibraryError::Validation {
+        field: "section_id".to_string(),
+        message: "That section doesn't belong to this item".to_string(),
+    })
+}
 
-    if !owns_live_variant {
+/// At most one planned section for now; segments (#2315) lift the cap.
+pub fn validate_entry_plan(
+    entry: &SetlistEntry,
+    section_ids: &[String],
+    variation_ids: &[String],
+    model: &Model,
+) -> Result<(), LibraryError> {
+    if section_ids.len() > 1 {
         return Err(LibraryError::Validation {
-            field: "variation_id".to_string(),
-            message: "That variation doesn't belong to this exercise".to_string(),
+            field: "section_ids".to_string(),
+            message: "Plan one section at a time".to_string(),
         });
     }
+    for id in section_ids {
+        validate_entry_section(entry, id, model)?;
+    }
+    validate_variation_ids(model, variation_ids)
+}
 
-    Ok(())
+pub fn validate_play_way(
+    entry: &SetlistEntry,
+    way: &PlayWay,
+    model: &Model,
+) -> Result<(), LibraryError> {
+    if let Some(id) = &way.section_id {
+        validate_entry_section(entry, id, model)?;
+    }
+    validate_variation_ids(model, &way.variation_ids)
 }
 
 /// A `play_id` from the shell must name a play of the entry it was sent with,
@@ -724,7 +774,7 @@ pub fn validate_play_capacity(entry: &SetlistEntry) -> Result<(), LibraryError> 
     if entry.plays.len() >= MAX_PLAYS_PER_ENTRY {
         return Err(LibraryError::Validation {
             field: "plays".to_string(),
-            message: format!("An item can record at most {MAX_PLAYS_PER_ENTRY} variations"),
+            message: format!("An item can record at most {MAX_PLAYS_PER_ENTRY} plays"),
         });
     }
 
@@ -770,8 +820,7 @@ mod tests {
             title: "  Clair de Lune  ".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("   ".to_string()),
-            key: Some("  D major ".to_string()),
-            modality: None,
+            key: crate::domain::key::Key::parse("  D major "),
             tempo: Some(TempoInput {
                 marking: Some("   ".to_string()),
                 bpm: None,
@@ -783,7 +832,7 @@ mod tests {
                 "scales".to_string(),
             ],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
 
         let out = normalize_create_item(input);
@@ -793,7 +842,6 @@ mod tests {
             out.composer, None,
             "whitespace-only composer collapses to None"
         );
-        assert_eq!(out.key, Some("D major".to_string()));
         assert_eq!(out.notes, None, "whitespace-only notes collapses to None");
         assert_eq!(out.tags, vec!["warm-up".to_string(), "scales".to_string()]);
         assert_eq!(
@@ -825,7 +873,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![
@@ -835,7 +882,7 @@ mod tests {
                 "blues".to_string(),
             ],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert_eq!(
             normalize_create_item(input).tags,
@@ -861,7 +908,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: Some(TempoInput {
                 marking: Some("  ".to_string()),
                 bpm: Some("120".to_string()),
@@ -869,7 +915,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert_eq!(
             validate_create_item(&normalize_create_item(input)),
@@ -887,12 +933,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: Some("  Charles-Louis Hanon ".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert_eq!(
             normalize_create_item(input).composer,
@@ -905,7 +950,6 @@ mod tests {
         let input = UpdateItem {
             title: Some("  Renamed ".to_string()),
             composer: Some(Some("   ".to_string())),
-            key: Some(Some("  F# minor ".to_string())),
             tempo: Some(TempoInput {
                 marking: Some("  ".to_string()),
                 bpm: None,
@@ -922,7 +966,6 @@ mod tests {
             Some(None),
             "blank set-composer becomes a clear"
         );
-        assert_eq!(out.key, Some(Some("F# minor".to_string())));
         assert_eq!(
             validate_update_item(&out),
             Ok(Some(None)),
@@ -950,8 +993,7 @@ mod tests {
             title: "Moonlight Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            key: Some("C# minor".to_string()),
-            modality: None,
+            key: crate::domain::key::Key::parse("C# minor"),
             tempo: Some(TempoInput {
                 marking: Some("Adagio sostenuto".to_string()),
                 bpm: Some("60".to_string()),
@@ -959,7 +1001,7 @@ mod tests {
             notes: Some("First movement".to_string()),
             tags: vec!["classical".to_string(), "piano".to_string()],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -971,12 +1013,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -995,12 +1036,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1019,12 +1059,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1036,12 +1075,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1060,12 +1098,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("x".repeat(201)),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1084,12 +1121,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1108,12 +1144,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: Some("x".repeat(5000)),
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1125,12 +1160,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("B".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1143,8 +1177,7 @@ mod tests {
             title: "Scale Practice".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("Hanon".to_string()),
-            key: Some("C major".to_string()),
-            modality: None,
+            key: crate::domain::key::Key::parse("C major"),
             tempo: Some(TempoInput {
                 marking: Some("Moderato".to_string()),
                 bpm: Some("100".to_string()),
@@ -1152,7 +1185,7 @@ mod tests {
             notes: Some("Practice daily".to_string()),
             tags: vec!["technique".to_string()],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1164,35 +1197,32 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: vec!["C".to_string(), "F".to_string()],
+            variation_labels: vec!["C".to_string(), "F".to_string()],
         };
         assert!(validate_create_item(&input).is_ok());
     }
 
     #[test]
-    fn test_create_piece_with_inline_variations_is_rejected() {
+    fn test_create_piece_with_variations_is_allowed() {
         let input = CreateItem {
             title: "Clair de Lune".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: vec!["Slow".to_string()],
+            variation_labels: vec!["Slow".to_string()],
         };
-        let err = validate_create_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, .. } => assert_eq!(field, "variant_labels"),
-            _ => panic!("expected a validation error"),
-        }
+        assert!(
+            validate_create_item(&input).is_ok(),
+            "pieces and exercises alike (#2246)"
+        );
     }
 
     #[test]
@@ -1202,19 +1232,18 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
-        assert!(validate_no_variant_labels(&input).is_ok());
+        assert!(validate_no_variation_labels(&input).is_ok());
 
-        input.variant_labels = vec!["C".to_string()];
-        let err = validate_no_variant_labels(&input).unwrap_err();
+        input.variation_labels = vec!["C".to_string()];
+        let err = validate_no_variation_labels(&input).unwrap_err();
         match err {
-            LibraryError::Validation { field, .. } => assert_eq!(field, "variant_labels"),
+            LibraryError::Validation { field, .. } => assert_eq!(field, "variation_labels"),
             _ => panic!("expected a validation error"),
         }
     }
@@ -1226,12 +1255,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1250,12 +1278,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1274,12 +1301,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: Some("".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1298,12 +1324,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: Some("x".repeat(201)),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1322,12 +1347,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1346,12 +1370,11 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         assert!(validate_create_item(&input).is_ok());
     }
@@ -1646,7 +1669,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
             key: None,
-            modality: None,
             tempo: Some(TempoInput {
                 marking: Some("x".repeat(101)),
                 bpm: Some("120".to_string()),
@@ -1654,7 +1676,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1673,12 +1695,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["good".to_string(), "".to_string()],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1697,7 +1718,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: Some(TempoInput {
                 marking: None,
                 bpm: Some("500".to_string()),
@@ -1705,7 +1725,7 @@ mod tests {
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         };
         let err = validate_create_item(&input).unwrap_err();
         match err {
@@ -1895,22 +1915,22 @@ mod tests {
     }
 
     #[test]
-    fn too_many_variant_labels_names_variations() {
-        let labels: Vec<String> = (0..=MAX_VARIANTS).map(|i| format!("Key {i}")).collect();
-        let err = validate_variant_labels(&labels).unwrap_err();
+    fn too_many_variation_labels_names_variations() {
+        let labels: Vec<String> = (0..=MAX_VARIATIONS).map(|i| format!("Way {i}")).collect();
+        let err = validate_variation_labels(&labels).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "labels");
-                assert_eq!(message, "An exercise can have at most 24 variations");
+                assert_eq!(message, "An item can have at most 24 variations");
             }
             _ => panic!("Expected Validation error"),
         }
     }
 
     #[test]
-    fn empty_variant_label_names_variation() {
+    fn empty_variation_label_names_variation() {
         let labels = vec![String::new()];
-        let err = validate_variant_labels(&labels).unwrap_err();
+        let err = validate_variation_labels(&labels).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "labels");
@@ -1918,19 +1938,6 @@ mod tests {
                     message,
                     "Each variation label must be between 1 and 100 characters"
                 );
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn duplicate_variant_label_names_variation() {
-        let labels = vec!["C".to_string(), "c".to_string()];
-        let err = validate_variant_labels(&labels).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "labels");
-                assert_eq!(message, "Duplicate variation \u{201c}c\u{201d}");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1944,12 +1951,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer,
             key: None,
-            modality: None,
             tempo: None,
             notes,
             tags: vec![],
             photo_id: None,
-            variant_labels: vec![],
+            variation_labels: vec![],
         }
     }
 
@@ -1992,8 +1998,8 @@ mod tests {
                     bpm: None,
                 })
             }),
-            ("variation label", MAX_VARIANT_LABEL, |s| {
-                validate_variant_labels(&[s])
+            ("variation label", MAX_VARIATION_LABEL, |s| {
+                validate_variation_labels(&[s])
             }),
             ("profile name", MAX_PROFILE_NAME, |s| {
                 validate_profile(&Profile {

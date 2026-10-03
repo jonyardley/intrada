@@ -12,29 +12,6 @@ pub(super) fn update(model: &mut Model, id: String, input: UpdateItem) -> Comman
         return crux_core::render::render();
     };
 
-    // An exercise with a live variation has no single key (#1783
-    // decision 1): checked here, ahead of every other field, so a
-    // rejection never leaves the item partly updated. Clearing the
-    // key is always allowed; resending the key an edit form already
-    // loaded is a no-op, not a new key, so only an actual change is
-    // blocked, matching the same invariant `migrate_key_into_labels`
-    // establishes going the other way. Kind-scoped: an item converted
-    // away from Exercise no longer carries this invariant.
-    if let Some(Some(new_key)) = &input.key {
-        let stays_exercise = input.kind.as_ref().unwrap_or(&item.kind) == &ItemKind::Exercise;
-        let changed = item.key.as_deref().map(str::to_lowercase) != Some(new_key.to_lowercase());
-        if stays_exercise && changed && item.variants.iter().any(|v| v.deleted_at.is_none()) {
-            model.raise_error(
-                LibraryError::Validation {
-                    field: "key".to_string(),
-                    message: "An exercise with variations has no single key".to_string(),
-                }
-                .to_string(),
-            );
-            return crux_core::render::render();
-        }
-    }
-
     if let Some(title) = input.title {
         item.title = title;
     }
@@ -46,9 +23,6 @@ pub(super) fn update(model: &mut Model, id: String, input: UpdateItem) -> Comman
     }
     if let Some(key) = input.key {
         item.key = key;
-    }
-    if let Some(modality) = input.modality {
-        item.modality = modality;
     }
     if let Some(tempo) = tempo {
         item.tempo = tempo;
@@ -96,19 +70,14 @@ pub(super) fn set_chord_chart(
     }
 
     // The chart derives in the piece's key (default C major when unset).
-    let (key, modality) = model
+    let key = model
         .items
         .iter()
         .find(|i| i.id == piece_id)
-        .map(|p| {
-            (
-                p.key.clone().unwrap_or_else(|| "C".to_string()),
-                p.modality.unwrap_or(Modality::Major),
-            )
-        })
+        .map(|p| p.key.unwrap_or(Key::C_MAJOR))
         .expect("validate_chart_host guarantees the piece exists");
 
-    let chart = match crate::domain::chart::parse_chart(&raw_chart, &key, modality) {
+    let chart = match crate::domain::chart::parse_chart(&raw_chart, key) {
         Ok(chart) => chart,
         Err(e) => {
             // Surface the parse error; store nothing (never a partial).

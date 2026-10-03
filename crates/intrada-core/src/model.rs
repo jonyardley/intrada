@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::first_run::{FirstRun, FirstRunView};
-use crate::domain::item::{Item, ItemKind, Modality};
+use crate::domain::item::{Item, ItemKind};
+use crate::domain::key::Key;
 use crate::domain::metre::{ClickBarOption, ClickPresetOption, TempoBand};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
@@ -75,6 +76,9 @@ pub struct Model {
     pub(crate) projections: Option<crate::view::cache::Projections>,
     pub items_sync: crate::persistence::ListSync,
     pub sessions_sync: crate::persistence::ListSync,
+    /// The library's variations, tombstones included (#2246).
+    pub variations: Tracked<Vec<crate::domain::variation::Variation>>,
+    pub variations_sync: crate::persistence::ListSync,
 }
 
 static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
@@ -312,6 +316,8 @@ pub struct ViewModel {
     pub shows_priorities: bool,
     pub practice_defaults: PracticeDefaults,
     pub first_run: FirstRunView,
+    /// The library's live variations, for the pickers (#2246).
+    pub variations: Vec<VariationOptionView>,
 }
 
 /// The bounds `validation.rs` enforces, projected so no sheet repeats them: a
@@ -408,8 +414,9 @@ pub enum PhotoRecognitionStatus {
 pub struct LinkedExerciseView {
     pub id: String,
     pub title: String,
-    pub key: Option<String>,
-    pub modality: Option<Modality>,
+    pub key: Option<Key>,
+    /// "E♭ major", as the musician reads it.
+    pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
     pub practice: Option<ItemPracticeSummary>,
@@ -427,7 +434,7 @@ pub struct LinkedExerciseView {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScaffoldPreviewView {
-    /// The key the exercises are derived in (the piece's key).
+    /// The key the exercises are derived in (the piece's key), as read.
     pub key: String,
     pub specs: Vec<ScaffoldSpecView>,
     /// How many specs hit the arpeggio fallback (out-of-vocab chord).
@@ -497,8 +504,9 @@ pub struct LibraryItemView {
     pub item_type: ItemKind,
     pub title: String,
     pub subtitle: String,
-    pub key: Option<String>,
-    pub modality: Option<Modality>,
+    pub key: Option<Key>,
+    /// "E♭ major", as the musician reads it.
+    pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
     pub notes: Option<String>,
@@ -523,25 +531,13 @@ pub struct LibraryItemView {
     pub chord_chart: Option<ChordChart>,
     /// The piece's time signature, which seeds the click's bar (#1499).
     pub metre: Option<Metre>,
-    /// The exercise's variation ladder with per-variation practice state (#1083);
-    /// empty for pieces and un-laddered exercises.
-    #[serde(default)]
-    pub variants: Vec<VariantView>,
-    /// Every live rung of `variants` names a key, so the shell prints "keys"
-    /// rather than "variations" beside the count (#1467). False for pieces and for
-    /// a ladder with no rungs. No `serde(default)`: the bridge is positional
-    /// bincode, where serde never reaches a default, and the attribute would
-    /// read as "optional on the wire" to the next person (#846).
-    pub ladder_is_keys: bool,
+    /// The live library variations this item uses, in the order chosen, with
+    /// their practice state (#2246).
+    pub variations: Vec<VariationView>,
     #[serde(default)]
     pub photo_id: Option<String>,
-    /// An exercise in several keys has no single key (#1783 decision 1): the
-    /// Add and Edit forms hide the Key field once the ladder has a live
-    /// rung. `true` for a piece and for an un-laddered exercise. No
-    /// `serde(default)`, matching `ladder_is_keys`: the bridge is positional
-    /// bincode, where a default is never read (#846).
-    pub shows_key: bool,
-    pub solid_variation_count: usize,
+    /// The keys chosen for practice, in order, with their practice state.
+    pub keys: Vec<ItemKeyView>,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
     /// Live sections only, in score order (#2245).
@@ -565,57 +561,75 @@ pub struct SectionView {
     pub bars_caption: Option<String>,
 }
 
-/// One variation of an exercise's ladder with its derived practice state (#1083).
-/// Only live (non-tombstoned) variations reach the view, in ladder order. Users
-/// see "Variations"; `variant` is the core's name and never appears on screen.
+/// One library variation an item uses, with its practice state on that item:
+/// the marks of the plays on it (#2246).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct VariantView {
+pub struct VariationView {
     pub id: String,
     pub label: String,
-    pub position: usize,
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
-    /// Latest score has reached `SOLID_SCORE_MIN` (8 of 10).
-    pub is_solid: bool,
     pub caption: String,
+}
+
+/// One of an item's keys for practice, with the marks of the plays in it,
+/// either spelling (#2106).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ItemKeyView {
+    pub key: Key,
+    pub label: String,
+    pub latest_score: Option<u8>,
+    pub caption: String,
+}
+
+/// A live row of the library's variation list, for the pickers (#2246).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct VariationOptionView {
+    pub id: String,
+    pub label: String,
 }
 
 /// The saved mark in the musician's words: the one wording the Library row and
 /// the picker's out-of-session fallback share (#1809).
-pub(crate) fn saved_mark_caption(latest_score: Option<u8>, is_solid: bool) -> String {
+pub(crate) fn saved_mark_caption(latest_score: Option<u8>) -> String {
     match latest_score {
-        Some(score) if is_solid => format!("Solid · {score} of {}", crate::validation::MAX_SCORE),
         Some(score) => format!("{score} of {}", crate::validation::MAX_SCORE),
         None => "Not yet played".to_string(),
     }
 }
 
-/// One row of the player's variation picker, captioned by the core so a
-/// variation played earlier in this item never reads as not yet played (#1784).
+/// One row of a variation picker, captioned by the core so a variation played
+/// earlier in this item never reads as not yet played (#1784).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PickerVariationView {
     pub id: String,
     pub label: String,
     pub caption: String,
-    pub is_solid: bool,
 }
 
-/// One stretch of an item spent on one variation, as the sheet and the
-/// Progress screen read it (#1739). `variation_label` is resolved here,
-/// tombstones included, because a session practised on a variation that has
-/// since been deleted still has to say what it was.
+/// One stretch of an item played one way, as the sheet and the Progress
+/// screen read it (#1739, #2246). Labels are resolved here, tombstones
+/// included, because a play on a variation or a section since deleted still
+/// has to say what it was.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct VariationPlayView {
+pub struct PlayView {
     pub id: String,
-    pub variation_id: Option<String>,
-    pub variation_label: Option<String>,
+    pub section_id: Option<String>,
+    pub key: Option<Key>,
+    pub variation_ids: Vec<String>,
+    /// "Bars 1 to 8 · E♭ major · Hands separately"; `None` for the whole
+    /// item, plain, in the written key.
+    pub label: Option<String>,
     pub seconds: u64,
     pub duration_display: String,
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
+    /// Worked out from the count and the target, never stored (#2107).
     pub rep_target_reached: Option<bool>,
     pub rep_history: Option<Vec<RepEvent>>,
     pub achieved_tempo: Option<u16>,
@@ -731,12 +745,15 @@ pub struct SetlistEntryView {
     pub planned_duration_display: Option<String>,
     /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
-    /// The variation the builder planned to practise (#1739 decision 5).
-    pub planned_variation_id: Option<String>,
+    /// What the builder planned (#2246): at most one section, any variations.
+    pub planned_section_ids: Vec<String>,
+    pub planned_variation_ids: Vec<String>,
+    /// "Bars 1 to 8 · Hands separately"; `None` with no plan.
+    pub planned_label: Option<String>,
     /// The repetition target set in the builder, which every play starts from.
     pub planned_rep_target: Option<u8>,
     /// What was actually practised, in order.
-    pub plays: Vec<VariationPlayView>,
+    pub plays: Vec<PlayView>,
     /// The mean of the plays that carry a mark, rounded to nearest, and `None`
     /// when none do. The only place several marks collapse into one (#1739
     /// decision 9): per-variation history reads `plays` and never this.
@@ -765,10 +782,12 @@ pub struct ActiveSessionView {
     /// How many slots the counter draws before the first tap. A drawn target
     /// is not a recorded one: `current_rep_target` stays `None` until a tap.
     pub current_rep_slots: u8,
-    /// The variation the open play is on, so the player's picker can show what
-    /// is being practised right now (#1739). `None` = unattributed.
-    pub current_variation_id: Option<String>,
-    pub current_variation_label: Option<String>,
+    /// How the open play is being played, so the player can show it (#2246).
+    pub current_section_id: Option<String>,
+    pub current_key: Option<Key>,
+    pub current_variation_ids: Vec<String>,
+    /// The open play's label; `None` for the whole item, plain.
+    pub current_play_label: Option<String>,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
     /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
@@ -801,6 +820,10 @@ pub struct ActiveSessionView {
     /// The seed bar's patterns: an item may carry a valid grouping the
     /// sheet's `click_bars` table does not list.
     pub click_seed_presets: Vec<ClickPresetOption>,
+    /// How far the count has gone past the target, 0 at or under it (#2107).
+    pub current_reps_past_target: u8,
+    /// A got it or a miss is still standing for undo to reverse.
+    pub current_can_undo: bool,
 }
 
 /// The open sheet's saved answers, and the click at its stamp, which seeds
@@ -850,11 +873,13 @@ pub struct BuildingSetlistView {
     pub entry_variations: Vec<EntryVariationsView>,
 }
 
+/// What an entry's plan can name: its item's variations and live sections.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EntryVariationsView {
     pub entry_id: String,
     pub variations: Vec<PickerVariationView>,
+    pub sections: Vec<SectionView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -883,7 +908,7 @@ impl LibraryItemView {
             title: title.to_string(),
             subtitle: String::new(),
             key: None,
-            modality: None,
+            key_label: None,
             tempo_marking: None,
             tempo_bpm: None,
             notes: None,
@@ -897,12 +922,10 @@ impl LibraryItemView {
             scaffold_preview: None,
             chord_chart: None,
             metre: None,
-            variants: Vec::new(),
+            variations: Vec::new(),
             sections: vec![],
-            ladder_is_keys: false,
             photo_id: None,
-            shows_key: true,
-            solid_variation_count: 0,
+            keys: Vec::new(),
             key_selection: None,
         }
     }
@@ -915,7 +938,7 @@ impl LinkedExerciseView {
             id: id.to_string(),
             title: title.to_string(),
             key: None,
-            modality: None,
+            key_label: None,
             tempo_marking: None,
             tempo_bpm: None,
             practice: None,
@@ -925,25 +948,21 @@ impl LinkedExerciseView {
 }
 
 #[cfg(test)]
-impl VariantView {
-    pub(crate) fn fixture(id: &str, label: &str, position: usize) -> Self {
+impl VariationView {
+    pub(crate) fn fixture(id: &str, label: &str) -> Self {
         Self {
             id: id.to_string(),
             label: label.to_string(),
-            position,
             latest_score: None,
             score_history: Vec::new(),
-            is_solid: false,
-            caption: saved_mark_caption(None, false),
+            caption: saved_mark_caption(None),
         }
     }
 
     pub(crate) fn scored(self, score: u8) -> Self {
-        let is_solid = score >= crate::domain::variant::SOLID_SCORE_MIN;
         Self {
             latest_score: Some(score),
-            is_solid,
-            caption: saved_mark_caption(Some(score), is_solid),
+            caption: saved_mark_caption(Some(score)),
             ..self
         }
     }
@@ -1204,22 +1223,27 @@ mod tests {
         });
     }
 
-    /// `VariantView` crosses the bincode wire inside `LibraryItemView.variants`
-    /// (#1083); guard it against the #846 drop class.
+    /// The item's variations and keys cross the bincode wire inside
+    /// `LibraryItemView`; guard them against the #846 drop class.
     #[test]
-    fn variant_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(VariantView {
+    fn variation_and_key_views_round_trip_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(VariationView {
             id: "v-1".to_string(),
-            label: "B♭".to_string(),
-            position: 2,
+            label: "Hands separately".to_string(),
             latest_score: Some(8),
             score_history: vec![ScoreHistoryEntry {
                 session_date: "2026-07-01T00:00:00+00:00".to_string(),
                 score: 8,
                 session_id: "s1".to_string(),
             }],
-            is_solid: true,
-            caption: "Solid · 8 of 10".to_string(),
+            caption: "8 of 10".to_string(),
+        });
+        let key = crate::domain::key::Key::parse("Eb minor").expect("a key");
+        crate::domain::types::assert_round_trips(ItemKeyView {
+            key,
+            label: key.label(),
+            latest_score: None,
+            caption: "Not yet played".to_string(),
         });
     }
 
@@ -1230,8 +1254,8 @@ mod tests {
         crate::domain::types::assert_round_trips(LinkedExerciseView {
             id: "E".to_string(),
             title: "Enclosures".to_string(),
-            key: Some("C".to_string()),
-            modality: Some(Modality::Minor),
+            key: crate::domain::key::Key::parse("C minor"),
+            key_label: Some("C minor".to_string()),
             tempo_marking: Some("Allegro".to_string()),
             tempo_bpm: Some(132),
             practice: None,

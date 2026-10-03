@@ -205,8 +205,19 @@ pub(crate) fn analytics_from_changes(
     }
 }
 
-/// One variation is not a set worth a bar, and an exercise never practised
-/// has nothing to report (#1762).
+/// A key or variation counts towards coverage once its latest mark reaches
+/// this, of 10 (#1762).
+const COVERAGE_SOLID_MIN: u8 = 8;
+
+fn coverage_marks(i: &LibraryItemView) -> impl Iterator<Item = Option<u8>> + '_ {
+    i.keys
+        .iter()
+        .map(|k| k.latest_score)
+        .chain(i.variations.iter().map(|v| v.latest_score))
+}
+
+/// The item's keys and variations together (#2246). One is not a set worth a
+/// bar, and an item never practised has nothing to report (#1762).
 pub fn compute_variation_coverage(
     item_views: &[LibraryItemView],
     limit: usize,
@@ -214,7 +225,8 @@ pub fn compute_variation_coverage(
     let mut practised: Vec<&LibraryItemView> = item_views
         .iter()
         .filter(|i| {
-            i.variants.len() > 1 && i.practice.as_ref().is_some_and(|p| p.session_count > 0)
+            coverage_marks(i).count() > 1
+                && i.practice.as_ref().is_some_and(|p| p.session_count > 0)
         })
         .collect();
     fn last(i: &LibraryItemView) -> Option<&str> {
@@ -229,8 +241,10 @@ pub fn compute_variation_coverage(
         .map(|i| VariationCoverageView {
             item_id: i.id.clone(),
             title: i.title.clone(),
-            solid: i.variants.iter().filter(|v| v.is_solid).count(),
-            total: i.variants.len(),
+            solid: coverage_marks(i)
+                .filter(|m| m.is_some_and(|m| m >= COVERAGE_SOLID_MIN))
+                .count(),
+            total: coverage_marks(i).count(),
         })
         .collect()
 }
@@ -554,7 +568,7 @@ fn relative_day(day: NaiveDate, today: NaiveDate) -> (String, String) {
 mod tests {
     use super::*;
     use crate::domain::session::{
-        CompletionStatus, EntryStatus, PracticeSession, SetlistEntry, VariationPlay,
+        CompletionStatus, EntryStatus, Play, PracticeSession, SetlistEntry,
     };
     use chrono::{NaiveDate, TimeZone, Utc};
 
@@ -591,6 +605,7 @@ mod tests {
             session_notes: None,
             entries,
             session_score: None,
+            capture_version: None,
         }
     }
 
@@ -603,11 +618,11 @@ mod tests {
     ) -> SetlistEntry {
         let id = format!("entry-{item_id}-{duration_secs}");
         SetlistEntry {
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 id: format!("{id}-play"),
                 seconds: duration_secs,
                 score,
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
             id,
             item_id: item_id.to_string(),
@@ -853,6 +868,7 @@ mod tests {
                 session_notes: None,
                 entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
                 session_score: None,
+                capture_version: None,
             }
         };
 
@@ -1226,7 +1242,6 @@ mod tests {
             kind: crate::domain::item::ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1235,7 +1250,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1813,24 +1829,21 @@ mod tests {
         sessions: usize,
         last_practised: Option<&str>,
     ) -> LibraryItemView {
-        use crate::model::VariantView;
         let mut view = LibraryItemView::fixture(id, id, ItemKind::Exercise);
         view.practice = (sessions > 0).then(|| ItemPracticeSummary {
             session_count: sessions,
             last_practiced_at: last_practised.map(str::to_string),
             ..ItemPracticeSummary::fixture()
         });
-        view.variants = variations
+        view.variations = variations
             .iter()
             .enumerate()
-            .map(|(index, (label, solid))| VariantView {
+            .map(|(index, (label, solid))| crate::model::VariationView {
                 id: format!("{id}-{index}"),
                 label: label.to_string(),
-                position: index,
                 latest_score: solid.then_some(9),
                 score_history: Vec::new(),
-                is_solid: *solid,
-                caption: crate::model::saved_mark_caption(solid.then_some(9), *solid),
+                caption: crate::model::saved_mark_caption(solid.then_some(9)),
             })
             .collect();
         view
@@ -1994,6 +2007,7 @@ mod tests {
             session_notes: None,
             entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             session_score: None,
+            capture_version: None,
         }];
 
         let analytics = compute_analytics(

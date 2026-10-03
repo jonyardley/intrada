@@ -176,6 +176,7 @@ mod tests {
             session_notes: None,
             entries: Vec::new(),
             session_score: None,
+            capture_version: None,
         }
     }
 

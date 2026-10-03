@@ -8,7 +8,7 @@ use crate::suggestion::SuggestedSession;
 use crate::view::library::{
     build_library_item_views, sort_library_items, RECENTLY_PRACTISED_LIMIT,
 };
-use crate::view::session::{session_to_view, variation_labels};
+use crate::view::session::{play_labels, session_to_view};
 
 /// Everything the projections read. The local day and the offset are here
 /// because staleness, Up next, the week strip and Progress read
@@ -18,6 +18,7 @@ pub(crate) struct ProjectionKey {
     items: u64,
     sessions: u64,
     summaries: u64,
+    variations: u64,
     clock: LocalClock,
     sort: LibrarySort,
 }
@@ -28,6 +29,7 @@ impl ProjectionKey {
             items: model.items.revision(),
             sessions: model.sessions.revision(),
             summaries: model.practice_summaries.revision(),
+            variations: model.variations.revision(),
             clock,
             sort: model.active_sort,
         }
@@ -135,7 +137,7 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
 
     let sorted = crate::view::library::sorted_order(&library, &model.active_sort);
 
-    let labels = variation_labels(&model.items);
+    let labels = play_labels(&model.items, &model.variations);
     let mut finished: Vec<_> = model.sessions.iter().collect();
     finished.sort_by_key(|s| std::cmp::Reverse(s.completed_at));
     let sessions = finished
@@ -242,12 +244,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Satie".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["new".to_string()],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         }
     }
 
@@ -387,7 +388,10 @@ mod tests {
 
         send(
             &mut model,
-            Event::Session(SessionEvent::RepGotIt { now: start }),
+            Event::Session(SessionEvent::RepGotIt {
+                now: start,
+                reading: crate::domain::session::TempoReading::silent(),
+            }),
         );
         send(
             &mut model,
@@ -503,7 +507,10 @@ mod tests {
         );
         events.extend([
             Event::Session(SessionEvent::StartSession { now: start }),
-            Event::Session(SessionEvent::RepGotIt { now: start }),
+            Event::Session(SessionEvent::RepGotIt {
+                now: start,
+                reading: crate::domain::session::TempoReading::silent(),
+            }),
             Event::Session(SessionEvent::NextItem {
                 now: start + Duration::seconds(30),
                 next_item_started_at: start + Duration::seconds(30),
@@ -625,7 +632,7 @@ mod tests {
     /// 200 items and 100 sessions of six entries, the size step 1 measured (#1801).
     fn a_musicians_library() -> Model {
         use crate::domain::session::{
-            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry, VariationPlay,
+            CompletionStatus, EntryStatus, Play, PracticeSession, SetlistEntry,
         };
         let mut model = Model::default();
         let samples = crate::sample::sample_items();
@@ -660,17 +667,18 @@ mod tests {
                             position: e as usize,
                             duration_secs: 300,
                             status: EntryStatus::Completed,
-                            plays: vec![VariationPlay {
+                            plays: vec![Play {
                                 id: format!("se{s:03}_{e}-play"),
                                 seconds: 300,
                                 score: Some(3),
-                                ..VariationPlay::fixture()
+                                ..Play::fixture()
                             }],
                             ..SetlistEntry::fixture()
                         }
                     })
                     .collect(),
                 session_score: None,
+                capture_version: None,
             })
             .collect();
         model.practice_summaries = crate::view::library::build_practice_summaries(&sessions).into();

@@ -4,11 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
+use super::key::Key;
 use super::metre::Metre;
 pub use super::section::{BarRange, BarsInput, ItemSection, SectionEdit, SectionKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
-pub use super::variant::Variant;
-use super::variant::VariantEdit;
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
 use crate::model::{FormErrorField, FormErrorTarget, Model};
@@ -33,7 +32,7 @@ impl fmt::Display for ItemKind {
     }
 }
 
-/// Major/minor tonality, paired with `Item.key` (the tonic, e.g. "F#").
+/// Major or minor, a `Key`'s mode.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -50,9 +49,8 @@ pub struct Item {
     pub title: String,
     pub kind: ItemKind,
     pub composer: Option<String>,
-    pub key: Option<String>,
-    #[serde(default)]
-    pub modality: Option<Modality>,
+    /// The written key (#2106).
+    pub key: Option<Key>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
@@ -67,11 +65,6 @@ pub struct Item {
     /// piece's `updated_at`. `None` for exercises and un-charted pieces.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
-    /// Ordered variation ladder (exercises only), tombstones included; appended
-    /// last + `#[serde(default)]` so old rows / bincode snapshots decode to
-    /// an empty ladder (#846). Persisted to the `variant` child table (#1083).
-    #[serde(default)]
-    pub variants: Vec<Variant>,
     /// An opaque ulid the shell resolves to a file; the bytes never cross the
     /// bridge (`specs/piece-from-photo.md`, key decision 1).
     #[serde(default)]
@@ -83,6 +76,12 @@ pub struct Item {
     /// Tombstones included (#2245).
     #[serde(default)]
     pub sections: Vec<ItemSection>,
+    /// The library variations this item uses, in the order chosen (#2246).
+    #[serde(default)]
+    pub variation_ids: Vec<String>,
+    /// The keys chosen for practice, in order; the written key is `key`.
+    #[serde(default)]
+    pub keys: Vec<Key>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -134,15 +133,6 @@ pub enum ItemEvent {
         piece_id: String,
         kinds: Vec<ScaffoldKind>,
     },
-    /// Define an exercise's whole variation ladder from ordered `labels`,
-    /// reconciled by case-insensitive label: matching variants keep their id
-    /// (and score history), removed labels tombstone, re-added labels
-    /// resurrect. Empty = clear the ladder. Local-first only until sync
-    /// (#1083 C1).
-    SetVariants {
-        id: String,
-        labels: Vec<String>,
-    },
     /// Point the item at the photo the shell has already written to disk,
     /// replacing any it already had. Kept out of `Update` because
     /// `UpdateItem`'s three-state `Option<Option<T>>` is the fiddliest encoding
@@ -178,20 +168,41 @@ pub enum ItemEvent {
         chart: Option<String>,
         exercises: Vec<ScaffoldEntry>,
     },
-    /// The Edit form's whole ladder in one write (#1783): rows carry the id
-    /// they started from, so renames, reorders, removals and additions land
-    /// together, and a swap of two labels is not a duplicate. Tombstones and
-    /// the key migration follow `SetVariants`. Appended last: positional wire.
-    UpdateVariants {
-        id: String,
-        variants: Vec<VariantEdit>,
-    },
     /// The item screen's whole section list in one write (#2245): rows claim
     /// a section by id, a row with no id is new, a live section left out is
     /// tombstoned. Refused whole on the first invalid row. Appended last.
     UpdateSections {
         id: String,
         sections: Vec<SectionEdit>,
+    },
+    /// The item's whole variation set, in order (#2246): `variation_ids` name
+    /// library rows, and each of `new_labels` reuses a live row with that
+    /// label or mints one, appended after them. Removing one from an item
+    /// leaves it in the library with its history.
+    UpdateItemVariations {
+        id: String,
+        variation_ids: Vec<String>,
+        new_labels: Vec<String>,
+    },
+    /// The item's whole list of keys for practice, in order.
+    UpdateKeys {
+        id: String,
+        keys: Vec<Key>,
+    },
+}
+
+/// Acts on the library's own variation rows, not on any one item's set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum VariationEvent {
+    Rename {
+        id: String,
+        label: String,
+    },
+    /// Tombstones the row: gone from every picker, kept for the plays.
+    Delete {
+        id: String,
     },
 }
 
@@ -274,7 +285,7 @@ fn form_field(error: &LibraryError) -> Option<FormErrorField> {
         "tempo" => Some(FormErrorField::Tempo),
         "notes" => Some(FormErrorField::Notes),
         "tags" => Some(FormErrorField::Tags),
-        "labels" | "variant_labels" => Some(FormErrorField::Variations),
+        "labels" | "variation_labels" => Some(FormErrorField::Variations),
         "sections" => Some(FormErrorField::Sections),
         _ => None,
     }
@@ -323,15 +334,24 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             piece_id,
             raw_chart,
         } => edit::set_chord_chart(model, piece_id, raw_chart),
-        ItemEvent::SetVariants { id, labels } => variations::set_variants(model, id, labels),
-        ItemEvent::UpdateVariants { id, variants } => {
-            variations::update_ladder(model, id, variants)
-        }
+        ItemEvent::UpdateItemVariations {
+            id,
+            variation_ids,
+            new_labels,
+        } => variations::update_item_variations(model, id, variation_ids, new_labels),
+        ItemEvent::UpdateKeys { id, keys } => variations::update_keys(model, id, keys),
         ItemEvent::UpdateSections { id, sections } => {
             sections::update_sections(model, id, sections)
         }
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)
         }
+    }
+}
+
+pub fn handle_variation_event(event: VariationEvent, model: &mut Model) -> Command<Effect, Event> {
+    match event {
+        VariationEvent::Rename { id, label } => variations::rename(model, id, label),
+        VariationEvent::Delete { id } => variations::delete(model, id),
     }
 }

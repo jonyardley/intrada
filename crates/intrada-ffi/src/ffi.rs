@@ -289,14 +289,6 @@ pub fn sort_and_filter_picker_candidates(
     )
 }
 
-/// The Add form has no saved exercise to read `LibraryItemView.shows_key`
-/// from, so it asks with its own unsaved row count (#1783 decision 1).
-#[cfg_attr(feature = "uniffi", uniffi::export)]
-#[must_use]
-pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
-    crate::domain::variant::shows_key_field(live_variant_count as usize)
-}
-
 // ── Key wheel ──
 
 /// The core stays UniFFI-agnostic, so the modality crosses the plain call as
@@ -335,12 +327,32 @@ pub struct WheelWedge {
     pub alt: Option<String>,
 }
 
+/// `key` is the generated bincode of the core's `Key`, so there is one
+/// description of a key, not a mirror here (#2106).
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WheelTap {
-    pub tonic: String,
-    pub mode: WheelMode,
+    pub key: Vec<u8>,
     pub flipped: bool,
+}
+
+/// The two columns a key is stored in: the spelling and the mode.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredKey {
+    pub text: String,
+    pub mode: Option<WheelMode>,
+}
+
+fn decode_key(bytes: &[u8]) -> Result<crate::Key, CoreError> {
+    BincodeFfiFormat::deserialize(bytes).map_err(|e| CoreError::Bridge(format!("key: {e}")))
+}
+
+fn encode_key(key: &crate::Key) -> Result<Vec<u8>, CoreError> {
+    let mut bytes = Vec::new();
+    BincodeFfiFormat::serialize(&mut bytes, key)
+        .map_err(|e| CoreError::Bridge(format!("key: {e}")))?;
+    Ok(bytes)
 }
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
@@ -368,34 +380,60 @@ pub fn key_wheel() -> Vec<WheelWedge> {
 }
 
 #[cfg_attr(feature = "uniffi", uniffi::export)]
-#[must_use]
 pub fn key_next_on_tap(
-    current_key: String,
-    current_mode: Option<WheelMode>,
+    current: Option<Vec<u8>>,
     ring: u8,
     mode: WheelMode,
-) -> Option<WheelTap> {
-    crate::domain::key::next_on_tap(
-        &current_key,
-        current_mode.map(Into::into),
-        ring,
-        mode.into(),
-    )
-    .map(|t| WheelTap {
-        tonic: t.tonic,
-        mode: t.modality.into(),
-        flipped: t.flipped,
-    })
+) -> Result<Option<WheelTap>, CoreError> {
+    let current = current.as_deref().map(decode_key).transpose()?;
+    crate::domain::key::next_on_tap(current.as_ref(), ring, mode.into())
+        .map(|t| {
+            Ok(WheelTap {
+                key: encode_key(&t.key)?,
+                flipped: t.flipped,
+            })
+        })
+        .transpose()
 }
 
 /// Which spoke the form's unsaved key lights.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
-#[must_use]
-pub fn key_wheel_selection(key: String, mode: Option<WheelMode>) -> Option<WheelSelection> {
-    crate::domain::key::wheel_selection(&key, mode.map(Into::into)).map(|s| WheelSelection {
-        ring: s.ring,
-        mode: s.modality.into(),
-        spelling: s.spelling,
+pub fn key_wheel_selection(key: Vec<u8>) -> Result<Option<WheelSelection>, CoreError> {
+    Ok(
+        crate::domain::key::wheel_selection(&decode_key(&key)?).map(|s| WheelSelection {
+            ring: s.ring,
+            mode: s.modality.into(),
+            spelling: s.spelling,
+        }),
+    )
+}
+
+/// The form's unsaved key as the musician reads it: "E♭ major".
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn key_label(key: Vec<u8>) -> Result<String, CoreError> {
+    Ok(decode_key(&key)?.label())
+}
+
+// ── Stored keys ──
+
+/// The store's two columns into a key; `None` for text the core cannot
+/// read, which the store keeps in its column untouched (#2106).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn key_from_stored(
+    text: Option<String>,
+    mode: Option<WheelMode>,
+) -> Result<Option<Vec<u8>>, CoreError> {
+    crate::domain::key::key_from_stored(text.as_deref(), mode.map(Into::into))
+        .map(|key| encode_key(&key))
+        .transpose()
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn key_to_stored(key: Vec<u8>) -> Result<StoredKey, CoreError> {
+    let (text, mode) = crate::domain::key::key_to_stored(&decode_key(&key)?);
+    Ok(StoredKey {
+        text,
+        mode: mode.map(Into::into),
     })
 }
 
@@ -778,17 +816,28 @@ mod tests {
 
     #[test]
     fn the_six_oclock_spoke_flips_gb_to_f_sharp_across_the_plain_call() {
-        let first =
-            key_next_on_tap(String::new(), None, 6, WheelMode::Major).expect("on the wheel");
-        assert_eq!((first.tonic.as_str(), first.flipped), ("Gb", false));
-        let second = key_next_on_tap(first.tonic, Some(first.mode), 6, WheelMode::Major)
+        let first = key_next_on_tap(None, 6, WheelMode::Major)
+            .expect("decodes")
             .expect("on the wheel");
+        let first_key = decode_key(&first.key).expect("a key");
         assert_eq!(
-            (second.tonic.as_str(), second.mode, second.flipped),
-            ("F#", WheelMode::Major, true)
+            (first_key.spelling().as_str(), first.flipped),
+            ("Gb", false)
+        );
+        let second = key_next_on_tap(Some(first.key), 6, WheelMode::Major)
+            .expect("decodes")
+            .expect("on the wheel");
+        let second_key = decode_key(&second.key).expect("a key");
+        assert_eq!(
+            (second_key.spelling().as_str(), second.flipped),
+            ("F#", true)
         );
         assert_eq!(
-            key_wheel_selection(second.tonic, Some(WheelMode::Major)),
+            key_label(second.key.clone()).expect("decodes"),
+            "F\u{266f} major"
+        );
+        assert_eq!(
+            key_wheel_selection(second.key).expect("decodes"),
             Some(WheelSelection {
                 ring: 6,
                 mode: WheelMode::Major,
@@ -804,6 +853,27 @@ mod tests {
             ),
             (WheelMode::Minor, "Eb", Some("D#"))
         );
+    }
+
+    /// The store's columns cross the plain call and come back as written;
+    /// text the core cannot read is `None`, never a guess (#2106).
+    #[test]
+    fn a_stored_key_round_trips_through_the_plain_calls() {
+        let bytes = key_from_stored(Some("Eb".to_string()), Some(WheelMode::Minor))
+            .expect("decodes")
+            .expect("a key");
+        assert_eq!(
+            key_to_stored(bytes).expect("decodes"),
+            StoredKey {
+                text: "Eb".to_string(),
+                mode: Some(WheelMode::Minor)
+            }
+        );
+        assert_eq!(
+            key_from_stored(Some("C dorian".to_string()), None).expect("decodes"),
+            None
+        );
+        assert!(key_to_stored(vec![9, 9]).is_err(), "bad bytes are an error");
     }
 
     fn draft_bytes(draft: &crate::PhotoDraft) -> Vec<u8> {
