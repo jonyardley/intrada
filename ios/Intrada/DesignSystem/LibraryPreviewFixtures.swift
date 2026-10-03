@@ -50,12 +50,13 @@
       totalMinutes: UInt32 = 0,
       latestScore: UInt8? = nil,
       scoreHistory: [ScoreHistoryEntry] = [],
+      scoreTrend: ScoreTrend? = nil,
       tempoTrend: TempoTrendView = TempoTrendView(points: [], hasTrend: false),
       lastPracticedAt: String? = nil
     ) -> ItemPracticeSummary {
       ItemPracticeSummary(
         sessionCount: sessionCount, totalMinutes: totalMinutes, latestScore: latestScore,
-        scoreHistory: scoreHistory, tempoTrend: tempoTrend,
+        scoreHistory: scoreHistory, scoreTrend: scoreTrend, tempoTrend: tempoTrend,
         lastPracticedAt: lastPracticedAt)
     }
   }
@@ -182,6 +183,7 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
           ],
+          scoreTrend: ScoreTrend(from: 4, to: 6),
           tempoTrend: .fixture([66, nil, 69, 72]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         priority: false,
@@ -228,6 +230,7 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
           ],
+          scoreTrend: ScoreTrend(from: 5, to: 7),
           tempoTrend: .fixture([96, 100, nil, 104, 108]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         priority: false, linkedExercises: [],

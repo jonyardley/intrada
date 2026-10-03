@@ -129,7 +129,8 @@ struct LibraryDetailScreen: View {
 
   private var recentSessionsSection: some View {
     RecentSessions(
-      sessions: item.practice?.recentSessionRows(locale: locale, calendar: calendar) ?? [])
+      sessions: item.practice?.recentSessionRows(locale: locale, calendar: calendar) ?? [],
+      trend: item.practice?.scoreTrend)
   }
 
   // ── Actions ──

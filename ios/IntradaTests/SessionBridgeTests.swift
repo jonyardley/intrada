@@ -921,4 +921,37 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertTrue(fast.scoreHistory.isEmpty)
     XCTAssertFalse(fast.isSolid)
   }
+
+  func testRealBridgeScoreTrendRunsFromTheOldestMarkToTheNewest() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
+
+    for (day, score) in [("2026-09-04", UInt8(5)), ("2026-09-05", UInt8(7))] {
+      _ = try bridge.update(.session(.startBuilding))
+      _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+      let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+      _ = try bridge.update(.session(.startSession(now: "\(day)T09:00:00Z")))
+      _ = try bridge.update(
+        .session(
+          .nextItem(
+            now: "\(day)T09:05:00Z", nextItemStartedAt: "\(day)T09:05:00Z", reading: .silent)))
+      let playId = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays.last?.id)
+      _ = try bridge.update(
+        .session(.updateEntryScore(entryId: entryId, playId: playId, score: score)))
+      try acknowledgeSave(
+        bridge, try bridge.update(.session(.saveSession(now: "\(day)T09:06:00Z"))))
+    }
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    let practice = try XCTUnwrap(view.items.first { $0.id == itemId }?.practice)
+    XCTAssertEqual(practice.scoreTrend, ScoreTrend(from: 5, to: 7))
+  }
 }

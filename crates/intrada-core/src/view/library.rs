@@ -3,7 +3,7 @@ use crate::domain::session::PracticeSession;
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::model::{
     ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model, ScaffoldPreviewView,
-    ScaffoldSpecView,
+    ScaffoldSpecView, ScoreTrend,
 };
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared
@@ -263,6 +263,7 @@ pub(crate) fn build_practice_summaries(
                         session_count,
                         total_minutes: (total_secs / 60) as u32,
                         latest_score,
+                        score_trend: ScoreTrend::over(&score_history),
                         score_history,
                         tempo_trend,
                         last_practiced_at,
