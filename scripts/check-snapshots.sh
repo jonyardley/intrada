@@ -46,6 +46,7 @@ is_large() {
       testUpNextHeroCoral | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testFocusPlayerWithVariations | testFocusPlayerWithVariationsAccessibilitySize | \
+      testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen | \
       testPracticeSessionDetailAccessibilitySize | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testSessionSummaryWithVariations) return 0 ;;
