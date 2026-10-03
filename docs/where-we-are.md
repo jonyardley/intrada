@@ -1,12 +1,13 @@
 # Where we are
 
-*Which release is out and what phase the work is in. Written by hand and
-changed only when the phase changes, so no two branches edit it at once. What
-is being built right now: `just status`, which reads GitHub. What comes next:
+*What phase the work is in. Written by hand and changed only when the phase
+changes, so no two branches edit it at once. What is being built right now:
+`just status`, which reads GitHub. What comes next:
 [`roadmap.md`](roadmap.md).*
 
-**The latest release is v0.14.0, "Nothing goes missing, and the screen tells
-the truth" (2026-09-24, TestFlight build 23).** Each release's write-up is its
+**Which release is out on TestFlight: `gh release list`.** This file names no
+current build, because a release does not change it and the name would go stale
+with the next tag (#1932). Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on; v0.10.0 and v0.11.0 are tags without one.
 
