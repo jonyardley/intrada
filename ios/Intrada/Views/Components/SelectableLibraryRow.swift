@@ -11,9 +11,16 @@ struct SelectableLibraryRow: View {
   let removeHint: String
   let action: () -> Void
 
+  @Environment(\.dynamicTypeSize) private var typeSize
+  @ScaledMetric(relativeTo: .title2) private var markWidth: CGFloat = 28
+
+  private var markGutter: CGFloat {
+    typeSize.isAccessibilitySize ? markWidth + IntradaSpacing.controlGap : 0
+  }
+
   var body: some View {
     Button(action: action) {
-      LibraryItemCard(item: item)
+      LibraryItemCard(item: item, trailingGutter: markGutter)
         .overlay(alignment: .trailing) {
           Image(systemName: added ? "checkmark.circle.fill" : "plus.circle")
             .font(.title2)

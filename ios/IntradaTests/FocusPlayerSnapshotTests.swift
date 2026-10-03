@@ -126,7 +126,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     click.apply(.groupStarts)
     assertSnapshot(
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store),
-      as: tallAxConfig(height: 2600))
+      as: tallAxConfig(height: 3300))
   }
 
   /// The sounding row is the tight one, so it is the state that has to reflow.
