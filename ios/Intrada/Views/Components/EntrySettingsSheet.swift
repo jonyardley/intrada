@@ -9,6 +9,7 @@ struct EntrySettingsSheet: View {
   let limits: LimitsView
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.dynamicTypeSize) private var typeSize
 
   @State private var intention: String
   @State private var tracksReps: Bool
@@ -126,9 +127,7 @@ struct EntrySettingsSheet: View {
 
   private var repsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Toggle(isOn: $tracksReps) { Eyebrow("Track repetitions") }
-        .accessibilityIdentifier("entrySettings.trackReps")
-        .tint(IntradaColor.accent)
+      settingToggle("Track repetitions", isOn: $tracksReps, identifier: "entrySettings.trackReps")
         .onChange(of: tracksReps) { _, on in
           store.send(
             .session(.setRepTarget(entryId: entry.id, target: on ? UInt8(repTarget) : nil)))
@@ -150,8 +149,7 @@ struct EntrySettingsSheet: View {
 
   private var durationSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Toggle(isOn: $hasPlannedDuration) { Eyebrow("Planned duration") }
-        .tint(IntradaColor.accent)
+      settingToggle("Planned duration", isOn: $hasPlannedDuration)
         .onChange(of: hasPlannedDuration) { _, on in
           store.send(
             .session(
@@ -171,6 +169,24 @@ struct EntrySettingsSheet: View {
     }
     .padding(IntradaSpacing.cardCompact)
     .cardSurface(cornerRadius: IntradaRadius.control)
+  }
+
+  @ViewBuilder private func settingToggle(
+    _ title: String, isOn: Binding<Bool>, identifier: String? = nil
+  ) -> some View {
+    if typeSize.isAccessibilitySize {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        Eyebrow(title).accessibilityHidden(true)
+        Toggle(title, isOn: isOn)
+          .labelsHidden()
+          .tint(IntradaColor.accent)
+          .accessibilityIdentifier(identifier ?? "")
+      }
+    } else {
+      Toggle(isOn: isOn) { Eyebrow(title) }
+        .tint(IntradaColor.accent)
+        .accessibilityIdentifier(identifier ?? "")
+    }
   }
 
   // The row's non-gesture removal path (T4): dropping it from today's session
