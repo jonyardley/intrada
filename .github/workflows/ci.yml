@@ -78,6 +78,7 @@ jobs:
               - 'crates/intrada-core/**'
               - 'crates/intrada-ffi/**'
               - 'android/**'
+              - 'ios/Intrada/DesignSystem/Theme.swift'
               - 'justfile'
               - '.github/workflows/ci.yml'
               - '.cargo/config.toml'

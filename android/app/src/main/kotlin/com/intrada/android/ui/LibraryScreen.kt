@@ -68,7 +68,7 @@ fun LibraryScreen(
         if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
         if (error != null) GlobalBanner(error, tag = "banner.error", onDismiss = onDismissError)
         Column(Modifier.padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.card)) {
-            BasicText("Library", style = IntradaFont.pageTitle.copy(color = IntradaColor.ink))
+            BasicText("Library", style = IntradaFont.pageTitle().copy(color = IntradaColor.ink))
         }
         if (rows.isEmpty()) {
             BasicText(
@@ -103,7 +103,7 @@ fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
     ) {
         Box(Modifier.width(4.dp).fillMaxHeight().background(item.itemType.bar))
         Column(Modifier.padding(IntradaSpacing.card)) {
-            BasicText(item.title, style = IntradaFont.cardTitle.copy(color = IntradaColor.ink))
+            BasicText(item.title, style = IntradaFont.cardTitle().copy(color = IntradaColor.ink))
             if (item.subtitle.isNotEmpty()) {
                 Spacer(Modifier.height(3.dp))
                 BasicText(
@@ -129,6 +129,6 @@ private val ItemKind.label
 private val ItemKind.bar
     get() =
         when (this) {
-            ItemKind.PIECE -> IntradaColor.pieceBar
-            ItemKind.EXERCISE -> IntradaColor.exerciseBar
+            ItemKind.PIECE -> IntradaGradient.pieceBar
+            ItemKind.EXERCISE -> IntradaGradient.exerciseBar
         }
