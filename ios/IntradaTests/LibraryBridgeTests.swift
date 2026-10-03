@@ -159,7 +159,7 @@ final class LibraryBridgeTests: XCTestCase {
               id: nil, name: "", bars: .picked(first: 12, last: 14), kind: spot, targetBpm: "72"),
           ])))
 
-    let saved: [Section] = requests.compactMap { request -> Item? in
+    let saved: [ItemSection] = requests.compactMap { request -> Item? in
       guard case .persistence(.saveItem(let item)) = request.effect else { return nil }
       return item
     }.flatMap(\.sections)

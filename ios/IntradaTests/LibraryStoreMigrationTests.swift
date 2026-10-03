@@ -506,13 +506,13 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let store = try LibraryStore.inMemory()
     var item = LibraryItemFixture.record(id: "p1", title: "Rondo")
     item.sections = [
-      Section(
+      ItemSection(
         id: "s1", name: "A1", bars: BarRange(first: 1, last: 16), kind: .form, targetBpm: nil,
         position: 0, updatedAt: "2026-10-03T09:00:00Z", deletedAt: nil),
-      Section(
+      ItemSection(
         id: "s2", name: "Gone", bars: nil, kind: .form, targetBpm: nil, position: 1,
         updatedAt: "2026-10-03T09:05:00Z", deletedAt: "2026-10-03T09:05:00Z"),
-      Section(
+      ItemSection(
         id: "s3", name: "", bars: BarRange(first: 12, last: 14), kind: .troubleSpot,
         targetBpm: 72, position: 2, updatedAt: "2026-10-03T09:00:00Z", deletedAt: nil),
     ]

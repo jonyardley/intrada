@@ -5,7 +5,7 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::metre::Metre;
-pub use super::section::{BarRange, BarsInput, Section, SectionEdit, SectionKind};
+pub use super::section::{BarRange, BarsInput, ItemSection, SectionEdit, SectionKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
 pub use super::variant::Variant;
 use super::variant::VariantEdit;
@@ -82,7 +82,7 @@ pub struct Item {
     pub metre: Option<Metre>,
     /// Tombstones included (#2245).
     #[serde(default)]
-    pub sections: Vec<Section>,
+    pub sections: Vec<ItemSection>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

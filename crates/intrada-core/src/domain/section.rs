@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 
 /// A part of a piece or exercise in score order: a form section ("A1") or a
 /// trouble spot ("bars 12 to 14"). Library data only: how it is going is
-/// derived from plays when read, never stored here (#2321).
+/// derived from plays when read, never stored here (#2321). Not `Section`,
+/// which would clash with SwiftUI's on every screen that shows one (#2245).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct Section {
+pub struct ItemSection {
     pub id: String,
     /// May be empty when `bars` is set; the view then labels it by its bars.
     pub name: String,
@@ -79,7 +80,7 @@ impl BarRange {
     }
 }
 
-impl Section {
+impl ItemSection {
     /// Derived, not stored, so editing the bars keeps a nameless spot's label true.
     pub fn label(&self) -> String {
         match &self.bars {
@@ -91,10 +92,10 @@ impl Section {
 
 /// By id only, so repeated names stay separate sections (#2245).
 pub(crate) fn reconcile_sections(
-    existing: Vec<Section>,
+    existing: Vec<ItemSection>,
     drafts: Vec<SectionDraft>,
     now: DateTime<Utc>,
-) -> Vec<Section> {
+) -> Vec<ItemSection> {
     let mut pool = existing;
     let mut next = Vec::with_capacity(drafts.len() + pool.len());
 
@@ -123,7 +124,7 @@ pub(crate) fn reconcile_sections(
                 }
                 next.push(s);
             }
-            None => next.push(Section {
+            None => next.push(ItemSection {
                 id: ulid::Ulid::generate().to_string(),
                 name: draft.name,
                 bars: draft.bars,

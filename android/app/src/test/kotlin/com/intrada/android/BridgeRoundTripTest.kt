@@ -13,11 +13,11 @@ import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
+import com.intrada.shared.ItemSection
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
-import com.intrada.shared.Section
 import com.intrada.shared.SectionEdit
 import com.intrada.shared.SectionKind
 import com.intrada.shared.SessionEvent
@@ -157,7 +157,7 @@ class BridgeRoundTripTest {
                 }
                 .single()
 
-        val sections: List<Section> = saved.sections
+        val sections: List<ItemSection> = saved.sections
         assertEquals(
             listOf(BarRange(1.toUShort(), 16.toUShort()), BarRange(12.toUShort(), 14.toUShort())),
             sections.map { it.bars },

@@ -241,11 +241,11 @@ final class LibraryStore: ItemStore {
   }
 
   /// Tombstones included: the core reconciles (#2245).
-  private static func sectionsByItem(_ db: Database) throws -> [String: [Section]] {
+  private static func sectionsByItem(_ db: Database) throws -> [String: [ItemSection]] {
     let rows = try Row.fetchAll(
       db,
       sql: "SELECT * FROM section ORDER BY item_id, position, id")
-    var byItem: [String: [Section]] = [:]
+    var byItem: [String: [ItemSection]] = [:]
     for row in rows {
       byItem[row["item_id"], default: []].append(section(from: row))
     }

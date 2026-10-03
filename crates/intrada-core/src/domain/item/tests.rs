@@ -3432,7 +3432,7 @@ fn update_sections(
     )
 }
 
-fn piece_sections(model: &Model) -> Vec<Section> {
+fn piece_sections(model: &Model) -> Vec<ItemSection> {
     model
         .items
         .iter()
@@ -3441,8 +3441,8 @@ fn piece_sections(model: &Model) -> Vec<Section> {
         .unwrap_or_default()
 }
 
-fn live_sections(model: &Model) -> Vec<Section> {
-    let mut live: Vec<Section> = piece_sections(model)
+fn live_sections(model: &Model) -> Vec<ItemSection> {
+    let mut live: Vec<ItemSection> = piece_sections(model)
         .into_iter()
         .filter(|s| s.deleted_at.is_none())
         .collect();

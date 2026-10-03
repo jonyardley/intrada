@@ -552,7 +552,7 @@ mod tests {
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
             sections: vec![
-                crate::domain::section::Section {
+                crate::domain::section::ItemSection {
                     id: "s-1".to_string(),
                     name: "A1".to_string(),
                     bars: Some(crate::domain::section::BarRange { first: 1, last: 16 }),
@@ -562,7 +562,7 @@ mod tests {
                     updated_at: at,
                     deleted_at: None,
                 },
-                crate::domain::section::Section {
+                crate::domain::section::ItemSection {
                     id: "s-2".to_string(),
                     name: String::new(),
                     bars: Some(crate::domain::section::BarRange {

@@ -5,7 +5,7 @@ import SharedTypes
 extension LibraryStore {
   // ── Row ↔ Item codec ─────────────────────────────────────────────────
 
-  static func item(from row: Row, variants: [Variant], sections: [Section]) -> Item {
+  static func item(from row: Row, variants: [Variant], sections: [ItemSection]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
@@ -52,13 +52,13 @@ extension LibraryStore {
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
-  // ── Row ↔ Section codec ──────────────────────────────────────────────
+  // ── Row ↔ ItemSection codec ──────────────────────────────────────────────
 
-  static func section(from row: Row) -> Section {
+  static func section(from row: Row) -> ItemSection {
     let first: Int? = row["bar_first"]
     let last: Int? = row["bar_last"]
     let bars = first.flatMap { f in last.map { BarRange(first: UInt16(f), last: UInt16($0)) } }
-    return Section(
+    return ItemSection(
       id: row["id"], name: row["name"], bars: bars,
       kind: sectionKinds.decode(row["kind"]) ?? .form,
       targetBpm: (row["target_bpm"] as Int?).map { UInt16($0) },

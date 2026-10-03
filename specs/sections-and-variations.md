@@ -19,7 +19,7 @@ read, never stored on it (`docs/practice-record-target.md`, #2321).
 New module `domain/section.rs`, held on the item like its variations today:
 
 ```rust
-pub struct Section {
+pub struct ItemSection {
     pub id: String,                    // ulid; plays and links point here
     pub name: String,                  // "A1"; may be empty when bars are set
     pub bars: Option<BarRange>,
@@ -33,7 +33,10 @@ pub struct BarRange { pub first: u16, pub last: u16 } // "bar 12" is 12..12
 pub enum SectionKind { Form, TroubleSpot }
 ```
 
-`Item` gains `sections: Vec<Section>`, appended last with `#[serde(default)]`,
+The name is `ItemSection`, not `Section`, so the screens can still use
+SwiftUI's own `Section` without qualifying it.
+
+`Item` gains `sections: Vec<ItemSection>`, appended last with `#[serde(default)]`,
 tombstones included, exactly as `variants` is carried today. Pieces and
 exercises both have sections.
 
@@ -136,7 +139,7 @@ CREATE INDEX index_section_on_item_id ON section(item_id);
 
 ## What crosses the bridge
 
-`Section`, `BarRange`, `SectionKind`, `SectionEdit`, `BarsInput`,
+`ItemSection`, `BarRange`, `SectionKind`, `SectionEdit`, `BarsInput`,
 `SectionView`, the new `Item` and `LibraryItemView` fields, the new
 `ItemEvent` variant, `FormErrorField::Sections` and the two limits. All
 appended last; no JSON-only serde attributes (#846). Swift and Kotlin bindings
@@ -150,7 +153,7 @@ are regenerated, never edited.
   #1501's question on #50); with no play naming a section yet, this step
   changes neither.
 - **#2247:** `UpdateSections` and `SectionView` cover the item screen.
-- **#2248:** a link table references `Section.id`; a tombstoned section's links
+- **#2248:** a link table references `ItemSection.id`; a tombstoned section's links
   hide with it.
 - **#2249:** adds `AddTroubleSpot`, a nameless `TroubleSpot` placed in score
   order, sent from the practice screen.

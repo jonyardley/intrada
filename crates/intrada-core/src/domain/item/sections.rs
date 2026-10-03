@@ -19,7 +19,7 @@ pub(super) fn update_sections(
 
     // Order-insensitive: the store loads by position with tombstones
     // interleaved, while reconcile emits live rows then tombstones.
-    let sorted_by_id = |mut s: Vec<Section>| {
+    let sorted_by_id = |mut s: Vec<ItemSection>| {
         s.sort_by(|a, b| a.id.cmp(&b.id));
         s
     };
