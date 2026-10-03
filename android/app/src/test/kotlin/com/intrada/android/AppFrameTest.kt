@@ -55,6 +55,19 @@ class AppFrameTest {
     }
 
     @Test
+    fun backAfterTwoTabsLandsOnLibrary() = runTest {
+        show()
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
+        compose.onNodeWithTag(AppTab.ROUTINES.tag).performClick()
+        compose.onNodeWithText("Routines").assertIsDisplayed()
+
+        pressBack()
+
+        compose.onNodeWithText("Library").assertIsDisplayed()
+        compose.onNodeWithTag(AppTab.LIBRARY.tag).assertIsSelected()
+    }
+
+    @Test
     fun backFromLibraryLeavesTheApp() = runTest {
         show()
 
