@@ -21,6 +21,7 @@ struct SegmentedPills<Option: Hashable>: View {
   var layout: Layout = .inlineScrolling(edgeInset: 0)
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var typeSize
   @Namespace private var pill
 
   var body: some View {
@@ -32,15 +33,25 @@ struct SegmentedPills<Option: Hashable>: View {
         .contentMargins(.leading, edgeInset, for: .scrollContent)
         .padding(.leading, -edgeInset)
     case .fullWidthTrack:
+      let shape = RoundedRectangle(
+        cornerRadius: stacked ? IntradaRadius.card : IntradaRadius.pill)
       track
         .padding(4)
-        .background(IntradaColor.cardFill, in: Capsule())
-        .overlay(Capsule().stroke(IntradaColor.hairline, lineWidth: 1))
+        .background(IntradaColor.cardFill, in: shape)
+        .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
     }
   }
 
+  // An equal-width row of three or four pills leaves too little width per
+  // label at accessibility sizes, so words break mid-letter (#2133).
+  private var stacked: Bool { layout == .fullWidthTrack && typeSize.isAccessibilitySize }
+
   private var track: some View {
-    HStack(spacing: layout == .fullWidthTrack ? 4 : IntradaSpacing.controlGap) {
+    let trackLayout =
+      stacked
+      ? AnyLayout(VStackLayout(spacing: 4))
+      : AnyLayout(HStackLayout(spacing: layout == .fullWidthTrack ? 4 : IntradaSpacing.controlGap))
+    return trackLayout {
       ForEach(options, id: \.self) { option in
         pillButton(option)
       }
