@@ -31,23 +31,47 @@ import org.robolectric.annotation.GraphicsMode
 class AppFrameSnapshotTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun library() = capture(AppTab.LIBRARY, fontScale = 1f)
+    @Test fun library() = capture(AppTab.LIBRARY, 1f, "src/test/snapshots/frame-library.png")
 
-    @Test fun libraryAtTheLargestFontScale() = capture(AppTab.LIBRARY, LARGEST_FONT_SCALE)
+    @Test
+    fun libraryAtTheLargestFontScale() =
+        capture(
+            AppTab.LIBRARY,
+            LARGEST_FONT_SCALE,
+            "src/test/snapshots/frame-library-largest-font.png",
+        )
 
-    @Test fun practice() = capture(AppTab.PRACTICE, fontScale = 1f)
+    @Test fun practice() = capture(AppTab.PRACTICE, 1f, "src/test/snapshots/frame-practice.png")
 
-    @Test fun practiceAtTheLargestFontScale() = capture(AppTab.PRACTICE, LARGEST_FONT_SCALE)
+    @Test
+    fun practiceAtTheLargestFontScale() =
+        capture(
+            AppTab.PRACTICE,
+            LARGEST_FONT_SCALE,
+            "src/test/snapshots/frame-practice-largest-font.png",
+        )
 
-    @Test fun routines() = capture(AppTab.ROUTINES, fontScale = 1f)
+    @Test fun routines() = capture(AppTab.ROUTINES, 1f, "src/test/snapshots/frame-routines.png")
 
-    @Test fun routinesAtTheLargestFontScale() = capture(AppTab.ROUTINES, LARGEST_FONT_SCALE)
+    @Test
+    fun routinesAtTheLargestFontScale() =
+        capture(
+            AppTab.ROUTINES,
+            LARGEST_FONT_SCALE,
+            "src/test/snapshots/frame-routines-largest-font.png",
+        )
 
-    @Test fun progress() = capture(AppTab.PROGRESS, fontScale = 1f)
+    @Test fun progress() = capture(AppTab.PROGRESS, 1f, "src/test/snapshots/frame-progress.png")
 
-    @Test fun progressAtTheLargestFontScale() = capture(AppTab.PROGRESS, LARGEST_FONT_SCALE)
+    @Test
+    fun progressAtTheLargestFontScale() =
+        capture(
+            AppTab.PROGRESS,
+            LARGEST_FONT_SCALE,
+            "src/test/snapshots/frame-progress-largest-font.png",
+        )
 
-    private fun capture(tab: AppTab, fontScale: Float) = runTest {
+    private fun capture(tab: AppTab, fontScale: Float, reference: String) = runTest {
         val store =
             Store(
                 LiveBridge(),
@@ -67,8 +91,7 @@ class AppFrameSnapshotTest {
             }
         }
         compose.onNodeWithTag(tab.tag).performClick()
-        val suffix = if (fontScale == 1f) "" else "-largest-font"
-        compose.onRoot().captureRoboImage("src/test/snapshots/frame-${tab.route}$suffix.png")
+        compose.onRoot().captureRoboImage(reference)
     }
 
     private companion object {
