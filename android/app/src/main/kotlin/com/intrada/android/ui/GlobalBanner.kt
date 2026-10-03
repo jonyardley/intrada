@@ -1,23 +1,38 @@
 package com.intrada.android.ui
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import com.intrada.android.R
+
+private val touchTarget = 48.dp
 
 @Composable
 fun GlobalBanner(
@@ -26,7 +41,10 @@ fun GlobalBanner(
     modifier: Modifier = Modifier,
     onDismiss: (() -> Unit)? = null,
 ) {
-    val text = IntradaFont.bodyMedium.copy(color = IntradaColor.danger)
+    val ink = IntradaColor.danger
+    val text = IntradaFont.bodyMedium.copy(color = ink)
+    val firstLine =
+        with(LocalDensity.current) { rememberTextMeasurer().measure("A", text).size.height.toDp() }
     Row(
         modifier
             .fillMaxWidth()
@@ -48,17 +66,48 @@ fun GlobalBanner(
                 start = IntradaSpacing.card,
                 end = if (onDismiss == null) IntradaSpacing.card else 0.dp,
             ),
-        horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        BasicText(message, Modifier.weight(1f).padding(vertical = 10.dp), style = text)
+        Box(
+            Modifier.weight(1f).heightIn(min = touchTarget),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Row(
+                Modifier.padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Box(Modifier.height(firstLine), contentAlignment = Alignment.Center) {
+                    BannerIcon(R.drawable.ic_warning_triangle, IntradaIconSize.control, ink)
+                }
+                BasicText(message, Modifier.weight(1f), style = text)
+            }
+        }
         if (onDismiss != null) {
             Box(
-                Modifier.size(48.dp).clickable(onClick = onDismiss),
+                Modifier.size(touchTarget).clickable(onClick = onDismiss),
                 contentAlignment = Alignment.Center,
             ) {
-                BasicText("✕", style = IntradaFont.metaMedium.copy(color = IntradaColor.danger))
+                BannerIcon(R.drawable.ic_close, IntradaIconSize.caption, ink)
             }
         }
     }
 }
+
+@Composable
+private fun BannerIcon(
+    @DrawableRes id: Int,
+    size: IntradaIconSize,
+    ink: Color,
+) {
+    Image(
+        painterResource(id),
+        contentDescription = null,
+        modifier = Modifier.size(size.scaled()),
+        colorFilter = ColorFilter.tint(ink),
+    )
+}
+
+@Composable
+@ReadOnlyComposable
+private fun IntradaIconSize.scaled(): Dp = min(points * LocalDensity.current.fontScale, maxPoints)
