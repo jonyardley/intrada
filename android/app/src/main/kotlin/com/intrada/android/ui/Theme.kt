@@ -183,8 +183,7 @@ object IntradaFont {
     val body = hanken(FontWeight.Normal, 17.sp)
     val bodyMedium = hanken(FontWeight.Medium, 17.sp)
     val label = hanken(FontWeight.Medium, 15.sp)
-    val secondary =
-        hanken(FontWeight.Normal, 15.sp).copy(fontFeatureSettings = "tnum")
+    val secondary = hanken(FontWeight.Normal, 15.sp).copy(fontFeatureSettings = "tnum")
     val figure = TextStyle(fontFamily = mono, fontWeight = FontWeight.Normal, fontSize = 15.sp)
     val button = hanken(FontWeight.Bold, 15.sp)
     val segment = hanken(FontWeight.Medium, 15.sp)
