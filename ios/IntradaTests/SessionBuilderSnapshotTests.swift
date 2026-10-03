@@ -80,9 +80,9 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
   func testEntrySettingsSheetAccessibilitySize() throws {
     let store = Store.previewBuildingGrouped
     let limits = try XCTUnwrap(store.viewModel?.limits)
+    var entry = SetlistEntryView.previewGroupedScalesConfigured
+    entry.itemTitle = "Piano Concerto No. 2 in C minor"
     assertSnapshot(
-      of: host(
-        EntrySettingsSheet(entry: .previewGroupedScalesConfigured, limits: limits), store: store
-      ), as: axConfig)
+      of: host(EntrySettingsSheet(entry: entry, limits: limits), store: store), as: axConfig)
   }
 }
