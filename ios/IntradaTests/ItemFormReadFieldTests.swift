@@ -4,7 +4,7 @@ import Testing
 @testable import Intrada
 
 /// The provenance half of the add form (#1436). The core decides what a page
-/// *says* and which fields take it (#2229); this is how the form keeps the marks.
+/// *says*; this is only about how long the form goes on claiming it.
 @MainActor
 struct ItemFormReadFieldTests {
   private func filled() -> ItemFormModel {
@@ -47,9 +47,8 @@ struct ItemFormReadFieldTests {
     #expect(form.readFrom[.title] == false, "the fields they did not touch keep theirs")
   }
 
-  /// A value typed before scanning is the user's. Deleting the `takes`
-  /// filter in the core's `fill_form` lets a scan overwrite the title they had
-  /// already written.
+  /// A value typed before scanning is the user's. Deleting the take filter in
+  /// the core's `fill_form` lets a scan overwrite the title they had written.
   @Test func aScanNeverOverwritesWhatTheUserAlreadyTyped() {
     let form = ItemFormModel(kind: .piece)
     form.title = "The name I gave it"
@@ -61,7 +60,6 @@ struct ItemFormReadFieldTests {
     #expect(form.composer == "Joseph Kosmo", "the fields they left empty still fill")
   }
 
-  /// The Swift `isEmpty` guard left a spaces-only title unfilled (#2229).
   @Test func aFieldHoldingOnlySpacesTakesTheRead() {
     let form = ItemFormModel(kind: .piece)
     form.title = "   "

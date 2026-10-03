@@ -119,8 +119,7 @@ final class ItemFormModel {
     loadedVariations = !item.variants.isEmpty
   }
 
-  /// The core decides which fields take the read (#2229). A failed call can
-  /// only be a wire break (#846), so it fills nothing and is reported.
+  /// The core picks the fields (#2229); a failed call is a wire break (#846).
   /// Nothing here is saved; pressing Add is what writes.
   func fill(from draft: PhotoDraft) {
     let fields = [
