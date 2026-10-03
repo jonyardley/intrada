@@ -32,8 +32,6 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
     };
 
     model.items.push(item.clone());
-    model.last_error = None;
-
     model.clear_error();
     let mut writes = Vec::new();
     if !minted.is_empty() {

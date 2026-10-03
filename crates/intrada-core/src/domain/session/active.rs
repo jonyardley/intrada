@@ -138,7 +138,7 @@ pub(super) fn end_session_early(
 pub(super) fn switch_play(
     model: &mut Model,
     entry_id: String,
-    way: PlayWay,
+    mut way: PlayWay,
     now: DateTime<Utc>,
     reading: TempoReading,
 ) -> Command<Effect, Event> {
@@ -155,6 +155,19 @@ pub(super) fn switch_play(
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
+
+    let written = model
+        .items
+        .iter()
+        .find(|i| i.id == entry.item_id)
+        .and_then(|i| i.key);
+    if way
+        .key
+        .zip(written)
+        .is_some_and(|(named, written)| named.same_key(&written))
+    {
+        way.key = None;
+    }
 
     // Switching to the way already open writes nothing, so a stray tap
     // cannot clear the dots (#1739 decision 6). Checked before capacity,

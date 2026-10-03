@@ -348,7 +348,10 @@ pub fn build_active_session_view(
             .unwrap_or(0),
         current_can_undo: open
             .and_then(|p| p.rep_history.as_deref())
-            .is_some_and(|h| !crate::domain::session::standing_taps(h).is_empty()),
+            .is_some_and(|h| {
+                h.len() < crate::validation::MAX_REP_HISTORY
+                    && !crate::domain::session::standing_taps(h).is_empty()
+            }),
     }
 }
 
@@ -776,6 +779,12 @@ mod tests {
 
         let undone = view_of(0, vec![tap(RepAction::Missed), tap(RepAction::Undo)]);
         assert!(!undone.current_can_undo);
+
+        let full = view_of(
+            255,
+            vec![tap(RepAction::Success); crate::validation::MAX_REP_HISTORY],
+        );
+        assert!(!full.current_can_undo, "a full history takes no undo");
     }
 
     // ── build_active_session_view ──────────────────────────────────────

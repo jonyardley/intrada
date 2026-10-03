@@ -336,7 +336,6 @@ pub struct WheelTap {
     pub flipped: bool,
 }
 
-/// The two columns a key is stored in: the spelling and the mode.
 #[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoredKey {

@@ -354,25 +354,31 @@ impl Intrada {
             }
 
             Event::VariationsStoreLoaded(output) => match output {
-                PersistenceOutput::Variations(rows) => match model.variations_sync.load_landed() {
-                    persistence::Landed::Apply => {
-                        let seeded =
-                            crate::domain::variation::seed_if_empty(&rows, chrono::Utc::now());
-                        model.variations = rows.into();
-                        match seeded {
-                            Some(seeded) => {
-                                model.variations.extend(seeded.iter().cloned());
-                                Command::all([
-                                    persistence::save_variations(model, seeded),
-                                    crux_core::render::render(),
-                                ])
+                PersistenceOutput::Variations(rows) => {
+                    let first_load = !model.variations_sync.has_loaded();
+                    match model.variations_sync.load_landed() {
+                        persistence::Landed::Apply => {
+                            let seeded = if first_load {
+                                crate::domain::variation::seed_if_empty(&rows, chrono::Utc::now())
+                            } else {
+                                None
+                            };
+                            model.variations = rows.into();
+                            match seeded {
+                                Some(seeded) => {
+                                    model.variations.extend(seeded.iter().cloned());
+                                    Command::all([
+                                        persistence::save_variations(model, seeded),
+                                        crux_core::render::render(),
+                                    ])
+                                }
+                                None => crux_core::render::render(),
                             }
-                            None => crux_core::render::render(),
                         }
+                        persistence::Landed::Drop => Command::done(),
+                        persistence::Landed::Reload => persistence::load_variations(model),
                     }
-                    persistence::Landed::Drop => Command::done(),
-                    persistence::Landed::Reload => persistence::load_variations(model),
-                },
+                }
                 PersistenceOutput::Items(_)
                 | PersistenceOutput::Sessions(_)
                 | PersistenceOutput::Ack => {
@@ -2617,6 +2623,27 @@ mod tests {
             .map(|k| (k.label.as_str(), k.latest_score))
             .collect();
         assert_eq!(keys, vec![("E\u{266d} major", Some(7)), ("C major", None)]);
+    }
+
+    #[test]
+    fn a_play_with_no_key_counts_for_the_written_key() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut exercise = make_item("ex1", "Scales", ItemKind::Exercise, now);
+        exercise.key = Key::parse("Eb major");
+        exercise.keys = vec![Key::parse("D# major").unwrap(), Key::C_MAJOR];
+        let model = Model {
+            items: vec![exercise].into(),
+            sessions: vec![make_session("s1", "ex1", Some(6), None)].into(),
+            ..Default::default()
+        };
+
+        let marks: Vec<Option<u8>> = app.rendered(&model).items[0]
+            .keys
+            .iter()
+            .map(|k| k.latest_score)
+            .collect();
+        assert_eq!(marks, vec![Some(6), None]);
     }
 
     #[test]

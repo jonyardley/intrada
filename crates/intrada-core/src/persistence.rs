@@ -329,6 +329,29 @@ mod tests {
     }
 
     #[test]
+    fn a_failed_seed_write_is_not_retried_on_the_reload() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = load_variations(&mut model);
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![])),
+            &mut model,
+        );
+        assert!(saved_variations(&mut cmd).is_some());
+        let _ = app.update(
+            Event::VariationsStoreWritten(PersistenceOutput::Failed),
+            &mut model,
+        );
+
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![])),
+            &mut model,
+        );
+        assert_eq!(saved_variations(&mut cmd), None, "no write loop");
+        assert!(model.variations.is_empty());
+    }
+
+    #[test]
     fn a_failed_variation_write_surfaces_and_reloads() {
         let app = crate::app::Intrada;
         let mut model = Model::default();

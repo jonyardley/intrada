@@ -167,7 +167,6 @@ pub fn key_from_stored(text: Option<&str>, modality: Option<Modality>) -> Option
     })
 }
 
-/// The two columns a key is stored in.
 pub fn key_to_stored(key: &Key) -> (String, Option<Modality>) {
     (key.spelling(), key.mode)
 }

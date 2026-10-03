@@ -5738,9 +5738,6 @@ fn switching_mid_item_closes_the_open_play_and_opens_another() {
 
 #[test]
 fn switching_to_the_variation_already_open_writes_nothing() {
-    // StartSession seeds the open play with v-c, the first live variation
-    // (#1758), so the genuine switch under test is to v-d; switching to
-    // v-c here would itself be a no-op rather than exercising one.
     let (mut model, start) = model_with_variations();
     let entry_id = only_entry(&model).id.clone();
     update(
@@ -5781,6 +5778,56 @@ fn switching_to_the_variation_already_open_writes_nothing() {
         Some(1),
         "the stray tap did not clear the dots"
     );
+}
+
+#[test]
+fn naming_the_written_key_is_the_play_already_open() {
+    let mut model = model_with_library();
+    model
+        .items
+        .iter_mut()
+        .find(|i| i.id == "exercise-1")
+        .expect("the library fixture has exercise-1")
+        .key = crate::domain::key::Key::parse("Eb major");
+    let (mut model, start) = {
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "exercise-1".to_string(),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        (model, now)
+    };
+    let entry_id = only_entry(&model).id.clone();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RepGotIt {
+            now: start + chrono::Duration::seconds(10),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchPlay {
+            entry_id,
+            section_id: None,
+            key: crate::domain::key::Key::parse("D# major"),
+            variation_ids: vec![],
+            now: start + chrono::Duration::seconds(20),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    let entry = only_entry(&model);
+    assert_eq!(entry.plays.len(), 1, "the written key is already open");
+    assert_eq!(play_of(entry).rep_count, Some(1));
 }
 
 #[test]
@@ -7495,6 +7542,33 @@ fn a_climb_inside_two_seconds_keeps_one_change() {
     }
 
     assert_eq!(kept_tempos(&model), vec![84]);
+}
+
+#[test]
+fn a_full_list_of_tempo_changes_keeps_no_more() {
+    let (mut model, start) = model_with_active_session(1);
+    tempo_to(&mut model, start, 40);
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        panic!("the practice is active");
+    };
+    let play = active.entries[0]
+        .open_play_mut()
+        .expect("a tempo change opens a play");
+    play.tempo_changes = (0..crate::validation::MAX_REP_HISTORY)
+        .map(|i| TempoChange {
+            at: start + chrono::Duration::seconds(i as i64),
+            tempo: 40 + (i % 2) as u16,
+            click_sounding: true,
+        })
+        .collect();
+    let late = start + chrono::Duration::seconds(10_000);
+
+    tempo_to(&mut model, late, 90);
+    assert_eq!(
+        kept_tempos(&model).len(),
+        crate::validation::MAX_REP_HISTORY
+    );
+    assert_ne!(kept_tempos(&model).last(), Some(&90));
 }
 
 #[test]

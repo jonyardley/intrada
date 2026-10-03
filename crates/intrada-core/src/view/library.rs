@@ -487,9 +487,13 @@ pub(crate) fn build_key_views(
     item.keys
         .iter()
         .map(|key| {
-            let latest_score = history(plays, |p| p.key.is_some_and(|k| k.same_key(key)))
-                .first()
-                .map(|e| e.score);
+            let written = item.key.is_some_and(|k| k.same_key(key));
+            let latest_score = history(plays, |p| match p.key {
+                Some(k) => k.same_key(key),
+                None => written,
+            })
+            .first()
+            .map(|e| e.score);
             crate::model::ItemKeyView {
                 key: *key,
                 label: key.label(),
