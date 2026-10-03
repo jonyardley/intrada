@@ -30,7 +30,6 @@ LinkedExerciseView
 ListQuery
 Modality
 NeglectedItem
-PhotoDraft
 PhotoRecognitionStatus
 PhotoRecognitionView
 PickerVariationView
