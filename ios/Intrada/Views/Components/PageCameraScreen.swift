@@ -228,6 +228,7 @@ struct CapturedPageConfirm: View {
   let onKeep: () -> Void
   let onRetake: () -> Void
   @Environment(\.marker) private var marker
+  @Environment(\.dynamicTypeSize) private var typeSize
 
   var body: some View {
     VStack(spacing: IntradaSpacing.section) {
@@ -236,20 +237,40 @@ struct CapturedPageConfirm: View {
         .scaledToFit()
         .accessibilityLabel("The page you photographed")
 
-      HStack(spacing: IntradaSpacing.section) {
-        Button("Retake", action: onRetake)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.onAccent)
+      if typeSize.isAccessibilitySize {
+        stackedButtons
+      } else {
+        HStack(spacing: IntradaSpacing.section) {
+          Button("Retake", action: onRetake)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.onAccent)
 
-        Button("Use this photo", action: onKeep)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.onMarker)
-          .padding(.horizontal, IntradaSpacing.section)
-          .padding(.vertical, IntradaSpacing.cardCompact)
-          .background(marker, in: Capsule())
+          Button("Use this photo", action: onKeep)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.onMarker)
+            .padding(.horizontal, IntradaSpacing.section)
+            .padding(.vertical, IntradaSpacing.cardCompact)
+            .background(marker, in: Capsule())
+        }
       }
     }
     .padding(.vertical, IntradaSpacing.section)
+  }
+
+  // Side by side, the capsule wraps its label into a lopsided oval (#2132).
+  private var stackedButtons: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      MarkerButton("Use this photo", action: onKeep)
+      Button(action: onRetake) {
+        Text("Retake")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.onAccent)
+          .frame(maxWidth: .infinity, minHeight: 44)
+          .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(.horizontal, IntradaSpacing.section)
   }
 }
 

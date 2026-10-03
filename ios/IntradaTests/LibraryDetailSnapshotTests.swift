@@ -75,7 +75,8 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
 
   func testScaffoldPreviewSheetAccessibilitySize() {
     assertSnapshot(
-      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: axConfig)
+      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })),
+      as: tallAxConfig(height: 3300))
   }
 
   func testPieceDetailLinkedPopulated() {
