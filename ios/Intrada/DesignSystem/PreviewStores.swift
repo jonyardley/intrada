@@ -490,8 +490,7 @@
     static var previewCellist: ProfileView {
       ProfileView(
         name: "Jon", instrument: "Cello", suggestedIcon: .cello, icon: .cello, iconChosen: false,
-        colour: .coral,
-        greeting: "Morning, Jon")
+        colour: .coral, greeting: "Morning, Jon", instrumentNames: ["Cello", "Piano", "Violin"])
     }
   }
 #endif
