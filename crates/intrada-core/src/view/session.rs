@@ -677,9 +677,7 @@ mod tests {
         );
     }
 
-    /// A quaver tempo seeds as written, and a grouping the sheet's table does
-    /// not list still gets its patterns; an unmarked item falls back to common
-    /// time at the default (#2225).
+    /// A 4/8 grouping the bars table lacks still gets its patterns (#2225).
     #[test]
     fn active_session_view_seeds_the_click_from_the_items_tempo_and_bar() {
         let four_eight = Metre {

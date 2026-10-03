@@ -225,7 +225,8 @@ which a readout-inline row could not.
 The click's tempo band, step and default, the named bars, the groupings each
 beat count offers and the patterns each bar offers live in
 `crates/intrada-core/src/domain/metre.rs` and reach both shells through
-`LimitsView`, so the Android click cannot drift from the iOS one.
+`LimitsView`, so the Android click cannot drift from the iOS one in its band,
+bars or patterns.
 
 - **The band is crotchets 40 to 208, default 96, step 2**, projected once per
   beat unit through `Metre::displayed_bpm`: minim 20 to 104, quaver 80 to 416.
@@ -242,8 +243,8 @@ beat count offers and the patterns each bar offers live in
 - **The last sounding beat stays on in the shell.** The core could only rule on
   each tap through an event, which would make the click's live state core state;
   `validate_click_state` already refuses a silent bar at the hand-off.
-- **The drag's feel stays in the shell**: points of travel per step is tuned to
-  the thumb, and Android tunes its own.
+- **The drag's feel stays in the shell**: the points of travel per step are
+  tuned to the thumb, and Android tunes its own.
 
 ## The click engine
 
