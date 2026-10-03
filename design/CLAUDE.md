@@ -32,10 +32,6 @@
   Option-B pattern), mounted via `<dc-import name="Focus Player">` in the
   related-items journey. The design system page no longer embeds screens. Edit it here, once. New shared screens follow
   the same pattern (see `design-process.md` §9).
-- `Drill Loop.dc.html`: **practice-coach Session A journey** (3 Aug 2026): A2 during
-  play + A3 after a repetition (full, mobile + iPad), A1 Home + A4 block boundary
-  (rough passes for Phase 2a). History: the coach work was removed in #1344, and its
-  primitives left the design system with #1678.
 - `Visual Direction Exploration.dc.html`: the exploration that chose the 8f look
   (#1676).
 - `Intrada Reskin.dc.html`: the 8f token sheet.

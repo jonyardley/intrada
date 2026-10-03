@@ -2,3 +2,8 @@
 # (See `.claude/rules/ios-quality.md` for how we keep these from bloating
 # git history — they're re-recorded on every intentional UI change.)
 ios/IntradaTests/__Snapshots__/**/*.png binary
+
+# Claude Design exports and their bundled runtime are mockups, not source:
+# keep them out of GitHub's language bar.
+design/** linguist-documentation
+specs/*/design/** linguist-documentation

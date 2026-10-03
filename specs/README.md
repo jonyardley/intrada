@@ -85,8 +85,6 @@ cannot be found and should not be recreated from them.
 | [`live-activity-plugin.md`](live-activity-plugin.md) | Same: an ActivityKit design as a Tauri plugin in a deleted crate. Its reference Swift was removed in #1745 too; same recovery route. A native lock-screen spec does not exist yet |
 | [`reflection-loop/`](reflection-loop/) | The three session-level reflection boxes and `UpdateSessionReflection`. Shipped, then retired by #1766 (see `retire-shell-dead-session-fields.md`); they survive only as unread columns in the on-device `session` table |
 
-[`_archive/`](_archive/) holds the numbered SpecKit-era folders and retired
-single-file specs (`seo-prerender.md`, `mcp-server.md`,
-`account-settings-and-deletion.md`: the last two targeted the removed API,
-#1746), and is excluded from the knowledge graph. Do not run `/speckit-*`
-commands.
+The SpecKit-era folders and the retired single-file specs (`seo-prerender.md`,
+`mcp-server.md`, `account-settings-and-deletion.md`) were deleted in the 2026-10
+cleanup; recover them from git history. Do not run `/speckit-*` commands.

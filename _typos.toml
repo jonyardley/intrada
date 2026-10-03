@@ -24,7 +24,6 @@ extend-exclude = [
     # Claude Design handoff export. Minified, never hand-edited (#1390)
     "design/_ds/",
     # Retired docs, reference only (mirrors .graphifyignore)
-    "specs/_archive/",
     ".specify/",
     # Generated scan artefacts (e.g. gitleaks/clippy SARIF left in the workspace)
     "*.sarif",
