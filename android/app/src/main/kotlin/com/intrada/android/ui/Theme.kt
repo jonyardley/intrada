@@ -28,8 +28,7 @@ import kotlin.math.pow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-// Token names and values from ios/Intrada/DesignSystem/Theme.swift; ThemeTokenParityTest holds
-// them.
+// Names and values from ios/Intrada/DesignSystem/Theme.swift, held by ThemeTokenParityTest.
 object IntradaColor {
     val paperTop = Color(0xFFF7F4EF)
 
