@@ -2,6 +2,18 @@
   import Foundation
   import SharedTypes
 
+  extension LimitsView {
+    /// The core's own answer, so a preview or test never carries a band or bar
+    /// table of its own that could drift from it (#2225).
+    static var preview: LimitsView {
+      let bridge = LiveBridge()
+      guard let limits = try? bridge.view().limits else {
+        preconditionFailure("the core must render its limits")
+      }
+      return limits
+    }
+  }
+
   extension AnalyticsView {
     /// A deterministic analytics fixture for the Progress screen + snapshots.
     /// `scoreChanges` (this week's movers) drive the Recent-mastery rows;
@@ -13,7 +25,6 @@
           prevTotalMinutes: 300, prevSessionCount: 11, prevItemsCovered: 9,
           timeDirection: .up, sessionsDirection: .up, itemsDirection: .up,
           hasPrevWeekData: true),
-        streak: PracticeStreak(currentDays: 4),
         topItems: [
           ItemRanking(
             itemId: "piece-1", itemTitle: "Clair de Lune", itemType: .piece,
@@ -247,7 +258,7 @@
     /// `dayLabel` matches `previewWeek`'s heading, read with 31 May as today.
     static var previewCompleted: PracticeSessionView {
       PracticeSessionView(
-        id: "session-1", startedAt: "2026-05-30T09:00:00Z",
+        id: "session-1",
         totalDurationDisplay: "32m 0s", totalDurationSummary: "32m",
         completionStatus: .completed,
         notes: "Left hand steadier once I slowed the middle section right down.",
@@ -268,7 +279,7 @@
     /// line per variation rather than only the last (#1739).
     static var previewWithVariations: PracticeSessionView {
       PracticeSessionView(
-        id: "session-3", startedAt: "2026-05-29T10:00:00Z",
+        id: "session-3",
         totalDurationDisplay: "20m 30s", totalDurationSummary: "20m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
@@ -280,7 +291,7 @@
     /// names it rather than leaving it unattributed (#1785).
     static var previewWithOneVariation: PracticeSessionView {
       PracticeSessionView(
-        id: "session-4", startedAt: "2026-05-27T09:00:00Z",
+        id: "session-4",
         totalDurationDisplay: "6m 0s", totalDurationSummary: "6m",
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
@@ -292,7 +303,7 @@
     /// rather than leave looking unmarked.
     static var previewEndedEarly: PracticeSessionView {
       PracticeSessionView(
-        id: "session-2", startedAt: "2026-05-28T18:00:00Z",
+        id: "session-2",
         totalDurationDisplay: "14m 0s", totalDurationSummary: "14m",
         completionStatus: .endedEarly, notes: nil,
         entries: [
@@ -379,9 +390,13 @@
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
+        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 66,
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -402,9 +417,11 @@
         currentItemNotes: base.currentItemNotes,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
-        currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
+        currentItemTempoBpm: base.currentItemTempoBpm,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
+        clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets)
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -427,7 +444,7 @@
         currentItemIntention: "Even tone through the turn",
         currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil,
+        currentItemTempoMarking: nil, currentItemTempoBpm: 104,
         currentClickSounding: 0b1111,
         currentVariations: [
           PickerVariationView(
@@ -438,7 +455,11 @@
           PickerVariationView(
             id: "variation-bb", label: "B♭", caption: "Not yet played", isSolid: false),
         ],
-        reflection: nil)
+        reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 104,
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -484,9 +505,13 @@
         currentItemIntention: "Land each finger evenly",
         currentItemNotes: nil,
         currentRelatedPieceTitle: "Moonlight Sonata",
-        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
+        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 132,
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
   }
 

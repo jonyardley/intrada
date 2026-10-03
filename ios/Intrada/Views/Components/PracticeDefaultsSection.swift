@@ -98,8 +98,8 @@ struct PracticeDefaultsSection: View {
 extension ClickStart {
   fileprivate var title: String {
     switch self {
-    case .everyBeat: ClickPattern.everyBeat.title
-    case .twoAndFour: ClickPattern.backbeat.title
+    case .everyBeat: ClickPreset.everyBeat.title
+    case .twoAndFour: ClickPreset.backbeat.title
     }
   }
 

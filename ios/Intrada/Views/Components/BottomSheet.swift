@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Shared bottom-sheet chrome. The inline title renders in Hanken Grotesk via RootView's
-/// global nav-bar appearance; Done runs `onDone` then dismisses.
+/// Shared bottom-sheet chrome; Done runs `onDone` then dismisses.
 struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let title: String
   private let detents: Set<PresentationDetent>
@@ -13,6 +12,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let content: Content
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.dynamicTypeSize) private var typeSize
 
   init(
     title: String,
@@ -38,9 +38,20 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
     NavigationStack {
       ZStack {
         PaperBackground()
-        content
+        VStack(spacing: 0) {
+          if titleInContent {
+            Text(title)
+              .font(IntradaFont.cardTitle())
+              .foregroundStyle(IntradaColor.ink)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal, IntradaSpacing.card)
+              .padding(.top, IntradaSpacing.controlGap)
+              .accessibilityAddTraits(.isHeader)
+          }
+          content
+        }
       }
-      .navigationTitle(title)
+      .navigationTitle(titleInContent ? "" : title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) { leadingAction }
@@ -55,6 +66,11 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
       }
     }
     .presentationDetents(detents)
+  }
+
+  // The inline bar truncates a long title at accessibility sizes (#2125).
+  private var titleInContent: Bool {
+    typeSize.isAccessibilitySize
   }
 }
 

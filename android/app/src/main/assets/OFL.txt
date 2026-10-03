@@ -1,0 +1,9 @@
+Bundled fonts, all under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL).
+
+Hanken Grotesk (HankenGrotesk-Regular/-Medium/-SemiBold/-Bold.ttf)
+  Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk)
+  Source: https://github.com/marcologous/hanken-grotesk/tree/HEAD/fonts/ttf
+
+DM Mono (DMMono-Regular.ttf)
+  Copyright 2020 The DM Mono Project Authors (https://www.github.com/googlefonts/dm-mono)
+  Source: https://github.com/google/fonts/tree/main/ofl/dmmono

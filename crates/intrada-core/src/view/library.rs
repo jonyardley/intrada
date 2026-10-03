@@ -3,7 +3,7 @@ use crate::domain::session::PracticeSession;
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::model::{
     ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model, ScaffoldPreviewView,
-    ScaffoldSpecView,
+    ScaffoldSpecView, ScoreTrend,
 };
 
 /// Every library item projected for the view, unfiltered and unsorted. Shared
@@ -152,6 +152,7 @@ pub(super) fn build_library_item_views(
                 .key
                 .as_deref()
                 .and_then(|key| crate::domain::key::wheel_selection(key, item.modality)),
+            sections: build_section_views(item),
         });
     }
 
@@ -262,6 +263,7 @@ pub(crate) fn build_practice_summaries(
                         session_count,
                         total_minutes: (total_secs / 60) as u32,
                         latest_score,
+                        score_trend: ScoreTrend::over(&score_history),
                         score_history,
                         tempo_trend,
                         last_practiced_at,
@@ -473,6 +475,29 @@ pub(crate) fn build_variant_views(
         .collect();
 
     views
+}
+
+pub(crate) fn build_section_views(
+    item: &crate::domain::item::Item,
+) -> Vec<crate::model::SectionView> {
+    let mut live: Vec<_> = item
+        .sections
+        .iter()
+        .filter(|s| s.deleted_at.is_none())
+        .collect();
+    live.sort_by_key(|s| s.position);
+    live.into_iter()
+        .map(|s| crate::model::SectionView {
+            id: s.id.clone(),
+            name: s.name.clone(),
+            kind: s.kind,
+            target_bpm: s.target_bpm,
+            first_bar: s.bars.map(|b| b.first),
+            last_bar: s.bars.map(|b| b.last),
+            label: s.label(),
+            bars_caption: s.bars.filter(|_| !s.name.is_empty()).map(|b| b.caption()),
+        })
+        .collect()
 }
 
 /// Accents folded onto their base letter, then case removed, so "Étude" files

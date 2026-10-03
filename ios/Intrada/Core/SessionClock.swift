@@ -13,6 +13,12 @@ enum SessionClock {
     fractionalFormatter().string(from: date)
   }
 
+  /// Where the item's timer holds still: the core's stop moment while the
+  /// reflection sheet is open (#2297), else a snapshot's fixed instant.
+  static func heldAt(stoppedAt: String?, reference: Date?) -> Date? {
+    stoppedAt.flatMap(parseRFC3339) ?? reference
+  }
+
   /// `MM:SS` (or `H:MM:SS` past an hour) for the live count-up timer. Negative
   /// inputs clamp to zero.
   static func clockDisplay(_ seconds: Int) -> String {

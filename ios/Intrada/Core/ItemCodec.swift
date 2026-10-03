@@ -5,7 +5,7 @@ import SharedTypes
 extension LibraryStore {
   // ── Row ↔ Item codec ─────────────────────────────────────────────────
 
-  static func item(from row: Row, variants: [Variant]) -> Item {
+  static func item(from row: Row, variants: [Variant], sections: [ItemSection]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
@@ -21,7 +21,7 @@ extension LibraryStore {
       priority: row["priority"],
       chordChart: decodeChordChart(row["chord_chart"]),
       variants: variants,
-      photoId: row["photo_id"], metre: decodeMetre(row["metre"]))
+      photoId: row["photo_id"], metre: decodeMetre(row["metre"]), sections: sections)
   }
 
   // ── Metre codec ──────────────────────────────────────────────────────
@@ -50,6 +50,29 @@ extension LibraryStore {
     Variant(
       id: row["id"], label: row["label"], position: UInt64(row["position"] as Int),
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  // ── Row ↔ ItemSection codec ──────────────────────────────────────────────
+
+  static func section(from row: Row) -> ItemSection {
+    let first: Int? = row["bar_first"]
+    let last: Int? = row["bar_last"]
+    let bars = first.flatMap { f in last.map { BarRange(first: UInt16(f), last: UInt16($0)) } }
+    return ItemSection(
+      id: row["id"], name: row["name"], bars: bars,
+      kind: sectionKinds.decode(row["kind"]) ?? .form,
+      targetBpm: (row["target_bpm"] as Int?).map { UInt16($0) },
+      position: UInt64(row["position"] as Int),
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  static let sectionKinds = StoredEnum<SectionKind>(
+    kind: "SectionKind", cases: [.form, .troubleSpot]
+  ) {
+    switch $0 {
+    case .form: "form"
+    case .troubleSpot: "trouble_spot"
+    }
   }
 
   static let itemKinds = StoredEnum<ItemKind>(kind: "ItemKind", cases: [.piece, .exercise]) {

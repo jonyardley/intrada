@@ -195,6 +195,33 @@ jobs:
           "$RUNNER_TEMP/sentry-cli" releases set-commits "$release" --auto \
             || echo "::warning::Could not associate commits with $release, which is created either way. Check the Sentry GitHub integration, that the repository is associated, and the token's org:read scope."
           "$RUNNER_TEMP/sentry-cli" releases finalize "$release"
+      # Same job as the build: a rebuild mints new debug ids and its symbols
+      # would match none of the uploaded build's crashes (#1610).
+      - name: Upload the debug symbols for this build to Sentry
+        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != ''
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: intrada-mobile
+        run: |
+          set -euo pipefail
+          trap 'echo "::warning::The debug symbols for this build did not reach Sentry, so its crashes will show addresses, not lines."' ERR
+
+          zips=(build/*.app.dSYM.zip)
+          zip="${zips[0]}"
+          if [ ! -f "$zip" ]; then
+            echo "::warning::No dSYM archive under build/, so this build's crashes will show addresses, not lines."
+            exit 0
+          fi
+          du -h "$zip"
+
+          if [ ! -x "$RUNNER_TEMP/sentry-cli" ]; then
+            curl -fsSL -o "$RUNNER_TEMP/sentry-cli" \
+              "https://downloads.sentry-cdn.com/sentry-cli/3.7.0/sentry-cli-Darwin-universal"
+            chmod +x "$RUNNER_TEMP/sentry-cli"
+          fi
+
+          "$RUNNER_TEMP/sentry-cli" debug-files upload --type dsym --wait-for 300 "$zip"
       - name: Upload IPA artifact
         if: always()
         uses: actions/upload-artifact@v7

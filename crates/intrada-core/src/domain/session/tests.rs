@@ -50,6 +50,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -69,6 +70,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -88,6 +90,7 @@ fn model_with_library() -> Model {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             },
@@ -122,6 +125,7 @@ fn linked_model() -> Model {
         priority: false,
         chord_chart: None,
         variants: vec![],
+        sections: vec![],
         photo_id: None,
         metre: None,
     };
@@ -3323,6 +3327,7 @@ fn set_entry_variant_rejects_a_variant_of_another_item() {
         }],
         photo_id: None,
         metre: None,
+        sections: vec![],
     });
 
     update(
@@ -6934,6 +6939,42 @@ fn a_second_prepare_reflection_keeps_the_draft_and_the_stamp() {
         30,
         "the sheet's dwell is not practice"
     );
+}
+
+fn item_seconds_at_stop(model: &Model) -> i64 {
+    let view = Intrada.view(model).active_session.expect("in Active");
+    let parse = |s: &str| DateTime::parse_from_rfc3339(s).expect("RFC 3339");
+    let stopped = parse(&view.reflection.expect("the sheet is open").stopped_at);
+    (stopped - parse(&view.current_item_started_at)).num_seconds()
+}
+
+#[test]
+fn the_sheet_stops_the_item_clock_at_the_stamp() {
+    let (mut model, start) = model_with_active_session(2);
+
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    assert_eq!(item_seconds_at_stop(&model), 30);
+}
+
+#[test]
+fn a_resumed_sheet_still_stops_the_item_clock_at_the_stamp() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let SessionStatus::Active(saved) = model.session_status.clone() else {
+        panic!("Expected Active state");
+    };
+    let mut model = model_with_library();
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: saved,
+            now: start + chrono::Duration::hours(3),
+        }),
+    );
+
+    assert_eq!(item_seconds_at_stop(&model), 30);
 }
 
 #[test]

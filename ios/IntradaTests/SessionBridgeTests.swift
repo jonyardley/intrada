@@ -56,6 +56,54 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(limits.scoreMax, 10)
   }
 
+  /// The click's band and bars end the limits and its seed ends the active
+  /// session, so a field-order mismatch garbles both silently (#846, #2225).
+  func testRealBridgeClickLimitsAndSeedDecode() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let limits = try bridge.rendered().limits
+    XCTAssertEqual(limits.clickTempoStep, 2)
+    XCTAssertEqual(limits.clickTempoDefault, 96)
+    XCTAssertEqual(
+      limits.clickTempoBands,
+      [
+        TempoBand(unit: 2, min: 20, max: 104), TempoBand(unit: 4, min: 40, max: 208),
+        TempoBand(unit: 8, min: 80, max: 416),
+      ])
+    XCTAssertEqual(limits.clickMetrePresets.first, Metre(beats: 3, unit: 4, groups: nil))
+    XCTAssertEqual(
+      limits.clickBars.first { $0.beats == 7 && $0.groups == [3, 2, 2] },
+      ClickBarOption(
+        beats: 7, groups: [3, 2, 2],
+        presets: [
+          ClickPresetOption(preset: .everyBeat, sounding: 0b111_1111),
+          ClickPresetOption(preset: .groupStarts, sounding: 0b010_1001),
+          ClickPresetOption(preset: .downbeat, sounding: 1),
+        ]))
+
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Gigue", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: TempoInput(marking: nil, bpm: "240"), notes: nil, tags: [], photoId: nil,
+            variantLabels: []))))
+    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    let fourEight = Metre(beats: 4, unit: 8, groups: [2, 2])
+    _ = try bridge.update(.item(.setMetre(id: id, metre: fourEight)))
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+    _ = try bridge.update(.session(.startSession(now: "2026-10-02T09:00:00Z")))
+
+    let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertEqual(active.clickSeedMetre, fourEight)
+    XCTAssertEqual(active.clickSeedBpm, 240)
+    XCTAssertTrue(active.clickSeedSoundsTarget)
+    XCTAssertEqual(
+      active.clickSeedPresets.map(\.sounding), [0b1111, 0b0101, 1],
+      "a grouping the bars table does not list still gets its patterns")
+  }
+
   /// The saved defaults reach the counter, the click and the item sheet across
   /// the bincode wire; a u8 beside an enum tag misdecodes on a field-order mismatch (#846, #1915).
   func testRealBridgePracticeDefaultsReachTheCounterTheClickAndTheSheet() throws {
@@ -321,6 +369,9 @@ final class SessionBridgeTests: XCTestCase {
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
     XCTAssertEqual(open.answers, answers)
     XCTAssertEqual(open.reading.click, click)
+    XCTAssertEqual(
+      SessionClock.parseRFC3339(open.stoppedAt), SessionClock.parseRFC3339("2026-09-27T09:05:00Z"),
+      "the item's clock stops at the stamp (#2297)")
     let saved = try XCTUnwrap(
       requests.lazy.compactMap { request -> ActiveSession? in
         if case .app(.saveSessionInProgress(let active)) = request.effect { return active }
@@ -334,6 +385,12 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(
       try resumed.rendered().activeSession?.reflection?.answers, answers,
       "the sheet reopens with what was written")
+    let reopened = try XCTUnwrap(try resumed.rendered().activeSession)
+    let stopped = try XCTUnwrap(
+      reopened.reflection.flatMap { SessionClock.parseRFC3339($0.stoppedAt) })
+    let itemStart = try XCTUnwrap(SessionClock.parseRFC3339(reopened.currentItemStartedAt))
+    XCTAssertEqual(
+      stopped.timeIntervalSince(itemStart), 300, "a resume keeps the item stopped at its stamp")
   }
 
   /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing
@@ -863,5 +920,38 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(fast.latestScore, "Fast was never practised")
     XCTAssertTrue(fast.scoreHistory.isEmpty)
     XCTAssertFalse(fast.isSolid)
+  }
+
+  func testRealBridgeScoreTrendRunsFromTheOldestMarkToTheNewest() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
+
+    for (day, score) in [("2026-09-04", UInt8(5)), ("2026-09-05", UInt8(7))] {
+      _ = try bridge.update(.session(.startBuilding))
+      _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+      let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+      _ = try bridge.update(.session(.startSession(now: "\(day)T09:00:00Z")))
+      _ = try bridge.update(
+        .session(
+          .nextItem(
+            now: "\(day)T09:05:00Z", nextItemStartedAt: "\(day)T09:05:00Z", reading: .silent)))
+      let playId = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays.last?.id)
+      _ = try bridge.update(
+        .session(.updateEntryScore(entryId: entryId, playId: playId, score: score)))
+      try acknowledgeSave(
+        bridge, try bridge.update(.session(.saveSession(now: "\(day)T09:06:00Z"))))
+    }
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    let practice = try XCTUnwrap(view.items.first { $0.id == itemId }?.practice)
+    XCTAssertEqual(practice.scoreTrend, ScoreTrend(from: 5, to: 7))
   }
 }

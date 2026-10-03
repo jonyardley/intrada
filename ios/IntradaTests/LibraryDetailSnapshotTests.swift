@@ -10,11 +10,13 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   func testRecentSessions() {
     let block = ZStack {
       PaperBackground()
-      RecentSessions(sessions: [
-        RecentSession(id: "1", score: 7, dateText: "Tue · Jun 24"),
-        RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
-        RecentSession(id: "3", score: 5, dateText: "Wed · Jun 18"),
-      ])
+      RecentSessions(
+        sessions: [
+          RecentSession(id: "1", score: 7, dateText: "Tue · Jun 24"),
+          RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
+          RecentSession(id: "3", score: 5, dateText: "Wed · Jun 18"),
+        ], trend: ScoreTrend(from: 5, to: 7)
+      )
       .padding(16)
     }
     assertSnapshot(of: host(block), as: config)
@@ -23,11 +25,13 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   func testRecentSessionsDeclining() {
     let block = ZStack {
       PaperBackground()
-      RecentSessions(sessions: [
-        RecentSession(id: "1", score: 5, dateText: "Tue · Jun 24"),
-        RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
-        RecentSession(id: "3", score: 8, dateText: "Wed · Jun 18"),
-      ])
+      RecentSessions(
+        sessions: [
+          RecentSession(id: "1", score: 5, dateText: "Tue · Jun 24"),
+          RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
+          RecentSession(id: "3", score: 8, dateText: "Wed · Jun 18"),
+        ], trend: ScoreTrend(from: 8, to: 5)
+      )
       .padding(16)
     }
     assertSnapshot(of: host(block), as: config)
@@ -75,7 +79,8 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
 
   func testScaffoldPreviewSheetAccessibilitySize() {
     assertSnapshot(
-      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: axConfig)
+      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })),
+      as: tallAxConfig(height: 3300))
   }
 
   func testPieceDetailLinkedPopulated() {

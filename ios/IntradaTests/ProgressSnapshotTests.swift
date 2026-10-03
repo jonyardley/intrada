@@ -58,6 +58,15 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(dial), as: config)
   }
 
+  func testMasteryDialTakesTheTopMarkFromTheCore() {
+    let dial = ZStack {
+      PaperBackground()
+      MasteryDial(value: 3.4)
+    }
+    .environment(\.scoreRange, 1...5)
+    assertSnapshot(of: host(dial), as: config)
+  }
+
   func testMasteryDeltaRows() {
     let rows = ZStack {
       PaperBackground()

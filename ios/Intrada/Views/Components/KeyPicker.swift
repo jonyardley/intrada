@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Inline circle-of-fifths key selector: a collapsed row expands a two-ring
 /// wheel in place (the iOS date-picker pattern). Binds the structured tonic
-/// (`key`) + `modality`. All selection logic lives in `KeyHelper`.
+/// (`key`) + `modality`. The wheel and its tap rule come from the core.
 struct KeyPicker: View {
   let label: String
   @Binding var key: String
@@ -264,8 +264,10 @@ struct KeyPicker: View {
   }
 
   private func tap(ring: Int, mode: Modality) {
-    let result = KeyHelper.nextOnTap(
-      currentKey: key, currentModality: modality, ring: ring, mode: mode)
+    guard
+      let result = KeyHelper.nextOnTap(
+        currentKey: key, currentModality: modality, ring: ring, mode: mode)
+    else { return }
     key = result.tonic
     modality = result.modality
     if result.flipped {

@@ -107,7 +107,7 @@ specs/                # Design specs for major features
 | [`docs/ios-testing.md`](docs/ios-testing.md) | Building, running, snapshot-testing and UI-testing the app on the simulator |
 | [`docs/worktrees.md`](docs/worktrees.md) | One session per worktree: what claims a checkout and what that stops |
 | [`specs/README.md`](specs/README.md) | Which specs are live and which are records of shipped behaviour |
-| [`docs/where-we-are.md`](docs/where-we-are.md) | Which release and phase we are on — hand-written, changed when they change |
+| [`docs/where-we-are.md`](docs/where-we-are.md) | Which phase we are in: hand-written, changed when it changes |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the ranking of what gets built next |
 | [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md) | How issues, epics, the project board and releases are organised |

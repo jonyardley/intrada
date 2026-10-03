@@ -71,6 +71,13 @@ enum ReflectionHandoff {
       })
   }
 
+  /// An untouched click sat on the item's own bar, so a quaver bar's tempo is quavers (#2304).
+  /// Only the sheet's rows carry it: `NextItem` keeps the untouched reading.
+  static func sheetClick(_ reading: TempoReading, active: ActiveSessionView) -> ClickState {
+    reading.click
+      ?? ClickState(metre: active.clickSeedMetre, sounding: active.currentClickSounding)
+  }
+
   /// A halted app has no core error to read, and a retry can never succeed (#2009).
   @MainActor static func refusalMessage(halted: Bool, error: String?) -> String {
     if halted { return Store.haltedMessage }

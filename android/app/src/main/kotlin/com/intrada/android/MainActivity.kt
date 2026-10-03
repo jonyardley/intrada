@@ -10,7 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
-import com.intrada.android.ui.LibraryRoute
+import com.intrada.android.ui.AppFrame
 import com.intrada.shared.Event
 import java.util.TimeZone
 
@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
                 else Event.StartApp
             )
         }
-        setContent { LibraryRoute(store) }
+        setContent { AppFrame(store) }
     }
 
     companion object {

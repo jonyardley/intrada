@@ -29,10 +29,13 @@ struct InstrumentIconPicker: View {
 
   private var shown: InstrumentIcon { choice ?? suggested }
 
+  private var stacked: Bool { dynamicTypeSize.isAccessibilitySize }
+
   private func grid(of icons: [InstrumentIcon]) -> some View {
     LazyVGrid(
       columns: Array(
-        repeating: GridItem(.flexible(), spacing: IntradaSpacing.controlGap), count: 4),
+        repeating: GridItem(.flexible(), spacing: IntradaSpacing.controlGap),
+        count: stacked ? 1 : 4),
       spacing: IntradaSpacing.controlGap
     ) {
       ForEach(icons, id: \.self) { icon in
@@ -47,18 +50,19 @@ struct InstrumentIconPicker: View {
       choice = icon == suggested ? nil : icon
       Haptic.selection.play()
     } label: {
-      VStack(spacing: 6) {
+      tileLayout {
         InstrumentGlyph(icon: icon, size: IntradaGlyph.bar)
           .foregroundStyle(IntradaColor.ink)
         Text(icon.tileLabel)
           .font(IntradaFont.metaMedium)
           .foregroundStyle(selected ? IntradaColor.ink : IntradaColor.inkSecondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.8)
+          .lineLimit(stacked ? nil : 1)
+          .minimumScaleFactor(stacked ? 1 : 0.8)
+          .fixedSize(horizontal: false, vertical: stacked)
       }
-      .frame(maxWidth: .infinity)
-      .frame(height: 84)
-      .padding(.horizontal, 4)
+      .frame(maxWidth: .infinity, alignment: stacked ? .leading : .center)
+      .frame(minHeight: 84)
+      .padding(.horizontal, stacked ? IntradaSpacing.card : 4)
       .background(selected ? marker : IntradaColor.cardFill)
       .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       .overlay(
@@ -72,7 +76,15 @@ struct InstrumentIconPicker: View {
     .accessibilityAddTraits(selected ? .isSelected : [])
   }
 
+  // One tile per row at accessibility sizes, glyph beside the name, so every name shows in full (#2127).
+  private var tileLayout: AnyLayout {
+    stacked
+      ? AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
+      : AnyLayout(VStackLayout(spacing: 6))
+  }
+
   @Environment(\.marker) private var marker
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 }
 
 #if DEBUG

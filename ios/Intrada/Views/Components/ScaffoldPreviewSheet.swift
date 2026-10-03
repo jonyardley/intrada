@@ -114,13 +114,15 @@ private struct SpecRow: View {
   let isOn: Bool
   let selectable: Bool
 
+  @Environment(\.dynamicTypeSize) private var typeSize
+
   var body: some View {
     HStack(spacing: IntradaSpacing.card) {
       ItemKind.exercise.bar
         .frame(width: 4, height: 34)
         .clipShape(Capsule())
       VStack(alignment: .leading, spacing: 3) {
-        HStack(spacing: IntradaSpacing.controlGap) {
+        titleLayout {
           Text(spec.title)
             .font(IntradaFont.cardTitle())
             .foregroundStyle(IntradaColor.ink)
@@ -135,9 +137,13 @@ private struct SpecRow: View {
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
           .fixedSize(horizontal: false, vertical: true)
+        if selectable && typeSize.isAccessibilitySize {
+          membershipControl(isOn: isOn)
+            .padding(.top, IntradaSpacing.controlGap)
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      if selectable {
+      if selectable && !typeSize.isAccessibilitySize {
         membershipControl(isOn: isOn)
       }
     }
@@ -149,6 +155,13 @@ private struct SpecRow: View {
     .opacity(selectable ? 1 : IntradaOpacity.soft)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+  }
+
+  // Anything beside the title breaks it mid-word at accessibility sizes (#2125).
+  private var titleLayout: AnyLayout {
+    typeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.controlGap))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.controlGap))
   }
 
   private func membershipControl(isOn: Bool) -> some View {

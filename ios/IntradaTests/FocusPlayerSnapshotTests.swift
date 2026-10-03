@@ -14,6 +14,21 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         store: .previewActive), as: config)
   }
 
+  // The stop sits 42 seconds in, far from the snapshot's fixed instant, so a ring
+  // that ignored it would read differently (#2297).
+  func testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen() throws {
+    var active = ActiveSessionView.previewActive
+    let start = try XCTUnwrap(SessionClock.parseRFC3339(active.currentItemStartedAt))
+    active.reflection = ReflectionView(
+      answers: ReflectionAnswers(marks: [], note: "", tempos: []),
+      reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
+      stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)))
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: active))), as: config)
+  }
+
   func testClickControlStates() {
     // Flat player paper, not the radial wash: the gradient is not what's under
     // test here and it is most of a reference's bytes (snapshot hygiene).
@@ -21,19 +36,23 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       IntradaColor.playerBgMid
       VStack(spacing: 32) {
         ClickControl(
-          bpm: 66, isRunning: false, unavailable: false, atSeededTempo: true,
+          bpm: 66, step: 2, band: 40...208, isRunning: false, unavailable: false,
+          atSeededTempo: true,
           targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
           onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
         ClickControl(
-          bpm: 72, isRunning: true, unavailable: false, atSeededTempo: false,
+          bpm: 72, step: 2, band: 40...208, isRunning: true, unavailable: false,
+          atSeededTempo: false,
           targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
           onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
         ClickControl(
-          bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+          bpm: 96, step: 2, band: 40...208, isRunning: false, unavailable: false,
+          atSeededTempo: true,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
           onDragChange: { _ in })
         ClickControl(
-          bpm: 96, isRunning: false, unavailable: true, atSeededTempo: true,
+          bpm: 96, step: 2, band: 40...208, isRunning: false, unavailable: true,
+          atSeededTempo: true,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
           onDragChange: { _ in })
       }
@@ -50,11 +69,13 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       IntradaColor.playerBgMid
       VStack(spacing: 32) {
         ClickControl(
-          bpm: 96, isRunning: false, unavailable: false, atSeededTempo: false,
+          bpm: 96, step: 2, band: 40...208, isRunning: false, unavailable: false,
+          atSeededTempo: false,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
           onDragChange: { _ in }, initiallyDragging: true)
         ClickControl(
-          bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: false,
+          bpm: 168, unit: 8, step: 2, band: 80...416, isRunning: true, unavailable: false,
+          atSeededTempo: false,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
           onDragChange: { _ in }, initiallyDragging: true)
       }
@@ -80,7 +101,8 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
           metre: Metre(beats: 12, unit: 8, groups: [2, 2, 2, 2, 2, 2]),
           sounding: 0b0101_0101_0101, currentBeat: 0, onTap: {})
         ClickControl(
-          bpm: 168, unit: 8, isRunning: true, unavailable: false, atSeededTempo: true,
+          bpm: 168, unit: 8, step: 2, band: 80...416, isRunning: true, unavailable: false,
+          atSeededTempo: true,
           targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
           onDragChange: { _ in })
       }
@@ -90,26 +112,36 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   }
 
   func testClickSheetIrregularMetre() throws {
-    let click = ClickController()
-    click.reseed(
-      target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b1111111)
-    click.apply(.groupStarts)
     let store = Store(bridge: SnapshotStubBridge())
     let limits = try XCTUnwrap(store.viewModel?.limits)
+    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    var active = ActiveSessionView.previewActive
+    active.clickSeedMetre = sevenEight
+    active.clickSeedBpm = 168
+    active.clickSeedPresets = limits.clickPresets(for: sevenEight)
+    active.currentClickSounding = 0b1111111
+    let click = ClickController()
+    click.reseed(from: active, limits: limits)
+    click.apply(.groupStarts)
     assertSnapshot(
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
   func testClickSheetAccessibilitySize() throws {
-    let click = ClickController()
-    click.reseed(
-      target: 168, metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b1111111)
-    click.apply(.groupStarts)
     let store = Store(bridge: SnapshotStubBridge())
     let limits = try XCTUnwrap(store.viewModel?.limits)
+    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    var active = ActiveSessionView.previewActive
+    active.clickSeedMetre = sevenEight
+    active.clickSeedBpm = 168
+    active.clickSeedPresets = limits.clickPresets(for: sevenEight)
+    active.currentClickSounding = 0b1111111
+    let click = ClickController()
+    click.reseed(from: active, limits: limits)
+    click.apply(.groupStarts)
     assertSnapshot(
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store),
-      as: tallAxConfig(height: 2600))
+      as: tallAxConfig(height: 3300))
   }
 
   /// The sounding row is the tight one, so it is the state that has to reflow.
@@ -117,7 +149,8 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     let sounding = ZStack {
       IntradaColor.playerBgMid
       ClickControl(
-        bpm: 208, isRunning: true, unavailable: false, atSeededTempo: false,
+        bpm: 208, step: 2, band: 40...208, isRunning: true, unavailable: false,
+        atSeededTempo: false,
         targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
         onToggle: {}, onStep: { _ in }, onDragChange: { _ in }
       )

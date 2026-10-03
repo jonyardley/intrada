@@ -24,7 +24,7 @@ floored at zero, so a falling week reads as a green "+0.0".
 ## Decision: one clock
 
 The core's single offset (`LocalClock`) wins (Jon, 2026-09-23, on the issue).
-The strip, the streak, the weekly summary and the week bars all bucket a
+The strip, the weekly summary and the week bars all bucket a
 session by the day it fell on at today's offset. Per-date time zones across
 summer time are out of scope. The shell sends nothing new: `SetUtcOffset`
 already carries the offset.

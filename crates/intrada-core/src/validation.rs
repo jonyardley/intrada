@@ -1,5 +1,6 @@
 use crate::domain::item::ItemKind;
 use crate::domain::profile::Profile;
+use crate::domain::section::{BarRange, BarsInput, SectionDraft, SectionEdit};
 use crate::domain::session::SetlistEntry;
 use crate::domain::types::{CreateItem, Tempo, TempoInput, UpdateItem};
 use crate::error::LibraryError;
@@ -23,6 +24,8 @@ pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_VARIANT_LABEL: usize = 100;
 pub const MAX_VARIANTS: usize = 24;
+pub const MAX_SECTION_NAME: usize = 100;
+pub const MAX_BAR: u16 = 9999;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
 /// Under this, a play with no mark and no repetitions is a stray tap on the
 /// picker rather than practice, and the terminal transition drops it (#1739).
@@ -522,6 +525,102 @@ pub fn validate_chart_host(piece_id: &str, model: &Model) -> Result<(), LibraryE
     }
 
     Ok(())
+}
+
+fn sections_error(message: impl Into<String>) -> LibraryError {
+    LibraryError::Validation {
+        field: "sections".to_string(),
+        message: message.into(),
+    }
+}
+
+/// One range of bars as a musician types or dictates it: "1-16", "1 to 16",
+/// "bars 5 to 12", "bar 12", "bb. 5-12", "mm. 5-12" or a bare "12". En and em
+/// dashes and the minus sign read as a hyphen, since iOS Smart Dashes and
+/// pasted text bring them in. Reading bars out of a sentence is #2307's.
+pub(crate) fn parse_bar_range(raw: &str) -> Result<Option<BarRange>, LibraryError> {
+    let lowered = raw.trim().to_lowercase();
+    if lowered.is_empty() {
+        return Ok(None);
+    }
+    let rest = ["bars", "bar", "bb.", "mm."]
+        .iter()
+        .find_map(|prefix| lowered.strip_prefix(prefix))
+        .unwrap_or(&lowered)
+        .replace(['\u{2013}', '\u{2014}', '\u{2212}'], "-");
+    let words: Vec<&str> = rest.split_whitespace().collect();
+    let (first, last) = match (rest.split_once('-'), words.as_slice()) {
+        (Some((first, last)), _) => (first.trim(), last.trim()),
+        (None, [first, "to", last]) => (*first, *last),
+        (None, [only]) => (*only, *only),
+        _ => return Err(unreadable_bars()),
+    };
+    validate_bar_range(parse_bar(first)?, parse_bar(last)?).map(Some)
+}
+
+fn unreadable_bars() -> LibraryError {
+    sections_error("Write bars as 1-16, 1 to 16 or bar 12")
+}
+
+fn parse_bar(text: &str) -> Result<u16, LibraryError> {
+    if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(unreadable_bars());
+    }
+    text.parse::<u16>()
+        .ok()
+        .filter(|bar| *bar <= MAX_BAR)
+        .ok_or_else(|| sections_error(format!("Bars go up to {MAX_BAR}")))
+}
+
+pub(crate) fn validate_bar_range(first: u16, last: u16) -> Result<BarRange, LibraryError> {
+    if first == 0 {
+        return Err(sections_error("Bars start at 1"));
+    }
+    if last > MAX_BAR {
+        return Err(sections_error(format!("Bars go up to {MAX_BAR}")));
+    }
+    if last < first {
+        return Err(sections_error("Bars run from the lower bar to the higher"));
+    }
+    Ok(BarRange { first, last })
+}
+
+/// Every row of an `UpdateSections`, refused whole on the first bad one.
+pub(crate) fn validate_section_edits(
+    edits: Vec<SectionEdit>,
+) -> Result<Vec<SectionDraft>, LibraryError> {
+    edits
+        .into_iter()
+        .map(|edit| {
+            let name = edit.name.trim().to_string();
+            if exceeds_chars(&name, MAX_SECTION_NAME) {
+                return Err(sections_error(format!(
+                    "A section name must not exceed {MAX_SECTION_NAME} characters"
+                )));
+            }
+            let bars = match edit.bars {
+                BarsInput::Blank => None,
+                BarsInput::Picked { first, last } => Some(validate_bar_range(first, last)?),
+                BarsInput::Typed(raw) => parse_bar_range(&raw)?,
+            };
+            if name.is_empty() && bars.is_none() {
+                return Err(sections_error("A section needs a name or bars"));
+            }
+            let target_bpm = parse_bpm(&edit.target_bpm).map_err(|e| match e {
+                LibraryError::Validation { .. } => sections_error(format!(
+                    "A section's target tempo must be a whole number between {MIN_BPM} and {MAX_BPM}"
+                )),
+                other => other,
+            })?;
+            Ok(SectionDraft {
+                id: edit.id,
+                name,
+                bars,
+                kind: edit.kind,
+                target_bpm,
+            })
+        })
+        .collect()
 }
 
 pub fn validate_variant_host(id: &str, model: &Model) -> Result<(), LibraryError> {

@@ -37,6 +37,7 @@ pub(crate) fn sample_items() -> Vec<Item> {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         }

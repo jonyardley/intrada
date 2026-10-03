@@ -192,6 +192,48 @@ final class StoreEffectLoopTests: XCTestCase {
       sentEvents, [.setSort(sort)], "restore re-dispatches SetSort with the stored order")
   }
 
+  func testRestorePersistedSortMovesTheUnversionedValueToItsVersionedKey() throws {
+    let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
+    let sort = LibrarySort(field: .title, direction: .ascending)
+    let bytes = Data(try sort.bincodeSerialize())
+    defaults.set(bytes, forKey: Store.legacySortDefaultsKey)
+
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedSort()
+
+    XCTAssertEqual(sentEvents, [.setSort(sort)], "the sort saved before #2089 is kept")
+    XCTAssertEqual(defaults.data(forKey: Store.legacySortMovesToKey), bytes)
+    XCTAssertNil(defaults.data(forKey: Store.legacySortDefaultsKey), "moved, not copied")
+  }
+
+  func testRestorePersistedSortKeepsTheVersionedValueOverAnOlderBuildsSave() throws {
+    let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
+    let current = LibrarySort(field: .title, direction: .ascending)
+    let stale = LibrarySort(field: .lastPracticed, direction: .descending)
+    defaults.set(Data(try current.bincodeSerialize()), forKey: Store.legacySortMovesToKey)
+    defaults.set(Data(try stale.bincodeSerialize()), forKey: Store.legacySortDefaultsKey)
+
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.restorePersistedSort()
+
+    XCTAssertEqual(sentEvents, [.setSort(current)], "an older build's save never overwrites")
+    XCTAssertNil(defaults.data(forKey: Store.legacySortDefaultsKey), "cleared even when unused")
+  }
+
   func testRestorePersistedSortNoopWhenAbsent() {
     let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
     let bridge = FakeBridge()

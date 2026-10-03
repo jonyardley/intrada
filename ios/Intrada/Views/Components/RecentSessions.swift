@@ -1,3 +1,4 @@
+import SharedTypes
 import SwiftUI
 
 /// One past practice session as a row in `RecentSessions`. Pure view data — the
@@ -15,16 +16,7 @@ struct RecentSession: Identifiable {
 struct RecentSessions: View {
   /// Newest first, matching the core's `score_history` ordering.
   let sessions: [RecentSession]
-
-  /// Oldest → newest scored session, shown only when both ends carry a score
-  /// and they actually moved.
-  private var trend: (from: Int, to: Int)? {
-    let scored = sessions.compactMap(\.score)
-    guard scored.count >= 2, let newest = scored.first, let oldest = scored.last,
-      oldest != newest
-    else { return nil }
-    return (oldest, newest)
-  }
+  let trend: ScoreTrend?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -79,11 +71,13 @@ struct RecentSessions: View {
   #Preview("Recent sessions") {
     ZStack {
       PaperBackground()
-      RecentSessions(sessions: [
-        RecentSession(id: "1", score: 7, dateText: "Tue · Jun 24"),
-        RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
-        RecentSession(id: "3", score: 5, dateText: "Wed · Jun 18"),
-      ])
+      RecentSessions(
+        sessions: [
+          RecentSession(id: "1", score: 7, dateText: "Tue · Jun 24"),
+          RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
+          RecentSession(id: "3", score: 5, dateText: "Wed · Jun 18"),
+        ], trend: ScoreTrend(from: 5, to: 7)
+      )
       .padding(IntradaSpacing.card)
     }
   }

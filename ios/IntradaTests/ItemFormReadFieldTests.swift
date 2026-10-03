@@ -47,8 +47,8 @@ struct ItemFormReadFieldTests {
     #expect(form.readFrom[.title] == false, "the fields they did not touch keep theirs")
   }
 
-  /// A value typed before scanning is the user's. Deleting the `isEmpty`
-  /// guards lets a scan overwrite the title they had already written.
+  /// A value typed before scanning is the user's. Deleting the take filter in
+  /// the core's `fill_form` lets a scan overwrite the title they had written.
   @Test func aScanNeverOverwritesWhatTheUserAlreadyTyped() {
     let form = ItemFormModel(kind: .piece)
     form.title = "The name I gave it"
@@ -58,6 +58,16 @@ struct ItemFormReadFieldTests {
     #expect(form.title == "The name I gave it")
     #expect(form.readFrom[.title] == nil, "it was never the photo's, so it carries no mark")
     #expect(form.composer == "Joseph Kosmo", "the fields they left empty still fill")
+  }
+
+  @Test func aFieldHoldingOnlySpacesTakesTheRead() {
+    let form = ItemFormModel(kind: .piece)
+    form.title = "   "
+
+    form.fill(from: .readPage)
+
+    #expect(form.title == "Autumn Leaves")
+    #expect(form.readFrom[.title] == false)
   }
 
   /// Guarding the write on `isEmpty` alone made Rescan a no-op: every field is
@@ -84,7 +94,7 @@ struct ItemFormReadFieldTests {
     #expect(form.title == "Blues in F", "the fields they did not touch still re-read")
   }
 
-  /// Nothing recognised is written by reading it — the non-goal the whole
+  /// Nothing recognised is written by reading it, the non-goal the whole
   /// feature is built around. Pressing Add is what writes.
   @Test func fillingTheFormDoesNotSubmitIt() {
     let form = ItemFormModel(kind: .piece)

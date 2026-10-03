@@ -301,10 +301,12 @@ expect 0 "the files this repo actually ships" bash "$repo_root/scripts/check-rel
 # ── The faint ink check ─────────────────────────────────────────────────────
 
 faint="$work/faint"
-mkdir -p "$faint/Views/Components" "$faint/DesignSystem" "$faint/Views/Screens"
+faint_kt="$work/faint-kt"
+mkdir -p "$faint/Views/Components" "$faint/DesignSystem" "$faint/Views/Screens" "$faint_kt/com/intrada/android/ui"
 faint_check() {
-  FAINT_INK_ROOT="$faint" bash "$repo_root/scripts/check-faint-ink.sh"
+  FAINT_INK_ROOT="$faint" FAINT_INK_ANDROID_ROOT="$faint_kt" bash "$repo_root/scripts/check-faint-ink.sh"
 }
+printf 'val inkFaint = Color(0xFFA99C8C)\n' >"$faint_kt/com/intrada/android/ui/Theme.kt"
 
 printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Components/SectionHeader.swift"
 printf 'static let inkFaint = Color(hex: 0xA99C8C)\nlet x = IntradaColor.inkFaint\n' >"$faint/DesignSystem/Theme.swift"
@@ -324,6 +326,10 @@ rm "$faint/Views/Wrapped.swift"
 printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Screens/SectionHeader.swift"
 expect 1 "faint ink in a second file named like the eyebrow's" faint_check
 rm "$faint/Views/Screens/SectionHeader.swift"
+
+printf 'Text(meta, color = IntradaColor.inkFaint)\n' >"$faint_kt/com/intrada/android/ui/Row.kt"
+expect 1 "faint ink on an Android meta line" faint_check
+rm "$faint_kt/com/intrada/android/ui/Row.kt"
 
 expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$repo_root/scripts/check-faint-ink.sh"
 

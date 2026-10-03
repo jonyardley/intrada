@@ -50,12 +50,13 @@
       totalMinutes: UInt32 = 0,
       latestScore: UInt8? = nil,
       scoreHistory: [ScoreHistoryEntry] = [],
+      scoreTrend: ScoreTrend? = nil,
       tempoTrend: TempoTrendView = TempoTrendView(points: [], hasTrend: false),
       lastPracticedAt: String? = nil
     ) -> ItemPracticeSummary {
       ItemPracticeSummary(
         sessionCount: sessionCount, totalMinutes: totalMinutes, latestScore: latestScore,
-        scoreHistory: scoreHistory, tempoTrend: tempoTrend,
+        scoreHistory: scoreHistory, scoreTrend: scoreTrend, tempoTrend: tempoTrend,
         lastPracticedAt: lastPracticedAt)
     }
   }
@@ -92,7 +93,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
     static var previewExercise: LibraryItemView {
@@ -105,7 +106,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
     /// The library item behind `previewGroupedScales`, so a block member and a
@@ -119,7 +120,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: nil, sections: [])
     }
 
     static var previewDetail: LibraryItemView {
@@ -132,7 +133,7 @@
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
     /// A charted piece: exercises the chord-chart card (parsed grid + preview).
@@ -161,7 +162,7 @@
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"))
+        keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"), sections: [])
     }
 
     static var previewMinimal: LibraryItemView { LibraryItemFixture.view() }
@@ -182,6 +183,7 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
           ],
+          scoreTrend: ScoreTrend(from: 4, to: 6),
           tempoTrend: .fixture([66, nil, 69, 72]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         priority: false,
@@ -211,7 +213,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variants: [], ladderIsKeys: false, photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"))
+        keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
     /// Linked to 2 pieces, neither practised yet: every row unrated (#1363).
@@ -228,6 +230,7 @@
             ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
             ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
           ],
+          scoreTrend: ScoreTrend(from: 5, to: 7),
           tempoTrend: .fixture([96, 100, nil, 104, 108]),
           lastPracticedAt: "2026-06-24T09:00:00Z"),
         priority: false, linkedExercises: [],
@@ -242,7 +245,7 @@
             pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
     /// Every "Used in" row state at once: linked and practised, practised
@@ -284,7 +287,7 @@
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"))
+        keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
     /// An exercise with variations: one solid, one marked but not yet solid,
@@ -308,7 +311,7 @@
             id: "variation-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
             isSolid: false, caption: "Not yet played"),
         ], ladderIsKeys: true, photoId: nil, showsKey: false, solidVariationCount: 1,
-        keySelection: nil)
+        keySelection: nil, sections: [])
     }
 
     /// Twelve chromatic variations, stress-testing the horizontal scroller
@@ -333,7 +336,7 @@
             isSolid: solid,
             caption: solid ? "Solid · 9 of 10" : (current ? "6 of 10" : "Not yet played"))
         }, ladderIsKeys: true, photoId: nil, showsKey: false, solidVariationCount: 4,
-        keySelection: nil)
+        keySelection: nil, sections: [])
     }
 
     /// Variations that are inversions, not keys: pins the "variations" word and the stairs
@@ -351,7 +354,7 @@
             id: "rung-\(index)", label: label, position: UInt64(index), latestScore: nil,
             scoreHistory: [], isSolid: false, caption: "Not yet played")
         }, ladderIsKeys: false, photoId: nil, showsKey: false, solidVariationCount: 0,
-        keySelection: nil)
+        keySelection: nil, sections: [])
     }
 
     /// Free-text variation names, matching the issue's own example (#1786).
@@ -371,7 +374,7 @@
             latestScore: index == 0 ? 8 : nil, scoreHistory: [], isSolid: index == 0,
             caption: index == 0 ? "Solid · 8 of 10" : "Not yet played")
         }, ladderIsKeys: false, photoId: nil, showsKey: false, solidVariationCount: 1,
-        keySelection: nil)
+        keySelection: nil, sections: [])
     }
 
     /// A piece with no linked exercises, for the empty-state snapshot.
@@ -384,7 +387,7 @@
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variants: [], ladderIsKeys: false, photoId: nil,
         showsKey: true, solidVariationCount: 0,
-        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D")
+        keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D"), sections: []
       )
     }
   }
@@ -433,7 +436,7 @@
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [],
         ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
-        keySelection: keySelection)
+        keySelection: keySelection, sections: [])
     }
 
     static func record(
@@ -448,7 +451,7 @@
         id: id, title: title, kind: kind, composer: composer, key: key, modality: modality,
         tempo: tempo, notes: notes, tags: tags, linkedExerciseIds: linkedExerciseIds,
         createdAt: createdAt, updatedAt: updatedAt ?? createdAt, priority: priority,
-        chordChart: chordChart, variants: [], photoId: photoId, metre: metre)
+        chordChart: chordChart, variants: [], photoId: photoId, metre: metre, sections: [])
     }
   }
 #endif

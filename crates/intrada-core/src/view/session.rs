@@ -216,9 +216,12 @@ pub fn build_active_session_view(
         .get(current.item_id.as_str())
         .and_then(|i| i.tempo.as_ref());
 
-    let current_item_metre = item_index
+    let click_seed_metre = item_index
         .get(current.item_id.as_str())
-        .and_then(|i| i.metre.clone());
+        .and_then(|i| i.metre.clone())
+        .unwrap_or_default();
+    let (click_seed_bpm, click_seed_sounds_target) =
+        click_seed_metre.click_seed(current_item_tempo.and_then(|t| t.bpm));
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
         current_item_type: current.item_type.clone(),
@@ -256,15 +259,17 @@ pub fn build_active_session_view(
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
-        current_click_sounding: defaults
-            .click
-            .sounding(&current_item_metre.clone().unwrap_or_default()),
-        current_item_metre,
+        current_click_sounding: defaults.click.sounding(&click_seed_metre),
         current_variations: picker_variations(current, current_variations),
         reflection: active.reflection.as_ref().map(|draft| ReflectionView {
             answers: draft.answers.clone(),
             reading: draft.reading.clone(),
+            stopped_at: draft.now.to_rfc3339(),
         }),
+        click_seed_bpm,
+        click_seed_sounds_target,
+        click_seed_presets: click_seed_metre.click_presets(),
+        click_seed_metre,
     }
 }
 
@@ -368,7 +373,6 @@ pub fn session_to_view(
     PracticeSessionView {
         day_label: crate::practice_weeks::session_day_label(session, clock),
         id: session.id.clone(),
-        started_at: session.started_at.to_rfc3339(),
         total_duration_display: format_duration_display(session.total_duration_secs),
         total_duration_summary: format_duration_summary(session.total_duration_secs),
         completion_status: session.completion_status.clone(),
@@ -569,6 +573,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -653,8 +658,8 @@ mod tests {
                 &[],
                 &PracticeDefaults::default()
             )
-            .current_item_metre,
-            Some(metre)
+            .click_seed_metre,
+            metre
         );
         let second = ActiveSession {
             current_index: 1,
@@ -668,8 +673,79 @@ mod tests {
                 &[],
                 &PracticeDefaults::default()
             )
-            .current_item_metre,
-            None
+            .click_seed_metre,
+            Metre::default()
+        );
+    }
+
+    /// A 4/8 grouping the bars table lacks still gets its patterns (#2225).
+    #[test]
+    fn active_session_view_seeds_the_click_from_the_items_tempo_and_bar() {
+        let four_eight = Metre {
+            beats: 4,
+            unit: 8,
+            groups: Some(vec![2, 2]),
+        };
+        let mut piece = make_item("i1", "Gigue", ItemKind::Piece);
+        piece.metre = Some(four_eight.clone());
+        piece.tempo = Some(crate::domain::types::Tempo {
+            marking: None,
+            bpm: Some(240),
+        });
+        let plain = make_item("i2", "Etude", ItemKind::Exercise);
+        let items: HashMap<&str, &Item> = [("i1", &piece), ("i2", &plain)].into_iter().collect();
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Gigue", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            reflection: None,
+        };
+        let view = |active: &ActiveSession| {
+            build_active_session_view(
+                active,
+                &items,
+                &VariationLabels::new(),
+                &[],
+                &PracticeDefaults::default(),
+            )
+        };
+        let first = view(&active);
+        assert_eq!(
+            (
+                first.click_seed_metre,
+                first.click_seed_bpm,
+                first.click_seed_sounds_target
+            ),
+            (four_eight, 240, true)
+        );
+        assert_eq!(
+            first
+                .click_seed_presets
+                .iter()
+                .map(|o| (o.preset, o.sounding))
+                .collect::<Vec<_>>(),
+            vec![
+                (crate::domain::metre::ClickPreset::EveryBeat, 0b1111),
+                (crate::domain::metre::ClickPreset::GroupStarts, 0b0101),
+                (crate::domain::metre::ClickPreset::Downbeat, 1),
+            ]
+        );
+        let second = view(&ActiveSession {
+            current_index: 1,
+            ..active
+        });
+        assert_eq!(
+            (
+                second.click_seed_metre,
+                second.click_seed_bpm,
+                second.click_seed_sounds_target
+            ),
+            (Metre::default(), 96, false)
         );
     }
 
@@ -949,6 +1025,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1546,6 +1623,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]
@@ -2189,8 +2267,9 @@ mod tests {
             click_sounding: true,
             click: None,
         };
+        let now = Utc::now();
         active.reflection = Some(ReflectionDraft {
-            now: Utc::now(),
+            now,
             reading: reading.clone(),
             answers: answers.clone(),
         });
@@ -2203,6 +2282,13 @@ mod tests {
             &PracticeDefaults::default(),
         );
 
-        assert_eq!(view.reflection, Some(ReflectionView { answers, reading }));
+        assert_eq!(
+            view.reflection,
+            Some(ReflectionView {
+                answers,
+                reading,
+                stopped_at: now.to_rfc3339(),
+            })
+        );
     }
 }

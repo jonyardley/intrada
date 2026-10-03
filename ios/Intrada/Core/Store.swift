@@ -29,8 +29,11 @@ final class Store {
   /// persist. The shell shows a standing warning. False for tests/previews.
   let degraded: Bool
 
-  // FIXME(#2089): unversioned key, no wire pin.
-  static let sortDefaultsKey = "intrada.library-sort"
+  static let sortDefaultsKey = "intrada.library-sort.v\(librarySortBlobVersion())"
+  /// Builds before #2089 saved the v1 shape unversioned. It moves to the v1
+  /// key, never the current one, so a later bump cannot decode it as its own.
+  static let legacySortDefaultsKey = "intrada.library-sort"
+  static let legacySortMovesToKey = "intrada.library-sort.v1"
   /// Positional bincode: any change to `ActiveSession`'s graph takes a new key,
   /// named by the core's `ActiveSession::BLOB_VERSION` so the bump never lives here (#1345, #1116).
   static let sessionInProgressKey = "intrada.session-in-progress.v\(sessionBlobVersion())"
@@ -44,6 +47,7 @@ final class Store {
   private let bridge: CoreBridge
   private let store: (any ItemStore)?
   private let sortSlot: DefaultsSlot
+  private let legacySortSlot: DefaultsSlot
   private let sessionSlot: DefaultsSlot
   private let profileSlot: DefaultsSlot
   private let practiceDefaultsSlot: DefaultsSlot
@@ -70,6 +74,7 @@ final class Store {
       }
     }
     sortSlot = DefaultsSlot(key: Self.sortDefaultsKey, defaults: sortDefaults)
+    legacySortSlot = DefaultsSlot(key: Self.legacySortDefaultsKey, defaults: sortDefaults)
     sessionSlot = DefaultsSlot(key: Self.sessionInProgressKey, defaults: sortDefaults)
     profileSlot = DefaultsSlot(key: Self.profileDefaultsKey, defaults: sortDefaults)
     practiceDefaultsSlot = DefaultsSlot(key: Self.practiceDefaultsKey, defaults: sortDefaults)
@@ -222,6 +227,11 @@ final class Store {
   }
 
   func restorePersistedSort() {
+    if let legacy = legacySortSlot.read() {
+      let v1Slot = DefaultsSlot(key: Self.legacySortMovesToKey, defaults: legacySortSlot.defaults)
+      if v1Slot.read() == nil { v1Slot.write(legacy) }
+      legacySortSlot.clear()
+    }
     guard let bytes = sortSlot.read(),
       let sort = guarded({ try LibrarySort.bincodeDeserialize(input: bytes) })
     else { return }

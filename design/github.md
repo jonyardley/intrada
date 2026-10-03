@@ -16,7 +16,6 @@ date: 2026-09-07T22:32:03Z
 | Project screen | Repo source |
 |---|---|
 | One Pass Create.dc.html | specs/one-pass-create.md, docs/design-principles.md (T21, T18), ios/Intrada/Views/Screens/{ItemFormScaffold,ItemFormModel,LibraryAddScreen,LibraryDetailScreen}.swift, ios/Intrada/Views/Components/{ScanPageEntry,ChordChartEditSheet,LinkedItemPickerSheet,FormField,AddRowButton}.swift, ios/Intrada/DesignSystem/{Theme,FieldMark}.swift |
-| Drill Loop.dc.html, A2/A3 | design/briefs/2026-08-coach-drill-loop.md, specs/intrada-practice-coach-design.md (v7, decisions 18 and 19) |
 | Intrada Design System.dc.html | design/intrada-design-system.dc.html, ios/Intrada/DesignSystem/Theme.swift |
 
 ## Sync history

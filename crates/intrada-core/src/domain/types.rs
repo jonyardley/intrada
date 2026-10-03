@@ -142,6 +142,12 @@ pub struct LibrarySort {
     pub direction: SortDirection,
 }
 
+impl LibrarySort {
+    /// The blob is positional bincode; the shell names its storage key by
+    /// this number, so a shape change bumps it here and nowhere else (#2089).
+    pub const BLOB_VERSION: u32 = 1;
+}
+
 /// Round-trip through crux's actual FFI format (`BincodeFfiFormat`) — the
 /// exact wire the iOS bridge uses, so tests can't drift from the real
 /// serializer and we don't take a direct bincode dependency. Shared by every
@@ -168,6 +174,49 @@ mod tests {
         let sort = LibrarySort::default();
         assert_eq!(sort.field, SortField::DateAdded);
         assert_eq!(sort.direction, SortDirection::Descending);
+    }
+
+    // ── Wire ──
+
+    const PINNED_SORT_HEX: &str = "0100000000000000";
+    /// The last variant of each enum, so a reorder at either tail moves a pinned byte.
+    const PINNED_TAIL_SORT_HEX: &str = "0200000001000000";
+
+    const PINNED_SORT_BLOB_VERSION: u32 = 1;
+
+    /// Positional bincode, saved by the shell under a key built from
+    /// `BLOB_VERSION` (#2089); the failure message is the protocol.
+    #[test]
+    fn library_sort_blob_wire_is_pinned() {
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+        for (sort, pinned) in [
+            (
+                LibrarySort {
+                    field: SortField::LastPracticed,
+                    direction: SortDirection::Descending,
+                },
+                PINNED_SORT_HEX,
+            ),
+            (
+                LibrarySort {
+                    field: SortField::Title,
+                    direction: SortDirection::Ascending,
+                },
+                PINNED_TAIL_SORT_HEX,
+            ),
+        ] {
+            let mut bytes = Vec::new();
+            BincodeFfiFormat::serialize(&mut bytes, &sort).expect("serialize");
+            let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+            assert_eq!(
+                (LibrarySort::BLOB_VERSION, hex.as_str()),
+                (PINNED_SORT_BLOB_VERSION, pinned),
+                "the library sort blob changed shape: bump LibrarySort::BLOB_VERSION and PINNED_SORT_BLOB_VERSION, then re-pin the hex. Never only the hex."
+            );
+            let back: LibrarySort =
+                BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
+            assert_eq!(back, sort);
+        }
     }
 
     #[test]
@@ -502,6 +551,31 @@ mod tests {
             ],
             photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
             metre: None,
+            sections: vec![
+                crate::domain::section::ItemSection {
+                    id: "s-1".to_string(),
+                    name: "A1".to_string(),
+                    bars: Some(crate::domain::section::BarRange { first: 1, last: 16 }),
+                    kind: crate::domain::section::SectionKind::Form,
+                    target_bpm: Some(96),
+                    position: 0,
+                    updated_at: at,
+                    deleted_at: None,
+                },
+                crate::domain::section::ItemSection {
+                    id: "s-2".to_string(),
+                    name: String::new(),
+                    bars: Some(crate::domain::section::BarRange {
+                        first: 12,
+                        last: 14,
+                    }),
+                    kind: crate::domain::section::SectionKind::TroubleSpot,
+                    target_bpm: None,
+                    position: 1,
+                    updated_at: at,
+                    deleted_at: Some(at),
+                },
+            ],
         };
         assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
         assert_round_trips(PersistenceOperation::SaveItems(vec![item]));

@@ -3,16 +3,27 @@ package com.intrada.android
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
 import com.intrada.shared.AppEffect
+import com.intrada.shared.BarRange
+import com.intrada.shared.BarsInput
+import com.intrada.shared.ClickBarOption
+import com.intrada.shared.ClickPreset
+import com.intrada.shared.ClickPresetOption
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
+import com.intrada.shared.ItemSection
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.SectionEdit
+import com.intrada.shared.SectionKind
+import com.intrada.shared.SessionEvent
+import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
+import com.intrada.shared.TempoReading
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,6 +97,127 @@ class BridgeRoundTripTest {
 
         assertEquals("Lento", saved.tempo?.marking)
         assertEquals(60.toUShort(), saved.tempo?.bpm)
+    }
+
+    // Sections cross on a second decoder: a skewed BarsInput or SectionView shows only here (#846,
+    // #2245).
+    @Test
+    fun sectionsCrossTheBridgeTypedAndPicked() {
+        val bridge = LiveBridge()
+        val added =
+            bridge.update(
+                Event.Item(
+                    ItemEvent.Add(
+                        CreateItem(
+                            title = "Rondo",
+                            kind = ItemKind.PIECE,
+                            tags = emptyList(),
+                            variantLabels = emptyList(),
+                        )
+                    )
+                )
+            )
+        val id =
+            added
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+                .id
+
+        val saved =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.UpdateSections(
+                            id,
+                            listOf(
+                                SectionEdit(
+                                    null,
+                                    "A1",
+                                    BarsInput.Typed("1-16"),
+                                    SectionKind.FORM,
+                                    "",
+                                ),
+                                SectionEdit(
+                                    null,
+                                    "",
+                                    BarsInput.Picked(12.toUShort(), 14.toUShort()),
+                                    SectionKind.TROUBLESPOT,
+                                    "72",
+                                ),
+                            ),
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+
+        val sections: List<ItemSection> = saved.sections
+        assertEquals(
+            listOf(BarRange(1.toUShort(), 16.toUShort()), BarRange(12.toUShort(), 14.toUShort())),
+            sections.map { it.bars },
+        )
+        assertEquals(72.toUShort(), sections.last().targetBpm)
+    }
+
+    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after
+    // them (#2225).
+    @Test
+    fun theClicksBandAndBarsDecode() {
+        val limits = LiveBridge().view().limits
+
+        assertEquals(
+            TempoBand(unit = 8.toUByte(), min = 80.toUShort(), max = 416.toUShort()),
+            limits.clickTempoBands.single { it.unit == 8.toUByte() },
+        )
+        val groups = listOf(3, 2, 2).map(Int::toUByte)
+        assertEquals(
+            ClickBarOption(
+                beats = 7.toUByte(),
+                groups = groups,
+                presets =
+                    listOf(
+                        ClickPresetOption(ClickPreset.EVERYBEAT, 0b1111111.toUShort()),
+                        ClickPresetOption(ClickPreset.GROUPSTARTS, 0b0101001.toUShort()),
+                        ClickPresetOption(ClickPreset.DOWNBEAT, 1.toUShort()),
+                    ),
+            ),
+            limits.clickBars.single { it.beats == 7.toUByte() && it.groups == groups },
+        )
+    }
+
+    // The sheet's stop moment crosses last in the reflection view (#2297).
+    @Test
+    fun theSheetsStopMomentDecodes() {
+        val bridge = LiveBridge()
+        val load =
+            bridge.update(Event.StartApp).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadItems
+            }
+        val rows =
+            libraryChanged(bridge.resolve(load.id, PersistenceOutput.Items(Fixtures.library)))
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(rows.first().id)))
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-09-27T09:00:00Z")))
+
+        bridge.update(
+            Event.Session(
+                SessionEvent.PrepareReflection(
+                    "2026-09-27T09:05:00Z",
+                    TempoReading(bpm = 72.toUShort(), clickSounding = false),
+                )
+            )
+        )
+
+        assertEquals(
+            "2026-09-27T09:05:00+00:00",
+            bridge.view().activeSession?.reflection?.stoppedAt,
+        )
     }
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =

@@ -1,6 +1,9 @@
 import Foundation
+import IntradaCoreFFI
 import SharedTypes
 
+/// The circle of fifths and its tap rule come from the core (#2226); this
+/// file only formats what it answers.
 enum KeyHelper {
   struct Selection: Equatable {
     let ring: Int
@@ -8,48 +11,36 @@ enum KeyHelper {
     let spelling: String
   }
 
-  /// Major keys clockwise from 12 o'clock; 6 o'clock defaults to Gb over F#.
-  static let circleMajor = ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"]
-  /// Relative minors, same spoke order; 6 o'clock defaults to Eb over D#.
-  static let circleMinor = ["A", "E", "B", "F#", "C#", "G#", "Eb", "Bb", "F", "C", "G", "D"]
+  private static let wedges = keyWheel()
+
+  /// Spoke order clockwise from 12 o'clock, the "Add 12 keys" presets' order.
+  static func circle(_ mode: Modality) -> [String] {
+    wedges.filter { $0.mode == wheelMode(mode) }.map(\.primary)
+  }
 
   static func primary(ring: Int, mode: Modality) -> String {
-    switch mode {
-    case .major: return circleMajor[ring]
-    case .minor: return circleMinor[ring]
-    }
+    wedge(ring: ring, mode: mode)?.primary ?? ""
   }
 
   static func enharmonicAlt(ring: Int, mode: Modality) -> String? {
-    switch (mode, ring) {
-    case (.major, 5): return "Cb"
-    case (.major, 6): return "F#"
-    case (.major, 7): return "C#"
-    case (.minor, 5): return "Ab"
-    case (.minor, 6): return "D#"
-    case (.minor, 7): return "A#"
-    default: return nil
-    }
+    wedge(ring: ring, mode: mode)?.alt
   }
 
   static func selection(key: String, modality: Modality?) -> Selection? {
-    guard let modality else { return nil }
-    return ringFor(tonic: key, mode: modality)
+    keyWheelSelection(key: key, mode: modality.map(wheelMode)).map {
+      Selection(ring: Int($0.ring), mode: self.modality($0.mode), spelling: $0.spelling)
+    }
   }
 
-  /// Tapping the already-selected enharmonic spoke flips its spelling; any
-  /// other tap selects that spoke's default.
   static func nextOnTap(
     currentKey: String, currentModality: Modality?, ring: Int, mode: Modality
-  ) -> (tonic: String, modality: Modality, flipped: Bool) {
-    let prim = primary(ring: ring, mode: mode)
-    if let sel = selection(key: currentKey, modality: currentModality), sel.ring == ring,
-      sel.mode == mode, let alt = enharmonicAlt(ring: ring, mode: mode)
-    {
-      let other = sel.spelling == prim ? alt : prim
-      return (other, mode, true)
-    }
-    return (prim, mode, false)
+  ) -> (tonic: String, modality: Modality, flipped: Bool)? {
+    guard let ring = UInt8(exactly: ring),
+      let tap = keyNextOnTap(
+        currentKey: currentKey, currentMode: currentModality.map(wheelMode), ring: ring,
+        mode: wheelMode(mode))
+    else { return nil }
+    return (tap.tonic, modality(tap.mode), tap.flipped)
   }
 
   /// `#`→`♯`; a `b` only counts as `♭` when it follows a note letter (so mode
@@ -101,16 +92,22 @@ enum KeyHelper {
 
   // ── Internal ──
 
-  private static func ringFor(tonic: String, mode: Modality) -> Selection? {
-    for ring in 0..<12 {
-      if primary(ring: ring, mode: mode) == tonic {
-        return Selection(ring: ring, mode: mode, spelling: tonic)
-      }
-      if let alt = enharmonicAlt(ring: ring, mode: mode), alt == tonic {
-        return Selection(ring: ring, mode: mode, spelling: alt)
-      }
+  private static func wedge(ring: Int, mode: Modality) -> WheelWedge? {
+    wedges.first { Int($0.ring) == ring && $0.mode == wheelMode(mode) }
+  }
+
+  private static func wheelMode(_ mode: Modality) -> WheelMode {
+    switch mode {
+    case .major: return .major
+    case .minor: return .minor
     }
-    return nil
+  }
+
+  private static func modality(_ mode: WheelMode) -> Modality {
+    switch mode {
+    case .major: return .major
+    case .minor: return .minor
+    }
   }
 
   private static func spokenTonic(_ tonic: String) -> String {

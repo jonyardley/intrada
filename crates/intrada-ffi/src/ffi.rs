@@ -3,11 +3,11 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::Once;
 
 use crux_core::{
-    bridge::{Bridge, EffectId},
+    bridge::{BincodeFfiFormat, Bridge, EffectId, FfiFormat},
     Core,
 };
 
-use crate::{Intrada, ItemKind, LibrarySort, SortDirection, SortField};
+use crate::{Intrada, ItemKind, LibrarySort, Modality, SortDirection, SortField};
 
 // Returned (not panicked) so the shell handles it per the no-`try!` contract —
 // the crux `counter` example panics but says to do this in production.
@@ -297,6 +297,188 @@ pub fn exercise_form_shows_key(live_variant_count: u32) -> bool {
     crate::domain::variant::shows_key_field(live_variant_count as usize)
 }
 
+// ── Key wheel ──
+
+/// The core stays UniFFI-agnostic, so the modality crosses the plain call as
+/// its own enum.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WheelMode {
+    Major,
+    Minor,
+}
+
+impl From<WheelMode> for Modality {
+    fn from(mode: WheelMode) -> Self {
+        match mode {
+            WheelMode::Major => Self::Major,
+            WheelMode::Minor => Self::Minor,
+        }
+    }
+}
+
+impl From<Modality> for WheelMode {
+    fn from(modality: Modality) -> Self {
+        match modality {
+            Modality::Major => Self::Major,
+            Modality::Minor => Self::Minor,
+        }
+    }
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelWedge {
+    pub ring: u8,
+    pub mode: WheelMode,
+    pub primary: String,
+    pub alt: Option<String>,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelTap {
+    pub tonic: String,
+    pub mode: WheelMode,
+    pub flipped: bool,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WheelSelection {
+    pub ring: u8,
+    pub mode: WheelMode,
+    pub spelling: String,
+}
+
+/// The picker edits an unsaved form, so it asks with plain calls rather than
+/// an `Event` round trip per tap (#2226).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_wheel() -> Vec<WheelWedge> {
+    crate::domain::key::wheel()
+        .into_iter()
+        .map(|w| WheelWedge {
+            ring: w.ring,
+            mode: w.modality.into(),
+            primary: w.primary.to_string(),
+            alt: w.alt.map(str::to_string),
+        })
+        .collect()
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_next_on_tap(
+    current_key: String,
+    current_mode: Option<WheelMode>,
+    ring: u8,
+    mode: WheelMode,
+) -> Option<WheelTap> {
+    crate::domain::key::next_on_tap(
+        &current_key,
+        current_mode.map(Into::into),
+        ring,
+        mode.into(),
+    )
+    .map(|t| WheelTap {
+        tonic: t.tonic,
+        mode: t.modality.into(),
+        flipped: t.flipped,
+    })
+}
+
+/// Which spoke the form's unsaved key lights.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn key_wheel_selection(key: String, mode: Option<WheelMode>) -> Option<WheelSelection> {
+    crate::domain::key::wheel_selection(&key, mode.map(Into::into)).map(|s| WheelSelection {
+        ring: s.ring,
+        mode: s.modality.into(),
+        spelling: s.spelling,
+    })
+}
+
+// ── Filling the form from a read ──
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FormReadField {
+    Title,
+    Composer,
+    Marking,
+    Bpm,
+    Chart,
+}
+
+impl From<FormReadField> for crate::ReadField {
+    fn from(field: FormReadField) -> Self {
+        match field {
+            FormReadField::Title => Self::Title,
+            FormReadField::Composer => Self::Composer,
+            FormReadField::Marking => Self::Marking,
+            FormReadField::Bpm => Self::Bpm,
+            FormReadField::Chart => Self::Chart,
+        }
+    }
+}
+
+impl From<crate::ReadField> for FormReadField {
+    fn from(field: crate::ReadField) -> Self {
+        match field {
+            crate::ReadField::Title => Self::Title,
+            crate::ReadField::Composer => Self::Composer,
+            crate::ReadField::Marking => Self::Marking,
+            crate::ReadField::Bpm => Self::Bpm,
+            crate::ReadField::Chart => Self::Chart,
+        }
+    }
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormFieldNow {
+    pub field: FormReadField,
+    pub text: String,
+    pub holds_read: bool,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormFieldFill {
+    pub field: FormReadField,
+    pub value: String,
+    pub weak: bool,
+}
+
+/// The add form is unsaved, so it asks on each read rather than the core
+/// holding it (#2229). The draft crosses as the generated bincode the view
+/// model gave the shell, so there is one description of it, not a mirror here.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn fill_form_from_read(
+    draft: Vec<u8>,
+    fields: Vec<FormFieldNow>,
+) -> Result<Vec<FormFieldFill>, CoreError> {
+    let draft: crate::PhotoDraft = BincodeFfiFormat::deserialize(&draft)
+        .map_err(|e| CoreError::Bridge(format!("photo draft: {e}")))?;
+    let fields: Vec<crate::FieldNow> = fields
+        .into_iter()
+        .map(|now| crate::FieldNow {
+            field: now.field.into(),
+            text: now.text,
+            holds_read: now.holds_read,
+        })
+        .collect();
+    Ok(crate::fill_form(&draft, &fields)
+        .into_iter()
+        .map(|fill| FormFieldFill {
+            field: fill.field.into(),
+            value: fill.value,
+            weak: fill.weak,
+        })
+        .collect())
+}
+
 /// The shell builds the crash-recovery blob's storage key from this, so a
 /// shape change in the core retires the old key on its own (#1116).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
@@ -311,6 +493,13 @@ pub fn session_blob_version() -> u32 {
 #[must_use]
 pub fn profile_blob_version() -> u32 {
     crate::domain::profile::Profile::BLOB_VERSION
+}
+
+/// The shell builds the library sort's storage key from this (#2089).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn library_sort_blob_version() -> u32 {
+    crate::domain::types::LibrarySort::BLOB_VERSION
 }
 
 /// The shell builds the first-run blob's storage key from this (#2116).
@@ -585,5 +774,107 @@ mod tests {
                 "field {field:?} direction {direction:?} should order {expected:?}"
             );
         }
+    }
+
+    #[test]
+    fn the_six_oclock_spoke_flips_gb_to_f_sharp_across_the_plain_call() {
+        let first =
+            key_next_on_tap(String::new(), None, 6, WheelMode::Major).expect("on the wheel");
+        assert_eq!((first.tonic.as_str(), first.flipped), ("Gb", false));
+        let second = key_next_on_tap(first.tonic, Some(first.mode), 6, WheelMode::Major)
+            .expect("on the wheel");
+        assert_eq!(
+            (second.tonic.as_str(), second.mode, second.flipped),
+            ("F#", WheelMode::Major, true)
+        );
+        assert_eq!(
+            key_wheel_selection(second.tonic, Some(WheelMode::Major)),
+            Some(WheelSelection {
+                ring: 6,
+                mode: WheelMode::Major,
+                spelling: "F#".into()
+            })
+        );
+        let minor_six = &key_wheel()[18];
+        assert_eq!(
+            (
+                minor_six.mode,
+                minor_six.primary.as_str(),
+                minor_six.alt.as_deref()
+            ),
+            (WheelMode::Minor, "Eb", Some("D#"))
+        );
+    }
+
+    fn draft_bytes(draft: &crate::PhotoDraft) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, draft).expect("serialize");
+        bytes
+    }
+
+    fn blank(field: FormReadField) -> FormFieldNow {
+        FormFieldNow {
+            field,
+            text: String::new(),
+            holds_read: false,
+        }
+    }
+
+    /// The draft the shell holds crosses as bytes and reaches the core's rule
+    /// intact: the tempo still splits and each weak mark survives (#2229).
+    #[test]
+    fn fill_form_from_read_decodes_the_draft_the_view_model_sent() {
+        let draft = crate::PhotoDraft {
+            title: Some(crate::TextDraftField {
+                value: "Autumn Leaves".to_string(),
+                source: crate::DraftSource::Recognised,
+                confidence: 0.9,
+                weak: false,
+            }),
+            composer: None,
+            tempo: Some(crate::TempoDraftField {
+                value: crate::Tempo {
+                    marking: Some("Moderato".to_string()),
+                    bpm: Some(120),
+                },
+                source: crate::DraftSource::Suggested,
+                confidence: 0.3,
+                weak: true,
+            }),
+            chart_text: None,
+        };
+        let fields = vec![
+            blank(FormReadField::Title),
+            FormFieldNow {
+                field: FormReadField::Marking,
+                text: "Slowly".to_string(),
+                holds_read: false,
+            },
+            blank(FormReadField::Bpm),
+        ];
+
+        let fills = fill_form_from_read(draft_bytes(&draft), fields).expect("decodes");
+
+        assert_eq!(
+            fills,
+            vec![
+                FormFieldFill {
+                    field: FormReadField::Title,
+                    value: "Autumn Leaves".to_string(),
+                    weak: false,
+                },
+                FormFieldFill {
+                    field: FormReadField::Bpm,
+                    value: "120".to_string(),
+                    weak: true,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn fill_form_from_read_refuses_bytes_that_are_not_a_draft() {
+        let result = fill_form_from_read(vec![7, 0, 0], vec![blank(FormReadField::Title)]);
+        assert!(matches!(result, Err(CoreError::Bridge(_))));
     }
 }

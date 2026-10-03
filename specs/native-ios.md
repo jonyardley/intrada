@@ -111,8 +111,7 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
   persistence effect off the main actor, returning serialized rows. UserDefaults,
   written through an `AppEffect`, holds **only** small singletons (the library
   sort, the profile, `session-in-progress` crash-recovery), never relational
-  data. Each must take a versioned key and a Rust wire pin; the library sort
-  does not yet (#2089).
+  data. Each must take a versioned key and a Rust wire pin.
 - **Sync (LWW) design, with the known pitfalls handled:**
   - **Server-authoritative `updated_at`** stamped on write (avoids device
     clock skew silently losing newer edits).

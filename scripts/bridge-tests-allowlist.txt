@@ -30,7 +30,6 @@ LinkedExerciseView
 ListQuery
 Modality
 NeglectedItem
-PhotoDraft
 PhotoRecognitionStatus
 PhotoRecognitionView
 PickerVariationView
@@ -38,7 +37,6 @@ PieceRefView
 PracticeDayView
 PracticeDefaultsEvent
 PracticeSession
-PracticeStreak
 Profile
 ProfileEvent
 ProfileField
@@ -54,7 +52,6 @@ ScaffoldPreviewView
 ScaffoldSpecView
 ScoreChange
 ScoreHistoryEntry
-SessionEvent
 SessionsData
 SetlistBlockView
 SetlistEntryView

@@ -8,6 +8,7 @@ import SwiftUI
 struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.dynamicTypeSize) private var typeSize
   @State private var confirmingCancel = false
   // `SharedTypes`' domain `Set` (setlists) shadows `Swift.Set` here.
   @State private var collapsedGroups: Swift.Set<String> = []
@@ -183,10 +184,10 @@ struct SessionBuilderScreen: View {
       },
       trailingContent: { headerActions },
       content: {
-        ZStack(alignment: .bottom) {
-          content
-          if !entries.isEmpty { startBar }
-        }
+        content
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !entries.isEmpty { startBar }
+          }
       }
     )
     // A native back button (or its edge-swipe) would pop past `cancel()`'s
@@ -275,6 +276,7 @@ struct SessionBuilderScreen: View {
         // switch and stepper on the simulator (#1736), so it sits above.
         if !isEditing {
           lengthCard
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.top, IntradaSpacing.card)
         }
@@ -305,7 +307,8 @@ struct SessionBuilderScreen: View {
             .listRowSeparator(.hidden)
             .listRowInsets(
               EdgeInsets(
-                top: IntradaSpacing.controlGap, leading: IntradaSpacing.card, bottom: 100,
+                top: IntradaSpacing.controlGap, leading: IntradaSpacing.card,
+                bottom: IntradaSpacing.card,
                 trailing: IntradaSpacing.card)
             )
             .moveDisabled(true)
@@ -337,8 +340,11 @@ struct SessionBuilderScreen: View {
     Image(systemName: "line.3.horizontal")
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.inkFaintIcon)
+      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
       .accessibilityHidden(true)
   }
+
+  private var rowLineLimit: Int { typeSize.isAccessibilitySize ? 3 : 1 }
 
   // ── Rows ─────────────────────────────────────────────────────────────
 
@@ -365,10 +371,10 @@ struct SessionBuilderScreen: View {
         entry.itemType.bar.frame(width: 4, height: 34).clipShape(Capsule())
         VStack(alignment: .leading, spacing: 2) {
           Text(entry.itemTitle).font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
-            .lineLimit(1)
+            .lineLimit(rowLineLimit)
           Text("\(entry.itemType.label)\(durationSuffix(block.durationDisplay))")
             .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
-            .lineLimit(1)
+            .lineLimit(rowLineLimit)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
       }
@@ -388,6 +394,7 @@ struct SessionBuilderScreen: View {
           Image(systemName: "xmark").font(IntradaFont.meta).foregroundStyle(
             IntradaColor.inkFaintIcon
           )
+          .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
           .frame(width: 44, height: 44)
           .contentShape(Rectangle())
         }
@@ -417,7 +424,8 @@ struct SessionBuilderScreen: View {
         VStack(alignment: .leading, spacing: 2) {
           HStack(spacing: 6) {
             Text(block.pieceTitle ?? "Related exercises")
-              .font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink).lineLimit(1)
+              .font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
+              .lineLimit(rowLineLimit)
             if collapsed {
               Text(relatedLabel(block)).font(IntradaFont.meta)
                 .foregroundStyle(IntradaColor.inkSecondary)
@@ -427,7 +435,7 @@ struct SessionBuilderScreen: View {
           }
           if let subtitle = headerSubtitle(block, collapsed: collapsed) {
             Text(subtitle).font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
-              .lineLimit(1)
+              .lineLimit(rowLineLimit)
           }
         }
         Spacer(minLength: IntradaSpacing.controlGap)
@@ -468,10 +476,10 @@ struct SessionBuilderScreen: View {
           ItemKind.exercise.bar.frame(width: 3, height: 26).clipShape(Capsule())
           VStack(alignment: .leading, spacing: 1) {
             Text(entry.itemTitle).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
-              .lineLimit(1)
+              .lineLimit(rowLineLimit)
             Text(nestedMeta(entry)).font(IntradaFont.micro)
               .foregroundStyle(IntradaColor.inkSecondary)
-              .lineLimit(1)
+              .lineLimit(rowLineLimit)
           }
           Spacer(minLength: 0)
         }

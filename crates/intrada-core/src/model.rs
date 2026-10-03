@@ -8,6 +8,7 @@ use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::first_run::{FirstRun, FirstRunView};
 use crate::domain::item::{Item, ItemKind, Modality};
+use crate::domain::metre::{ClickBarOption, ClickPresetOption, TempoBand};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
 use crate::domain::session::{
@@ -256,6 +257,8 @@ pub enum FormErrorField {
     /// The exercise's inline variation rows (#1831). Appended last: the
     /// bincode wire is positional.
     Variations,
+    /// A piece's or exercise's section rows (#2245). Appended last.
+    Sections,
 }
 
 /// Serializable view state sent to shells for rendering.
@@ -333,10 +336,19 @@ pub struct LimitsView {
     pub session_length_default_mins: u16,
     pub score_min: u8,
     pub score_max: u8,
+    pub click_tempo_step: u16,
+    pub click_tempo_default: u16,
+    /// One per beat unit, counted in that unit.
+    pub click_tempo_bands: Vec<TempoBand>,
+    pub click_metre_presets: Vec<Metre>,
+    pub click_bars: Vec<ClickBarOption>,
+    pub section_name_max: usize,
+    pub bar_max: u16,
 }
 
 impl Default for LimitsView {
     fn default() -> Self {
+        use crate::domain::metre;
         use crate::validation;
 
         LimitsView {
@@ -355,6 +367,13 @@ impl Default for LimitsView {
             session_length_default_mins: validation::DEFAULT_SESSION_LENGTH_MINS,
             score_min: validation::MIN_SCORE,
             score_max: validation::MAX_SCORE,
+            click_tempo_step: metre::CLICK_TEMPO_STEP,
+            click_tempo_default: metre::CLICK_TEMPO_DEFAULT,
+            click_tempo_bands: metre::click_tempo_bands(),
+            click_metre_presets: metre::click_metre_presets(),
+            click_bars: metre::click_bars(),
+            section_name_max: validation::MAX_SECTION_NAME,
+            bar_max: validation::MAX_BAR,
         }
     }
 }
@@ -519,6 +538,25 @@ pub struct LibraryItemView {
     pub solid_variation_count: usize,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
+    /// Live sections only, in score order (#2245).
+    pub sections: Vec<SectionView>,
+}
+
+/// One live section as the item screen shows it (#2245).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SectionView {
+    pub id: String,
+    pub name: String,
+    pub kind: crate::domain::section::SectionKind,
+    pub target_bpm: Option<u16>,
+    pub first_bar: Option<u16>,
+    pub last_bar: Option<u16>,
+    /// The name, else "Bars 12 to 14" or "Bar 12".
+    pub label: String,
+    /// "Bars 1 to 16", shown beside a named section; `None` when the label
+    /// already is the bars, or there are none.
+    pub bars_caption: Option<String>,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -595,6 +633,7 @@ pub struct ItemPracticeSummary {
     pub total_minutes: u32,
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
+    pub score_trend: Option<ScoreTrend>,
     pub tempo_trend: TempoTrendView,
     /// Most recent session date for this item (max `started_at`), independent
     /// of whether a score/tempo was recorded. `None` if never practised.
@@ -608,6 +647,22 @@ pub struct ScoreHistoryEntry {
     pub session_date: String,
     pub score: u8,
     pub session_id: String,
+}
+
+/// The recent-sessions chip: the oldest and newest marks in `score_history`,
+/// only when they differ.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ScoreTrend {
+    pub from: u8,
+    pub to: u8,
+}
+
+impl ScoreTrend {
+    pub(crate) fn over(newest_first: &[ScoreHistoryEntry]) -> Option<Self> {
+        let (to, from) = (newest_first.first()?.score, newest_first.last()?.score);
+        (from != to).then_some(Self { from, to })
+    }
 }
 
 /// One practised session's slot in a `TempoTrendView`.
@@ -639,7 +694,6 @@ pub struct TempoTrendView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeSessionView {
     pub id: String,
-    pub started_at: String,
     pub total_duration_display: String,
     pub total_duration_summary: String,
     pub completion_status: CompletionStatus,
@@ -725,8 +779,6 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
-    /// The piece's metre, the answer the click sheet opens with (T19).
-    pub current_item_metre: Option<Metre>,
     /// The beats the click starts on for this item: the musician's default,
     /// fitted to the item's metre or 4/4 (`specs/practice-defaults.md`).
     pub current_click_sounding: u16,
@@ -734,6 +786,15 @@ pub struct ActiveSessionView {
     pub current_variations: Vec<PickerVariationView>,
     /// `Some` while the item-complete sheet is open, including after a resume (#2137).
     pub reflection: Option<ReflectionView>,
+    /// The bar, tempo and target flag the click reseeds to on this item: 4/4
+    /// when the item declares no metre, its BPM inside the band (#2225).
+    pub click_seed_metre: Metre,
+    pub click_seed_bpm: u16,
+    /// False when the item declares no BPM, or one the band moved (#1942).
+    pub click_seed_sounds_target: bool,
+    /// The seed bar's patterns: an item may carry a valid grouping the
+    /// sheet's `click_bars` table does not list.
+    pub click_seed_presets: Vec<ClickPresetOption>,
 }
 
 /// The open sheet's saved answers, and the click at its stamp, which seeds
@@ -743,6 +804,9 @@ pub struct ActiveSessionView {
 pub struct ReflectionView {
     pub answers: ReflectionAnswers,
     pub reading: TempoReading,
+    /// Measured against `current_item_started_at`, it stays the stamped seconds
+    /// across a resume (#2297).
+    pub stopped_at: String,
 }
 
 /// A unit in the builder queue: a block (a piece with its related exercises) or
@@ -828,6 +892,7 @@ impl LibraryItemView {
             chord_chart: None,
             metre: None,
             variants: Vec::new(),
+            sections: vec![],
             ladder_is_keys: false,
             photo_id: None,
             shows_key: true,
@@ -886,6 +951,7 @@ impl ItemPracticeSummary {
             total_minutes: 0,
             latest_score: None,
             score_history: Vec::new(),
+            score_trend: None,
             tempo_trend: TempoTrendView::default(),
             last_practiced_at: None,
         }
@@ -895,6 +961,42 @@ impl ItemPracticeSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Score trend (#2233) ──
+
+    fn history(newest_first: &[u8]) -> Vec<ScoreHistoryEntry> {
+        newest_first
+            .iter()
+            .enumerate()
+            .map(|(i, score)| ScoreHistoryEntry {
+                session_date: format!("2026-09-{:02}T09:00:00Z", 28 - i),
+                score: *score,
+                session_id: format!("s{i}"),
+            })
+            .collect()
+    }
+
+    type TrendCase<'a> = (&'a [u8], Option<(u8, u8)>);
+
+    #[test]
+    fn score_trend_runs_from_the_oldest_mark_to_the_newest() {
+        let cases: &[TrendCase] = &[
+            (&[], None),
+            (&[7], None),
+            (&[5, 3], Some((3, 5))),
+            (&[3, 5], Some((5, 3))),
+            (&[6, 2, 9, 4], Some((4, 6))),
+            (&[4, 9, 4], None),
+        ];
+        for (newest_first, expected) in cases {
+            let trend = ScoreTrend::over(&history(newest_first));
+            assert_eq!(
+                trend.map(|t| (t.from, t.to)),
+                *expected,
+                "scores {newest_first:?}"
+            );
+        }
+    }
 
     // ── Projected limits (#1512) ──
 

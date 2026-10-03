@@ -7,6 +7,7 @@ import SwiftUI
 struct ProfileEditSheet: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var name = ""
   @State private var instrument = ""
@@ -91,8 +92,14 @@ struct ProfileEditSheet: View {
     return "No match"
   }
 
+  // Stacked at accessibility sizes so the caption keeps whole words and the button its label (#2126).
   private var iconCard: some View {
-    HStack(spacing: IntradaSpacing.card) {
+    let stacked = dynamicTypeSize.isAccessibilitySize
+    let layout: AnyLayout =
+      stacked
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.card))
+    return layout {
       ProfileBadge(icon: shownIcon)
       VStack(alignment: .leading, spacing: 3) {
         Text("Icon")
@@ -102,12 +109,14 @@ struct ProfileEditSheet: View {
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      Spacer(minLength: IntradaSpacing.controlGap)
+      if !stacked {
+        Spacer(minLength: IntradaSpacing.controlGap)
+      }
       Button("Change") { choosingIcon = true }
         .font(IntradaFont.button)
         .foregroundStyle(IntradaColor.ink)
         .padding(.horizontal, IntradaSpacing.cardCompact)
-        .frame(height: 36)
+        .frame(minHeight: 36)
         .background(IntradaColor.cardFill)
         .overlay(
           RoundedRectangle(cornerRadius: IntradaRadius.control)
@@ -115,6 +124,7 @@ struct ProfileEditSheet: View {
         )
         .accessibilityLabel("Change icon")
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
     .padding(.horizontal, IntradaSpacing.card)
     .cardSurface()

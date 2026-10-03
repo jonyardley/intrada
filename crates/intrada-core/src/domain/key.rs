@@ -27,6 +27,75 @@ pub fn wheel_selection(key: &str, modality: Option<Modality>) -> Option<KeyWheel
         .or_else(|| parse_freeform(key))
 }
 
+/// One spoke of the picker's wheel: the circle's default spelling and, on the
+/// three enharmonic spokes, the other one a second tap flips to (#2226).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KeyWedge {
+    pub ring: u8,
+    pub modality: Modality,
+    pub primary: &'static str,
+    pub alt: Option<&'static str>,
+}
+
+/// The twelve major spokes clockwise from 12 o'clock, then the twelve minor.
+pub fn wheel() -> Vec<KeyWedge> {
+    [
+        (Modality::Major, &CIRCLE_MAJOR),
+        (Modality::Minor, &CIRCLE_MINOR),
+    ]
+    .into_iter()
+    .flat_map(|(modality, circle)| {
+        circle
+            .iter()
+            .enumerate()
+            .map(move |(ring, primary)| KeyWedge {
+                ring: ring as u8,
+                modality,
+                primary,
+                alt: enharmonic_alt(ring, modality),
+            })
+    })
+    .collect()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeyTap {
+    pub tonic: String,
+    pub modality: Modality,
+    pub flipped: bool,
+}
+
+/// Tapping the selected enharmonic spoke flips its spelling; any other tap
+/// selects the spoke's default. `None` for a ring off the wheel.
+pub fn next_on_tap(
+    current_key: &str,
+    current_modality: Option<Modality>,
+    ring: u8,
+    mode: Modality,
+) -> Option<KeyTap> {
+    let ring = usize::from(ring);
+    let primary = match mode {
+        Modality::Major => CIRCLE_MAJOR.get(ring)?,
+        Modality::Minor => CIRCLE_MINOR.get(ring)?,
+    };
+    let flip_to = wheel_selection(current_key, current_modality)
+        .filter(|sel| usize::from(sel.ring) == ring && sel.modality == mode)
+        .and_then(|sel| {
+            enharmonic_alt(ring, mode).map(|alt| {
+                if sel.spelling == *primary {
+                    alt
+                } else {
+                    primary
+                }
+            })
+        });
+    Some(KeyTap {
+        tonic: flip_to.unwrap_or(primary).to_string(),
+        modality: mode,
+        flipped: flip_to.is_some(),
+    })
+}
+
 fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
     match (mode, ring) {
         (Modality::Major, 5) => Some("Cb"),
@@ -130,6 +199,72 @@ mod tests {
                 "{key:?} with {modality:?}"
             );
         }
+    }
+
+    fn tap(key: &str, modality: Option<Modality>, ring: u8, mode: Modality) -> (String, bool) {
+        let t = next_on_tap(key, modality, ring, mode).expect("ring on the wheel");
+        assert_eq!(t.modality, mode);
+        (t.tonic, t.flipped)
+    }
+
+    #[test]
+    fn a_second_tap_on_an_enharmonic_spoke_flips_its_spelling() {
+        use Modality::{Major, Minor};
+        let cases: &[(u8, Modality, &str, &str)] = &[
+            (5, Major, "B", "Cb"),
+            (6, Major, "Gb", "F#"),
+            (7, Major, "Db", "C#"),
+            (5, Minor, "G#", "Ab"),
+            (6, Minor, "Eb", "D#"),
+            (7, Minor, "Bb", "A#"),
+        ];
+        for &(ring, mode, primary, alt) in cases {
+            assert_eq!(
+                tap("", None, ring, mode),
+                (primary.into(), false),
+                "{ring} {mode:?}"
+            );
+            assert_eq!(
+                tap(primary, Some(mode), ring, mode),
+                (alt.into(), true),
+                "{ring} {mode:?}"
+            );
+            assert_eq!(
+                tap(alt, Some(mode), ring, mode),
+                (primary.into(), true),
+                "{ring} {mode:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn other_taps_select_the_spokes_default() {
+        use Modality::{Major, Minor};
+        assert_eq!(tap("C", Some(Major), 0, Major), ("C".into(), false));
+        assert_eq!(tap("C", Some(Major), 1, Major), ("G".into(), false));
+        assert_eq!(tap("F#", Some(Major), 6, Minor), ("Eb".into(), false));
+        assert_eq!(tap("D#", Some(Minor), 7, Minor), ("Bb".into(), false));
+        assert_eq!(tap("F# major", None, 6, Major), ("Gb".into(), true));
+        assert_eq!(next_on_tap("C", Some(Major), 12, Major), None);
+        assert_eq!(next_on_tap("A", Some(Minor), 12, Minor), None);
+    }
+
+    #[test]
+    fn the_wheel_lists_every_spoke_in_order_with_its_enharmonic_spellings() {
+        let wedges = wheel();
+        assert_eq!(wedges.len(), 24);
+        for (i, w) in wedges.iter().enumerate() {
+            let mode = if i < 12 {
+                Modality::Major
+            } else {
+                Modality::Minor
+            };
+            assert_eq!((w.ring as usize, w.modality), (i % 12, mode));
+        }
+        let alts: Vec<_> = wedges.iter().filter_map(|w| w.alt).collect();
+        assert_eq!(alts, ["Cb", "F#", "C#", "Ab", "D#", "A#"]);
+        assert_eq!(wedges[6].primary, "Gb");
+        assert_eq!(wedges[18].primary, "Eb");
     }
 
     #[test]

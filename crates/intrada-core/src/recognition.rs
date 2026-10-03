@@ -140,6 +140,73 @@ pub fn read_page(photo_id: String) -> Command<Effect, Event> {
     )
 }
 
+// ── Filling the form ────────────────────────────────────────────────
+
+/// The add form's fields a read can fill (#2229). Key and notes are not among
+/// them: nothing on a page reliably says either.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReadField {
+    Title,
+    Composer,
+    Marking,
+    Bpm,
+    Chart,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldNow {
+    pub field: ReadField,
+    pub text: String,
+    /// Still holding an earlier read, so a second scan may replace it.
+    pub holds_read: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldFill {
+    pub field: ReadField,
+    pub value: String,
+    pub weak: bool,
+}
+
+/// `specs/form-fill-from-page.md` holds the rules.
+#[must_use]
+pub fn fill_form(draft: &PhotoDraft, fields: &[FieldNow]) -> Vec<FieldFill> {
+    let takes = |field: ReadField| {
+        fields
+            .iter()
+            .find(|now| now.field == field)
+            .is_some_and(|now| now.holds_read || now.text.trim().is_empty())
+    };
+    let tempo = draft.tempo.as_ref();
+    let reads = [
+        (
+            ReadField::Title,
+            draft.title.as_ref().map(|r| (r.value.clone(), r.weak)),
+        ),
+        (
+            ReadField::Composer,
+            draft.composer.as_ref().map(|r| (r.value.clone(), r.weak)),
+        ),
+        (
+            ReadField::Marking,
+            tempo.and_then(|r| r.value.marking.clone().map(|m| (m, r.weak))),
+        ),
+        (
+            ReadField::Bpm,
+            tempo.and_then(|r| r.value.bpm.map(|b| (b.to_string(), r.weak))),
+        ),
+        (
+            ReadField::Chart,
+            draft.chart_text.as_ref().map(|r| (r.value.clone(), r.weak)),
+        ),
+    ];
+    reads
+        .into_iter()
+        .filter(|&(field, _)| takes(field))
+        .filter_map(|(field, read)| read.map(|(value, weak)| FieldFill { field, value, weak }))
+        .collect()
+}
+
 // ── Interpretation ──────────────────────────────────────────────────
 
 /// Tempo markings we will name from a page, longest first so
@@ -1573,6 +1640,242 @@ mod tests {
     fn photo_draft_round_trips_on_ffi_bincode_wire() {
         assert_round_trips(read_fields(&printed_page()));
         assert_round_trips(PhotoDraft::default());
+    }
+
+    // ── Filling the form ────────────────────────────────────────────
+
+    mod filling {
+        use super::*;
+
+        const ALL: [ReadField; 5] = [
+            ReadField::Title,
+            ReadField::Composer,
+            ReadField::Marking,
+            ReadField::Bpm,
+            ReadField::Chart,
+        ];
+
+        fn text(value: &str, weak: bool) -> TextDraftField {
+            TextDraftField {
+                value: value.to_string(),
+                source: DraftSource::Recognised,
+                confidence: if weak { 0.3 } else { 0.9 },
+                weak,
+            }
+        }
+
+        fn tempo(marking: Option<&str>, bpm: Option<u16>, weak: bool) -> TempoDraftField {
+            TempoDraftField {
+                value: Tempo {
+                    marking: marking.map(str::to_string),
+                    bpm,
+                },
+                source: DraftSource::Recognised,
+                confidence: if weak { 0.3 } else { 0.9 },
+                weak,
+            }
+        }
+
+        fn full_draft() -> PhotoDraft {
+            PhotoDraft {
+                title: Some(text("Autumn Leaves", false)),
+                composer: Some(text("Joseph Kosmo", true)),
+                tempo: Some(tempo(Some("Moderato"), Some(120), false)),
+                chart_text: Some(text("F7 | Bb7", false)),
+            }
+        }
+
+        fn now(field: ReadField, text: &str, holds_read: bool) -> FieldNow {
+            FieldNow {
+                field,
+                text: text.to_string(),
+                holds_read,
+            }
+        }
+
+        fn blank_form() -> Vec<FieldNow> {
+            ALL.iter().map(|&f| now(f, "", false)).collect()
+        }
+
+        fn form_with(field: ReadField, text: &str, holds_read: bool) -> Vec<FieldNow> {
+            ALL.iter()
+                .map(|&f| {
+                    if f == field {
+                        now(f, text, holds_read)
+                    } else {
+                        now(f, "", false)
+                    }
+                })
+                .collect()
+        }
+
+        fn value_of(fills: &[FieldFill], field: ReadField) -> Option<&str> {
+            fills
+                .iter()
+                .find(|f| f.field == field)
+                .map(|f| f.value.as_str())
+        }
+
+        fn fill(field: ReadField, value: &str, weak: bool) -> FieldFill {
+            FieldFill {
+                field,
+                value: value.to_string(),
+                weak,
+            }
+        }
+
+        #[test]
+        fn a_blank_form_takes_every_field_the_page_read_in_form_order() {
+            assert_eq!(
+                fill_form(&full_draft(), &blank_form()),
+                vec![
+                    fill(ReadField::Title, "Autumn Leaves", false),
+                    fill(ReadField::Composer, "Joseph Kosmo", true),
+                    fill(ReadField::Marking, "Moderato", false),
+                    fill(ReadField::Bpm, "120", false),
+                    fill(ReadField::Chart, "F7 | Bb7", false),
+                ]
+            );
+        }
+
+        /// Each field on its own, in each state a musician can leave it in.
+        /// Deleting the blank check fails the blank and whitespace rows;
+        /// deleting the `holds_read` check fails the earlier read rows.
+        #[test]
+        fn each_field_takes_the_read_only_when_blank_or_holding_a_read() {
+            let cases = [
+                ("", false, true),
+                ("   ", false, true),
+                ("The name I gave it", false, false),
+                ("What the first page said", true, true),
+            ];
+            for field in ALL {
+                for (current, holds_read, takes) in cases {
+                    let fills = fill_form(&full_draft(), &form_with(field, current, holds_read));
+                    assert_eq!(
+                        value_of(&fills, field).is_some(),
+                        takes,
+                        "{field:?} holding {current:?} (holds_read {holds_read})"
+                    );
+                }
+            }
+        }
+
+        /// The musician corrects the composer after the first scan, then
+        /// scans a second page: the correction stays, the rest re-read.
+        #[test]
+        fn a_second_read_never_overwrites_a_field_the_musician_typed() {
+            let fields = vec![
+                now(ReadField::Title, "Autumn Leaves", true),
+                now(ReadField::Composer, "Joseph Kosma", false),
+                now(ReadField::Marking, "Moderato", true),
+                now(ReadField::Bpm, "120", true),
+                now(ReadField::Chart, "", false),
+            ];
+            let second = PhotoDraft {
+                title: Some(text("Blues in F", false)),
+                composer: Some(text("Count Basie", false)),
+                tempo: None,
+                chart_text: None,
+            };
+
+            assert_eq!(
+                fill_form(&second, &fields),
+                vec![fill(ReadField::Title, "Blues in F", false)]
+            );
+        }
+
+        #[test]
+        fn a_field_the_form_did_not_mention_is_never_written() {
+            let fields: Vec<FieldNow> = blank_form()
+                .into_iter()
+                .filter(|f| f.field != ReadField::Composer)
+                .collect();
+
+            let fills = fill_form(&full_draft(), &fields);
+
+            assert_eq!(value_of(&fills, ReadField::Composer), None);
+            assert_eq!(value_of(&fills, ReadField::Title), Some("Autumn Leaves"));
+        }
+
+        #[test]
+        fn the_tempo_splits_into_its_two_boxes_each_by_its_own_rule() {
+            let only_marking = PhotoDraft {
+                tempo: Some(tempo(Some("Andante"), None, false)),
+                ..PhotoDraft::default()
+            };
+            assert_eq!(
+                fill_form(&only_marking, &blank_form()),
+                vec![fill(ReadField::Marking, "Andante", false)]
+            );
+
+            let only_bpm = PhotoDraft {
+                tempo: Some(tempo(None, Some(88), false)),
+                ..PhotoDraft::default()
+            };
+            assert_eq!(
+                fill_form(&only_bpm, &blank_form()),
+                vec![fill(ReadField::Bpm, "88", false)]
+            );
+
+            let both = PhotoDraft {
+                tempo: Some(tempo(Some("Moderato"), Some(120), true)),
+                ..PhotoDraft::default()
+            };
+            assert_eq!(
+                fill_form(&both, &form_with(ReadField::Marking, "Slowly", false)),
+                vec![fill(ReadField::Bpm, "120", true)],
+                "a typed marking stays; the BPM still fills, weak as its tempo"
+            );
+        }
+
+        #[test]
+        fn a_weak_tempo_marks_both_of_its_boxes() {
+            let draft = PhotoDraft {
+                tempo: Some(tempo(Some("Moderato"), Some(120), true)),
+                ..PhotoDraft::default()
+            };
+            assert_eq!(
+                fill_form(&draft, &blank_form()),
+                vec![
+                    fill(ReadField::Marking, "Moderato", true),
+                    fill(ReadField::Bpm, "120", true),
+                ]
+            );
+        }
+
+        #[test]
+        fn each_field_carries_its_own_weak_mark() {
+            let all_weak = PhotoDraft {
+                title: Some(text("Autumn Leaves", true)),
+                composer: Some(text("Joseph Kosmo", true)),
+                tempo: Some(tempo(Some("Moderato"), Some(120), true)),
+                chart_text: Some(text("F7 | Bb7", true)),
+            };
+
+            let fills = fill_form(&all_weak, &blank_form());
+
+            assert_eq!(fills.len(), 5);
+            assert!(fills.iter().all(|f| f.weak), "{fills:?}");
+        }
+
+        #[test]
+        fn the_answer_follows_the_form_order_not_the_order_sent() {
+            let mut fields = blank_form();
+            fields.reverse();
+
+            let order: Vec<ReadField> = fill_form(&full_draft(), &fields)
+                .into_iter()
+                .map(|f| f.field)
+                .collect();
+
+            assert_eq!(order, ALL.to_vec());
+        }
+
+        #[test]
+        fn an_empty_draft_fills_nothing() {
+            assert!(fill_form(&PhotoDraft::default(), &blank_form()).is_empty());
+        }
     }
 
     // ── Driving the app ─────────────────────────────────────────────
