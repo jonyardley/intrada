@@ -32,6 +32,7 @@ enum FaultMark {
     case .notes: "Notes"
     case .tags: "Tags"
     case .variations: "Variations"
+    case .sections: "Sections"
     }
   }
 }

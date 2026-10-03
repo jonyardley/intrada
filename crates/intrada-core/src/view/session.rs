@@ -573,6 +573,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         }
@@ -1024,6 +1025,7 @@ mod tests {
             priority: false,
             chord_chart: None,
             variants: vec![],
+            sections: vec![],
             photo_id: None,
             metre: None,
         };
@@ -1621,6 +1623,7 @@ mod tests {
                 priority: false,
                 chord_chart: None,
                 variants: vec![],
+                sections: vec![],
                 photo_id: None,
                 metre: None,
             }]

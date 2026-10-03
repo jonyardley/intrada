@@ -257,6 +257,8 @@ pub enum FormErrorField {
     /// The exercise's inline variation rows (#1831). Appended last: the
     /// bincode wire is positional.
     Variations,
+    /// A piece's or exercise's section rows (#2245). Appended last.
+    Sections,
 }
 
 /// Serializable view state sent to shells for rendering.
@@ -340,6 +342,8 @@ pub struct LimitsView {
     pub click_tempo_bands: Vec<TempoBand>,
     pub click_metre_presets: Vec<Metre>,
     pub click_bars: Vec<ClickBarOption>,
+    pub section_name_max: usize,
+    pub bar_max: u16,
 }
 
 impl Default for LimitsView {
@@ -368,6 +372,8 @@ impl Default for LimitsView {
             click_tempo_bands: metre::click_tempo_bands(),
             click_metre_presets: metre::click_metre_presets(),
             click_bars: metre::click_bars(),
+            section_name_max: validation::MAX_SECTION_NAME,
+            bar_max: validation::MAX_BAR,
         }
     }
 }
@@ -532,6 +538,25 @@ pub struct LibraryItemView {
     pub solid_variation_count: usize,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
+    /// Live sections only, in score order (#2245).
+    pub sections: Vec<SectionView>,
+}
+
+/// One live section as the item screen shows it (#2245).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SectionView {
+    pub id: String,
+    pub name: String,
+    pub kind: crate::domain::section::SectionKind,
+    pub target_bpm: Option<u16>,
+    pub first_bar: Option<u16>,
+    pub last_bar: Option<u16>,
+    /// The name, else "Bars 12 to 14" or "Bar 12".
+    pub label: String,
+    /// "Bars 1 to 16", shown beside a named section; `None` when the label
+    /// already is the bars, or there are none.
+    pub bars_caption: Option<String>,
 }
 
 /// One variation of an exercise's ladder with its derived practice state (#1083).
@@ -850,6 +875,7 @@ impl LibraryItemView {
             chord_chart: None,
             metre: None,
             variants: Vec::new(),
+            sections: vec![],
             ladder_is_keys: false,
             photo_id: None,
             shows_key: true,

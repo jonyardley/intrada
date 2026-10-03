@@ -134,6 +134,82 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertFalse(after.showsKey, "an exercise in several keys has no single key")
   }
 
+  /// `UpdateSections`, the new `Item` field and `SectionView` cross the real
+  /// bincode bridge (#846, #2245).
+  func testRealBridgeUpdateSectionsLabelsTypedAndPickedBars() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Rondo", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let item = try XCTUnwrap(try bridge.rendered().items.first)
+    let typed = BarsInput.typed("1\u{2013}16")
+    let spot = SectionKind.troubleSpot
+
+    let requests = try bridge.update(
+      .item(
+        .updateSections(
+          id: item.id,
+          sections: [
+            SectionEdit(id: nil, name: "A1", bars: typed, kind: .form, targetBpm: ""),
+            SectionEdit(
+              id: nil, name: "", bars: .picked(first: 12, last: 14), kind: spot, targetBpm: "72"),
+          ])))
+
+    let saved: [ItemSection] = requests.compactMap { request -> Item? in
+      guard case .persistence(.saveItem(let item)) = request.effect else { return nil }
+      return item
+    }.flatMap(\.sections)
+    XCTAssertEqual(
+      saved.map(\.bars), [BarRange(first: 1, last: 16), BarRange(first: 12, last: 14)])
+    XCTAssertEqual(saved.map(\.targetBpm), [nil, 72])
+
+    let after = try XCTUnwrap(try bridge.rendered().items.first { $0.id == item.id })
+    let views: [SectionView] = after.sections
+    XCTAssertEqual(views.map(\.label), ["A1", "Bars 12 to 14"])
+    XCTAssertEqual(views.map(\.barsCaption), ["Bars 1 to 16", nil])
+    XCTAssertEqual(views.last?.kind, spot)
+  }
+
+  /// A refused bar range points the form at the sections (#2245).
+  func testRealBridgeRefusedBarsPointAtTheSections() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Rondo", kind: .piece, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+    let item = try XCTUnwrap(try bridge.rendered().items.first)
+
+    _ = try bridge.update(
+      .item(
+        .updateSections(
+          id: item.id,
+          sections: [
+            SectionEdit(id: nil, name: "A", bars: .typed("1-8"), kind: .form, targetBpm: "")
+          ])))
+    let before = try bridge.rendered().items.first?.sections
+
+    _ = try bridge.update(
+      .item(
+        .updateSections(
+          id: item.id,
+          sections: [
+            SectionEdit(id: nil, name: "B", bars: .typed("16-1"), kind: .form, targetBpm: "")
+          ])))
+
+    let view = try bridge.rendered()
+    XCTAssertNotNil(view.error)
+    XCTAssertEqual(view.errorTarget, .piece(field: .sections))
+    XCTAssertEqual(view.items.first?.sections, before, "nothing written")
+    XCTAssertEqual(before?.map(\.label), ["A"])
+  }
+
   /// The new `FormErrorField` case decodes on the wire (#846, #1831): a
   /// refused rung points the form at the Variations section.
   func testRealBridgeRefusedVariationPointsAtTheSection() throws {

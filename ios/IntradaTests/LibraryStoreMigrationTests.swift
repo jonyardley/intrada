@@ -464,6 +464,69 @@ final class LibraryStoreMigrationTests: XCTestCase {
       "an old chart row must not lose its chords")
   }
 
+  func testV18UpgradeLoadsEveryItemUnchangedWithNoSections() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v17_item_metre",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id, metre,
+           deleted_at)
+        VALUES ('p1', 'Waltz', 'piece', 'Chopin', 'A', 'minor', 'Lento', 60, 'slow', '["rubato"]',
+                '["e1"]', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', 1, NULL, NULL,
+                '{"beats":3,"unit":4}', NULL);
+        INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+        VALUES ('e1', 'Scales', 'exercise', '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+        INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
+        VALUES ('v1', 'e1', 'C', 0, '2026-01-01T00:00:00Z', NULL)
+        """)
+    let columns = try store.columnNames(ofTable: "section")
+    for expected in [
+      "id", "item_id", "name", "bar_first", "bar_last", "kind", "target_bpm", "position",
+      "updated_at", "deleted_at",
+    ] {
+      XCTAssertTrue(columns.contains(expected), "section must carry \(expected); got \(columns)")
+    }
+
+    let items = try store.loadItems()
+    let piece = try XCTUnwrap(items.first { $0.id == "p1" })
+    let expected = LibraryItemFixture.record(
+      id: "p1", title: "Waltz", kind: .piece, composer: "Chopin", key: "A", modality: .minor,
+      tempo: Tempo(marking: "Lento", bpm: 60), notes: "slow", tags: ["rubato"],
+      linkedExerciseIds: ["e1"], createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-02T00:00:00Z", priority: true,
+      metre: Metre(beats: 3, unit: 4, groups: nil))
+    XCTAssertEqual(piece, expected, "an upgraded piece loads exactly as before, with no sections")
+    let exercise = try XCTUnwrap(items.first { $0.id == "e1" })
+    XCTAssertEqual(exercise.variants.map(\.label), ["C"])
+    XCTAssertEqual(exercise.sections, [])
+  }
+
+  func testSectionsAndATombstoneSurviveAReload() throws {
+    let store = try LibraryStore.inMemory()
+    var item = LibraryItemFixture.record(id: "p1", title: "Rondo")
+    item.sections = [
+      ItemSection(
+        id: "s1", name: "A1", bars: BarRange(first: 1, last: 16), kind: .form, targetBpm: nil,
+        position: 0, updatedAt: "2026-10-03T09:00:00Z", deletedAt: nil),
+      ItemSection(
+        id: "s2", name: "Gone", bars: nil, kind: .form, targetBpm: nil, position: 1,
+        updatedAt: "2026-10-03T09:05:00Z", deletedAt: "2026-10-03T09:05:00Z"),
+      ItemSection(
+        id: "s3", name: "", bars: BarRange(first: 12, last: 14), kind: .troubleSpot,
+        targetBpm: 72, position: 2, updatedAt: "2026-10-03T09:00:00Z", deletedAt: nil),
+    ]
+    try store.save(item)
+    XCTAssertEqual(try store.loadItems().first?.sections, item.sections)
+
+    item.sections[0].name = "A"
+    item.sections[2].bars = BarRange(first: 12, last: 13)
+    try store.save(item)
+    XCTAssertEqual(
+      try store.loadItems().first?.sections, item.sections,
+      "a second save updates each row by id, adding none")
+  }
+
   // The v11 and v12 tests asserted on tables only the coach read, removed in #1344.
   func testEveryTableCarriesTheSyncColumns() throws {
     let queue = try DatabaseQueue()
