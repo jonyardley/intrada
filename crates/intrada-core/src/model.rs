@@ -633,6 +633,7 @@ pub struct ItemPracticeSummary {
     pub total_minutes: u32,
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
+    pub score_trend: Option<ScoreTrend>,
     pub tempo_trend: TempoTrendView,
     /// Most recent session date for this item (max `started_at`), independent
     /// of whether a score/tempo was recorded. `None` if never practised.
@@ -646,6 +647,22 @@ pub struct ScoreHistoryEntry {
     pub session_date: String,
     pub score: u8,
     pub session_id: String,
+}
+
+/// The recent-sessions chip: the oldest and newest marks in `score_history`,
+/// only when they differ.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ScoreTrend {
+    pub from: u8,
+    pub to: u8,
+}
+
+impl ScoreTrend {
+    pub(crate) fn over(newest_first: &[ScoreHistoryEntry]) -> Option<Self> {
+        let (to, from) = (newest_first.first()?.score, newest_first.last()?.score);
+        (from != to).then_some(Self { from, to })
+    }
 }
 
 /// One practised session's slot in a `TempoTrendView`.
@@ -934,6 +951,7 @@ impl ItemPracticeSummary {
             total_minutes: 0,
             latest_score: None,
             score_history: Vec::new(),
+            score_trend: None,
             tempo_trend: TempoTrendView::default(),
             last_practiced_at: None,
         }
@@ -943,6 +961,42 @@ impl ItemPracticeSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Score trend (#2233) ──
+
+    fn history(newest_first: &[u8]) -> Vec<ScoreHistoryEntry> {
+        newest_first
+            .iter()
+            .enumerate()
+            .map(|(i, score)| ScoreHistoryEntry {
+                session_date: format!("2026-09-{:02}T09:00:00Z", 28 - i),
+                score: *score,
+                session_id: format!("s{i}"),
+            })
+            .collect()
+    }
+
+    type TrendCase<'a> = (&'a [u8], Option<(u8, u8)>);
+
+    #[test]
+    fn score_trend_runs_from_the_oldest_mark_to_the_newest() {
+        let cases: &[TrendCase] = &[
+            (&[], None),
+            (&[7], None),
+            (&[5, 3], Some((3, 5))),
+            (&[3, 5], Some((5, 3))),
+            (&[6, 2, 9, 4], Some((4, 6))),
+            (&[4, 9, 4], None),
+        ];
+        for (newest_first, expected) in cases {
+            let trend = ScoreTrend::over(&history(newest_first));
+            assert_eq!(
+                trend.map(|t| (t.from, t.to)),
+                *expected,
+                "scores {newest_first:?}"
+            );
+        }
+    }
 
     // ── Projected limits (#1512) ──
 

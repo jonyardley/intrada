@@ -1621,6 +1621,10 @@ mod tests {
         // Second entry = older (score 3)
         assert_eq!(practice.score_history[1].score, 3);
         assert_eq!(practice.score_history[1].session_id, "sess1");
+        assert_eq!(
+            practice.score_trend,
+            Some(crate::model::ScoreTrend { from: 3, to: 5 })
+        );
     }
 
     #[test]
