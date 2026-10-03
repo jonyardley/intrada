@@ -369,6 +369,9 @@ final class SessionBridgeTests: XCTestCase {
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
     XCTAssertEqual(open.answers, answers)
     XCTAssertEqual(open.reading.click, click)
+    XCTAssertEqual(
+      SessionClock.parseRFC3339(open.stoppedAt), SessionClock.parseRFC3339("2026-09-27T09:05:00Z"),
+      "the item's clock stops at the stamp (#2297)")
     let saved = try XCTUnwrap(
       requests.lazy.compactMap { request -> ActiveSession? in
         if case .app(.saveSessionInProgress(let active)) = request.effect { return active }
@@ -382,6 +385,12 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(
       try resumed.rendered().activeSession?.reflection?.answers, answers,
       "the sheet reopens with what was written")
+    let reopened = try XCTUnwrap(try resumed.rendered().activeSession)
+    let stopped = try XCTUnwrap(
+      reopened.reflection.flatMap { SessionClock.parseRFC3339($0.stoppedAt) })
+    let itemStart = try XCTUnwrap(SessionClock.parseRFC3339(reopened.currentItemStartedAt))
+    XCTAssertEqual(
+      stopped.timeIntervalSince(itemStart), 300, "a resume keeps the item stopped at its stamp")
   }
 
   /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing

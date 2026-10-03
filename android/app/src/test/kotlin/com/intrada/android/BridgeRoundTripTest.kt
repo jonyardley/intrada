@@ -15,8 +15,10 @@ import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
+import com.intrada.shared.TempoReading
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -115,6 +117,35 @@ class BridgeRoundTripTest {
                     ),
             ),
             limits.clickBars.single { it.beats == 7.toUByte() && it.groups == groups },
+        )
+    }
+
+    // The sheet's stop moment crosses last in the reflection view (#2297).
+    @Test
+    fun theSheetsStopMomentDecodes() {
+        val bridge = LiveBridge()
+        val load =
+            bridge.update(Event.StartApp).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadItems
+            }
+        val rows =
+            libraryChanged(bridge.resolve(load.id, PersistenceOutput.Items(Fixtures.library)))
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(rows.first().id)))
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-09-27T09:00:00Z")))
+
+        bridge.update(
+            Event.Session(
+                SessionEvent.PrepareReflection(
+                    "2026-09-27T09:05:00Z",
+                    TempoReading(bpm = 72.toUShort(), clickSounding = false),
+                )
+            )
+        )
+
+        assertEquals(
+            "2026-09-27T09:05:00+00:00",
+            bridge.view().activeSession?.reflection?.stoppedAt,
         )
     }
 

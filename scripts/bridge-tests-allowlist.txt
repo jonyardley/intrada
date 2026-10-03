@@ -54,7 +54,6 @@ ScaffoldPreviewView
 ScaffoldSpecView
 ScoreChange
 ScoreHistoryEntry
-SessionEvent
 SessionsData
 SetlistBlockView
 SetlistEntryView

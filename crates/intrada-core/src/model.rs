@@ -763,6 +763,9 @@ pub struct ActiveSessionView {
 pub struct ReflectionView {
     pub answers: ReflectionAnswers,
     pub reading: TempoReading,
+    /// Measured against `current_item_started_at`, it stays the stamped seconds
+    /// across a resume (#2297).
+    pub stopped_at: String,
 }
 
 /// A unit in the builder queue: a block (a piece with its related exercises) or

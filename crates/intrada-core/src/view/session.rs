@@ -264,6 +264,7 @@ pub fn build_active_session_view(
         reflection: active.reflection.as_ref().map(|draft| ReflectionView {
             answers: draft.answers.clone(),
             reading: draft.reading.clone(),
+            stopped_at: draft.now.to_rfc3339(),
         }),
         click_seed_bpm,
         click_seed_sounds_target,
@@ -2264,8 +2265,9 @@ mod tests {
             click_sounding: true,
             click: None,
         };
+        let now = Utc::now();
         active.reflection = Some(ReflectionDraft {
-            now: Utc::now(),
+            now,
             reading: reading.clone(),
             answers: answers.clone(),
         });
@@ -2278,6 +2280,13 @@ mod tests {
             &PracticeDefaults::default(),
         );
 
-        assert_eq!(view.reflection, Some(ReflectionView { answers, reading }));
+        assert_eq!(
+            view.reflection,
+            Some(ReflectionView {
+                answers,
+                reading,
+                stopped_at: now.to_rfc3339(),
+            })
+        );
     }
 }
