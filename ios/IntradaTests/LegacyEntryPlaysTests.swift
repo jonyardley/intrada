@@ -52,13 +52,12 @@ struct LegacyEntryPlaysTests {
     #expect(play.score == 7)
     #expect(play.repTarget == 10)
     #expect(play.repCount == 8)
-    #expect(play.repTargetReached == false)
     #expect(play.repHistory?.count == 2)
     #expect(play.achievedTempo == 120)
-    #expect(play.variationId == "v-c")
+    #expect(play.variationIds.isEmpty, "a step is retired, not moved (#2246)")
     #expect(play.seconds == 600)
     #expect(entry.groupId == "g1")
-    #expect(entry.plannedVariationId == "v-c")
+    #expect(entry.plannedVariationIds.isEmpty)
     #expect(entry.plannedRepTarget == 10)
   }
 
@@ -74,9 +73,9 @@ struct LegacyEntryPlaysTests {
     let entry = try onlyEntry(try store(seeding: json))
 
     #expect(entry.plays.count == 1)
-    #expect(entry.plays.first?.variationId == nil)
+    #expect(entry.plays.first?.variationIds == [])
     #expect(entry.plays.first?.score == 5)
-    #expect(entry.plannedVariationId == nil)
+    #expect(entry.plannedVariationIds.isEmpty)
   }
 
   /// Rows written before the rep history was timestamped hold bare action
@@ -146,7 +145,7 @@ struct LegacyEntryPlaysTests {
 
     #expect(entry.plays.count == 2)
     #expect(entry.plays.map(\.score) == [8, 6])
-    #expect(entry.plays.map(\.variationId) == ["v-c", "v-d"])
+    #expect(entry.plays.map(\.variationIds) == [[], []], "the steps they name are not read")
   }
 
   /// Two variations in one sitting is the case #1739 exists for, so it has to
@@ -156,27 +155,31 @@ struct LegacyEntryPlaysTests {
     let queue = try DatabaseQueue()
     let store = try LibraryStore(queue)
     let play = { (id: String, variation: String, score: UInt8) in
-      VariationPlay(
-        id: id, variationId: variation, startedAt: "2026-09-01T10:00:00Z", seconds: 300,
-        repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        achievedTempo: nil, clickPattern: nil, score: score)
+      Play(
+        id: id, sectionId: nil, key: nil, variationIds: [variation],
+        startedAt: "2026-09-01T10:00:00Z", seconds: 300,
+        repTarget: nil, repCount: nil, repHistory: nil,
+        tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: score)
     }
     let entry = SetlistEntry(
       id: "e1", itemId: "i1", itemTitle: "Major Scales", itemType: .exercise, position: 0,
       durationSecs: 600, status: .completed, notes: nil, intention: nil,
-      plannedDurationSecs: nil, groupId: nil, plannedVariationId: "v-c", plannedRepTarget: nil,
+      plannedDurationSecs: nil, groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-c"],
+      plannedRepTarget: nil,
       plays: [play("p1", "v-c", 8), play("p2", "v-d", 6)])
     try store.saveSession(
       PracticeSession(
         id: "s1", entries: [entry], sessionNotes: nil,
         startedAt: "2026-09-01T10:00:00Z", completedAt: "2026-09-01T10:10:00Z",
-        totalDurationSecs: 600, completionStatus: .completed, sessionScore: nil))
+        totalDurationSecs: 600, completionStatus: .completed, sessionScore: nil, captureVersion: nil
+      ))
 
     let loaded = try onlyEntry(store)
 
     #expect(loaded.plays.count == 2)
     #expect(loaded.plays.map(\.id) == ["p1", "p2"])
     #expect(loaded.plays.map(\.score) == [8, 6])
-    #expect(loaded.plannedVariationId == "v-c")
+    #expect(loaded.plays.map(\.variationIds) == [["v-c"], ["v-d"]])
+    #expect(loaded.plannedVariationIds == ["v-c"])
   }
 }

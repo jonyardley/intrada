@@ -110,6 +110,11 @@ private final class ThreadRecordingStore: ItemStore, @unchecked Sendable {
     return []
   }
   func saveSession(_ session: PracticeSession) throws { record() }
+  func loadVariations() throws -> [Variation] {
+    record()
+    return []
+  }
+  func save(_ variations: [Variation]) throws { record() }
 }
 
 /// A save slow enough that a load not made to wait would overtake it.
@@ -135,4 +140,9 @@ private final class SlowSaveStore: ItemStore, @unchecked Sendable {
     return []
   }
   func saveSession(_ session: PracticeSession) throws { record("saveSession") }
+  func loadVariations() throws -> [Variation] {
+    record("variations")
+    return []
+  }
+  func save(_ variations: [Variation]) throws { record("saveVariations") }
 }

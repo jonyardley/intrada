@@ -18,9 +18,11 @@ struct ExerciseMetaLineTests {
 
   private let linkedCases: [LinkedCase] = [
     LinkedCase(
-      name: "a modeless sharp", exercise: .fixture(key: "F#"), line: "F♯", spoken: "F♯"),
+      name: "a modeless sharp",
+      exercise: .fixture(key: Key(letter: .f, accidental: .sharp, mode: nil)),
+      line: "F♯", spoken: "F♯"),
     LinkedCase(
-      name: "key only", exercise: .fixture(key: "Db", modality: .major),
+      name: "key only", exercise: .fixture(key: Key(letter: .d, accidental: .flat, mode: .major)),
       line: "D♭ major", spoken: "D♭ major"),
     LinkedCase(
       name: "tempo only", exercise: .fixture(tempoBpm: 108),
@@ -31,7 +33,9 @@ struct ExerciseMetaLineTests {
       line: "Allegro · ♩ = 132", spoken: "Allegro, 132 beats per minute"),
     LinkedCase(
       name: "key with marking plus bpm",
-      exercise: .fixture(key: "C", modality: .minor, tempoMarking: "Allegro", tempoBpm: 132),
+      exercise: .fixture(
+        key: Key(letter: .c, accidental: .natural, mode: .minor), tempoMarking: "Allegro",
+        tempoBpm: 132),
       line: "C minor · Allegro · ♩ = 132", spoken: "C minor, Allegro, 132 beats per minute"),
   ]
 
@@ -51,42 +55,36 @@ struct ExerciseMetaLineTests {
 
   private struct StagedCase {
     let name: String
-    let key: String
-    let modality: Modality?
+    let key: Key?
     let bpm: String
     let meta: String?
   }
 
   private let stagedCases: [StagedCase] = [
     StagedCase(
-      name: "words typed as a tempo", key: "C", modality: .major, bpm: "fast",
-      meta: "C major"),
-    StagedCase(name: "nothing filled in", key: "", modality: nil, bpm: "", meta: nil),
-    StagedCase(name: "a mode with no key", key: "", modality: .minor, bpm: "", meta: nil),
-    StagedCase(name: "a padded tempo", key: "", modality: nil, bpm: " 96 ", meta: "♩ = 96"),
+      name: "words typed as a tempo", key: Key(letter: .c, accidental: .natural, mode: .major),
+      bpm: "fast", meta: "C major"),
+    StagedCase(name: "nothing filled in", key: nil, bpm: "", meta: nil),
+    StagedCase(name: "a padded tempo", key: nil, bpm: " 96 ", meta: "♩ = 96"),
     StagedCase(
-      name: "key and tempo", key: "Bb", modality: .minor, bpm: "80",
+      name: "key and tempo", key: Key(letter: .b, accidental: .flat, mode: .minor), bpm: "80",
       meta: "B♭ minor · ♩ = 80"),
   ]
 
   @Test func aStagedExerciseShowsOnlyTheKeyAndTempoThatWillSave() {
     for row in stagedCases {
       let staged = StagedExercise.draft(
-        id: UUID(), title: "Scale", key: row.key, modality: row.modality, bpm: row.bpm)
+        id: UUID(), title: "Scale", key: row.key, bpm: row.bpm)
       #expect(staged.meta == row.meta, "\(row.name)")
     }
   }
 
-  // ── Editing a legacy key ───────────────────────────────────────────────
+  // ── Editing a key ──────────────────────────────────────────────────────
 
-  @Test func editingALegacyFreeformKeySeedsTheTonicAndModeTheCoreParsed() {
-    let item = LibraryItemFixture.view(
-      key: "F# major", modality: nil,
-      keySelection: KeyWheelSelection(ring: 6, modality: .major, spelling: "F#"))
+  @Test func editingAnItemSeedsTheFormWithItsKey() {
+    let key = Key(letter: .f, accidental: .sharp, mode: .major)
+    let form = ItemFormModel(item: LibraryItemFixture.view(key: key))
 
-    let form = ItemFormModel(item: item)
-
-    #expect(form.key == "F#")
-    #expect(form.modality == .major)
+    #expect(form.key == key)
   }
 }

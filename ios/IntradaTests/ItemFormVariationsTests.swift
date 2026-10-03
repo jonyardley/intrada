@@ -4,101 +4,87 @@ import Testing
 
 @testable import Intrada
 
-/// What the Add and Edit forms send for an exercise's variation rows (#1783).
-/// Whether a ladder is valid is the core's call; this is only what the rows become.
+/// What the Add and Edit forms send for an exercise's variation rows (#1783,
+/// #2246). Whether a set is valid is the core's call; this is only what the
+/// rows become.
 @MainActor
 struct ItemFormVariationsTests {
   private func rows(_ labels: [String]) -> [VariationRow] {
     labels.map { VariationRow(label: $0) }
   }
 
-  private func ladder(_ event: ItemEvent?) -> [VariantEdit]? {
-    guard case .updateVariants(_, let edits) = event else { return nil }
-    return edits
+  private func set(_ event: ItemEvent?) -> (ids: [String], labels: [String])? {
+    guard case .updateItemVariations(_, let ids, let labels) = event else { return nil }
+    return (ids, labels)
   }
 
-  @Test func aLoadedRowKeepsItsIdThroughARenameAndANewRowHasNone() {
+  @Test func aLoadedRowKeepsItsIdAndATypedRowIsALabel() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
-    form.variations[0].label = "Do"
-    form.variations.append(VariationRow(label: "G"))
+    form.variations.append(VariationRow(label: " Swung "))
 
-    let edits = ladder(form.editEvents(id: "exercise-2").last)
+    let sent = set(form.editEvents(id: "exercise-2").last)
 
-    #expect(edits?.map(\.id) == ["variation-c", "variation-f", "variation-bb", nil])
-    #expect(edits?.map(\.label) == ["Do", "F", "B♭", "G"])
+    #expect(sent?.ids == ["variation-c", "variation-f", "variation-bb"])
+    #expect(sent?.labels == ["Swung"])
   }
 
-  @Test func aSavedRowBlankedIsSentForTheCoreToRefuse() {
+  @Test func aRemovedRowLeavesTheItemsSet() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
-    form.variations[0].label = "  "
+    form.variations.remove(at: 1)
 
-    let edits = ladder(form.editEvents(id: "exercise-2").last)
-
-    #expect(edits?.map(\.id) == ["variation-c", "variation-f", "variation-bb"])
-    #expect(edits?.first?.label == "", "never a silent removal of a row with marks")
+    #expect(set(form.editEvents(id: "exercise-2").last)?.ids == ["variation-c", "variation-bb"])
   }
 
-  @Test func keyHiddenOverSavedRowsIsNotSent() {
+  @Test func theKeyIsSentBesideSavedRows() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
-    form.key = "D"
+    let d = Key(letter: .d, accidental: .natural, mode: .major)
+    form.key = d
 
-    #expect(form.updateInput().key == nil)
+    #expect(form.updateInput().key == .some(d))
   }
 
   @Test func aRowNeverFilledIsLeftOutAndLabelsAreTrimmed() {
     let form = ItemFormModel(kind: .exercise)
     form.variations = rows(["  C ", "", "   ", "G"])
 
-    #expect(form.createInput().variantLabels == ["C", "G"])
+    #expect(form.createInput().variationLabels == ["C", "G"])
   }
 
-  @Test func aPieceSendsNoRowsAndShowsKey() {
+  @Test func aPieceSendsNoRows() {
     let form = ItemFormModel(kind: .exercise)
     form.variations = rows(["C"])
-    #expect(!form.showsKey)
 
     form.kind = .piece
 
-    #expect(form.createInput().variantLabels.isEmpty)
-    #expect(form.showsKey)
-  }
-
-  @Test func keyHidesOnceARowExistsEvenBeforeItIsFilled() {
-    let form = ItemFormModel(kind: .exercise)
-    #expect(form.showsKey)
-
-    form.variations = rows([""])
-
-    #expect(!form.showsKey)
+    #expect(form.createInput().variationLabels.isEmpty)
   }
 
   @Test func withRowsTheFieldsGoFirst() {
     let form = ItemFormModel(item: .previewExercise)
-    form.variations = rows(["C"])
+    form.variations = rows(["Slow"])
 
     let events = form.editEvents(id: "exercise-1")
 
     #expect(events.count == 2)
-    #expect(form.updateInput().key == .some("C"), "sent, so the core can fold it into the rows")
-    #expect(ladder(events.first) == nil, "fields first")
-    #expect(ladder(events.last)?.map(\.label) == ["C"])
+    #expect(set(events.first) == nil, "fields first")
+    #expect(set(events.last)?.labels == ["Slow"])
   }
 
-  @Test func clearingEveryRowSendsTheEmptyLadderFirst() {
+  @Test func clearingEveryRowSendsTheEmptySet() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations = rows(["", " "])
 
     let events = form.editEvents(id: "exercise-2")
 
     #expect(events.count == 2)
-    #expect(ladder(events.first) == [], "rows first, so a key after them is accepted")
+    #expect(set(events.last)?.ids == [])
+    #expect(set(events.last)?.labels == [])
   }
 
-  @Test func anExerciseThatNeverHadRowsSendsOnlyItsFields() {
-    let events = ItemFormModel(item: .previewExercise).editEvents(id: "exercise-1")
-
-    #expect(events.count == 1)
-    #expect(ladder(events.first) == nil)
+  @Test func anExerciseWhoseRowsDidNotChangeSendsOnlyItsFields() {
+    #expect(ItemFormModel(item: .previewExercise).editEvents(id: "exercise-1").count == 1)
+    #expect(
+      ItemFormModel(item: .previewExerciseWithVariations).editEvents(id: "exercise-2").count == 1)
   }
 
   @Test func aDroppedRowLandsBeforeTheTarget() {

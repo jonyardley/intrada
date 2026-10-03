@@ -11,7 +11,8 @@ final class LibraryStoreTests: XCTestCase {
     createdAt: String = "2026-01-01T00:00:00Z"
   ) -> Item {
     LibraryItemFixture.record(
-      id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
+      id: id, title: title, kind: kind, composer: "Chopin",
+      key: Key(letter: .c, accidental: .natural, mode: .major),
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
       tags: ["scale", "warmup"], createdAt: createdAt, priority: true)
   }
@@ -24,8 +25,7 @@ final class LibraryStoreTests: XCTestCase {
     let got = try XCTUnwrap(loaded.first)
     XCTAssertEqual(got.id, "p1")
     XCTAssertEqual(got.kind, .piece)
-    XCTAssertEqual(got.key, "C")
-    XCTAssertEqual(got.modality, .major)
+    XCTAssertEqual(got.key, Key(letter: .c, accidental: .natural, mode: .major))
     XCTAssertEqual(got.tempo, Tempo(marking: "Allegro", bpm: 132))
     XCTAssertEqual(got.tags, ["scale", "warmup"])
     XCTAssertTrue(got.priority)
@@ -50,12 +50,12 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(got.tags, [])
   }
 
-  func testNilModalityRoundTrips() throws {
+  func testAKeyWithNoModeRoundTrips() throws {
     let store = try makeStore()
     var it = item("p1")
-    it.modality = nil
+    it.key = Key(letter: .f, accidental: .sharp, mode: nil)
     try store.save(it)
-    XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality)
+    XCTAssertEqual(try XCTUnwrap(try store.loadItems().first).key, it.key)
   }
 
   /// Upgrade path: a v1 row survives the v2 `modality` migration intact.
@@ -75,7 +75,9 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(got.id, "p1")
     XCTAssertEqual(got.title, "Legacy Etude")
     XCTAssertEqual(got.composer, "Bach")
-    XCTAssertNil(got.modality, "v2 adds modality as NULL for pre-existing rows")
+    XCTAssertEqual(
+      got.key, Key(letter: .c, accidental: .natural, mode: nil),
+      "v2 adds modality as NULL for pre-existing rows")
     XCTAssertEqual(got.tempo, Tempo(marking: "Allegro", bpm: 120))
     XCTAssertEqual(got.tags, ["scale"])
     XCTAssertFalse(got.priority)
@@ -123,73 +125,57 @@ final class LibraryStoreTests: XCTestCase {
       columns.contains("deleted_at"), "item table must carry deleted_at; has \(columns)")
   }
 
-  // ── Variants (#1083) ──────────────────────────────────────────────────
+  // ── Variations and keys (#2246) ──────────────────────────────────────
 
-  private func variant(
-    _ id: String, label: String, position: UInt64, deletedAt: String? = nil
-  ) -> Variant {
-    Variant(
-      id: id, label: label, position: position,
-      updatedAt: "2026-07-01T00:00:00+00:00", deletedAt: deletedAt)
+  private func variation(_ id: String, label: String, deletedAt: String? = nil) -> Variation {
+    Variation(id: id, label: label, updatedAt: "2026-07-01T00:00:00+00:00", deletedAt: deletedAt)
   }
 
-  func testVariantRowsRoundTripOrderedWithTombstonesIntact() throws {
+  func testVariationRowsRoundTripWithTombstonesIntact() throws {
+    let store = try makeStore()
+    try store.save([
+      variation("v-dot", label: "Dotted rhythms"),
+      variation("v-hs", label: "Hands separately", deletedAt: "2026-07-02T00:00:00+00:00"),
+    ])
+
+    let got = try store.loadVariations().sorted { $0.id < $1.id }
+    XCTAssertEqual(got.map(\.label), ["Dotted rhythms", "Hands separately"])
+    XCTAssertEqual(got[0].updatedAt, "2026-07-01T00:00:00+00:00")
+    XCTAssertEqual(
+      got[1].deletedAt, "2026-07-02T00:00:00+00:00",
+      "the tombstone survives the round trip; no hard deletes")
+  }
+
+  func testVariationUpsertUpdatesRowsInPlace() throws {
+    let store = try makeStore()
+    try store.save([variation("v-dot", label: "Dotted")])
+    try store.save([variation("v-dot", label: "Dotted rhythms")])
+
+    XCTAssertEqual(try store.loadVariations().map(\.label), ["Dotted rhythms"])
+  }
+
+  func testAnItemsVariationsAndKeysRoundTripInOrder() throws {
     let store = try makeStore()
     var ex = item("e1", kind: .exercise)
-    // Deliberately unordered, with a tombstoned variation: load returns every row
-    // (the core owns reconciliation and resurrect-by-label) in position order.
-    ex.variants = [
-      variant("v-f", label: "F", position: 1),
-      variant("v-c", label: "C", position: 0),
-      variant("v-g", label: "G", position: 2, deletedAt: "2026-07-02T00:00:00+00:00"),
+    ex.variationIds = ["v-b", "v-a"]
+    ex.keys = [
+      Key(letter: .e, accidental: .flat, mode: .major),
+      Key(letter: .c, accidental: .sharp, mode: .minor),
+      Key(letter: .g, accidental: .natural, mode: nil),
     ]
     try store.save(ex)
 
     let got = try XCTUnwrap(try store.loadItems().first)
-    XCTAssertEqual(got.variants.map(\.id), ["v-c", "v-f", "v-g"], "ladder order by position")
-    XCTAssertEqual(got.variants.map(\.label), ["C", "F", "G"])
-    XCTAssertEqual(
-      got.variants[0].updatedAt, "2026-07-01T00:00:00+00:00",
-      "per-variation sync timestamp is preserved")
-    XCTAssertEqual(
-      got.variants[2].deletedAt, "2026-07-02T00:00:00+00:00",
-      "the tombstone survives the round trip; no hard deletes")
+    XCTAssertEqual(got.variationIds, ["v-b", "v-a"])
+    XCTAssertEqual(got.keys, ex.keys)
   }
 
-  func testVariantUpsertUpdatesRowsInPlace() throws {
-    let store = try makeStore()
-    var ex = item("e1", kind: .exercise)
-    ex.variants = [variant("v-c", label: "C", position: 0)]
-    try store.save(ex)
-    ex.variants = [variant("v-c", label: "C", position: 1)]
-    try store.save(ex)
-
-    let got = try XCTUnwrap(try store.loadItems().first)
-    XCTAssertEqual(got.variants.count, 1, "same id upserts, never duplicates")
-    XCTAssertEqual(got.variants.first?.position, 1)
-  }
-
-  func testBatchSaveWritesEachItemsVariants() throws {
-    let store = try makeStore()
-    var a = item("a", kind: .exercise)
-    a.variants = [variant("v-a", label: "C", position: 0)]
-    var b = item("b", kind: .exercise)
-    b.variants = [variant("v-b", label: "F", position: 0)]
-    try store.save([a, b])
-
-    let byId = Dictionary(
-      uniqueKeysWithValues: try store.loadItems().map { ($0.id, $0.variants) })
-    XCTAssertEqual(byId["a"]?.map(\.id), ["v-a"])
-    XCTAssertEqual(byId["b"]?.map(\.id), ["v-b"])
-  }
-
-  /// Offline-first invariant #2: the variant child table carries the sync columns.
-  func testVariantSchemaHasSyncColumns() throws {
-    let columns = try makeStore().columnNames(ofTable: "variant")
+  func testVariationSchemaHasSyncColumns() throws {
+    let columns = try makeStore().columnNames(ofTable: "variation")
     XCTAssertTrue(
-      columns.contains("updated_at"), "variant table must carry updated_at; has \(columns)")
+      columns.contains("updated_at"), "variation table must carry updated_at; has \(columns)")
     XCTAssertTrue(
-      columns.contains("deleted_at"), "variant table must carry deleted_at; has \(columns)")
+      columns.contains("deleted_at"), "variation table must carry deleted_at; has \(columns)")
   }
 
   // ── Sessions ──────────────────────────────────────────────────────────
@@ -198,16 +184,18 @@ final class LibraryStoreTests: XCTestCase {
     SetlistEntry(
       id: id, itemId: "item-\(id)", itemTitle: "Etude", itemType: .exercise, position: 0,
       durationSecs: 300, status: .completed, notes: "good", intention: "evenness",
-      plannedDurationSecs: 300, groupId: nil, plannedVariationId: nil, plannedRepTarget: 5,
+      plannedDurationSecs: 300, groupId: nil, plannedSectionIds: [], plannedVariationIds: [],
+      plannedRepTarget: 5,
       plays: [
-        VariationPlay(
-          id: "\(id)-p1", variationId: nil, startedAt: "2026-01-01T00:00:00Z", seconds: 300,
-          repTarget: 5, repCount: 5, repTargetReached: true,
+        Play(
+          id: "\(id)-p1", sectionId: nil, key: nil, variationIds: [],
+          startedAt: "2026-01-01T00:00:00Z", seconds: 300,
+          repTarget: 5, repCount: 5,
           repHistory: [
-            RepEvent(action: .success, at: "2026-01-01T00:01:00Z"),
-            RepEvent(action: .missed, at: "2026-01-01T00:02:00Z"),
-            RepEvent(action: .success, at: "2026-01-01T00:03:30Z"),
-          ], achievedTempo: 120, clickPattern: nil, score: 4)
+            RepEvent(action: .success, at: "2026-01-01T00:01:00Z", tempo: nil, clickSounding: nil),
+            RepEvent(action: .missed, at: "2026-01-01T00:02:00Z", tempo: nil, clickSounding: nil),
+            RepEvent(action: .success, at: "2026-01-01T00:03:30Z", tempo: nil, clickSounding: nil),
+          ], tempoChanges: [], achievedTempo: 120, clickPattern: nil, score: 4)
       ])
   }
 
@@ -217,7 +205,7 @@ final class LibraryStoreTests: XCTestCase {
     PracticeSession(
       id: id, entries: [entry("a"), entry("b")], sessionNotes: "solid",
       startedAt: "2026-01-01T00:00:00Z", completedAt: completedAt,
-      totalDurationSecs: 600, completionStatus: .completed, sessionScore: nil)
+      totalDurationSecs: 600, completionStatus: .completed, sessionScore: nil, captureVersion: nil)
   }
 
   func testSaveThenLoadSessionRoundTrips() throws {
@@ -241,9 +229,9 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(
       play.repHistory,
       [
-        RepEvent(action: .success, at: "2026-01-01T00:01:00Z"),
-        RepEvent(action: .missed, at: "2026-01-01T00:02:00Z"),
-        RepEvent(action: .success, at: "2026-01-01T00:03:30Z"),
+        RepEvent(action: .success, at: "2026-01-01T00:01:00Z", tempo: nil, clickSounding: nil),
+        RepEvent(action: .missed, at: "2026-01-01T00:02:00Z", tempo: nil, clickSounding: nil),
+        RepEvent(action: .success, at: "2026-01-01T00:03:30Z", tempo: nil, clickSounding: nil),
       ], "each tap keeps its own time through the blob")
     XCTAssertEqual(play.achievedTempo, 120)
   }
@@ -272,8 +260,8 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(
       play.repHistory,
       [
-        RepEvent(action: .success, at: "2026-01-01T09:00:00Z"),
-        RepEvent(action: .missed, at: "2026-01-01T09:00:00Z"),
+        RepEvent(action: .success, at: "2026-01-01T09:00:00Z", tempo: nil, clickSounding: nil),
+        RepEvent(action: .missed, at: "2026-01-01T09:00:00Z", tempo: nil, clickSounding: nil),
       ], "an untimed legacy tap is dated to the session start, never dropped")
   }
 
@@ -300,19 +288,33 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(got.entries.map(\.status), [.skipped, .notAttempted])
   }
 
-  func testEntriesBlobRoundTripsTheVariationAttribution() throws {
+  func testEntriesBlobRoundTripsThePlanAndTheWayPlayed() throws {
     let store = try makeStore()
     var s = session("s1")
-    s.entries[0].plannedVariationId = "v-c"
-    s.entries[0].plays[0].variationId = "v-c"
+    s.entries[0].plannedSectionIds = ["sec-a"]
+    s.entries[0].plannedVariationIds = ["v-c", "v-d"]
+    s.entries[0].plays[0].sectionId = "sec-a"
+    s.entries[0].plays[0].key = Key(letter: .e, accidental: .flat, mode: .major)
+    s.entries[0].plays[0].variationIds = ["v-c", "v-d"]
+    s.entries[0].plays[0].tempoChanges = [
+      TempoChange(at: "2026-01-01T00:01:00Z", tempo: 84, clickSounding: true)
+    ]
     try store.saveSession(s)
 
     let got = try XCTUnwrap(try store.loadSessions().first)
-    XCTAssertEqual(got.entries[0].plannedVariationId, "v-c", "the plan rides the blob")
-    XCTAssertEqual(
-      got.entries[0].plays.first?.variationId, "v-c", "and so does what was practised")
-    XCTAssertNil(got.entries[1].plannedVariationId)
-    XCTAssertNil(got.entries[1].plays.first?.variationId)
+    XCTAssertEqual(got.entries[0].plannedSectionIds, ["sec-a"], "the plan rides the blob")
+    XCTAssertEqual(got.entries[0].plannedVariationIds, ["v-c", "v-d"])
+    XCTAssertEqual(got.entries[0].plays.first, s.entries[0].plays[0], "and so does the play")
+    XCTAssertEqual(got.entries[1].plannedVariationIds, [])
+    XCTAssertNil(got.entries[1].plays.first?.key)
+  }
+
+  func testTheCaptureVersionRoundTrips() throws {
+    let store = try makeStore()
+    var s = session("s1")
+    s.captureVersion = 1
+    try store.saveSession(s)
+    XCTAssertEqual(try XCTUnwrap(try store.loadSessions().first).captureVersion, 1)
   }
 
   func testEntriesBlobRoundTripsTheClickPattern() throws {
@@ -363,7 +365,7 @@ final class LibraryStoreTests: XCTestCase {
         VALUES ('s1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, 'enlightenment',
                 NULL, NULL, '\(entries)', '2026-01-01T00:00:00Z', NULL)
         """)
-    XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality, "unknown modality → nil")
+    XCTAssertNil(try XCTUnwrap(try store.loadItems().first).key, "unknown modality, no key")
 
     let got = try XCTUnwrap(try store.loadSessions().first)
     XCTAssertEqual(got.completionStatus, .completed, "unknown completion status → completed")

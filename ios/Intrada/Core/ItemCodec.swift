@@ -1,18 +1,18 @@
 import Foundation
 import GRDB
+import IntradaCoreFFI
 import SharedTypes
 
 extension LibraryStore {
   // ── Row ↔ Item codec ─────────────────────────────────────────────────
 
-  static func item(from row: Row, variants: [Variant], sections: [ItemSection]) -> Item {
+  static func item(from row: Row, sections: [ItemSection]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
     return Item(
       id: row["id"], title: row["title"], kind: kind(from: row["kind"]),
-      composer: row["composer"], key: row["key"],
-      modality: (row["modality"] as String?).flatMap(modalities.decode),
+      composer: row["composer"], key: key(text: row["key"], modality: row["modality"]),
       tempo: tempo, notes: row["notes"],
       tags: decodeJSON([String].self, from: row["tags"], field: "tags") ?? [],
       linkedExerciseIds: decodeJSON(
@@ -20,8 +20,64 @@ extension LibraryStore {
       createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"],
       chordChart: decodeChordChart(row["chord_chart"]),
-      variants: variants,
-      photoId: row["photo_id"], metre: decodeMetre(row["metre"]), sections: sections)
+      photoId: row["photo_id"], metre: decodeMetre(row["metre"]), sections: sections,
+      variationIds: (row["variation_ids"] as String?).flatMap {
+        decodeJSON([String].self, from: $0, field: "variation_ids")
+      } ?? [],
+      keys: decodeKeys(row["keys"]))
+  }
+
+  // ── Key codec (#2106) ────────────────────────────────────────────────
+  // The core reads and writes a key's two columns; Swift never parses one.
+
+  struct StoredKeyJSON: Codable {
+    var key: String
+    var modality: String?
+  }
+
+  /// Text the core cannot read is `nil`; the column keeps it (`upsert`).
+  static func key(text: String?, modality: String?) -> Key? {
+    guard let text else { return nil }
+    do {
+      let mode = modality.flatMap(modalities.decode).map(wheelMode)
+      guard let bytes = try keyFromStored(text: text, mode: mode) else { return nil }
+      return try Key.bincodeDeserialize(input: [UInt8](bytes))
+    } catch {
+      report(error, decodeContext)
+      return nil
+    }
+  }
+
+  static func stored(_ key: Key) throws -> StoredKeyJSON {
+    let columns = try keyToStored(key: Data(try key.bincodeSerialize()))
+    return StoredKeyJSON(
+      key: columns.text, modality: columns.mode.map { modalities.encode(modality($0)) })
+  }
+
+  static func encodeKeys(_ keys: [Key]) throws -> String {
+    try encodeJSON(keys.map(stored))
+  }
+
+  /// A key in the list the core cannot read is dropped from the list.
+  static func decodeKeys(_ json: String?) -> [Key] {
+    guard let json, let dtos = decodeJSON([StoredKeyJSON].self, from: json, field: "keys") else {
+      return []
+    }
+    return dtos.compactMap { key(text: $0.key, modality: $0.modality) }
+  }
+
+  static func wheelMode(_ modality: Modality) -> WheelMode {
+    switch modality {
+    case .major: .major
+    case .minor: .minor
+    }
+  }
+
+  static func modality(_ mode: WheelMode) -> Modality {
+    switch mode {
+    case .major: .major
+    case .minor: .minor
+    }
   }
 
   // ── Metre codec ──────────────────────────────────────────────────────
@@ -44,12 +100,12 @@ extension LibraryStore {
     return Metre(beats: dto.beats, unit: dto.unit, groups: dto.groups)
   }
 
-  // ── Row ↔ Variant codec ──────────────────────────────────────────────
+  // ── Row ↔ Variation codec ────────────────────────────────────────────
 
-  static func variant(from row: Row) -> Variant {
-    Variant(
-      id: row["id"], label: row["label"], position: UInt64(row["position"] as Int),
-      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  static func variation(from row: Row) -> Variation {
+    Variation(
+      id: row["id"], label: row["label"], updatedAt: row["updated_at"],
+      deletedAt: row["deleted_at"])
   }
 
   // ── Row ↔ ItemSection codec ──────────────────────────────────────────────
@@ -98,6 +154,8 @@ extension LibraryStore {
   // bincode: positional encoding would fail to decode old rows after a field
   // change, and the device is the only copy.
 
+  /// `key` holds a spelling the core reads, as the item's column does; an
+  /// empty one is a chart whose key could not be read.
   struct StoredChart: Codable {
     var key: String
     var modality: String
@@ -126,8 +184,9 @@ extension LibraryStore {
 
   static func encodeChordChart(_ chart: ChordChart?) throws -> String? {
     guard let chart else { return nil }
+    let key = try chart.key.map(stored)
     let dto = StoredChart(
-      key: chart.key, modality: modalities.encode(chart.modality), metre: nil,
+      key: key?.key ?? "", modality: key?.modality ?? modalities.encode(.major), metre: nil,
       sections: chart.sections.map { section in
         StoredSection(
           label: section.label,
@@ -149,7 +208,7 @@ extension LibraryStore {
     guard let json, let dto = decodeJSON(StoredChart.self, from: json, field: "chord_chart")
     else { return nil }
     return ChordChart(
-      key: dto.key, modality: modalities.decode(dto.modality) ?? .major,
+      key: key(text: dto.key, modality: dto.modality),
       sections: dto.sections.map { section in
         ChartSection(
           label: section.label,

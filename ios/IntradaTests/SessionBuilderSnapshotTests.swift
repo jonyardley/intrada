@@ -43,8 +43,8 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
 
   func testAddToSessionSheetLargestStandardSizeLongKeyAndTempo() {
     var item = LibraryItemView.previewPiece
-    item.key = "C#"
-    item.modality = .minor
+    item.key = Key(letter: .c, accidental: .sharp, mode: .minor)
+    item.keyLabel = "C\u{266F} minor"
     item.tempoMarking = "Allegro ma non troppo e molto espressivo"
     item.tempoBpm = 132
     let store = Store(

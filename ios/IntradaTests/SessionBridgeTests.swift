@@ -9,31 +9,46 @@ final class SessionBridgeTests: XCTestCase {
 
   // ── Real bridge (Swift↔Rust bincode round-trip) ────────────────────────
 
-  /// Real-bridge rung tag (#846, #1083): `SetEntryVariant` carries an optional
-  /// String across the bincode wire (the absent-vs-present hazard). Drive it
-  /// through the live bridge and assert it decodes without error.
-  func testRealBridgeTagEntryWithVariantDecodesOnWire() throws {
+  /// The builder's plan carries two lists across the bincode wire (#846,
+  /// #2246); set and clear it through the live bridge.
+  func testRealBridgeTheBuildersPlanDecodesOnWire() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Slow"]))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
-
-    _ = try bridge.update(.item(.setVariants(id: itemId, labels: ["F major"])))
-    let stepId = try XCTUnwrap(try bridge.rendered().items.first?.variants.first?.id)
+    let slowId = try XCTUnwrap(try bridge.rendered().items.first?.variations.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
 
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: stepId)))
-    XCTAssertNil(try bridge.rendered().error, "tagging a rung must decode on the wire (#846)")
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: nil)))
-    XCTAssertNil(try bridge.rendered().error, "clearing the rung round-trips")
+    _ = try bridge.update(
+      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [slowId])))
+    XCTAssertNil(try bridge.rendered().error, "a plan must decode on the wire (#846)")
+    XCTAssertEqual(
+      try bridge.rendered().buildingSetlist?.entries.first?.plannedVariationIds, [slowId])
+    _ = try bridge.update(
+      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [])))
+    XCTAssertEqual(
+      try bridge.rendered().buildingSetlist?.entries.first?.plannedVariationIds, [],
+      "clearing the plan round-trips")
+  }
+
+  /// A practice left open before the update is reported, not silently lost.
+  func testRealBridgeARetiredPracticeIsReportedAsANotice() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(.session(.retiredSessionFound))
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    XCTAssertEqual(
+      view.notice, "A practice left open before the update couldn't be picked up again.")
   }
 
   /// Three u32s side by side decode silently into each other's slots if Rust
@@ -85,9 +100,9 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Gigue", kind: .piece, composer: nil, key: nil, modality: nil,
+            title: "Gigue", kind: .piece, composer: nil, key: nil,
             tempo: TempoInput(marking: nil, bpm: "240"), notes: nil, tags: [], photoId: nil,
-            variantLabels: []))))
+            variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     let fourEight = Metre(beats: 4, unit: 8, groups: [2, 2])
     _ = try bridge.update(.item(.setMetre(id: id, metre: fourEight)))
@@ -122,8 +137,8 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
@@ -173,14 +188,14 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Arpeggios", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Arpeggios", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let ids = try bridge.rendered().items.map(\.id)
     XCTAssertEqual(ids.count, 2, "two distinct items: addToSetlist is idempotent by item id")
 
@@ -215,8 +230,8 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
@@ -228,8 +243,8 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNil(untouched.currentRepHistory)
     XCTAssertEqual(untouched.currentRepSlots, 10, "the counter still has slots to draw")
 
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-03T09:01:00Z")))
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-03T09:01:40Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-03T09:01:00Z", reading: .silent)))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-03T09:01:40Z", reading: .silent)))
 
     let tapped = try XCTUnwrap(try bridge.rendered().activeSession)
     XCTAssertNil(try bridge.rendered().error)
@@ -253,22 +268,22 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: id)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-14T09:00:00Z")))
 
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-14T09:00:05Z")))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-14T09:00:05Z", reading: .silent)))
     XCTAssertEqual(
       try bridge.rendered().activeSession?.currentRepCount, 1, "a bank moves the counter up")
 
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:10Z")))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:10Z", reading: .silent)))
     XCTAssertEqual(
       try bridge.rendered().activeSession?.currentRepCount, 0, "a miss steps the banked count back")
 
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:20Z")))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-14T09:00:20Z", reading: .silent)))
     XCTAssertEqual(
       try bridge.rendered().activeSession?.currentRepCount, 0,
       "a second miss at zero stays on the floor, never negative")
@@ -344,8 +359,8 @@ final class SessionBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: .exercise, composer: nil, key: nil, modality: nil,
-              tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+              title: title, kind: .exercise, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     }
     _ = try bridge.update(.session(.startBuilding))
     for id in try bridge.rendered().items.map(\.id) {
@@ -402,8 +417,8 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
@@ -426,8 +441,8 @@ final class SessionBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: .exercise, composer: nil, key: nil, modality: nil,
-              tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+              title: title, kind: .exercise, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     }
     for item in try bridge.rendered().items {
       _ = try bridge.update(
@@ -435,7 +450,7 @@ final class SessionBridgeTests: XCTestCase {
           .update(
             id: item.id,
             input: UpdateItem(
-              title: item.title, kind: item.itemType, composer: nil, key: nil, modality: nil,
+              title: item.title, kind: item.itemType, composer: nil, key: nil,
               tempo: nil, notes: nil, tags: nil, priority: true))))
     }
     XCTAssertTrue(try bridge.rendered().showsPriorities, "starred with nothing under way")
@@ -465,8 +480,8 @@ final class SessionBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: kind, composer: nil, key: nil, modality: nil,
-              tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+              title: title, kind: kind, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     }
     let ids = Dictionary(
       uniqueKeysWithValues: try bridge.rendered().items.map { ($0.title, $0.id) })
@@ -502,9 +517,9 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+            title: "Etude", kind: .piece, composer: "Chopin", key: nil,
             tempo: nil, notes: "Watch the thumb crossing", tags: [], photoId: nil,
-            variantLabels: []))))
+            variationLabels: []))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
@@ -600,7 +615,8 @@ final class SessionBridgeTests: XCTestCase {
       id: "re1", itemId: "i1", itemTitle: "Recovered Scales", itemType: .exercise,
       position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: nil, plannedVariationId: nil, plannedRepTarget: nil, plays: [])
+      groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil, plays: []
+    )
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
@@ -613,50 +629,46 @@ final class SessionBridgeTests: XCTestCase {
       "recovery must re-anchor the running item's timer to `now`")
   }
 
-  /// Real-bridge step-ladder lifecycle (#1083 C1): SetVariants and
-  /// UpdateEntryVariant have never crossed the live bincode bridge from Swift
-  /// before; a wire break here is the silent no-op class (#846). Drives
-  /// ladder create → reorder-preserves-ids → per-entry attribution set/clear.
-  func testRealBridgeStepLadderAndEntryAttribution() throws {
+  /// Variations are library-wide (#2246): a label typed on one item reuses
+  /// the row another item made, reordering keeps every id, and the edits
+  /// cross the live bincode bridge (#846).
+  func testRealBridgeVariationsAreSharedAcrossTheLibrary() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
+    for title in ["Shells", "Arpeggios"] {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .exercise, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    }
+    let ids = Dictionary(
+      uniqueKeysWithValues: try bridge.rendered().items.map { ($0.title, $0.id) })
+    let shells = try XCTUnwrap(ids["Shells"])
+    let arpeggios = try XCTUnwrap(ids["Arpeggios"])
+
     _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
-    let exId = try XCTUnwrap(try bridge.rendered().items.first?.id)
-
-    _ = try bridge.update(.item(.setVariants(id: exId, labels: ["C", "F", "B♭"])))
+      .item(.updateItemVariations(id: shells, variationIds: [], newLabels: ["Slow", "Swung"])))
     let afterSet = try bridge.rendered()
-    let ladder = try XCTUnwrap(afterSet.items.first?.variants)
+    let made = try XCTUnwrap(afterSet.items.first { $0.id == shells }?.variations)
     XCTAssertEqual(
-      ladder.map(\.label), ["C", "F", "B♭"],
-      "the ladder should land (err=\(afterSet.error ?? "nil"))")
-    XCTAssertTrue(ladder.allSatisfy { !$0.isSolid }, "an unrated ladder has no solid steps")
-    let stepId = try XCTUnwrap(ladder.first?.id)
+      made.map(\.label), ["Slow", "Swung"],
+      "the variations should land (err=\(afterSet.error ?? "nil"))")
+    let slowId = try XCTUnwrap(made.first?.id)
+    let swungId = try XCTUnwrap(made.last?.id)
 
-    // Reorder must keep ids (and so score history); reconcile-by-label.
-    _ = try bridge.update(.item(.setVariants(id: exId, labels: ["F", "C", "B♭"])))
-    let reordered = try XCTUnwrap(try bridge.rendered().items.first?.variants)
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: shells, variationIds: [swungId, slowId], newLabels: [])))
+    let reordered = try XCTUnwrap(
+      try bridge.rendered().items.first { $0.id == shells }?.variations)
+    XCTAssertEqual(reordered.map(\.id), [swungId, slowId], "reordering keeps each id")
+
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: arpeggios, variationIds: [], newLabels: ["slow"])))
     XCTAssertEqual(
-      reordered.first { $0.label == "C" }?.id, stepId, "reordering keeps each step's id")
-
-    // #1739 makes SetEntryVariant the builder's plan, so set + clear it there.
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: exId)))
-    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
-
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: stepId)))
-    let attributed = try bridge.rendered()
-    XCTAssertEqual(
-      attributed.buildingSetlist?.entries.first?.plannedVariationId, stepId,
-      "the step attribution should round-trip (err=\(attributed.error ?? "nil"))")
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: nil)))
-    XCTAssertNil(
-      try bridge.rendered().buildingSetlist?.entries.first?.plannedVariationId,
-      "clearing the attribution round-trips")
+      try bridge.rendered().items.first { $0.id == arpeggios }?.variations.map(\.id),
+      [slowId], "a live label is reused, not duplicated")
   }
 
   // ── Builder reorder ────────────────────────────────────────────────────
@@ -675,8 +687,8 @@ final class SessionBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: kind, composer: nil, key: nil, modality: nil, tempo: nil,
-              notes: nil, tags: [], photoId: nil, variantLabels: []))))
+              title: title, kind: kind, composer: nil, key: nil, tempo: nil,
+              notes: nil, tags: [], photoId: nil, variationLabels: []))))
       ids[title] = try XCTUnwrap(try bridge.rendered().items.first { $0.title == title }?.id)
     }
     let pieceId = try XCTUnwrap(ids["Clair de Lune"])
@@ -701,8 +713,8 @@ final class SessionBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: kind, composer: nil, key: nil, modality: nil, tempo: nil,
-              notes: nil, tags: [], photoId: nil, variantLabels: []))))
+              title: title, kind: kind, composer: nil, key: nil, tempo: nil,
+              notes: nil, tags: [], photoId: nil, variationLabels: []))))
       ids[title] = try XCTUnwrap(try bridge.rendered().items.first { $0.title == title }?.id)
     }
     let pieceId = try XCTUnwrap(ids["Clair de Lune"])
@@ -761,8 +773,8 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "G"]))))
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["C", "G"]))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
 
@@ -804,7 +816,7 @@ final class SessionBridgeTests: XCTestCase {
   // ── Real bridge (full-field contract, #846 class) ──────────────────────
 
   /// Real-bridge full-field round trip for `SetlistEntryView` and the
-  /// `VariationPlayView` under it (#846, #1083, #1420, #1499, #1739): drives
+  /// `PlayView` under it (#846, #1083, #1420, #1499, #1739): drives
   /// every setter that reaches a single entry (intention, rep target, planned
   /// duration, ladder attribution, block grouping, reps, tempo + click pattern,
   /// notes, score) and asserts every field of the resulting projection, so a
@@ -817,20 +829,21 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Prelude in C", kind: .piece, composer: "J.S. Bach", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Prelude in C", kind: .piece, composer: "J.S. Bach", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let pieceId = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let exerciseId = try XCTUnwrap(try bridge.rendered().items.first { $0.id != pieceId }?.id)
     _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
-    _ = try bridge.update(.item(.setVariants(id: exerciseId, labels: ["Slow"])))
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: exerciseId, variationIds: [], newLabels: ["Slow"])))
     let variantId = try XCTUnwrap(
-      try bridge.rendered().items.first { $0.id == exerciseId }?.variants.first?.id)
+      try bridge.rendered().items.first { $0.id == exerciseId }?.variations.first?.id)
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
@@ -845,13 +858,14 @@ final class SessionBridgeTests: XCTestCase {
       .session(.setEntryIntention(entryId: entryId, intention: "Warm up before the Prelude")))
     _ = try bridge.update(.session(.setRepTarget(entryId: entryId, target: 3)))
     _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 300)))
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: variantId)))
+    _ = try bridge.update(
+      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: [variantId])))
 
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
-    _ = try bridge.update(.session(.repMissed(now: "2026-09-04T09:01:00Z")))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z")))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z")))
-    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z")))
+    _ = try bridge.update(.session(.repMissed(now: "2026-09-04T09:01:00Z", reading: .silent)))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:02:00Z", reading: .silent)))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:00Z", reading: .silent)))
+    _ = try bridge.update(.session(.repGotIt(now: "2026-09-04T09:03:30Z", reading: .silent)))
     let click = ClickState(metre: Metre(beats: 4, unit: 8, groups: [2, 2]), sounding: 0b0101)
     _ = try bridge.update(
       .session(
@@ -889,15 +903,16 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(final.plannedDurationSecs, 300)
     XCTAssertNotNil(final.plannedDurationDisplay)
     XCTAssertEqual(final.groupId, groupId)
-    XCTAssertEqual(final.plannedVariationId, variantId)
+    XCTAssertEqual(final.plannedVariationIds, [variantId])
+    XCTAssertEqual(final.plannedLabel, "Slow")
     XCTAssertEqual(final.plannedRepTarget, 3)
     XCTAssertEqual(final.scoreSummary, 6, "one play's mark is the whole entry's")
 
     XCTAssertEqual(final.plays.count, 1, "one stretch of practice, never switched")
     let play = try XCTUnwrap(final.plays.last)
     XCTAssertEqual(play.id, playId)
-    XCTAssertEqual(play.variationId, variantId, "the plan seeds the play it opens")
-    XCTAssertEqual(play.variationLabel, "Slow")
+    XCTAssertEqual(play.variationIds, [], "a practice starts plain; the plan only suggests")
+    XCTAssertNil(play.label)
     XCTAssertFalse(play.durationDisplay.isEmpty)
     XCTAssertEqual(play.score, 6)
     XCTAssertEqual(play.repTarget, 3)
@@ -910,32 +925,36 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(play.clickPattern, click)
   }
 
-  /// Real-bridge cross-domain round trip (#846, #1083): a session-side score,
-  /// attributed to a ladder step via `SetEntryVariant` + `UpdateEntryScore`,
-  /// must reappear as that step's `VariantView.latestScore` / `scoreHistory` /
-  /// `isSolid` once the session is saved, a derivation that crosses BOTH the
-  /// session and item domains, so a wire break in either side can hide behind
-  /// the other's fields looking fine.
-  func testRealBridgeVariantScoreAggregatesIntoLadderView() throws {
+  /// Real-bridge cross-domain round trip (#846, #1083): a score on a play in
+  /// a variation must reappear as that variation's `latestScore` and
+  /// `scoreHistory` once the session is saved, a derivation that crosses BOTH
+  /// the session and item domains, so a wire break in either side can hide
+  /// behind the other's fields looking fine.
+  func testRealBridgeVariationScoreAggregatesIntoTheItemsView() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(.item(.setVariants(id: itemId, labels: ["Slow", "Fast"])))
-    let ladder = try XCTUnwrap(try bridge.rendered().items.first?.variants)
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: itemId, variationIds: [], newLabels: ["Slow", "Fast"])))
+    let ladder = try XCTUnwrap(try bridge.rendered().items.first?.variations)
     let slowId = try XCTUnwrap(ladder.first { $0.label == "Slow" }?.id)
     let fastId = try XCTUnwrap(ladder.first { $0.label == "Fast" }?.id)
 
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
-    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: slowId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
+    _ = try bridge.update(
+      .session(
+        .switchPlay(
+          entryId: entryId, sectionId: nil, key: nil, variationIds: [slowId],
+          now: "2026-09-04T09:00:00Z", reading: .silent)))
     _ = try bridge.update(
       .session(
         .nextItem(
@@ -950,19 +969,17 @@ final class SessionBridgeTests: XCTestCase {
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "the score, attribution and save must all decode cleanly (#846)")
     let item = try XCTUnwrap(view.items.first { $0.id == itemId })
-    let slow = try XCTUnwrap(item.variants.first { $0.id == slowId })
-    let fast = try XCTUnwrap(item.variants.first { $0.id == fastId })
+    let slow = try XCTUnwrap(item.variations.first { $0.id == slowId })
+    let fast = try XCTUnwrap(item.variations.first { $0.id == fastId })
 
     XCTAssertEqual(slow.latestScore, 8, "the score attributed to Slow must land on Slow, not Fast")
     let historyEntry = try XCTUnwrap(slow.scoreHistory.first)
     XCTAssertEqual(historyEntry.score, 8)
     XCTAssertFalse(historyEntry.sessionId.isEmpty)
     XCTAssertNotNil(SessionClock.parseRFC3339(historyEntry.sessionDate))
-    XCTAssertTrue(slow.isSolid, "8 of 10 reaches SOLID_SCORE_MIN")
 
     XCTAssertNil(fast.latestScore, "Fast was never practised")
     XCTAssertTrue(fast.scoreHistory.isEmpty)
-    XCTAssertFalse(fast.isSolid)
   }
 
   func testRealBridgeScoreTrendRunsFromTheOldestMarkToTheNewest() throws {
@@ -972,8 +989,8 @@ final class SessionBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     for (day, score) in [("2026-09-04", UInt8(5)), ("2026-09-05", UInt8(7))] {

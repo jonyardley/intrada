@@ -17,8 +17,8 @@ struct StoreSectionsTests {
     .item(
       .add(
         CreateItem(
-          title: title, kind: .piece, composer: nil, key: nil, modality: nil, tempo: nil,
-          notes: nil, tags: [], photoId: nil, variantLabels: [])))
+          title: title, kind: .piece, composer: nil, key: nil, tempo: nil,
+          notes: nil, tags: [], photoId: nil, variationLabels: [])))
   }
 
   private final class Flag: @unchecked Sendable {

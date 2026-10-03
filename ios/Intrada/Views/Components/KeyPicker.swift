@@ -2,12 +2,11 @@ import SharedTypes
 import SwiftUI
 
 /// Inline circle-of-fifths key selector: a collapsed row expands a two-ring
-/// wheel in place (the iOS date-picker pattern). Binds the structured tonic
-/// (`key`) + `modality`. The wheel and its tap rule come from the core.
+/// wheel in place (the iOS date-picker pattern). Binds the core's `Key`; the
+/// wheel, its tap rule and the wording come from the core (#2106).
 struct KeyPicker: View {
   let label: String
-  @Binding var key: String
-  @Binding var modality: Modality?
+  @Binding var key: Key?
 
   @State private var expanded: Bool
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -15,17 +14,15 @@ struct KeyPicker: View {
   /// `initiallyExpanded` is for previews/snapshot tests only — the wheel is
   /// otherwise driven by the row tap.
   init(
-    label: String, key: Binding<String>, modality: Binding<Modality?>,
-    initiallyExpanded: Bool = false
+    label: String, key: Binding<Key?>, initiallyExpanded: Bool = false
   ) {
     self.label = label
     self._key = key
-    self._modality = modality
     self._expanded = State(initialValue: initiallyExpanded)
   }
 
   private var selection: KeyHelper.Selection? {
-    KeyHelper.selection(key: key, modality: modality)
+    key.flatMap(KeyHelper.selection)
   }
 
   var body: some View {
@@ -65,7 +62,7 @@ struct KeyPicker: View {
         Text(label)
           .font(IntradaFont.metaMedium)
           .foregroundStyle(IntradaColor.inkSecondary)
-        if let display = KeyHelper.display(key: key, modality: modality) {
+        if let display = key.flatMap(KeyHelper.display) {
           Text(display)
             .font(IntradaFont.field)
             .foregroundStyle(IntradaColor.accent)
@@ -77,10 +74,9 @@ struct KeyPicker: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
-      if !key.isEmpty {
+      if key != nil {
         Button {
-          key = ""
-          modality = nil
+          key = nil
           Haptic.impact.play()
         } label: {
           Image(systemName: "xmark.circle.fill")
@@ -117,10 +113,10 @@ struct KeyPicker: View {
     if let sel = selection {
       return "\(label), \(KeyHelper.accessibilityLabel(sel.spelling, mode: sel.mode))"
     }
-    if key.isEmpty {
+    guard let display = key.flatMap(KeyHelper.display) else {
       return "\(label), no key selected"
     }
-    return "\(label), \(key)"
+    return "\(label), \(display)"
   }
 
   // ── Wheel ──
@@ -265,11 +261,9 @@ struct KeyPicker: View {
 
   private func tap(ring: Int, mode: Modality) {
     guard
-      let result = KeyHelper.nextOnTap(
-        currentKey: key, currentModality: modality, ring: ring, mode: mode)
+      let result = KeyHelper.nextOnTap(current: key, ring: ring, mode: mode)
     else { return }
-    key = result.tonic
-    modality = result.modality
+    key = result.key
     if result.flipped {
       Haptic.impact.play()
     } else {
@@ -301,25 +295,22 @@ private struct RingWedge: Shape {
 #if DEBUG
   #Preview {
     struct Demo: View {
-      @State private var emptyKey = ""
-      @State private var emptyModality: Modality? = nil
-      @State private var minorKey = "A"
-      @State private var minorModality: Modality? = .minor
-      @State private var enhKey = "Gb"
-      @State private var enhModality: Modality? = .major
+      @State private var emptyKey: Key? = nil
+      @State private var minorKey: Key? = Key(letter: .a, accidental: .natural, mode: .minor)
+      @State private var enhKey: Key? = Key(letter: .g, accidental: .flat, mode: .major)
       var body: some View {
         ZStack {
           PaperBackground()
           ScrollView {
             VStack(spacing: IntradaSpacing.card) {
               VStack(spacing: 0) {
-                KeyPicker(label: "Key", key: $emptyKey, modality: $emptyModality)
+                KeyPicker(label: "Key", key: $emptyKey)
               }.cardSurface()
               VStack(spacing: 0) {
-                KeyPicker(label: "Key", key: $minorKey, modality: $minorModality)
+                KeyPicker(label: "Key", key: $minorKey)
               }.cardSurface()
               VStack(spacing: 0) {
-                KeyPicker(label: "Key", key: $enhKey, modality: $enhModality)
+                KeyPicker(label: "Key", key: $enhKey)
               }.cardSurface()
             }
             .padding(IntradaSpacing.card)

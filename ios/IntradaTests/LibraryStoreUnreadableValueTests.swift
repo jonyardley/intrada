@@ -40,7 +40,7 @@ struct LibraryStoreUnreadableValueTests {
   @Test func settingARealValueOverwritesAnUnreadableOne() throws {
     let store = try storeWithDamagedValues()
     var loaded = try #require(try store.loadItems().first)
-    let chart = ChordChart(key: "G", modality: .minor, sections: [])
+    let chart = ChordChart(key: Key(letter: .g, accidental: .natural, mode: .minor), sections: [])
     let metre = Metre(beats: 3, unit: 4, groups: nil)
     loaded.chordChart = chart
     loaded.metre = metre
@@ -56,7 +56,9 @@ struct LibraryStoreUnreadableValueTests {
   @Test func clearingAReadableValueClearsIt() throws {
     let store = try LibraryStore.inMemory()
     var saved = LibraryItemFixture.record(
-      id: "i1", chordChart: ChordChart(key: "C", modality: .major, sections: []),
+      id: "i1",
+      chordChart: ChordChart(
+        key: Key(letter: .c, accidental: .natural, mode: .major), sections: []),
       metre: Metre(beats: 4, unit: 4, groups: nil))
     try store.save(saved)
     saved.chordChart = nil

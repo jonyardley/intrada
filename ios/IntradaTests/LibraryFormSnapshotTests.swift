@@ -48,7 +48,8 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     form.chartText = "[A]\n| Dm7 | G7 | Cmaj7 | A7alt |\n| Dm7 | G7 | Cmaj7 | Cmaj7 |"
     form.stagedExercises = [
       .draft(
-        id: UUID(), title: "Guide tones, ii to V to I", key: "C", modality: .major, bpm: "80"),
+        id: UUID(), title: "Guide tones, ii to V to I",
+        key: Key(letter: .c, accidental: .natural, mode: .major), bpm: "80"),
       .existing(id: "ex-1", title: "Shell voicings", meta: "C major"),
     ]
     assertSnapshot(of: host(LibraryAddScreen(previewForm: form)), as: config)
@@ -75,7 +76,9 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     form.chartText = "| Dm7 | G7 | Cmaj7 | A7alt |"
     form.stagedExercises = [
       .existing(id: "ex-1", title: "Shell voicings", meta: "C major"),
-      .draft(id: UUID(), title: "Untitled", key: "C", modality: .major, bpm: "80"),
+      .draft(
+        id: UUID(), title: "Untitled", key: Key(letter: .c, accidental: .natural, mode: .major),
+        bpm: "80"),
     ]
     form.formError = "Title must be between 1 and 500 characters"
     form.mark(.exercise(index: 1, field: .title))
@@ -214,10 +217,10 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(spacing: 16) {
         VStack(spacing: 0) {
-          KeyPicker(label: "Key", key: .constant(""), modality: .constant(nil))
+          KeyPicker(label: "Key", key: .constant(nil))
         }.cardSurface()
         VStack(spacing: 0) {
-          KeyPicker(label: "Key", key: .constant("Gb"), modality: .constant(.major))
+          KeyPicker(label: "Key", key: .constant(Key(letter: .g, accidental: .flat, mode: .major)))
         }.cardSurface()
       }
       .padding(16)
@@ -230,7 +233,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(spacing: 0) {
         KeyPicker(
-          label: "Key", key: .constant(""), modality: .constant(nil), initiallyExpanded: true)
+          label: "Key", key: .constant(nil), initiallyExpanded: true)
       }
       .cardSurface()
       .padding(16)
@@ -243,7 +246,8 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(spacing: 0) {
         KeyPicker(
-          label: "Key", key: .constant("Gb"), modality: .constant(.major), initiallyExpanded: true)
+          label: "Key", key: .constant(Key(letter: .g, accidental: .flat, mode: .major)),
+          initiallyExpanded: true)
       }
       .cardSurface()
       .padding(16)
@@ -297,8 +301,8 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
       library: [
         .previewExercise,
         LibraryItemFixture.view(
-          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
-          modality: .major),
+          id: "exercise-2", itemType: .exercise, title: "Db Major Scale",
+          key: Key(letter: .d, accidental: .flat, mode: .major)),
         LibraryItemFixture.view(id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db"),
       ],
       linkedIds: ["exercise-1"],
@@ -326,7 +330,8 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
       linkedIds: [],
       existingDrafts: [
         .draft(
-          id: UUID(), title: "Guide tones, ii to V to I", key: "C", modality: .major, bpm: "80")
+          id: UUID(), title: "Guide tones, ii to V to I",
+          key: Key(letter: .c, accidental: .natural, mode: .major), bpm: "80")
       ],
       onApply: { _, _ in .accepted })
     assertSnapshot(of: host(sheet), as: config)

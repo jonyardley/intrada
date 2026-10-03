@@ -139,9 +139,7 @@ extension ExerciseUsageView {
 }
 
 extension LibraryItemView {
-  var keyDisplay: String? {
-    KeyHelper.display(key: key, modality: modality)
-  }
+  var keyDisplay: String? { keyLabel }
 
   var tempoDisplay: String? { TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm) }
 
@@ -149,7 +147,7 @@ extension LibraryItemView {
 }
 
 extension LinkedExerciseView {
-  var keyDisplay: String? { KeyHelper.display(key: key, modality: modality) }
+  var keyDisplay: String? { keyLabel }
 
   var metaLine: String? {
     let parts = [keyDisplay, TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm)]

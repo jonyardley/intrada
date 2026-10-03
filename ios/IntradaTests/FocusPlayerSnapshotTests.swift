@@ -243,7 +243,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     let sheet = VariationPickerSheet(
       itemTitle: LibraryItemView.previewExerciseWithVariations.title,
       currentVariations: active.currentVariations,
-      currentVariationId: active.currentVariationId,
+      currentVariationId: active.currentVariationIds.first,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: config)
   }
@@ -253,7 +253,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     let sheet = VariationPickerSheet(
       itemTitle: LibraryItemView.previewExerciseWithVariations.title,
       currentVariations: active.currentVariations,
-      currentVariationId: active.currentVariationId,
+      currentVariationId: active.currentVariationIds.first,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: axConfig)
   }
@@ -264,12 +264,11 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   func testVariationPickerSheetLongLabels() {
     let currentVariations = [
       PickerVariationView(
-        id: "rung-0", label: "Root position", caption: "Playing now", isSolid: false),
+        id: "rung-0", label: "Root position", caption: "Playing now"),
       PickerVariationView(
-        id: "rung-1", label: "1st inversion", caption: "Played this session · 12m 34s",
-        isSolid: true),
+        id: "rung-1", label: "1st inversion", caption: "Played this session · 12m 34s"),
       PickerVariationView(
-        id: "rung-2", label: "2nd inversion", caption: "Not yet played", isSolid: false),
+        id: "rung-2", label: "2nd inversion", caption: "Not yet played"),
     ]
     let sheet = VariationPickerSheet(
       itemTitle: "Triad inversions",

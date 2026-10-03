@@ -26,9 +26,9 @@ struct ViewModelDecodeBaselineTests {
       .add(
         CreateItem(
           title: title, kind: kind, composer: kind == .piece ? "Composer \(title.count % 20)" : nil,
-          key: nil, modality: nil, tempo: nil,
+          key: nil, tempo: nil,
           notes: "Left hand evenness in the middle section, then hands together slowly.",
-          tags: ["grade 8", "exam", "repertoire"], photoId: nil, variantLabels: variants)))
+          tags: ["grade 8", "exam", "repertoire"], photoId: nil, variationLabels: variants)))
   }
 
   private static let keys = ["C major", "G major", "D major", "A major", "E major", "B major"]

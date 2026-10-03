@@ -35,7 +35,9 @@ struct LibraryItemCard: View {
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
-        if item.priority || hasLinkedExercises || hasStepLadder || !item.tags.isEmpty {
+        if item.priority || hasLinkedExercises || item.keys.count > 1 || item.variations.count > 1
+          || !item.tags.isEmpty
+        {
           HStack(spacing: 6) {
             if item.priority {
               Image(systemName: "star.fill")
@@ -48,8 +50,15 @@ struct LibraryItemCard: View {
                 Image(systemName: "dumbbell.fill").iconSize(.badge)
               }
             }
-            if hasStepLadder {
-              countChip(ladderLabel) { ladderGlyph }
+            if item.keys.count > 1 {
+              countChip("\(item.keys.count) keys") {
+                Text(verbatim: "♯").font(IntradaFont.meta)
+              }
+            }
+            if item.variations.count > 1 {
+              countChip("\(item.variations.count) variations") {
+                Image(systemName: "stairs").iconSize(.badge)
+              }
             }
             if !item.tags.isEmpty {
               TagPills(tags: item.tags)
@@ -86,11 +95,6 @@ struct LibraryItemCard: View {
     item.itemType == .piece && !item.linkedExercises.isEmpty
   }
 
-  // A one-rung ladder is the same as no ladder, so the chip starts at two.
-  private var hasStepLadder: Bool {
-    item.itemType == .exercise && item.variants.count > 1
-  }
-
   private func countChip(_ text: String, @ViewBuilder leading: () -> some View) -> some View {
     HStack(spacing: 3) {
       leading()
@@ -101,20 +105,6 @@ struct LibraryItemCard: View {
     .padding(.vertical, 3)
     .background(IntradaColor.exerciseBadgeBg, in: Capsule())
     .accessibilityHidden(true)
-  }
-
-  // The character, not a symbol: the app writes real ♯/♭ elsewhere (`KeyHelper.prettify`).
-  @ViewBuilder private var ladderGlyph: some View {
-    if item.ladderIsKeys {
-      Text(verbatim: "♯").font(IntradaFont.meta)
-    } else {
-      Image(systemName: "stairs").iconSize(.badge)
-    }
-  }
-
-  // Keys or variations is the core's judgement (#1467); the shell picks the word.
-  private var ladderLabel: String {
-    "\(item.variants.count) \(item.ladderIsKeys ? "keys" : "variations")"
   }
 
   private var metaLine: String? {
@@ -133,7 +123,8 @@ struct LibraryItemCard: View {
       let n = item.linkedExercises.count
       parts.append("\(n) connected exercise\(n == 1 ? "" : "s")")
     }
-    if hasStepLadder { parts.append(ladderLabel) }
+    if item.keys.count > 1 { parts.append("\(item.keys.count) keys") }
+    if item.variations.count > 1 { parts.append("\(item.variations.count) variations") }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }

@@ -48,10 +48,10 @@ struct ReflectionPlay: Identifiable, Equatable {
   }
 
   /// Reads each play's own stamped seconds: `PrepareReflection` gives the still-open play its real duration first.
-  static func rows(_ plays: [VariationPlayView]) -> [ReflectionPlay] {
+  static func rows(_ plays: [PlayView]) -> [ReflectionPlay] {
     plays.map { play in
       ReflectionPlay(
-        id: play.id, variationLabel: play.variationLabel,
+        id: play.id, variationLabel: play.label,
         durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
         repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable,
         tempoDisplay: play.tempoDisplay, clickPattern: play.clickPattern)

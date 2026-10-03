@@ -138,7 +138,8 @@
         // and an em dash is what the builder row has always shown here.
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group,
-        plannedVariationId: nil, plannedRepTarget: nil, plays: [], scoreSummary: nil)
+        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        plays: [], scoreSummary: nil)
     }
   }
 
@@ -164,15 +165,15 @@
         items: [
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
-            variantId: nil, variantLabel: nil, latestScore: nil,
+            latestScore: nil,
             reason: "Not marked with this piece"),
           SuggestedItem(
             itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
-            variantId: "variation-f", variantLabel: "F", latestScore: 4,
+            latestScore: 4,
             reason: "Marked 4 of 10 last time"),
           SuggestedItem(
             itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
-            variantId: nil, variantLabel: nil, latestScore: 6,
+            latestScore: 6,
             reason: "Marked 6 of 10 last time"),
         ],
         estimatedMinutes: 15)
@@ -186,11 +187,11 @@
         items: [
           SuggestedItem(
             itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
-            variantId: nil, variantLabel: nil, latestScore: nil,
+            latestScore: nil,
             reason: "Not marked with this piece"),
           SuggestedItem(
             itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
-            variantId: nil, variantLabel: nil, latestScore: nil,
+            latestScore: nil,
             reason: "Not marked yet"),
         ],
         estimatedMinutes: 10)
@@ -206,11 +207,11 @@
         items: [
           SuggestedItem(
             itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
-            variantId: nil, variantLabel: nil, latestScore: 7,
+            latestScore: 7,
             reason: "Marked 7 of 10 last time"),
           SuggestedItem(
             itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
-            variantId: nil, variantLabel: nil, latestScore: 5,
+            latestScore: 5,
             reason: "Marked 5 of 10 last time"),
         ],
         estimatedMinutes: 10)
@@ -321,8 +322,9 @@
       let plays =
         status == .completed
         ? [
-          VariationPlayView(
-            id: "entry-\(position)-p1", variationId: nil, variationLabel: nil, seconds: 600,
+          PlayView(
+            id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            seconds: 600,
             durationDisplay: "10 min", repTarget: repTarget, repCount: repCount,
             repTargetReached: repTarget.map { repCount ?? 0 >= $0 }, repHistory: nil,
             achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score,
@@ -332,7 +334,8 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: status, notes: notes,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
-        plannedVariationId: nil, plannedRepTarget: nil, plays: plays,
+        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        plays: plays,
         scoreSummary: plays.isEmpty ? nil : score)
     }
   }
@@ -361,10 +364,12 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: groupId, plannedVariationId: nil, plannedRepTarget: nil,
+        groupId: groupId, plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil,
+        plannedRepTarget: nil,
         plays: [
-          VariationPlayView(
-            id: "entry-\(position)-p1", variationId: nil, variationLabel: nil, seconds: 600,
+          PlayView(
+            id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            seconds: 600,
             durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
@@ -385,7 +390,7 @@
         ],
         currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
         currentRepHistory: nil, currentRepSlots: 10,
-        currentVariationId: nil, currentVariationLabel: nil,
+        currentSectionId: nil, currentKey: nil, currentVariationIds: [], currentPlayLabel: nil,
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
@@ -396,7 +401,8 @@
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 66,
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)))
+          for: Metre(beats: 4, unit: 4, groups: nil)),
+        currentRepsPastTarget: 0, currentCanUndo: false)
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -410,8 +416,8 @@
         currentRepTarget: base.currentRepTarget, currentRepCount: base.currentRepCount,
         currentRepTargetReached: base.currentRepTargetReached,
         currentRepHistory: base.currentRepHistory, currentRepSlots: 10,
-        currentVariationId: base.currentVariationId,
-        currentVariationLabel: base.currentVariationLabel,
+        currentSectionId: base.currentSectionId, currentKey: base.currentKey,
+        currentVariationIds: base.currentVariationIds, currentPlayLabel: base.currentPlayLabel,
         currentPlannedDurationSecs: base.currentPlannedDurationSecs,
         nextItemTitle: base.nextItemTitle, currentItemIntention: base.currentItemIntention,
         currentItemNotes: base.currentItemNotes,
@@ -421,7 +427,8 @@
         currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil,
         clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
-        clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets)
+        clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets,
+        currentRepsPastTarget: base.currentRepsPastTarget, currentCanUndo: base.currentCanUndo)
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -438,7 +445,8 @@
         ],
         currentRepTarget: 10, currentRepCount: 4, currentRepTargetReached: false,
         currentRepHistory: nil, currentRepSlots: 10,
-        currentVariationId: "variation-f", currentVariationLabel: "F",
+        currentSectionId: nil, currentKey: nil, currentVariationIds: ["variation-f"],
+        currentPlayLabel: "F",
         currentPlannedDurationSecs: 480,
         nextItemTitle: "Clair de Lune",
         currentItemIntention: "Even tone through the turn",
@@ -448,18 +456,18 @@
         currentClickSounding: 0b1111,
         currentVariations: [
           PickerVariationView(
-            id: "variation-c", label: "C", caption: "Played this session · 3m 10s",
-            isSolid: true),
+            id: "variation-c", label: "C", caption: "Played this session · 3m 10s"),
           PickerVariationView(
-            id: "variation-f", label: "F", caption: "Playing now", isSolid: false),
+            id: "variation-f", label: "F", caption: "Playing now"),
           PickerVariationView(
-            id: "variation-bb", label: "B♭", caption: "Not yet played", isSolid: false),
+            id: "variation-bb", label: "B♭", caption: "Not yet played"),
         ],
         reflection: nil,
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 104,
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)))
+          for: Metre(beats: 4, unit: 4, groups: nil)),
+        currentRepsPastTarget: 0, currentCanUndo: false)
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -470,15 +478,18 @@
         itemTitle: LibraryItemView.previewExerciseWithVariations.title,
         itemType: .exercise, position: 0, durationDisplay: "10 min", status: .notAttempted,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, plannedVariationId: "variation-c", plannedRepTarget: 10,
+        groupId: nil, plannedSectionIds: [], plannedVariationIds: ["variation-c"],
+        plannedLabel: "C", plannedRepTarget: 10,
         plays: [
-          VariationPlayView(
-            id: "entry-0-p1", variationId: "variation-c", variationLabel: "C", seconds: 190,
+          PlayView(
+            id: "entry-0-p1", sectionId: nil, key: nil, variationIds: ["variation-c"], label: "C",
+            seconds: 190,
             durationDisplay: "3m 10s", repTarget: 10, repCount: 10, repTargetReached: true,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-          VariationPlayView(
-            id: "entry-0-p2", variationId: "variation-f", variationLabel: "F", seconds: 0,
+          PlayView(
+            id: "entry-0-p2", sectionId: nil, key: nil, variationIds: ["variation-f"], label: "F",
+            seconds: 0,
             durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
@@ -499,7 +510,7 @@
         ],
         currentRepTarget: 10, currentRepCount: 7, currentRepTargetReached: false,
         currentRepHistory: nil, currentRepSlots: 10,
-        currentVariationId: nil, currentVariationLabel: nil,
+        currentSectionId: nil, currentKey: nil, currentVariationIds: [], currentPlayLabel: nil,
         currentPlannedDurationSecs: nil,
         nextItemTitle: "Czerny Op. 299",
         currentItemIntention: "Land each finger evenly",
@@ -511,7 +522,8 @@
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 132,
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
-          for: Metre(beats: 4, unit: 4, groups: nil)))
+          for: Metre(beats: 4, unit: 4, groups: nil)),
+        currentRepsPastTarget: 0, currentCanUndo: false)
     }
   }
 
@@ -563,8 +575,9 @@
       let plays =
         status == .completed
         ? [
-          VariationPlayView(
-            id: "\(id)-p1", variationId: nil, variationLabel: nil, seconds: seconds,
+          PlayView(
+            id: "\(id)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
+            seconds: seconds,
             durationDisplay: duration, repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
             score: score, isMarkable: true
@@ -574,7 +587,8 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: notes, intention: intention,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
-        plannedVariationId: nil, plannedRepTarget: nil, plays: plays,
+        plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
+        plays: plays,
         scoreSummary: plays.isEmpty ? nil : score)
     }
   }
@@ -592,16 +606,17 @@
     }
   }
 
-  extension VariationPlayView {
+  extension PlayView {
     /// Three variations of one item, as the item-complete sheet and the session
     /// detail read them (#1739).
     static func preview(
       _ id: String, _ variationLabel: String?, seconds: UInt64, duration: String,
       score: UInt8? = nil, tempo: UInt16? = nil, repCount: UInt8? = nil,
       repTarget: UInt8? = nil
-    ) -> VariationPlayView {
-      VariationPlayView(
-        id: id, variationId: variationLabel.map { "v-\($0)" }, variationLabel: variationLabel,
+    ) -> PlayView {
+      PlayView(
+        id: id, sectionId: nil, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
+        label: variationLabel,
         seconds: seconds, durationDisplay: duration, repTarget: repTarget, repCount: repCount,
         repTargetReached: repTarget.map { (repCount ?? 0) >= $0 }, repHistory: nil,
         achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score, isMarkable: true
@@ -613,34 +628,36 @@
     /// One exercise practised across three keys: the case #1739 exists for.
     static var previewThreeVariations: SetlistEntryView {
       let plays = [
-        VariationPlayView.preview(
+        PlayView.preview(
           "p1", "C major", seconds: 250, duration: "4m 10s", score: 7, repCount: 8, repTarget: 10),
-        VariationPlayView.preview(
+        PlayView.preview(
           "p2", "G major", seconds: 200, duration: "3m 20s", score: 9, tempo: 104, repCount: 10,
           repTarget: 10),
-        VariationPlayView.preview(
+        PlayView.preview(
           "p3", "D major", seconds: 310, duration: "5m 10s", repCount: 4, repTarget: 10),
       ]
       return SetlistEntryView(
         id: "entry-variations", itemId: "exercise-2", itemTitle: "Major Scales",
         itemType: .exercise, position: 0, durationDisplay: "12m 40s", status: .completed,
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
-        plannedDurationDisplay: nil, groupId: nil, plannedVariationId: "v-C major",
-        plannedRepTarget: 10, plays: plays, scoreSummary: 8)
+        plannedDurationDisplay: nil, groupId: nil, plannedSectionIds: [],
+        plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
+        plays: plays, scoreSummary: 8)
     }
 
     /// One exercise practised in a single key: the detail screen names it
     /// rather than folding it silently into "type and time" (#1785).
     static var previewOneVariation: SetlistEntryView {
       let plays = [
-        VariationPlayView.preview(
+        PlayView.preview(
           "p1", "E\u{266d} major", seconds: 360, duration: "6m 0s", tempo: 96)
       ]
       return SetlistEntryView(
         id: "entry-one-variation", itemId: "exercise-3", itemTitle: "Arpeggios",
         itemType: .exercise, position: 0, durationDisplay: "6m 0s", status: .completed,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, plannedVariationId: "v-E\u{266d} major", plannedRepTarget: nil,
+        groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-E\u{266d} major"],
+        plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
         plays: plays, scoreSummary: nil)
     }
   }

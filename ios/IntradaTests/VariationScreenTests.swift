@@ -10,9 +10,10 @@ struct VariationScreenTests {
   private func play(
     _ id: String, _ label: String?, seconds: UInt64, tempo: UInt16? = nil,
     repCount: UInt8? = nil, repTarget: UInt8? = nil, isMarkable: Bool = true
-  ) -> VariationPlayView {
-    VariationPlayView(
-      id: id, variationId: label.map { "v-\($0)" }, variationLabel: label, seconds: seconds,
+  ) -> PlayView {
+    PlayView(
+      id: id, sectionId: nil, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
+      label: label, seconds: seconds,
       durationDisplay: "4m 10s", repTarget: repTarget, repCount: repCount,
       repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,
       tempoDisplay: tempo,

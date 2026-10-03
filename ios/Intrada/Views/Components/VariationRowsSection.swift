@@ -52,14 +52,6 @@ struct VariationRowsSection: View {
 
   private var presets: some View {
     VStack(spacing: IntradaSpacing.controlGap) {
-      AddRowButton(title: "Add 12 major keys") {
-        rows = KeyHelper.circle(.major).map { VariationRow(label: $0) }
-      }
-      .accessibilityLabel("Add 12 major keys as this exercise's variations")
-      AddRowButton(title: "Add 12 minor keys") {
-        rows = KeyHelper.circle(.minor).map { VariationRow(label: $0) }
-      }
-      .accessibilityLabel("Add 12 minor keys as this exercise's variations")
       AddRowButton(title: "Add a variation", style: .plain, action: addRow)
     }
     .padding(IntradaSpacing.card)

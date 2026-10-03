@@ -56,6 +56,31 @@ final class StoreEffectLoopTests: XCTestCase {
       store.pendingSessionInProgress(), "the clear effect must remove the recoverable blob")
   }
 
+  /// A practice saved before the blob changed shape is never half restored:
+  /// its key goes, the current one stays, and the core is told (#2246).
+  func testARetiredPracticeIsClearedAndReported() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
+    let retiredKey = "intrada.session-in-progress.v\(sessionBlobVersion() - 1)"
+    defaults.set(Data([1, 2, 3]), forKey: retiredKey)
+    var sent: [Event] = []
+    let bridge = FakeBridge()
+    bridge.updateHandler = { event in
+      sent.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, sortDefaults: defaults)
+
+    store.loadRecoverableSession()
+
+    XCTAssertNil(defaults.data(forKey: retiredKey))
+    XCTAssertEqual(sent.last, .session(.retiredSessionFound))
+    XCTAssertNil(store.recoverableSession)
+
+    sent = []
+    store.loadRecoverableSession()
+    XCTAssertTrue(sent.isEmpty, "said once, not on every launch")
+  }
+
   func testDiscardSessionInProgressRemovesBlobWithoutCoreEvent() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
     let active = ActiveSession(
@@ -708,4 +733,6 @@ private struct FailingStore: ItemStore {
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
+  func loadVariations() throws -> [Variation] { throw TestError() }
+  func save(_ variations: [Variation]) throws { throw TestError() }
 }

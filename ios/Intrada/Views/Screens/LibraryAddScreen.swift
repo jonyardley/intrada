@@ -74,8 +74,7 @@ struct LibraryAddScreen: View {
     }
     .sheet(isPresented: $editingChart) {
       ChordChartEditSheet(
-        text: form.chartText, pieceKey: form.key.isEmpty ? nil : form.key,
-        pieceModality: form.modality,
+        text: form.chartText, pieceKey: form.key,
         onSave: { form.chartText = $0 })
     }
     .sheet(isPresented: $choosingExercises) {

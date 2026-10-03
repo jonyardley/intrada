@@ -31,8 +31,11 @@ struct ChordChartCard: View {
   private func chartSubtitle(_ chart: ChordChart) -> some View {
     let bars = chart.sections.reduce(0) { $0 + $1.bars.count }
     let changes = chart.sections.reduce(0) { $0 + $1.bars.reduce(0) { $0 + $1.chords.count } }
-    let key = item.keyDisplay ?? chart.key
-    return Text("\(key) · \(bars) \(bars == 1 ? "bar" : "bars") · \(changes) changes")
+    let parts = [
+      item.keyDisplay ?? chart.key.flatMap(KeyHelper.display),
+      "\(bars) \(bars == 1 ? "bar" : "bars")", "\(changes) changes",
+    ].compactMap { $0 }
+    return Text(parts.joined(separator: " · "))
       .font(IntradaFont.meta)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity, alignment: .leading)
