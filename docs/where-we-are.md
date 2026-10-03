@@ -1,12 +1,12 @@
 # Where we are
 
-*Which release is out and what phase the work is in. Written by hand and
-changed only when the phase changes, so no two branches edit it at once. What
-is being built right now: `just status`, which reads GitHub. What comes next:
+*What phase the work is in. Written by hand and changed only when the phase
+changes, so no two branches edit it at once. What is being built right now:
+`just status`, which reads GitHub. What comes next:
 [`roadmap.md`](roadmap.md).*
 
-**The latest release is v0.14.0, "Nothing goes missing, and the screen tells
-the truth" (2026-09-24, TestFlight build 23).** Each release's write-up is its
+**Which release is out: the one `gh release list` marks Latest.** A release
+does not change this file (#1932). Each release's write-up is its
 [GitHub release](https://github.com/jonyardley/intrada/releases), from v0.12.0
 on; v0.10.0 and v0.11.0 are tags without one.
 
@@ -30,6 +30,5 @@ end of the rethink after the coach was removed
 - **v0.14.0** (2026-09-24): the September audit's fixes for lost data and wrong
   numbers (#1967).
 
-**Known gaps a tester will hit:** a crash report names the build but not the
-line of code, because debug symbols are not uploaded (#1610), and several
-screens break at the largest text sizes (#2134).
+**Known gaps a tester will hit:** several screens break at the largest text
+sizes (#2134).
