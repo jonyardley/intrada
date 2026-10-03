@@ -38,7 +38,10 @@ final class ComponentSnapshotTests: SnapshotTestCase {
       plannedDurationMinSecs: 60, plannedDurationMaxSecs: 3600, plannedDurationDefaultSecs: 300,
       sessionLengthMinMins: 5, sessionLengthMaxMins: 120, sessionLengthStepMins: 5,
       sessionLengthDefaultMins: 30,
-      scoreMin: 1, scoreMax: 5)
+      scoreMin: 1, scoreMax: 5,
+      clickTempoStep: 2, clickTempoDefault: 96,
+      clickTempoBands: [TempoBand(unit: 4, min: 40, max: 208)],
+      clickMetrePresets: [], clickBars: [])
     let rings = ZStack {
       PaperBackground()
       HStack(spacing: 24) {

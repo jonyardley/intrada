@@ -3,6 +3,9 @@ package com.intrada.android
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
 import com.intrada.shared.AppEffect
+import com.intrada.shared.ClickBarOption
+import com.intrada.shared.ClickPreset
+import com.intrada.shared.ClickPresetOption
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
@@ -12,6 +15,7 @@ import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -86,6 +90,32 @@ class BridgeRoundTripTest {
 
         assertEquals("Lento", saved.tempo?.marking)
         assertEquals(60.toUShort(), saved.tempo?.bpm)
+    }
+
+    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after
+    // them (#2225).
+    @Test
+    fun theClicksBandAndBarsDecode() {
+        val limits = LiveBridge().view().limits
+
+        assertEquals(
+            TempoBand(unit = 8.toUByte(), min = 80.toUShort(), max = 416.toUShort()),
+            limits.clickTempoBands.single { it.unit == 8.toUByte() },
+        )
+        val groups = listOf(3, 2, 2).map(Int::toUByte)
+        assertEquals(
+            ClickBarOption(
+                beats = 7.toUByte(),
+                groups = groups,
+                presets =
+                    listOf(
+                        ClickPresetOption(ClickPreset.EVERYBEAT, 0b1111111.toUShort()),
+                        ClickPresetOption(ClickPreset.GROUPSTARTS, 0b0101001.toUShort()),
+                        ClickPresetOption(ClickPreset.DOWNBEAT, 1.toUShort()),
+                    ),
+            ),
+            limits.clickBars.single { it.beats == 7.toUByte() && it.groups == groups },
+        )
     }
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =

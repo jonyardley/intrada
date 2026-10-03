@@ -14,7 +14,10 @@ struct SheetBoundsTests {
     plannedDurationMinSecs: 90, plannedDurationMaxSecs: 630, plannedDurationDefaultSecs: 480,
     sessionLengthMinMins: 15, sessionLengthMaxMins: 45, sessionLengthStepMins: 15,
     sessionLengthDefaultMins: 30,
-    scoreMin: 2, scoreMax: 6)
+    scoreMin: 2, scoreMax: 6,
+    clickTempoStep: 2, clickTempoDefault: 96,
+    clickTempoBands: [TempoBand(unit: 4, min: 40, max: 208)],
+    clickMetrePresets: [], clickBars: [])
 
   private func clickSheet() -> ClickSheet {
     ClickSheet(click: ClickController(), bpm: 120, limits: limits)

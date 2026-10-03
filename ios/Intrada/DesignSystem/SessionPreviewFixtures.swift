@@ -379,9 +379,11 @@
         nextItemTitle: "Hanon No. 1",
         currentItemIntention: "Let the melody breathe", currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66, currentItemMetre: nil,
+        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 66,
+        clickSeedSoundsTarget: true, clickSeedPresets: [])
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -402,9 +404,11 @@
         currentItemNotes: base.currentItemNotes,
         currentRelatedPieceTitle: base.currentRelatedPieceTitle,
         currentItemTempoMarking: base.currentItemTempoMarking,
-        currentItemTempoBpm: base.currentItemTempoBpm, currentItemMetre: nil,
+        currentItemTempoBpm: base.currentItemTempoBpm,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
+        clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets)
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -427,7 +431,7 @@
         currentItemIntention: "Even tone through the turn",
         currentItemNotes: nil,
         currentRelatedPieceTitle: nil,
-        currentItemTempoMarking: nil, currentItemTempoBpm: 104, currentItemMetre: nil,
+        currentItemTempoMarking: nil, currentItemTempoBpm: 104,
         currentClickSounding: 0b1111,
         currentVariations: [
           PickerVariationView(
@@ -438,7 +442,9 @@
           PickerVariationView(
             id: "variation-bb", label: "B♭", caption: "Not yet played", isSolid: false),
         ],
-        reflection: nil)
+        reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 104,
+        clickSeedSoundsTarget: true, clickSeedPresets: [])
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -484,9 +490,11 @@
         currentItemIntention: "Land each finger evenly",
         currentItemNotes: nil,
         currentRelatedPieceTitle: "Moonlight Sonata",
-        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132, currentItemMetre: nil,
+        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132,
         currentClickSounding: 0b1111,
-        currentVariations: [], reflection: nil)
+        currentVariations: [], reflection: nil,
+        clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 132,
+        clickSeedSoundsTarget: true, clickSeedPresets: [])
     }
   }
 

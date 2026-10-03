@@ -8,6 +8,7 @@ use crate::analytics::{AnalyticsView, LastPractisedView, ScoreChange};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::first_run::{FirstRun, FirstRunView};
 use crate::domain::item::{Item, ItemKind, Modality};
+use crate::domain::metre::{ClickBarOption, ClickPresetOption, TempoBand};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::profile::{Profile, ProfileField, ProfileView};
 use crate::domain::session::{
@@ -333,10 +334,17 @@ pub struct LimitsView {
     pub session_length_default_mins: u16,
     pub score_min: u8,
     pub score_max: u8,
+    pub click_tempo_step: u16,
+    pub click_tempo_default: u16,
+    /// One per beat unit, counted in that unit.
+    pub click_tempo_bands: Vec<TempoBand>,
+    pub click_metre_presets: Vec<Metre>,
+    pub click_bars: Vec<ClickBarOption>,
 }
 
 impl Default for LimitsView {
     fn default() -> Self {
+        use crate::domain::metre;
         use crate::validation;
 
         LimitsView {
@@ -355,6 +363,11 @@ impl Default for LimitsView {
             session_length_default_mins: validation::DEFAULT_SESSION_LENGTH_MINS,
             score_min: validation::MIN_SCORE,
             score_max: validation::MAX_SCORE,
+            click_tempo_step: metre::CLICK_TEMPO_STEP,
+            click_tempo_default: metre::CLICK_TEMPO_DEFAULT,
+            click_tempo_bands: metre::click_tempo_bands(),
+            click_metre_presets: metre::click_metre_presets(),
+            click_bars: metre::click_bars(),
         }
     }
 }
@@ -725,8 +738,6 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
-    /// The piece's metre, the answer the click sheet opens with (T19).
-    pub current_item_metre: Option<Metre>,
     /// The beats the click starts on for this item: the musician's default,
     /// fitted to the item's metre or 4/4 (`specs/practice-defaults.md`).
     pub current_click_sounding: u16,
@@ -734,6 +745,15 @@ pub struct ActiveSessionView {
     pub current_variations: Vec<PickerVariationView>,
     /// `Some` while the item-complete sheet is open, including after a resume (#2137).
     pub reflection: Option<ReflectionView>,
+    /// The bar, tempo and target flag the click reseeds to on this item: 4/4
+    /// when the item declares no metre, its BPM inside the band (#2225).
+    pub click_seed_metre: Metre,
+    pub click_seed_bpm: u16,
+    /// False when the item declares no BPM, or one the band moved (#1942).
+    pub click_seed_sounds_target: bool,
+    /// The seed bar's patterns: an item may carry a valid grouping the
+    /// sheet's `click_bars` table does not list.
+    pub click_seed_presets: Vec<ClickPresetOption>,
 }
 
 /// The open sheet's saved answers, and the click at its stamp, which seeds
