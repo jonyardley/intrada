@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel)
+    implementation(libs.navigation.compose)
     implementation(libs.coroutines.android)
     implementation(project(":bridge"))
 
