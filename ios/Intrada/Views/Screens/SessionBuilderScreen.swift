@@ -276,6 +276,7 @@ struct SessionBuilderScreen: View {
         // switch and stepper on the simulator (#1736), so it sits above.
         if !isEditing {
           lengthCard
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.top, IntradaSpacing.card)
         }
