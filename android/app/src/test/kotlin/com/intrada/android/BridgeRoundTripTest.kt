@@ -92,7 +92,8 @@ class BridgeRoundTripTest {
         assertEquals(60.toUShort(), saved.tempo?.bpm)
     }
 
-    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after them (#2225).
+    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after
+    // them (#2225).
     @Test
     fun theClicksBandAndBarsDecode() {
         val limits = LiveBridge().view().limits
