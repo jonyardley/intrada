@@ -50,9 +50,9 @@ struct VariationsSection: View {
 
   private var emptyState: some View {
     VStack(spacing: IntradaSpacing.controlGap) {
-      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circleMajor) }
+      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circle(.major)) }
         .accessibilityLabel("Add 12 major keys as this exercise's variations")
-      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circleMinor) }
+      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circle(.minor)) }
         .accessibilityLabel("Add 12 minor keys as this exercise's variations")
       AddRowButton(title: "Add variations", style: .plain, action: onAddVariations)
         .accessibilityLabel("Add variations to this exercise")
