@@ -27,7 +27,6 @@ struct ScaffoldPreviewSheet: View {
       title: "From the chord chart",
       confirmationLabel: confirmationLabel,
       confirmationDisabled: selected.isEmpty,
-      titleWrapsAtLargeText: true,
       onDone: { onCommit(selected) },
       leadingAction: { Button("Cancel") { dismiss() } },
       content: {
