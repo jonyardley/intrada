@@ -49,6 +49,12 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.systemProperty("jna.library.path", generated.dir("host").asFile.path)
+                val iosTheme = rootProject.file("../ios/Intrada/DesignSystem/Theme.swift")
+                it.systemProperty("intrada.iosTheme", iosTheme.path)
+                it.inputs
+                    .file(iosTheme)
+                    .withPropertyName("iosTheme")
+                    .withPathSensitivity(PathSensitivity.NONE)
                 it.inputs
                     .dir(layout.projectDirectory.dir("src/test/snapshots"))
                     .withPropertyName("snapshotReferences")
