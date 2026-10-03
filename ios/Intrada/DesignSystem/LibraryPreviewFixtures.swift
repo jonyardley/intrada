@@ -238,11 +238,11 @@
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
@@ -269,22 +269,26 @@
             piece: PieceRefView(
               id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
             linked: true, latestScore: 7, sessionCount: 3,
-            lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false),
+            lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
+            offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Blue Bossa", subtitle: "Kenny Dorham"),
             linked: false, latestScore: 5, sessionCount: 2,
-            lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
+            lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
+            offersLink: true),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-3", title: "Autumn Leaves", subtitle: "Kosma"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-gone", title: "Solar", subtitle: nil),
             linked: false, latestScore: 4, sessionCount: 2,
-            lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true),
+            lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true, pieceInLibrary: false,
+            offersLink: false),
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
-            lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false),
+            lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
+            offersLink: false),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variants: [], ladderIsKeys: false,
         photoId: nil, showsKey: true, solidVariationCount: 0,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
