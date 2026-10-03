@@ -46,7 +46,7 @@ struct FocusPlayerScreen: View {
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
           tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
           tempoUnit: target.tempoUnit, currentClick: target.reading.click, plays: target.plays,
-          scoreRange: limits.scoreRange,
+          limits: limits,
           refusal: reflectionRefusal, seed: target.seed,
           onSave: { result in handleReflection(target, result) },
           onSkip: { handleSkipRating(target) },
@@ -93,13 +93,11 @@ struct FocusPlayerScreen: View {
   }
 
   private func reseedClick() {
-    guard let active else {
+    guard let active, let limits = store.viewModel?.limits else {
       click.stop()
       return
     }
-    click.reseed(
-      target: active.currentItemTempoBpm, metre: active.clickSeedMetre,
-      sounding: active.currentClickSounding)
+    click.reseed(from: active, limits: limits)
   }
 
   private func content(_ active: ActiveSessionView) -> some View {
@@ -286,7 +284,8 @@ struct FocusPlayerScreen: View {
   private func clickRow(_ active: ActiveSessionView) -> some View {
     let declared = click.soundsTarget
     return ClickControl(
-      bpm: click.bpm, unit: click.metre.unit, isRunning: click.isRunning,
+      bpm: click.bpm, unit: click.metre.unit, step: click.tempoStep, band: click.band,
+      isRunning: click.isRunning,
       unavailable: click.unavailable,
       atSeededTempo: click.isAtSeededTempo,
       targetDisplay: declared ? active.currentItemTempoDisplay : nil,

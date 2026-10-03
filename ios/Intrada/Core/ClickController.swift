@@ -7,7 +7,7 @@ import SharedTypes
 @MainActor @Observable
 final class ClickController {
   private(set) var isRunning = false
-  private(set) var bpm = TempoScale.defaultBpm
+  private(set) var bpm = 0
   private(set) var metre = Metre(beats: 4, unit: 4, groups: nil)
   private(set) var sounding: UInt16 = 0b1111
   /// Set only when the engine refused to start: an interruption or route change
@@ -19,8 +19,13 @@ final class ClickController {
   var backgroundStopArmed: Bool { backgroundStop != nil }
 
   private var engine: ClickEngine?
-  private var seeded = TempoScale.defaultBpm
+  private var limits: LimitsView?
+  private var seeded = 0
   private var seededUnit: UInt8 = 4
+  /// The item's own bar can hold a grouping the core's table does not list
+  /// (4/8 as 2 + 2), so its patterns come with the seed (#2225).
+  private var seedMetre: Metre?
+  private var seedPresets: [ClickPresetOption] = []
   private var configured = false
 
   /// A bar change to another beat unit re-reads the same number as a different
@@ -35,21 +40,34 @@ final class ClickController {
     configured ? ClickState(metre: metre, sounding: sounding) : nil
   }
 
-  static func seedBpm(from target: UInt16?, unit: UInt8 = 4) -> Int {
-    TempoScale.clamp(target.map(Int.init) ?? TempoScale.defaultBpm, unit: unit)
+  var tempoStep: Int { limits?.clickStep ?? 0 }
+  var band: ClosedRange<Int> { limits?.clickBand(unit: metre.unit) ?? bpm...bpm }
+
+  var presets: [ClickPresetOption] {
+    if let seedMetre, seedMetre.beats == metre.beats, seedMetre.groups == metre.groups {
+      return seedPresets
+    }
+    return limits?.clickPresets(for: metre) ?? []
+  }
+
+  var matchingPreset: ClickPreset? {
+    presets.first { $0.sounding == sounding }?.preset
   }
 
   /// Silences the click: its tempo and bar belonged to the item that just
-  /// finished. Metre and beats open on the core's answer (T19, #1915).
-  func reseed(target: UInt16?, metre itemMetre: Metre?, sounding itemSounding: UInt16) {
+  /// finished. Bar, tempo and pattern open on the core's answer (T19, #2225).
+  func reseed(from active: ActiveSessionView, limits: LimitsView) {
     stop()
     unavailable = false
-    metre = itemMetre ?? Metre(beats: 4, unit: 4, groups: nil)
-    seeded = Self.seedBpm(from: target, unit: metre.unit)
+    self.limits = limits
+    metre = active.clickSeedMetre
+    seedMetre = active.clickSeedMetre
+    seedPresets = active.clickSeedPresets
+    seeded = Int(active.clickSeedBpm)
     seededUnit = metre.unit
-    soundsTarget = target.map { Int($0) == seeded } ?? false
+    soundsTarget = active.clickSeedSoundsTarget
     bpm = seeded
-    sounding = itemSounding
+    sounding = active.currentClickSounding
     configured = false
   }
 
@@ -62,7 +80,7 @@ final class ClickController {
   }
 
   func step(by delta: Int) {
-    let stepped = TempoScale.stepped(from: bpm, by: delta, unit: metre.unit)
+    let stepped = clamped(bpm + delta, unit: metre.unit)
     guard stepped != bpm else { return }
     bpm = stepped
     if isRunning { start() }
@@ -70,9 +88,9 @@ final class ClickController {
 
   /// The drag gesture's absolute counterpart to `step(by:)` (#1823).
   func setBpm(_ newValue: Int) {
-    let clamped = TempoScale.clamp(newValue, unit: metre.unit)
-    guard clamped != bpm else { return }
-    bpm = clamped
+    let next = clamped(newValue, unit: metre.unit)
+    guard next != bpm else { return }
+    bpm = next
     if isRunning { start() }
   }
 
@@ -82,14 +100,15 @@ final class ClickController {
   func setMetre(_ next: Metre) {
     guard next != metre else { return }
     metre = next
-    bpm = TempoScale.clamp(bpm, unit: next.unit)
-    sounding = ClickPattern.everyBeat(of: next)
+    bpm = clamped(bpm, unit: next.unit)
+    sounding = presets.first { $0.preset == .everyBeat }?.sounding ?? 1
     configured = true
     if isRunning { start() }
   }
 
-  func apply(_ pattern: ClickPattern) {
-    setSounding(pattern.mask(for: metre))
+  func apply(_ preset: ClickPreset) {
+    guard let option = presets.first(where: { $0.preset == preset }) else { return }
+    setSounding(option.sounding)
   }
 
   /// Flips one beat; the last sounding beat cannot be silenced, since a click
@@ -99,6 +118,10 @@ final class ClickController {
     let next = sounding ^ bit
     guard next != 0 else { return }
     setSounding(next)
+  }
+
+  private func clamped(_ value: Int, unit: UInt8) -> Int {
+    limits?.clampClickTempo(value, unit: unit) ?? value
   }
 
   private func setSounding(_ next: UInt16) {

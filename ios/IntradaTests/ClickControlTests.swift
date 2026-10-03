@@ -10,7 +10,8 @@ struct ClickControlTests {
     bpm: Int = 96, running: Bool = false, unavailable: Bool = false, atSeed: Bool = true
   ) -> ClickControl {
     ClickControl(
-      bpm: bpm, isRunning: running, unavailable: unavailable, atSeededTempo: atSeed,
+      bpm: bpm, step: 2, band: 40...208, isRunning: running, unavailable: unavailable,
+      atSeededTempo: atSeed,
       targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
       onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
   }
@@ -19,7 +20,8 @@ struct ClickControlTests {
     -> ClickControl
   {
     ClickControl(
-      bpm: bpm, isRunning: running, unavailable: false, atSeededTempo: atSeed,
+      bpm: bpm, step: 2, band: 40...208, isRunning: running, unavailable: false,
+      atSeededTempo: atSeed,
       targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
       onDragChange: { _ in })
   }
@@ -72,12 +74,12 @@ struct ClickControlTests {
   @Test func adjustStepsByOneTempoStepEachWay() {
     var steps: [Int] = []
     let control = ClickControl(
-      bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+      bpm: 96, step: 4, band: 40...208, isRunning: false, unavailable: false, atSeededTempo: true,
       targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { steps.append($0) },
       onDragChange: { _ in })
     control.adjust(.increment)
     control.adjust(.decrement)
-    #expect(steps == [TempoScale.step, -TempoScale.step])
+    #expect(steps == [4, -4], "the step the core sends, not one of the row's own")
   }
 
   /// A drag commit inside the click engine's own lead-in cancels the pulse
@@ -87,105 +89,120 @@ struct ClickControlTests {
   }
 }
 
+/// The seed is the core's answer (#2225); these check the controller plays it
+/// and keeps to the core's band, not what the answer is.
+@MainActor
+private func seededClick(
+  bpm: UInt16 = 66, metre: Metre = Metre(beats: 4, unit: 4, groups: nil),
+  soundsTarget: Bool = true, sounding: UInt16 = 0b1111,
+  presets: [ClickPresetOption]? = nil
+) -> ClickController {
+  var active = ActiveSessionView.previewActive
+  active.clickSeedBpm = bpm
+  active.clickSeedMetre = metre
+  active.clickSeedSoundsTarget = soundsTarget
+  active.clickSeedPresets = presets ?? LimitsView.preview.clickPresets(for: metre)
+  active.currentClickSounding = sounding
+  let click = ClickController()
+  click.reseed(from: active, limits: .preview)
+  return click
+}
+
 @MainActor
 struct ClickControllerTests {
-  @Test func theClickSeedsFromTheItemsDeclaredTempo() {
-    #expect(ClickController.seedBpm(from: 66) == 66)
+  @Test func theClickOpensOnTheCoresBarTempoAndBeats() {
+    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
+    let click = seededClick(bpm: 168, metre: sevenEight, soundsTarget: true, sounding: 0b0101001)
+    #expect(click.bpm == 168)
+    #expect(click.metre == sevenEight)
+    #expect(click.sounding == 0b0101001)
+    #expect(click.soundsTarget)
+    #expect(click.isAtSeededTempo)
   }
 
-  @Test func anItemWithNoTempoSeedsTheNeutralDefault() {
-    #expect(ClickController.seedBpm(from: nil) == TempoScale.defaultBpm)
-  }
-
-  /// The core validates 1 to 400 BPM; the click's steppers only reach 40 to 208,
-  /// so a target outside that has to arrive clamped or the row shows a tempo
-  /// the steppers cannot get back to.
-  @Test func aTargetOutsideTheStepperRangeArrivesClamped() {
-    #expect(ClickController.seedBpm(from: 30) == TempoScale.range.lowerBound)
-    #expect(ClickController.seedBpm(from: 320) == TempoScale.range.upperBound)
-  }
-
-  @Test(arguments: [
-    (UInt16?(66), UInt8(4), true),
-    (UInt16?(208), UInt8(4), true),
-    (UInt16?(240), UInt8(4), false),
-    (UInt16?(30), UInt8(4), false),
-    (UInt16?(240), UInt8(8), true),
-    (UInt16?(nil), UInt8(4), false),
-  ])
-  func theRowNamesATargetOnlyWhenTheClickSoundsIt(target: UInt16?, unit: UInt8, sounds: Bool) {
-    let click = ClickController()
-    click.reseed(
-      target: target, metre: Metre(beats: unit == 8 ? 6 : 4, unit: unit, groups: nil),
-      sounding: unit == 8 ? 0b111111 : 0b1111
-    )
-    #expect(click.soundsTarget == sounds)
-  }
-
-  @Test func aBarInAnotherUnitLeavesTheSeedAndKeepsAClampedTargetUnsounded() {
-    let click = ClickController()
-    click.reseed(target: 240, metre: nil, sounding: 0b1111)
-
+  @Test func aBarInAnotherUnitLeavesTheSeed() {
+    let click = seededClick(bpm: 96)
     click.setMetre(Metre(beats: 6, unit: 8, groups: nil))
-    #expect(!click.soundsTarget)
+    #expect(click.bpm == 96)
     #expect(!click.isAtSeededTempo)
   }
 
-  @Test func movingToANewItemReseedsToThatItemsTempo() {
-    let click = ClickController()
+  @Test func steppingMovesByTheCoresStepAndStopsAtTheEndsOfItsBand() {
+    let click = seededClick(bpm: 66)
+    let step = LimitsView.preview.clickStep
+    let top = LimitsView.preview.clickBand(unit: 4).upperBound
 
-    click.reseed(target: 66, metre: nil, sounding: 0b1111)
+    click.step(by: step)
+    #expect(click.bpm == 66 + step)
+    click.step(by: -step)
     #expect(click.bpm == 66)
 
-    click.reseed(target: nil, metre: nil, sounding: 0b1111)
-    #expect(click.bpm == TempoScale.defaultBpm)
-  }
-
-  @Test func steppingMovesByTheSharedTempoStepAndStopsAtTheEnds() {
-    let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: 0b1111)
-
-    click.step(by: TempoScale.step)
-    #expect(click.bpm == 68)
-    click.step(by: -TempoScale.step)
-    #expect(click.bpm == 66)
-
-    click.reseed(target: UInt16(TempoScale.range.upperBound), metre: nil, sounding: 0b1111)
-    click.step(by: TempoScale.step)
-    #expect(click.bpm == TempoScale.range.upperBound)
+    let atTop = seededClick(bpm: UInt16(top))
+    atTop.step(by: step)
+    #expect(atTop.bpm == top)
   }
 
   @Test func steppingOffTheItemsTempoAndBackAgainIsNoticed() {
-    let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: 0b1111)
-    #expect(click.isAtSeededTempo)
-
-    click.step(by: TempoScale.step)
+    let click = seededClick(bpm: 66)
+    click.step(by: click.tempoStep)
     #expect(!click.isAtSeededTempo)
 
-    click.step(by: -TempoScale.step)
+    click.step(by: -click.tempoStep)
     #expect(click.isAtSeededTempo)
   }
 
   @Test func aNewItemPutsTheRowBackOnItsOwnTempo() {
-    let click = ClickController()
-    click.reseed(target: 66, metre: nil, sounding: 0b1111)
-    click.step(by: TempoScale.step)
+    let click = seededClick(bpm: 66)
+    click.step(by: click.tempoStep)
 
-    click.reseed(target: 120, metre: nil, sounding: 0b1111)
+    var next = ActiveSessionView.previewActive
+    next.clickSeedBpm = 120
+    click.reseed(from: next, limits: .preview)
     #expect(click.bpm == 120)
     #expect(click.isAtSeededTempo)
   }
 
   @Test func anItemStartsOnTheCoresBeatsAndABarChangeTakesOver() {
-    let click = ClickController()
-    click.apply(.downbeat)
-    click.reseed(target: 96, metre: nil, sounding: 0b1010)
+    let click = seededClick(sounding: 0b1010)
     #expect(click.sounding == 0b1010)
     #expect(click.clickState == nil)
 
     click.setMetre(Metre(beats: 5, unit: 4, groups: nil))
-    #expect(click.sounding == 0b11111)
+    #expect(click.sounding == 0b11111, "a new bar starts on the core's every-beat pattern")
+  }
+
+  /// 4/8 counted 2 + 2 is a valid bar the core's table does not list, so its
+  /// patterns arrive with the seed rather than from the table.
+  @Test func theItemsOwnBarOffersThePatternsSentWithIt() {
+    let twoTwo = Metre(beats: 4, unit: 8, groups: [2, 2])
+    let sent = [
+      ClickPresetOption(preset: .everyBeat, sounding: 0b1111),
+      ClickPresetOption(preset: .groupStarts, sounding: 0b0101),
+    ]
+    let click = seededClick(bpm: 240, metre: twoTwo, presets: sent)
+    #expect(click.presets == sent)
+
+    click.apply(.groupStarts)
+    #expect(click.sounding == 0b0101)
+    #expect(click.matchingPreset == .groupStarts)
+
+    click.setMetre(Metre(beats: 3, unit: 4, groups: nil))
+    #expect(click.presets == LimitsView.preview.clickPresets(for: click.metre))
+  }
+
+  @Test func aPatternTheBarDoesNotOfferChangesNothing() {
+    let click = seededClick(
+      metre: Metre(beats: 7, unit: 8, groups: [3, 2, 2]), sounding: 0b111_1111)
+    click.apply(.backbeat)
+    #expect(click.sounding == 0b111_1111)
+    #expect(click.clickState == nil)
+  }
+
+  @Test func aHandToggledPatternMatchesNoPreset() {
+    let click = seededClick()
+    click.toggleBeat(1)
+    #expect(click.sounding == 0b1101)
+    #expect(click.matchingPreset == nil)
   }
 
   @Test func enteringTheBackgroundArmsATimedStopAndReturningDisarmsIt() {
@@ -248,40 +265,18 @@ struct ClickControllerTests {
 }
 
 @MainActor
-struct ClickPatternTests {
+struct ClickBarTests {
   private let common = Metre(beats: 4, unit: 4, groups: nil)
   private let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
-
-  @Test func everyBeatFillsTheBar() {
-    #expect(ClickPattern.everyBeat.mask(for: common) == 0b1111)
-    #expect(ClickPattern.everyBeat.mask(for: sevenEight) == 0b1111111)
-  }
-
-  @Test func groupStartsSoundTheFirstBeatOfEachGroup() {
-    #expect(ClickPattern.groupStarts.mask(for: sevenEight) == 0b0101001)
-  }
-
-  @Test func theOfferedPresetsFollowTheMetre() {
-    #expect(ClickPattern.offered(for: common) == [.everyBeat, .downbeat, .backbeat])
-    #expect(ClickPattern.offered(for: sevenEight) == [.everyBeat, .groupStarts, .downbeat])
-    #expect(!ClickPattern.offered(for: Metre(beats: 3, unit: 4, groups: nil)).contains(.backbeat))
-  }
-
-  @Test func aHandToggledPatternMatchesNoPreset() {
-    #expect(ClickPattern.matching(0b1010, in: common) == .backbeat)
-    #expect(ClickPattern.matching(0b1000, in: common) == nil)
-  }
 
   /// The controller seeds the piece's metre, sounds every beat, and never lets
   /// the last sounding beat go silent.
   @Test func theControllerSeedsTheBarAndKeepsOneBeatSounding() {
-    let click = ClickController()
-    click.reseed(target: 168, metre: sevenEight, sounding: 0b1111111)
+    let click = seededClick(bpm: 168, metre: sevenEight, sounding: 0b1111111)
     #expect(click.metre == sevenEight)
     #expect(click.sounding == 0b1111111)
     #expect(click.clickState == nil, "an untouched click asserts no metre")
 
-    click.apply(.everyBeat)
     click.toggleBeat(1)
     click.toggleBeat(1)
     #expect(
@@ -299,14 +294,6 @@ struct ClickPatternTests {
     #expect(click.sounding == 0b111, "a new bar starts with every beat sounding")
   }
 
-  @Test func everyOfferedGroupingAddsUpToItsBar() {
-    for beats in 2...12 {
-      for grouping in ClickSheet.groupings(for: beats) {
-        #expect(grouping.map(Int.init).reduce(0, +) == beats, "\(grouping) for \(beats)")
-      }
-    }
-  }
-
   @Test func theBarLineSpeaksTheBeatsThatSound() {
     let all = ClickBarLine(metre: common, sounding: 0b1111, currentBeat: nil, onTap: {})
     #expect(all.spokenValue == "4 crotchet beats, metronome on every beat")
@@ -316,34 +303,25 @@ struct ClickPatternTests {
     #expect(groups.spokenValue == "7 quaver beats, metronome on beats 1, 4, 6")
   }
 
-  @Test func theBeatValuePicksTheBandTheClickCanReach() {
-    #expect(TempoScale.range(unit: 4) == TempoScale.range)
-    #expect(
-      TempoScale.range(unit: 8) == 80...416,
-      "6/8 at dotted crotchet = 80 is quaver = 240, which the crotchet ceiling would refuse")
-    #expect(TempoScale.range(unit: 2) == 20...104)
-    #expect(TempoScale.clamp(240, unit: 8) == 240)
-    #expect(TempoScale.clamp(240, unit: 2) == 104)
-  }
-
   @Test func aQuaverClickStepsPastTheCrotchetCeiling() {
-    let click = ClickController()
-    click.reseed(target: 240, metre: Metre(beats: 6, unit: 8, groups: [3, 3]), sounding: 0b111111)
-    #expect(click.bpm == 240, "the seed is read in the metre's own unit")
+    let click = seededClick(
+      bpm: 240, metre: Metre(beats: 6, unit: 8, groups: [3, 3]), sounding: 0b111111)
+    #expect(click.bpm == 240)
 
-    click.step(by: TempoScale.step)
-    #expect(click.bpm == 242)
+    click.step(by: click.tempoStep)
+    #expect(click.bpm == 240 + click.tempoStep)
   }
 
   @Test func changingTheBeatValueKeepsTheNumberTheBandAllows() {
-    let click = ClickController()
-    click.reseed(target: 132, metre: nil, sounding: 0b1111)
+    let click = seededClick(bpm: 132)
 
     click.setMetre(Metre(beats: 6, unit: 8, groups: [3, 3]))
     #expect(click.bpm == 132, "the pulse does not change because the beat was renamed")
 
     click.setMetre(Metre(beats: 2, unit: 2, groups: nil))
-    #expect(click.bpm == 104, "a minim beat cannot count faster than the scale's top crotchet")
+    #expect(
+      click.bpm == LimitsView.preview.clickBand(unit: 2).upperBound,
+      "a minim beat stops at the top of the core's minim band")
   }
 
   @Test func anUngroupedBarWiderThanTheSheetIsSplitIntoRows() {

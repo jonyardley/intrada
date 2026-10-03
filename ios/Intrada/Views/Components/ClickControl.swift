@@ -1,3 +1,4 @@
+import SharedTypes
 import SwiftUI
 
 /// The Focus Player's metronome row. The steppers exist only while the click
@@ -6,6 +7,9 @@ struct ClickControl: View {
   let bpm: Int
   /// The metre's beat value: the readout says `♪ = 168` in 7/8, never `♩`.
   var unit: UInt8 = 4
+  let step: Int
+  /// The core's band in `unit`, which the drag stops at (#2225).
+  let band: ClosedRange<Int>
   let isRunning: Bool
   let unavailable: Bool
   /// False once `bpm` is stepped off what the item seeded: the row then reads as
@@ -41,13 +45,16 @@ struct ClickControl: View {
   private var displayedBpm: Int { liveBpm ?? bpm }
 
   init(
-    bpm: Int, unit: UInt8 = 4, isRunning: Bool, unavailable: Bool, atSeededTempo: Bool,
+    bpm: Int, unit: UInt8 = 4, step: Int, band: ClosedRange<Int>, isRunning: Bool,
+    unavailable: Bool, atSeededTempo: Bool,
     targetDisplay: String?, targetSpoken: String?, onToggle: @escaping () -> Void,
     onStep: @escaping (Int) -> Void, onDragChange: @escaping (Int) -> Void,
     initiallyDragging: Bool = false
   ) {
     self.bpm = bpm
     self.unit = unit
+    self.step = step
+    self.band = band
     self.isRunning = isRunning
     self.unavailable = unavailable
     self.atSeededTempo = atSeededTempo
@@ -65,12 +72,12 @@ struct ClickControl: View {
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       if isRunning {
-        TempoStepButton(systemImage: "minus", label: "Slower") { onStep(-TempoScale.step) }
+        TempoStepButton(systemImage: "minus", label: "Slower") { onStep(-step) }
           .transition(.opacity)
       }
       toggle
       if isRunning {
-        TempoStepButton(systemImage: "plus", label: "Faster") { onStep(TempoScale.step) }
+        TempoStepButton(systemImage: "plus", label: "Faster") { onStep(step) }
           .transition(.opacity)
       }
     }
@@ -134,8 +141,8 @@ struct ClickControl: View {
           lastCommittedBpm = bpm
           lastCommitAt = .now
         }
-        let next = TempoScale.bpm(
-          fromDragTranslation: value.translation.height, anchor: anchor, unit: unit)
+        let next = Self.bpm(
+          fromDragTranslation: value.translation.height, anchor: anchor, step: step, band: band)
         guard next != liveBpm else { return }
         Haptic.selection.play()
         liveBpm = next
@@ -164,10 +171,24 @@ struct ClickControl: View {
   // VoiceOver's reach, so a swipe is the only way to set the tempo (#1943).
   func adjust(_ direction: AccessibilityAdjustmentDirection) {
     switch direction {
-    case .increment: onStep(TempoScale.step)
-    case .decrement: onStep(-TempoScale.step)
+    case .increment: onStep(step)
+    case .decrement: onStep(-step)
     @unknown default: break
     }
+  }
+
+  /// Points of vertical drag per tempo step, tuned by feel on the simulator
+  /// (#1823): fine enough that a step reads as deliberate, loose enough that a
+  /// thumb's-length drag crosses most of the usable range.
+  static let dragPointsPerStep: CGFloat = 8
+
+  /// Anchored to the tempo the gesture began at, not the last frame's value,
+  /// so drift never compounds across steps (#1823).
+  static func bpm(
+    fromDragTranslation translation: CGFloat, anchor: Int, step: Int, band: ClosedRange<Int>
+  ) -> Int {
+    let steps = Int(-translation / dragPointsPerStep)
+    return min(band.upperBound, max(band.lowerBound, anchor + steps * step))
   }
 
   private func resetDrag() {
@@ -207,19 +228,27 @@ struct ClickControl: View {
   #Preview("Click control") {
     VStack(spacing: 32) {
       ClickControl(
-        bpm: 66, isRunning: false, unavailable: false, atSeededTempo: true,
+        bpm: 66, step: LimitsView.preview.clickStep,
+        band: LimitsView.preview.clickBand(unit: 4), isRunning: false, unavailable: false,
+        atSeededTempo: true,
         targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
         onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
       ClickControl(
-        bpm: 72, isRunning: true, unavailable: false, atSeededTempo: false,
+        bpm: 72, step: LimitsView.preview.clickStep,
+        band: LimitsView.preview.clickBand(unit: 4), isRunning: true, unavailable: false,
+        atSeededTempo: false,
         targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
         onToggle: {}, onStep: { _ in }, onDragChange: { _ in })
       ClickControl(
-        bpm: 96, isRunning: false, unavailable: false, atSeededTempo: true,
+        bpm: 96, step: LimitsView.preview.clickStep,
+        band: LimitsView.preview.clickBand(unit: 4), isRunning: false, unavailable: false,
+        atSeededTempo: true,
         targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
         onDragChange: { _ in })
       ClickControl(
-        bpm: 96, isRunning: false, unavailable: true, atSeededTempo: true,
+        bpm: 96, step: LimitsView.preview.clickStep,
+        band: LimitsView.preview.clickBand(unit: 4), isRunning: false, unavailable: true,
+        atSeededTempo: true,
         targetDisplay: nil, targetSpoken: nil, onToggle: {}, onStep: { _ in },
         onDragChange: { _ in })
     }

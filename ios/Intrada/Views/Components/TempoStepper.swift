@@ -1,3 +1,4 @@
+import SharedTypes
 import SwiftUI
 
 /// Stepper (not a numeric field, to avoid a keyboard mid-sheet) for logging
@@ -5,12 +6,14 @@ import SwiftUI
 struct TempoStepper: View {
   @Binding var value: Int
   var unit: UInt8 = 4
+  let step: Int
+  let band: ClosedRange<Int>
   var accessibilityLabel: String = "Achieved tempo"
 
   var body: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       TempoStepButton(systemImage: "minus", label: "Slower") {
-        value = TempoScale.stepped(from: value, by: -TempoScale.step, unit: unit)
+        value = stepped(by: -step)
       }
       Text(TempoUnit.readout(value, unit: unit))
         .font(IntradaFont.scoreNumeral(24))
@@ -18,7 +21,7 @@ struct TempoStepper: View {
         .foregroundStyle(IntradaColor.ink)
         .frame(maxWidth: .infinity)
       TempoStepButton(systemImage: "plus", label: "Faster") {
-        value = TempoScale.stepped(from: value, by: TempoScale.step, unit: unit)
+        value = stepped(by: step)
       }
     }
     .accessibilityElement(children: .ignore)
@@ -26,20 +29,27 @@ struct TempoStepper: View {
     .accessibilityValue(TempoUnit.spoken(value, unit: unit))
     .accessibilityAdjustableAction { direction in
       switch direction {
-      case .increment: value = TempoScale.stepped(from: value, by: TempoScale.step, unit: unit)
-      case .decrement: value = TempoScale.stepped(from: value, by: -TempoScale.step, unit: unit)
+      case .increment: value = stepped(by: step)
+      case .decrement: value = stepped(by: -step)
       default: break
       }
     }
+  }
+
+  private func stepped(by delta: Int) -> Int {
+    min(band.upperBound, max(band.lowerBound, value + delta))
   }
 }
 
 #if DEBUG
   #Preview("Tempo stepper") {
     VStack(spacing: 24) {
-      TempoStepper(value: .constant(96))
-      TempoStepper(value: .constant(40))
-      TempoStepper(value: .constant(208))
+      let limits = LimitsView.preview
+      let band = limits.clickBand(unit: 4)
+      TempoStepper(
+        value: .constant(Int(limits.clickTempoDefault)), step: limits.clickStep, band: band)
+      TempoStepper(value: .constant(band.lowerBound), step: limits.clickStep, band: band)
+      TempoStepper(value: .constant(band.upperBound), step: limits.clickStep, band: band)
     }
     .padding()
     .background(IntradaColor.paperTop)

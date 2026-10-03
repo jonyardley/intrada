@@ -2,6 +2,18 @@
   import Foundation
   import SharedTypes
 
+  extension LimitsView {
+    /// The core's own answer, so a preview or test never carries a band or bar
+    /// table of its own that could drift from it (#2225).
+    static var preview: LimitsView {
+      let bridge = LiveBridge()
+      guard let limits = try? bridge.view().limits else {
+        preconditionFailure("the core must render its limits")
+      }
+      return limits
+    }
+  }
+
   extension AnalyticsView {
     /// A deterministic analytics fixture for the Progress screen + snapshots.
     /// `scoreChanges` (this week's movers) drive the Recent-mastery rows;
@@ -383,7 +395,9 @@
         currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil,
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 66,
-        clickSeedSoundsTarget: true, clickSeedPresets: [])
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -444,7 +458,9 @@
         ],
         reflection: nil,
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 104,
-        clickSeedSoundsTarget: true, clickSeedPresets: [])
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -494,7 +510,9 @@
         currentClickSounding: 0b1111,
         currentVariations: [], reflection: nil,
         clickSeedMetre: Metre(beats: 4, unit: 4, groups: nil), clickSeedBpm: 132,
-        clickSeedSoundsTarget: true, clickSeedPresets: [])
+        clickSeedSoundsTarget: true,
+        clickSeedPresets: LimitsView.preview.clickPresets(
+          for: Metre(beats: 4, unit: 4, groups: nil)))
     }
   }
 
