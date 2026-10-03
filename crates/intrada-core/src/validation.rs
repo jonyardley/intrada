@@ -736,6 +736,9 @@ pub fn validate_play_capacity(entry: &SetlistEntry) -> Result<(), LibraryError> 
 pub fn normalize_profile(mut profile: Profile) -> Profile {
     profile.name = profile.name.trim().to_string();
     profile.instrument = profile.instrument.trim().to_string();
+    if profile.icon_choice == Some(crate::domain::profile::suggest_icon(&profile.instrument)) {
+        profile.icon_choice = None;
+    }
     profile
 }
 

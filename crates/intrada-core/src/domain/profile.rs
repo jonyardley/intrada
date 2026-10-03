@@ -88,6 +88,7 @@ pub struct ProfileView {
     pub instrument: String,
     pub suggested_icon: InstrumentIcon,
     pub icon: InstrumentIcon,
+    pub icon_chosen: bool,
     pub colour: HighlighterColour,
     pub greeting: String,
 }
@@ -179,11 +180,15 @@ pub(crate) fn greeting(name: &str, local_hour: u32) -> String {
 }
 
 pub fn build_profile_view(profile: &Profile, local_hour: u32) -> ProfileView {
+    let suggested_icon = suggest_icon(&profile.instrument);
     ProfileView {
         name: profile.name.clone(),
         instrument: profile.instrument.clone(),
-        suggested_icon: suggest_icon(&profile.instrument),
+        suggested_icon,
         icon: profile.icon(),
+        icon_chosen: profile
+            .icon_choice
+            .is_some_and(|choice| choice != suggested_icon),
         colour: profile.colour,
         greeting: greeting(&profile.name, local_hour),
     }
@@ -325,6 +330,53 @@ mod tests {
         };
         assert_eq!(profile.icon(), InstrumentIcon::Harp);
         assert_eq!(fixture().icon(), InstrumentIcon::Piano);
+    }
+
+    #[test]
+    fn picking_the_suggested_icon_stores_no_choice() {
+        let mut model = Model::default();
+        let mut cmd = save(
+            &mut model,
+            Profile {
+                instrument: "Grand piano".to_string(),
+                icon_choice: Some(InstrumentIcon::Piano),
+                ..fixture()
+            },
+        );
+        assert_eq!(model.profile.icon_choice, None);
+        assert_eq!(emits_save(&mut cmd).and_then(|p| p.icon_choice), None);
+
+        let _ = save(
+            &mut model,
+            Profile {
+                icon_choice: Some(InstrumentIcon::Harp),
+                ..fixture()
+            },
+        );
+        assert_eq!(model.profile.icon_choice, Some(InstrumentIcon::Harp));
+    }
+
+    #[test]
+    fn the_icon_counts_as_chosen_only_when_it_differs_from_the_suggestion() {
+        let chosen = |instrument: &str, icon_choice| {
+            build_profile_view(
+                &Profile {
+                    instrument: instrument.to_string(),
+                    icon_choice,
+                    ..fixture()
+                },
+                9,
+            )
+            .icon_chosen
+        };
+        assert!(chosen("Piano", Some(InstrumentIcon::Harp)));
+        assert!(chosen("Theremin", Some(InstrumentIcon::Drums)));
+        assert!(!chosen("Piano", None));
+        assert!(!chosen("", None));
+        assert!(
+            !chosen("Piano", Some(InstrumentIcon::Piano)),
+            "a blob stored before the save cleared it still reads as following the instrument"
+        );
     }
 
     // ── Greeting ──

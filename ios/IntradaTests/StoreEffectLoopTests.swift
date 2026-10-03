@@ -548,18 +548,20 @@ final class StoreEffectLoopTests: XCTestCase {
 
     let requests = try bridge.update(
       .profile(
-        .save(Profile(name: "  Jon ", instrument: "Double bass", iconChoice: nil, colour: .coral))))
+        .save(Profile(name: "  Jon ", instrument: "Double bass", iconChoice: .cello, colour: .coral))))
     let saved = requests.compactMap { request -> Profile? in
       if case .app(.saveProfile(let profile)) = request.effect { return profile }
       return nil
     }
     XCTAssertEqual(saved.map(\.name), ["Jon"], "the save effect carries the trimmed profile")
+    XCTAssertEqual(saved.map(\.iconChoice), [nil], "picking the suggested icon stores no choice")
 
     let view = try bridge.view().profile
     XCTAssertEqual(view.name, "Jon")
     XCTAssertEqual(view.instrument, "Double bass")
     XCTAssertEqual(view.suggestedIcon, .cello)
     XCTAssertEqual(view.icon, .cello)
+    XCTAssertFalse(view.iconChosen)
     XCTAssertEqual(view.colour, .coral)
     XCTAssertTrue(
       ["Morning, Jon", "Afternoon, Jon", "Evening, Jon"].contains(view.greeting),
@@ -570,6 +572,7 @@ final class StoreEffectLoopTests: XCTestCase {
         .loaded(Profile(name: "", instrument: "", iconChoice: .harp, colour: .butter))))
     let reloaded = try bridge.view().profile
     XCTAssertEqual(reloaded.icon, .harp, "the pick wins over the suggestion")
+    XCTAssertTrue(reloaded.iconChosen)
     XCTAssertEqual(reloaded.suggestedIcon, .other)
     XCTAssertEqual(reloaded.greeting, "", "no name means no greeting")
   }
