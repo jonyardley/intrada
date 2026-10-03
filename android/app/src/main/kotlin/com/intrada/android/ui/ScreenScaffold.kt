@@ -36,7 +36,7 @@ fun ScreenScaffold(
             Modifier.padding(horizontal = IntradaSpacing.card)
                 .padding(top = IntradaSpacing.controlGap)
                 .semantics { heading() },
-            style = IntradaFont.pageTitle().copy(color = IntradaColor.ink),
+            style = IntradaFont.pageTitle.copy(color = IntradaColor.ink),
         )
         Box(
             Modifier.padding(top = IntradaSpacing.cardCompact)
