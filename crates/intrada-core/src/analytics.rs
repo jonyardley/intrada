@@ -71,7 +71,6 @@ pub struct VariationCoverageView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AnalyticsView {
     pub weekly_summary: WeeklySummary,
-    pub streak: PracticeStreak,
     pub top_items: Vec<ItemRanking>,
     pub neglected_items: Vec<NeglectedItem>,
     pub score_changes: Vec<ScoreChange>,
@@ -102,12 +101,6 @@ pub struct WeeklySummary {
     pub has_prev_week_data: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct PracticeStreak {
-    pub current_days: u32,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemRanking {
@@ -135,7 +128,7 @@ pub struct LastPractisedView {
 /// The user's calendar context: which day is "today" and the UTC offset that
 /// turns a stored UTC instant into the day the user experienced it. Without
 /// the offset, days turn over at midnight UTC, so a 00:30 BST session counted
-/// toward the previous day's streak (#1330).
+/// toward the previous day (#1330).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LocalClock {
     pub today: NaiveDate,
@@ -201,7 +194,6 @@ pub(crate) fn analytics_from_changes(
 ) -> AnalyticsView {
     AnalyticsView {
         weekly_summary: compute_weekly_summary(sessions, clock),
-        streak: compute_streak(sessions, clock),
         top_items: compute_top_items(sessions),
         neglected_items: compute_neglected_items(summaries, items, clock),
         score_changes: changes.iter().take(SCORE_CHANGES_LIMIT).cloned().collect(),
@@ -303,31 +295,6 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], clock: LocalClock) -
         sessions_direction: direction(session_count, prev_session_count),
         items_direction: direction(items_covered, prev_items_covered),
         has_prev_week_data,
-    }
-}
-
-/// Counts backwards from `today` (or yesterday if today has no session) as long
-/// as each day has at least one session.
-pub fn compute_streak(sessions: &[PracticeSession], clock: LocalClock) -> PracticeStreak {
-    if sessions.is_empty() {
-        return PracticeStreak { current_days: 0 };
-    }
-
-    let session_dates: HashSet<NaiveDate> = sessions.iter().map(|s| clock.session_day(s)).collect();
-
-    let mut current = clock.today;
-    if !session_dates.contains(&current) {
-        current = clock.today - chrono::Duration::days(1);
-    }
-
-    let mut streak: u32 = 0;
-    while session_dates.contains(&current) {
-        streak += 1;
-        current -= chrono::Duration::days(1);
-    }
-
-    PracticeStreak {
-        current_days: streak,
     }
 }
 
@@ -902,66 +869,6 @@ mod tests {
         assert_eq!(summary.prev_session_count, 1); // Sunday's session in previous week
         assert_eq!(summary.items_covered, 1); // p2 only
         assert_eq!(summary.prev_items_covered, 1); // p1 only
-    }
-
-    // ── Streak Tests ──────────────────────────────────────────────────
-
-    #[test]
-    fn test_streak_consecutive_days() {
-        // 3 consecutive days ending today
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
-        let day_before = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap();
-
-        let sessions = vec![
-            make_session("s1", day_before, 1800, vec![]),
-            make_session("s2", yesterday, 1800, vec![]),
-            make_session("s3", today, 1800, vec![]),
-        ];
-
-        let streak = compute_streak(&sessions, clock(today));
-        assert_eq!(streak.current_days, 3);
-    }
-
-    #[test]
-    fn test_streak_broken() {
-        // gap in days resets streak
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
-        // Skip Feb 16
-        let three_days_ago = NaiveDate::from_ymd_opt(2026, 2, 15).unwrap();
-
-        let sessions = vec![
-            make_session("s1", three_days_ago, 1800, vec![]),
-            make_session("s2", yesterday, 1800, vec![]),
-            make_session("s3", today, 1800, vec![]),
-        ];
-
-        let streak = compute_streak(&sessions, clock(today));
-        assert_eq!(streak.current_days, 2); // Only yesterday + today
-    }
-
-    #[test]
-    fn test_streak_no_sessions_today() {
-        // sessions on yesterday and day before, no session today
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
-        let day_before = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap();
-
-        let sessions = vec![
-            make_session("s1", day_before, 1800, vec![]),
-            make_session("s2", yesterday, 1800, vec![]),
-        ];
-
-        let streak = compute_streak(&sessions, clock(today));
-        assert_eq!(streak.current_days, 2);
-    }
-
-    #[test]
-    fn test_streak_empty() {
-        let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let streak = compute_streak(&[], clock(today));
-        assert_eq!(streak.current_days, 0);
     }
 
     // ── Weekly minutes (#1940) ────────────────────────────────────────
@@ -1894,7 +1801,6 @@ mod tests {
             clock(today),
         );
         assert_eq!(analytics.weekly_summary.session_count, 1);
-        assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.top_items.len(), 1);
     }
 
@@ -2098,7 +2004,6 @@ mod tests {
         );
         assert_eq!(analytics.weekly_summary.session_count, 1);
         assert_eq!(analytics.weekly_summary.total_minutes, 10);
-        assert_eq!(analytics.streak.current_days, 1);
         assert_eq!(analytics.top_items.len(), 1);
     }
 
@@ -2156,21 +2061,6 @@ mod tests {
         let c = LocalClock::from_now(utc_instant(2026, 8, 13, 23, 30), 60);
         assert_eq!(c.today, NaiveDate::from_ymd_opt(2026, 8, 14).unwrap());
         assert_eq!(c.utc_offset_minutes, 60);
-    }
-
-    #[test]
-    fn streak_bridges_via_midnight_window_session() {
-        let sessions = vec![
-            make_session_at("s1", utc_instant(2026, 8, 12, 23, 30), 600, vec![]),
-            make_session_at("s2", utc_instant(2026, 8, 14, 10, 0), 600, vec![]),
-        ];
-        let streak = compute_streak(
-            &sessions,
-            bst_clock(NaiveDate::from_ymd_opt(2026, 8, 14).unwrap()),
-        );
-        // Locally the sessions fall on Aug 13 and Aug 14: a 2-day streak.
-        // UTC attribution would put the first on Aug 12 and break it at 1.
-        assert_eq!(streak.current_days, 2);
     }
 
     #[test]

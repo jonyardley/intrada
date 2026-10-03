@@ -652,7 +652,6 @@ pub struct TempoTrendView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeSessionView {
     pub id: String,
-    pub started_at: String,
     pub total_duration_display: String,
     pub total_duration_summary: String,
     pub completion_status: CompletionStatus,

@@ -1,6 +1,6 @@
 //! The Practice tab's week strip (#2046). Days are counted on the one
-//! `LocalClock` offset the streak and the Progress screen use, so a session
-//! sits in the same week everywhere it is shown.
+//! `LocalClock` offset the Progress screen uses, so a session sits in the
+//! same week everywhere it is shown.
 
 use std::collections::HashMap;
 
