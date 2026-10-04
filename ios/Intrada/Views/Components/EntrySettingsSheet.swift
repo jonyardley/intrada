@@ -93,16 +93,9 @@ struct EntrySettingsSheet: View {
   private var stepSection: some View {
     FieldCard("Variation") {
       Menu {
+        Button("No variation") { plan(nil) }
         ForEach(variants, id: \.id) { variation in
-          Button(variation.label) {
-            guard variation.id != variantId else { return }
-            variantId = variation.id
-            store.send(
-              .session(
-                .setEntryPlan(
-                  entryId: entry.id, sectionIds: entry.plannedSectionIds,
-                  variationIds: [variation.id])))
-          }
+          Button(variation.label) { plan(variation.id) }
         }
       } label: {
         HStack {
@@ -123,7 +116,17 @@ struct EntrySettingsSheet: View {
   }
 
   private var selectedVariationLabel: String {
-    variants.first(where: { $0.id == variantId })?.label ?? "Not tagged to a variation"
+    variants.first(where: { $0.id == variantId })?.label ?? "No variation"
+  }
+
+  private func plan(_ id: String?) {
+    guard id != variantId else { return }
+    variantId = id
+    store.send(
+      .session(
+        .setEntryPlan(
+          entryId: entry.id, sectionIds: entry.plannedSectionIds,
+          variationIds: id.map { [$0] } ?? [])))
   }
 
   private var repsSection: some View {

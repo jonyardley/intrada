@@ -285,9 +285,14 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         RepCounter(
           count: 0, slots: 10, touched: false, reached: false, onGotIt: {}, onNotQuite: {})
         RepCounter(
-          count: 7, slots: 10, touched: true, reached: false, onGotIt: {}, onNotQuite: {})
+          count: 7, slots: 10, touched: true, reached: false, canUndo: true,
+          onGotIt: {}, onNotQuite: {})
         RepCounter(
-          count: 10, slots: 10, touched: true, reached: true, onGotIt: {}, onNotQuite: {})
+          count: 10, slots: 10, touched: true, reached: true, canUndo: true,
+          onGotIt: {}, onNotQuite: {})
+        RepCounter(
+          count: 12, slots: 10, touched: true, reached: true, extra: 2, canUndo: true,
+          onGotIt: {}, onNotQuite: {})
       }
       .padding(16)
     }
@@ -298,7 +303,8 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     let counter = ZStack {
       PaperBackground()
       RepCounter(
-        count: 3, slots: 10, touched: true, reached: false, onGotIt: {}, onNotQuite: {}
+        count: 12, slots: 10, touched: true, reached: true, extra: 2, canUndo: true,
+        onGotIt: {}, onNotQuite: {}
       )
       .padding(16)
     }

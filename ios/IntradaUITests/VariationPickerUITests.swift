@@ -95,6 +95,23 @@ final class VariationPickerUITests: XCTestCase {
   }
 }
 
+extension VariationPickerUITests {
+  func testGotItCountsPastTheTargetAndUndoTakesItBack() {
+    let app = startScalesSession()
+    let reps = app.control("player.reps", spoken: "Repetitions", timeout: 10)
+    guard let slots = (reps.value as? String)?.split(separator: " ").last.flatMap({ Int($0) })
+    else { return XCTFail("the counter names its target: \(reps.value ?? "")") }
+    XCTAssertFalse(app.buttons["player.undo"].exists, "nothing to undo before a tap")
+
+    let gotIt = app.control("player.gotIt", spoken: "Got it")
+    for _ in 0...slots { gotIt.tap() }
+    XCTAssertEqual(reps.value as? String, "\(slots + 1) of \(slots), 1 extra")
+
+    app.buttons["player.undo"].tap()
+    XCTAssertEqual(reps.value as? String, "\(slots) of \(slots)")
+  }
+}
+
 extension XCUIApplication {
   /// Each play's mark shares one identifier, so its spoken label is the whole match.
   fileprivate func mark(_ identifier: String, _ label: String) -> XCUIElement {

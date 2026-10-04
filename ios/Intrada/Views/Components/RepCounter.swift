@@ -4,15 +4,22 @@ import SwiftUI
 /// empty ones outlined, so the row says what is left rather than growing as it
 /// fills (#1735). Not quite stays tappable at zero because the core records a
 /// miss there, and at the target because a miss steps the count back (#1507).
+/// Got it counts past the target; undo takes back a tap without recording a
+/// miss (#2107).
 struct RepCounter: View {
   let count: Int
   let slots: Int
   let touched: Bool
   let reached: Bool
+  var extra = 0
+  var canUndo = false
   let onGotIt: () -> Void
   let onNotQuite: () -> Void
+  var onUndo: () -> Void = {}
 
   @Environment(\.dynamicTypeSize) private var typeSize
+
+  private let undoTarget: CGFloat = 44
 
   private var toGo: Int { max(0, slots - count) }
   private var stacked: Bool { typeSize.isAccessibilitySize }
@@ -25,31 +32,77 @@ struct RepCounter: View {
     }
   }
 
-  private var header: some View {
-    HStack {
-      FieldLabel("Repetitions")
-      Spacer()
-      HStack(spacing: 0) {
-        Text("\(count)")
-          .fontWeight(.semibold)
-          .foregroundStyle(IntradaColor.ink)
-        Text(countTail)
-          .foregroundStyle(IntradaColor.inkSecondary)
+  @ViewBuilder private var header: some View {
+    if stacked {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        HStack {
+          label
+          Spacer()
+          undo
+        }
+        countText
       }
-      .font(IntradaFont.secondary)
-      .monospacedDigit()
+    } else {
+      HStack {
+        label
+        Spacer()
+        countText
+        undo
+      }
     }
+  }
+
+  private var label: some View {
+    FieldLabel("Repetitions")
+      .accessibilityHidden(true)
+  }
+
+  private var countText: some View {
+    HStack(spacing: 0) {
+      Text("\(count)")
+        .fontWeight(.semibold)
+        .foregroundStyle(IntradaColor.ink)
+      Text(countTail)
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+    .font(IntradaFont.secondary)
+    .monospacedDigit()
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Repetitions")
     .accessibilityValue(spokenCount)
+    .accessibilityIdentifier("player.reps")
+  }
+
+  private var undo: some View {
+    undoLabel
+      .hidden()
+      .overlay {
+        if canUndo {
+          Button(action: onUndo) { undoLabel }
+            .buttonStyle(.plain)
+            .accessibilityHint("Takes back the last repetition")
+            .accessibilityIdentifier("player.undo")
+        }
+      }
+      .padding(.vertical, -undoTarget / 2)
+  }
+
+  private var undoLabel: some View {
+    Text("Undo")
+      .font(IntradaFont.segment)
+      .foregroundStyle(IntradaColor.accent)
+      .frame(minWidth: undoTarget, minHeight: undoTarget)
+      .contentShape(Rectangle())
   }
 
   private var countTail: String {
-    touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
+    if extra > 0 { return " of \(slots) · \(extra) extra" }
+    return touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
   }
 
   private var spokenCount: String {
-    touched && !reached ? "\(count) of \(slots), \(toGo) to go" : "\(count) of \(slots)"
+    if extra > 0 { return "\(count) of \(slots), \(extra) extra" }
+    return touched && !reached ? "\(count) of \(slots), \(toGo) to go" : "\(count) of \(slots)"
   }
 
   private var dots: some View {
@@ -80,7 +133,7 @@ struct RepCounter: View {
     repButton(
       title: "Got it", icon: "checkmark", fg: IntradaColor.repCleanFg,
       bg: IntradaColor.repCleanBg, border: IntradaColor.repCleanBorder,
-      disabled: reached, action: onGotIt
+      action: onGotIt
     )
     .accessibilityLabel("Got it")
     .accessibilityHint("Counts one repetition")
@@ -91,7 +144,7 @@ struct RepCounter: View {
     repButton(
       title: title, icon: "xmark", fg: IntradaColor.repMissedFg,
       bg: IntradaColor.repMissedBg, border: IntradaColor.slotOutline,
-      disabled: false, action: onNotQuite
+      action: onNotQuite
     )
     .accessibilityLabel(title)
     .accessibilityHint("Takes one repetition off")
@@ -99,7 +152,7 @@ struct RepCounter: View {
 
   private func repButton(
     title: String, icon: String, fg: Color, bg: Color, border: Color,
-    disabled: Bool, action: @escaping () -> Void
+    action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
       HStack(spacing: 7) {
@@ -119,8 +172,6 @@ struct RepCounter: View {
         RoundedRectangle(cornerRadius: IntradaRadius.control).stroke(border, lineWidth: 1))
     }
     .buttonStyle(PressRebound())
-    .disabled(disabled)
-    .opacity(disabled ? IntradaOpacity.dimmed : 1)
   }
 }
 
@@ -151,14 +202,16 @@ private struct RepDot: View {
           PaperBackground()
           RepCounter(
             count: count, slots: slots, touched: touched, reached: count >= slots,
+            extra: max(0, count - slots), canUndo: touched,
             onGotIt: {
               touched = true
-              count = min(slots, count + 1)
+              count += 1
             },
             onNotQuite: {
               touched = true
               count = max(0, count - 1)
-            }
+            },
+            onUndo: { count = max(0, count - 1) }
           )
           .padding(IntradaSpacing.card)
         }
