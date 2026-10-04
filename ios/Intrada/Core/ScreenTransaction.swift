@@ -14,6 +14,8 @@ private struct ScreenTransactionModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content.onAppear {
+      // Feedback sent from a shake names the tab the tester was on (#598).
+      SentrySDK.configureScope { $0.setTag(value: name, key: "screen") }
       let transaction = SentrySDK.startTransaction(
         name: name, operation: "ui.load", bindToScope: false)
       DispatchQueue.main.async { transaction.finish() }

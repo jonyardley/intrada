@@ -10,6 +10,7 @@ struct FormSectionRow: View {
 
   let title: String
   let accessory: Accessory
+  var hint: String?
   let action: () -> Void
 
   var body: some View {
@@ -28,7 +29,7 @@ struct FormSectionRow: View {
     .buttonStyle(.plain)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(title)
-    .accessibilityHint(hint)
+    .accessibilityHint(hint ?? accessoryHint)
     .accessibilityAddTraits(.isButton)
   }
 
@@ -54,7 +55,7 @@ struct FormSectionRow: View {
     }
   }
 
-  private var hint: String {
+  private var accessoryHint: String {
     switch accessory {
     case .opensSheet, .edit: "Opens the editor"
     case .collapsed: "Expands the section"

@@ -23,6 +23,7 @@ struct ProfileScreen: View {
             hero
             highlighter
             practiceDefaults
+            feedback
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.bottom, IntradaSpacing.section)
@@ -85,6 +86,18 @@ struct ProfileScreen: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel("Highlighter, \((profile?.colour ?? .butter).label)")
       .accessibilityIdentifier("profile.highlighter")
+    }
+  }
+
+  private var feedback: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionTitle("Beta")
+      FormSectionRow(
+        title: "Send feedback", accessory: .opensSheet, hint: "Opens the feedback form",
+        action: FeedbackPresenter.presentFromProfile
+      )
+      .cardSurface()
+      .accessibilityIdentifier("profile.sendFeedback")
     }
   }
 
