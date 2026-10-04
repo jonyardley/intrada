@@ -237,10 +237,7 @@ pub struct KeyTap {
 /// selects the spoke's default. `None` for a ring off the wheel.
 pub fn next_on_tap(current: Option<&Key>, ring: u8, mode: Modality) -> Option<KeyTap> {
     let ring = usize::from(ring);
-    let primary = match mode {
-        Modality::Major => CIRCLE_MAJOR.get(ring)?,
-        Modality::Minor => CIRCLE_MINOR.get(ring)?,
-    };
+    let primary = circle(mode).get(ring)?;
     let flip_to = current
         .and_then(wheel_selection)
         .filter(|sel| usize::from(sel.ring) == ring && sel.modality == mode)
@@ -263,6 +260,57 @@ pub fn next_on_tap(current: Option<&Key>, ring: u8, mode: Modality) -> Option<Ke
     })
 }
 
+/// The keys sheet's tap over a set of keys (#2247): a tap adds the spoke's
+/// key; on a spoke with two spellings the next tap switches to the other, and
+/// the one after removes it.
+pub fn tap_key_set(keys: &[Key], ring: u8, mode: Modality) -> Vec<Key> {
+    let mut keys = keys.to_vec();
+    let lit = keys
+        .iter()
+        .position(|k| wheel_selection(k).is_some_and(|s| s.ring == ring && s.modality == mode));
+    let Some(index) = lit else {
+        keys.extend(next_on_tap(None, ring, mode).map(|tap| tap.key));
+        return keys;
+    };
+    match next_on_tap(Some(&keys[index]), ring, mode) {
+        Some(tap)
+            if tap.flipped
+                && circle(mode)
+                    .get(usize::from(ring))
+                    .is_some_and(|p| keys[index].spelling() == *p) =>
+        {
+            keys[index] = tap.key;
+        }
+        _ => {
+            keys.remove(index);
+        }
+    }
+    keys
+}
+
+/// All major or All minor: every spoke of `mode` not yet chosen, added in
+/// circle order after the keys already chosen.
+pub fn add_all_to_key_set(keys: &[Key], mode: Modality) -> Vec<Key> {
+    (0..12u8).fold(keys.to_vec(), |keys, ring| {
+        let chosen = keys
+            .iter()
+            .filter_map(wheel_selection)
+            .any(|s| s.ring == ring && s.modality == mode);
+        if chosen {
+            keys
+        } else {
+            tap_key_set(&keys, ring, mode)
+        }
+    })
+}
+
+fn circle(mode: Modality) -> &'static [&'static str; 12] {
+    match mode {
+        Modality::Major => &CIRCLE_MAJOR,
+        Modality::Minor => &CIRCLE_MINOR,
+    }
+}
+
 fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
     match (mode, ring) {
         (Modality::Major, 5) => Some("Cb"),
@@ -276,10 +324,7 @@ fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
 }
 
 fn ring_for(spelling: &str, mode: Modality) -> Option<KeyWheelSelection> {
-    let circle = match mode {
-        Modality::Major => &CIRCLE_MAJOR,
-        Modality::Minor => &CIRCLE_MINOR,
-    };
+    let circle = circle(mode);
     (0..12)
         .find(|&ring| circle[ring] == spelling || enharmonic_alt(ring, mode) == Some(spelling))
         .map(|ring| KeyWheelSelection {
@@ -496,5 +541,83 @@ mod tests {
         assert_eq!(alts, ["Cb", "F#", "C#", "Ab", "D#", "A#"]);
         assert_eq!(wedges[6].primary, "Gb");
         assert_eq!(wedges[18].primary, "Eb");
+    }
+
+    // ── The keys sheet's set of keys (#2247, #2372) ──
+
+    fn keys(texts: &[&str]) -> Vec<Key> {
+        texts.iter().map(|t| Key::parse(t).unwrap()).collect()
+    }
+
+    #[test]
+    fn a_tap_on_an_empty_spoke_adds_its_key_after_the_others() {
+        let after = tap_key_set(&keys(&["A minor"]), 0, Major);
+        assert_eq!(after, keys(&["A minor", "C major"]));
+    }
+
+    #[test]
+    fn a_tap_on_a_chosen_spoke_with_one_spelling_removes_it() {
+        let after = tap_key_set(&keys(&["C major", "A minor"]), 0, Major);
+        assert_eq!(after, keys(&["A minor"]));
+    }
+
+    #[test]
+    fn a_spoke_with_two_spellings_switches_on_the_second_tap_and_goes_on_the_third() {
+        let added = tap_key_set(&[], 6, Major);
+        assert_eq!(added, keys(&["Gb major"]));
+        let switched = tap_key_set(&added, 6, Major);
+        assert_eq!(switched, keys(&["F# major"]));
+        assert_eq!(tap_key_set(&switched, 6, Major), vec![]);
+    }
+
+    #[test]
+    fn a_switched_spelling_stays_in_its_place_in_the_list() {
+        let after = tap_key_set(&keys(&["C major", "Gb major", "A minor"]), 6, Major);
+        assert_eq!(after, keys(&["C major", "F# major", "A minor"]));
+    }
+
+    #[test]
+    fn the_major_and_minor_of_one_spoke_are_separate_keys() {
+        let after = tap_key_set(&keys(&["C major"]), 0, Minor);
+        assert_eq!(after, keys(&["C major", "A minor"]));
+    }
+
+    #[test]
+    fn a_tap_off_the_wheel_or_on_keys_no_spoke_lights_changes_nothing_else() {
+        let start = keys(&["F#", "E# major"]);
+        assert_eq!(tap_key_set(&start, 12, Major), start);
+        assert_eq!(
+            tap_key_set(&start, 6, Major),
+            keys(&["F#", "E# major", "Gb major"])
+        );
+    }
+
+    #[test]
+    fn all_major_fills_the_twelve_majors_and_keeps_chosen_minors_and_spellings() {
+        let start = keys(&["F# major", "A minor"]);
+        let after = add_all_to_key_set(&start, Major);
+        assert_eq!(after.len(), 13);
+        assert_eq!(after[..2], start[..]);
+        assert!(!after.iter().any(|k| k.spelling() == "Gb"));
+        for ring in 0..12u8 {
+            assert!(
+                after
+                    .iter()
+                    .filter_map(wheel_selection)
+                    .any(|s| s.ring == ring && s.modality == Major),
+                "ring {ring}"
+            );
+        }
+    }
+
+    #[test]
+    fn all_minor_on_an_empty_set_is_the_minor_circle_in_order() {
+        let after = add_all_to_key_set(&[], Minor);
+        assert_eq!(after.len(), 12);
+        assert!(after.iter().all(|k| k.mode == Some(Minor)));
+        assert_eq!(
+            after.iter().map(Key::spelling).collect::<Vec<_>>(),
+            CIRCLE_MINOR.to_vec()
+        );
     }
 }

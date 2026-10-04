@@ -317,10 +317,10 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
 
   // An F sharp spelt with sharps, and minors beside majors.
   func testKeysSheetMixed() {
-    var keys = KeySet.tap(KeySet.tap([], ring: 6, mode: .major), ring: 6, mode: .major)
+    var keys = KeyHelper.tap(KeyHelper.tap([], ring: 6, mode: .major), ring: 6, mode: .major)
     for ring in [0, 1, 2] {
-      keys = KeySet.tap(keys, ring: ring, mode: .major)
-      keys = KeySet.tap(keys, ring: ring, mode: .minor)
+      keys = KeyHelper.tap(keys, ring: ring, mode: .major)
+      keys = KeyHelper.tap(keys, ring: ring, mode: .minor)
     }
     assertSnapshot(of: host(KeysSheet(item: .previewExercise, keys: keys)), as: config)
   }

@@ -39,7 +39,7 @@ struct KeysSheet: View {
             lit.first { $0.ring == ring && $0.mode == mode }?.spelling
           },
           onTap: { ring, mode in
-            keys = KeySet.tap(keys, ring: ring, mode: mode)
+            keys = KeyHelper.tap(keys, ring: ring, mode: mode)
             Haptic.selection.play()
           },
           hub: {
@@ -57,10 +57,10 @@ struct KeysSheet: View {
         .padding(.vertical, IntradaSpacing.cardCompact)
         presetLayout {
           chip("All major", identifier: "keysSheet.allMajor") {
-            keys = KeySet.addingAll(.major, to: keys)
+            keys = KeyHelper.addingAll(.major, to: keys)
           }
           chip("All minor", identifier: "keysSheet.allMinor") {
-            keys = KeySet.addingAll(.minor, to: keys)
+            keys = KeyHelper.addingAll(.minor, to: keys)
           }
           chip("Clear", identifier: "keysSheet.clear") { keys = [] }
         }
