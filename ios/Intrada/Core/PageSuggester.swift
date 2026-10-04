@@ -100,7 +100,8 @@ private enum OnDeviceModel {
         generating: Fields.self,
         // Deterministic, because `read_fields` is: rescanning the same page
         // twice should not offer the user two different drafts.
-        options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 256)
+        // `sampling:`, not `samplingMode:`: the TestFlight lane builds on Xcode 26.6, which lacks it (#2384).
+        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 256)
       ).content
       return PageSuggester.Suggestion(
         title: fields.title,
