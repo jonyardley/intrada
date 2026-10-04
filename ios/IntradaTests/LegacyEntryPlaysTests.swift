@@ -1,6 +1,7 @@
 import GRDB
 import SharedTypes
 import Testing
+import os
 
 @testable import Intrada
 
@@ -148,10 +149,19 @@ struct LegacyEntryPlaysTests {
     #expect(entry.plays.map(\.variationIds) == [[], []], "the steps they name are not read")
   }
 
-  /// A start time the core cannot read refuses that row alone (#2234); before,
-  /// it failed the whole load and History came up empty.
-  @Test("a row the core refuses is skipped and the rest still load")
-  func aRefusedRowIsSkipped() throws {
+  /// A start time the core cannot read refuses that row alone, so one bad row
+  /// never empties History (#2234). Both it and any value the core replaced
+  /// are reported, never dropped silently (#949).
+  @Test("a refused row is skipped and reported, and a replaced value is reported")
+  func aRefusedRowIsSkippedAndReported() throws {
+    let reports = OSAllocatedUnfairLock<[String]>(initialState: [])
+    reportObserver.withLock {
+      $0 = { error, context in
+        guard context == LibraryStore.decodeContext else { return }
+        reports.withLock { $0.append(String(describing: error)) }
+      }
+    }
+    defer { reportObserver.withLock { $0 = nil } }
     let queue = try DatabaseQueue()
     try LibraryStore.migrator.migrate(queue)
     try queue.write { db in
@@ -159,14 +169,17 @@ struct LegacyEntryPlaysTests {
         sql: """
           INSERT INTO session (id, started_at, completed_at, total_duration_secs,
             completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
-          VALUES ('bad','yesterday','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+          VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
             '2026-09-01T10:10:00Z',NULL),
-            ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
-            '2026-09-01T10:10:00Z',NULL)
+            ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,NULL,
+            '[]','2026-09-01T10:10:00Z',NULL)
           """)
     }
 
     #expect(try LibraryStore(queue).loadSessions().map(\.id) == ["good"])
+    let seen = reports.withLock { $0 }
+    #expect(seen.contains { $0.contains("refused-2234") })
+    #expect(seen.contains(#"unknown CompletionStatus on decode: "replaced-2234""#))
   }
 
   /// Two variations in one sitting is the case #1739 exists for, so it has to

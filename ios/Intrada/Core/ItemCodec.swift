@@ -150,9 +150,9 @@ extension LibraryStore {
   }
 
   // ── Row ↔ ChordChart codec ───────────────────────────────────────────
-  // A nested aggregate, so JSON via a Codable DTO (as the core does for session entries), never
-  // bincode: positional encoding would fail to decode old rows after a field
-  // change, and the device is the only copy.
+  // A nested aggregate, so JSON via a Codable DTO, never bincode: positional
+  // encoding would fail to decode old rows after a field change, and the
+  // device is the only copy.
 
   /// `key` holds a spelling, as the item's column does, or text the core
   /// could not read, kept until a key is picked; empty is no key.
