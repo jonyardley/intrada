@@ -62,6 +62,12 @@ final class StoreEffectLoopTests: XCTestCase {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
     let retiredKey = "intrada.session-in-progress.v\(sessionBlobVersion() - 1)"
     defaults.set(Data([1, 2, 3]), forKey: retiredKey)
+    let current = ActiveSession(
+      id: "s-current", entries: [], currentIndex: 0,
+      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
+      reflection: nil)
+    let currentBytes = Data(try current.bincodeSerialize())
+    defaults.set(currentBytes, forKey: Store.sessionInProgressKey)
     var sent: [Event] = []
     let bridge = FakeBridge()
     bridge.updateHandler = { event in
@@ -73,8 +79,9 @@ final class StoreEffectLoopTests: XCTestCase {
     store.loadRecoverableSession()
 
     XCTAssertNil(defaults.data(forKey: retiredKey))
+    XCTAssertEqual(defaults.data(forKey: Store.sessionInProgressKey), currentBytes)
     XCTAssertEqual(sent.last, .session(.retiredSessionFound))
-    XCTAssertNil(store.recoverableSession)
+    XCTAssertEqual(store.recoverableSession?.id, "s-current")
 
     sent = []
     store.loadRecoverableSession()

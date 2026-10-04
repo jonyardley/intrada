@@ -28,6 +28,17 @@ struct ItemFormVariationsTests {
     #expect(sent?.labels == ["Swung"])
   }
 
+  @Test func aSavedRowIsSentByIdAndItsLabelNever() {
+    let form = ItemFormModel(item: .previewExerciseWithVariations)
+    form.variations[0].label = "Renamed"
+    form.variations.swapAt(0, 2)
+
+    let sent = set(form.editEvents(id: "exercise-2").last)
+
+    #expect(sent?.ids == ["variation-bb", "variation-f", "variation-c"])
+    #expect(sent?.labels == [])
+  }
+
   @Test func aRemovedRowLeavesTheItemsSet() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations.remove(at: 1)

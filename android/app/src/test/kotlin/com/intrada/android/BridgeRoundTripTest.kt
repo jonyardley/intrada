@@ -28,6 +28,7 @@ import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
 import com.intrada.shared.TempoReading
+import com.intrada.shared.Variation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -226,7 +227,7 @@ class BridgeRoundTripTest {
     }
 
     // A play names a key and two variations on Kotlin's own encoder, and the new library-wide
-    // variations load through the store (#846, #2246).
+    // variations, a tombstone among them, load on Kotlin's encoder (#846, #2246).
     @Test
     fun aPlayInAKeyWithTwoVariationsDecodes() {
         val bridge = LiveBridge()
@@ -234,8 +235,16 @@ class BridgeRoundTripTest {
         val loadVariations = loads.single {
             (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadVariations
         }
-        bridge.resolve(loadVariations.id, PersistenceOutput.Variations(emptyList()))
-        assertEquals(4, bridge.view().variations.size)
+        bridge.resolve(
+            loadVariations.id,
+            PersistenceOutput.Variations(
+                listOf(
+                    Variation("v-swung", "Swung", "2026-10-01T09:00:00Z", null),
+                    Variation("v-gone", "Gone", "2026-10-01T09:00:00Z", "2026-10-02T09:00:00Z"),
+                )
+            ),
+        )
+        assertEquals(listOf("v-swung"), bridge.view().variations.map { it.id })
 
         val added =
             bridge.update(

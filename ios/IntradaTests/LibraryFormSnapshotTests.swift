@@ -206,7 +206,7 @@ final class LibraryFormSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewExercise)), as: config)
   }
 
-  /// #1783: the saved rows, ready to rename, reorder and remove.
+  /// #1783, #2246: the saved rows, read-only, ready to reorder and remove.
   func testLibraryEditScreenExerciseWithVariations() {
     assertSnapshot(
       of: host(LibraryEditScreen(item: .previewExerciseWithVariations)), as: config)

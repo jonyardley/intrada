@@ -5781,6 +5781,27 @@ fn switching_to_the_variation_already_open_writes_nothing() {
 }
 
 #[test]
+fn naming_the_open_key_in_its_other_spelling_writes_nothing() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    let switch = |key: &str, secs: i64| {
+        Event::Session(SessionEvent::SwitchPlay {
+            entry_id: entry_id.clone(),
+            section_id: None,
+            key: crate::domain::key::Key::parse(key),
+            variation_ids: vec![],
+            now: start + chrono::Duration::seconds(secs),
+            reading: TempoReading::silent(),
+        })
+    };
+    update(&mut model, switch("Eb major", 60));
+
+    update(&mut model, switch("D# major", 90));
+
+    assert_eq!(only_entry(&model).plays.len(), 2, "one key, two spellings");
+}
+
+#[test]
 fn naming_the_written_key_is_the_play_already_open() {
     let mut model = model_with_library();
     model

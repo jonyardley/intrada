@@ -1,8 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// An exercise's variations on the Add and Edit forms (#1783): renamed in place,
-/// dragged to reorder, removed and added. Nothing here is saved until the form is.
+/// An exercise's variations on the Add and Edit forms (#1783): dragged to
+/// reorder, removed and added; only a row typed here is editable (#2246). Nothing here is saved until the form is.
 struct VariationRowsSection: View {
   @Binding var rows: [VariationRow]
   var faulted = false
@@ -75,12 +75,22 @@ struct VariationRowsSection: View {
           .accessibilityIdentifier("variationRow.reorder")
           .accessibilityAction(named: "Move up") { rows.move(current.id, by: -1) }
           .accessibilityAction(named: "Move down") { rows.move(current.id, by: 1) }
-        TextField("e.g. C", text: label(of: current.id))
-          .font(IntradaFont.field)
-          .foregroundStyle(IntradaColor.ink)
-          .focused($focusedRow, equals: current.id)
-          .accessibilityLabel("Variation")
-          .accessibilityIdentifier("variationRow.label")
+        if current.variantId == nil {
+          TextField("e.g. C", text: label(of: current.id))
+            .font(IntradaFont.field)
+            .foregroundStyle(IntradaColor.ink)
+            .focused($focusedRow, equals: current.id)
+            .accessibilityLabel("Variation")
+            .accessibilityIdentifier("variationRow.label")
+        } else {
+          // A saved variation is renamed across the library, not on one item (#2247).
+          Text(current.label)
+            .font(IntradaFont.field)
+            .foregroundStyle(IntradaColor.ink)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .accessibilityLabel("Variation \(current.label)")
+            .accessibilityIdentifier("variationRow.label")
+        }
         Button {
           if current.hasMarks {
             confirmingRemoval = current

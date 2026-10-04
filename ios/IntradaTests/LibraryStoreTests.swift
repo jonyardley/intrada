@@ -299,6 +299,9 @@ final class LibraryStoreTests: XCTestCase {
     s.entries[0].plays[0].tempoChanges = [
       TempoChange(at: "2026-01-01T00:01:00Z", tempo: 84, clickSounding: true)
     ]
+    s.entries[0].plays[0].repHistory = [
+      RepEvent(action: .success, at: "2026-01-01T00:01:00Z", tempo: 96, clickSounding: true)
+    ]
     try store.saveSession(s)
 
     let got = try XCTUnwrap(try store.loadSessions().first)

@@ -154,8 +154,8 @@ extension LibraryStore {
   // bincode: positional encoding would fail to decode old rows after a field
   // change, and the device is the only copy.
 
-  /// `key` holds a spelling the core reads, as the item's column does; an
-  /// empty one is a chart whose key could not be read.
+  /// `key` holds a spelling, as the item's column does, or text the core
+  /// could not read, kept until a key is picked; empty is no key.
   struct StoredChart: Codable {
     var key: String
     var modality: String
@@ -182,9 +182,11 @@ extension LibraryStore {
     var raw: String
   }
 
-  static func encodeChordChart(_ chart: ChordChart?) throws -> String? {
+  static func encodeChordChart(_ chart: ChordChart?, keyIfUnreadable: StoredKeyJSON? = nil)
+    throws -> String?
+  {
     guard let chart else { return nil }
-    let key = try chart.key.map(stored)
+    let key = try chart.key.map(stored) ?? keyIfUnreadable
     let dto = StoredChart(
       key: key?.key ?? "", modality: key?.modality ?? modalities.encode(.major), metre: nil,
       sections: chart.sections.map { section in

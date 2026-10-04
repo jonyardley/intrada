@@ -1,9 +1,8 @@
 import XCTest
 
 /// Real-device UITest for variation management (#1083, renamed in #1733): a
-/// rename and a drag on the Edit screen (#1783), driven against "Major Scales", the seeded
-/// exercise whose demo variations are deterministic (`C`, `G`, `D`, `A`, `E`,
-/// in that order; see `app.rs`'s `LoadSampleData` seed).
+/// drag on the Edit screen (#1783), driven against "Major Scales", the seeded
+/// exercise whose one variation is "Hands separately" (`sample.rs`).
 ///
 /// Removing a variation moved to `LibraryBridgeTests` (#1825): plain taps, no keyboard.
 @MainActor
@@ -28,30 +27,11 @@ final class VariationManagementUITests: XCTestCase {
   }
 
   private func variationField(_ app: XCUIApplication, value: String) -> XCUIElement {
-    app.textFields.matching(
-      NSPredicate(format: "identifier == %@ AND value == %@", "variationRow.label", value)
+    app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "identifier == %@ AND (value == %@ OR label == %@)", "variationRow.label", value,
+        "Variation \(value)")
     ).firstMatch
-  }
-
-  func testRenameVariationPersistsAndLeavesOthersUntouched() {
-    let app = openScalesEditor()
-
-    let eField = variationField(app, value: "E")
-    XCTAssertTrue(eField.waitForExistence(timeout: 5), "E variation field")
-    eField.tap()
-    // One typeText call: eField is a live query on `value == "E"`, so a
-    // second call after a separate delete step lands can no longer
-    // re-resolve it, since the value has already changed (#1642).
-    eField.typeText(XCUIKeyboardKey.delete.rawValue + "Fa\n")
-
-    app.control("itemForm.confirm", spoken: "Save").tap()
-
-    // "Fa" isn't a key, so the details list the ladder as named rows.
-    XCTAssertTrue(
-      app.staticTexts["Fa"].waitForExistence(timeout: 5), "renamed variation reads back as Fa")
-    XCTAssertFalse(app.staticTexts["E"].exists, "old label gone")
-    XCTAssertTrue(app.staticTexts["C"].exists, "untouched variation still present")
-    XCTAssertTrue(app.staticTexts["G"].exists, "untouched variation still present")
   }
 
   /// The handle's own gesture, which synthesised touches drive: the system drag
@@ -59,18 +39,25 @@ final class VariationManagementUITests: XCTestCase {
   func testDraggingAHandleMovesItsRow() {
     let app = openScalesEditor()
 
-    let eHandle = app.row("variationRow.reorder", spokenContaining: "Reorder E")
-    let cHandle = app.row("variationRow.reorder", spokenContaining: "Reorder C")
-    XCTAssertTrue(eHandle.waitForExistence(timeout: 5), "E's reorder handle")
-    XCTAssertGreaterThan(
-      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
-      "E starts below C")
+    let add = app.buttons["Add a variation"]
+    XCTAssertTrue(add.waitForExistence(timeout: 5), "the add row under the saved variation")
+    add.tap()
+    app.typeText("Slow")
 
-    eHandle.press(
-      forDuration: 0.2, thenDragTo: cHandle, withVelocity: .slow, thenHoldForDuration: 0.3)
+    let slowHandle = app.row("variationRow.reorder", spokenContaining: "Reorder Slow")
+    let savedHandle = app.row("variationRow.reorder", spokenContaining: "Reorder Hands separately")
+    XCTAssertTrue(slowHandle.waitForExistence(timeout: 5), "the typed row's reorder handle")
+    XCTAssertGreaterThan(
+      variationField(app, value: "Slow").frame.minY,
+      variationField(app, value: "Hands separately").frame.minY,
+      "the typed row starts below the saved one")
+
+    slowHandle.press(
+      forDuration: 0.2, thenDragTo: savedHandle, withVelocity: .slow, thenHoldForDuration: 0.3)
 
     XCTAssertLessThan(
-      variationField(app, value: "E").frame.minY, variationField(app, value: "C").frame.minY,
-      "E dragged above C")
+      variationField(app, value: "Slow").frame.minY,
+      variationField(app, value: "Hands separately").frame.minY,
+      "the typed row dragged above the saved one")
   }
 }

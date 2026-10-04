@@ -17,7 +17,7 @@ struct VariationsSection: View {
         Eyebrow("Keys")
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: IntradaSpacing.card) {
-            ForEach(item.keys, id: \.label) { key in
+            ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
               KeyRingItem(key: key)
             }
           }
@@ -58,8 +58,6 @@ struct VariationsSection: View {
   }
 }
 
-/// One column in the Keys scroller: a ring (letter and arc) and the core's
-/// caption below.
 private struct KeyRingItem: View {
   let key: ItemKeyView
 

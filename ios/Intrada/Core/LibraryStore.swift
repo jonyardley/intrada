@@ -73,8 +73,12 @@ final class LibraryStore: ItemStore {
 
   private static func upsert(_ item: Item, in db: Database) throws {
     let chordChart =
-      try encodeChordChart(item.chordChart)
+      try encodeChordChart(
+        item.chordChart, keyIfUnreadable: storedChartKeyIfUnreadable(of: item.id, in: db))
       ?? storedIfUnreadable("chord_chart", of: item.id, as: StoredChart.self, in: db)
+    let keys =
+      try storedKeysIfUnreadable(of: item.id, unchanged: item.keys, in: db)
+      ?? encodeKeys(item.keys)
     let metre =
       try encodeMetre(item.metre)
       ?? storedIfUnreadable("metre", of: item.id, as: StoredMetre.self, in: db)
@@ -107,7 +111,7 @@ final class LibraryStore: ItemStore {
         try Self.encodeJSON(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
         chordChart, item.photoId, metre,
-        try Self.encodeJSON(item.variationIds), try Self.encodeKeys(item.keys),
+        try Self.encodeJSON(item.variationIds), keys,
       ])
     for s in item.sections {
       try db.execute(
@@ -154,6 +158,35 @@ final class LibraryStore: ItemStore {
       tryDecodeJSON(type, from: stored) == nil
     else { return nil }
     return stored
+  }
+
+  /// A key list holding one the core cannot read loads without it; while the
+  /// item's list is what loaded, the stored one stays so that key is not lost
+  /// (#2097, #2106).
+  private static func storedKeysIfUnreadable(
+    of id: String, unchanged keys: [Key], in db: Database
+  ) throws -> String? {
+    guard
+      let stored = try String.fetchOne(
+        db, sql: "SELECT keys FROM item WHERE id = ?", arguments: [id])
+    else { return nil }
+    guard let dtos = tryDecodeJSON([StoredKeyJSON].self, from: stored) else {
+      return keys.isEmpty ? stored : nil
+    }
+    let readable = decodeKeys(stored)
+    return readable.count < dtos.count && readable == keys ? stored : nil
+  }
+
+  private static func storedChartKeyIfUnreadable(of id: String, in db: Database) throws
+    -> StoredKeyJSON?
+  {
+    guard
+      let stored = try String.fetchOne(
+        db, sql: "SELECT chord_chart FROM item WHERE id = ?", arguments: [id]),
+      let chart = tryDecodeJSON(StoredChart.self, from: stored),
+      !chart.key.isEmpty, key(text: chart.key, modality: chart.modality) == nil
+    else { return nil }
+    return StoredKeyJSON(key: chart.key, modality: chart.modality)
   }
 
   /// A key the core could not read loads as none, so writing none back would

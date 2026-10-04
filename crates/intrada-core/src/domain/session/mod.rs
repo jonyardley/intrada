@@ -129,15 +129,19 @@ impl Play {
         self.section_id.is_none() && self.variation_ids.is_empty()
     }
 
-    /// The same section, key spelling and set of variations, in any order.
+    /// The same section, key in either spelling, and set of variations, in any order.
     pub fn is_played(&self, way: &PlayWay) -> bool {
         let sorted = |ids: &[String]| {
             let mut ids = ids.to_vec();
             ids.sort();
             ids
         };
+        let same_key = match (self.key, way.key) {
+            (Some(open), Some(named)) => open.same_key(&named),
+            (open, named) => open == named,
+        };
         self.section_id == way.section_id
-            && self.key == way.key
+            && same_key
             && sorted(&self.variation_ids) == sorted(&way.variation_ids)
     }
 

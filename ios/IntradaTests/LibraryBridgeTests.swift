@@ -105,6 +105,35 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertTrue(view.variations.contains { $0.label == "Swung" }, "and still offered")
   }
 
+  /// The library's variations load through the bincode wire on every launch
+  /// after the first (#846, #2246): a tombstone stays hidden, a live row is
+  /// offered, and a loaded library is not seeded again.
+  func testRealBridgeLoadedVariationsReachTheView() throws {
+    let bridge = RowsBridge()
+    let load = try XCTUnwrap(
+      try bridge.update(.startApp).first {
+        if case .persistence(.loadVariations) = $0.effect { return true } else { return false }
+      })
+    let rows: [Variation] = [
+      Variation(
+        id: "v-swung", label: "Swung", updatedAt: "2026-10-01T09:00:00Z", deletedAt: nil),
+      Variation(
+        id: "v-gone", label: "Gone", updatedAt: "2026-10-01T09:00:00Z",
+        deletedAt: "2026-10-02T09:00:00Z"),
+    ]
+
+    let after = try bridge.resolve(load.id, persistenceOutput: .variations(rows))
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    XCTAssertEqual(view.variations.map(\.id), ["v-swung"])
+    XCTAssertEqual(view.variations.map(\.label), ["Swung"])
+    XCTAssertFalse(
+      after.contains {
+        if case .persistence(.saveVariations) = $0.effect { return true } else { return false }
+      }, "a library with rows is not seeded")
+  }
+
   /// `VariationEvent` crosses the live bridge (#846, #2246): a rename keeps
   /// the id, so the marks stay; a delete takes it out of every list.
   func testRealBridgeRenamingAndDeletingAVariation() throws {

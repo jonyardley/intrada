@@ -275,7 +275,7 @@ final class ItemFormModel {
 }
 
 /// One row of the Variations section. `variantId` is the saved variation it was
-/// loaded from, so a rename keeps its marks; `nil` for a row typed on the form.
+/// loaded from, sent by id only; `nil` for a row typed on the form.
 struct VariationRow: Identifiable, Hashable {
   let id = UUID()
   var variantId: String?
