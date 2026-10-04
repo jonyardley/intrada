@@ -118,7 +118,7 @@ struct FirstRunScreen: View {
     return t < SplashFrame.duration ? .at(t) : nil
   }
 
-  static let space = "firstRun"
+  nonisolated static let space = "firstRun"
 
   /// Keeps the steps a phone's width on iPad rather than stretched across it.
   private static let readableWidth: CGFloat = 560

@@ -102,7 +102,7 @@ struct SectionSheet: View {
               "Beats per minute. Leave empty to use the \(item.itemType.label.lowercased())'s tempo"
           )
           .cardSurface()
-          if let existing {
+          if existing != nil {
             DeleteButton(title: "Remove section") { confirmingRemoval = true }
               .accessibilityIdentifier("sectionSheet.remove")
           }
