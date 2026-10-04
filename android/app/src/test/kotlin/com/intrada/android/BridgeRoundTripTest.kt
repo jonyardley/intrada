@@ -13,6 +13,7 @@ import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ExerciseLink
+import com.intrada.shared.Felt
 import com.intrada.shared.FocusKind
 import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
@@ -482,7 +483,16 @@ class BridgeRoundTripTest {
                 .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
+        val building = bridge.view().buildingSetlist
+        assertEquals(
+            listOf("Tempo", "Clean in a row", "From memory", "Evenness"),
+            building?.focusChoices?.map { it.label },
+        )
+        assertEquals(
+            listOf(FocusKind.TEMPO, FocusKind.CLEANREPS, FocusKind.FROMMEMORY, FocusKind.EVENNESS),
+            building?.focusChoices?.map { it.kind },
+        )
+        val entryId = building?.entries?.firstOrNull()?.id.orEmpty()
         bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 1200u)))
         bridge.update(
             Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
@@ -511,6 +521,18 @@ class BridgeRoundTripTest {
         assertEquals(sections.last(), active?.currentSectionId)
         assertEquals("B", active?.record?.segment?.label)
         assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
+
+        bridge.update(
+            Event.Session(
+                SessionEvent.PrepareReflection(
+                    "2026-10-04T09:20:00Z",
+                    TempoReading(bpm = 84.toUShort(), clickSounding = false),
+                )
+            )
+        )
+        val felt = bridge.view().activeSession?.record?.finish?.feltChoices
+        assertEquals(listOf("Comfortable", "Hard work", "Strained"), felt?.map { it.label })
+        assertEquals(listOf(Felt.COMFORTABLE, Felt.HARDWORK, Felt.STRAINED), felt?.map { it.felt })
     }
 
     private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =

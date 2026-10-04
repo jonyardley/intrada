@@ -48,6 +48,12 @@ final class PracticeRecordBridgeTests: XCTestCase {
     let building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
     let lastTimes: [LastTimeView] = building.lastTimes
     XCTAssertEqual(lastTimes, [], "nothing played yet, so nothing to offer")
+    let focusChoices: [FocusChoiceView] = building.focusChoices
+    XCTAssertEqual(
+      focusChoices.map(\.label), ["Tempo", "Clean in a row", "From memory", "Evenness"])
+    XCTAssertEqual(
+      focusChoices.map(\.kind),
+      [FocusKind.tempo, FocusKind.cleanReps, FocusKind.fromMemory, FocusKind.evenness])
     let entryId = try XCTUnwrap(building.entries.first?.id)
     _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 1200)))
     let segments: [Segment] = [
@@ -109,15 +115,15 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(sheet.intentionMetRead, IntentionMet.yes, "A reached 84 with the click")
     XCTAssertFalse(sheet.asksIntention)
     let felt: [FeltChoiceView] = sheet.feltChoices
-    XCTAssertEqual(felt.map(\.label), ["Easy", "Effortful", "Tense"])
-    XCTAssertEqual(felt.map(\.felt), [Felt.easy, Felt.effortful, Felt.tense])
+    XCTAssertEqual(felt.map(\.label), ["Comfortable", "Hard work", "Strained"])
+    XCTAssertEqual(felt.map(\.felt), [Felt.comfortable, Felt.hardWork, Felt.strained])
     let obstacles: [ObstacleChoiceView] = sheet.obstacleChoices
     XCTAssertEqual(obstacles.first?.obstacle, Obstacle.notes)
 
     let note = "A section, bar 12 rushed at 84"
     let bar12 = NoteSpan(start: 11, end: 17)
     let answers = ReflectionAnswers(
-      marks: [], note: note, tempos: [], felt: .tense, gotInTheWay: [.memory],
+      marks: [], note: note, tempos: [], felt: .strained, gotInTheWay: [.memory],
       notePoints: [bar12], intentionMet: nil)
     _ = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
     let offers: [NotePointView] = try XCTUnwrap(
@@ -132,7 +138,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
       .session(.nextItem(now: at(900), nextItemStartedAt: at(900), reading: sounding(80))))
     for event: SessionEvent in [
       .confirmNotePoint(entryId: entryId, span: bar12),
-      .setFelt(entryId: entryId, felt: .tense),
+      .setFelt(entryId: entryId, felt: .strained),
       .toggleObstacle(entryId: entryId, obstacle: .memory),
       .answerIntention(entryId: entryId, answer: .notYet),
     ] {
@@ -140,7 +146,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
     }
 
     let entry = try XCTUnwrap(try bridge.rendered().summary?.entries.first)
-    XCTAssertEqual(entry.record.felt, .tense)
+    XCTAssertEqual(entry.record.felt, .strained)
     XCTAssertEqual(entry.record.gotInTheWay, [.memory])
     XCTAssertEqual(entry.record.notePoints.map(\.label), ["Bar 12"])
     XCTAssertEqual(entry.record.intentionMet, .notYet, "their own answer shows over the read")
@@ -171,7 +177,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
         Segment(sectionId: "s-a", plannedSecs: 600), Segment(sectionId: "s-b", plannedSecs: 600),
       ],
       focus: IntentionFocus(kind: .cleanReps, sectionId: "s-b", target: 5),
-      intentionMet: .partly, felt: .effortful, gotInTheWay: [.fingering, .tone],
+      intentionMet: .partly, felt: .hardWork, gotInTheWay: [.fingering, .tone],
       notePoints: [point])
     let clock = SegmentClock(
       index: 0, startedAt: at(0), allowanceSecs: 720, takenFromNextSecs: 120, leftOutSecs: 45)
@@ -205,5 +211,36 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(saved.segment?.allowanceSecs, 720)
     XCTAssertEqual(saved.segment?.takenFromNextSecs, 120)
     XCTAssertEqual(saved.segment?.leftOutSecs, 45)
+  }
+
+  func testRealBridgeEachFeltChoiceRoundTripsInAPracticeInProgress() throws {
+    for felt: Felt in [.comfortable, .hardWork, .strained] {
+      let entry = SetlistEntry(
+        id: "e1", itemId: "i1", itemTitle: "Nocturne", itemType: .piece, position: 0,
+        durationSecs: 0, status: .notAttempted, notes: nil, intention: nil,
+        plannedDurationSecs: nil, groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
+        plays: [
+          Play(
+            id: "p1", sectionId: nil, key: nil, variationIds: [], startedAt: at(0), seconds: 0,
+            repTarget: nil, repCount: nil, repHistory: nil, tempoChanges: [], achievedTempo: nil,
+            clickPattern: nil, score: nil, away: [])
+        ], segments: [], focus: nil, intentionMet: nil, felt: felt, gotInTheWay: [],
+        notePoints: [])
+      let blob = ActiveSession(
+        id: "felt", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
+        sessionStartedAt: at(0), reflection: nil, segment: nil)
+
+      let bridge = RowsBridge()
+      _ = try bridge.update(.startApp)
+      _ = try bridge.update(.session(.recoverSession(session: blob, now: at(0))))
+      XCTAssertNil(try bridge.rendered().error)
+      let requests = try bridge.update(.session(.wentAway(at: at(60))))
+      let saved = try XCTUnwrap(
+        requests.lazy.compactMap { request -> ActiveSession? in
+          if case .app(.saveSessionInProgress(let active)) = request.effect { return active }
+          return nil
+        }.first, "going away saves the copy")
+      XCTAssertEqual(saved.entries.first?.felt, felt)
+    }
   }
 }

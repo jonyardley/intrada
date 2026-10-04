@@ -293,7 +293,7 @@
                 entries: [.previewExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [])))
     }
 
     static var previewBuildingEmpty: Store {
@@ -303,7 +303,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -315,7 +315,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -332,7 +332,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -359,7 +359,8 @@
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
-            lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [])))
+            lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
+            focusChoices: [])))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -385,7 +386,7 @@
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [])))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -404,7 +405,7 @@
                 durationDisplay: "12 min", entries: block, takenElsewhere: [])
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [])))
     }
 
     /// Player Focus: a piece mid-session, no reps.
