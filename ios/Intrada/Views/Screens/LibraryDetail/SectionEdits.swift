@@ -17,11 +17,6 @@ enum SectionEdits {
     return "\(first) to \(last)"
   }
 
-  static func bars(typed text: String) -> BarsInput {
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    return trimmed.isEmpty ? .blank : .typed(trimmed)
-  }
-
   static func saving(_ edit: SectionEdit, into sections: [SectionView]) -> [SectionEdit] {
     var edits = sections.map(Self.edit(from:))
     if let id = edit.id, let index = edits.firstIndex(where: { $0.id == id }) {

@@ -1,7 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// Which section the sheet opens on: a new one, or one already in the list.
 enum SectionSheetTarget: Identifiable {
   case new
   case existing(SectionView)
@@ -27,6 +26,7 @@ struct SectionSheet: View {
   @State private var kind: SectionKind
   @State private var bpm: String
   @State private var formError: String?
+  @State private var confirmingRemoval = false
 
   init(item: LibraryItemView, target: SectionSheetTarget, previewError: String? = nil) {
     self.item = item
@@ -53,7 +53,15 @@ struct SectionSheet: View {
         Button("Cancel") { dismiss() }
           .accessibilityIdentifier("sectionSheet.cancel")
       },
-      content: { form })
+      content: { form }
+    )
+    // Alert, not confirmationDialog: it always shows Cancel, iPad included.
+    .alert("Remove \(existing?.label ?? "this section")?", isPresented: $confirmingRemoval) {
+      Button("Remove", role: .destructive) {
+        if let existing { remove(existing) }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
   }
 
   private var form: some View {
@@ -80,7 +88,10 @@ struct SectionSheet: View {
           FieldCard("Kind") {
             SegmentedPills(
               options: [SectionKind.form, .troubleSpot], selection: $kind,
-              label: { $0 == .form ? "Part of the piece" : SectionText.trickySpot },
+              label: {
+                $0 == .form
+                  ? "Part of the \(item.itemType.label.lowercased())" : SectionText.trickySpot
+              },
               identifier: { $0 == .form ? "sectionSheet.kind.form" : "sectionSheet.kind.spot" },
               layout: .fullWidthTrack)
           }
@@ -92,7 +103,7 @@ struct SectionSheet: View {
           )
           .cardSurface()
           if let existing {
-            DeleteButton(title: "Remove section") { remove(existing) }
+            DeleteButton(title: "Remove section") { confirmingRemoval = true }
               .accessibilityIdentifier("sectionSheet.remove")
           }
         }
@@ -107,12 +118,12 @@ struct SectionSheet: View {
 
   private func save() {
     let edit = SectionEdit(
-      id: existing?.id, name: name, bars: SectionEdits.bars(typed: bars), kind: kind,
-      targetBpm: bpm.trimmingCharacters(in: .whitespacesAndNewlines))
+      id: existing?.id, name: name, bars: .typed(bars), kind: kind, targetBpm: bpm)
     send(SectionEdits.saving(edit, into: item.sections))
   }
 
   private func remove(_ section: SectionView) {
+    Haptic.warning.play()
     send(SectionEdits.removing(section.id, from: item.sections))
   }
 

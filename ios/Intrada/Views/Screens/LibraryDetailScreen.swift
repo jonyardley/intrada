@@ -307,7 +307,9 @@ struct LibraryDetailScreen: View {
   private var sectionsSection: some View {
     SectionsSection(
       item: item, onAdd: { editingSection = .new },
-      onEdit: { editingSection = .existing($0) })
+      onEdit: { editingSection = .existing($0) }
+    )
+    .id(item.id)
   }
 
   private var starAndEditActions: some View {

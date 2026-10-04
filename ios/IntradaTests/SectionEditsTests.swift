@@ -50,20 +50,6 @@ struct SectionEditsTests {
     #expect(SectionEdits.barsText(of: Self.section("s", first: first, last: last)) == expected)
   }
 
-  @Test(
-    "typed bars go to the core as typed, and an empty field is blank",
-    arguments: [
-      ("", nil),
-      ("   ", nil),
-      ("1 to 16", "1 to 16"),
-      (" 16-1 ", "16-1"),
-      ("bar 12", "bar 12"),
-    ] as [(String, String?)])
-  func typedBars(text: String, typed: String?) {
-    let expected: BarsInput = typed.map { .typed($0) } ?? .blank
-    #expect(SectionEdits.bars(typed: text) == expected)
-  }
-
   @Test("saving a new section appends it after the others")
   func savingANewSection() {
     let sections = [Self.section("a", name: "A1", first: 1, last: 14)]

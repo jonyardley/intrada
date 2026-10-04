@@ -1,6 +1,7 @@
 import XCTest
 
-/// A section added on the item screen is still there after a relaunch (#2247).
+/// A section added on the item screen is still there after a relaunch, and
+/// one removed in Reorder is gone once Done saves (#2247).
 /// Launched without seed data on purpose: seed mode skips persistence, and the
 /// relaunch is the point.
 @MainActor
@@ -47,6 +48,15 @@ final class SectionsUITests: XCTestCase {
       app.row("sections.row", spokenContaining: "A1, bars 1 to 16").waitForExistence(
         timeout: contendedTimeout),
       "the section survived the relaunch")
+
+    // Removed in Reorder and saved on Done: the empty slot comes back.
+    app.buttons["Reorder or remove sections"].tap()
+    app.buttons["Remove A1"].tap()
+    app.buttons["Done reordering sections"].tap()
+    XCTAssertTrue(
+      app.control("sections.add", spoken: "Add sections to this piece").waitForExistence(
+        timeout: 5),
+      "the piece has no sections once Done saves the removal")
   }
 
   private func openItem(_ app: XCUIApplication, title: String) {

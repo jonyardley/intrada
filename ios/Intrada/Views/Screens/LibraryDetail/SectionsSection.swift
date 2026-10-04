@@ -81,8 +81,8 @@ struct SectionsSection: View {
       Button {
         reordering?.removeAll { $0.id == section.id }
       } label: {
-        Image(systemName: "minus.circle.fill")
-          .font(IntradaFont.bodyMedium)
+        Image(systemName: "minus.circle")
+          .iconSize(.control)
           .foregroundStyle(IntradaColor.danger)
           .frame(width: 44, height: 44)
           .contentShape(Rectangle())
@@ -120,18 +120,28 @@ struct SectionsSection: View {
     reordering = rows
   }
 
-  // Removals and the new order land as one write; an unchanged list is the
-  // core's no-op.
+  // Removals and the new order land as one write, and the list stays in
+  // reorder until the core accepts it, so a refusal loses nothing. Only rows
+  // this item still holds go out: a list carried over from another item would
+  // replace that item's sections (iPad keeps the pane's identity).
   private func finishReordering() {
     guard let rows = reordering else { return }
-    reordering = nil
-    store.send(
-      .item(.updateSections(id: item.id, sections: rows.map(SectionEdits.edit(from:)))),
-      onSuccess: .impact)
+    let current = Swift.Set(item.sections.map(\.id))
+    guard rows.allSatisfy({ current.contains($0.id) }) else {
+      reordering = nil
+      return
+    }
+    let unchanged = rows.map(\.id) == item.sections.map(\.id)
+    if unchanged
+      || store.sendAccepted(
+        .item(.updateSections(id: item.id, sections: rows.map(SectionEdits.edit(from:)))))
+    {
+      if !unchanged { Haptic.impact.play() }
+      reordering = nil
+    }
   }
 }
 
-/// The section's label over its bars and, for a tricky spot, that tag.
 private struct SectionTitleStack: View {
   let section: SectionView
 
