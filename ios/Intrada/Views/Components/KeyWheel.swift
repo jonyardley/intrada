@@ -22,6 +22,8 @@ struct KeyWheel<Hub: View>: View {
       }
     }
     .frame(width: 300, height: 300)
+    // The geometry is fixed, so its labels stop growing where they still fit.
+    .dynamicTypeSize(...DynamicTypeSize.xxLarge)
   }
 
   private func isSelected(ring: Int, mode: Modality) -> Bool {

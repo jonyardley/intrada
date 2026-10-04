@@ -84,11 +84,12 @@ struct VariationsSheet: View {
     let matches = VariationChoice.matches(query, in: library)
     let addable = choice.addable(query, in: library)
     return VStack(spacing: 0) {
-      ForEach(matches, id: \.id) { variation in
+      ForEach(Array(matches.enumerated()), id: \.element.id) { index, variation in
+        if index > 0 { HairlineDivider() }
         row(variation.label, chosen: choice.isChosen(variation.id)) { choice.toggle(variation.id) }
-        HairlineDivider()
       }
       if let addable {
+        if !matches.isEmpty { HairlineDivider() }
         AddRowButton(title: "Add \u{201C}\(addable)\u{201D}", style: .plain) {
           choice.toggleNew(addable)
           query = ""
@@ -161,7 +162,7 @@ struct VariationsSheet: View {
   }
 
   private func rename(_ variation: VariationOptionView) {
-    refusing { store.sendAccepted(.variation(.rename(id: variation.id, label: renameText))) }
+    _ = send(.variation(.rename(id: variation.id, label: renameText)))
   }
 
   private func save() {
@@ -171,29 +172,17 @@ struct VariationsSheet: View {
       dismiss()
       return
     }
-    let saved = refusing {
-      store.sendAccepted(
-        .item(
-          .updateItemVariations(
-            id: item.id, variationIds: choice.ids, newLabels: choice.newLabels)))
-    }
+    let saved = send(
+      .item(
+        .updateItemVariations(
+          id: item.id, variationIds: choice.ids, newLabels: choice.newLabels)))
     if saved { dismiss() }
   }
 
-  // A refusal stays in the sheet and leaves the core, so the app banner does
-  // not repeat it (#1595).
-  @discardableResult
-  private func refusing(_ send: () -> Bool) -> Bool {
-    withAnimation { formError = nil }
-    let accepted = send()
-    if let error = store.viewModel?.error ?? (accepted ? nil : "Couldn't save. Try again.") {
-      withAnimation { formError = error }
-      store.send(.clearError)
-      Haptic.error.play()
-      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
-      return false
-    }
-    Haptic.success.play()
-    return true
+  private func send(_ event: Event) -> Bool {
+    formError = nil
+    let error = store.sendFromSheet(event)
+    withAnimation { formError = error }
+    return error == nil
   }
 }

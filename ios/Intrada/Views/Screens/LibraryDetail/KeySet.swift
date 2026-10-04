@@ -33,7 +33,6 @@ enum KeySet {
     return keys
   }
 
-  /// Adds every spoke of `mode` not already chosen, keeping the rest as they are.
   static func addingAll(_ mode: Modality, to keys: [Key]) -> [Key] {
     (0..<12).reduce(keys) { keys, ring in
       chosenSpelling(in: keys, ring: ring, mode: mode) == nil

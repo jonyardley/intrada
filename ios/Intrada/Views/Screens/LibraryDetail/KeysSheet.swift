@@ -10,6 +10,7 @@ struct KeysSheet: View {
   @Environment(\.dismiss) private var dismiss
   @State private var keys: [Key]
   @State private var formError: String?
+  @Environment(\.dynamicTypeSize) private var typeSize
 
   init(item: LibraryItemView, keys: [Key]? = nil) {
     self.item = item
@@ -34,7 +35,9 @@ struct KeysSheet: View {
           FormErrorBanner(message: formError)
         }
         KeyWheel(
-          chosen: { KeySet.chosenSpelling(in: keys, ring: $0, mode: $1) },
+          chosen: { ring, mode in
+            lit.first { $0.ring == ring && $0.mode == mode }?.spelling
+          },
           onTap: { ring, mode in
             keys = KeySet.tap(keys, ring: ring, mode: mode)
             Haptic.selection.play()
@@ -52,7 +55,7 @@ struct KeysSheet: View {
           }
         )
         .padding(.vertical, IntradaSpacing.cardCompact)
-        HStack(spacing: IntradaSpacing.controlGap) {
+        presetLayout {
           chip("All major", identifier: "keysSheet.allMajor") {
             keys = KeySet.addingAll(.major, to: keys)
           }
@@ -72,6 +75,17 @@ struct KeysSheet: View {
     }
   }
 
+  // Asked once per render: the wheel reads it for every spoke.
+  private var lit: [KeyHelper.Selection] {
+    keys.compactMap(KeyHelper.selection)
+  }
+
+  private var presetLayout: AnyLayout {
+    typeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(spacing: IntradaSpacing.controlGap))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.controlGap))
+  }
+
   private func chip(_ title: String, identifier: String, action: @escaping () -> Void)
     -> some View
   {
@@ -85,22 +99,12 @@ struct KeysSheet: View {
     .accessibilityIdentifier(identifier)
   }
 
-  // Dismiss only once the core accepts; a refusal stays here (#1595).
   private func save() {
     guard keys != item.keys.map(\.key) else {
       dismiss()
       return
     }
-    formError = nil
-    let accepted = store.sendAccepted(.item(.updateKeys(id: item.id, keys: keys)))
-    if let error = store.viewModel?.error ?? (accepted ? nil : "Couldn't save. Try again.") {
-      formError = error
-      store.send(.clearError)
-      Haptic.error.play()
-      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
-    } else {
-      Haptic.success.play()
-      dismiss()
-    }
+    formError = store.sendFromSheet(.item(.updateKeys(id: item.id, keys: keys)))
+    if formError == nil { dismiss() }
   }
 }

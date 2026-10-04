@@ -32,7 +32,6 @@ struct VariationChoice: Equatable {
     }
   }
 
-  /// The library rows whose label holds the typed text, ignoring case.
   static func matches(_ query: String, in library: [VariationOptionView]) -> [VariationOptionView] {
     let text = trimmed(query)
     guard !text.isEmpty else { return [] }

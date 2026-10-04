@@ -67,12 +67,14 @@ struct SectionsSection: View {
   private var headerAction: SectionHeader.Action? {
     if reordering != nil {
       return .init(
-        title: "Done", accessibilityLabel: "Done reordering sections", perform: finishReordering)
+        title: "Done", accessibilityLabel: "Done reordering sections",
+        identifier: "sections.header",
+        perform: finishReordering)
     }
     guard !item.sections.isEmpty else { return nil }
     return .init(
       title: "Reorder", accessibilityLabel: "Reorder or remove sections",
-      perform: { reordering = item.sections })
+      identifier: "sections.header", perform: { reordering = item.sections })
   }
 
   private func reorderRow(_ section: SectionView) -> some View {

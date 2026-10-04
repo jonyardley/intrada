@@ -126,7 +126,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  // #1783: Variations empty state: the two key presets, and Add variations opening Edit.
+  // #2247: no keys or variations yet: Choose variations and Practise in other keys.
   func testExerciseDetailVariationsEmptyState() {
     let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
     let pushed = NavigationStack(

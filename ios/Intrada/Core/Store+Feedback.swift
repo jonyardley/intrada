@@ -58,3 +58,20 @@ extension Store {
     return bridgeFailureSeq == failuresBefore && after == before
   }
 }
+
+extension Store {
+  /// A sheet's save (#1595): the core's refusal comes back for the sheet to show
+  /// inline and leaves the core, so the app banner does not repeat it; nothing
+  /// celebrates until the core accepts.
+  func sendFromSheet(_ event: Event) -> String? {
+    let accepted = sendAccepted(event)
+    guard let error = viewModel?.error ?? (accepted ? nil : "Couldn't save. Try again.") else {
+      Haptic.success.play()
+      return nil
+    }
+    send(.clearError)
+    Haptic.error.play()
+    UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
+    return error
+  }
+}

@@ -74,7 +74,7 @@ final class VariationManagementUITests: XCTestCase {
     XCTAssertTrue(scalesRow.waitForExistence(timeout: 10), "Major Scales library row")
     scalesRow.tap()
 
-    app.buttons["Choose variations"].tap()
+    app.control("variations.header", spoken: "Choose variations").tap()
     let row = app.row("variationsSheet.row", spokenContaining: "Hands separately")
     XCTAssertTrue(row.waitForExistence(timeout: 5), "the saved variation in the sheet")
     row.press(forDuration: 1.0)

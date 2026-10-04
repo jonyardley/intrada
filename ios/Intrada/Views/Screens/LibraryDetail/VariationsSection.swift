@@ -56,7 +56,9 @@ struct VariationsSection: View {
   }
 
   private func choose(_ what: String, _ action: @escaping () -> Void) -> SectionHeader.Action {
-    .init(title: "Choose", accessibilityLabel: "Choose \(what)", perform: action)
+    .init(
+      title: "Choose", accessibilityLabel: "Choose \(what)", identifier: "\(what).header",
+      perform: action)
   }
 }
 
