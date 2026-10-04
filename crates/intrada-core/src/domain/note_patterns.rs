@@ -701,7 +701,7 @@ mod tests {
 
     #[test]
     fn spans_are_byte_offsets_in_notes_with_non_ascii_text() {
-        let note = "Coda \u{2013} bars 12\u{2013}16, \u{2669}=84 caf\u{e9}";
+        let note = "Coda \u{2013} bars 12\u{2013}16, \u{2669}=84 na\u{ef}ve";
         let points = read_note(note, &FORM);
         assert_eq!(
             points,
