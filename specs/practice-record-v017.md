@@ -27,8 +27,8 @@ Wave 3  builder stream (#2249 build, #2303, #2315 split)
         live + finish stream (#2249 spots and scoring, #2306, #2307, #2308, #2315 move on)
 ```
 
-The core PR carries the ViewModel projections both screen streams read, so
-wave 3 needs no core change. Wave 3 starts after the Claude Design pass for the
+The core PR carries the ViewModel projections both screen streams read; wave 3
+needs one small core change first (#2388, see Decided). Wave 3 starts after the Claude Design pass for the
 builder, the practice screen and the finish sheet.
 
 ## Data shape
