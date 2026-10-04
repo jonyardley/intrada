@@ -237,10 +237,7 @@ pub struct KeyTap {
 /// selects the spoke's default. `None` for a ring off the wheel.
 pub fn next_on_tap(current: Option<&Key>, ring: u8, mode: Modality) -> Option<KeyTap> {
     let ring = usize::from(ring);
-    let primary = match mode {
-        Modality::Major => CIRCLE_MAJOR.get(ring)?,
-        Modality::Minor => CIRCLE_MINOR.get(ring)?,
-    };
+    let primary = circle(mode).get(ring)?;
     let flip_to = current
         .and_then(wheel_selection)
         .filter(|sel| usize::from(sel.ring) == ring && sel.modality == mode)
@@ -276,7 +273,12 @@ pub fn tap_key_set(keys: &[Key], ring: u8, mode: Modality) -> Vec<Key> {
         return keys;
     };
     match next_on_tap(Some(&keys[index]), ring, mode) {
-        Some(tap) if tap.flipped && keys[index].spelling() == primary_for(ring, mode) => {
+        Some(tap)
+            if tap.flipped
+                && circle(mode)
+                    .get(usize::from(ring))
+                    .is_some_and(|p| keys[index].spelling() == *p) =>
+        {
             keys[index] = tap.key;
         }
         _ => {
@@ -302,12 +304,11 @@ pub fn add_all_to_key_set(keys: &[Key], mode: Modality) -> Vec<Key> {
     })
 }
 
-fn primary_for(ring: u8, mode: Modality) -> &'static str {
-    let circle = match mode {
+fn circle(mode: Modality) -> &'static [&'static str; 12] {
+    match mode {
         Modality::Major => &CIRCLE_MAJOR,
         Modality::Minor => &CIRCLE_MINOR,
-    };
-    circle.get(usize::from(ring)).copied().unwrap_or_default()
+    }
 }
 
 fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
@@ -323,10 +324,7 @@ fn enharmonic_alt(ring: usize, mode: Modality) -> Option<&'static str> {
 }
 
 fn ring_for(spelling: &str, mode: Modality) -> Option<KeyWheelSelection> {
-    let circle = match mode {
-        Modality::Major => &CIRCLE_MAJOR,
-        Modality::Minor => &CIRCLE_MINOR,
-    };
+    let circle = circle(mode);
     (0..12)
         .find(|&ring| circle[ring] == spelling || enharmonic_alt(ring, mode) == Some(spelling))
         .map(|ring| KeyWheelSelection {

@@ -404,7 +404,7 @@ fn encode_keys(keys: &[crate::Key]) -> Result<Vec<Vec<u8>>, CoreError> {
     keys.iter().map(encode_key).collect()
 }
 
-/// The keys sheet edits an unsaved list, so it asks like the single tap (#2372).
+/// A plain call, not an Event: the sheet edits an unsaved list (#2226, #2372).
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn key_set_tap(
     keys: Vec<Vec<u8>>,
