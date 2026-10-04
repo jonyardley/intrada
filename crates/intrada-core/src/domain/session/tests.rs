@@ -2070,6 +2070,7 @@ fn test_recover_session() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        segment: None,
     };
 
     update(
@@ -2106,6 +2107,7 @@ fn test_recover_session_reanchors_current_item_timer() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        segment: None,
     };
 
     update(
@@ -2151,6 +2153,7 @@ fn a_corrupt_play_time_in_the_saved_copy_resumes_from_now() {
                 current_item_started_at: now,
                 session_started_at: now,
                 reflection: None,
+                segment: None,
             },
             now,
         }),
@@ -2185,6 +2188,7 @@ fn test_recover_session_reanchors_open_play_so_close_excludes_dead_time() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        segment: None,
     };
 
     update(
@@ -2254,6 +2258,7 @@ fn test_recover_session_reanchors_only_the_current_entry_play() {
         current_item_started_at: started_yesterday,
         session_started_at: started_yesterday,
         reflection: None,
+        segment: None,
     };
 
     update(
@@ -2291,6 +2296,7 @@ fn test_recover_session_when_not_idle() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        segment: None,
     };
 
     update(
@@ -2318,6 +2324,7 @@ fn test_recover_session_refuses_empty_setlist_and_clears_blob() {
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        segment: None,
     };
 
     let app = Intrada;
@@ -3169,7 +3176,7 @@ fn set_plan(model: &mut Model, entry_id: &str, sections: &[&str], variations: &[
 fn planned(model: &Model) -> (Vec<String>, Vec<String>) {
     let entry = &session_entries(model)[0];
     (
-        entry.planned_section_ids.clone(),
+        entry.planned_section_ids(),
         entry.planned_variation_ids.clone(),
     )
 }
@@ -3346,11 +3353,16 @@ fn the_plan_and_what_was_played_both_reach_the_saved_session() {
     assert_eq!(model.sessions.len(), 1);
     assert_eq!(model.sessions[0].capture_version, Some(CAPTURE_VERSION));
     let saved = &model.sessions[0].entries[0];
-    assert_eq!(saved.planned_section_ids, vec!["s-coda".to_string()]);
+    assert_eq!(saved.planned_section_ids(), vec!["s-coda".to_string()]);
     assert_eq!(saved.planned_variation_ids, vec!["v-c".to_string()]);
+    assert_eq!(
+        play_of(saved).section_id.as_deref(),
+        Some("s-coda"),
+        "the planned section opens the first play (#2249)"
+    );
     assert!(
-        play_of(saved).is_plain_run_through(),
-        "the plan is not the record: the first play is whatever was played"
+        play_of(saved).variation_ids.is_empty(),
+        "planned variations stay a plan: the play is what was played"
     );
 }
 
@@ -5443,8 +5455,17 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
             achieved_tempo: Some(96),
             click_pattern: None,
             score: Some(6),
+            away: Vec::new(),
         }],
-        planned_section_ids: vec!["s-1".to_string()],
+        segments: vec![Segment {
+            section_id: "s-1".to_string(),
+            planned_secs: 300,
+        }],
+        focus: None,
+        intention_met: None,
+        felt: None,
+        got_in_the_way: Vec::new(),
+        note_points: Vec::new(),
         planned_variation_ids: vec!["v-2".to_string()],
     });
 }
@@ -5459,7 +5480,32 @@ fn pinned_active_session() -> ActiveSession {
     touched.intention = Some("evenness".to_string());
     touched.planned_duration_secs = Some(300);
     touched.group_id = Some("g1".to_string());
-    touched.planned_section_ids = vec!["s-1".to_string()];
+    touched.segments = vec![
+        Segment {
+            section_id: "s-1".to_string(),
+            planned_secs: 180,
+        },
+        Segment {
+            section_id: "s-2".to_string(),
+            planned_secs: 120,
+        },
+    ];
+    touched.focus = Some(IntentionFocus {
+        kind: FocusKind::Tempo,
+        section_id: Some("s-1".to_string()),
+        target: Some(84),
+    });
+    touched.intention_met = Some(IntentionMet::Partly);
+    touched.felt = Some(Felt::Tense);
+    touched.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Memory];
+    touched.note_points = vec![NotePoint {
+        kind: NotePointKind::Bars(crate::domain::section::BarRange {
+            first: 12,
+            last: 14,
+        }),
+        section_id: Some("s-1".to_string()),
+        span: NoteSpan { start: 0, end: 12 },
+    }];
     touched.planned_variation_ids = vec!["v-1".to_string()];
     touched.planned_rep_target = Some(10);
     touched.plays = vec![Play {
@@ -5499,6 +5545,18 @@ fn pinned_active_session() -> ActiveSession {
         achieved_tempo: Some(120),
         click_pattern: Some(seven_eight_on_group_starts()),
         score: Some(4),
+        away: vec![
+            Away {
+                left_at: tap_at() + chrono::Duration::seconds(60),
+                back_at: Some(tap_at() + chrono::Duration::seconds(420)),
+                left_out: true,
+            },
+            Away {
+                left_at: tap_at() + chrono::Duration::seconds(500),
+                back_at: None,
+                left_out: false,
+            },
+        ],
     }];
     let mut untouched = create_entry("x1", "Scales", ItemKind::Exercise, 1);
     untouched.id = "e2".to_string();
@@ -5526,7 +5584,18 @@ fn pinned_active_session() -> ActiveSession {
                     tempo: 150,
                     click: None,
                 }],
+                felt: Some(Felt::Easy),
+                got_in_the_way: vec![Obstacle::Tone],
+                note_points: vec![NoteSpan { start: 0, end: 6 }],
+                intention_met: Some(IntentionMet::Yes),
             },
+        }),
+        segment: Some(SegmentClock {
+            index: 1,
+            started_at: tap_at(),
+            allowance_secs: 240,
+            taken_from_next_secs: 120,
+            left_out_secs: 60,
         }),
     }
 }
@@ -5535,25 +5604,33 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "02000000000000007331020000000000000002000000000000006531020000000000000070310d",
     "00000000000000436c616972206465204c756e650000000000000000000000002c010000000000",
     "00000000000108000000000000007068726173696e670108000000000000006576656e6e657373",
-    "012c010000010200000000000000673101000000000000000300000000000000732d3101000000",
-    "000000000300000000000000762d31010a0100000000000000070000000000000065312d706c61",
-    "79010300000000000000732d310100000000010000000101000000020000000000000003000000",
-    "00000000762d310300000000000000762d321400000000000000323032362d30392d3033543039",
-    "3a30303a30305a2c01000000000000010a01010103000000000000000100000014000000000000",
-    "00323032362d30392d30335430393a30303a30305a017800010100000000140000000000000032",
-    "3032362d30392d30335430393a30303a34305a0178000100020000001400000000000000323032",
-    "362d30392d30335430393a30303a34315a00000100000000000000140000000000000032303236",
-    "2d30392d30335430393a30303a32305a7800010178000107080103000000000000000302022900",
-    "0104020000000000000065320200000000000000783106000000000000005363616c6573010000",
-    "000100000000000000000000000000000002000000000000000000000000000000000000000000",
-    "000000000000000000000001000000000000001400000000000000323032362d30392d30335430",
-    "393a30303a30305a1400000000000000323032362d30392d30335430383a34373a30305a011400",
-    "000000000000323032362d30392d30335430393a30303a30305aa8000101070801030000000000",
-    "000003020229000100000000000000070000000000000065322d706c6179060600000000000000",
-    "7374656164790100000000000000070000000000000065322d706c6179960000",
+    "012c010000010200000000000000673101000000000000000300000000000000762d31010a0100",
+    "000000000000070000000000000065312d706c6179010300000000000000732d31010000000001",
+    "000000010100000002000000000000000300000000000000762d310300000000000000762d3214",
+    "00000000000000323032362d30392d30335430393a30303a30305a2c01000000000000010a0101",
+    "010300000000000000010000001400000000000000323032362d30392d30335430393a30303a30",
+    "305a0178000101000000001400000000000000323032362d30392d30335430393a30303a34305a",
+    "0178000100020000001400000000000000323032362d30392d30335430393a30303a34315a0000",
+    "01000000000000001400000000000000323032362d30392d30335430393a30303a32305a780001",
+    "017800010708010300000000000000030202290001040200000000000000140000000000000032",
+    "3032362d30392d30335430393a30313a30305a011400000000000000323032362d30392d303354",
+    "30393a30373a30305a011400000000000000323032362d30392d30335430393a30383a32305a00",
+    "0002000000000000000300000000000000732d31b40000000300000000000000732d3278000000",
+    "0100000000010300000000000000732d3101540001010000000102000000020000000000000002",
+    "000000030000000100000000000000000000000c000e00010300000000000000732d3100000000",
+    "0c000000020000000000000065320200000000000000783106000000000000005363616c657301",
+    "000000010000000000000000000000000000000200000000000000000000000000000000000000",
+    "000000000000000000000000000000000000000000000000000000000000000001000000000000",
+    "001400000000000000323032362d30392d30335430393a30303a30305a14000000000000003230",
+    "32362d30392d30335430383a34373a30305a011400000000000000323032362d30392d30335430",
+    "393a30303a30305aa8000101070801030000000000000003020229000100000000000000070000",
+    "000000000065322d706c6179060600000000000000737465616479010000000000000007000000",
+    "0000000065322d706c617996000001000000000100000000000000040000000100000000000000",
+    "0000000006000000010000000001010000001400000000000000323032362d30392d3033543039",
+    "3a30303a30305af0000000780000003c000000",
 );
 
-const PINNED_BLOB_VERSION: u32 = 6;
+const PINNED_BLOB_VERSION: u32 = 7;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6957,6 +7034,10 @@ fn answers_for(play_id: &str) -> ReflectionAnswers {
             tempo: 96,
             click: Some(seven_eight_on_group_starts()),
         }],
+        felt: None,
+        got_in_the_way: Vec::new(),
+        note_points: Vec::new(),
+        intention_met: None,
     }
 }
 

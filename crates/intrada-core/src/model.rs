@@ -779,6 +779,122 @@ pub struct SetlistEntryView {
     /// when none do. The only place several marks collapse into one (#1739
     /// decision 9): per-variation history reads `plays` and never this.
     pub score_summary: Option<u8>,
+    pub record: EntryRecordView,
+}
+
+/// What v0.17 adds to an entry (`specs/practice-record-v017.md`).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct EntryRecordView {
+    pub segments: Vec<SegmentView>,
+    pub focus: Option<FocusView>,
+    /// Read from the typed intention ("A1 at 84"); `None` once it is the focus.
+    pub suggested_focus: Option<FocusView>,
+    /// The answer, or what the plays show where the focus allows.
+    pub intention_met: Option<crate::domain::session::IntentionMet>,
+    /// True when `intention_met` was worked out from the plays, not answered.
+    pub intention_met_read: bool,
+    pub felt: Option<crate::domain::session::Felt>,
+    pub got_in_the_way: Vec<crate::domain::session::Obstacle>,
+    pub note_points: Vec<NotePointView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SegmentView {
+    pub section_id: String,
+    pub label: String,
+    pub planned_secs: u32,
+    pub planned_display: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FocusView {
+    pub focus: crate::domain::session::IntentionFocus,
+    /// "A1 at 84", "5 clean in a row", "From memory".
+    pub label: String,
+}
+
+/// A point from the note: offered on the sheet, or confirmed on the entry.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct NotePointView {
+    pub span: crate::domain::session::NoteSpan,
+    /// "Bars 21 to 24", "♩ = 84", "3 clean".
+    pub label: String,
+    pub section_label: Option<String>,
+    pub confirmed: bool,
+}
+
+/// The one-tap offer of how the item was last played.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LastTimeView {
+    pub entry_id: String,
+    pub section_id: Option<String>,
+    pub variation_ids: Vec<String>,
+    /// "Last time: B · Dotted".
+    pub label: String,
+}
+
+/// What the practice screen offers on the current entry beyond the play.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ActiveRecordView {
+    pub segment: Option<SegmentClockView>,
+    pub away_offer: Option<AwayOfferView>,
+    /// `Some` while the item-complete sheet is open.
+    pub finish: Option<FinishSheetView>,
+    pub last_time: Option<LastTimeView>,
+}
+
+/// The running segment. The shell compares `ends_at` with its clock and,
+/// once past, shows the offers; ignoring them changes nothing.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SegmentClockView {
+    pub label: String,
+    /// RFC3339, left-out time away included.
+    pub ends_at: String,
+    /// "On to B"; `None` on the last segment.
+    pub move_label: Option<String>,
+    /// "Stay on A1, 2 more minutes taken from B"; `None` when B cannot give it.
+    pub stay_label: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct AwayOfferView {
+    pub minutes: u32,
+    /// "Away 6 minutes. Leave it out?"
+    pub label: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FinishSheetView {
+    /// Read from the draft's note, in note order.
+    pub note_offers: Vec<NotePointView>,
+    /// The sheet asks once whether the intention was met.
+    pub asks_intention: bool,
+    pub intention_met_read: Option<crate::domain::session::IntentionMet>,
+    pub felt_choices: Vec<FeltChoiceView>,
+    pub obstacle_choices: Vec<ObstacleChoiceView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FeltChoiceView {
+    pub felt: crate::domain::session::Felt,
+    pub label: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ObstacleChoiceView {
+    pub obstacle: crate::domain::session::Obstacle,
+    pub label: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -845,6 +961,7 @@ pub struct ActiveSessionView {
     pub current_reps_past_target: u8,
     /// A got it or a miss is still standing for undo to reverse.
     pub current_can_undo: bool,
+    pub record: ActiveRecordView,
 }
 
 /// The open sheet's saved answers, and the click at its stamp, which seeds
@@ -892,6 +1009,8 @@ pub struct BuildingSetlistView {
     /// The variations each entry can be tagged to, for the entries whose item
     /// has any. Looked up in the whole library, so a search cannot empty it.
     pub entry_variations: Vec<EntryVariationsView>,
+    /// For the entries whose item was last played on a section or variations.
+    pub last_times: Vec<LastTimeView>,
 }
 
 /// What an entry's plan can name: its item's variations and live sections.

@@ -103,6 +103,14 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     })
                 })
                 .collect();
+            let last_times = building
+                .entries
+                .iter()
+                .filter_map(|entry| {
+                    let way = crate::domain::session::last_time(model, &entry.item_id)?;
+                    Some(crate::view::session::last_time_view(entry, way, &labels))
+                })
+                .collect();
             (
                 None,
                 Some(BuildingSetlistView {
@@ -117,6 +125,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         planned_total_secs,
                     ),
                     entry_variations,
+                    last_times,
                 }),
                 None,
             )
@@ -132,17 +141,17 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .map_or(&[][..], |i| i.variations.as_slice());
             let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
                 model.items.iter().map(|i| (i.id.as_str(), i)).collect();
-            (
-                Some(build_active_session_view(
-                    active,
-                    &item_index,
-                    &labels,
-                    current_variations,
-                    &model.practice_defaults,
-                )),
-                None,
-                None,
-            )
+            let mut view = build_active_session_view(
+                active,
+                &item_index,
+                &labels,
+                current_variations,
+                &model.practice_defaults,
+            );
+            view.record.last_time =
+                crate::domain::session::last_time(model, &current_entry.item_id)
+                    .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
+            (Some(view), None, None)
         }
         SessionStatus::Summary(summary_session) => (
             None,

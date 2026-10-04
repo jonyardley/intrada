@@ -288,6 +288,7 @@ mod links;
 mod metre;
 mod photo;
 mod sections;
+pub(crate) use sections::update_sections;
 #[cfg(test)]
 mod tests;
 mod variations;

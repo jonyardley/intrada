@@ -164,6 +164,7 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             achieved_tempo: None,
             click_pattern: None,
             score: None,
+            away: Vec::new(),
         }
     }
 
@@ -185,7 +186,12 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             intention: None,
             planned_duration_secs: None,
             group_id: None,
-            planned_section_ids: vec![],
+            segments: Vec::new(),
+            focus: None,
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
             planned_variation_ids: vec![],
             planned_rep_target: None,
             plays: vec![sample_play(

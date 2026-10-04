@@ -36,7 +36,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let active = ActiveSession(
       id: "s-crash", entries: [], currentIndex: 0,
       currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
-      reflection: nil)
+      reflection: nil, segment: nil)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]
@@ -65,7 +65,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let current = ActiveSession(
       id: "s-current", entries: [], currentIndex: 0,
       currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
-      reflection: nil)
+      reflection: nil, segment: nil)
     let currentBytes = Data(try current.bincodeSerialize())
     defaults.set(currentBytes, forKey: Store.sessionInProgressKey)
     var sent: [Event] = []
@@ -93,7 +93,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let active = ActiveSession(
       id: "s-stale", entries: [], currentIndex: 0,
       currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
-      reflection: nil)
+      reflection: nil, segment: nil)
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
       [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]

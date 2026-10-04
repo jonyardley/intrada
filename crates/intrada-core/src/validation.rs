@@ -31,6 +31,10 @@ pub const MAX_KEYS: usize = 24;
 pub const MAX_SECTION_NAME: usize = 100;
 pub const MAX_BAR: u16 = 9999;
 pub const MAX_PLAYS_PER_ENTRY: usize = 24;
+pub const MAX_SEGMENTS: usize = 12;
+pub const MAX_TIMES_AWAY: usize = 50;
+pub const MAX_NOTE_POINTS: usize = 50;
+pub const MAX_CLEAN_REPS: u16 = 100;
 /// Under this, a play with no mark and no repetitions is a stray tap on the
 /// picker rather than practice, and the terminal transition drops it (#1739).
 pub const MIN_PLAY_SECONDS: u64 = 5;
@@ -722,6 +726,28 @@ pub fn validate_entry_plan(
         validate_entry_section(entry, id, model)?;
     }
     validate_variation_ids(model, variation_ids)
+}
+
+pub fn validate_segment_sections(
+    entry: &SetlistEntry,
+    segments: &[crate::domain::session::Segment],
+    model: &Model,
+) -> Result<(), LibraryError> {
+    let refuse = |message: &str| LibraryError::Validation {
+        field: "segments".to_string(),
+        message: message.to_string(),
+    };
+    if segments.len() > MAX_SEGMENTS {
+        return Err(refuse("That's more segments than one item can hold"));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for segment in segments {
+        if !seen.insert(segment.section_id.as_str()) {
+            return Err(refuse("Each section can be one segment only"));
+        }
+        validate_entry_section(entry, &segment.section_id, model)?;
+    }
+    Ok(())
 }
 
 pub fn validate_play_way(

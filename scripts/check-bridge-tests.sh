@@ -73,7 +73,7 @@ fi
 bridge_files=$(printf '%s\n%s\n' "$swift_files" "$kotlin_files")
 
 named=$(printf '%s\n' "$bridge_files" | tr '\n' '\0' |
-  xargs -0 perl -ne 's{//.*}{}; print "$_\n" for /\b([A-Za-z_]\w*)\b/g' | sort -u)
+  xargs -0 perl -ne 's{"(?:[^"\\]|\\.)*"}{""}g; s{//.*}{}; print "$_\n" for /\b([A-Za-z_]\w*)\b/g' | sort -u)
 members=$(printf '%s\n' "$bridge_files" | tr '\n' '\0' |
   xargs -0 perl -ne 's{//.*}{}; print "$_\n" for /\.([a-z]\w*)\b(?!\s*\()/g' | sort -u)
 allowed=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' "$allowlist" | grep -v '^$' | sort -u || true)

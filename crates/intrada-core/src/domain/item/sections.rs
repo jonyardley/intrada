@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn update_sections(
+pub(crate) fn update_sections(
     model: &mut Model,
     id: String,
     edits: Vec<SectionEdit>,

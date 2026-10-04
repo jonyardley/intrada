@@ -20,7 +20,9 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     var active = ActiveSessionView.previewActive
     let start = try XCTUnwrap(SessionClock.parseRFC3339(active.currentItemStartedAt))
     active.reflection = ReflectionView(
-      answers: ReflectionAnswers(marks: [], note: "", tempos: []),
+      answers: ReflectionAnswers(
+        marks: [], note: "", tempos: [], felt: nil, gotInTheWay: [], notePoints: [],
+        intentionMet: nil),
       reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
       stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)))
     assertSnapshot(

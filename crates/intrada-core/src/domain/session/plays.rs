@@ -5,18 +5,39 @@ use crate::validation;
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 
-/// An entry that has just become current opens its first play on the whole
-/// item, plain, with no key (#2246): there is no current step and no default
-/// order, and the plan stays a plan. Idempotent: a recovered session already
-/// carries its plays.
+/// An entry that has just become current opens its first play on its first
+/// segment, else the focus's section, else the whole item; plain, with no
+/// key (#2246, #2249). Last time is an offer, never a start. Idempotent: a
+/// recovered session already carries its plays.
 pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
-        entry.plays.push(Play::opened(
-            PlayWay::default(),
-            entry.planned_rep_target,
-            now,
-        ));
+        let section_id = entry
+            .segments
+            .first()
+            .map(|s| s.section_id.clone())
+            .or_else(|| entry.focus.as_ref().and_then(|f| f.section_id.clone()));
+        let way = PlayWay {
+            section_id,
+            ..PlayWay::default()
+        };
+        entry
+            .plays
+            .push(Play::opened(way, entry.planned_rep_target, now));
     }
+}
+
+pub(super) fn first_segment_clock(
+    entry: &SetlistEntry,
+    now: DateTime<Utc>,
+) -> Option<SegmentClock> {
+    let first = entry.segments.first()?;
+    (entry.segments.len() > 1 && first.planned_secs > 0).then_some(SegmentClock {
+        index: 0,
+        started_at: now,
+        allowance_secs: first.planned_secs,
+        taken_from_next_secs: 0,
+        left_out_secs: 0,
+    })
 }
 
 /// Stamp the open play's seconds from its own start, so a switch mid item
@@ -28,10 +49,27 @@ pub(super) fn close_open_play(
     now: DateTime<Utc>,
     reading: Option<&TempoReading>,
 ) -> TempoStamp {
+    close_play(entry, now, reading, false)
+}
+
+/// `stamped` keeps the sheet's seconds: recounting on a resumed clock would
+/// take left-out time off twice (#2306).
+pub(super) fn close_play(
+    entry: &mut SetlistEntry,
+    now: DateTime<Utc>,
+    reading: Option<&TempoReading>,
+    stamped: bool,
+) -> TempoStamp {
     let Some(play) = entry.open_play_mut() else {
         return TempoStamp::NothingToKeep;
     };
-    play.seconds = (now - play.started_at).num_seconds().max(0) as u64;
+    if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
+        away.back_at = Some(now.max(away.left_at));
+    }
+    if !stamped {
+        let elapsed = (now - play.started_at).num_seconds().max(0) as u64;
+        play.seconds = elapsed.saturating_sub(left_out_secs(&play.away, play.started_at, now));
+    }
     match reading {
         Some(reading) => stamp_tempo(play, reading),
         None => TempoStamp::NothingToKeep,
@@ -295,19 +333,29 @@ pub(super) fn entry_for_plan_mut<'a>(
     }
 }
 
+/// The plays tile the item from its start, so their seconds are its time,
+/// and a resume, which backdates the item by that sum, cannot skew it.
+pub(crate) fn item_seconds(entry: &SetlistEntry) -> u64 {
+    entry
+        .plays
+        .iter()
+        .fold(0u64, |sum, p| sum.saturating_add(p.seconds))
+}
+
 pub(super) fn transition_to_summary(
     active: &mut ActiveSession,
     now: DateTime<Utc>,
     reading: &TempoReading,
     completion_status: CompletionStatus,
+    stamped: bool,
 ) -> (SummarySession, TempoStamp) {
-    let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
+    let started = active.current_item_started_at;
     let mut stamp = TempoStamp::NothingToKeep;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
-        entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, active.current_item_started_at);
-        stamp = close_open_play(entry, now, Some(reading));
+        open_first_play(entry, started);
+        stamp = close_play(entry, now, Some(reading), stamped);
+        entry.duration_secs = item_seconds(entry);
     }
 
     if completion_status == CompletionStatus::EndedEarly {

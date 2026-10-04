@@ -2,6 +2,20 @@
   import Foundation
   import SharedTypes
 
+  extension EntryRecordView {
+    static var empty: EntryRecordView {
+      EntryRecordView(
+        segments: [], focus: nil, suggestedFocus: nil, intentionMet: nil, intentionMetRead: false,
+        felt: nil, gotInTheWay: [], notePoints: [])
+    }
+  }
+
+  extension ActiveRecordView {
+    static var empty: ActiveRecordView {
+      ActiveRecordView(segment: nil, awayOffer: nil, finish: nil, lastTime: nil)
+    }
+  }
+
   extension LimitsView {
     /// The core's own answer, so a preview or test never carries a band or bar
     /// table of its own that could drift from it (#2225).
@@ -139,7 +153,7 @@
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: [], scoreSummary: nil)
+        plays: [], scoreSummary: nil, record: .empty)
     }
   }
 
@@ -336,7 +350,7 @@
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
     }
   }
 
@@ -373,7 +387,7 @@
             durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
-        ], scoreSummary: nil)
+        ], scoreSummary: nil, record: .empty)
     }
 
     static var previewActive: ActiveSessionView {
@@ -402,7 +416,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false)
+        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
     }
 
     /// The same session, run past an hour, so the `H:MM:SS` reading is drawn.
@@ -428,7 +442,8 @@
         currentVariations: [], reflection: nil,
         clickSeedMetre: base.clickSeedMetre, clickSeedBpm: base.clickSeedBpm,
         clickSeedSoundsTarget: base.clickSeedSoundsTarget, clickSeedPresets: base.clickSeedPresets,
-        currentRepsPastTarget: base.currentRepsPastTarget, currentCanUndo: base.currentCanUndo)
+        currentRepsPastTarget: base.currentRepsPastTarget, currentCanUndo: base.currentCanUndo,
+        record: .empty)
     }
 
     /// The current item is an exercise practised in C, now on G: the chip reads
@@ -467,7 +482,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false)
+        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
     }
 
     /// The current entry of `previewActiveVariations`: one closed play in C and
@@ -493,7 +508,7 @@
             durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-        ], scoreSummary: nil)
+        ], scoreSummary: nil, record: .empty)
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -523,7 +538,7 @@
         clickSeedSoundsTarget: true,
         clickSeedPresets: LimitsView.preview.clickPresets(
           for: Metre(beats: 4, unit: 4, groups: nil)),
-        currentRepsPastTarget: 0, currentCanUndo: false)
+        currentRepsPastTarget: 0, currentCanUndo: false, record: .empty)
     }
   }
 
@@ -589,7 +604,7 @@
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
     }
   }
 
@@ -642,7 +657,7 @@
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, plannedSectionIds: [],
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
-        plays: plays, scoreSummary: 8)
+        plays: plays, scoreSummary: 8, record: .empty)
     }
 
     /// One exercise practised in a single key: the detail screen names it
@@ -658,7 +673,7 @@
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
-        plays: plays, scoreSummary: nil)
+        plays: plays, scoreSummary: nil, record: .empty)
     }
   }
 #endif

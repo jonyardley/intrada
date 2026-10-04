@@ -378,7 +378,8 @@ final class SessionBridgeTests: XCTestCase {
     let playId = try XCTUnwrap(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
     let answers = ReflectionAnswers(
       marks: [DraftMark(playId: playId, score: 7)], note: "bar 12 rushed",
-      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)])
+      tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], felt: nil, gotInTheWay: [],
+      notePoints: [], intentionMet: nil)
     let requests = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
 
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
@@ -615,12 +616,13 @@ final class SessionBridgeTests: XCTestCase {
       id: "re1", itemId: "i1", itemTitle: "Recovered Scales", itemType: .exercise,
       position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil, plays: []
+      groupId: nil, plannedVariationIds: [], plannedRepTarget: nil, plays: [], segments: [],
+      focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []
     )
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
-      reflection: nil)
+      reflection: nil, segment: nil)
     _ = try bridge.update(.session(.recoverSession(session: blob, now: "2026-06-16T11:00:00Z")))
     let recovered = try bridge.rendered()
     XCTAssertEqual(recovered.activeSession?.currentItemTitle, "Recovered Scales")

@@ -957,7 +957,7 @@ mod tests {
             total_duration_secs: 600,
             completion_status: "ended_early".to_string(),
             session_notes: Some("tired".to_string()),
-            entries: r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":60,"status":"completed","plannedSectionIds":[],"plannedVariationIds":[],"plays":[{"id":"p1","variationIds":[],"startedAt":"2026-09-01T10:00:00Z","seconds":60,"tempoChanges":[],"score":3}]}]"#.to_string(),
+            entries: r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":60,"status":"completed","plannedVariationIds":[],"plays":[{"id":"p1","variationIds":[],"startedAt":"2026-09-01T10:00:00Z","seconds":60,"tempoChanges":[],"score":3,"away":[]}],"segments":[],"gotInTheWay":[],"notePoints":[]}]"#.to_string(),
             session_score: Some(4),
             capture_version: Some(1),
         };

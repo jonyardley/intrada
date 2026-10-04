@@ -49,22 +49,23 @@ pub(super) fn next_item(
         return crux_core::render::render();
     };
     // After a resume the shell no longer has the stamp's instant (#2137).
-    let now = active.reflection.take().map_or(now, |draft| draft.now);
+    let draft = active.reflection.take();
+    let stamped = draft.is_some();
+    let now = draft.map_or(now, |draft| draft.now);
 
     if active.current_index >= active.entries.len() - 1 {
         let (summary, stamp) =
-            transition_to_summary(active, now, &reading, CompletionStatus::Completed);
+            transition_to_summary(active, now, &reading, CompletionStatus::Completed, stamped);
         return finish(model, summary, stamp);
     }
 
-    let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
-
     let mut stamp = TempoStamp::NothingToKeep;
+    let started = active.current_item_started_at;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
-        entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, active.current_item_started_at);
-        stamp = close_open_play(entry, now, Some(&reading));
+        open_first_play(entry, started);
+        stamp = close_play(entry, now, Some(&reading), stamped);
+        entry.duration_secs = item_seconds(entry);
         drop_incidental_play(entry);
     }
 
@@ -129,9 +130,11 @@ pub(super) fn end_session_early(
         return crux_core::render::render();
     };
 
-    let now = active.reflection.take().map_or(now, |draft| draft.now);
+    let draft = active.reflection.take();
+    let stamped = draft.is_some();
+    let now = draft.map_or(now, |draft| draft.now);
     let (summary, stamp) =
-        transition_to_summary(active, now, &reading, CompletionStatus::EndedEarly);
+        transition_to_summary(active, now, &reading, CompletionStatus::EndedEarly, stamped);
     finish(model, summary, stamp)
 }
 
@@ -195,6 +198,12 @@ pub(super) fn switch_play(
     };
 
     let stamp = close_open_play(entry, now, Some(&reading));
+    if let (Some(clock), Some(closed)) = (active.segment.as_mut(), entry.open_play()) {
+        let gap = left_out_secs(&closed.away, closed.started_at.max(clock.started_at), now);
+        clock.left_out_secs = clock
+            .left_out_secs
+            .saturating_add(u32::try_from(gap).unwrap_or(u32::MAX));
+    }
     let rep_target = entry.planned_rep_target;
     entry.plays.push(Play::opened(way, rep_target, now));
 
@@ -256,7 +265,16 @@ pub(super) fn recover_session(
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
     if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
-        play.started_at = recorded(play.seconds);
+        let anchor = recorded(play.seconds);
+        if let Some(clock) = session.segment.as_mut() {
+            let into = (play.started_at - clock.started_at).max(chrono::Duration::zero());
+            clock.started_at = anchor.checked_sub_signed(into).unwrap_or(anchor);
+        }
+        play.started_at = anchor;
+        // The blob was last saved as they left, so that is when it closes.
+        if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
+            away.back_at = Some(away.left_at);
+        }
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;
@@ -267,8 +285,10 @@ fn advance(active: &mut ActiveSession, started_at: DateTime<Utc>) {
     active.current_index += 1;
     active.current_item_started_at = started_at;
     active.reflection = None;
+    active.segment = None;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         open_first_play(entry, started_at);
+        active.segment = first_segment_clock(entry, started_at);
     }
 }
 
@@ -281,19 +301,50 @@ fn finish(model: &mut Model, summary: SummarySession, stamp: TempoStamp) -> Comm
 
 pub(super) fn update_reflection_draft(
     model: &mut Model,
-    answers: ReflectionAnswers,
+    mut answers: ReflectionAnswers,
 ) -> Command<Effect, Event> {
-    let SessionStatus::Active(ref mut active) = model.session_status else {
+    let SessionStatus::Active(ref active) = model.session_status else {
         return crux_core::render::render();
     };
     let entry = active.current_entry();
-    if active.reflection.is_none() || !draft_answers_valid(entry, &answers) {
+    let sections = super::finish::named_sections(model, &entry.item_id);
+    keep_offered_points(&mut answers, &sections);
+    if active.reflection.is_none()
+        || !draft_answers_valid(entry, &answers)
+        || !obstacles_distinct(&answers.got_in_the_way)
+    {
         return crux_core::render::render();
     }
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        return crux_core::render::render();
+    };
     if let Some(draft) = active.reflection.as_mut() {
         draft.answers = answers;
     }
     persist_active(active)
+}
+
+/// A note edit moves its points: a span no longer offered is dropped, since
+/// refusing would leave the crash-recovery copy stale (#2137).
+fn keep_offered_points(answers: &mut ReflectionAnswers, sections: &[(&str, &str)]) {
+    let offered: Vec<NoteSpan> = note_offers(&answers.note, sections)
+        .into_iter()
+        .map(|p| p.span)
+        .collect();
+    let mut kept: Vec<NoteSpan> = Vec::new();
+    for span in &answers.note_points {
+        if offered.contains(span) && !kept.contains(span) {
+            kept.push(*span);
+        }
+    }
+    answers.note_points = kept;
+}
+
+fn obstacles_distinct(obstacles: &[Obstacle]) -> bool {
+    let mut seen = obstacles.to_vec();
+    seen.sort_by_key(|o| *o as u8);
+    seen.dedup();
+    seen.len() == obstacles.len()
 }
 
 fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {
