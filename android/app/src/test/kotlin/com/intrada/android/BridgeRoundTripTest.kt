@@ -483,16 +483,7 @@ class BridgeRoundTripTest {
                 .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
         bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val building = bridge.view().buildingSetlist
-        assertEquals(
-            listOf("Tempo", "Clean in a row", "From memory", "Evenness"),
-            building?.focusChoices?.map { it.label },
-        )
-        assertEquals(
-            listOf(FocusKind.TEMPO, FocusKind.CLEANREPS, FocusKind.FROMMEMORY, FocusKind.EVENNESS),
-            building?.focusChoices?.map { it.kind },
-        )
-        val entryId = building?.entries?.firstOrNull()?.id.orEmpty()
+        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
         bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 1200u)))
         bridge.update(
             Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
@@ -521,11 +512,30 @@ class BridgeRoundTripTest {
         assertEquals(sections.last(), active?.currentSectionId)
         assertEquals("B", active?.record?.segment?.label)
         assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
+    }
 
+    @Test
+    fun theBuilderAndTheFinishSheetCarryTheChoiceWordsFromTheCore() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
+        val focus = bridge.view().buildingSetlist?.focusChoices
+        assertEquals(
+            listOf("Tempo", "Clean in a row", "From memory", "Evenness"),
+            focus?.map { it.label },
+        )
+        assertEquals(
+            listOf(FocusKind.TEMPO, FocusKind.CLEANREPS, FocusKind.FROMMEMORY, FocusKind.EVENNESS),
+            focus?.map { it.kind },
+        )
+
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
         bridge.update(
             Event.Session(
                 SessionEvent.PrepareReflection(
-                    "2026-10-04T09:20:00Z",
+                    "2026-10-04T09:05:00Z",
                     TempoReading(bpm = 84.toUShort(), clickSounding = false),
                 )
             )
