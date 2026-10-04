@@ -756,7 +756,7 @@ final class LibraryBridgeTests: XCTestCase {
     let pieceId = try XCTUnwrap(items.first { $0.title == "Clair de Lune" }?.id)
     let exerciseId = try XCTUnwrap(items.first { $0.title == "Db Major Scale" }?.id)
 
-    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    try bridge.link(exercise: exerciseId, to: pieceId)
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "the link must decode cleanly (err=\(view.error ?? "nil"))")

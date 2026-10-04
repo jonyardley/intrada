@@ -37,7 +37,7 @@ final class BpmRefusalUITests: XCTestCase {
     XCTAssertEqual(bpm.value as? String, "12a", "the typed BPM is still there to correct")
   }
 
-  func testARefusedNewExerciseKeepsTheLinkSheetOpenWithOnlyThatRow() {
+  func testARefusedNewExerciseKeepsTheLinkSheetOpenWithEveryDraft() {
     let app = XCUIApplication()
     app.launchArguments = ["--seed-sample-data", "--disable-animations"]
     app.launch()
@@ -50,8 +50,8 @@ final class BpmRefusalUITests: XCTestCase {
       "libraryDetail.addExercise", spoken: "Add an exercise for this piece", timeout: 10
     ).tap()
 
-    // The unreadable one first, so an accepted send after it is what would
-    // have cleared the core's sentence.
+    // The whole set is one event (#2248), so one bad draft saves nothing and
+    // both stay staged for a second Done.
     draft("Bad tempo", bpm: "12a", in: app)
     draft("Good tempo", bpm: "90", in: app)
     app.control("sheet.done", spoken: "Done").tap()
@@ -61,13 +61,12 @@ final class BpmRefusalUITests: XCTestCase {
         .waitForExistence(timeout: 5),
       "the core's own sentence, inside the sheet")
     XCTAssertTrue(app.element("sheet.done").exists, "a refused Done leaves the sheet open")
+    XCTAssertTrue(app.buttons["Remove Bad tempo"].exists, "the refused exercise stays under New")
     XCTAssertTrue(
-      app.buttons["Remove Bad tempo"].exists, "the refused exercise stays under New")
+      app.buttons["Remove Good tempo"].exists, "and so does the one written beside it")
     XCTAssertFalse(
-      app.buttons["Remove Good tempo"].exists, "the accepted one is no longer a new row")
-    let good = app.row("linkedPicker.row", spokenContaining: "Good tempo")
-    XCTAssertTrue(good.waitForExistence(timeout: 5), "the accepted exercise in the list")
-    XCTAssertTrue(good.isSelected, "and ticked, so a second Done keeps it linked")
+      app.row("linkedPicker.row", spokenContaining: "Good tempo").exists,
+      "nothing was created, so it is not in the list")
   }
 
   private func draft(_ title: String, bpm: String, in app: XCUIApplication) {

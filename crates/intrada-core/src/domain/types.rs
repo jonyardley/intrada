@@ -335,18 +335,6 @@ mod tests {
     #[test]
     fn item_link_events_round_trip_on_ffi_bincode_wire() {
         use crate::domain::item::ItemEvent;
-        assert_round_trips(ItemEvent::LinkExercise {
-            piece_id: "p1".to_string(),
-            exercise_id: "e1".to_string(),
-        });
-        assert_round_trips(ItemEvent::UnlinkExercise {
-            piece_id: "p1".to_string(),
-            exercise_id: "e1".to_string(),
-        });
-        assert_round_trips(ItemEvent::ReorderLinkedExercises {
-            piece_id: "p1".to_string(),
-            ordered_ids: vec!["e1".to_string(), "e2".to_string()],
-        });
         // A nested CreateItem inside an event payload, with the Option-heavy
         // fields on both their Some and None sides — the #846 shape, pinned
         // here before any screen sends it (#1431).

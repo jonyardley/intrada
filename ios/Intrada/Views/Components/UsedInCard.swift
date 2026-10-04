@@ -149,6 +149,12 @@ struct UsedInRow: View {
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .fixedSize(horizontal: false, vertical: true)
+        if let sections = usage.sectionsCaption {
+          Text(sections)
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -156,20 +162,8 @@ struct UsedInRow: View {
   }
 
   private func linkButton(_ action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-      Text("Link")
-        .font(IntradaFont.badge)
-        .foregroundStyle(IntradaColor.accent)
-        // 10/5 are capsule-specific insets, below the token scale floor.
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(
-          RoundedRectangle(cornerRadius: IntradaRadius.badge)
-            .fill(IntradaColor.surfaceSunken)
-            .stroke(IntradaColor.divider, lineWidth: 1))
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Link \(usage.rowTitle) to this exercise")
+    CapsuleActionButton(title: "Link", action: action)
+      .accessibilityLabel("Link \(usage.rowTitle) to this exercise")
   }
 }
 

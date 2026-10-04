@@ -90,8 +90,19 @@ enum TempoFormatting {
   }
 }
 
+/// "For A2 and the coda", or "For the whole piece and A2" (#2248); nil for a
+/// whole-piece link alone, which is how every link read before sections.
+func sectionLinkCaption(wholePiece: Bool, sections: [LinkedSectionView]) -> String? {
+  guard !sections.isEmpty else { return nil }
+  let parts = (wholePiece ? ["the whole piece"] : []) + sections.map(\.label)
+  guard let last = parts.last, parts.count > 1 else { return "For \(parts[0])" }
+  return "For " + parts.dropLast().joined(separator: ", ") + " and " + last
+}
+
 extension ExerciseUsageView {
   var rowTitle: String { piece?.title ?? "On its own" }
+
+  var sectionsCaption: String? { sectionLinkCaption(wholePiece: wholePiece, sections: sections) }
 
   /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
   /// since-deleted piece (#1093, 2a) — composer dropped once the piece is gone.
@@ -123,6 +134,7 @@ extension ExerciseUsageView {
   func spokenRow(topMark: Int) -> String {
     var parts = [rowTitle]
     if pieceRemoved { parts.append("removed from the library") }
+    if let sectionsCaption { parts.append(sectionsCaption) }
     guard sessionCount > 0 else {
       parts.append("not practised together yet")
       return parts.joined(separator: ", ")
@@ -148,6 +160,8 @@ extension LibraryItemView {
 
 extension LinkedExerciseView {
   var keyDisplay: String? { keyLabel }
+
+  var sectionsCaption: String? { sectionLinkCaption(wholePiece: wholePiece, sections: sections) }
 
   var metaLine: String? {
     let parts = [keyDisplay, TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm)]

@@ -121,6 +121,32 @@
       return item
     }
 
+    /// The sectioned Clair de lune with drills aimed at its parts (#2248): one
+    /// for the whole piece and A2, one for the tricky spot alone.
+    static var previewPieceWithSectionLinks: LibraryItemView {
+      var item = previewPieceWithSections
+      item.id = "piece-section-links"
+      var octaves = LinkedExerciseView.fixture(id: "exercise-octaves", title: "Broken octaves")
+      octaves.sections = [LinkedSectionView(id: "s4", label: "A2")]
+      var thirds = LinkedExerciseView.fixture(
+        id: "exercise-thirds", title: "Thirds in D\u{266D}",
+        key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60)
+      thirds.wholePiece = false
+      thirds.sections = [LinkedSectionView(id: "s3", label: "Bars 19 to 20")]
+      item.linkedExercises = [octaves, thirds]
+      return item
+    }
+
+    /// An exercise aimed at A2 of one piece and the coda of another (#2248).
+    static var previewExerciseUsedInSections: LibraryItemView {
+      var item = previewExerciseLinkedOnly
+      item.id = "exercise-sections"
+      item.usedIn[0].wholePiece = false
+      item.usedIn[0].sections = [LinkedSectionView(id: "s4", label: "A2")]
+      item.usedIn[1].sections = [LinkedSectionView(id: "s9", label: "Coda")]
+      return item
+    }
+
     static var previewExercise: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",

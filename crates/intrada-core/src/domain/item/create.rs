@@ -58,8 +58,8 @@ pub(super) fn add_linked_exercise(
     }
 
     // Coerced before validation, not after: a piece linked as a related
-    // exercise would break the link invariant `validate_link_exercise`
-    // guards, and the piece-shaped rules must not run on the way past.
+    // exercise would break the link invariant, and the piece-shaped rules
+    // must not run on the way past.
     let input = CreateItem {
         kind: ItemKind::Exercise,
         ..input

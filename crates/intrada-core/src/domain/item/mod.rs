@@ -97,10 +97,6 @@ pub enum ItemEvent {
     Delete {
         id: String,
     },
-    LinkExercise {
-        piece_id: String,
-        exercise_id: String,
-    },
     /// Create one hand-written exercise already linked to `piece_id`. Single
     /// event so the shell never has to learn the minted ulid: `Add` alone
     /// leaves the exercise unlinked and the shell with no id to link it by
@@ -110,14 +106,6 @@ pub enum ItemEvent {
     AddLinkedExercise {
         piece_id: String,
         input: CreateItem,
-    },
-    UnlinkExercise {
-        piece_id: String,
-        exercise_id: String,
-    },
-    ReorderLinkedExercises {
-        piece_id: String,
-        ordered_ids: Vec<String>,
     },
     /// Parse `raw_chart` and store it on the piece. A parse error surfaces on
     /// `last_error` and stores nothing, never a partial chart.
@@ -332,18 +320,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::ClearPhoto { id } => photo::set_photo(model, id, None),
         ItemEvent::ReadPhoto { photo_id } => photo::read_photo(model, photo_id),
         ItemEvent::SetMetre { id, metre } => metre::set_metre(model, id, metre),
-        ItemEvent::LinkExercise {
-            piece_id,
-            exercise_id,
-        } => links::link_exercise(model, piece_id, exercise_id),
-        ItemEvent::UnlinkExercise {
-            piece_id,
-            exercise_id,
-        } => links::unlink_exercise(model, piece_id, exercise_id),
-        ItemEvent::ReorderLinkedExercises {
-            piece_id,
-            ordered_ids,
-        } => links::reorder_linked_exercises(model, piece_id, ordered_ids),
         ItemEvent::SetChordChart {
             piece_id,
             raw_chart,

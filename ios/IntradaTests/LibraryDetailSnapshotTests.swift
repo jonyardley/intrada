@@ -228,6 +228,63 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
+  // #2248: drills aimed at a piece's sections, read on the piece's card,
+  // chosen in edit mode, and read back on the exercise's Used in card.
+  func testRelatedExercisesWithSectionLinks() {
+    assertSnapshot(of: relatedExercisesCard(editing: false), as: config)
+  }
+
+  func testRelatedExercisesWithSectionLinksAccessibilitySize() {
+    assertSnapshot(of: relatedExercisesCard(editing: false), as: axConfig)
+  }
+
+  func testRelatedExercisesSectionLinksEditing() {
+    assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
+  }
+
+  func testLinkSectionsSheet() {
+    assertSnapshot(of: linkSectionsSheet(), as: config)
+  }
+
+  func testLinkSectionsSheetAccessibilitySize() {
+    assertSnapshot(of: linkSectionsSheet(), as: tallAxConfig(height: 2400))
+  }
+
+  func testUsedInWithSections() {
+    let card = NavigationStack {
+      ZStack {
+        PaperBackground()
+        UsedInCard(
+          usage: LibraryItemView.previewExerciseUsedInSections.usedIn,
+          locale: Locale(identifier: "en_GB"), calendar: .current,
+          onLink: { _ in }, onLinkAPiece: {}
+        )
+        .padding(16)
+      }
+    }
+    assertSnapshot(of: host(card), as: config)
+  }
+
+  private func relatedExercisesCard(editing: Bool) -> UIViewController {
+    let item = LibraryItemView.previewPieceWithSectionLinks
+    let card = NavigationStack {
+      ZStack {
+        PaperBackground()
+        RelatedExercisesCard(
+          item: item, editing: .constant(editing), onAdd: {}, onShowSuggestions: {},
+          onChooseSections: { _ in }
+        )
+        .padding(16)
+      }
+    }
+    return host(card, store: Store(bridge: PreviewBridge(items: [item])))
+  }
+
+  private func linkSectionsSheet() -> UIViewController {
+    let item = LibraryItemView.previewPieceWithSectionLinks
+    return host(LinkSectionsSheet(piece: item, exercise: item.linkedExercises[0]))
+  }
+
   private func sectionsScreen() -> UIViewController {
     let store = Store(bridge: PreviewBridge(items: [.previewPieceWithSections]))
     let pushed = NavigationStack(

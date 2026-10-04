@@ -24,6 +24,7 @@ struct LibraryDetailScreen: View {
   @State private var editingSection: SectionSheetTarget?
   @State private var choosingKeys = false
   @State private var choosingVariations = false
+  @State private var choosingSectionsFor: SectionLinkTarget?
 
   init(item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false) {
     self.item = item
@@ -77,6 +78,12 @@ struct LibraryDetailScreen: View {
     .sheet(isPresented: $choosingVariations) {
       VariationsSheet(item: item)
         .environment(store)
+    }
+    .sheet(item: $choosingSectionsFor) { target in
+      if let exercise = item.linkedExercises.first(where: { $0.id == target.id }) {
+        LinkSectionsSheet(piece: item, exercise: exercise)
+          .environment(store)
+      }
     }
     .sheet(item: $editingSection) { target in
       SectionSheet(item: item, target: target)
@@ -159,75 +166,50 @@ struct LibraryDetailScreen: View {
   }
 
   private func linkPiece(id: String) {
-    store.send(.item(.linkExercise(pieceId: id, exerciseId: item.id)), onSuccess: .success)
+    let targets = item.exerciseTargets(pieceIds: linkedPieceIds + [id])
+    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
   }
 
   private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
-    let current = Swift.Set(linkedPieceIds)
-    let toLink = selected.subtracting(current)
-    let toUnlink = current.subtracting(selected)
-    var ok = true
-    for pieceId in toLink {
-      if !store.sendAccepted(.item(.linkExercise(pieceId: pieceId, exerciseId: item.id))) {
-        ok = false
-      }
-    }
-    for pieceId in toUnlink {
-      if !store.sendAccepted(.item(.unlinkExercise(pieceId: pieceId, exerciseId: item.id))) {
-        ok = false
-      }
-    }
-    if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
-      Haptic.success.play()
-    }
+    guard selected != Swift.Set(linkedPieceIds) else { return }
+    let kept = linkedPieceIds.filter(selected.contains)
+    let added = library.map(\.id).filter { selected.contains($0) && !kept.contains($0) }
+    let targets = item.exerciseTargets(pieceIds: kept + added)
+    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
   }
 
-  // Links, unlinks and creates+links each draft (#1431); the haptic fires once
-  // the core accepts them all, and a failed disk write arrives later on the
-  // banner (#846, #2004). A refusal hands back only the drafts the core did not
-  // take, so a second Done never creates an accepted one twice (#2224).
+  // The whole set in one event (#2232): kept exercises keep their sections,
+  // a newly chosen one links to the whole piece, and each draft is created and
+  // linked. A refusal saves nothing, so every draft stays staged (#2224).
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
     -> LinkApplyOutcome
   {
-    let current = liveLinkedExerciseIds
-    let toLink = selected.subtracting(current)
-    let toUnlink = current.subtracting(selected)
-    // Each accepted send clears the core's error, so the first refusal's
-    // message is taken the moment it lands.
-    var refusal: String?
-    func send(_ event: Event) -> Bool {
-      if store.sendAccepted(event) { return true }
-      if refusal == nil { refusal = store.viewModel?.error ?? "Couldn't save. Try again." }
-      return false
+    let row = liveRow
+    let current = row.linkedExercises.map(\.id)
+    let kept = row.linkedExercises.filter { selected.contains($0.id) }.flatMap(\.linkEdits)
+    let added = library.map(\.id)
+      .filter { selected.contains($0) && !current.contains($0) }
+      .map { LinkEdit(exercise: .existing(id: $0), sectionId: nil) }
+    let written = drafts.compactMap { draft -> LinkEdit? in
+      guard case .new = draft.entry else { return nil }
+      return LinkEdit(exercise: draft.entry, sectionId: nil)
     }
-    for id in toLink {
-      _ = send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
-    }
-    for id in toUnlink {
-      _ = send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
-    }
-    var refusedDrafts: [StagedExercise] = []
-    for draft in drafts {
-      guard case .new(let input) = draft.entry else { continue }
-      if !send(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
-        refusedDrafts.append(draft)
-      }
-    }
-    if let refusal {
+    let unchanged = Swift.Set(current) == selected && written.isEmpty
+    if unchanged { return .accepted }
+    let event = Event.item(.setPieceLinks(pieceId: item.id, links: kept + added + written))
+    guard store.sendAccepted(event) else {
       return .refused(
-        message: refusal, remainingDrafts: refusedDrafts, nowLinked: liveLinkedExerciseIds)
+        message: store.viewModel?.error ?? "Couldn't save. Try again.",
+        remainingDrafts: drafts, nowLinked: Swift.Set(current))
     }
-    if !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
-      Haptic.success.play()
-    }
+    Haptic.success.play()
     return .accepted
   }
 
   // `item` is the value this screen was built with; a send made a moment ago
   // has already reached the store's rows but not this copy.
-  private var liveLinkedExerciseIds: Swift.Set<String> {
-    let row = store.libraryRows.first { $0.id == item.id } ?? item
-    return Swift.Set(row.linkedExercises.map(\.id))
+  private var liveRow: LibraryItemView {
+    store.libraryRows.first { $0.id == item.id } ?? item
   }
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {
@@ -296,7 +278,8 @@ struct LibraryDetailScreen: View {
           RelatedExercisesCard(
             item: item, editing: $editingLinks,
             onAdd: { showingPicker = true },
-            onShowSuggestions: { showingScaffold = true })
+            onShowSuggestions: { showingScaffold = true },
+            onChooseSections: { choosingSectionsFor = SectionLinkTarget(id: $0.id) })
         }
 
         if item.itemType == .exercise {
@@ -452,3 +435,7 @@ private struct DetailRow: View {
     }
   }
 #endif
+
+private struct SectionLinkTarget: Identifiable {
+  let id: String
+}
