@@ -9,6 +9,7 @@ pub(crate) mod priorities;
 pub mod recognition;
 pub(crate) mod sample;
 pub(crate) mod staleness;
+pub mod stored_session;
 pub mod suggestion;
 pub mod validation;
 pub mod view;

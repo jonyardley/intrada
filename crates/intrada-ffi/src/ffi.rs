@@ -7,6 +7,7 @@ use crux_core::{
     Core,
 };
 
+use crate::stored_session::StoredSession;
 use crate::{Intrada, ItemKind, LibrarySort, Modality, SortDirection, SortField};
 
 // Returned (not panicked) so the shell handles it per the no-`try!` contract —
@@ -433,6 +434,76 @@ pub fn key_to_stored(key: Vec<u8>) -> Result<StoredKey, CoreError> {
     Ok(StoredKey {
         text,
         mode: mode.map(Into::into),
+    })
+}
+
+// ── Stored sessions ──
+
+/// The `session` table's columns (#2234); the shell maps them, the core reads
+/// what they mean.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredSessionRow {
+    pub id: String,
+    pub started_at: String,
+    pub completed_at: String,
+    pub total_duration_secs: i64,
+    pub completion_status: String,
+    pub session_notes: Option<String>,
+    pub entries: String,
+    pub session_score: Option<i64>,
+    pub capture_version: Option<i64>,
+}
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredSessionRead {
+    /// A bincode `PracticeSession`.
+    pub session: Vec<u8>,
+    /// Values the core replaced, for the shell to log (#949).
+    pub unreadable: Vec<String>,
+}
+
+/// An `Err` is a row the core refuses; the shell skips it.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn session_from_stored(row: StoredSessionRow) -> Result<StoredSessionRead, CoreError> {
+    let read = crate::stored_session::session_from_stored(&StoredSession {
+        id: row.id,
+        started_at: row.started_at,
+        completed_at: row.completed_at,
+        total_duration_secs: row.total_duration_secs,
+        completion_status: row.completion_status,
+        session_notes: row.session_notes,
+        entries: row.entries,
+        session_score: row.session_score,
+        capture_version: row.capture_version,
+    })
+    .map_err(|e| CoreError::Bridge(e.to_string()))?;
+    let mut session = Vec::new();
+    BincodeFfiFormat::serialize(&mut session, &read.session)
+        .map_err(|e| CoreError::Bridge(format!("session: {e}")))?;
+    Ok(StoredSessionRead {
+        session,
+        unreadable: read.unreadable,
+    })
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn session_to_stored(session: Vec<u8>) -> Result<StoredSessionRow, CoreError> {
+    let session: crate::PracticeSession = BincodeFfiFormat::deserialize(&session)
+        .map_err(|e| CoreError::Bridge(format!("session: {e}")))?;
+    let row = crate::stored_session::session_to_stored(&session)
+        .map_err(|e| CoreError::Bridge(e.to_string()))?;
+    Ok(StoredSessionRow {
+        id: row.id,
+        started_at: row.started_at,
+        completed_at: row.completed_at,
+        total_duration_secs: row.total_duration_secs,
+        completion_status: row.completion_status,
+        session_notes: row.session_notes,
+        entries: row.entries,
+        session_score: row.session_score,
+        capture_version: row.capture_version,
     })
 }
 
@@ -873,6 +944,36 @@ mod tests {
             None
         );
         assert!(key_to_stored(vec![9, 9]).is_err(), "bad bytes are an error");
+    }
+
+    /// The shell's columns cross both plain calls and come back as written;
+    /// a time that does not parse refuses the row rather than guessing.
+    #[test]
+    fn a_stored_session_row_round_trips_through_the_plain_calls() {
+        let row = StoredSessionRow {
+            id: "s1".to_string(),
+            started_at: "2026-09-01T10:00:00Z".to_string(),
+            completed_at: "2026-09-01T10:10:00Z".to_string(),
+            total_duration_secs: 600,
+            completion_status: "ended_early".to_string(),
+            session_notes: Some("tired".to_string()),
+            entries: r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":60,"status":"completed","plannedSectionIds":[],"plannedVariationIds":[],"plays":[{"id":"p1","variationIds":[],"startedAt":"2026-09-01T10:00:00Z","seconds":60,"tempoChanges":[],"score":3}]}]"#.to_string(),
+            session_score: Some(4),
+            capture_version: Some(1),
+        };
+        let read = session_from_stored(row.clone()).expect("reads");
+        assert!(read.unreadable.is_empty());
+        assert_eq!(session_to_stored(read.session).expect("writes"), row);
+
+        let bad = StoredSessionRow {
+            started_at: "never".to_string(),
+            ..row
+        };
+        assert!(session_from_stored(bad).is_err());
+        assert!(
+            session_to_stored(vec![9, 9]).is_err(),
+            "bad bytes are an error"
+        );
     }
 
     fn draft_bytes(draft: &crate::PhotoDraft) -> Vec<u8> {
