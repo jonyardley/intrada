@@ -7,6 +7,7 @@ import SwiftUI
 struct ProfileScreen: View {
   @Environment(Store.self) private var store
   @State private var editing = false
+  @State private var sendingFeedback = false
 
   private var profile: ProfileView? { store.viewModel?.profile }
 
@@ -23,6 +24,7 @@ struct ProfileScreen: View {
             hero
             highlighter
             practiceDefaults
+            feedback
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.bottom, IntradaSpacing.section)
@@ -32,6 +34,9 @@ struct ProfileScreen: View {
     .sheet(isPresented: $editing) {
       ProfileEditSheet()
         .environment(store)
+    }
+    .sheet(isPresented: $sendingFeedback) {
+      FeedbackSheet()
     }
   }
 
@@ -85,6 +90,32 @@ struct ProfileScreen: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel("Highlighter, \((profile?.colour ?? .butter).label)")
       .accessibilityIdentifier("profile.highlighter")
+    }
+  }
+
+  private var feedback: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionTitle("Beta")
+      Button {
+        sendingFeedback = true
+      } label: {
+        HStack(spacing: IntradaSpacing.cardCompact) {
+          Text("Send feedback")
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.ink)
+          Spacer(minLength: 0)
+          Image(systemName: "chevron.right")
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.inkFaintIcon)
+            .accessibilityHidden(true)
+        }
+        .padding(.vertical, IntradaSpacing.cardCompact)
+        .padding(.horizontal, IntradaSpacing.card)
+        .contentShape(Rectangle())
+        .cardSurface()
+      }
+      .buttonStyle(.plain)
+      .accessibilityIdentifier("profile.sendFeedback")
     }
   }
 

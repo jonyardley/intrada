@@ -72,6 +72,27 @@ final class ProfileSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
+  func testFeedbackSheet() {
+    assertSnapshot(of: host(FeedbackSheet()), as: config)
+  }
+
+  func testFeedbackSheetFromAShake() {
+    assertSnapshot(of: host(FeedbackSheet(screenshot: Self.screenshot)), as: config)
+  }
+
+  func testFeedbackSheetFromAShakeAccessibilitySize() {
+    assertSnapshot(of: host(FeedbackSheet(screenshot: Self.screenshot)), as: axConfig)
+  }
+
+  private static var screenshot: Data? {
+    UIGraphicsImageRenderer(size: CGSize(width: 390, height: 844)).image { context in
+      UIColor(IntradaColor.paperTop).setFill()
+      context.fill(CGRect(x: 0, y: 0, width: 390, height: 844))
+      UIColor(IntradaColor.ink).setFill()
+      context.fill(CGRect(x: 24, y: 120, width: 342, height: 64))
+    }.pngData()
+  }
+
   func testInstrumentIconPicker() {
     assertSnapshot(
       of: host(InstrumentIconPicker(suggested: .cello, choice: .constant(.harp))), as: config)
