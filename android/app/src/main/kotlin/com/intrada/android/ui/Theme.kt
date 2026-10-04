@@ -174,27 +174,27 @@ object IntradaFont {
     private fun hanken(weight: FontWeight, size: TextUnit) =
         TextStyle(fontFamily = hanken, fontWeight = weight, fontSize = size)
 
-    fun pageTitle(size: TextUnit = 32.sp) = hanken(FontWeight.SemiBold, size)
+    const val pageTitleSize = 30f
+    const val cardTitleSize = 17f
 
-    fun cardTitle(size: TextUnit = 18.sp) = hanken(FontWeight.SemiBold, size)
+    val pageTitle = hanken(FontWeight.SemiBold, pageTitleSize.sp)
+    val title = hanken(FontWeight.SemiBold, 20.sp)
+    val cardTitle = hanken(FontWeight.SemiBold, cardTitleSize.sp)
+    val body = hanken(FontWeight.Normal, 17.sp)
+    val bodyMedium = hanken(FontWeight.Medium, 17.sp)
+    val label = hanken(FontWeight.Medium, 15.sp)
+    val secondary = hanken(FontWeight.Normal, 15.sp).copy(fontFeatureSettings = "tnum")
+    val figure = TextStyle(fontFamily = mono, fontWeight = FontWeight.Normal, fontSize = 15.sp)
+    val button = hanken(FontWeight.Bold, 15.sp)
+    val segment = hanken(FontWeight.Medium, 15.sp)
+    val small = hanken(FontWeight.Normal, 13.sp)
+    val smallMedium = hanken(FontWeight.Medium, 13.sp)
+    val badge = hanken(FontWeight.SemiBold, 13.sp)
 
     fun timer(size: TextUnit = 56.sp) = hanken(FontWeight.SemiBold, size)
 
     fun scoreNumeral(size: TextUnit) = hanken(FontWeight.SemiBold, size)
 
-    val body = hanken(FontWeight.Normal, 16.sp)
-    val bodyMedium = hanken(FontWeight.Medium, 17.sp)
-    val button = hanken(FontWeight.Bold, 15.sp)
-    val subtitle = TextStyle(fontFamily = mono, fontWeight = FontWeight.Normal, fontSize = 14.sp)
-    val meta = TextStyle(fontFamily = mono, fontWeight = FontWeight.Normal, fontSize = 14.sp)
-    val micro = hanken(FontWeight.Normal, 12.sp)
-    val metaMedium = hanken(FontWeight.Medium, 13.5.sp)
-    val badge = hanken(FontWeight.SemiBold, 13.sp)
-    val eyebrow = hanken(FontWeight.SemiBold, 12.sp)
-    val eyebrowTracking = 1.5.sp
-    val tab = hanken(FontWeight.Medium, 13.sp)
-    val segment = hanken(FontWeight.Medium, 15.sp)
-    val field = hanken(FontWeight.Normal, 17.sp)
     val chart = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
     val chartEditor = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 17.sp)
 }

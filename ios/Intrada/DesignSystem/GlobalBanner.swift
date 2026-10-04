@@ -39,7 +39,7 @@ struct GlobalBanner: View {
       if let onDismiss {
         Button(action: onDismiss) {
           Image(systemName: "xmark")
-            .font(IntradaFont.metaMedium)
+            .iconSize(.inline, weight: .medium)
             .foregroundStyle(ink)
         }
         .buttonStyle(.plain)

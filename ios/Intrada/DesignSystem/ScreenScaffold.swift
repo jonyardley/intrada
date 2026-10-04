@@ -136,7 +136,7 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
 
   private var titleText: some View {
     Text(title)
-      .font(IntradaFont.pageTitle())
+      .font(IntradaFont.pageTitle)
       .foregroundStyle(IntradaColor.ink)
   }
 
@@ -150,10 +150,10 @@ struct ScreenScaffold<Content: View, Leading: View, Trailing: View>: View {
         }
         if let subtitle {
           Text(subtitle)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         } else if reservesSubtitleLine {
-          Text(" ").font(IntradaFont.meta).hidden()
+          Text(" ").font(IntradaFont.secondary).hidden()
         }
       }
       // Combine only the title block so the trailing action stays its own

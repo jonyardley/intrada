@@ -37,17 +37,17 @@ struct MasteryHeroCard: View {
 
   private var summary: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Eyebrow("Overall mastery")
+      SectionTitle("Overall mastery")
       if let change {
         HStack(spacing: 5) {
           Image(systemName: "chart.line.uptrend.xyaxis")
           Text(change)
         }
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.success)
       }
       Text("Climbing steadily across \(itemsCovered) pieces.")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
   }

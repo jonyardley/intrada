@@ -12,7 +12,7 @@
   `docs/design-principles.md`): paper #F7F4EF, white cards with 3pt corners and a
   faint lift, near-neutral ink #2A2725, and one highlighter as the only bright
   colour, chosen by the musician from eight (butter #FFE9A3 by default). Hanken
-  Grotesk for titles and body, DM Mono for metadata.
+  Grotesk for titles and body, DM Mono for figures (T35).
   `ios/Intrada/DesignSystem/Theme.swift` holds every value.
 - **Dark mode is parked, not dropped**: revisit once the app reaches MVP. A dark
   variant of the Focus Player / Library / Practice exists in `Intrada Concepts.dc.html`

@@ -76,14 +76,11 @@ struct EntrySettingsSheet: View {
   }
 
   private var aimSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Aim")
+    FieldCard("Aim") {
       TextField("What are you aiming for on this one?", text: $intention, axis: .vertical)
         .lineLimit(2...4)
-        .font(IntradaFont.field)
+        .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.ink)
-        .padding(IntradaSpacing.cardCompact)
-        .cardSurface(cornerRadius: IntradaRadius.control)
         .onChange(of: intention) { _, value in
           let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
           let next = trimmed.isEmpty ? nil : trimmed
@@ -94,8 +91,7 @@ struct EntrySettingsSheet: View {
   }
 
   private var stepSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Variation")
+    FieldCard("Variation") {
       Menu {
         ForEach(variants, id: \.id) { variation in
           Button(variation.label) {
@@ -118,8 +114,7 @@ struct EntrySettingsSheet: View {
             .imageScale(.small)
             .foregroundStyle(IntradaColor.inkFaintIcon)
         }
-        .padding(IntradaSpacing.cardCompact)
-        .cardSurface(cornerRadius: IntradaRadius.control)
+        .contentShape(Rectangle())
       }
       .accessibilityLabel("Variation: \(selectedVariationLabel)")
       .accessibilityHint("Choose a different variation")
@@ -149,8 +144,7 @@ struct EntrySettingsSheet: View {
         }
       }
     }
-    .padding(IntradaSpacing.cardCompact)
-    .cardSurface(cornerRadius: IntradaRadius.control)
+    .fieldCardSurface()
   }
 
   private var durationSection: some View {
@@ -173,8 +167,7 @@ struct EntrySettingsSheet: View {
         }
       }
     }
-    .padding(IntradaSpacing.cardCompact)
-    .cardSurface(cornerRadius: IntradaRadius.control)
+    .fieldCardSurface()
   }
 
   @ViewBuilder private func settingToggle(
@@ -182,16 +175,19 @@ struct EntrySettingsSheet: View {
   ) -> some View {
     if typeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow(title).accessibilityHidden(true)
+        FieldLabel(title)
+          .accessibilityHidden(true)
         Toggle(title, isOn: isOn)
           .labelsHidden()
           .tint(IntradaColor.accent)
           .accessibilityIdentifier(identifier ?? "")
       }
     } else {
-      Toggle(isOn: isOn) { Eyebrow(title) }
-        .tint(IntradaColor.accent)
-        .accessibilityIdentifier(identifier ?? "")
+      Toggle(isOn: isOn) {
+        FieldLabel(title)
+      }
+      .tint(IntradaColor.accent)
+      .accessibilityIdentifier(identifier ?? "")
     }
   }
 

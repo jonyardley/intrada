@@ -37,9 +37,7 @@ struct TagChipInput: View {
   var body: some View {
     VStack(spacing: 0) {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Text(label)
-          .font(IntradaFont.metaMedium)
-          .foregroundStyle(faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
+        FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         if !tags.isEmpty {
           FlowLayout(spacing: 6) {
             ForEach(tags, id: \.self) { tag in
@@ -48,7 +46,7 @@ struct TagChipInput: View {
           }
         }
         TextField("Add a tag", text: $draft)
-          .font(IntradaFont.field)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()

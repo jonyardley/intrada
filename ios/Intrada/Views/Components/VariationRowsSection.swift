@@ -17,9 +17,7 @@ struct VariationRowsSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text("Variations")
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
+      FieldLabel("Variations", tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint(FaultMark.spoken(faulted))
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -77,7 +75,7 @@ struct VariationRowsSection: View {
           .accessibilityAction(named: "Move down") { rows.move(current.id, by: 1) }
         if current.variantId == nil {
           TextField("e.g. C", text: label(of: current.id))
-            .font(IntradaFont.field)
+            .font(IntradaFont.body)
             .foregroundStyle(IntradaColor.ink)
             .focused($focusedRow, equals: current.id)
             .accessibilityLabel("Variation")
@@ -85,7 +83,7 @@ struct VariationRowsSection: View {
         } else {
           // A saved variation is renamed across the library, not on one item (#2247).
           Text(current.label)
-            .font(IntradaFont.field)
+            .font(IntradaFont.body)
             .foregroundStyle(IntradaColor.ink)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .accessibilityLabel("Variation \(current.label)")

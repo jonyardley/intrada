@@ -9,10 +9,10 @@ struct SessionCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
       Text(session.dayLabel)
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.ink)
       Text(metaLine)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       if !session.playedSummary.isEmpty {
         // No `lineLimit`: the core's character budget is copy honesty, not a
@@ -24,7 +24,7 @@ struct SessionCard: View {
       }
       if session.completionStatus == .endedEarly {
         Text("Ended early")
-          .font(IntradaFont.micro)
+          .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, 2)
       }

@@ -81,7 +81,7 @@ struct AnalyticsScreen: View {
 
   private func recentMasterySection(_ analytics: AnalyticsView) -> some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Recent mastery")
+      SectionTitle("Recent mastery")
       VStack(spacing: IntradaSpacing.cardCompact) {
         ForEach(Array(analytics.scoreChanges.enumerated()), id: \.offset) { idx, change in
           MasteryDelta(

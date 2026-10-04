@@ -34,16 +34,16 @@ struct StartHereCard: View {
     let current = steps.firstIndex { !$0.done }
     VStack(alignment: .leading, spacing: 0) {
       let count = Text("\(steps.filter(\.done).count) of \(steps.count)")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .firstTextBaseline) {
-          Eyebrow("Start here")
+          SectionTitle("Start here")
           Spacer()
           count
         }
         VStack(alignment: .leading, spacing: 4) {
-          Eyebrow("Start here")
+          SectionTitle("Start here")
           count
         }
       }

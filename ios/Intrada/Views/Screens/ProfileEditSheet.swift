@@ -102,11 +102,9 @@ struct ProfileEditSheet: View {
     return layout {
       ProfileBadge(icon: shownIcon)
       VStack(alignment: .leading, spacing: 3) {
-        Text("Icon")
-          .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkSecondary)
+        FieldLabel("Icon")
         Text(iconCaption)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       if !stacked {
@@ -143,19 +141,6 @@ struct ProfileEditSheet: View {
       dismiss()
     }
   }
-}
-
-/// The instrument field's suggestion pool: vocabulary for the autocomplete,
-/// not a domain decision; the core decides what each one matches.
-enum InstrumentNames {
-  static let suggestions: [String] = [
-    "Accordion", "Alto saxophone", "Bagpipes", "Banjo", "Baritone", "Bass guitar", "Bassoon",
-    "Cello", "Clarinet", "Cor anglais", "Cornet", "Double bass", "Drums", "Electric guitar",
-    "Euphonium", "Flute", "French horn", "Guitar", "Harp", "Harpsichord", "Mandolin", "Marimba",
-    "Oboe", "Organ", "Percussion", "Piano", "Piccolo", "Recorder", "Saxophone", "Soprano",
-    "Tenor saxophone", "Timpani", "Trombone", "Trumpet", "Tuba", "Ukulele", "Viola", "Violin",
-    "Voice",
-  ]
 }
 
 #if DEBUG

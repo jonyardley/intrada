@@ -597,6 +597,8 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertFalse(view.iconChosen)
     XCTAssertEqual(view.colour, .coral)
     XCTAssertTrue(
+      view.instrumentNames.contains("Double bass"), "the autocomplete's names cross the bridge")
+    XCTAssertTrue(
       ["Morning, Jon", "Afternoon, Jon", "Evening, Jon"].contains(view.greeting),
       "the greeting follows the device clock: \(view.greeting)")
 

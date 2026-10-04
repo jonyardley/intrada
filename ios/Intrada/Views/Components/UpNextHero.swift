@@ -26,7 +26,7 @@ struct UpNextHero: View {
   }
 
   private var laterBlocks: ArraySlice<SuggestedSession> { plan.blocks.dropFirst() }
-  private var eyebrow: String { plan.lengthMins == nil ? "Up next" : "Today's plan" }
+  private var heading: String { plan.lengthMins == nil ? "Up next" : "Today's plan" }
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.card) {
@@ -44,24 +44,24 @@ struct UpNextHero: View {
     .accessibilityElement(children: .contain)
   }
 
-  // Eyebrow, title, count and reason read as one sentence: split up, VoiceOver
+  // Heading, title, count and reason read as one sentence: split up, VoiceOver
   // announces "3 items · 15 min" detached from the piece it describes.
   private var headline: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .firstTextBaseline) {
-          eyebrowLabel.fixedSize()
+          headingLabel.fixedSize()
           Spacer(minLength: IntradaSpacing.controlGap)
           countText.fixedSize()
         }
         VStack(alignment: .leading, spacing: 2) {
-          eyebrowLabel
+          headingLabel
           countText.fixedSize(horizontal: false, vertical: true)
         }
       }
 
       Text(lead.pieceTitle)
-        .font(IntradaFont.pageTitle(27))
+        .font(IntradaFont.title)
         .foregroundStyle(IntradaColor.paperTop)
         .lineLimit(3)
         .minimumScaleFactor(0.75)
@@ -74,7 +74,7 @@ struct UpNextHero: View {
             .foregroundStyle(marker)
         }
         Text(lead.reason)
-          .font(IntradaFont.subtitle)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.strong))
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -84,13 +84,13 @@ struct UpNextHero: View {
     .accessibilityLabel(headlineLabel)
   }
 
-  private var eyebrowLabel: some View {
-    Eyebrow(eyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+  private var headingLabel: some View {
+    SectionTitle(heading, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
   private var countText: some View {
     Text(countLabel)
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
@@ -116,7 +116,7 @@ struct UpNextHero: View {
 
   private var laterList: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+      SectionTitle("Then", tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
       VStack(spacing: 0) {
         ForEach(Array(laterBlocks.enumerated()), id: \.element.pieceId) { index, block in
           if index > 0 {
@@ -141,7 +141,7 @@ struct UpNextHero: View {
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.paperTop)
     let totals = Text(blockLabel(block))
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
     return ViewThatFits(in: .horizontal) {
       HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.controlGap) {
@@ -178,7 +178,7 @@ struct UpNextHero: View {
           .foregroundStyle(IntradaColor.paperTop)
           .fixedSize(horizontal: false, vertical: true)
         Text(item.reason)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
           .fixedSize(horizontal: false, vertical: true)
       }
@@ -226,7 +226,7 @@ struct UpNextHero: View {
         buildOwnButton
       }
     }
-    .font(IntradaFont.subtitle)
+    .font(IntradaFont.secondary)
     .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
   }
 
@@ -259,7 +259,7 @@ struct UpNextHero: View {
   }
 
   private var headlineLabel: String {
-    var parts = [eyebrow]
+    var parts = [heading]
     // Filled to a length, the totals are the plan's, not the lead piece's.
     if plan.lengthMins != nil { parts.append(spokenCount) }
     parts.append(lead.pieceTitle)

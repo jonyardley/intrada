@@ -79,7 +79,7 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(strip), as: config)
   }
 
-  // The eyebrow must wrap between words beside the Edit button, never inside one (#1781).
+  // The section title must wrap between words beside the Edit button, never inside one (#1781).
   func testSectionHeaderWithActionAccessibilitySize() {
     let headers = ZStack {
       PaperBackground()

@@ -41,7 +41,7 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
         VStack(spacing: 0) {
           if titleInContent {
             Text(title)
-              .font(IntradaFont.cardTitle())
+              .font(IntradaFont.cardTitle)
               .foregroundStyle(IntradaColor.ink)
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.horizontal, IntradaSpacing.card)

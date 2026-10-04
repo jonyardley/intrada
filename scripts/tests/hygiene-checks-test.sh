@@ -308,12 +308,11 @@ faint_check() {
 }
 printf 'val inkFaint = Color(0xFFA99C8C)\n' >"$faint_kt/com/intrada/android/ui/Theme.kt"
 
-printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Components/SectionHeader.swift"
 printf 'static let inkFaint = Color(hex: 0xA99C8C)\nlet x = IntradaColor.inkFaint\n' >"$faint/DesignSystem/Theme.swift"
 printf 'Image(systemName: "x").foregroundStyle(IntradaColor.inkFaintIcon)\n' >"$faint/Views/Glyph.swift"
 printf 'Rectangle().fill(IntradaColor.inkFainter)\n' >"$faint/Views/Tick.swift"
 printf 'Text("b")  // not inkFaint: it fails AA\n' >"$faint/Views/Note.swift"
-expect 0 "the eyebrow, the token itself, a glyph token, the fainter token and a comment" faint_check
+expect 0 "the token itself, a glyph token, the fainter token and a comment" faint_check
 
 printf 'Text(meta).foregroundStyle(IntradaColor.inkFaint)\n' >"$faint/Views/Row.swift"
 expect 1 "faint ink on a meta line" faint_check
@@ -323,9 +322,9 @@ printf 'Text(meta)\n  .foregroundStyle(\n    IntradaColor.inkFaint\n  )\n' >"$fa
 expect 1 "faint ink with the modifier wrapped over lines" faint_check
 rm "$faint/Views/Wrapped.swift"
 
-printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Screens/SectionHeader.swift"
-expect 1 "faint ink in a second file named like the eyebrow's" faint_check
-rm "$faint/Views/Screens/SectionHeader.swift"
+printf 'var tint: Color = IntradaColor.inkFaint\n' >"$faint/Views/Components/SectionHeader.swift"
+expect 1 "faint ink on a section title" faint_check
+rm "$faint/Views/Components/SectionHeader.swift"
 
 printf 'Text(meta, color = IntradaColor.inkFaint)\n' >"$faint_kt/com/intrada/android/ui/Row.kt"
 expect 1 "faint ink on an Android meta line" faint_check

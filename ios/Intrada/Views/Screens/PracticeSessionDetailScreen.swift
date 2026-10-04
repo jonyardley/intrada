@@ -63,9 +63,9 @@ struct PracticeSessionDetailScreen: View {
 
   private var sessionScoreText: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Eyebrow("How it went")
+      SectionTitle("How it went")
       Text("Your mark for the session")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
   }
@@ -74,7 +74,7 @@ struct PracticeSessionDetailScreen: View {
 
   private func noteCard(_ notes: String) -> some View {
     VStack(alignment: .leading, spacing: 4) {
-      Eyebrow("Your note")
+      SectionTitle("Your note")
       Text(notes)
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.ink)
@@ -87,7 +87,7 @@ struct PracticeSessionDetailScreen: View {
 
   private var playedSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("What you played")
+      SectionTitle("What you played")
         .accessibilityIdentifier("sessionDetail.played")
       VStack(spacing: 0) {
         ForEach(Array(session.entries.enumerated()), id: \.element.id) { index, entry in
@@ -131,13 +131,13 @@ struct PracticeSessionDetailScreen: View {
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(played ? IntradaColor.ink : IntradaColor.inkSecondary)
       Text(entryMeta(entry))
-        .font(IntradaFont.micro)
+        .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.inkSecondary)
       if entry.plays.count > 1 {
         VStack(alignment: .leading, spacing: 2) {
           ForEach(entry.plays, id: \.id) { play in
             Text(playLine(play))
-              .font(IntradaFont.micro)
+              .font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }
@@ -146,13 +146,13 @@ struct PracticeSessionDetailScreen: View {
         // A single variation still gets named (#1785), in the same style as
         // the multi-variation lines above rather than a one-off treatment.
         Text(singleVariationLine(play))
-          .font(IntradaFont.micro)
+          .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, 2)
       }
       if let notes = entry.notes, !notes.isEmpty {
         Text(notes)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .padding(.top, 2)
       }

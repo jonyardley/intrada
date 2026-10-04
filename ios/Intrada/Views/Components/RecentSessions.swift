@@ -34,7 +34,7 @@ struct RecentSessions: View {
 
   private var header: some View {
     HStack {
-      Eyebrow("Recent sessions")
+      SectionTitle("Recent sessions")
       Spacer()
       if let trend {
         let up = trend.to > trend.from
@@ -58,7 +58,7 @@ struct RecentSessions: View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       ScoreRing(score: session.score, size: 38)
       Text(session.dateText)
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer()
     }

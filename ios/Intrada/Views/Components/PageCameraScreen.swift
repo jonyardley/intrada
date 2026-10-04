@@ -282,7 +282,7 @@ struct PageCameraBlocked: View {
   var body: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Text(access == .denied ? "Camera access is off" : "No camera on this device")
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.onAccent)
 
       if access == .denied {
@@ -307,7 +307,7 @@ struct PageCameraUnstartable: View {
   var body: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Text("Couldn't start the camera")
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.onAccent)
 
       Text("Something else may be using it. Close this and try again.")

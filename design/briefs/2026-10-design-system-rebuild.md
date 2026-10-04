@@ -37,7 +37,6 @@ Ink:
 |---|---|---|
 | ink | #2A2725 | Text, and every interactive colour on paper |
 | inkSecondary | #6E6A66 | Metadata and secondary text |
-| inkFaint | #A99C8C | Eyebrow labels only, never body or metadata |
 | inkFaintIcon | #8F8070 | A dimmed glyph with no text of its own; never text |
 | inkFainter | #C2B8AA | Placeholder and unavailable glyphs |
 | accent | = ink | No brand hue: the interactive colour is ink |
@@ -96,37 +95,44 @@ Measured with the WCAG formula from the hexes above.
 |---|---|---|---|
 | ink | 13.52:1 | 14.84:1 | 4.5:1 text |
 | inkSecondary | 4.89:1 | 5.36:1 | 4.5:1 text |
-| inkFaint | 2.45:1 | 2.69:1 | none: eyebrows only, by decision |
 | inkFaintIcon | 3.49:1 | 3.83:1 | 3:1 non-text glyph |
 
 ## Type
 
-Hanken Grotesk for titles and body, DM Mono for metadata. Every style scales
-with Dynamic Type from its anchor.
+Hanken Grotesk for titles and body, DM Mono for figures. Five sizes, 30, 20,
+17, 15 and 13; weight and colour carry the hierarchy inside a size (T35 in
+`docs/design-principles.md`, #1881). Every style scales with Dynamic Type from
+its anchor.
 
 | Style | Face | Size (pt) | Weight | Anchor |
 |---|---|---|---|---|
-| pageTitle | Hanken Grotesk | 32 | SemiBold | Large Title |
-| cardTitle | Hanken Grotesk | 18 | SemiBold | Title 3 |
+| pageTitle | Hanken Grotesk | 30 | SemiBold | Large Title |
+| title | Hanken Grotesk | 20 | SemiBold | Title 3 |
+| cardTitle | Hanken Grotesk | 17 | SemiBold | Headline |
+| body | Hanken Grotesk | 17 | Regular | Body |
+| bodyMedium | Hanken Grotesk | 17 | Medium | Body |
+| label | Hanken Grotesk | 15, inkSecondary, sentence case | Medium | Subheadline |
+| secondary | Hanken Grotesk | 15, tabular digits | Regular | Subheadline |
+| figure | DM Mono | 15 | Regular | Subheadline |
+| button | Hanken Grotesk | 15 | Bold | Subheadline |
+| segment | Hanken Grotesk | 15 | Medium | Subheadline |
+| small | Hanken Grotesk | 13 | Regular | Caption |
+| smallMedium | Hanken Grotesk | 13 | Medium | Caption |
+| badge | Hanken Grotesk | 13 | SemiBold | Caption |
 | timer | Hanken Grotesk | 56, tabular digits | SemiBold | Large Title |
 | scoreNumeral | Hanken Grotesk | set per use | SemiBold | Title 3 |
-| body | Hanken Grotesk | 16 | Regular | Body |
-| bodyMedium | Hanken Grotesk | 17 | Medium | Body |
-| button | Hanken Grotesk | 15 | Bold | Subheadline |
-| field | Hanken Grotesk | 17 | Regular | Callout |
-| segment | Hanken Grotesk | 15 | Medium | Subheadline |
-| metaMedium | Hanken Grotesk | 13.5 | Medium | Caption |
-| badge | Hanken Grotesk | 13 | SemiBold | Caption |
-| tab | Hanken Grotesk | 13 | Medium | Footnote |
-| eyebrow | Hanken Grotesk | 12, uppercase, tracking 1.5 | SemiBold | Caption 2 |
-| micro | Hanken Grotesk | 12 | Regular | Caption 2 |
-| subtitle | DM Mono | 14 | Regular | Footnote |
-| meta | DM Mono | 14 | Regular | Caption |
 | chart | system monospaced | Footnote | Regular | Footnote |
 | chartEditor | system monospaced | Body | Regular | Body |
 
-A section title is the eyebrow in `inkFaint`. A field label (Key, Tempo) is
-`metaMedium`, quieter than its value.
+Nothing is set in capitals. Every label, a section's title, a field's label
+(Key, Tempo) or a toggle's title, is `label` in `inkSecondary`, in sentence
+case, at the top of what it names; `SectionTitle` and `FieldLabel` look the
+same, and a field's label sits inside its card above the value (`FieldCard`).
+Values, and anything read or set, are 17 in ink. Only the dark Practice and Up
+next cards keep their labels light on dark. Mono is
+for a figure set alone (a clock, a duration, a count); a line that mixes words
+and numbers is `secondary`. The timer and the score numerals are the only
+styles sized by the dial or readout they sit in.
 
 ## Spacing, radius, lift, opacity
 
@@ -199,7 +205,7 @@ Show these, by these names, and nothing else as a component.
    `InstrumentGlyph`, `.markerSwipe()`, `.scrimCapsule()`, `FieldMark`
    (`doc.viewfinder`), `FaultMark`, `.scrollEdgeShadow()`.
 2. **Reusable views** (`ios/Intrada/Views/Components`): `SectionHeader` and
-   `Eyebrow`, `TypeBadge`, `LibraryItemCard`, `SegmentedPills`,
+   `SectionTitle`, `FieldCard` and `FieldLabel`, `TypeBadge`, `LibraryItemCard`, `SegmentedPills`,
    `SegmentedProgress`, `BottomSheet`, `ScoreRing`, `ScoreSelector`,
    `MasteryDial`, `MasteryHeroCard`, `ConsistencyBars`, `WeekStrip`,
    `RepCounter` ("Got it" `checkmark`, missed `xmark`), `TransportButton`

@@ -19,7 +19,7 @@ struct InlineSuggestionList: View {
         } label: {
           HStack(spacing: 10) {
             Image(systemName: systemImage)
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(IntradaColor.inkFaintIcon)
             Text(suggestion)
               .font(IntradaFont.body)

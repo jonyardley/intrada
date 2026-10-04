@@ -110,7 +110,7 @@ struct BrowseControlsBar: View {
           priorityOnly: !priorityOnly)
       } label: {
         Image(systemName: priorityOnly ? "star.fill" : "star")
-          .font(IntradaFont.tab)
+          .font(IntradaFont.smallMedium)
           .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaintIcon)
           .padding(.vertical, 6)
           .padding(.horizontal, 10)
@@ -144,7 +144,7 @@ struct BrowseControlsBar: View {
           ? "line.3.horizontal.decrease.circle"
           : "line.3.horizontal.decrease.circle.fill"
       )
-      .font(IntradaFont.tab)
+      .font(IntradaFont.smallMedium)
       .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaintIcon : IntradaColor.accent)
       .padding(IntradaSpacing.controlGap)
     }
@@ -153,7 +153,7 @@ struct BrowseControlsBar: View {
     .accessibilityValue(activeTags.isEmpty ? "Off" : "\(activeTags.count) selected")
     Button(action: toggleSearch) {
       Image(systemName: "magnifyingglass")
-        .font(IntradaFont.tab)
+        .font(IntradaFont.smallMedium)
         .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaintIcon)
         .padding(IntradaSpacing.controlGap)
     }

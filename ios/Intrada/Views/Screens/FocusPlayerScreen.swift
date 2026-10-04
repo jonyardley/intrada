@@ -146,7 +146,7 @@ struct FocusPlayerScreen: View {
   }
 
   private func positionLabel(_ active: ActiveSessionView) -> String {
-    "FOCUS · \(active.currentPosition + 1) OF \(active.totalItems)"
+    "Focus · \(active.currentPosition + 1) of \(active.totalItems)"
   }
 
   private var optionsMenu: some View {
@@ -178,23 +178,23 @@ struct FocusPlayerScreen: View {
     VStack(spacing: 8) {
       TypeBadge(kind: active.currentItemType)
       Text(active.currentItemTitle)
-        .font(IntradaFont.pageTitle(34))
+        .font(IntradaFont.pageTitle)
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.center)
       if let pieceTitle = active.currentRelatedPieceTitle {
         Label("Related to \(pieceTitle)", systemImage: "arrow.turn.down.right")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.accent)
       }
       if let aim = active.currentItemIntention, !aim.isEmpty {
         Text("Aim: \(aim)")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
       }
       if let notes = active.currentItemNotes, !notes.isEmpty {
         Text("Notes: \(notes)")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
           .lineLimit(3)
@@ -224,7 +224,7 @@ struct FocusPlayerScreen: View {
             .lineLimit(1)
             .minimumScaleFactor(0.7)
           Image(systemName: "chevron.down")
-            .font(IntradaFont.micro.weight(.semibold))
+            .font(IntradaFont.small.weight(.semibold))
             .foregroundStyle(IntradaColor.inkSecondary)
         }
         .padding(.horizontal, 14)
@@ -355,7 +355,7 @@ struct FocusPlayerScreen: View {
       }
       if let next = active.nextItemTitle {
         Text("Next · \(next)")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
     }
@@ -480,7 +480,7 @@ private struct TimerRing: View {
           .foregroundStyle(IntradaColor.ink)
         if let planned {
           Text("of \(SessionClock.clockDisplay(planned))")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }

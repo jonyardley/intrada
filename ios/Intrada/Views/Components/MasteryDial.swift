@@ -42,11 +42,10 @@ struct MasteryDial: View {
       // square and let it shrink. Accessibility sizes only: below them, no change.
       VStack(spacing: 2) {
         CountingNumber(value: settled ? value : 0) { String(format: "%.1f", $0) }
-          .font(IntradaFont.pageTitle(size * 0.297))
+          .font(IntradaFont.scoreNumeral(size * 0.297))
           .foregroundStyle(IntradaColor.ink)
-        Text("of \(String(format: "%.1f", maxValue))".uppercased())
-          .font(IntradaFont.eyebrow)
-          .tracking(IntradaFont.eyebrowTracking)
+        Text("of \(String(format: "%.1f", maxValue))")
+          .font(IntradaFont.small)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       .lineLimit(dynamicTypeSize.isAccessibilitySize ? 1 : nil)

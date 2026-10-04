@@ -59,16 +59,14 @@ struct KeyPicker: View {
   private var row: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       VStack(alignment: .leading, spacing: 4) {
-        Text(label)
-          .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkSecondary)
+        FieldLabel(label)
         if let display = key.flatMap(KeyHelper.display) {
           Text(display)
-            .font(IntradaFont.field)
+            .font(IntradaFont.body)
             .foregroundStyle(IntradaColor.accent)
         } else {
           Text("Select a key")
-            .font(IntradaFont.field)
+            .font(IntradaFont.body)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
@@ -87,7 +85,7 @@ struct KeyPicker: View {
       }
 
       Image(systemName: "chevron.down")
-        .font(IntradaFont.metaMedium)
+        .iconSize(.inline, weight: .medium)
         .foregroundStyle(IntradaColor.inkFaintIcon)
         .rotationEffect(.degrees(expanded ? 180 : 0))
         // Keep clear distance from the clear (×) button so a tap aimed at the
@@ -166,19 +164,19 @@ struct KeyPicker: View {
       if let sel = selection {
         VStack(spacing: 0) {
           Text(KeyHelper.prettify(sel.spelling))
-            .font(IntradaFont.cardTitle(30))
+            .font(IntradaFont.title)
             .foregroundStyle(IntradaColor.ink)
           Text(KeyHelper.modeWord(sel.mode))
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       } else {
         VStack(spacing: 2) {
           Text("\u{266A}")  // ♪
-            .font(IntradaFont.cardTitle(26))
+            .font(IntradaFont.title)
             .foregroundStyle(IntradaColor.inkFaintIcon)
           Text("Select a key")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
@@ -196,15 +194,15 @@ struct KeyPicker: View {
         let pair = displayedPair(ring: ring, mode: .major, primary: primary, alt: alt)
         VStack(spacing: 1) {
           Text(KeyHelper.prettify(pair.top))
-            .font(IntradaFont.cardTitle(15))
+            .font(IntradaFont.segment)
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.ink)
           Text("\u{21C5} \(KeyHelper.prettify(pair.bottom))")  // ⇅
-            .font(IntradaFont.micro)
+            .font(IntradaFont.small)
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkSecondary)
         }
       } else {
         Text(KeyHelper.prettify(primary))
-          .font(IntradaFont.cardTitle(15))
+          .font(IntradaFont.segment)
           .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.ink)
       }
     }
@@ -223,11 +221,11 @@ struct KeyPicker: View {
       // ⇅ stacked above the label so it fits the narrow inner wedge.
       if KeyHelper.enharmonicAlt(ring: ring, mode: .minor) != nil {
         VStack(spacing: 0) {
-          Text("\u{21C5}").font(IntradaFont.micro)  // ⇅
-          Text(label).font(IntradaFont.meta)
+          Text("\u{21C5}").font(IntradaFont.small)  // ⇅
+          Text(label).font(IntradaFont.secondary)
         }
       } else {
-        Text(label).font(IntradaFont.meta)
+        Text(label).font(IntradaFont.secondary)
       }
     }
     .foregroundStyle(color)

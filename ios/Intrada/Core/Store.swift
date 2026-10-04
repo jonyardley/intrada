@@ -200,7 +200,7 @@ final class Store {
   }
 
   func loadRecoverableSession() {
-    guard viewModel?.activeSession == nil, viewModel?.summary == nil else { return }
+    guard viewModel?.offersRecovery == true else { return }
     clearRetiredSessionsInProgress()
     recoverableSession = pendingSessionInProgress()
   }

@@ -191,7 +191,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
   // player's radial gradient (snapshot hygiene).
   private func orientationBand(elapsed: Int) -> some View {
     SessionOrientationBand(
-      sessionElapsed: elapsed, positionLabel: "FOCUS · 3 OF 5",
+      sessionElapsed: elapsed, positionLabel: "Focus · 3 of 5",
       types: [.exercise, .exercise, .exercise, .piece, .exercise], filled: 3,
       menu: { Image(systemName: "ellipsis").frame(width: 28, height: 28) }
     )

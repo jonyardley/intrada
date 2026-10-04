@@ -55,7 +55,7 @@ struct ClickSheet: View {
       Text(
         "The tempo stays as it is. The pattern changes which beats you hear, not how fast you play."
       )
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
     }
     .accessibilityElement(children: .combine)
@@ -66,8 +66,7 @@ struct ClickSheet: View {
   }
 
   private var metreSection: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Time signature")
+    FieldCard("Time signature") {
       SegmentedPills(
         options: metreChoices,
         selection: Binding(
@@ -95,7 +94,7 @@ struct ClickSheet: View {
         },
         layout: .fullWidthTrack)
       Text("From the piece. Changing it here holds for this session only.")
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
   }
@@ -106,8 +105,7 @@ struct ClickSheet: View {
 
   private var otherSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.card) {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow("Beats in the bar")
+      FieldCard("Beats in the bar") {
         Stepper(value: $beats, in: beatsRange) {
           Text("\(beats)")
             .font(IntradaFont.scoreNumeral(24))
@@ -119,8 +117,7 @@ struct ClickSheet: View {
           commitOther()
         }
       }
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow("Beat value")
+      FieldCard("Beat value") {
         SegmentedPills(
           options: unitOptions,
           selection: Binding(
@@ -135,8 +132,7 @@ struct ClickSheet: View {
       }
       let groupings = limits.clickGroupings(beats: beats)
       if !groupings.isEmpty {
-        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          Eyebrow("Grouped")
+        FieldCard("Grouped") {
           SegmentedPills(
             options: [nil] + groupings.map(Optional.some),
             selection: Binding(
@@ -158,8 +154,7 @@ struct ClickSheet: View {
 
   private var soundsOnSection: some View {
     let metre = click.metre
-    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Eyebrow("Sounds on")
+    return FieldCard("Sounds on") {
       // Optional option type so a hand-toggled mask matching no preset simply
       // selects nothing, as the grouping picker above does for "Not grouped".
       SegmentedPills(

@@ -236,7 +236,7 @@ struct PracticeScreen: View {
           .accessibilityHidden(true)
         Text("Show suggestion")
       }
-      .font(IntradaFont.subtitle)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity)
       .padding(.vertical, IntradaSpacing.controlGap)
@@ -252,11 +252,11 @@ struct PracticeScreen: View {
       // visually, so read separately it would reach VoiceOver detached from
       // the piece it describes.
       VStack(spacing: IntradaSpacing.cardCompact) {
-        Eyebrow(heroEyebrow, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+        SectionTitle(heroHeading, tint: IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
 
         if let lastPractised {
           Text(lastPractised.itemTitle)
-            .font(IntradaFont.pageTitle(25))
+            .font(IntradaFont.title)
             .foregroundStyle(IntradaColor.paperTop)
             .multilineTextAlignment(.center)
             .lineLimit(2)
@@ -290,13 +290,13 @@ struct PracticeScreen: View {
   }
 
   // The day lives here now, not under the play button (#1725).
-  private var heroEyebrow: String {
+  private var heroHeading: String {
     guard let lastPractised else { return "First session" }
     return "Last practised · \(lastPractised.relativeDay)"
   }
 
   private var heroLabel: String {
-    guard let lastPractised else { return heroEyebrow }
+    guard let lastPractised else { return heroHeading }
     return "\(lastPractised.label), \(lastPractised.itemTitle)"
   }
 
@@ -422,7 +422,7 @@ struct PracticeScreen: View {
       })
   }
 
-  // nil once there's a last-practised fact: the hero eyebrow says it instead (#1725).
+  // nil once there's a last-practised fact: the hero heading says it instead (#1725).
   private var subtitle: String? {
     let rawGreeting: String? = store.viewModel?.profile.greeting
     let greeting = rawGreeting.flatMap { $0.isEmpty ? nil : $0 }

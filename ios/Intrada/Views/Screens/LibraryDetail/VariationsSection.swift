@@ -10,11 +10,11 @@ struct VariationsSection: View {
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       if item.keys.isEmpty && item.variations.isEmpty {
-        Eyebrow("Variations")
+        SectionTitle("Variations")
         emptyState
       }
       if !item.keys.isEmpty {
-        Eyebrow("Keys")
+        SectionTitle("Keys")
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: IntradaSpacing.card) {
             ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
@@ -26,7 +26,7 @@ struct VariationsSection: View {
         .cardSurface(cornerRadius: IntradaRadius.card)
       }
       if !item.variations.isEmpty {
-        Eyebrow("Variations")
+        SectionTitle("Variations")
         VStack(spacing: 0) {
           ForEach(Array(item.variations.enumerated()), id: \.element.id) { index, variation in
             if index > 0 {
@@ -65,7 +65,7 @@ private struct KeyRingItem: View {
     VStack(spacing: 6) {
       ScoreRing(score: key.latestScore.map(Int.init), size: 44, labelOverride: shortLabel)
       Text(key.caption)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .accessibilityElement(children: .ignore)
@@ -93,7 +93,7 @@ private struct VariationListRow: View {
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
       Text(variation.caption)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)

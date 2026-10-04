@@ -314,6 +314,9 @@ pub struct ViewModel {
     /// core's "already in progress" refusal (#981). Derived before the Library
     /// filter, like `up_next`.
     pub shows_priorities: bool,
+    /// The crash-recovery prompt may show: no session is being played or
+    /// summarised, so resuming cannot replace one (#962).
+    pub offers_recovery: bool,
     pub practice_defaults: PracticeDefaults,
     pub first_run: FirstRunView,
     /// The library's live variations, for the pickers (#2246).
