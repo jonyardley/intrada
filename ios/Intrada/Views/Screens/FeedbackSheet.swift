@@ -55,6 +55,7 @@ struct FeedbackSheet: View {
         }
       }
     }
+    .interactiveDismissDisabled(!note.isEmpty)
     .onAppear { noteFocused = true }
   }
 

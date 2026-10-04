@@ -72,6 +72,12 @@ final class ProfileSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
+  /// The Beta row sits below the fold of the phone-height snapshots.
+  func testProfileScreenFull() {
+    assertSnapshot(
+      of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: tallFormConfig)
+  }
+
   func testFeedbackSheet() {
     assertSnapshot(of: host(FeedbackSheet()), as: config)
   }
