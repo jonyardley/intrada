@@ -27,9 +27,7 @@ struct RepCounter: View {
 
   private var header: some View {
     HStack {
-      Text("Repetitions")
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(IntradaColor.inkSecondary)
+      FieldLabel("Repetitions")
       Spacer()
       HStack(spacing: 0) {
         Text("\(count)")
@@ -38,7 +36,7 @@ struct RepCounter: View {
         Text(countTail)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .monospacedDigit()
     }
     .accessibilityElement(children: .ignore)

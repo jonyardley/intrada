@@ -232,7 +232,7 @@ struct SessionBuilderScreen: View {
     HStack {
       Spacer()
       Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.accent)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
@@ -370,10 +370,10 @@ struct SessionBuilderScreen: View {
       HStack(spacing: IntradaSpacing.cardCompact) {
         entry.itemType.bar.frame(width: 4, height: 34).clipShape(Capsule())
         VStack(alignment: .leading, spacing: 2) {
-          Text(entry.itemTitle).font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
+          Text(entry.itemTitle).font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
             .lineLimit(rowLineLimit)
           Text("\(entry.itemType.label)\(durationSuffix(block.durationDisplay))")
-            .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
+            .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
             .lineLimit(rowLineLimit)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
@@ -391,7 +391,7 @@ struct SessionBuilderScreen: View {
         Button {
           removeUnit(block)
         } label: {
-          Image(systemName: "xmark").font(IntradaFont.meta).foregroundStyle(
+          Image(systemName: "xmark").font(IntradaFont.secondary).foregroundStyle(
             IntradaColor.inkFaintIcon
           )
           .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -424,17 +424,17 @@ struct SessionBuilderScreen: View {
         VStack(alignment: .leading, spacing: 2) {
           HStack(spacing: 6) {
             Text(block.pieceTitle ?? "Related exercises")
-              .font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
+              .font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
               .lineLimit(rowLineLimit)
             if collapsed {
-              Text(relatedLabel(block)).font(IntradaFont.meta)
+              Text(relatedLabel(block)).font(IntradaFont.secondary)
                 .foregroundStyle(IntradaColor.inkSecondary)
             } else {
               groupPill
             }
           }
           if let subtitle = headerSubtitle(block, collapsed: collapsed) {
-            Text(subtitle).font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
+            Text(subtitle).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
           }
         }
@@ -450,7 +450,7 @@ struct SessionBuilderScreen: View {
       .accessibilityAction(named: "Move down") { moveUnit(block, by: 1) }
       blockMenu(block, groupId: groupId)
       Image(systemName: collapsed ? "chevron.down" : "chevron.up")
-        .font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaintIcon).frame(width: 20)
+        .font(IntradaFont.secondary).foregroundStyle(IntradaColor.inkFaintIcon).frame(width: 20)
         .accessibilityHidden(true)
     }
     .padding(.horizontal, IntradaSpacing.cardCompact)
@@ -477,7 +477,7 @@ struct SessionBuilderScreen: View {
           VStack(alignment: .leading, spacing: 1) {
             Text(entry.itemTitle).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
               .lineLimit(rowLineLimit)
-            Text(nestedMeta(entry)).font(IntradaFont.micro)
+            Text(nestedMeta(entry)).font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
           }
@@ -515,7 +515,7 @@ struct SessionBuilderScreen: View {
         addingExerciseTarget = block.groupId.map(AddExerciseTarget.init)
       } label: {
         Label("Add a related exercise", systemImage: "plus")
-          .font(IntradaFont.meta).foregroundStyle(IntradaColor.accent)
+          .font(IntradaFont.secondary).foregroundStyle(IntradaColor.accent)
           .frame(maxWidth: .infinity, minHeight: 44)
       }
       .buttonStyle(.plain)
@@ -524,7 +524,9 @@ struct SessionBuilderScreen: View {
   }
 
   private var groupPill: some View {
-    Eyebrow("Group", tint: IntradaColor.pieceBadgeFg)
+    Text("Group")
+      .font(IntradaFont.badge)
+      .foregroundStyle(IntradaColor.pieceBadgeFg)
       .padding(.horizontal, 6).padding(.vertical, 2)
       .background(
         IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))

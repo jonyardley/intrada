@@ -84,7 +84,7 @@ private fun Chip(
         BasicText(
             text,
             Modifier.weight(1f, fill = false),
-            style = IntradaFont.metaMedium.copy(color = IntradaColor.inkSecondary),
+            style = IntradaFont.label.copy(color = IntradaColor.inkSecondary),
             overflow = TextOverflow.Ellipsis,
             maxLines = 1,
         )

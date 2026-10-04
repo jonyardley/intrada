@@ -17,9 +17,7 @@ struct VariationRowsSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      Text("Variations")
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
+      FieldLabel("Variations", tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint(FaultMark.spoken(faulted))
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -84,7 +82,7 @@ struct VariationRowsSection: View {
           .accessibilityAction(named: "Move up") { rows.move(current.id, by: -1) }
           .accessibilityAction(named: "Move down") { rows.move(current.id, by: 1) }
         TextField("e.g. C", text: label(of: current.id))
-          .font(IntradaFont.field)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .focused($focusedRow, equals: current.id)
           .accessibilityLabel("Variation")

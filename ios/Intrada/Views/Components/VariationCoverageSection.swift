@@ -46,7 +46,7 @@ struct VariationCoverageSection: View {
 
   private func count(_ row: VariationCoverageView) -> some View {
     Text("\(row.solid) of \(row.total) solid")
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
   }
 }

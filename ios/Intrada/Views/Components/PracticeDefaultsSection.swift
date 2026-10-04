@@ -9,7 +9,7 @@ struct PracticeDefaultsSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Practice defaults")
+      SectionTitle("Practice defaults")
       VStack(alignment: .leading, spacing: 0) {
         let rowLayout =
           typeSize.isAccessibilitySize
@@ -17,12 +17,10 @@ struct PracticeDefaultsSection: View {
           : AnyLayout(HStackLayout(spacing: IntradaSpacing.cardCompact))
         rowLayout {
           VStack(alignment: .leading, spacing: 2) {
-            Text("Repetitions")
-              .font(IntradaFont.bodyMedium)
-              .foregroundStyle(IntradaColor.ink)
+            FieldLabel("Repetitions")
             Text("\(defaults.repTarget) per item")
-              .font(IntradaFont.meta)
-              .foregroundStyle(IntradaColor.inkSecondary)
+              .font(IntradaFont.body)
+              .foregroundStyle(IntradaColor.ink)
           }
           .accessibilityHidden(true)
           if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
@@ -47,9 +45,7 @@ struct PracticeDefaultsSection: View {
         HairlineDivider()
           .padding(.leading, IntradaSpacing.card)
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          Text("Metronome starts on")
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.ink)
+          FieldLabel("Metronome starts on")
           SegmentedPills(
             options: [ClickStart.everyBeat, .twoAndFour],
             selection: Binding(
@@ -84,7 +80,7 @@ struct PracticeDefaultsSection: View {
       }
       .cardSurface()
       Text("New sessions start with these. Change them in the session.")
-        .font(IntradaFont.micro)
+        .font(IntradaFont.small)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
   }

@@ -140,7 +140,7 @@ struct LinkedItemPickerSheet: View {
         priorityOnly.toggle()
       } label: {
         Image(systemName: priorityOnly ? "star.fill" : "star")
-          .font(IntradaFont.tab)
+          .font(IntradaFont.smallMedium)
           .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaintIcon)
           .padding(.vertical, 6)
           .padding(.horizontal, 10)
@@ -159,7 +159,7 @@ struct LinkedItemPickerSheet: View {
             ? "line.3.horizontal.decrease.circle"
             : "line.3.horizontal.decrease.circle.fill"
         )
-        .font(IntradaFont.tab)
+        .font(IntradaFont.smallMedium)
         .foregroundStyle(selectedTags.isEmpty ? IntradaColor.inkFaintIcon : IntradaColor.accent)
         .padding(IntradaSpacing.controlGap)
       }
@@ -168,7 +168,7 @@ struct LinkedItemPickerSheet: View {
       .accessibilityValue(selectedTags.isEmpty ? "Off" : "\(selectedTags.count) selected")
       Button(action: toggleSearch) {
         Image(systemName: "magnifyingglass")
-          .font(IntradaFont.tab)
+          .font(IntradaFont.smallMedium)
           .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaintIcon)
           .padding(IntradaSpacing.controlGap)
       }
@@ -202,10 +202,10 @@ struct LinkedItemPickerSheet: View {
     Group {
       if count == 0 {
         Text(copy.noneSelected)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       } else {
-        Eyebrow("\(count) \(copy.selectedSuffix)", tint: IntradaColor.inkSecondary)
+        SectionTitle("\(count) \(copy.selectedSuffix)")
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -236,13 +236,13 @@ struct LinkedItemPickerSheet: View {
         let rows = filtered
         if rows.isEmpty {
           Text(hasAnyOfKind ? copy.noMatches : copy.noneAtAll)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.vertical, IntradaSpacing.card)
         } else {
-          Eyebrow(copy.listHeading)
+          SectionTitle(copy.listHeading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
             .padding(.top, IntradaSpacing.cardCompact)
@@ -279,7 +279,7 @@ struct LinkedItemPickerSheet: View {
 
   private var draftRows: some View {
     VStack(spacing: 0) {
-      Eyebrow("New")
+      SectionTitle("New")
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.cardCompact)
@@ -307,11 +307,11 @@ struct LinkedItemPickerSheet: View {
         .clipShape(Capsule())
       VStack(alignment: .leading, spacing: 3) {
         Text(item.title)
-          .font(IntradaFont.cardTitle())
+          .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
         if let meta = metaLine(item) {
           Text(meta)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }

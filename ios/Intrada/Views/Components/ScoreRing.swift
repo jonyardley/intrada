@@ -58,9 +58,8 @@ struct ScoreRing: View {
             .font(IntradaFont.scoreNumeral(size * 0.36))
             .foregroundStyle(IntradaColor.ink)
           if showsScale {
-            Text("OF \(range.upperBound)")
-              .font(IntradaFont.eyebrow)
-              .kerning(0.5)
+            Text("of \(range.upperBound)")
+              .font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
           }
         }

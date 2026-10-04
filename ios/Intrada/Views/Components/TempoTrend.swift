@@ -105,7 +105,7 @@ struct TempoTrend: View {
         footer
       } else if let only = measured.first {
         Text("Measured once, at ♩ = \(only) · no trend yet")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
     }
@@ -125,12 +125,12 @@ struct TempoTrend: View {
       // the row leaves the eyebrow too narrow for its own first word.
       if dynamicTypeSize.isAccessibilitySize {
         VStack(alignment: .leading, spacing: 2) {
-          Eyebrow("Measured tempo")
+          SectionTitle("Measured tempo")
           chip
         }
       } else {
         HStack(alignment: .firstTextBaseline) {
-          Eyebrow("Measured tempo")
+          SectionTitle("Measured tempo")
           Spacer(minLength: IntradaSpacing.controlGap)
           chip
         }
@@ -216,7 +216,7 @@ struct TempoTrend: View {
         Text(display.endDateText)
       }
     }
-    .font(IntradaFont.micro)
+    .font(IntradaFont.small)
     .foregroundStyle(IntradaColor.inkSecondary)
     .padding(.top, IntradaSpacing.controlGap)
   }

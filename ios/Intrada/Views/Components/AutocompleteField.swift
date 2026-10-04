@@ -38,11 +38,9 @@ struct AutocompleteField: View {
   var body: some View {
     VStack(spacing: 0) {
       VStack(alignment: .leading, spacing: 4) {
-        Text(label)
-          .font(IntradaFont.metaMedium)
-          .foregroundStyle(faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
+        FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
         TextField(placeholder, text: $text)
-          .font(IntradaFont.field)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
           .textInputAutocapitalization(autocapitalization)
           .autocorrectionDisabled()

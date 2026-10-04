@@ -61,7 +61,7 @@ struct ScanPageEntry: View {
             .font(IntradaFont.bodyMedium)
             .foregroundStyle(IntradaColor.accent)
           Text("Title, composer and tempo, read off the page")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .multilineTextAlignment(.leading)
         }
@@ -94,7 +94,7 @@ struct ScanPageEntry: View {
       .accessibilityHint("Opens it full screen")
       .fullScreenCover(isPresented: $viewing) { PhotoViewer(image: image) }
       Text(outcome)
-        .font(IntradaFont.subtitle)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
       Spacer(minLength: 0)
       switch status {

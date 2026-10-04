@@ -37,7 +37,7 @@ struct AddToSessionSheet: View {
           recentlyPractisedSection
           if showsRecentlyPractised { SectionHeader(title: "Library") }
           Text("Pieces bring their related exercises as a group.")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
           LazyVStack(spacing: IntradaSpacing.cardCompact) {
             ForEach(rows, id: \.id) { libraryRow($0) }

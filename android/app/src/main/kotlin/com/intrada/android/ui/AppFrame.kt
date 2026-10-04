@@ -146,7 +146,7 @@ private fun TabItem(
         )
         BasicText(
             tab.label,
-            style = IntradaFont.micro.copy(color = tint, textAlign = TextAlign.Center),
+            style = IntradaFont.small.copy(color = tint, textAlign = TextAlign.Center),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

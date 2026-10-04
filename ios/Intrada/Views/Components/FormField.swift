@@ -16,11 +16,9 @@ struct FormField: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text(label)
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
+      FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
       TextField(placeholder, text: $text, axis: axis)
-        .font(IntradaFont.field)
+        .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.ink)
         .keyboardType(keyboard)
         .textInputAutocapitalization(autocapitalization)

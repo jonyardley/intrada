@@ -25,7 +25,7 @@ struct VariationPickerSheet: View {
             row(variation)
           }
           Text("Switching starts a fresh count of repetitions.")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .padding(IntradaSpacing.card)
         }
@@ -46,7 +46,7 @@ struct VariationPickerSheet: View {
             .foregroundStyle(IntradaColor.ink)
             .multilineTextAlignment(.leading)
           Text(variation.caption)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(variation.isSolid ? IntradaColor.ink : IntradaColor.inkSecondary)
             .multilineTextAlignment(.leading)
         }

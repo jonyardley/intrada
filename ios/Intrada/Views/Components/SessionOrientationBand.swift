@@ -23,9 +23,8 @@ struct SessionOrientationBand<Menu: View>: View {
           .frame(minWidth: Self.slot, alignment: .leading)
         Text(positionLabel)
           .font(IntradaFont.badge)
-          .tracking(IntradaFont.eyebrowTracking)
           .foregroundStyle(IntradaColor.inkSecondary)
-          // Scales rather than truncating: "FOCUS · 3 OF 5" losing its tail to an
+          // Scales rather than truncating: "Focus · 3 of 5" losing its tail to an
           // ellipsis costs the item number, which is the half that carries the fact.
           .lineLimit(1)
           .minimumScaleFactor(0.5)
@@ -40,7 +39,7 @@ struct SessionOrientationBand<Menu: View>: View {
   @ViewBuilder private var elapsed: some View {
     if let sessionElapsed {
       Text(SessionClock.clockDisplay(sessionElapsed))
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.figure)
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.7)

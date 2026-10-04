@@ -88,12 +88,12 @@ fun LibraryItemCard(item: LibraryItemView, modifier: Modifier = Modifier) {
     ) {
         Box(Modifier.width(4.dp).fillMaxHeight().background(item.itemType.bar))
         Column(Modifier.padding(IntradaSpacing.card)) {
-            BasicText(item.title, style = IntradaFont.cardTitle().copy(color = IntradaColor.ink))
+            BasicText(item.title, style = IntradaFont.cardTitle.copy(color = IntradaColor.ink))
             if (item.subtitle.isNotEmpty()) {
                 Spacer(Modifier.height(3.dp))
                 BasicText(
                     item.subtitle,
-                    style = IntradaFont.subtitle.copy(color = IntradaColor.inkSecondary),
+                    style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
                 )
             }
         }

@@ -13,11 +13,9 @@ enum IntradaColor {
 
   static let ink = Color(hex: 0x2A2725)
   static let inkSecondary = Color(hex: 0x6E6A66)
-  /// Eyebrow labels only: fails WCAG AA (2.45:1 on paper); metadata/body use inkSecondary.
-  static let inkFaint = Color(hex: 0xA99C8C)
   /// A dimmed glyph with no text of its own to fall back on (#1458): 3.49:1 on
   /// paper, clearing the 3:1 floor for non-text graphical objects
-  /// (WCAG 1.4.11). Never for text; `inkFaint` already fails that.
+  /// (WCAG 1.4.11). Never for text.
   static let inkFaintIcon = Color(hex: 0x8F8070)
   /// The app icon's line art, warmer than `ink` so it holds on any highlighter.
   static let iconInk = Color(hex: 0x3B2A1E)
@@ -148,17 +146,42 @@ extension RadialGradient {
     center: UnitPoint(x: 0.5, y: 0.22), startRadius: 0, endRadius: 440)
 }
 
-/// Semantic type styles: Hanken Grotesk, with DM Mono for metadata (bundled via
+/// Semantic type styles: Hanken Grotesk, with DM Mono for figures (bundled via
 /// `IntradaFonts`). `relativeTo:` tracks Dynamic Type; weights use named-instance
 /// PostScript names, not `.weight()`, which is synthetic over a variable axis.
+/// Five sizes (30, 20, 17, 15, 13); weight and colour carry the rest (T35).
 enum IntradaFont {
-  static func pageTitle(_ size: CGFloat = 32) -> Font {
-    .custom(Hanken.semibold, size: size, relativeTo: .largeTitle)
-  }
-  static func cardTitle(_ size: CGFloat = 18) -> Font {
-    .custom(Hanken.semibold, size: size, relativeTo: .title3)
-  }
-  /// The live session timer at display size. Pair with `.monospacedDigit()`.
+  static let pageTitleSize: CGFloat = 30
+  static let cardTitleSize: CGFloat = 17
+
+  // ── 30 ──
+  static let pageTitle = Font.custom(Hanken.semibold, size: pageTitleSize, relativeTo: .largeTitle)
+
+  // ── 20 ──
+  static let title = Font.custom(Hanken.semibold, size: 20, relativeTo: .title3)
+
+  // ── 17 ──
+  static let cardTitle = Font.custom(Hanken.semibold, size: cardTitleSize, relativeTo: .headline)
+  static let body = Font.custom(Hanken.regular, size: 17, relativeTo: .body)
+  static let bodyMedium = Font.custom(Hanken.medium, size: 17, relativeTo: .body)
+
+  // ── 15 ──
+  /// Names a section, a field or a toggle, above what it names.
+  static let label = Font.custom(Hanken.medium, size: 15, relativeTo: .subheadline)
+  static let secondary = Font.custom(Hanken.regular, size: 15, relativeTo: .subheadline)
+    .monospacedDigit()
+  /// A value that is only a number: a clock, a duration, a count.
+  static let figure = Font.custom(Mono.regular, size: 15, relativeTo: .subheadline)
+  static let button = Font.custom(Hanken.bold, size: 15, relativeTo: .subheadline)
+  static let segment = Font.custom(Hanken.medium, size: 15, relativeTo: .subheadline)
+
+  // ── 13 ──
+  static let small = Font.custom(Hanken.regular, size: 13, relativeTo: .caption)
+  static let smallMedium = Font.custom(Hanken.medium, size: 13, relativeTo: .caption)
+  static let badge = Font.custom(Hanken.semibold, size: 13, relativeTo: .caption)
+
+  // ── Display numerals, sized by the dial, ring or readout they sit in ──
+  /// The live session timer. Pair with `.monospacedDigit()`.
   static func timer(_ size: CGFloat = 56) -> Font {
     .custom(Hanken.semibold, size: size, relativeTo: .largeTitle)
   }
@@ -166,24 +189,6 @@ enum IntradaFont {
     .custom(Hanken.semibold, size: size, relativeTo: .title3)
   }
 
-  static let body = Font.custom(Hanken.regular, size: 16, relativeTo: .body)
-  static let bodyMedium = Font.custom(Hanken.medium, size: 17, relativeTo: .body)
-  static let button = Font.custom(Hanken.bold, size: 15, relativeTo: .subheadline)
-  static let subtitle = Font.custom(Mono.regular, size: 14, relativeTo: .footnote)
-  static let meta = Font.custom(Mono.regular, size: 14, relativeTo: .caption)
-  /// 12 rather than 10 so the smallest type in the app clears a readable floor
-  /// (#1723).
-  static let micro = Font.custom(Hanken.regular, size: 12, relativeTo: .caption2)
-  static let metaMedium = Font.custom(Hanken.medium, size: 13.5, relativeTo: .caption)
-  static let badge = Font.custom(Hanken.semibold, size: 13, relativeTo: .caption)
-  /// Uppercase section label (letter-spaced, `inkFaint`) — the eyebrow above
-  /// every section on the refreshed screens.
-  static let eyebrow = Font.custom(Hanken.semibold, size: 12, relativeTo: .caption2)
-  /// The `.tracking()` every eyebrow label uses.
-  static let eyebrowTracking: CGFloat = 1.5
-  static let tab = Font.custom(Hanken.medium, size: 13, relativeTo: .footnote)
-  static let segment = Font.custom(Hanken.medium, size: 15, relativeTo: .subheadline)
-  static let field = Font.custom(Hanken.regular, size: 17, relativeTo: .callout)
   static let chart = Font.system(.footnote, design: .monospaced)
   static let chartEditor = Font.system(.body, design: .monospaced)
 

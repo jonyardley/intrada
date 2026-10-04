@@ -11,7 +11,7 @@ struct KindSegment: View {
         hint: \.caption, font: IntradaFont.segment, layout: .fullWidthTrack)
 
       Text(selection.caption)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.inkSecondary)
         .multilineTextAlignment(.center)
         .accessibilityHidden(true)  // spoken as the focused pill's hint instead

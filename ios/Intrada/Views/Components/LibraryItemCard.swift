@@ -18,21 +18,21 @@ struct LibraryItemCard: View {
     HStack(spacing: IntradaSpacing.card) {
       VStack(alignment: .leading, spacing: 3) {
         Text(item.title)
-          .font(IntradaFont.cardTitle())
+          .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
         if !item.subtitle.isEmpty {
           Text(item.subtitle)
-            .font(IntradaFont.subtitle)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
         if let meta = metaLine {
           Text(meta)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         } else if item.subtitle.isEmpty && showsMissingDetailsPrompt {
           // A prompt, not a collapsed ragged line (#1727).
           Text(missingDetailsPrompt)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
         if item.priority || hasLinkedExercises || hasStepLadder || !item.tags.isEmpty {
@@ -94,7 +94,7 @@ struct LibraryItemCard: View {
   private func countChip(_ text: String, @ViewBuilder leading: () -> some View) -> some View {
     HStack(spacing: 3) {
       leading()
-      Text(text).font(IntradaFont.meta)
+      Text(text).font(IntradaFont.secondary)
     }
     .foregroundStyle(IntradaColor.exerciseBadgeFg)
     .padding(.horizontal, 7)
@@ -106,7 +106,7 @@ struct LibraryItemCard: View {
   // The character, not a symbol: the app writes real ♯/♭ elsewhere (`KeyHelper.prettify`).
   @ViewBuilder private var ladderGlyph: some View {
     if item.ladderIsKeys {
-      Text(verbatim: "♯").font(IntradaFont.meta)
+      Text(verbatim: "♯").font(IntradaFont.secondary)
     } else {
       Image(systemName: "stairs").iconSize(.badge)
     }

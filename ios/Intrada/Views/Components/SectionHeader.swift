@@ -1,36 +1,26 @@
 import SwiftUI
 
-/// The uppercase, letter-spaced section label ("eyebrow") used above every
-/// section on the refreshed screens. `inkFaint` is the one place that token is
-/// allowed — eyebrows only (it fails AA for body text).
-struct Eyebrow: View {
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
+/// Names a section, sentence case, above its card (T35 in
+/// `docs/design-principles.md`).
+struct SectionTitle: View {
   let text: String
-  // Defaults to inkFaint; override for an eyebrow on a dark/coloured surface
-  // (the Practice hero, the dark summary headline); a trailing `.foregroundStyle`
-  // can't override the inner Text, so the tint must be set here.
-  var tint: Color = IntradaColor.inkFaint
-  init(_ text: String, tint: Color = IntradaColor.inkFaint) {
+  // Override for a section title on a dark or coloured surface (the Practice
+  // and Up next heroes); a trailing `.foregroundStyle` can't
+  // override the inner Text, so the tint must be set here.
+  var tint: Color = IntradaColor.inkSecondary
+  init(_ text: String, tint: Color = IntradaColor.inkSecondary) {
     self.text = text
     self.tint = tint
   }
 
   var body: some View {
-    // A spaced-out word wraps sooner, so accessibility sizes get tighter
-    // tracking to keep it on one line (#1781).
-    Text(text.uppercased())
-      .font(IntradaFont.eyebrow)
-      .tracking(dynamicTypeSize.isAccessibilitySize ? 0.5 : IntradaFont.eyebrowTracking)
-      .foregroundStyle(tint)
-      .accessibilityLabel(text)
+    FieldLabel(text, tint: tint)
   }
 }
 
-/// An eyebrow with an optional trailing caption (e.g. "THIS MONTH" · "best week ·
-/// 95 min"). The trailing caption uses `inkSecondary` — real metadata, AA-safe.
-/// `caption` sits against the eyebrow instead, for a count that qualifies the
-/// title rather than commenting on the section ("USED IN · 3 pieces").
+/// A section title with an optional trailing caption ("This month", "best week ·
+/// 95 min"). `caption` sits against the title instead, for a count that
+/// qualifies it rather than commenting on the section ("Used in · 3 pieces").
 struct SectionHeader: View {
   struct Action {
     let title: String
@@ -49,24 +39,24 @@ struct SectionHeader: View {
   var action: Action?
 
   var body: some View {
-    // The eyebrow breaks mid-word when it shares a line with trailing text (#1781).
+    // The title breaks mid-word when it shares a line with trailing text (#1781).
     if dynamicTypeSize.isAccessibilitySize {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         if action != nil {
           HStack(alignment: .firstTextBaseline) {
-            Eyebrow(title)
+            SectionTitle(title)
             Spacer(minLength: IntradaSpacing.controlGap)
             actionButton
           }
         } else {
-          Eyebrow(title)
+          SectionTitle(title)
         }
         if let caption { captionView(caption) }
         if let trailing { meta(trailing) }
       }
     } else {
       HStack(alignment: .firstTextBaseline) {
-        Eyebrow(title)
+        SectionTitle(title)
         if let caption { captionView("· \(caption)") }
         if let trailing {
           Spacer(minLength: IntradaSpacing.controlGap)
@@ -101,7 +91,7 @@ struct SectionHeader: View {
 
   private func meta(_ text: String) -> some View {
     Text(text)
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
   }
 }
@@ -111,7 +101,7 @@ struct SectionHeader: View {
     ZStack {
       PaperBackground()
       VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-        Eyebrow("Recent mastery")
+        SectionTitle("Recent mastery")
         SectionHeader(title: "This month", trailing: "best week · 95 min")
         SectionHeader(title: "Used in", caption: "3 pieces")
         SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))
@@ -124,7 +114,7 @@ struct SectionHeader: View {
     ZStack {
       PaperBackground()
       VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-        Eyebrow("Recent mastery")
+        SectionTitle("Recent mastery")
         SectionHeader(title: "Variations", trailing: "5 of 15 solid")
         SectionHeader(title: "Used in", caption: "3 pieces")
         SectionHeader(title: "Chord chart", action: .init(title: "Edit", perform: {}))

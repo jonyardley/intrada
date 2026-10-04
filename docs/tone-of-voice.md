@@ -121,9 +121,8 @@ and `Ended early.` off the summary.
   house separator and it does the job an em dash was reaching for.
 - **Ranges take `to`**, not a dash: `bars 12 to 14`.
 - **Sentence case everywhere.** `Add piece or exercise`, not
-  `Add Piece or Exercise`. Small caps eyebrows are a type token, not a
-  capitalisation choice, so write them sentence case too and let `Eyebrow` style
-  them.
+  `Add Piece or Exercise`. Section titles and field labels too: nothing on
+  screen is set in capitals (T35 in `design-principles.md`).
 - **No full stop on labels, buttons, titles or subtitles.** Full stops only on
   something that is genuinely a sentence (empty-state help, alert bodies).
 - **Curly quotes for the user's words**, straight quotes never:

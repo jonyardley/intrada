@@ -36,7 +36,7 @@ struct TagChip: View {
     let removable = onRemove != nil
     return HStack(spacing: 5) {
       Text(text)
-        .font(IntradaFont.metaMedium)
+        .font(IntradaFont.smallMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
         .lineLimit(1)
       if removable {

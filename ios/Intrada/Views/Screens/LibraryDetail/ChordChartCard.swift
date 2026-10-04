@@ -33,7 +33,7 @@ struct ChordChartCard: View {
     let changes = chart.sections.reduce(0) { $0 + $1.bars.reduce(0) { $0 + $1.chords.count } }
     let key = item.keyDisplay ?? chart.key
     return Text("\(key) · \(bars) \(bars == 1 ? "bar" : "bars") · \(changes) changes")
-      .font(IntradaFont.meta)
+      .font(IntradaFont.secondary)
       .foregroundStyle(IntradaColor.inkSecondary)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, IntradaSpacing.card)
@@ -45,12 +45,12 @@ struct ChordChartCard: View {
     return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       ForEach(Array(chart.sections.enumerated()), id: \.offset) { _, section in
         if let label = section.label, !label.isEmpty {
-          Eyebrow(label)
+          SectionTitle(label)
         }
         LazyVGrid(columns: columns, spacing: 6) {
           ForEach(Array(sectionChords(section).enumerated()), id: \.offset) { _, raw in
             Text(raw)
-              .font(IntradaFont.cardTitle())
+              .font(IntradaFont.cardTitle)
               .foregroundStyle(IntradaColor.ink)
               .lineLimit(1)
               .minimumScaleFactor(0.7)

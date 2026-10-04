@@ -28,7 +28,7 @@ struct RelatedExercisesCard: View {
           // The rings below are each exercise's score *on this piece*, not its
           // overall. Say so, as the exercise hero's "Overall" (#1087 B2).
           Text("Marks shown are for this piece")
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, IntradaSpacing.card)
@@ -115,7 +115,7 @@ struct RelatedExercisesCard: View {
   @ViewBuilder private var suggestionsFromChart: some View {
     if let preview = item.scaffoldPreview {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow("From the chord chart")
+        SectionTitle("From the chord chart")
         Button(action: onShowSuggestions) {
           HStack(spacing: IntradaSpacing.cardCompact) {
             Image(systemName: "sparkles")
@@ -128,12 +128,12 @@ struct RelatedExercisesCard: View {
                 .foregroundStyle(IntradaColor.ink)
                 .multilineTextAlignment(.leading)
               Text(suggestionSubtitle(preview))
-                .font(IntradaFont.meta)
+                .font(IntradaFont.secondary)
                 .foregroundStyle(IntradaColor.inkSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.right")
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(IntradaColor.exerciseBadgeFg)
               .accessibilityHidden(true)
           }
@@ -208,11 +208,11 @@ private struct LinkedExerciseTitle: View {
     // spacing: 3 is a tight title/meta baseline gap, below the token scale floor.
     VStack(alignment: .leading, spacing: 3) {
       Text(exercise.title)
-        .font(IntradaFont.cardTitle())
+        .font(IntradaFont.cardTitle)
         .foregroundStyle(IntradaColor.ink)
       if let meta = exercise.metaLine {
         Text(meta)
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
     }
@@ -273,7 +273,7 @@ private struct LinkedExerciseEditRow: View {
           Button(action: onMoveUp) {
             Image(systemName: "chevron.up")
               .imageScale(.small)
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(isFirst ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
           }
           .buttonStyle(.plain)
@@ -282,7 +282,7 @@ private struct LinkedExerciseEditRow: View {
           Button(action: onMoveDown) {
             Image(systemName: "chevron.down")
               .imageScale(.small)
-              .font(IntradaFont.meta)
+              .font(IntradaFont.secondary)
               .foregroundStyle(isLast ? IntradaColor.inkFainter : IntradaColor.inkSecondary)
           }
           .buttonStyle(.plain)

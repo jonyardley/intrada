@@ -41,7 +41,7 @@ struct ClickBarLine: View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       if fit != .bare {
         Text(TempoUnit.metreLabel(metre))
-          .font(IntradaFont.metaMedium)
+          .font(IntradaFont.label)
           .monospacedDigit()
           .lineLimit(1)
           .fixedSize()

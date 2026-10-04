@@ -38,10 +38,10 @@ struct VariationsSection: View {
 
   private var header: some View {
     HStack(alignment: .firstTextBaseline) {
-      Eyebrow(item.ladderIsKeys ? "Keys" : "Variations")
+      SectionTitle(item.ladderIsKeys ? "Keys" : "Variations")
       if !item.variants.isEmpty {
         Text("\(item.solidVariationCount) of \(item.variants.count) solid")
-          .font(IntradaFont.meta)
+          .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer()
@@ -81,7 +81,7 @@ private struct VariationRingItem: View {
         score: variation.latestScore.map(Int.init), size: 44, solid: variation.isSolid,
         labelOverride: variation.label)
       Text(captionText)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(captionColor)
     }
     .accessibilityElement(children: .ignore)
@@ -121,7 +121,7 @@ private struct VariationListRow: View {
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
       Text(captionText)
-        .font(IntradaFont.meta)
+        .font(IntradaFont.secondary)
         .foregroundStyle(captionColor)
     }
     .frame(maxWidth: .infinity, alignment: .leading)

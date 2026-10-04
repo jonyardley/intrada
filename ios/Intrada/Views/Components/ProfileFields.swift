@@ -28,8 +28,7 @@ struct HighlighterSwatches: View {
   @Binding var colour: HighlighterColour
 
   var body: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Highlighter")
+    FieldCard("Highlighter") {
       LazyVGrid(
         columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 4),
         spacing: IntradaSpacing.cardCompact
@@ -51,7 +50,7 @@ struct HighlighterSwatches: View {
                   }
                 }
               Text(swatch.label)
-                .font(IntradaFont.metaMedium)
+                .font(IntradaFont.smallMedium)
                 .foregroundStyle(swatch == colour ? IntradaColor.ink : IntradaColor.inkSecondary)
             }
             .frame(maxWidth: .infinity)
@@ -63,9 +62,6 @@ struct HighlighterSwatches: View {
           .accessibilityAddTraits(swatch == colour ? .isSelected : [])
         }
       }
-      .padding(.vertical, IntradaSpacing.cardCompact)
-      .padding(.horizontal, IntradaSpacing.controlGap)
-      .cardSurface()
     }
   }
 }

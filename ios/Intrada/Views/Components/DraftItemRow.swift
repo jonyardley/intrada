@@ -15,7 +15,7 @@ struct DraftItemRow: View {
       // spacing: 3, a tight title/meta baseline gap below the token scale floor.
       VStack(alignment: .leading, spacing: 3) {
         Text(title)
-          .font(IntradaFont.cardTitle())
+          .font(IntradaFont.cardTitle)
           .foregroundStyle(IntradaColor.ink)
           .fixedSize(horizontal: false, vertical: true)
           // On the title, not the row: a container is not focusable, so a hint
@@ -23,7 +23,7 @@ struct DraftItemRow: View {
           .accessibilityHint(faulted ? FaultMark.spoken(row: faultedField) : "")
         if let meta {
           Text(meta)
-            .font(IntradaFont.meta)
+            .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
