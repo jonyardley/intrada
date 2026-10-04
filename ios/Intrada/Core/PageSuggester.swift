@@ -100,7 +100,7 @@ private enum OnDeviceModel {
         generating: Fields.self,
         // Deterministic, because `read_fields` is: rescanning the same page
         // twice should not offer the user two different drafts.
-        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 256)
+        options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 256)
       ).content
       return PageSuggester.Suggestion(
         title: fields.title,
