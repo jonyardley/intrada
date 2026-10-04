@@ -8,19 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaSpacing
 
 @Composable
-fun FieldLabel(
-    text: String,
-    modifier: Modifier = Modifier,
-    tint: Color = IntradaColor.inkSecondary,
-) {
-    BasicText(text, modifier, style = IntradaFont.label.copy(color = tint))
+fun FieldLabel(text: String, modifier: Modifier = Modifier) {
+    BasicText(text, modifier, style = IntradaFont.label.copy(color = IntradaColor.inkSecondary))
 }
 
 @Composable
