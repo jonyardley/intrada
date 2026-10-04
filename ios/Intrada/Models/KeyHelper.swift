@@ -46,6 +46,24 @@ enum KeyHelper {
     } ?? nil
   }
 
+  /// The keys sheet's tap over a set of keys (#2372). A failed call is a wire
+  /// break (#846): reported, and the keys stay as they were.
+  static func tap(_ keys: [Key], ring: Int, mode: Modality) -> [Key] {
+    guard let ring = UInt8(exactly: ring) else { return keys }
+    return keySet(keys) { try keySetTap(keys: $0, ring: ring, mode: wheelMode(mode)) }
+  }
+
+  static func addingAll(_ mode: Modality, to keys: [Key]) -> [Key] {
+    keySet(keys) { try keySetAddAll(keys: $0, mode: wheelMode(mode)) }
+  }
+
+  private static func keySet(_ keys: [Key], _ call: ([Data]) throws -> [Data]) -> [Key] {
+    bridged {
+      try call(keys.map { Data(try $0.bincodeSerialize()) })
+        .map { try Key.bincodeDeserialize(input: [UInt8]($0)) }
+    } ?? keys
+  }
+
   /// "E♭ major", in the core's words.
   static func display(_ key: Key) -> String? {
     bridged { try keyLabel(key: Data(key.bincodeSerialize())) }

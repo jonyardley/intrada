@@ -396,6 +396,36 @@ pub fn key_next_on_tap(
         .transpose()
 }
 
+fn decode_keys(keys: &[Vec<u8>]) -> Result<Vec<crate::Key>, CoreError> {
+    keys.iter().map(|k| decode_key(k)).collect()
+}
+
+fn encode_keys(keys: &[crate::Key]) -> Result<Vec<Vec<u8>>, CoreError> {
+    keys.iter().map(encode_key).collect()
+}
+
+/// The keys sheet edits an unsaved list, so it asks like the single tap (#2372).
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn key_set_tap(
+    keys: Vec<Vec<u8>>,
+    ring: u8,
+    mode: WheelMode,
+) -> Result<Vec<Vec<u8>>, CoreError> {
+    encode_keys(&crate::domain::key::tap_key_set(
+        &decode_keys(&keys)?,
+        ring,
+        mode.into(),
+    ))
+}
+
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn key_set_add_all(keys: Vec<Vec<u8>>, mode: WheelMode) -> Result<Vec<Vec<u8>>, CoreError> {
+    encode_keys(&crate::domain::key::add_all_to_key_set(
+        &decode_keys(&keys)?,
+        mode.into(),
+    ))
+}
+
 /// Which spoke the form's unsaved key lights.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn key_wheel_selection(key: Vec<u8>) -> Result<Option<WheelSelection>, CoreError> {
@@ -923,6 +953,23 @@ mod tests {
             ),
             (WheelMode::Minor, "Eb", Some("D#"))
         );
+    }
+
+    #[test]
+    fn a_set_of_keys_switches_and_fills_across_the_plain_calls() {
+        let added = key_set_tap(vec![], 6, WheelMode::Major).expect("decodes");
+        let switched = key_set_tap(added, 6, WheelMode::Major).expect("decodes");
+        let filled = key_set_add_all(switched, WheelMode::Major).expect("decodes");
+        let labels: Vec<String> = filled
+            .into_iter()
+            .map(|k| key_label(k).expect("decodes"))
+            .collect();
+        assert_eq!(labels.len(), 12);
+        assert_eq!(labels[..2], ["F\u{266f} major", "C major"]);
+        assert!(matches!(
+            key_set_tap(vec![vec![0xff]], 0, WheelMode::Major),
+            Err(CoreError::Bridge(_))
+        ));
     }
 
     /// The store's columns cross the plain call and come back as written;
