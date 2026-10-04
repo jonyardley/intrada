@@ -100,6 +100,26 @@
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
+    /// Clair de lune split as the #2364 mocks draw it, with one tricky spot (#2247).
+    static var previewPieceWithSections: LibraryItemView {
+      func part(_ id: String, _ name: String, _ first: UInt16, _ last: UInt16) -> SectionView {
+        SectionView(
+          id: id, name: name, kind: .form, targetBpm: nil, firstBar: first, lastBar: last,
+          label: name, barsCaption: "Bars \(first) to \(last)")
+      }
+      var item = previewPiece
+      item.id = "piece-sections"
+      item.linkedExercises = []
+      item.sections = [
+        part("s1", "A1", 1, 14), part("s2", "B", 15, 26),
+        SectionView(
+          id: "s3", name: "", kind: .troubleSpot, targetBpm: 54, firstBar: 19, lastBar: 20,
+          label: "Bars 19 to 20", barsCaption: nil),
+        part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72),
+      ]
+      return item
+    }
+
     static var previewExercise: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",

@@ -13,6 +13,8 @@ struct FormField: View {
   var readWeakly: Bool?
   var faulted: Bool = false
   var identifier: String = ""
+  /// A line under the value saying what the field takes.
+  var note: String?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
@@ -24,6 +26,11 @@ struct FormField: View {
         .textInputAutocapitalization(autocapitalization)
         .accessibilityHint(hint)
         .accessibilityIdentifier(identifier)
+      if let note {
+        Text(note)
+          .font(IntradaFont.small)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
       if let readWeakly {
         FieldMark(weak: readWeakly)
       }
