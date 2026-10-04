@@ -1023,7 +1023,10 @@ final class LibraryBridgeTests: XCTestCase {
     piece.sections = [
       ItemSection(
         id: "s-a1", name: "A1", bars: nil, kind: .form, targetBpm: nil, position: 0,
-        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil)
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil),
+      ItemSection(
+        id: "s-spot", name: "", bars: BarRange(first: 19, last: 20), kind: .troubleSpot,
+        targetBpm: nil, position: 1, updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil),
     ]
     piece.exerciseLinks = [
       ExerciseLink(
@@ -1032,6 +1035,9 @@ final class LibraryBridgeTests: XCTestCase {
       ExerciseLink(
         id: "l2", exerciseId: "e1", sectionId: "s-a1", position: 1,
         updatedAt: "2026-10-04T09:05:00Z", deletedAt: "2026-10-04T09:05:00Z"),
+      ExerciseLink(
+        id: "l3", exerciseId: "e1", sectionId: "s-spot", position: 2,
+        updatedAt: "2026-10-04T09:05:00Z", deletedAt: nil),
     ]
     let exercise = LibraryItemFixture.record(id: "e1", title: "Thirds", kind: .exercise)
 
@@ -1041,7 +1047,10 @@ final class LibraryBridgeTests: XCTestCase {
     let card = try XCTUnwrap(rows.first { $0.id == "p1" }?.linkedExercises.first)
     XCTAssertEqual(card.id, "e1")
     XCTAssertTrue(card.wholePiece)
-    XCTAssertEqual(card.sections, [], "the tombstone stays hidden")
+    let sections: [LinkedSectionView] = card.sections
+    XCTAssertEqual(sections.map(\.id), ["s-spot"], "the tombstone stays hidden")
+    XCTAssertEqual(sections.map(\.label), ["Bars 19 to 20"])
+    XCTAssertEqual(sections.map(\.labelInText), ["bars 19 to 20"])
     XCTAssertEqual(rows.first { $0.id == "e1" }?.usedIn.map(\.linked), [true])
   }
 

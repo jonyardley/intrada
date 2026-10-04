@@ -242,6 +242,10 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
   }
 
+  func testRelatedExercisesSectionLinksEditingAccessibilitySize() {
+    assertSnapshot(of: relatedExercisesCard(editing: true), as: tallAxConfig(height: 2600))
+  }
+
   func testLinkSectionsSheet() {
     assertSnapshot(of: linkSectionsSheet(), as: config)
   }

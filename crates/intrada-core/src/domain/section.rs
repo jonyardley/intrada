@@ -79,7 +79,6 @@ impl BarRange {
         }
     }
 
-    /// As it reads inside a sentence: "bar 12", "bars 12 to 14".
     pub fn in_text(&self) -> String {
         if self.first == self.last {
             format!("bar {}", self.first)

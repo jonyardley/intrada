@@ -384,36 +384,7 @@ class BridgeRoundTripTest {
     @Test
     fun loadedLinksReachThePieceAndItsExercise() {
         val hanon = "01J0000000000000000000HANO"
-        val piece =
-            Fixtures.item(
-                    exerciseLinks =
-                        listOf(
-                            ExerciseLink("l1", hanon, null, 0uL, "2026-10-04T09:00:00Z", null),
-                            ExerciseLink(
-                                "l2",
-                                hanon,
-                                "s-a1",
-                                1uL,
-                                "2026-10-04T09:05:00Z",
-                                "2026-10-04T09:05:00Z",
-                            ),
-                        )
-                )
-                .copy(
-                    sections =
-                        listOf(
-                            ItemSection(
-                                "s-a1",
-                                "A1",
-                                null,
-                                SectionKind.FORM,
-                                null,
-                                0uL,
-                                "2026-10-04T09:00:00Z",
-                                null,
-                            )
-                        )
-                )
+        val piece = pieceWithLoadedLinks(hanon)
         val bridge = LiveBridge()
         val load =
             bridge.update(Event.StartApp).single {
@@ -431,9 +402,54 @@ class BridgeRoundTripTest {
         val card = rows.single { it.id == piece.id }.linkedExercises.single()
         assertEquals(hanon, card.id)
         assertTrue(card.wholePiece)
-        assertEquals("the tombstone stays hidden", emptyList<LinkedSectionView>(), card.sections)
+        assertEquals("the tombstone stays hidden", listOf("s-spot"), card.sections.map { it.id })
+        assertEquals(listOf("Bars 19 to 20"), card.sections.map { it.label })
+        assertEquals(listOf("bars 19 to 20"), card.sections.map { it.labelInText })
         assertTrue(rows.single { it.id == hanon }.usedIn.single().linked)
     }
+
+    // A live whole-piece link, a tombstoned one to A1 and a live one to a bars-only spot.
+    private fun pieceWithLoadedLinks(hanon: String) =
+        Fixtures.item(
+                exerciseLinks =
+                    listOf(
+                        ExerciseLink("l1", hanon, null, 0uL, "2026-10-04T09:00:00Z", null),
+                        ExerciseLink(
+                            "l2",
+                            hanon,
+                            "s-a1",
+                            1uL,
+                            "2026-10-04T09:05:00Z",
+                            "2026-10-04T09:05:00Z",
+                        ),
+                        ExerciseLink("l3", hanon, "s-spot", 2uL, "2026-10-04T09:05:00Z", null),
+                    )
+            )
+            .copy(
+                sections =
+                    listOf(
+                        ItemSection(
+                            "s-a1",
+                            "A1",
+                            null,
+                            SectionKind.FORM,
+                            null,
+                            0uL,
+                            "2026-10-04T09:00:00Z",
+                            null,
+                        ),
+                        ItemSection(
+                            "s-spot",
+                            "",
+                            BarRange(19.toUShort(), 20.toUShort()),
+                            SectionKind.TROUBLESPOT,
+                            null,
+                            1uL,
+                            "2026-10-04T09:00:00Z",
+                            null,
+                        ),
+                    )
+            )
 
     private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =
         bridge

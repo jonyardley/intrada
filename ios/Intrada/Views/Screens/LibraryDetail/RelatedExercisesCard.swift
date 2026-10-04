@@ -278,8 +278,16 @@ private struct LinkedExerciseEditRow: View {
   let onMoveDown: () -> Void
   let onRemove: () -> Void
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  // At accessibility sizes the controls drop under the title, which would
+  // otherwise shrink to a few letters a line (#2248).
   var body: some View {
-    HStack(spacing: IntradaSpacing.cardCompact) {
+    let layout: AnyLayout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.cardCompact))
+    return layout {
       LinkedExerciseTitle(exercise: exercise)
       HStack(spacing: IntradaSpacing.controlGap) {
         if let onChooseSections {

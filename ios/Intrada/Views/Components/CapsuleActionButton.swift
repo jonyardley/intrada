@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A small bordered action that sits inside a row beside its content, such as
-/// "Link" on a Used in row or "Sections" on a related exercise.
+/// "Link" on a Used in row or "Choose sections" on a related exercise.
 struct CapsuleActionButton: View {
   let title: String
   let action: () -> Void
