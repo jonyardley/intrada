@@ -150,7 +150,7 @@ extension LibraryStore {
   }
 
   // ── Row ↔ ChordChart codec ───────────────────────────────────────────
-  // A nested aggregate, so JSON via a Codable DTO (like StoredEntry), never
+  // A nested aggregate, so JSON via a Codable DTO (as the core does for session entries), never
   // bincode: positional encoding would fail to decode old rows after a field
   // change, and the device is the only copy.
 

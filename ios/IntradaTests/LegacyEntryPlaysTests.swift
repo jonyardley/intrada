@@ -148,6 +148,27 @@ struct LegacyEntryPlaysTests {
     #expect(entry.plays.map(\.variationIds) == [[], []], "the steps they name are not read")
   }
 
+  /// A start time the core cannot read refuses that row alone (#2234); before,
+  /// it failed the whole load and History came up empty.
+  @Test("a row the core refuses is skipped and the rest still load")
+  func aRefusedRowIsSkipped() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue)
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+            completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
+          VALUES ('bad','yesterday','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+            '2026-09-01T10:10:00Z',NULL),
+            ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+            '2026-09-01T10:10:00Z',NULL)
+          """)
+    }
+
+    #expect(try LibraryStore(queue).loadSessions().map(\.id) == ["good"])
+  }
+
   /// Two variations in one sitting is the case #1739 exists for, so it has to
   /// survive a write and a read unchanged.
   @Test("two plays round-trip through the JSON column")

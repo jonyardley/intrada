@@ -34,24 +34,10 @@ struct StoredStringsTests {
       ])
   }
 
-  @Test func completionStatusStrings() {
-    pin(LibraryStore.completionStatuses, ["completed", "ended_early"])
-  }
-
-  @Test func entryStatusStrings() {
-    pin(LibraryStore.entryStatuses, ["completed", "skipped", "not_attempted"])
-  }
-
-  @Test func repActionStrings() {
-    pin(LibraryStore.repActions, ["missed", "success", "undo"])
-  }
-
   @Test(arguments: ["", "Piece", "ended-early", "notAttempted", " major"])
   func nearMissStringsDoNotDecode(raw: String) {
     #expect(LibraryStore.itemKinds.decode(raw) == nil)
     #expect(LibraryStore.modalities.decode(raw) == nil)
-    #expect(LibraryStore.completionStatuses.decode(raw) == nil)
-    #expect(LibraryStore.entryStatuses.decode(raw) == nil)
   }
 
   @Test func defaultsKeys() {

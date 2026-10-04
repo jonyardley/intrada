@@ -54,7 +54,7 @@ extension LibraryStore {
     migrator.registerMigration("v4_session_score") { db in
       try db.execute(sql: "ALTER TABLE session ADD COLUMN session_score INTEGER")
     }
-    // Rescales in SQL, never through StoredEntry: decoding with today's codec
+    // Rescales in SQL, never through the session codec: decoding with today's codec
     // changed this shipped migration whenever the codec did (#1947). One
     // json_set per score, since json_group_array does not promise array order.
     migrator.registerMigration("v5_rescale_entry_scores") { db in
