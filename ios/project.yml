@@ -56,9 +56,11 @@ targets:
         # (90474); iPad multitasking requires all four. iPhone stays portrait.
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # Only the camera needs a reason string: the library route is
+        # The photo library needs no reason string: the library route is
         # `PhotosPicker`, which runs out of process and reads nothing we hold.
         INFOPLIST_KEY_NSCameraUsageDescription: To scan the page you practise from.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: To hear a note you speak instead of type.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: To turn a note you speak into text, on this device where it can.
         # App icon = the Icon Composer AppIcon.icon bundle, not the asset
         # catalogue (which holds the instrument icons only, #1693).
         # actool rasterises back-compat PNG icons for iOS 17/18; iOS 26 gets the

@@ -197,14 +197,18 @@ struct ReflectionSheet: View {
         }
 
         sectionTitle("Reflection · optional").padding(.top, IntradaSpacing.card)
-        TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
-          .lineLimit(3...5)
-          .font(IntradaFont.body)
-          .foregroundStyle(IntradaColor.ink)
-          .padding(IntradaSpacing.cardCompact)
-          .cardSurface(cornerRadius: IntradaRadius.control)
-          .accessibilityIdentifier("reflection.note")
-          .padding(.top, IntradaSpacing.controlGap)
+        HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
+          TextField("What went well? What to fix next time?", text: $note, axis: .vertical)
+            .lineLimit(3...5)
+            .font(IntradaFont.body)
+            .foregroundStyle(IntradaColor.ink)
+            .accessibilityIdentifier("reflection.note")
+          SpeechInputButton(text: $note)
+            .accessibilityIdentifier("reflection.speak")
+        }
+        .padding(IntradaSpacing.cardCompact)
+        .cardSurface(cornerRadius: IntradaRadius.control)
+        .padding(.top, IntradaSpacing.controlGap)
 
         if let refusal {
           FormErrorBanner(message: refusal)
