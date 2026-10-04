@@ -17,8 +17,9 @@ overruled** ([`VISION.md`](../VISION.md), 2026-09-30).
 Capturing material is done, and v0.15.0 shipped a first run that gets a new
 musician to their first marked session (#2121). **Next is finishing the data
 model: a piece in sections, practised in variations shared across the
-library, with exercises linked to the sections they prepare (#50).** Every
-later feature reads that shape, so it settles before more is built on it.
+library, with exercises linked to the sections they prepare (#50).** v0.16.0
+settled the shape; v0.17.0 practises and scores by it, and sync follows in
+v0.18.0 on that settled record.
 
 ## The ranking
 
@@ -26,36 +27,43 @@ Work is ranked here directly, by epic: a group of issues with a working order.
 Where this list and an issue's
 [horizon label](how-the-work-runs.md#horizons) disagree, this list wins.
 
-### Now: v0.16.0
+### Now: v0.17.0, practise by section
 
-- **#50 Practise a piece in sections and its variations**, steps 1 to 4:
-  sections (#2245), variations replacing steps (#2246), the item screen
-  (#2247) and exercises linked to sections (#2248). #2246 also makes a
-  variation a real key (#2106) and records the tempo of every repetition
-  (#2107), so the saved session in progress changes once. The builder, live
-  session and scoring (#2249) and section scores (#2250) lead v0.17.0.
-- **Core tidy-ups beside it**: the unshown streak (#2190), the unread session
-  start time (#2170) and the saved library sort's version (#2089).
-- **The clock that keeps ticking after an item ends** (#2297).
-- **Watching three new musicians do a first run** (#2120), with the welcome's
-  follow-ups (#2294, #2295, #2296).
-- **Moving rules out of the Swift shell** (#2223) carries on, except #2228,
-  #2230, #2231 and #2232, which wait for #2246 and #2248 because they rewrite
-  the code those replace.
+v0.16.0 shipped #50 steps 1 to 4: sections, shared variations, the item
+screen and exercises linked to sections.
+
+- **#50 continued: build, play and score a session by section and variation**
+  (#2249), two PRs, core first. Each section gets its own minutes (#2315), and
+  the same change records how an item felt (#2308), leaves time away out
+  (#2306) and sets a focus and a target (#2303), so the saved session in
+  progress changes once. Then each section's mark and each variation's marks
+  (#2250).
+- **Moving rules out of the Swift shell** (#2223), now unblocked: #2228, #2230,
+  #2231, #2352, #2372 and #2379.
+- **Small fixes**: the profile icon that changes on save (#2347), the profile
+  editor's small Change button (#2318), grouped block titles cut at the
+  largest text size (#2334) and Progress claiming a climb when every mark fell
+  (#2374).
+- **The first run**: three new musicians try it (#2120), with the welcome's
+  follow-ups (#2294, #2295, #2296) and solid keys and variations (#2366).
+- **Ready for sync, alongside**: the iCloud container (#2359), the two screens
+  in Claude Design (#2360) and a trial on two devices (#2361).
 
 ### Next, in order
 
-1. **#50 continued**: the builder, live session and scoring by section and
-   variation (#2249), then section scores and charts by kind (#2250).
+1. **#2353 Library and practice history sync between iPhone and iPad through
+   iCloud** (v0.18.0, chosen 2026-10-04): until it lands, deleting the app
+   loses a tester's notebook.
 2. **#1926 A week's practice set with intent.** It replaces the goals feature,
-   starting with a two-lesson trial (#1927) and a research note (#1928).
+   starting with a two-lesson trial (#1927, running now) and a research note
+   (#1928).
 3. **#2134 Every screen holds together at the largest text sizes.**
-4. **#1975 Play the session through**, starting with session start feeling
-   slow (#1801).
+4. **#1975 Play the session through.**
 5. **#1974 Build a session your way**, including routines (#1348).
 6. **#1970 Practise an exercise in its keys.**
 7. **#1972 Add a piece in one pass** and **#1973 the Library**, refined when
-   use shows a gap.
+   use shows a gap. Picking bars, tempos and targets out of a note (#2307)
+   waits here.
 
 ### Later
 
