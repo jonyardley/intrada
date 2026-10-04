@@ -26,7 +26,6 @@ pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     }
 }
 
-/// Only an entry run through two or more segments has a segment clock.
 pub(super) fn first_segment_clock(
     entry: &SetlistEntry,
     now: DateTime<Utc>,
@@ -49,14 +48,28 @@ pub(super) fn close_open_play(
     now: DateTime<Utc>,
     reading: Option<&TempoReading>,
 ) -> TempoStamp {
+    close_play(entry, now, reading, false)
+}
+
+/// `stamped` keeps the seconds the sheet's stamp wrote: after a resume the
+/// play's clock is re-anchored, and recounting would take left-out time off
+/// a second time.
+pub(super) fn close_play(
+    entry: &mut SetlistEntry,
+    now: DateTime<Utc>,
+    reading: Option<&TempoReading>,
+    stamped: bool,
+) -> TempoStamp {
     let Some(play) = entry.open_play_mut() else {
         return TempoStamp::NothingToKeep;
     };
     if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
         away.back_at = Some(now.max(away.left_at));
     }
-    let elapsed = (now - play.started_at).num_seconds().max(0) as u64;
-    play.seconds = elapsed.saturating_sub(left_out_secs(&play.away, play.started_at, now));
+    if !stamped {
+        let elapsed = (now - play.started_at).num_seconds().max(0) as u64;
+        play.seconds = elapsed.saturating_sub(left_out_secs(&play.away, play.started_at, now));
+    }
     match reading {
         Some(reading) => stamp_tempo(play, reading),
         None => TempoStamp::NothingToKeep,
@@ -320,14 +333,13 @@ pub(super) fn entry_for_plan_mut<'a>(
     }
 }
 
-/// The item's time less what the musician left out.
-pub(super) fn item_seconds(
-    entry: &SetlistEntry,
-    started: DateTime<Utc>,
-    now: DateTime<Utc>,
-) -> u64 {
-    let elapsed = (now - started).num_seconds().max(0) as u64;
-    elapsed.saturating_sub(entry_left_out_secs(entry, started, now))
+/// The plays tile the item from its start, so their seconds are its time,
+/// and a resume, which backdates the item by that sum, cannot skew it.
+pub(super) fn item_seconds(entry: &SetlistEntry) -> u64 {
+    entry
+        .plays
+        .iter()
+        .fold(0u64, |sum, p| sum.saturating_add(p.seconds))
 }
 
 pub(super) fn transition_to_summary(
@@ -335,14 +347,15 @@ pub(super) fn transition_to_summary(
     now: DateTime<Utc>,
     reading: &TempoReading,
     completion_status: CompletionStatus,
+    stamped: bool,
 ) -> (SummarySession, TempoStamp) {
     let started = active.current_item_started_at;
     let mut stamp = TempoStamp::NothingToKeep;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.status = EntryStatus::Completed;
         open_first_play(entry, started);
-        stamp = close_open_play(entry, now, Some(reading));
-        entry.duration_secs = item_seconds(entry, started, now);
+        stamp = close_play(entry, now, Some(reading), stamped);
+        entry.duration_secs = item_seconds(entry);
     }
 
     if completion_status == CompletionStatus::EndedEarly {

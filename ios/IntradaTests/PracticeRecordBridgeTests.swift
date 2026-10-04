@@ -142,8 +142,8 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(entry.record.felt, .tense)
     XCTAssertEqual(entry.record.gotInTheWay, [.memory])
     XCTAssertEqual(entry.record.notePoints.map(\.label), ["Bar 12"])
-    XCTAssertEqual(entry.record.intentionMet, .yes, "read from the plays, the answer ignored")
-    XCTAssertTrue(entry.record.intentionMetRead)
+    XCTAssertEqual(entry.record.intentionMet, .notYet, "their own answer shows over the read")
+    XCTAssertFalse(entry.record.intentionMetRead)
     XCTAssertEqual(entry.plays.first?.sectionId, a)
   }
 

@@ -90,7 +90,8 @@ pub(super) fn move_to_next_segment(
     let Some(next) = entry.segments.get(next_index).cloned() else {
         return crux_core::render::render();
     };
-    if validation::validate_play_capacity(entry).is_err() {
+    if let Err(e) = validation::validate_play_capacity(entry) {
+        model.raise_error(e.to_string());
         return crux_core::render::render();
     }
 

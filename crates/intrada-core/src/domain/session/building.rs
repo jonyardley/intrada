@@ -253,9 +253,7 @@ pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Ef
     })
 }
 
-/// The way the item was last played, from the newest saved practice of it,
-/// kept to what is still in the library. `None` for the whole piece, plain:
-/// there is nothing to offer.
+/// Kept to what is still in the library; the whole piece, plain, offers nothing.
 pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
     let play = model
         .sessions

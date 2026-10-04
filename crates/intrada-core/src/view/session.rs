@@ -279,8 +279,8 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
             .collect(),
         focus: entry.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
-        intention_met: read.or(entry.intention_met),
-        intention_met_read: read.is_some(),
+        intention_met: entry.intention_met.or(read),
+        intention_met_read: entry.intention_met.is_none() && read.is_some(),
         felt: entry.felt,
         got_in_the_way: entry.got_in_the_way.clone(),
         note_points: entry
@@ -300,6 +300,40 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
     }
 }
 
+/// Left-out time on the open play since `from`, which only the open play can
+/// still be adding to: closed plays carry theirs in their seconds, and so does
+/// the open play once the sheet's stamp has closed it.
+fn open_left_out(active: &ActiveSession, from: DateTime<Utc>) -> chrono::Duration {
+    let entry = active.current_entry();
+    let open = entry.open_play().filter(|_| active.reflection.is_none());
+    let secs = open.map_or(0, |open| {
+        session::left_out_secs(
+            &open.away,
+            open.started_at.max(from),
+            DateTime::<Utc>::MAX_UTC,
+        )
+    });
+    chrono::Duration::seconds(i64::try_from(secs).unwrap_or(0))
+}
+
+/// The item's clock less left-out time away (#2306), from the open play back
+/// through the closed plays' seconds, so a resume cannot count a gap twice.
+fn shown_item_start(active: &ActiveSession) -> DateTime<Utc> {
+    let current = active.current_entry();
+    let Some((open, closed)) = current.plays.split_last() else {
+        return active.current_item_started_at;
+    };
+    let before: u64 = closed
+        .iter()
+        .fold(0u64, |sum, p| sum.saturating_add(p.seconds));
+    let before = chrono::Duration::seconds(i64::try_from(before).unwrap_or(0));
+    open.started_at
+        .checked_sub_signed(before)
+        .map_or(active.current_item_started_at, |start| {
+            start + open_left_out(active, open.started_at)
+        })
+}
+
 fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveRecordView {
     let current = active.current_entry();
     let segment = active.segment.as_ref().and_then(|clock| {
@@ -309,11 +343,9 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
             .segments
             .get(clock.index as usize + 1)
             .map(|s| labels.section(&s.section_id).unwrap_or_default());
-        let away =
-            session::entry_left_out_secs(current, clock.started_at, DateTime::<Utc>::MAX_UTC);
         let ends_at = clock.started_at
             + chrono::Duration::seconds(i64::from(clock.allowance_secs))
-            + chrono::Duration::seconds(i64::try_from(away).unwrap_or(0));
+            + open_left_out(active, clock.started_at);
         let stay_label = next
             .as_ref()
             .filter(|_| session::can_stay(current, clock))
@@ -481,18 +513,7 @@ pub fn build_active_session_view(
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
-        // Left-out time away moves the item's clock on, so the shell's timer
-        // and the sheet's stopped time drop the gap too (#2306).
-        current_item_started_at: (active.current_item_started_at
-            + chrono::Duration::seconds(
-                i64::try_from(session::entry_left_out_secs(
-                    current,
-                    active.current_item_started_at,
-                    DateTime::<Utc>::MAX_UTC,
-                ))
-                .unwrap_or(0),
-            ))
-        .to_rfc3339(),
+        current_item_started_at: shown_item_start(active).to_rfc3339(),
         entries: active
             .entries
             .iter()

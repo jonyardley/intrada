@@ -65,8 +65,10 @@ pub(super) fn answer_intention(
     entry_id: String,
     answer_given: Option<IntentionMet>,
 ) -> Command<Effect, Event> {
+    // The musician's own answer is kept even where the plays read one: a
+    // tempo typed after the sheet must not swallow it.
     answer(model, &entry_id, |entry| {
-        if intention_met_read(entry).is_none() {
+        if intended(entry) {
             entry.intention_met = answer_given;
         }
     })

@@ -589,29 +589,6 @@ fn an_answer_is_stored_only_when_asked_and_given() {
     assert_eq!(entries(&m)[0].intention_met, Some(IntentionMet::Partly));
 }
 
-#[test]
-fn an_answer_the_plays_already_give_is_not_stored() {
-    let mut m = finish_a_with((FocusKind::Tempo, Some(84)), sounding(90));
-    let id = entry_id(&m, 0);
-    send(
-        &mut m,
-        SessionEvent::NextItem {
-            now: t(300),
-            next_item_started_at: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::AnswerIntention {
-            entry_id: id,
-            answer: Some(IntentionMet::NotYet),
-        },
-    );
-
-    assert_eq!(entries(&m)[0].intention_met, None);
-}
-
 // ── Finish answers (#2307, #2308) ──
 
 fn finished_with_note(note: &str) -> (Model, String) {
@@ -751,33 +728,6 @@ fn the_sheet_offers_the_points_its_note_reads() {
             ("\u{2669} = 84".to_string(), true)
         ]
     );
-}
-
-#[test]
-fn a_draft_confirming_a_span_its_note_never_offered_is_refused() {
-    let note = "steady";
-    let mut m = building(&["p"]);
-    send(&mut m, SessionEvent::StartSession { now: t(0) });
-    send(
-        &mut m,
-        SessionEvent::PrepareReflection {
-            now: t(300),
-            reading: TempoReading::silent(),
-        },
-    );
-    send(
-        &mut m,
-        SessionEvent::UpdateReflectionDraft {
-            answers: ReflectionAnswers {
-                note: note.to_string(),
-                note_points: vec![NoteSpan { start: 0, end: 3 }],
-                ..ReflectionAnswers::default()
-            },
-        },
-    );
-
-    let draft = active(&m).reflection.as_ref().expect("draft");
-    assert!(draft.answers.note.is_empty(), "refused whole");
 }
 
 #[test]
@@ -1081,4 +1031,309 @@ fn the_v017_record_round_trips_through_storage() {
 
     assert_eq!(read.unreadable, Vec::<String>::new());
     assert_eq!(read.session, session);
+}
+
+fn sheet_open_on(note: &str, answers: ReflectionAnswers) -> Model {
+    let mut m = building(&["p"]);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::UpdateReflectionDraft {
+            answers: ReflectionAnswers {
+                note: note.to_string(),
+                ..answers
+            },
+        },
+    );
+    m
+}
+
+#[test]
+fn a_draft_drops_a_span_its_edited_note_no_longer_offers() {
+    let note = "rushed in bar 12";
+    let m = sheet_open_on(
+        note,
+        ReflectionAnswers {
+            note_points: vec![NoteSpan { start: 0, end: 6 }, span_of(note, "bar 12")],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert_eq!(draft.note, note, "kept, not refused");
+    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
+}
+
+#[test]
+fn a_draft_naming_an_obstacle_twice_is_refused() {
+    let m = sheet_open_on(
+        "fine",
+        ReflectionAnswers {
+            got_in_the_way: vec![Obstacle::Tone, Obstacle::Tone],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert!(draft.note.is_empty(), "refused whole");
+}
+
+#[test]
+fn editing_the_note_drops_points_it_no_longer_reads() {
+    let note = "left hand rushed in bar 12, got it at 84";
+    let (mut m, id) = finished_with_note(note);
+    for text in ["bar 12", "84"] {
+        send(
+            &mut m,
+            SessionEvent::ConfirmNotePoint {
+                entry_id: id.clone(),
+                span: span_of(note, text),
+            },
+        );
+    }
+    let edited = "left hand rushed in bar 12, got it at 88";
+    send(
+        &mut m,
+        SessionEvent::UpdateEntryNotes {
+            entry_id: id,
+            notes: Some(edited.to_string()),
+        },
+    );
+
+    let kinds: Vec<NotePointKind> = entries(&m)[0]
+        .note_points
+        .iter()
+        .map(|p| p.kind.clone())
+        .collect();
+    assert_eq!(
+        kinds,
+        [NotePointKind::Bars(BarRange {
+            first: 12,
+            last: 12
+        })]
+    );
+}
+
+#[test]
+fn a_tempo_on_the_whole_piece_does_not_meet_one_on_a_section() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_focus(&mut m, &id, FocusKind::Tempo, Some("s-a"), Some(84));
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::SwitchPlay {
+            entry_id: id,
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+            now: t(1),
+            reading: TempoReading::silent(),
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: sounding(90),
+        },
+    );
+
+    let finish = active_view(&m).record.finish.expect("the sheet");
+    assert_eq!(finish.intention_met_read, None);
+    assert!(finish.asks_intention);
+}
+
+#[test]
+fn an_answer_without_an_intention_is_not_stored() {
+    let (mut m, id) = finished_with_note("fine");
+    send(
+        &mut m,
+        SessionEvent::AnswerIntention {
+            entry_id: id,
+            answer: Some(IntentionMet::Yes),
+        },
+    );
+
+    assert_eq!(entries(&m)[0].intention_met, None);
+}
+
+#[test]
+fn a_given_answer_survives_a_tempo_typed_after_the_sheet() {
+    let mut m = finish_a_with((FocusKind::Tempo, Some(84)), sounding(72));
+    let id = entry_id(&m, 0);
+    assert!(active_view(&m).record.finish.expect("sheet").asks_intention);
+    let play_id = entries(&m)[0].plays[0].id.clone();
+    send(
+        &mut m,
+        SessionEvent::NextItem {
+            now: t(300),
+            next_item_started_at: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::UpdateEntryTempo {
+            entry_id: id.clone(),
+            play_id,
+            tempo: Some(84),
+            user_set: true,
+            click: None,
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::AnswerIntention {
+            entry_id: id,
+            answer: Some(IntentionMet::NotYet),
+        },
+    );
+
+    assert_eq!(entries(&m)[0].intention_met, Some(IntentionMet::NotYet));
+    let shown = &Intrada.view(&m).summary.expect("summary").entries[0].record;
+    assert_eq!(
+        (shown.intention_met, shown.intention_met_read),
+        (Some(IntentionMet::NotYet), false),
+        "their own answer, not the read"
+    );
+}
+
+#[test]
+fn a_left_out_gap_is_not_taken_twice_after_a_resume_at_the_sheet() {
+    let mut m = practising_q();
+    away(&mut m, 300, 900);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(1200),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].seconds, 600);
+    let saved = active(&m).clone();
+    let mut fresh = model();
+    send(
+        &mut fresh,
+        SessionEvent::RecoverSession {
+            session: saved,
+            now: t(1260),
+        },
+    );
+    let shown_start = active_view(&fresh).current_item_started_at;
+    send(
+        &mut fresh,
+        SessionEvent::NextItem {
+            now: t(1300),
+            next_item_started_at: t(1300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let entry = &entries(&fresh)[0];
+    assert_eq!(
+        (entry.plays[0].seconds, entry.duration_secs, shown_start),
+        (600, 600, t(660).to_rfc3339())
+    );
+}
+
+#[test]
+fn a_gap_on_a_closed_play_is_not_taken_twice_after_a_resume() {
+    let mut m = building(&["p"]);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    away(&mut m, 300, 900);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    let id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SwitchPlay {
+            entry_id: id,
+            section_id: Some("s-b".to_string()),
+            key: None,
+            variation_ids: vec![],
+            now: t(1200),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].seconds, 600);
+    let saved = active(&m).clone();
+    let mut fresh = model();
+    send(
+        &mut fresh,
+        SessionEvent::RecoverSession {
+            session: saved,
+            now: t(1260),
+        },
+    );
+    send(
+        &mut fresh,
+        SessionEvent::NextItem {
+            now: t(1360),
+            next_item_started_at: t(1360),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let entry = &entries(&fresh)[0];
+    let plays: u64 = entry.plays.iter().map(|p| p.seconds).sum();
+    assert_eq!((entry.duration_secs, plays), (700, 700));
+}
+
+#[test]
+fn segment_minutes_past_the_planned_time_are_refused() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 1200);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("s-a", u32::MAX - 59), seg("s-b", 120), seg("s-coda", 0)],
+    );
+
+    assert!(m.last_error.is_some());
+    assert!(entries(&m)[0].segments.is_empty());
+}
+
+#[test]
+fn a_gap_inside_the_stamped_time_is_not_taken_twice_after_a_resume() {
+    let mut m = practising_q();
+    away(&mut m, 700, 900);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(1200),
+            reading: TempoReading::silent(),
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].seconds, 1000);
+    let saved = active(&m).clone();
+    let mut fresh = model();
+    send(
+        &mut fresh,
+        SessionEvent::RecoverSession {
+            session: saved,
+            now: t(1260),
+        },
+    );
+    let view = active_view(&fresh);
+    send(
+        &mut fresh,
+        SessionEvent::NextItem {
+            now: t(1300),
+            next_item_started_at: t(1300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert_eq!(view.current_item_started_at, t(260).to_rfc3339());
+    assert_eq!(entries(&fresh)[0].plays[0].seconds, 1000);
 }

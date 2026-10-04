@@ -164,17 +164,21 @@ pub(crate) fn rebalance(
     let min = validation::MIN_PLANNED_DURATION_SECS;
     if segments
         .iter()
-        .any(|s| s.planned_secs > 0 && s.planned_secs < min)
+        .any(|s| s.planned_secs > planned || (s.planned_secs > 0 && s.planned_secs < min))
     {
         return Err(refuse());
     }
-    let fixed: u32 = segments.iter().map(|s| s.planned_secs).sum();
+    let fixed = segments
+        .iter()
+        .fold(0u32, |sum, s| sum.saturating_add(s.planned_secs));
     let free = segments.iter().filter(|s| s.planned_secs == 0).count() as u32;
     if free == 0 {
         let Some((last, rest)) = segments.split_last_mut() else {
             return Ok(());
         };
-        let others: u32 = rest.iter().map(|s| s.planned_secs).sum();
+        let others = rest
+            .iter()
+            .fold(0u32, |sum, s| sum.saturating_add(s.planned_secs));
         last.planned_secs = planned
             .checked_sub(others)
             .filter(|secs| *secs >= min)
@@ -214,28 +218,15 @@ pub(crate) fn split_evenly(segments: &mut [Segment], planned: Option<u32>) {
 
 // ── Away ──
 
-/// Seconds of left-out time inside `from..to`, so a gap before a clock was
-/// re-anchored is never taken off twice.
+/// Only gaps that began at or after `from` count: a resume re-anchors the
+/// clock past the gaps its stamped seconds already left out.
 pub(crate) fn left_out_secs(gaps: &[Away], from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
     gaps.iter()
-        .filter(|a| a.left_out)
+        .filter(|a| a.left_out && a.left_at >= from)
         .filter_map(|a| {
-            let start = a.left_at.max(from);
             let end = a.back_at?.min(to);
-            Some((end - start).num_seconds().max(0) as u64)
+            Some((end - a.left_at).num_seconds().max(0) as u64)
         })
-        .sum()
-}
-
-pub(crate) fn entry_left_out_secs(
-    entry: &SetlistEntry,
-    from: DateTime<Utc>,
-    to: DateTime<Utc>,
-) -> u64 {
-    entry
-        .plays
-        .iter()
-        .map(|p| left_out_secs(&p.away, from, to))
         .sum()
 }
 
@@ -279,15 +270,18 @@ fn reached_with_click(play: &Play, target: u16) -> bool {
     stamped || tapped || rested
 }
 
-/// The sheet asks once, only when there was an intention and the plays
-/// cannot answer it.
-pub(crate) fn asks_intention(entry: &SetlistEntry) -> bool {
-    let intended = entry.focus.is_some()
+pub(crate) fn intended(entry: &SetlistEntry) -> bool {
+    entry.focus.is_some()
         || entry
             .intention
             .as_deref()
-            .is_some_and(|t| !t.trim().is_empty());
-    intended && intention_met_read(entry).is_none()
+            .is_some_and(|t| !t.trim().is_empty())
+}
+
+/// The sheet asks once, only when there was an intention and the plays
+/// cannot answer it.
+pub(crate) fn asks_intention(entry: &SetlistEntry) -> bool {
+    intended(entry) && intention_met_read(entry).is_none()
 }
 
 pub(crate) fn validate_focus(

@@ -49,11 +49,13 @@ pub(super) fn next_item(
         return crux_core::render::render();
     };
     // After a resume the shell no longer has the stamp's instant (#2137).
-    let now = active.reflection.take().map_or(now, |draft| draft.now);
+    let draft = active.reflection.take();
+    let stamped = draft.is_some();
+    let now = draft.map_or(now, |draft| draft.now);
 
     if active.current_index >= active.entries.len() - 1 {
         let (summary, stamp) =
-            transition_to_summary(active, now, &reading, CompletionStatus::Completed);
+            transition_to_summary(active, now, &reading, CompletionStatus::Completed, stamped);
         return finish(model, summary, stamp);
     }
 
@@ -62,8 +64,8 @@ pub(super) fn next_item(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.status = EntryStatus::Completed;
         open_first_play(entry, started);
-        stamp = close_open_play(entry, now, Some(&reading));
-        entry.duration_secs = item_seconds(entry, started, now);
+        stamp = close_play(entry, now, Some(&reading), stamped);
+        entry.duration_secs = item_seconds(entry);
         drop_incidental_play(entry);
     }
 
@@ -128,9 +130,11 @@ pub(super) fn end_session_early(
         return crux_core::render::render();
     };
 
-    let now = active.reflection.take().map_or(now, |draft| draft.now);
+    let draft = active.reflection.take();
+    let stamped = draft.is_some();
+    let now = draft.map_or(now, |draft| draft.now);
     let (summary, stamp) =
-        transition_to_summary(active, now, &reading, CompletionStatus::EndedEarly);
+        transition_to_summary(active, now, &reading, CompletionStatus::EndedEarly, stamped);
     finish(model, summary, stamp)
 }
 
@@ -257,8 +261,8 @@ pub(super) fn recover_session(
     if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
         let anchor = recorded(play.seconds);
         if let Some(clock) = session.segment.as_mut() {
-            clock.started_at =
-                anchor - (play.started_at - clock.started_at).max(chrono::Duration::zero());
+            let into = (play.started_at - clock.started_at).max(chrono::Duration::zero());
+            clock.started_at = anchor.checked_sub_signed(into).unwrap_or(anchor);
         }
         play.started_at = anchor;
         // The blob was last saved as they left, so that is when it closes.
@@ -291,16 +295,17 @@ fn finish(model: &mut Model, summary: SummarySession, stamp: TempoStamp) -> Comm
 
 pub(super) fn update_reflection_draft(
     model: &mut Model,
-    answers: ReflectionAnswers,
+    mut answers: ReflectionAnswers,
 ) -> Command<Effect, Event> {
     let SessionStatus::Active(ref active) = model.session_status else {
         return crux_core::render::render();
     };
     let entry = active.current_entry();
     let sections = super::finish::named_sections(model, &entry.item_id);
+    keep_offered_points(&mut answers, &sections);
     if active.reflection.is_none()
         || !draft_answers_valid(entry, &answers)
-        || !draft_finish_valid(&answers, &sections)
+        || !obstacles_distinct(&answers.got_in_the_way)
     {
         return crux_core::render::render();
     }
@@ -313,22 +318,28 @@ pub(super) fn update_reflection_draft(
     persist_active(active)
 }
 
-/// Every confirmed span is a point the draft's note offers, once; each
-/// obstacle once.
-fn draft_finish_valid(answers: &ReflectionAnswers, sections: &[(&str, &str)]) -> bool {
+/// An edit to the note moves its points, and only the core can read them
+/// again, so a confirmed span the note no longer offers is dropped, not
+/// refused: a refusal would leave the crash-recovery copy stale.
+fn keep_offered_points(answers: &mut ReflectionAnswers, sections: &[(&str, &str)]) {
     let offered: Vec<NoteSpan> = note_offers(&answers.note, sections)
         .into_iter()
         .map(|p| p.span)
         .collect();
-    let mut spans = answers.note_points.clone();
-    spans.sort_by_key(|s| (s.start, s.end));
-    spans.dedup();
-    let mut obstacles = answers.got_in_the_way.clone();
-    obstacles.sort_by_key(|o| *o as u8);
-    obstacles.dedup();
-    spans.len() == answers.note_points.len()
-        && answers.note_points.iter().all(|s| offered.contains(s))
-        && obstacles.len() == answers.got_in_the_way.len()
+    let mut kept: Vec<NoteSpan> = Vec::new();
+    for span in &answers.note_points {
+        if offered.contains(span) && !kept.contains(span) {
+            kept.push(*span);
+        }
+    }
+    answers.note_points = kept;
+}
+
+fn obstacles_distinct(obstacles: &[Obstacle]) -> bool {
+    let mut seen = obstacles.to_vec();
+    seen.sort_by_key(|o| *o as u8);
+    seen.dedup();
+    seen.len() == obstacles.len()
 }
 
 fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {

@@ -53,13 +53,16 @@ pub enum IntentionMet { Yes, Partly, NotYet }
 pub enum Obstacle { Notes, Rhythm, Fingering, Memory, Tone, Tension }
 pub struct NotePoint {
     pub kind: NotePointKind,             // as read_note returns it, less Section
-    pub section_id: Option<String>,
-    pub span: (u32, u32),                // byte span in the note as written
+    pub section_id: Option<String>,      // the section named before it in the note
+    pub span: NoteSpan,                  // { start, end }: bytes of the note as written
 }
+pub enum Felt { Easy, Effortful, Tense } // from #2308; appended to, never reordered
 ```
 
 On `Play`: `pub away: Vec<Away>` with
-`Away { left_at, back_at, left_out: bool }` (#2306).
+`Away { left_at, back_at: Option, left_out: bool }` (#2306). On
+`ActiveSession`: `segment: Option<SegmentClock>`, the running segment's
+start, allowance and what Stay has borrowed from the next.
 
 - **Segments replace the planned section.** One planned section is a list of
   one, with `planned_secs` equal to the entry's planned time. A saved session
@@ -77,25 +80,36 @@ On `Play`: `pub away: Vec<Away>` with
 ## Events
 
 - Builder: `SetSegments { entry_id, segments }` (minutes always sum to the
-  entry's planned time; the core rebalances), `SetFocus { entry_id, focus }`,
-  `SuggestFocus { entry_id, text }` (reads "A1 at 84" with the note reader),
-  `ApplyLastTime { entry_id }`.
+  entry's planned time: a segment sent at zero shares what the others leave,
+  and a new planned time splits evenly again), `SetFocus { entry_id, focus }`,
+  `ApplyLastTime { entry_id }`. The suggested focus needs no event: the view
+  reads "A1 at 84" from the saved intention. `SetEntryPlan` still plans one
+  section, as one segment.
 - Practice screen: `AddTroubleSpot { item_id, bars }` (no name, score order,
   moved from #2245), `MoveToNextSegment`, `StayOnSegment`, `WentAway { at }`,
   `CameBack { at }`, `LeaveAwayOut`.
-- Finish sheet: `ConfirmNotePoint { span }`, `SetFelt`, `ToggleObstacle`,
-  `AnswerIntention`. All sit in `ReflectionAnswers` until Next, like the marks,
-  so a skipped sheet writes none of them.
+- Finish sheet: `ConfirmNotePoint { entry_id, span }`, `SetFelt`,
+  `ToggleObstacle`, `AnswerIntention`, each with the entry id. Their draft
+  copies sit in `ReflectionAnswers` for crash recovery; the hand-off sends
+  them after `NextItem`, like the marks, so a skipped sheet writes none.
+  Order: the note before the confirms (a span is read from the stored note),
+  the answer before any tempo edit. A note edit drops the points it no
+  longer reads, in the draft and on the entry.
 
 ## Rules the core owns
 
-- **Intention met is read, not stored,** when the focus allows: Tempo on a
-  section is met when a play of that section reached the target with the click
-  sounding. Otherwise the finish sheet asks once; skipping stores nothing.
+- **Intention met is read, not stored,** when the focus allows: a Tempo focus
+  on a section (or the whole piece) is met when a play of that part reached
+  the target with the click sounding. Otherwise the finish sheet asks once;
+  skipping stores nothing. An answer given is kept and shown over the read.
 - **Away under a minute offers nothing.** A screen lock for a few seconds is not
   time away.
 - **The segment clock never stops.** When a segment's time is up the view offers
-  On to B or Stay on A; ignoring it changes nothing.
+  On to B or Stay on A (two more minutes, taken from B, while B keeps a
+  minute); ignoring it changes nothing. The last segment offers nothing.
+- **Left-out time leaves the play's seconds** as it closes, and the item's
+  clock in the view; the entry's time is the sum of its plays, so a resume
+  never takes a gap off twice.
 - **Last time is an offer.** Section and variations start empty unless focus or
   segments set them; the chip sets them in one tap.
 
@@ -113,6 +127,6 @@ On `Play`: `pub away: Vec<Away>` with
 
 ## Open, for the design pass
 
-- The felt choices, and whether there are four or five.
-- How many minutes Stay on A adds, and what the last segment offers.
+- The felt choices: Easy, Effortful, Tense stand in, and their stored words
+  must be final before the first TestFlight build.
 - Where last time's chip sits in the builder.
