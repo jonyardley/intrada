@@ -4,13 +4,18 @@ import SwiftUI
 /// empty ones outlined, so the row says what is left rather than growing as it
 /// fills (#1735). Not quite stays tappable at zero because the core records a
 /// miss there, and at the target because a miss steps the count back (#1507).
+/// Got it keeps counting past the target, and undo takes back the last tap
+/// without calling it a miss (#2107).
 struct RepCounter: View {
   let count: Int
   let slots: Int
   let touched: Bool
   let reached: Bool
+  var extra = 0
+  var canUndo = false
   let onGotIt: () -> Void
   let onNotQuite: () -> Void
+  var onUndo: () -> Void = {}
 
   @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -28,6 +33,7 @@ struct RepCounter: View {
   private var header: some View {
     HStack {
       FieldLabel("Repetitions")
+        .accessibilityHidden(true)
       Spacer()
       HStack(spacing: 0) {
         Text("\(count)")
@@ -38,18 +44,38 @@ struct RepCounter: View {
       }
       .font(IntradaFont.secondary)
       .monospacedDigit()
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Repetitions")
+      .accessibilityValue(spokenCount)
+      .accessibilityIdentifier("player.reps")
+      if canUndo {
+        undo
+      }
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Repetitions")
-    .accessibilityValue(spokenCount)
+  }
+
+  private var undo: some View {
+    Button(action: onUndo) {
+      Text("Undo")
+        .font(IntradaFont.segment)
+        .foregroundStyle(IntradaColor.accent)
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .padding(.vertical, -IntradaSpacing.controlGap)
+    .accessibilityHint("Takes back the last tap")
+    .accessibilityIdentifier("player.undo")
   }
 
   private var countTail: String {
-    touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
+    if extra > 0 { return " of \(slots) · \(extra) extra" }
+    return touched && !reached ? " of \(slots) · \(toGo) to go" : " of \(slots)"
   }
 
   private var spokenCount: String {
-    touched && !reached ? "\(count) of \(slots), \(toGo) to go" : "\(count) of \(slots)"
+    if extra > 0 { return "\(count) of \(slots), \(extra) extra" }
+    return touched && !reached ? "\(count) of \(slots), \(toGo) to go" : "\(count) of \(slots)"
   }
 
   private var dots: some View {
@@ -80,7 +106,7 @@ struct RepCounter: View {
     repButton(
       title: "Got it", icon: "checkmark", fg: IntradaColor.repCleanFg,
       bg: IntradaColor.repCleanBg, border: IntradaColor.repCleanBorder,
-      disabled: reached, action: onGotIt
+      disabled: false, action: onGotIt
     )
     .accessibilityLabel("Got it")
     .accessibilityHint("Counts one repetition")
@@ -151,14 +177,16 @@ private struct RepDot: View {
           PaperBackground()
           RepCounter(
             count: count, slots: slots, touched: touched, reached: count >= slots,
+            extra: max(0, count - slots), canUndo: touched,
             onGotIt: {
               touched = true
-              count = min(slots, count + 1)
+              count += 1
             },
             onNotQuite: {
               touched = true
               count = max(0, count - 1)
-            }
+            },
+            onUndo: { count = max(0, count - 1) }
           )
           .padding(IntradaSpacing.card)
         }

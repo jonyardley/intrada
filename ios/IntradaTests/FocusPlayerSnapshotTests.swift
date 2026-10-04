@@ -288,6 +288,9 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
           count: 7, slots: 10, touched: true, reached: false, onGotIt: {}, onNotQuite: {})
         RepCounter(
           count: 10, slots: 10, touched: true, reached: true, onGotIt: {}, onNotQuite: {})
+        RepCounter(
+          count: 12, slots: 10, touched: true, reached: true, extra: 2, canUndo: true,
+          onGotIt: {}, onNotQuite: {})
       }
       .padding(16)
     }

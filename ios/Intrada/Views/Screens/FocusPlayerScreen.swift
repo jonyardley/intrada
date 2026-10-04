@@ -61,7 +61,7 @@ struct FocusPlayerScreen: View {
         .interactiveDismissDisabled()
       }
     }
-    .sheet(isPresented: $configuringClick) {
+    .sheet(isPresented: $configuringClick, onDismiss: recordTempoChange) {
       if let limits = store.viewModel?.limits {
         ClickSheet(click: click, bpm: click.bpm, limits: limits)
       }
@@ -293,9 +293,23 @@ struct FocusPlayerScreen: View {
       atSeededTempo: click.isAtSeededTempo,
       targetDisplay: declared ? active.currentItemTempoDisplay : nil,
       targetSpoken: declared ? active.currentItemTempoSpoken : nil,
-      onToggle: { click.toggle() },
-      onStep: { click.step(by: $0) },
-      onDragChange: { click.setBpm($0) })
+      onToggle: {
+        click.toggle()
+        recordTempoChange()
+      },
+      onStep: {
+        click.step(by: $0)
+        recordTempoChange()
+      },
+      onDragChange: {
+        click.setBpm($0)
+        recordTempoChange()
+      })
+  }
+
+  /// The core keeps the tempo once it settles, so a drag sends every step (#2107).
+  private func recordTempoChange() {
+    store.send(.session(.tempoChanged(now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 
   // The indicator reads the audio's clock through the engine on every frame,
@@ -325,11 +339,15 @@ struct FocusPlayerScreen: View {
       slots: Int(active.currentRepSlots),
       touched: active.currentRepCount != nil,
       reached: active.currentRepTargetReached ?? false,
+      extra: Int(active.currentRepsPastTarget), canUndo: active.currentCanUndo,
       onGotIt: {
         store.send(.session(.repGotIt(now: SessionClock.nowRFC3339(), reading: tempoReading)))
       },
       onNotQuite: {
         store.send(.session(.repMissed(now: SessionClock.nowRFC3339(), reading: tempoReading)))
+      },
+      onUndo: {
+        store.send(.session(.repUndo(now: SessionClock.nowRFC3339(), reading: tempoReading)))
       })
   }
 
