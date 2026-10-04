@@ -127,19 +127,10 @@ struct SectionSheet: View {
     send(SectionEdits.removing(section.id, from: item.sections))
   }
 
-  // Never dismiss or celebrate until the core accepts; a refusal stays inline
-  // and is cleared from the core so the app banner does not repeat it.
   private func send(_ sections: [SectionEdit]) {
-    withAnimation { formError = nil }
-    let accepted = store.sendAccepted(.item(.updateSections(id: item.id, sections: sections)))
-    if let error = store.viewModel?.error ?? (accepted ? nil : "Couldn't save. Try again.") {
-      withAnimation { formError = error }
-      store.send(.clearError)
-      Haptic.error.play()
-      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
-    } else {
-      Haptic.success.play()
-      dismiss()
-    }
+    formError = nil
+    let error = store.sendFromSheet(.item(.updateSections(id: item.id, sections: sections)))
+    withAnimation { formError = error }
+    if error == nil { dismiss() }
   }
 }

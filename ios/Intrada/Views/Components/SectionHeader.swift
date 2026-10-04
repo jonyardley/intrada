@@ -26,6 +26,7 @@ struct SectionHeader: View {
     let title: String
     var accessibilityLabel: String?
     var isDisabled = false
+    var identifier: String?
     let perform: () -> Void
   }
 
@@ -86,6 +87,7 @@ struct SectionHeader: View {
         .opacity(action.isDisabled ? 0 : 1)
         .accessibilityLabel(action.accessibilityLabel ?? action.title)
         .accessibilityHidden(action.isDisabled)
+        .accessibilityIdentifier(action.identifier ?? "")
     }
   }
 

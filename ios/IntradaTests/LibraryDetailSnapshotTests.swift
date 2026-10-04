@@ -126,7 +126,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  // #1783: Variations empty state: the two key presets, and Add variations opening Edit.
+  // #2247: no keys or variations yet: Choose variations and Practise in other keys.
   func testExerciseDetailVariationsEmptyState() {
     let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
     let pushed = NavigationStack(
@@ -239,6 +239,79 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   private func sectionSheet() -> UIViewController {
     let item = LibraryItemView.previewPieceWithSections
     return host(SectionSheet(item: item, target: .existing(item.sections[2])))
+  }
+
+  // #2247: a scale exercise in twelve keys, three of them played, with its
+  // Choose actions on Keys and Variations.
+  func testExerciseDetailWithKeys() {
+    let item = Self.scalesInTwelveKeys
+    let store = Store(bridge: PreviewBridge(items: [item]))
+    let pushed = NavigationStack(path: .constant([item.id])) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  func testKeysSheetAllMajor() {
+    assertSnapshot(of: host(KeysSheet(item: Self.scalesInTwelveKeys)), as: config)
+  }
+
+  // An F sharp spelt with sharps, and minors beside majors.
+  func testKeysSheetMixed() {
+    var keys = KeySet.tap(KeySet.tap([], ring: 6, mode: .major), ring: 6, mode: .major)
+    for ring in [0, 1, 2] {
+      keys = KeySet.tap(keys, ring: ring, mode: .major)
+      keys = KeySet.tap(keys, ring: ring, mode: .minor)
+    }
+    assertSnapshot(of: host(KeysSheet(item: .previewExercise, keys: keys)), as: config)
+  }
+
+  func testKeysSheetAccessibilitySize() {
+    assertSnapshot(
+      of: host(KeysSheet(item: Self.scalesInTwelveKeys)), as: tallAxConfig(height: 2000))
+  }
+
+  func testVariationsSheet() {
+    assertSnapshot(of: variationsSheet(query: ""), as: config)
+  }
+
+  func testVariationsSheetFindingOrAdding() {
+    assertSnapshot(of: variationsSheet(query: "Left hand"), as: config)
+  }
+
+  func testVariationsSheetAccessibilitySize() {
+    assertSnapshot(of: variationsSheet(query: ""), as: tallAxConfig(height: 2400))
+  }
+
+  private static var scalesInTwelveKeys: LibraryItemView {
+    var item = LibraryItemView.previewExercise
+    item.id = "scales-twelve"
+    item.title = "Major scales"
+    item.keys = KeyHelper.circle(.major).enumerated().map { index, key in
+      let score: UInt8? = index < 3 ? 8 : nil
+      return ItemKeyView(
+        key: key, label: KeyHelper.display(key) ?? "", latestScore: score,
+        caption: score.map { "\($0) of 10" } ?? "Not yet played")
+    }
+    return item
+  }
+
+  private func variationsSheet(query: String) -> UIViewController {
+    var item = LibraryItemView.previewPieceWithSections
+    item.variations = [
+      VariationView(
+        id: "v1", label: "Hands separately", latestScore: 8, scoreHistory: [],
+        caption: "8 of 10"),
+      VariationView(
+        id: "v5", label: "Left hand alone, eyes closed", latestScore: nil, scoreHistory: [],
+        caption: "Not yet played"),
+    ]
+    let library = [
+      VariationOptionView(id: "v1", label: "Hands separately"),
+      VariationOptionView(id: "v2", label: "Dotted rhythms"),
+      VariationOptionView(id: "v3", label: "Back to front"),
+      VariationOptionView(id: "v4", label: "Left hand leaps only"),
+      VariationOptionView(id: "v5", label: "Left hand alone, eyes closed"),
+    ]
+    return host(VariationsSheet(item: item, query: query, previewLibrary: library))
   }
 
   func testAddRelatedExerciseSheet() {

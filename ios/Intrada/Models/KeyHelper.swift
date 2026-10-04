@@ -13,7 +13,7 @@ enum KeyHelper {
 
   private static let wedges = keyWheel()
 
-  /// Spoke order clockwise from 12 o'clock, the "Add 12 keys" presets' order.
+  /// Spoke order clockwise from 12 o'clock.
   static func circle(_ mode: Modality) -> [Key] {
     (0..<12).compactMap { nextOnTap(current: nil, ring: $0, mode: mode)?.key }
   }

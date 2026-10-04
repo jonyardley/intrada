@@ -50,9 +50,9 @@ final class SectionsUITests: XCTestCase {
       "the section survived the relaunch")
 
     // Removed in Reorder and saved on Done: the empty slot comes back.
-    app.buttons["Reorder or remove sections"].tap()
+    app.control("sections.header", spoken: "Reorder or remove sections").tap()
     app.buttons["Remove A1"].tap()
-    app.buttons["Done reordering sections"].tap()
+    app.control("sections.header", spoken: "Done reordering sections").tap()
     XCTAssertTrue(
       app.control("sections.add", spoken: "Add sections to this piece").waitForExistence(
         timeout: 5),

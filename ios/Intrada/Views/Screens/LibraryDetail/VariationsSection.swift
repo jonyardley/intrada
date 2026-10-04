@@ -1,60 +1,64 @@
 import SharedTypes
 import SwiftUI
 
+/// The keys an item is practised in and the variations it uses (#2247), each
+/// chosen in its own sheet.
 struct VariationsSection: View {
   let item: LibraryItemView
-  let onAddVariations: () -> Void
-
-  @Environment(Store.self) private var store
+  let onChooseKeys: () -> Void
+  let onChooseVariations: () -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      if item.keys.isEmpty && item.variations.isEmpty {
-        SectionTitle("Variations")
-        emptyState
-      }
+    VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       if !item.keys.isEmpty {
-        SectionTitle("Keys")
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(spacing: IntradaSpacing.card) {
-            ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
-              KeyRingItem(key: key)
+        VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+          SectionHeader(title: "Keys", action: choose("keys", onChooseKeys))
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: IntradaSpacing.card) {
+              ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
+                KeyRingItem(key: key)
+              }
             }
+            .padding(IntradaSpacing.cardCompact)
           }
-          .padding(IntradaSpacing.cardCompact)
+          .cardSurface(cornerRadius: IntradaRadius.card)
         }
-        .cardSurface(cornerRadius: IntradaRadius.card)
       }
-      if !item.variations.isEmpty {
-        SectionTitle("Variations")
-        VStack(spacing: 0) {
-          ForEach(Array(item.variations.enumerated()), id: \.element.id) { index, variation in
-            if index > 0 {
-              HairlineDivider()
+      VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+        SectionHeader(
+          title: "Variations",
+          action: item.variations.isEmpty ? nil : choose("variations", onChooseVariations))
+        if item.variations.isEmpty {
+          AddRowButton(
+            title: "Choose variations", hint: "Hands separately, dotted rhythms, your own",
+            action: onChooseVariations
+          )
+          .accessibilityLabel("Choose variations for this \(item.itemType.label.lowercased())")
+          .accessibilityIdentifier("variations.choose")
+        } else {
+          VStack(spacing: 0) {
+            ForEach(Array(item.variations.enumerated()), id: \.element.id) { index, variation in
+              if index > 0 {
+                HairlineDivider()
+              }
+              VariationListRow(variation: variation)
             }
-            VariationListRow(variation: variation)
           }
+          .cardSurface()
         }
-        .cardSurface()
+      }
+      if item.keys.isEmpty {
+        AddRowButton(title: "Practise in other keys", style: .plain, action: onChooseKeys)
+          .accessibilityIdentifier("keys.choose")
+          .cardSurface()
       }
     }
   }
 
-  private var emptyState: some View {
-    VStack(spacing: IntradaSpacing.controlGap) {
-      AddRowButton(title: "Add 12 major keys") { addKeyPreset(.major) }
-        .accessibilityLabel("Add 12 major keys to practise this in")
-      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(.minor) }
-        .accessibilityLabel("Add 12 minor keys to practise this in")
-      AddRowButton(title: "Add variations", style: .plain, action: onAddVariations)
-        .accessibilityLabel("Add variations to this item")
-    }
-    .padding(IntradaSpacing.card)
-    .cardSurface()
-  }
-
-  private func addKeyPreset(_ mode: Modality) {
-    store.send(.item(.updateKeys(id: item.id, keys: KeyHelper.circle(mode))), onSuccess: .impact)
+  private func choose(_ what: String, _ action: @escaping () -> Void) -> SectionHeader.Action {
+    .init(
+      title: "Choose", accessibilityLabel: "Choose \(what)", identifier: "\(what).header",
+      perform: action)
   }
 }
 
