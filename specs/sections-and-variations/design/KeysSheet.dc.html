@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">
+  <style>
+    body { margin: 0; }
+
+.ph { width: 390px; background: #F7F4EF; color: #2A2725; font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; box-sizing: border-box; position: relative; overflow: hidden; }
+.ph * { box-sizing: border-box; }
+.ph .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 15px; font-weight: 600; }
+.ph .nav { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px 0; height: 40px; font-size: 17px; }
+.ph .nav .back { color: #2A2725; display: flex; align-items: center; gap: 4px; }
+.ph .nav .act { font-weight: 600; }
+.ph .body { padding: 8px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+.ph .ptitle { font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -0.3px; }
+.ph .sub { font-size: 15px; color: #6E6A66; margin-top: 4px; }
+.ph .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.ph .badge { font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 3px; background: #CBD6E0; }
+.ph .badge.ex { background: #DCD3C0; }
+.ph .badge.tag { background: #F3EFE8; font-weight: 500; color: #6E6A66; }
+.ph .group { display: flex; flex-direction: column; gap: 12px; }
+.ph .ghead { display: flex; align-items: baseline; gap: 8px; }
+.ph .glabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .gcount { font-size: 15px; color: #6E6A66; }
+.ph .gact { margin-left: auto; font-size: 15px; font-weight: 600; color: #2A2725; }
+.ph .card { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); }
+.ph .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.ph .row + .row, .ph .row + .addrow, .ph .hl { border-top: 1px solid #ECE6DA; }
+.ph .rmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ph .rlabel { font-size: 17px; font-weight: 500; }
+.ph .rcap { font-size: 15px; color: #6E6A66; }
+.ph .mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 15px; color: #6E6A66; }
+.ph .chev { color: #8F8070; font-size: 18px; }
+.ph .spot { display: inline-block; background: #FFE9A3; color: #2A2725; font-size: 13px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+.ph .addrow { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; font-size: 17px; font-weight: 500; }
+.ph .dashed { border: 1px dashed #C9BFB0; border-radius: 3px; padding: 16px; }
+.ph .hint { font-size: 13px; color: #6E6A66; text-align: center; }
+.ph .drows { display: flex; flex-direction: column; }
+.ph .drow { display: flex; justify-content: space-between; padding: 12px 16px; font-size: 15px; }
+.ph .drow + .drow { border-top: 1px solid #ECE6DA; }
+.ph .drow span:first-child { color: #6E6A66; }
+.ph .rings { display: flex; gap: 16px; padding: 12px; overflow: hidden; }
+.ph .ringcol { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.ph .ringcap { font-size: 15px; color: #8F8070; }
+.ph .ringcap.solid { color: #2A2725; }
+.ph .primary { background: #2A2725; color: #FFFFFF; font-size: 15px; font-weight: 700; text-align: center; padding: 14px; border-radius: 3px; }
+.ph .danger { color: #9C4A3A; font-size: 17px; font-weight: 500; text-align: center; padding: 12px; }
+.ph .handle { color: #8F8070; font-size: 18px; letter-spacing: -2px; }
+.ph .minus { width: 22px; height: 22px; border-radius: 50%; background: #9C4A3A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex: none; }
+.ph .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.2); }
+.ph .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #F7F4EF; border-radius: 12px 12px 0 0; padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 -3px 6px rgba(42,39,37,0.05); }
+.ph .grab { width: 36px; height: 5px; border-radius: 3px; background: #DDD7CA; margin: 0 auto; }
+.ph .shead { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+.ph .shead .t { font-size: 17px; font-weight: 600; }
+.ph .shead .c { color: #6E6A66; }
+.ph .shead .d { font-weight: 600; }
+.ph .field { display: flex; flex-direction: column; gap: 6px; }
+.ph .flabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .input { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); padding: 13px 14px; font-size: 17px; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+.ph .input.err { border-color: rgba(156,74,58,0.25); background: #FBF3F1; }
+.ph .ph-txt { color: #8F8070; }
+.ph .caret { display: inline-block; width: 2px; height: 20px; background: #2A2725; vertical-align: middle; margin-left: 1px; }
+.ph .errtxt { font-size: 15px; color: #9C4A3A; }
+.ph .ftip { font-size: 13px; color: #6E6A66; }
+.ph .seg { display: flex; background: #F3EFE8; border-radius: 3px; padding: 2px; }
+.ph .seg div { flex: 1; text-align: center; padding: 8px 4px; font-size: 15px; font-weight: 500; border-radius: 3px; color: #6E6A66; }
+.ph .seg .on { background: #FFFFFF; color: #2A2725; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #DDD7CA; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #FFFFFF; }
+.ph .check.on { background: #2A2725; border-color: #2A2725; }
+.ph .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ph .chip { font-size: 15px; font-weight: 500; padding: 7px 12px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .chip.on { background: #2A2725; color: #FFFFFF; }
+.ph .kbd { height: 216px; background: #D7D3CC; margin: 0 -16px -28px; display: flex; align-items: center; justify-content: center; color: #6E6A66; font-size: 13px; }
+
+  </style>
+</helmet>
+<div class="ph" style="height:844px"><div class="status"><span>9:41</span><span style="font-size:13px">&#9679;&#9679;&#9679; &#9646;</span></div><div class="nav"><span class="back">&#8249; Library</span><span class="act">Edit</span></div><div class="body"><div><div class="ptitle">Major scales</div><div class="sub">Two octaves, hands together</div></div><div class="badges"><span class="badge ex">Exercise</span><span class="badge tag">&#9833; 96</span></div></div><div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="shead"><span class="c">Cancel</span><span class="t">Keys</span><span class="d">Done</span></div><div style="display:flex;justify-content:center"><svg width="300" height="300" viewBox="0 0 300 300"><path d="M112.2,9.0 A146.0,146.0 0 0 1 187.8,9.0 L175.4,55.3 A98.0,98.0 0 0 0 124.6,55.3 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="150.0" y="33.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">C</text><path d="M124.6,55.3 A98.0,98.0 0 0 1 175.4,55.3 L164.0,97.8 A54.0,54.0 0 0 0 136.0,97.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="150.0" y="79.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">a</text><path d="M187.8,9.0 A146.0,146.0 0 0 1 253.2,46.8 L219.3,80.7 A98.0,98.0 0 0 0 175.4,55.3 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="211.0" y="49.3" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">G</text><path d="M175.4,55.3 A98.0,98.0 0 0 1 219.3,80.7 L188.2,111.8 A54.0,54.0 0 0 0 164.0,97.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="188.0" y="89.2" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">e</text><path d="M253.2,46.8 A146.0,146.0 0 0 1 291.0,112.2 L244.7,124.6 A98.0,98.0 0 0 0 219.3,80.7 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="255.7" y="94.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">D</text><path d="M219.3,80.7 A98.0,98.0 0 0 1 244.7,124.6 L202.2,136.0 A54.0,54.0 0 0 0 188.2,111.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="215.8" y="117.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">b</text><path d="M291.0,112.2 A146.0,146.0 0 0 1 291.0,187.8 L244.7,175.4 A98.0,98.0 0 0 0 244.7,124.6 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="272.0" y="155.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">A</text><path d="M244.7,124.6 A98.0,98.0 0 0 1 244.7,175.4 L202.2,164.0 A54.0,54.0 0 0 0 202.2,136.0 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="226.0" y="155.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">f&#9839;</text><path d="M291.0,187.8 A146.0,146.0 0 0 1 253.2,253.2 L219.3,219.3 A98.0,98.0 0 0 0 244.7,175.4 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="255.7" y="216.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">E</text><path d="M244.7,175.4 A98.0,98.0 0 0 1 219.3,219.3 L188.2,188.2 A54.0,54.0 0 0 0 202.2,164.0 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="215.8" y="193.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">c&#9839;</text><path d="M253.2,253.2 A146.0,146.0 0 0 1 187.8,291.0 L175.4,244.7 A98.0,98.0 0 0 0 219.3,219.3 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="211.0" y="260.7" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">B</text><path d="M219.3,219.3 A98.0,98.0 0 0 1 175.4,244.7 L164.0,202.2 A54.0,54.0 0 0 0 188.2,188.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="188.0" y="220.8" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">g&#9839;</text><path d="M187.8,291.0 A146.0,146.0 0 0 1 112.2,291.0 L124.6,244.7 A98.0,98.0 0 0 0 175.4,244.7 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="150.0" y="277.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">F&#9839;</text><path d="M175.4,244.7 A98.0,98.0 0 0 1 124.6,244.7 L136.0,202.2 A54.0,54.0 0 0 0 164.0,202.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="150.0" y="231.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">e&#9837;</text><path d="M112.2,291.0 A146.0,146.0 0 0 1 46.8,253.2 L80.7,219.3 A98.0,98.0 0 0 0 124.6,244.7 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="89.0" y="260.7" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">D&#9837;</text><path d="M124.6,244.7 A98.0,98.0 0 0 1 80.7,219.3 L111.8,188.2 A54.0,54.0 0 0 0 136.0,202.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="112.0" y="220.8" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">b&#9837;</text><path d="M46.8,253.2 A146.0,146.0 0 0 1 9.0,187.8 L55.3,175.4 A98.0,98.0 0 0 0 80.7,219.3 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="44.3" y="216.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">A&#9837;</text><path d="M80.7,219.3 A98.0,98.0 0 0 1 55.3,175.4 L97.8,164.0 A54.0,54.0 0 0 0 111.8,188.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="84.2" y="193.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">f</text><path d="M9.0,187.8 A146.0,146.0 0 0 1 9.0,112.2 L55.3,124.6 A98.0,98.0 0 0 0 55.3,175.4 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="28.0" y="155.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">E&#9837;</text><path d="M55.3,175.4 A98.0,98.0 0 0 1 55.3,124.6 L97.8,136.0 A54.0,54.0 0 0 0 97.8,164.0 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="74.0" y="155.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">c</text><path d="M9.0,112.2 A146.0,146.0 0 0 1 46.8,46.8 L80.7,80.7 A98.0,98.0 0 0 0 55.3,124.6 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="44.3" y="94.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">B&#9837;</text><path d="M55.3,124.6 A98.0,98.0 0 0 1 80.7,80.7 L111.8,111.8 A54.0,54.0 0 0 0 97.8,136.0 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="84.2" y="117.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">g</text><path d="M46.8,46.8 A146.0,146.0 0 0 1 112.2,9.0 L124.6,55.3 A98.0,98.0 0 0 0 80.7,80.7 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><text x="89.0" y="49.3" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">F</text><path d="M80.7,80.7 A98.0,98.0 0 0 1 124.6,55.3 L136.0,97.8 A54.0,54.0 0 0 0 111.8,111.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><text x="112.0" y="89.2" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="14" font-weight="600" fill="#2A2725">d</text><circle cx="150.0" cy="150.0" r="54.0" fill="#F7F4EF" stroke="#ECE6DA"/><text x="150.0" y="148.0" text-anchor="middle" font-family="DM Mono, monospace" font-size="22" fill="#2A2725">12</text><text x="150.0" y="168.0" text-anchor="middle" font-family="Hanken Grotesk, sans-serif" font-size="13" fill="#6E6A66">chosen</text></svg></div><div class="chips"><span class="chip on">All major</span><span class="chip">All minor</span><span class="chip">Clear</span></div><div class="ftip" style="text-align:center">Tap a key to add or remove it. Outer ring major, inner ring minor.</div></div></div>
+</x-dc>
+</body>
+</html>
