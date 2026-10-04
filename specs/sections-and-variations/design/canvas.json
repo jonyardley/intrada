@@ -54,12 +54,20 @@
       "y": 1250,
       "w": 390,
       "h": 844,
-      "title": "Choose keys on the wheel"
+      "title": "Choose keys \u00b7 all major"
+    },
+    {
+      "file": "KeysMixed.dc.html",
+      "x": 1500,
+      "y": 1250,
+      "w": 390,
+      "h": 844,
+      "title": "Choose keys \u00b7 mixed, with spellings"
     },
     {
       "file": "VariationsSheet.dc.html",
-      "x": 1500,
-      "y": 1250,
+      "x": 0,
+      "y": 2500,
       "w": 390,
       "h": 844,
       "title": "Choose variations"
@@ -113,12 +121,19 @@
       "x": 1000,
       "y": 1080,
       "w": 390,
-      "text": "Choose opens the key wheel in multi-select (#1769): no typing, so no misspelt key. All major fills the outer ring; the centre counts."
+      "text": "Choose opens the key wheel from the item's Key field (KeyPicker), same rings, fills, labels and spelling arrows, now taking several keys (#1769). All major fills the outer ring; the hub counts instead of naming one key."
+    },
+    {
+      "id": "KeysMixed-note",
+      "x": 1500,
+      "y": 1080,
+      "w": 390,
+      "text": "Each spoke cycles: off, then the circle's spelling, then the other spelling where the spoke has one, then off. A chosen F sharp leads its spoke, G flat drops to the arrow line, exactly as the single picker does."
     },
     {
       "id": "VariationsSheet-note",
-      "x": 1500,
-      "y": 1080,
+      "x": 0,
+      "y": 2330,
       "w": 390,
       "text": "One list for the whole library. Typing filters it; a new label offers Add. Matches show where they are already used, so a musician reuses rather than duplicates."
     }
