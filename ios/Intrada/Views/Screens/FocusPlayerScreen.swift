@@ -307,7 +307,7 @@ struct FocusPlayerScreen: View {
       })
   }
 
-  /// The core keeps the tempo once it settles, so a drag sends every step (#2107).
+  /// The core keeps the tempo once it settles, so a drag sends each value it commits (#2107).
   private func recordTempoChange() {
     store.send(.session(.tempoChanged(now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }

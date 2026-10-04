@@ -96,8 +96,6 @@ final class VariationPickerUITests: XCTestCase {
 }
 
 extension VariationPickerUITests {
-  /// The count carries on past the target, and undo takes back a tap rather
-  /// than recording a miss (#2107).
   func testGotItCountsPastTheTargetAndUndoTakesItBack() {
     let app = startScalesSession()
     let reps = app.control("player.reps", spoken: "Repetitions", timeout: 10)
