@@ -2,6 +2,7 @@ package com.intrada.android
 
 import com.intrada.android.core.ItemStore
 import com.intrada.shared.Accidental
+import com.intrada.shared.ExerciseLink
 import com.intrada.shared.Item
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
@@ -20,6 +21,7 @@ object Fixtures {
         key: Key? = null,
         tempo: Tempo? = null,
         tags: List<String> = emptyList(),
+        exerciseLinks: List<ExerciseLink> = emptyList(),
     ) =
         Item(
             id = id,
@@ -35,7 +37,7 @@ object Fixtures {
             sections = emptyList(),
             variationIds = emptyList(),
             keys = emptyList(),
-            exerciseLinks = emptyList(),
+            exerciseLinks = exerciseLinks,
         )
 
     val library =

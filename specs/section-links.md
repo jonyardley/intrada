@@ -116,11 +116,11 @@ CREATE TABLE exercise_link (id TEXT PRIMARY KEY NOT NULL,
   position INTEGER NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT);
 CREATE INDEX index_exercise_link_on_piece_id ON exercise_link(piece_id);
 INSERT OR IGNORE INTO exercise_link
-  SELECT 'link-' || item.id || '-' || j.value, item.id, j.value, NULL,
+  SELECT 'link|' || item.id || '|' || j.value, item.id, j.value, NULL,
          MIN(j.key), item.updated_at, NULL
-  FROM item, json_each(CASE WHEN json_valid(item.linked_exercise_ids)
-      AND json_type(item.linked_exercise_ids) = 'array'
-    THEN item.linked_exercise_ids ELSE '[]' END) AS j
+  FROM item, json_each(CASE WHEN json_valid(item.linked_exercise_ids) THEN
+      CASE WHEN json_type(item.linked_exercise_ids) = 'array'
+      THEN item.linked_exercise_ids END END) AS j
   WHERE j.type = 'text'
   GROUP BY item.id, j.value;
 ```
@@ -131,7 +131,9 @@ INSERT OR IGNORE INTO exercise_link
 - **Existing links come across as whole-piece links, in the same order.** A
   repeated id becomes one row at its first position. The id is derived, so the
   copy is deterministic and the test can name the rows.
-- **An unreadable column is skipped, not cleared.** `linked_exercise_ids`
+- **A value that is not a JSON array is skipped, not cleared; entries that
+  are not text are dropped.** The id joins with `|`, which no id holds, so
+  hyphenated ids cannot collide. `linked_exercise_ids`
   stays on `item`, no longer read or written; dropping it rides the coach-era
   table release (#2317), as `variant` does. An unreadable list therefore keeps
   its only copy (#1117).

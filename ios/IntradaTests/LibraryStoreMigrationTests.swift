@@ -497,7 +497,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       tempo: Tempo(marking: "Lento", bpm: 60), notes: "slow", tags: ["rubato"],
       exerciseLinks: [
         ExerciseLink(
-          id: "link-p1-e1", exerciseId: "e1", sectionId: nil, position: 0,
+          id: "link|p1|e1", exerciseId: "e1", sectionId: nil, position: 0,
           updatedAt: "2026-01-02T00:00:00Z", deletedAt: nil)
       ], createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z", priority: true,
@@ -625,9 +625,6 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
   // ── v20: exercise links (#2248) ──
 
-  /// Every piece's links come across as whole-piece links in their order; a
-  /// repeat becomes one row, and a list that will not read is skipped with
-  /// its text kept.
   func testV20CopiesEveryLinkAsAWholePieceLink() throws {
     let queue = try DatabaseQueue()
     try LibraryStore.migrator.migrate(queue, upTo: "v19_keys_and_variations")
@@ -635,6 +632,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
       for (id, kind, links) in [
         ("p1", "piece", #"["b", "a", "b"]"#), ("p2", "piece", "{"),
         ("p3", "piece", #"{"x": "y"}"#), ("p4", "piece", #"[1, "a"]"#),
+        ("x-y", "piece", #"["z"]"#), ("x", "piece", #"["y-z"]"#),
         ("a", "exercise", "[]"), ("b", "exercise", "[]"),
       ] {
         try db.execute(
@@ -650,7 +648,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let items = Dictionary(uniqueKeysWithValues: try store.loadItems().map { ($0.id, $0) })
     func link(_ piece: String, _ exercise: String, _ position: UInt64) -> ExerciseLink {
       ExerciseLink(
-        id: "link-\(piece)-\(exercise)", exerciseId: exercise, sectionId: nil,
+        id: "link|\(piece)|\(exercise)", exerciseId: exercise, sectionId: nil,
         position: position, updatedAt: "2026-01-02T00:00:00Z", deletedAt: nil)
     }
     XCTAssertEqual(items["p1"]?.exerciseLinks, [link("p1", "b", 0), link("p1", "a", 1)])
@@ -659,6 +657,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertEqual(items["p4"]?.exerciseLinks, [link("p4", "a", 1)], "only the ids come across")
     XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "p2"), "{", "and it is kept")
     XCTAssertEqual(items["a"]?.exerciseLinks, [])
+    XCTAssertEqual(items["x-y"]?.exerciseLinks, [link("x-y", "z", 0)])
+    XCTAssertEqual(items["x"]?.exerciseLinks, [link("x", "y-z", 0)], "ids with hyphens stay apart")
   }
 
   func testLinksAndATombstoneSurviveAReloadWithoutTouchingTheOldColumn() throws {
@@ -676,7 +676,11 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertEqual(try store.loadItems().first?.exerciseLinks, item.exerciseLinks)
 
     item.exerciseLinks[0].position = 2
+    item.exerciseLinks[0].sectionId = "s1"
+    item.exerciseLinks[0].updatedAt = "2026-10-04T10:00:00Z"
+    item.exerciseLinks[1].exerciseId = "e3"
     item.exerciseLinks[1].deletedAt = nil
+    item.exerciseLinks[1].updatedAt = "2026-10-04T10:05:00Z"
     try store.save(item)
     XCTAssertEqual(
       try store.loadItems().first?.exerciseLinks, item.exerciseLinks.reversed(),

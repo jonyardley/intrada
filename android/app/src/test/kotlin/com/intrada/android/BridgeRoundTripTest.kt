@@ -378,6 +378,62 @@ class BridgeRoundTripTest {
         )
     }
 
+    // Links loaded from the store cross into the core on Kotlin's encoder, a tombstone among them
+    // (#846, #2248).
+    @Test
+    fun loadedLinksReachThePieceAndItsExercise() {
+        val hanon = "01J0000000000000000000HANO"
+        val piece =
+            Fixtures.item(
+                    exerciseLinks =
+                        listOf(
+                            ExerciseLink("l1", hanon, null, 0uL, "2026-10-04T09:00:00Z", null),
+                            ExerciseLink(
+                                "l2",
+                                hanon,
+                                "s-a1",
+                                1uL,
+                                "2026-10-04T09:05:00Z",
+                                "2026-10-04T09:05:00Z",
+                            ),
+                        )
+                )
+                .copy(
+                    sections =
+                        listOf(
+                            ItemSection(
+                                "s-a1",
+                                "A1",
+                                null,
+                                SectionKind.FORM,
+                                null,
+                                0uL,
+                                "2026-10-04T09:00:00Z",
+                                null,
+                            )
+                        )
+                )
+        val bridge = LiveBridge()
+        val load =
+            bridge.update(Event.StartApp).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadItems
+            }
+
+        val rows =
+            libraryChanged(
+                bridge.resolve(
+                    load.id,
+                    PersistenceOutput.Items(listOf(piece) + Fixtures.library.drop(1)),
+                )
+            )
+
+        val card = rows.single { it.id == piece.id }.linkedExercises.single()
+        assertEquals(hanon, card.id)
+        assertTrue(card.wholePiece)
+        assertEquals("the tombstone stays hidden", emptyList<LinkedSectionView>(), card.sections)
+        assertTrue(rows.single { it.id == hanon }.usedIn.single().linked)
+    }
+
     private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =
         bridge
             .update(

@@ -1012,9 +1012,40 @@ final class LibraryBridgeTests: XCTestCase {
     return Dictionary(uniqueKeysWithValues: views.map { ($0.name, $0.id) })
   }
 
-  /// One drill linked to A2 of one piece and the coda of another, then the
-  /// piece's whole set replaced from its own side, each crossing the real
-  /// bincode bridge (#846): the link rows the store is handed, and both views.
+  /// Loaded links, a tombstone among them, cross into the core (#846).
+  func testRealBridgeLoadedLinksReachThePieceAndItsExercise() throws {
+    let bridge = RowsBridge()
+    let load = try XCTUnwrap(
+      try bridge.update(.startApp).first {
+        if case .persistence(.loadItems) = $0.effect { return true } else { return false }
+      })
+    var piece = LibraryItemFixture.record(id: "p1", title: "Nocturne")
+    piece.sections = [
+      ItemSection(
+        id: "s-a1", name: "A1", bars: nil, kind: .form, targetBpm: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil)
+    ]
+    piece.exerciseLinks = [
+      ExerciseLink(
+        id: "l1", exerciseId: "e1", sectionId: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil),
+      ExerciseLink(
+        id: "l2", exerciseId: "e1", sectionId: "s-a1", position: 1,
+        updatedAt: "2026-10-04T09:05:00Z", deletedAt: "2026-10-04T09:05:00Z"),
+    ]
+    let exercise = LibraryItemFixture.record(id: "e1", title: "Thirds", kind: .exercise)
+
+    _ = try bridge.resolve(load.id, persistenceOutput: .items([piece, exercise]))
+
+    let rows = try bridge.rendered().items
+    let card = try XCTUnwrap(rows.first { $0.id == "p1" }?.linkedExercises.first)
+    XCTAssertEqual(card.id, "e1")
+    XCTAssertTrue(card.wholePiece)
+    XCTAssertEqual(card.sections, [], "the tombstone stays hidden")
+    XCTAssertEqual(rows.first { $0.id == "e1" }?.usedIn.map(\.linked), [true])
+  }
+
+  /// Links made in the core, and both views of them, cross the bridge (#846).
   func testRealBridgeLinksAnExerciseToSectionsOfTwoPieces() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)

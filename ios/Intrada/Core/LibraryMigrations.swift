@@ -335,9 +335,9 @@ extension LibraryStore {
       try db.execute(sql: "ALTER TABLE session ADD COLUMN capture_version INTEGER")
     }
     migrator.registerMigration("v20_exercise_link") { db in
-      // Each id in a piece's old list becomes a whole-piece link, a repeat
-      // once at its first place (#2248). A list that will not read is
-      // skipped, and the old column stays, unread, until #2317.
+      // Each text id in a piece's old list becomes a whole-piece link, a
+      // repeat once at its first place (#2248). A value that is not a JSON
+      // array is skipped, and the old column stays, unread, until #2317.
       try db.execute(
         sql: """
           CREATE TABLE exercise_link (
@@ -356,12 +356,13 @@ extension LibraryStore {
         sql: """
           INSERT OR IGNORE INTO exercise_link
             (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at)
-          SELECT 'link-' || item.id || '-' || j.value, item.id, j.value, NULL, MIN(j.key),
+          SELECT 'link|' || item.id || '|' || j.value, item.id, j.value, NULL, MIN(j.key),
             item.updated_at, NULL
           FROM item, json_each(
-            CASE WHEN json_valid(item.linked_exercise_ids)
-              AND json_type(item.linked_exercise_ids) = 'array'
-            THEN item.linked_exercise_ids ELSE '[]' END) AS j
+            CASE WHEN json_valid(item.linked_exercise_ids) THEN
+              CASE WHEN json_type(item.linked_exercise_ids) = 'array'
+              THEN item.linked_exercise_ids END
+            END) AS j
           WHERE j.type = 'text'
           GROUP BY item.id, j.value
           """)
