@@ -40,6 +40,9 @@ own list is always empty.
   the coda of the same piece is two rows. Rows reconcile on
   (exercise, section), so linking again after an unlink revives the old row
   and keeps its id.
+- **Whole piece and sections together are allowed.** One exercise can hold a
+  whole-piece link and section links on the same piece at once, with no rule
+  between them (Jon, 2026-10-04).
 - **The host is a piece.** A section on an exercise cannot be a link target,
   as today only a piece can host one (`validate_link_exercise`).
 - **Unlinking tombstones.** Nothing reads a link's history yet, but #2250's
@@ -120,6 +123,9 @@ INSERT OR IGNORE INTO exercise_link
   GROUP BY item.id, j.value;
 ```
 
+- **The copy is the migration's SQL, not a core fold** (Jon, 2026-10-04), on
+  the precedent of `v17_item_metre`. A one-time move by the core, as #2246 does
+  for steps, was rejected: the core would keep reading the old column.
 - **Existing links come across as whole-piece links, in the same order.** A
   repeated id becomes one row at its first position. The id is derived, so the
   copy is deterministic and the test can name the rows.
