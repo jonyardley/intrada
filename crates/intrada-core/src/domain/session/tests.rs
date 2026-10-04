@@ -5496,7 +5496,7 @@ fn pinned_active_session() -> ActiveSession {
         target: Some(84),
     });
     touched.intention_met = Some(IntentionMet::Partly);
-    touched.felt = Some(Felt::Tense);
+    touched.felt = Some(Felt::Strained);
     touched.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Memory];
     touched.note_points = vec![NotePoint {
         kind: NotePointKind::Bars(crate::domain::section::BarRange {
@@ -5584,7 +5584,7 @@ fn pinned_active_session() -> ActiveSession {
                     tempo: 150,
                     click: None,
                 }],
-                felt: Some(Felt::Easy),
+                felt: Some(Felt::Comfortable),
                 got_in_the_way: vec![Obstacle::Tone],
                 note_points: vec![NoteSpan { start: 0, end: 6 }],
                 intention_met: Some(IntentionMet::Yes),

@@ -232,18 +232,18 @@ fn intention_met_text(met: IntentionMet) -> &'static str {
 
 fn felt(raw: &str) -> Option<Felt> {
     match raw {
-        "easy" => Some(Felt::Easy),
-        "effortful" => Some(Felt::Effortful),
-        "tense" => Some(Felt::Tense),
+        "comfortable" => Some(Felt::Comfortable),
+        "hard_work" => Some(Felt::HardWork),
+        "strained" => Some(Felt::Strained),
         _ => None,
     }
 }
 
 fn felt_text(felt: Felt) -> &'static str {
     match felt {
-        Felt::Easy => "easy",
-        Felt::Effortful => "effortful",
-        Felt::Tense => "tense",
+        Felt::Comfortable => "comfortable",
+        Felt::HardWork => "hard_work",
+        Felt::Strained => "strained",
     }
 }
 

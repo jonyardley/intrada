@@ -13,6 +13,7 @@ import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
 import com.intrada.shared.ExerciseLink
+import com.intrada.shared.Felt
 import com.intrada.shared.FocusKind
 import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
@@ -511,6 +512,37 @@ class BridgeRoundTripTest {
         assertEquals(sections.last(), active?.currentSectionId)
         assertEquals("B", active?.record?.segment?.label)
         assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
+    }
+
+    @Test
+    fun theBuilderAndTheFinishSheetCarryTheChoiceWordsFromTheCore() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
+        val focus = bridge.view().buildingSetlist?.focusChoices
+        assertEquals(
+            listOf("Tempo", "Clean in a row", "From memory", "Evenness"),
+            focus?.map { it.label },
+        )
+        assertEquals(
+            listOf(FocusKind.TEMPO, FocusKind.CLEANREPS, FocusKind.FROMMEMORY, FocusKind.EVENNESS),
+            focus?.map { it.kind },
+        )
+
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
+        bridge.update(
+            Event.Session(
+                SessionEvent.PrepareReflection(
+                    "2026-10-04T09:05:00Z",
+                    TempoReading(bpm = 84.toUShort(), clickSounding = false),
+                )
+            )
+        )
+        val felt = bridge.view().activeSession?.record?.finish?.feltChoices
+        assertEquals(listOf("Comfortable", "Hard work", "Strained"), felt?.map { it.label })
+        assertEquals(listOf(Felt.COMFORTABLE, Felt.HARDWORK, Felt.STRAINED), felt?.map { it.felt })
     }
 
     private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =

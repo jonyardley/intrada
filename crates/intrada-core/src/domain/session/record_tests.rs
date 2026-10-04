@@ -770,7 +770,7 @@ fn how_it_felt_and_what_got_in_the_way_are_stored_on_the_entry() {
         &mut m,
         SessionEvent::SetFelt {
             entry_id: id.clone(),
-            felt: Some(Felt::Tense),
+            felt: Some(Felt::Strained),
         },
     );
     for obstacle in [Obstacle::Memory, Obstacle::Tension, Obstacle::Memory] {
@@ -784,7 +784,7 @@ fn how_it_felt_and_what_got_in_the_way_are_stored_on_the_entry() {
     }
 
     let entry = &entries(&m)[0];
-    assert_eq!(entry.felt, Some(Felt::Tense));
+    assert_eq!(entry.felt, Some(Felt::Strained));
     assert_eq!(entry.got_in_the_way, [Obstacle::Tension]);
 }
 
@@ -796,7 +796,7 @@ fn finish_answers_are_refused_on_an_entry_never_finished() {
         &mut m,
         SessionEvent::SetFelt {
             entry_id: id,
-            felt: Some(Felt::Easy),
+            felt: Some(Felt::Comfortable),
         },
     );
 
@@ -915,7 +915,7 @@ fn every_field_set() -> ActiveSession {
         target: Some(84),
     });
     entry.intention_met = Some(IntentionMet::Partly);
-    entry.felt = Some(Felt::Effortful);
+    entry.felt = Some(Felt::HardWork);
     entry.got_in_the_way = vec![Obstacle::Fingering, Obstacle::Tone];
     entry.note_points = vec![NotePoint {
         kind: NotePointKind::Repetitions {
@@ -951,7 +951,7 @@ fn every_field_set() -> ActiveSession {
             now: t(600),
             reading: sounding(84),
             answers: ReflectionAnswers {
-                felt: Some(Felt::Easy),
+                felt: Some(Felt::Comfortable),
                 got_in_the_way: vec![Obstacle::Notes],
                 note_points: vec![NoteSpan { start: 0, end: 6 }],
                 intention_met: Some(IntentionMet::Yes),
@@ -1032,6 +1032,70 @@ fn the_v017_record_round_trips_through_storage() {
 
     assert_eq!(read.unreadable, Vec::<String>::new());
     assert_eq!(read.session, session);
+}
+
+#[test]
+fn each_felt_choice_is_stored_as_its_word_and_reads_back() {
+    for (felt, word) in [
+        (Felt::Comfortable, "comfortable"),
+        (Felt::HardWork, "hard_work"),
+        (Felt::Strained, "strained"),
+    ] {
+        let mut session = saved_session_playing("p", PlayWay::default(), t(0));
+        session.entries[0].felt = Some(felt);
+
+        let row = crate::stored_session::session_to_stored(&session).expect("writes");
+        let read = crate::stored_session::session_from_stored(&row).expect("reads");
+
+        assert!(
+            row.entries.contains(&format!("\"felt\":\"{word}\"")),
+            "{felt:?} stored as {word}: {}",
+            row.entries
+        );
+        assert_eq!(read.unreadable, Vec::<String>::new());
+        assert_eq!(read.session.entries[0].felt, Some(felt));
+    }
+}
+
+#[test]
+fn the_finish_sheet_offers_the_felt_choices_in_order_with_their_words() {
+    let m = sheet_open_on("", ReflectionAnswers::default());
+    let choices = active_view(&m)
+        .record
+        .finish
+        .expect("the sheet")
+        .felt_choices;
+
+    assert_eq!(
+        choices
+            .iter()
+            .map(|c| (c.felt, c.label.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (Felt::Comfortable, "Comfortable"),
+            (Felt::HardWork, "Hard work"),
+            (Felt::Strained, "Strained"),
+        ]
+    );
+}
+
+#[test]
+fn the_builder_offers_the_focus_kinds_in_order_with_their_words() {
+    let m = building(&["p"]);
+    let choices = building_view(&m).focus_choices;
+
+    assert_eq!(
+        choices
+            .iter()
+            .map(|c| (c.kind, c.label.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (FocusKind::Tempo, "Tempo"),
+            (FocusKind::CleanReps, "Clean in a row"),
+            (FocusKind::FromMemory, "From memory"),
+            (FocusKind::Evenness, "Evenness"),
+        ]
+    );
 }
 
 fn sheet_open_on(note: &str, answers: ReflectionAnswers) -> Model {

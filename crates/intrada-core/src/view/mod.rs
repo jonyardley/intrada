@@ -4,7 +4,8 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, EntryVariationsView, LimitsView, Model, PhotoRecognitionView, ViewModel,
+    BuildingSetlistView, EntryVariationsView, FocusChoiceView, LimitsView, Model,
+    PhotoRecognitionView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::matches_query;
@@ -126,6 +127,13 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     ),
                     entry_variations,
                     last_times,
+                    focus_choices: crate::domain::session::FOCUS_CHOICES
+                        .iter()
+                        .map(|&kind| FocusChoiceView {
+                            kind,
+                            label: crate::domain::session::focus_kind_label(kind).to_string(),
+                        })
+                        .collect(),
                 }),
                 None,
             )

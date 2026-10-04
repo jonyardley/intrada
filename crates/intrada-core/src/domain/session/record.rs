@@ -53,15 +53,14 @@ pub enum IntentionMet {
     NotYet,
 }
 
-/// Provisional until the design pass settles the choices (#2308); a new
-/// choice is appended, never inserted, so a saved practice still reads.
+/// Append, never insert: the crash-recovery blob stores the index (#1345).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Felt {
-    Easy,
-    Effortful,
-    Tense,
+    Comfortable,
+    HardWork,
+    Strained,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -421,13 +420,29 @@ pub(crate) fn focus_label(focus: &IntentionFocus, section: Option<&str>) -> Stri
 
 pub(crate) fn felt_label(felt: Felt) -> &'static str {
     match felt {
-        Felt::Easy => "Easy",
-        Felt::Effortful => "Effortful",
-        Felt::Tense => "Tense",
+        Felt::Comfortable => "Comfortable",
+        Felt::HardWork => "Hard work",
+        Felt::Strained => "Strained",
     }
 }
 
-pub(crate) const FELT_CHOICES: [Felt; 3] = [Felt::Easy, Felt::Effortful, Felt::Tense];
+pub(crate) const FELT_CHOICES: [Felt; 3] = [Felt::Comfortable, Felt::HardWork, Felt::Strained];
+
+pub(crate) fn focus_kind_label(kind: FocusKind) -> &'static str {
+    match kind {
+        FocusKind::Tempo => "Tempo",
+        FocusKind::CleanReps => "Clean in a row",
+        FocusKind::FromMemory => "From memory",
+        FocusKind::Evenness => "Evenness",
+    }
+}
+
+pub(crate) const FOCUS_CHOICES: [FocusKind; 4] = [
+    FocusKind::Tempo,
+    FocusKind::CleanReps,
+    FocusKind::FromMemory,
+    FocusKind::Evenness,
+];
 
 pub(crate) fn obstacle_label(obstacle: Obstacle) -> &'static str {
     match obstacle {

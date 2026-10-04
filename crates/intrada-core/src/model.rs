@@ -1011,6 +1011,14 @@ pub struct BuildingSetlistView {
     pub entry_variations: Vec<EntryVariationsView>,
     /// For the entries whose item was last played on a section or variations.
     pub last_times: Vec<LastTimeView>,
+    pub focus_choices: Vec<FocusChoiceView>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FocusChoiceView {
+    pub kind: crate::domain::session::FocusKind,
+    pub label: String,
 }
 
 /// What an entry's plan can name: its item's variations and live sections.
