@@ -3680,3 +3680,149 @@ fn link_events_and_an_item_with_links_round_trip_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(view_of(&model, "piece-1"));
     crate::domain::types::assert_round_trips(view_of(&model, "ex-2"));
 }
+
+fn old_stamp() -> chrono::DateTime<chrono::Utc> {
+    chrono::Utc::now() - chrono::Duration::days(30)
+}
+
+/// Links on piece-1 as (exercise, section, position), every row stamped long ago.
+fn seed_links(model: &mut Model, rows: &[(&str, Option<&str>, usize)]) {
+    let at = old_stamp();
+    let piece = model
+        .items
+        .iter_mut()
+        .find(|i| i.id == "piece-1")
+        .expect("piece");
+    piece.exercise_links = rows
+        .iter()
+        .map(|(ex, section, position)| {
+            ExerciseLink::new(ex.to_string(), section.map(str::to_string), *position, at)
+        })
+        .collect();
+}
+
+fn link_row<'a>(model: &'a Model, exercise: &str, section: Option<&str>) -> &'a ExerciseLink {
+    item(model, "piece-1")
+        .exercise_links
+        .iter()
+        .find(|l| l.exercise_id == exercise && l.section_id.as_deref() == section)
+        .expect("link row")
+}
+
+#[test]
+fn set_piece_links_with_the_stored_set_at_gapped_positions_writes_nothing() {
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", Some("s-a2"), 2)]);
+    let stamped = item(&model, "piece-1").updated_at;
+
+    let mut cmd = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(item(&model, "piece-1").updated_at, stamped);
+}
+
+#[test]
+fn link_exercise_after_an_unlink_revives_the_same_row() {
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", None, 0)]);
+    let first = link_row(&model, "ex-1", None).id.clone();
+
+    for event in [
+        ItemEvent::UnlinkExercise {
+            piece_id: "piece-1".to_string(),
+            exercise_id: "ex-1".to_string(),
+        },
+        ItemEvent::LinkExercise {
+            piece_id: "piece-1".to_string(),
+            exercise_id: "ex-1".to_string(),
+        },
+    ] {
+        send(&mut model, event);
+    }
+
+    let rows = &item(&model, "piece-1").exercise_links;
+    assert_eq!(rows.len(), 1, "no twin row minted");
+    assert_eq!(rows[0].id, first);
+    assert!(rows[0].deleted_at.is_none());
+    assert!(rows[0].updated_at > old_stamp());
+}
+
+#[test]
+fn every_link_write_stamps_the_rows_it_changes() {
+    let stale = |model: &Model, ex: &str, section: Option<&str>| {
+        link_row(model, ex, section).updated_at <= old_stamp()
+    };
+
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", None, 1)]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2", None)]);
+    assert!(!stale(&model, "ex-1", None), "a tombstone is stamped");
+    assert!(!stale(&model, "ex-2", None), "a moved row is stamped");
+
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", None, 0)]);
+    let mut tombstoned = model
+        .items
+        .iter()
+        .find(|i| i.id == "piece-1")
+        .unwrap()
+        .clone();
+    tombstoned.exercise_links[0].deleted_at = Some(old_stamp());
+    if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+        *p = tombstoned;
+    }
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+    assert!(!stale(&model, "ex-1", None), "a revived row is stamped");
+
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", None, 1)]);
+    send(
+        &mut model,
+        ItemEvent::ReorderLinkedExercises {
+            piece_id: "piece-1".to_string(),
+            ordered_ids: vec!["ex-2".to_string(), "ex-1".to_string()],
+        },
+    );
+    assert!(!stale(&model, "ex-1", None), "a reordered row is stamped");
+
+    let mut model = linking_model();
+    seed_links(&mut model, &[("ex-1", Some("s-a2"), 0)]);
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(Some("s-a1"), "A1", BarsInput::Blank)],
+    );
+    assert!(
+        !stale(&model, "ex-1", Some("s-a2")),
+        "a link removed with its section is stamped"
+    );
+}
+
+#[test]
+fn a_repeated_row_links_once() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", Some("s-a2")),
+            existing("ex-1", Some("s-a2")),
+        ],
+    );
+    assert_eq!(item(&model, "piece-1").exercise_links.len(), 1);
+
+    let mut model = linking_model();
+    let _ = set_exercise_links(
+        &mut model,
+        "ex-1",
+        vec![
+            target("piece-2", Some("s-coda")),
+            target("piece-2", Some("s-coda")),
+        ],
+    );
+    assert_eq!(item(&model, "piece-2").exercise_links.len(), 1);
+}

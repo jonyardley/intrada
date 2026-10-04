@@ -13,8 +13,8 @@ it serves. Today the link is a list of exercise ids on the piece
 can already sit on several pieces; what it cannot do is name a section.
 
 Linking is also diffed in Swift: the piece screen and the exercise screen each
-work out what to link and unlink and send one event per change (#2232). The
-Android app would copy that rule.
+work out what to link and unlink and send one event per change (#2232). Left
+there, the Android screens would need a second copy of that rule.
 
 ## Data shape
 

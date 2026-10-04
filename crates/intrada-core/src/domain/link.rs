@@ -27,7 +27,7 @@ pub struct LinkEdit {
 }
 
 /// One row of the exercise's chosen set: a piece, as a whole or one section.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LinkTarget {
     pub piece_id: String,
@@ -60,7 +60,6 @@ impl ExerciseLink {
     }
 }
 
-/// Whole-piece links to `ids`, in order.
 pub(crate) fn whole_piece_links(ids: &[&str], now: DateTime<Utc>) -> Vec<ExerciseLink> {
     ids.iter()
         .enumerate()
@@ -71,7 +70,7 @@ pub(crate) fn whole_piece_links(ids: &[&str], now: DateTime<Utc>) -> Vec<Exercis
 impl Item {
     /// Live links whose section, when they name one, is a live section of
     /// this item, by position.
-    pub fn live_links(&self) -> Vec<&ExerciseLink> {
+    pub(crate) fn live_links(&self) -> Vec<&ExerciseLink> {
         let mut live: Vec<&ExerciseLink> = self
             .exercise_links
             .iter()
@@ -89,7 +88,7 @@ impl Item {
     }
 
     /// Each linked exercise once, in the order of its first live link.
-    pub fn linked_exercise_ids(&self) -> Vec<String> {
+    pub(crate) fn linked_exercise_ids(&self) -> Vec<String> {
         let mut ids: Vec<String> = Vec::new();
         for link in self.live_links() {
             if !ids.contains(&link.exercise_id) {
@@ -120,10 +119,8 @@ impl Item {
     }
 }
 
-/// Reconcile the rows `in_scope` picks out against `wanted`, keyed by
-/// (exercise, section): a claimed row keeps its id, a tombstone is revived
-/// rather than a twin minted, and a live row left out is tombstoned. Rows out
-/// of scope pass through untouched. `wanted` must hold each key once.
+/// Claims by (exercise, section), reviving a tombstone before minting (#2248).
+/// `wanted` holds each key once.
 pub(crate) fn reconcile_links(
     existing: &[ExerciseLink],
     in_scope: impl Fn(&ExerciseLink) -> bool,

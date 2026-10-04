@@ -55,7 +55,16 @@ pub(super) fn link_exercise(
     };
 
     let now = chrono::Utc::now();
-    append_whole_piece_links(piece, &[exercise_id], now);
+    piece.exercise_links = reconcile_links(
+        &piece.exercise_links,
+        |l| l.exercise_id == exercise_id && l.section_id.is_none(),
+        vec![WantedLink {
+            exercise_id: exercise_id.clone(),
+            section_id: None,
+            position: None,
+        }],
+        now,
+    );
     piece.updated_at = now;
     model.last_error = None;
 
@@ -265,12 +274,20 @@ pub(super) fn set_piece_links(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    let next = reconcile_links(&piece.exercise_links, |_| true, wanted, now);
-    if created.is_empty() && same_links(&piece.exercise_links, &next) {
+    let stored: Vec<(&str, Option<&str>)> = piece
+        .live_links()
+        .into_iter()
+        .map(|l| (l.exercise_id.as_str(), l.section_id.as_deref()))
+        .collect();
+    let asked: Vec<(&str, Option<&str>)> = wanted
+        .iter()
+        .map(|w| (w.exercise_id.as_str(), w.section_id.as_deref()))
+        .collect();
+    if created.is_empty() && stored == asked {
         model.last_error = None;
         return crux_core::render::render();
     }
-    piece.exercise_links = next;
+    piece.exercise_links = reconcile_links(&piece.exercise_links, |_| true, wanted, now);
     piece.updated_at = now;
     let piece = piece.clone();
 
