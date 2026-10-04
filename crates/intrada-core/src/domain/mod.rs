@@ -2,6 +2,7 @@ pub mod chart;
 pub mod first_run;
 pub mod item;
 pub mod key;
+pub mod link;
 pub mod metre;
 pub mod practice_defaults;
 pub mod profile;

@@ -19,7 +19,7 @@ pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event
         tempo,
         notes: input.notes,
         tags: input.tags,
-        linked_exercise_ids: vec![],
+        exercise_links: vec![],
         created_at: now,
         updated_at: now,
         priority: false,
@@ -83,7 +83,7 @@ pub(super) fn add_linked_exercise(
         tempo,
         notes: input.notes,
         tags: input.tags,
-        linked_exercise_ids: vec![],
+        exercise_links: vec![],
         created_at: now,
         updated_at: now,
         priority: false,
@@ -101,7 +101,7 @@ pub(super) fn add_linked_exercise(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    piece.linked_exercise_ids.push(exercise.id.clone());
+    super::links::append_whole_piece_links(piece, std::slice::from_ref(&exercise.id), now);
     piece.updated_at = now;
     let piece = piece.clone();
 
@@ -135,49 +135,12 @@ pub(super) fn add_piece_in_full(
         }
     };
 
-    enum Entry {
-        New(Box<CreateItem>, Option<Tempo>),
-        Existing(String),
-    }
     let mut entries = Vec::with_capacity(exercises.len());
     for (index, entry) in exercises.into_iter().enumerate() {
-        match entry {
-            ScaffoldEntry::New(input) => {
-                if let Err(e) = validation::validate_no_variation_labels(&input) {
-                    model.last_error_target = Some(FormErrorTarget::Exercise {
-                        index,
-                        field: form_field(&e),
-                    });
-                    model.raise_error(e.to_string());
-                    return crux_core::render::render();
-                }
-                let input = validation::normalize_create_item(CreateItem {
-                    kind: ItemKind::Exercise,
-                    ..input
-                });
-                let tempo = match validation::validate_create_item(&input) {
-                    Ok(tempo) => tempo,
-                    Err(e) => {
-                        model.last_error_target = Some(FormErrorTarget::Exercise {
-                            index,
-                            field: form_field(&e),
-                        });
-                        model.raise_error(e.to_string());
-                        return crux_core::render::render();
-                    }
-                };
-                entries.push(Entry::New(Box::new(input), tempo));
-            }
-            ScaffoldEntry::Existing { id } => {
-                if let Err(e) = validation::validate_exercise_link_target(&id, model) {
-                    model.last_error_target =
-                        Some(FormErrorTarget::Exercise { index, field: None });
-                    model.raise_error(e.to_string());
-                    return crux_core::render::render();
-                }
-                entries.push(Entry::Existing(id));
-            }
-        }
+        let Some(entry) = validate_entry(model, index, entry) else {
+            return crux_core::render::render();
+        };
+        entries.push(entry);
     }
 
     // No piece exists yet, so the chart derives against the key the form
@@ -210,26 +173,7 @@ pub(super) fn add_piece_in_full(
     for entry in entries {
         match entry {
             Entry::New(input, tempo) => {
-                let exercise = Item {
-                    id: ulid::Ulid::generate().to_string(),
-                    title: input.title,
-                    kind: input.kind,
-                    composer: input.composer,
-                    key: input.key,
-                    tempo,
-                    notes: input.notes,
-                    tags: input.tags,
-                    linked_exercise_ids: vec![],
-                    created_at: now,
-                    updated_at: now,
-                    priority: false,
-                    chord_chart: None,
-                    variation_ids: vec![],
-                    keys: vec![],
-                    sections: vec![],
-                    photo_id: input.photo_id,
-                    metre: None,
-                };
+                let exercise = new_exercise(*input, tempo, now);
                 linked_ids.push(exercise.id.clone());
                 created.push(exercise);
             }
@@ -250,7 +194,10 @@ pub(super) fn add_piece_in_full(
         tempo: piece_tempo,
         notes: piece_input.notes,
         tags: piece_input.tags,
-        linked_exercise_ids: linked_ids,
+        exercise_links: crate::domain::link::whole_piece_links(
+            &linked_ids.iter().map(String::as_str).collect::<Vec<_>>(),
+            now,
+        ),
         created_at: now,
         updated_at: now,
         priority: false,
@@ -274,4 +221,76 @@ pub(super) fn add_piece_in_full(
         crate::persistence::save_items(model, to_save),
         crux_core::render::render(),
     ])
+}
+
+/// One exercise row of a create-and-link write, validated.
+pub(super) enum Entry {
+    New(Box<CreateItem>, Option<Tempo>),
+    Existing(String),
+}
+
+/// Validates one row, coercing a written one to an exercise. `None` is a
+/// refusal, already raised against the row it came from.
+pub(super) fn validate_entry(
+    model: &mut Model,
+    index: usize,
+    entry: ScaffoldEntry,
+) -> Option<Entry> {
+    let refuse_row = |model: &mut Model, e: LibraryError, field: Option<FormErrorField>| {
+        model.last_error_target = Some(FormErrorTarget::Exercise { index, field });
+        model.raise_error(e.to_string());
+        None
+    };
+    match entry {
+        ScaffoldEntry::New(input) => {
+            if let Err(e) = validation::validate_no_variation_labels(&input) {
+                let field = form_field(&e);
+                return refuse_row(model, e, field);
+            }
+            let input = validation::normalize_create_item(CreateItem {
+                kind: ItemKind::Exercise,
+                ..input
+            });
+            match validation::validate_create_item(&input) {
+                Ok(tempo) => Some(Entry::New(Box::new(input), tempo)),
+                Err(e) => {
+                    let field = form_field(&e);
+                    refuse_row(model, e, field)
+                }
+            }
+        }
+        ScaffoldEntry::Existing { id } => {
+            match validation::validate_exercise_link_target(&id, model) {
+                Ok(()) => Some(Entry::Existing(id)),
+                Err(e) => refuse_row(model, e, None),
+            }
+        }
+    }
+}
+
+pub(super) fn new_exercise(
+    input: CreateItem,
+    tempo: Option<Tempo>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Item {
+    Item {
+        id: ulid::Ulid::generate().to_string(),
+        title: input.title,
+        kind: input.kind,
+        composer: input.composer,
+        key: input.key,
+        tempo,
+        notes: input.notes,
+        tags: input.tags,
+        created_at: now,
+        updated_at: now,
+        priority: false,
+        chord_chart: None,
+        variation_ids: vec![],
+        keys: vec![],
+        sections: vec![],
+        photo_id: input.photo_id,
+        metre: None,
+        exercise_links: vec![],
+    }
 }

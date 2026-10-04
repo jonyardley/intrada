@@ -17,7 +17,7 @@ fn make_piece(id: &str) -> Item {
         tempo: None,
         notes: None,
         tags: vec![],
-        linked_exercise_ids: vec![],
+        exercise_links: vec![],
         created_at: now,
         updated_at: now,
         priority: false,
@@ -41,7 +41,7 @@ fn make_exercise(id: &str) -> Item {
         tempo: None,
         notes: None,
         tags: vec![],
-        linked_exercise_ids: vec![],
+        exercise_links: vec![],
         created_at: now,
         updated_at: now,
         priority: false,
@@ -341,7 +341,7 @@ fn commit_scaffold_creates_selected_exercises_links_them_and_persists_a_batch() 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     for e in &new {
         assert!(
-            piece.linked_exercise_ids.contains(&e.id),
+            piece.linked_exercise_ids().contains(&e.id),
             "each new exercise is linked to the piece"
         );
     }
@@ -395,9 +395,8 @@ fn commit_scaffold_does_not_clobber_a_handmade_exercise_of_the_same_title() {
     handmade.notes = Some("my own".to_string());
     model.items.push(handmade);
     if let Some(piece) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-        piece
-            .linked_exercise_ids
-            .push("handmade-shells".to_string());
+        piece.exercise_links =
+            crate::domain::link::whole_piece_links(&["handmade-shells"], chrono::Utc::now());
     }
 
     send(
@@ -883,7 +882,7 @@ fn link_exercise_adds_id_and_bumps_updated_at() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
+    assert_eq!(piece.linked_exercise_ids(), vec!["ex-1".to_string()]);
     assert!(piece.updated_at >= before);
     assert!(model.last_error.is_none());
 }
@@ -901,7 +900,7 @@ fn link_exercise_rejects_nonexistent_exercise() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids.is_empty());
+    assert!(piece.linked_exercise_ids().is_empty());
     assert!(model.last_error.is_some());
 }
 
@@ -920,7 +919,7 @@ fn link_exercise_rejects_non_exercise_target() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids.is_empty());
+    assert!(piece.linked_exercise_ids().is_empty());
     assert!(model.last_error.is_some());
 }
 
@@ -938,7 +937,7 @@ fn link_exercise_rejects_non_piece_host() {
     );
 
     let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert!(ex.linked_exercise_ids.is_empty());
+    assert!(ex.linked_exercise_ids().is_empty());
     assert!(model.last_error.is_some());
 }
 
@@ -964,7 +963,7 @@ fn link_exercise_rejects_duplicate() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids.len(), 1);
+    assert_eq!(piece.linked_exercise_ids().len(), 1);
     assert!(model.last_error.is_some());
 }
 
@@ -981,7 +980,7 @@ fn link_exercise_rejects_self_link() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids.is_empty());
+    assert!(piece.linked_exercise_ids().is_empty());
     assert!(model.last_error.is_some());
 }
 
@@ -1009,7 +1008,7 @@ fn unlink_exercise_removes_id() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids.is_empty());
+    assert!(piece.linked_exercise_ids().is_empty());
     assert!(model.last_error.is_none());
 }
 
@@ -1045,7 +1044,7 @@ fn reorder_linked_exercises_sets_new_order() {
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert_eq!(
-        piece.linked_exercise_ids,
+        piece.linked_exercise_ids(),
         vec!["ex-2".to_string(), "ex-1".to_string()]
     );
     assert!(model.last_error.is_none());
@@ -1077,7 +1076,7 @@ fn reorder_linked_exercises_preserves_omitted_ids() {
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert_eq!(
-        piece.linked_exercise_ids,
+        piece.linked_exercise_ids(),
         vec!["ex-3".to_string(), "ex-1".to_string(), "ex-2".to_string()]
     );
     assert!(model.last_error.is_none());
@@ -1104,7 +1103,7 @@ fn reorder_linked_exercises_ignores_foreign_ids() {
     );
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
+    assert_eq!(piece.linked_exercise_ids(), vec!["ex-1".to_string()]);
     assert!(model.last_error.is_none());
 }
 
@@ -1133,7 +1132,7 @@ fn reorder_linked_exercises_dedupes_repeated_ids() {
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert_eq!(
-        piece.linked_exercise_ids,
+        piece.linked_exercise_ids(),
         vec!["ex-2".to_string(), "ex-1".to_string()]
     );
     assert!(model.last_error.is_none());
@@ -1177,7 +1176,7 @@ fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert!(
-        piece.linked_exercise_ids.contains(&created.id),
+        piece.linked_exercise_ids().contains(&created.id),
         "the point of the event: created already linked, with no second variation"
     );
     assert!(model.last_error.is_none());
@@ -1267,7 +1266,7 @@ fn add_linked_exercise_rejects_a_blank_title() {
     assert_eq!(model.items.len(), before, "nothing is created");
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert!(
-        piece.linked_exercise_ids.is_empty(),
+        piece.linked_exercise_ids().is_empty(),
         "and nothing is linked"
     );
 }
@@ -1607,7 +1606,7 @@ fn add_piece_in_full_saves_the_piece_with_its_chart_and_exercises_in_one_batch()
         "the chart lands on the piece, with no second event"
     );
     assert_eq!(
-        piece.linked_exercise_ids,
+        piece.linked_exercise_ids(),
         vec!["ex-1".to_string(), written.id.clone()],
         "chosen then written, in the order given: neither minting order nor sorted"
     );
@@ -1748,7 +1747,7 @@ fn add_piece_in_full_takes_a_piece_with_neither_chart_nor_exercises() {
         .find(|i| i.title == "Autumn Leaves")
         .expect("the plain create still works through this path");
     assert!(piece.chord_chart.is_none());
-    assert!(piece.linked_exercise_ids.is_empty());
+    assert!(piece.linked_exercise_ids().is_empty());
     assert_eq!(emits_save_items(&mut cmd).map(|b| b.len()), Some(1));
     assert!(model.last_error.is_none());
 }
@@ -2485,7 +2484,7 @@ fn update_refuses_a_bpm_it_cannot_read_and_keeps_the_old_tempo() {
 #[test]
 fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
     let mut model = model_with_piece_and_exercise();
-    let links_before = model.items[0].linked_exercise_ids.clone();
+    let links_before = model.items[0].linked_exercise_ids().clone();
 
     send(
         &mut model,
@@ -2499,7 +2498,7 @@ fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
     );
 
     assert_eq!(model.items.len(), 2, "nothing is written");
-    assert_eq!(model.items[0].linked_exercise_ids, links_before);
+    assert_eq!(model.items[0].linked_exercise_ids(), links_before);
     assert_eq!(
         model.last_error.as_deref(),
         Some("BPM must be a whole number between 1 and 400")
@@ -3187,4 +3186,497 @@ fn update_sections_and_an_item_with_sections_round_trip_on_ffi_bincode_wire() {
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     crate::domain::types::assert_round_trips(piece.clone());
     crate::domain::types::assert_round_trips(piece_view(&model));
+}
+
+// ── Section links (#2248) ──
+
+use crate::domain::link::{ExerciseLink, LinkEdit, LinkTarget};
+
+fn section(id: &str, name: &str, position: usize) -> ItemSection {
+    ItemSection {
+        id: id.to_string(),
+        name: name.to_string(),
+        bars: None,
+        kind: SectionKind::Form,
+        target_bpm: None,
+        position,
+        updated_at: chrono::Utc::now(),
+        deleted_at: None,
+    }
+}
+
+/// Nocturne (A1, A2, a removed B) and an étude (coda), with two drills.
+fn linking_model() -> Model {
+    let mut nocturne = make_piece("piece-1");
+    let mut removed = section("s-b", "B", 2);
+    removed.deleted_at = Some(chrono::Utc::now());
+    nocturne.sections = vec![section("s-a1", "A1", 0), section("s-a2", "A2", 1), removed];
+    let mut etude = make_piece("piece-2");
+    etude.title = "Étude".to_string();
+    etude.sections = vec![section("s-coda", "Coda", 0)];
+    let mut thirds = make_exercise("ex-2");
+    thirds.title = "Thirds".to_string();
+    Model {
+        items: vec![nocturne, etude, make_exercise("ex-1"), thirds].into(),
+        ..Default::default()
+    }
+}
+
+fn item<'a>(model: &'a Model, id: &str) -> &'a Item {
+    model.items.iter().find(|i| i.id == id).expect("item")
+}
+
+/// The live link rows of a piece as (exercise, section), by position.
+fn live_pairs(model: &Model, piece_id: &str) -> Vec<(String, Option<String>)> {
+    item(model, piece_id)
+        .live_links()
+        .into_iter()
+        .map(|l| (l.exercise_id.clone(), l.section_id.clone()))
+        .collect()
+}
+
+fn pair(exercise: &str, section: Option<&str>) -> (String, Option<String>) {
+    (exercise.to_string(), section.map(str::to_string))
+}
+
+fn existing(exercise: &str, section: Option<&str>) -> LinkEdit {
+    LinkEdit {
+        exercise: ScaffoldEntry::Existing {
+            id: exercise.to_string(),
+        },
+        section_id: section.map(str::to_string),
+    }
+}
+
+fn target(piece: &str, section: Option<&str>) -> LinkTarget {
+    LinkTarget {
+        piece_id: piece.to_string(),
+        section_id: section.map(str::to_string),
+    }
+}
+
+fn set_piece_links(
+    model: &mut Model,
+    piece_id: &str,
+    links: Vec<LinkEdit>,
+) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::SetPieceLinks {
+            piece_id: piece_id.to_string(),
+            links,
+        },
+    )
+}
+
+fn set_exercise_links(
+    model: &mut Model,
+    exercise_id: &str,
+    targets: Vec<LinkTarget>,
+) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::SetExerciseLinks {
+            exercise_id: exercise_id.to_string(),
+            targets,
+        },
+    )
+}
+
+fn persists_anything(cmd: &mut Command<Effect, Event>) -> bool {
+    cmd.effects()
+        .any(|e| matches!(e, crate::app::Effect::Persistence(_)))
+}
+
+fn view_of(model: &Model, id: &str) -> crate::model::LibraryItemView {
+    Intrada
+        .rendered(model)
+        .items
+        .into_iter()
+        .find(|i| i.id == id)
+        .expect("item in view")
+}
+
+fn draft(title: &str) -> CreateItem {
+    CreateItem {
+        title: title.to_string(),
+        kind: ItemKind::Piece,
+        composer: None,
+        key: None,
+        tempo: None,
+        notes: None,
+        tags: vec![],
+        photo_id: None,
+        variation_labels: vec![],
+    }
+}
+
+#[test]
+fn set_piece_links_holds_whole_piece_and_section_links_in_card_order() {
+    let mut model = linking_model();
+
+    let mut cmd = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", None),
+            existing("ex-2", Some("s-a2")),
+            existing("ex-1", Some("s-a2")),
+        ],
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![
+            pair("ex-1", None),
+            pair("ex-2", Some("s-a2")),
+            pair("ex-1", Some("s-a2")),
+        ]
+    );
+    let card = view_of(&model, "piece-1").linked_exercises;
+    let rows: Vec<(String, bool, Vec<String>)> = card
+        .iter()
+        .map(|e| {
+            (
+                e.id.clone(),
+                e.whole_piece,
+                e.sections.iter().map(|s| s.label.clone()).collect(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        vec![
+            ("ex-1".to_string(), true, vec!["A2".to_string()]),
+            ("ex-2".to_string(), false, vec!["A2".to_string()]),
+        ]
+    );
+}
+
+#[test]
+fn set_piece_links_adds_and_removes_in_one_event() {
+    let mut model = linking_model();
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-2", None), existing("ex-1", Some("s-a1"))],
+    );
+
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-2", None), pair("ex-1", Some("s-a1"))]
+    );
+    let removed: Vec<&ExerciseLink> = item(&model, "piece-1")
+        .exercise_links
+        .iter()
+        .filter(|l| l.exercise_id == "ex-1" && l.section_id.is_none())
+        .collect();
+    assert_eq!(removed.len(), 1);
+    assert!(
+        removed[0].deleted_at.is_some(),
+        "an unlink tombstones the row"
+    );
+}
+
+#[test]
+fn set_piece_links_creates_a_written_exercise_linked_to_a_section() {
+    let mut model = linking_model();
+
+    let mut cmd = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![LinkEdit {
+            exercise: ScaffoldEntry::New(draft("  Broken octaves ")),
+            section_id: Some("s-a2".to_string()),
+        }],
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    let created = model
+        .items
+        .iter()
+        .find(|i| i.title == "Broken octaves")
+        .expect("created")
+        .clone();
+    assert_eq!(created.kind, ItemKind::Exercise);
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair(&created.id, Some("s-a2"))]
+    );
+    assert_eq!(
+        emits_save_items(&mut cmd),
+        Some(vec![created.id.clone(), "piece-1".to_string()])
+    );
+}
+
+#[test]
+fn set_piece_links_refuses_the_whole_set_on_one_bad_row() {
+    for (case, bad) in [
+        ("unknown section", existing("ex-2", Some("s-nope"))),
+        ("another piece's section", existing("ex-2", Some("s-coda"))),
+        ("a removed section", existing("ex-2", Some("s-b"))),
+        ("a piece as the exercise", existing("piece-2", None)),
+        ("an unknown exercise", existing("ex-nope", None)),
+        (
+            "a draft with no title",
+            LinkEdit {
+                exercise: ScaffoldEntry::New(draft("   ")),
+                section_id: None,
+            },
+        ),
+    ] {
+        let mut model = linking_model();
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+        let before = item(&model, "piece-1").clone();
+        let count = model.items.len();
+
+        let mut cmd = set_piece_links(
+            &mut model,
+            "piece-1",
+            vec![existing("ex-1", Some("s-a1")), bad],
+        );
+
+        assert!(model.last_error.is_some(), "{case}: refused");
+        assert!(!persists_anything(&mut cmd), "{case}: nothing saved");
+        assert_eq!(item(&model, "piece-1"), &before, "{case}: links unchanged");
+        assert_eq!(model.items.len(), count, "{case}: nothing created");
+    }
+}
+
+#[test]
+fn set_piece_links_refuses_an_exercise_as_the_host() {
+    let mut model = linking_model();
+    let mut cmd = set_piece_links(&mut model, "ex-1", vec![existing("ex-2", None)]);
+    assert!(model.last_error.is_some());
+    assert!(!persists_anything(&mut cmd));
+    assert!(item(&model, "ex-1").exercise_links.is_empty());
+}
+
+#[test]
+fn set_piece_links_with_the_stored_set_writes_nothing() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+    let stamped = item(&model, "piece-1").updated_at;
+
+    let mut cmd = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(item(&model, "piece-1").updated_at, stamped);
+}
+
+#[test]
+fn relinking_after_an_unlink_revives_the_same_row() {
+    let mut model = linking_model();
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a2"))]);
+    let first = item(&model, "piece-1").exercise_links[0].id.clone();
+
+    let _ = set_piece_links(&mut model, "piece-1", vec![]);
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a2"))]);
+
+    let rows = &item(&model, "piece-1").exercise_links;
+    assert_eq!(rows.len(), 1, "no twin row minted");
+    assert_eq!(rows[0].id, first);
+    assert!(rows[0].deleted_at.is_none());
+}
+
+#[test]
+fn set_exercise_links_reaches_sections_of_two_pieces_in_one_batch() {
+    let mut model = linking_model();
+
+    let mut cmd = set_exercise_links(
+        &mut model,
+        "ex-1",
+        vec![
+            target("piece-1", Some("s-a2")),
+            target("piece-2", Some("s-coda")),
+        ],
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    let mut saved = emits_save_items(&mut cmd).expect("one batch");
+    saved.sort();
+    assert_eq!(saved, vec!["piece-1".to_string(), "piece-2".to_string()]);
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-1", Some("s-a2"))]
+    );
+    assert_eq!(
+        live_pairs(&model, "piece-2"),
+        vec![pair("ex-1", Some("s-coda"))]
+    );
+
+    let mut used_in: Vec<(String, bool, bool, Vec<String>)> = view_of(&model, "ex-1")
+        .used_in
+        .iter()
+        .map(|u| {
+            (
+                u.piece.as_ref().expect("a piece").id.clone(),
+                u.linked,
+                u.whole_piece,
+                u.sections.iter().map(|s| s.label.clone()).collect(),
+            )
+        })
+        .collect();
+    used_in.sort();
+    assert_eq!(
+        used_in,
+        vec![
+            ("piece-1".to_string(), true, false, vec!["A2".to_string()]),
+            ("piece-2".to_string(), true, false, vec!["Coda".to_string()]),
+        ]
+    );
+}
+
+#[test]
+fn set_exercise_links_saves_only_the_pieces_it_changes() {
+    let mut model = linking_model();
+    let _ = set_exercise_links(
+        &mut model,
+        "ex-1",
+        vec![target("piece-1", None), target("piece-2", None)],
+    );
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", None)],
+    );
+
+    let mut cmd = set_exercise_links(&mut model, "ex-1", vec![target("piece-2", None)]);
+
+    assert_eq!(
+        emits_save_items(&mut cmd),
+        Some(vec!["piece-1".to_string()])
+    );
+    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+}
+
+#[test]
+fn set_exercise_links_refuses_the_whole_set_on_one_bad_target() {
+    for (case, bad) in [
+        ("another piece's section", target("piece-1", Some("s-coda"))),
+        ("a removed section", target("piece-1", Some("s-b"))),
+        ("an exercise as the piece", target("ex-2", None)),
+        ("an unknown piece", target("piece-nope", None)),
+    ] {
+        let mut model = linking_model();
+        let before: Vec<Item> = model.items.iter().cloned().collect();
+
+        let mut cmd = set_exercise_links(&mut model, "ex-1", vec![target("piece-2", None), bad]);
+
+        assert!(model.last_error.is_some(), "{case}: refused");
+        assert!(!persists_anything(&mut cmd), "{case}: nothing saved");
+        let after: Vec<Item> = model.items.iter().cloned().collect();
+        assert_eq!(after, before, "{case}: nothing changed");
+    }
+    let mut model = linking_model();
+    let mut cmd = set_exercise_links(&mut model, "piece-2", vec![target("piece-1", None)]);
+    assert!(
+        model.last_error.is_some(),
+        "a piece is not linked as an exercise"
+    );
+    assert!(!persists_anything(&mut cmd));
+}
+
+#[test]
+fn removing_a_section_removes_only_its_links() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", None),
+            existing("ex-1", Some("s-a2")),
+            existing("ex-2", Some("s-a1")),
+        ],
+    );
+    let exercise_before = item(&model, "ex-1").clone();
+
+    let mut cmd = update_sections(
+        &mut model,
+        "piece-1",
+        vec![row(Some("s-a1"), "A1", BarsInput::Blank)],
+    );
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert!(!emits_save(&mut cmd, "ex-1"), "the exercise is not written");
+    assert_eq!(item(&model, "ex-1"), &exercise_before);
+    let piece = item(&model, "piece-1");
+    let a2 = piece
+        .exercise_links
+        .iter()
+        .find(|l| l.section_id.as_deref() == Some("s-a2"))
+        .expect("the row is kept");
+    assert!(
+        a2.deleted_at.is_some(),
+        "the removed section's link is tombstoned"
+    );
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-1", None), pair("ex-2", Some("s-a1"))]
+    );
+}
+
+#[test]
+fn a_link_to_a_removed_section_is_hidden_from_both_screens() {
+    let mut model = linking_model();
+    let now = chrono::Utc::now();
+    if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+        p.exercise_links = vec![
+            ExerciseLink::new("ex-1".to_string(), Some("s-b".to_string()), 0, now),
+            ExerciseLink::new("ex-2".to_string(), Some("s-a1".to_string()), 1, now),
+        ];
+    }
+
+    let card: Vec<String> = view_of(&model, "piece-1")
+        .linked_exercises
+        .iter()
+        .map(|e| e.id.clone())
+        .collect();
+    assert_eq!(card, vec!["ex-2".to_string()]);
+    assert!(view_of(&model, "ex-1").used_in.is_empty());
+}
+
+#[test]
+fn link_events_and_an_item_with_links_round_trip_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetPieceLinks {
+        piece_id: "piece-1".to_string(),
+        links: vec![
+            existing("ex-1", None),
+            LinkEdit {
+                exercise: ScaffoldEntry::New(draft("Thirds")),
+                section_id: Some("s-a2".to_string()),
+            },
+        ],
+    }));
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(
+        ItemEvent::SetExerciseLinks {
+            exercise_id: "ex-1".to_string(),
+            targets: vec![target("piece-1", None), target("piece-2", Some("s-coda"))],
+        },
+    ));
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-2", Some("s-a2"))]);
+    let piece = item(&model, "piece-1");
+    assert!(piece.exercise_links.iter().any(|l| l.deleted_at.is_some()));
+    crate::domain::types::assert_round_trips(piece.clone());
+    crate::domain::types::assert_round_trips(view_of(&model, "piece-1"));
+    crate::domain::types::assert_round_trips(view_of(&model, "ex-2"));
 }

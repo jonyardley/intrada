@@ -429,6 +429,18 @@ pub struct LinkedExerciseView {
     /// has never been practised together (or scored) in a session.
     #[serde(default)]
     pub piece_context_score: Option<u8>,
+    /// Linked to the piece as a whole; may sit beside section links (#2248).
+    pub whole_piece: bool,
+    /// The live sections it is linked to, in score order.
+    pub sections: Vec<LinkedSectionView>,
+}
+
+/// A section an exercise is linked to, as the link rows name it.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LinkedSectionView {
+    pub id: String,
+    pub label: String,
 }
 
 /// The derived scaffold curriculum for a charted piece — the read-only preview
@@ -470,7 +482,7 @@ pub struct PieceRefView {
 }
 
 /// One piece an exercise is used in, or the "On its own" bucket. A row comes
-/// from the piece's `linked_exercise_ids` (an intention), from practising the
+/// from the piece's live exercise links (an intention), from practising the
 /// two together (history, resolved per session from `group_id` — #1087 B1), or
 /// from both; `linked` says which (#1363).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -498,6 +510,10 @@ pub struct ExerciseUsageView {
     /// The row shows the link button: a piece in the library, practised
     /// alongside but not linked.
     pub offers_link: bool,
+    /// Linked to the piece as a whole (#2248).
+    pub whole_piece: bool,
+    /// The live sections of the piece it is linked to, in score order.
+    pub sections: Vec<LinkedSectionView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -946,6 +962,8 @@ impl LinkedExerciseView {
             tempo_bpm: None,
             practice: None,
             piece_context_score: None,
+            whole_piece: true,
+            sections: Vec::new(),
         }
     }
 }
@@ -1205,6 +1223,11 @@ mod tests {
             piece_removed: true,
             piece_in_library: false,
             offers_link: true,
+            whole_piece: false,
+            sections: vec![LinkedSectionView {
+                id: "s-1".to_string(),
+                label: "A2".to_string(),
+            }],
         });
     }
 
@@ -1263,6 +1286,11 @@ mod tests {
             tempo_bpm: Some(132),
             practice: None,
             piece_context_score: Some(7),
+            whole_piece: true,
+            sections: vec![LinkedSectionView {
+                id: "s-1".to_string(),
+                label: "Bars 12 to 14".to_string(),
+            }],
         });
     }
 

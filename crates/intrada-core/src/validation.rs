@@ -490,7 +490,7 @@ pub fn validate_link_exercise(
         .items
         .iter()
         .find(|i| i.id == piece_id)
-        .is_some_and(|p| p.linked_exercise_ids.iter().any(|id| id == exercise_id));
+        .is_some_and(|p| p.has_live_link(exercise_id, None));
     if already_linked {
         return Err(LibraryError::Validation {
             field: "exercise_id".to_string(),
@@ -499,6 +499,21 @@ pub fn validate_link_exercise(
     }
 
     Ok(())
+}
+
+/// A link names a live section of the piece it sits on, or none (the whole
+/// piece). A removed section is refused: its links went with it (#2248).
+pub fn validate_link_section(
+    piece: &crate::domain::item::Item,
+    section_id: Option<&str>,
+) -> Result<(), LibraryError> {
+    match section_id {
+        Some(id) if !piece.is_live_section(id) => Err(LibraryError::Validation {
+            field: "section_id".to_string(),
+            message: "That section is not part of this piece".to_string(),
+        }),
+        _ => Ok(()),
+    }
 }
 
 /// A chord chart hangs off a piece. The host must exist and be a `Piece` —
