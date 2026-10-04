@@ -237,13 +237,14 @@ final class LibraryStore: ItemStore {
       try Row.fetchAll(
         db, sql: "SELECT * FROM session WHERE deleted_at IS NULL ORDER BY completed_at DESC"
       )
-      .map(Self.session(from:))
+      .compactMap(Self.session(from:))
     }
   }
 
   /// Insert or update by id. A session is immutable once completed, so
   /// `updated_at` simply tracks `completed_at` — the column exists for sync LWW.
   func saveSession(_ session: PracticeSession) throws {
+    let row = try Self.stored(session)
     try dbQueue.write { db in
       try db.execute(
         sql: """
@@ -260,11 +261,8 @@ final class LibraryStore: ItemStore {
             session_score = excluded.session_score, capture_version = excluded.capture_version
           """,
         arguments: [
-          session.id, session.startedAt, session.completedAt,
-          Int(session.totalDurationSecs), Self.completionStatuses.encode(session.completionStatus),
-          session.sessionNotes,
-          try Self.encodeEntries(session.entries), session.completedAt,
-          session.sessionScore.map { Int($0) }, session.captureVersion.map { Int($0) },
+          row.id, row.startedAt, row.completedAt, row.totalDurationSecs, row.completionStatus,
+          row.sessionNotes, row.entries, row.completedAt, row.sessionScore, row.captureVersion,
         ])
     }
   }

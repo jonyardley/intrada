@@ -1,6 +1,7 @@
 import GRDB
 import SharedTypes
 import Testing
+import os
 
 @testable import Intrada
 
@@ -146,6 +147,37 @@ struct LegacyEntryPlaysTests {
     #expect(entry.plays.count == 2)
     #expect(entry.plays.map(\.score) == [8, 6])
     #expect(entry.plays.map(\.variationIds) == [[], []], "the steps they name are not read")
+  }
+
+  /// One unreadable row never empties History, and nothing is dropped silently (#2234, #949).
+  @Test("a refused row is skipped and reported, and a replaced value is reported")
+  func aRefusedRowIsSkippedAndReported() throws {
+    let reports = OSAllocatedUnfairLock<[String]>(initialState: [])
+    reportObserver.withLock {
+      $0 = { error, context in
+        guard context == LibraryStore.decodeContext else { return }
+        reports.withLock { $0.append(String(describing: error)) }
+      }
+    }
+    defer { reportObserver.withLock { $0 = nil } }
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue)
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+            completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
+          VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+            '2026-09-01T10:10:00Z',NULL),
+            ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,NULL,
+            '[]','2026-09-01T10:10:00Z',NULL)
+          """)
+    }
+
+    #expect(try LibraryStore(queue).loadSessions().map(\.id) == ["good"])
+    let seen = reports.withLock { $0 }
+    #expect(seen.contains { $0.contains("refused-2234") })
+    #expect(seen.contains(#"unknown CompletionStatus on decode: "replaced-2234""#))
   }
 
   /// Two variations in one sitting is the case #1739 exists for, so it has to
