@@ -92,20 +92,29 @@ fn a_legacy_completed_entry_with_no_mark_still_folds() {
     assert_eq!(entry.plays[0].seconds, 420);
 }
 
+const NOT_ATTEMPTED: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted"}]"#;
+
 #[test]
 fn a_legacy_not_attempted_entry_keeps_no_play() {
-    let entry = only_entry(
-        r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":0,"status":"not_attempted"}]"#,
-    );
+    let entry = only_entry(NOT_ATTEMPTED);
     assert_eq!(entry.status, EntryStatus::NotAttempted);
     assert!(entry.plays.is_empty());
+    assert!(
+        read(NOT_ATTEMPTED).unreadable.is_empty(),
+        "read, not defaulted"
+    );
 }
 
 #[test]
 fn a_legacy_entry_with_untimed_taps_dates_them_to_the_session_start() {
-    let entry = only_entry(
+    let read = read(
         r#"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"piece","position":0,"durationSecs":0,"status":"completed","repTarget":5,"repCount":1,"repHistory":["success","missed"]}]"#,
     );
+    assert!(
+        read.unreadable.is_empty(),
+        "both actions read, not defaulted"
+    );
+    let entry = &read.session.entries[0];
     let history = entry.plays[0].rep_history.clone().expect("a history");
     assert_eq!(
         history,
@@ -227,6 +236,14 @@ fn an_unreadable_entries_column_reads_as_no_entries_and_is_listed() {
     assert!(read.session.entries.is_empty());
     assert_eq!(read.unreadable.len(), 1);
     assert!(read.unreadable[0].starts_with("entries failed to decode"));
+}
+
+/// The note leaves the device in a report, so it never quotes what was typed.
+#[test]
+fn an_unreadable_entries_note_does_not_quote_the_row() {
+    let read = read(r#"[{"id":"e1","position":"lighter thumb"}]"#);
+    assert_eq!(read.unreadable.len(), 1);
+    assert!(!read.unreadable[0].contains("lighter thumb"));
 }
 
 #[test]
@@ -371,6 +388,38 @@ fn a_written_row_keeps_the_shape_the_swift_encoder_wrote() {
 fn a_written_time_is_the_text_chronos_serde_writes() {
     let time = at("2026-09-01T10:01:30.123456789Z");
     assert_eq!(serde_json::to_value(time).expect("json"), time_text(&time));
+}
+
+/// Rows on the device are the only copy: a renamed string strands every
+/// value written under the old one.
+#[test]
+fn every_stored_enum_text_is_pinned() {
+    assert_eq!(
+        [CompletionStatus::Completed, CompletionStatus::EndedEarly]
+            .map(|s| completion_status_text(&s)),
+        ["completed", "ended_early"]
+    );
+    assert_eq!(
+        [
+            EntryStatus::Completed,
+            EntryStatus::Skipped,
+            EntryStatus::NotAttempted
+        ]
+        .map(|s| entry_status_text(&s)),
+        ["completed", "skipped", "not_attempted"]
+    );
+    assert_eq!(
+        [RepAction::Missed, RepAction::Success, RepAction::Undo].map(rep_action_text),
+        ["missed", "success", "undo"]
+    );
+    assert_eq!(
+        [ItemKind::Piece, ItemKind::Exercise].map(|k| item_kind_text(&k)),
+        ["piece", "exercise"]
+    );
+    assert_eq!(
+        [Modality::Major, Modality::Minor].map(modality_text),
+        ["major", "minor"]
+    );
 }
 
 #[test]

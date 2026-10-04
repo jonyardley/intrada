@@ -364,7 +364,12 @@ impl Reader {
         match serde_json::from_str::<Vec<StoredEntry>>(json) {
             Ok(stored) => stored.iter().map(|e| self.entry(e)).collect(),
             Err(e) => {
-                self.note(format!("entries failed to decode: {e}"));
+                self.note(format!(
+                    "entries failed to decode: {:?} at line {} column {}",
+                    e.classify(),
+                    e.line(),
+                    e.column()
+                ));
                 Vec::new()
             }
         }
