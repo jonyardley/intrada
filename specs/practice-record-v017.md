@@ -27,8 +27,8 @@ Wave 3  builder stream (#2249 build, #2303, #2315 split)
         live + finish stream (#2249 spots and scoring, #2306, #2307, #2308, #2315 move on)
 ```
 
-The core PR carries the ViewModel projections both screen streams read, so
-wave 3 needs no core change. Wave 3 starts after the Claude Design pass for the
+The core PR carries the ViewModel projections both screen streams read; wave 3
+needs one small core change first (#2388, see Decided). Wave 3 starts after the Claude Design pass for the
 builder, the practice screen and the finish sheet.
 
 ## Data shape
@@ -56,7 +56,7 @@ pub struct NotePoint {
     pub section_id: Option<String>,      // the section named before it in the note
     pub span: NoteSpan,                  // { start, end }: bytes of the note as written
 }
-pub enum Felt { Easy, Effortful, Tense } // from #2308; appended to, never reordered
+pub enum Felt { Comfortable, HardWork, Strained } // #2308; appended to, never reordered
 ```
 
 On `Play`: `pub away: Vec<Away>` with
@@ -71,8 +71,8 @@ start, allowance and what Stay has borrowed from the next.
 - **The note is never touched.** Points carry a span into it so a later reader
   (#2316) can re-read old notes and replace derived points without touching
   confirmed ones.
-- **Felt** is one optional value. Its choices are decided in the design pass
-  (see Open). Tension as felt and tension as what got in the way are both
+- **Felt** is one optional value: Comfortable, Hard work or Strained (see
+  Decided). Strain as felt and tension as what got in the way are both
   kept: one is a state, the other a cause.
 - **Away** records leaving and returning on the open play. `left_out` true
   takes the gap off the play's seconds when read; the raw times stay.
@@ -125,8 +125,18 @@ start, allowance and what Stay has borrowed from the next.
   six minutes out saves the play six minutes shorter; 20 minutes split into A
   and B starts at 10 and 10.
 
-## Open, for the design pass
+## Decided in the design pass (4 October 2026)
 
-- The felt choices: Easy, Effortful, Tense stand in, and their stored words
-  must be final before the first TestFlight build.
-- Where last time's chip sits in the builder.
+- **How a play felt** offers Comfortable, Hard work and Strained, stored as
+  `Felt { Comfortable, HardWork, Strained }`. "Tense" sat beside "Tension"
+  under what got in the way; the field records what the practice cost, not
+  how hard the music is.
+- **Last time's chip** sits on the builder row under the item's name, shown
+  only while the item has nothing planned (no segments, focus, section or
+  variations), not in the item's settings sheet.
+- **Wave 3 needs one small core change first** (#2388): the felt words
+  renamed and the focus kinds labelled in the builder view, landing before
+  both screen streams.
+
+Mock-ups: <https://claude.ai/artifact/UEkgR3M6Xn1wkBSoKjRNfL>. Review page
+with both decisions: <https://claude.ai/artifact/1ZTXDfEHjjRuZECqBeZQeW>.
