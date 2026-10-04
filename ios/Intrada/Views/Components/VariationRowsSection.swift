@@ -2,7 +2,8 @@ import SharedTypes
 import SwiftUI
 
 /// An exercise's variations on the Add and Edit forms (#1783): dragged to
-/// reorder, removed and added; only a row typed here is editable (#2246). Nothing here is saved until the form is.
+/// reorder, removed and added; only a row typed here is editable (#2246).
+/// Nothing here is saved until the form is.
 struct VariationRowsSection: View {
   @Binding var rows: [VariationRow]
   var faulted = false

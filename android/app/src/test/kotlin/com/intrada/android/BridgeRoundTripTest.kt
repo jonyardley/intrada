@@ -291,6 +291,32 @@ class BridgeRoundTripTest {
         assertEquals(2, item.variationIds.size)
     }
 
+    // An empty first load seeds the four built-ins, which leave the core on Kotlin's decoder.
+    @Test
+    fun theBuiltInVariationsAreSavedOnAnEmptyFirstLoad() {
+        val bridge = LiveBridge()
+        val loadVariations =
+            bridge.update(Event.StartApp).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadVariations
+            }
+
+        val saved =
+            bridge
+                .resolve(loadVariations.id, PersistenceOutput.Variations(emptyList()))
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value
+                            as? PersistenceOperation.SaveVariations)
+                        ?.value
+                }
+                .single()
+
+        assertEquals(
+            listOf("Hands separately", "Dotted rhythms", "Back to front", "Three chord tones only"),
+            saved.map { it.label },
+        )
+        assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
+    }
+
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =
         requests
             .mapNotNull { ((it.effect as? Effect.App)?.value as? AppEffect.LibraryChanged)?.value }
