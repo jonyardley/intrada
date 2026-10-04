@@ -191,14 +191,15 @@ struct LegacyEntryPlaysTests {
         id: id, sectionId: nil, key: nil, variationIds: [variation],
         startedAt: "2026-09-01T10:00:00Z", seconds: 300,
         repTarget: nil, repCount: nil, repHistory: nil,
-        tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: score)
+        tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: score, away: [])
     }
     let entry = SetlistEntry(
       id: "e1", itemId: "i1", itemTitle: "Major Scales", itemType: .exercise, position: 0,
       durationSecs: 600, status: .completed, notes: nil, intention: nil,
-      plannedDurationSecs: nil, groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-c"],
+      plannedDurationSecs: nil, groupId: nil, plannedVariationIds: ["v-c"],
       plannedRepTarget: nil,
-      plays: [play("p1", "v-c", 8), play("p2", "v-d", 6)])
+      plays: [play("p1", "v-c", 8), play("p2", "v-d", 6)], segments: [], focus: nil,
+      intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
     try store.saveSession(
       PracticeSession(
         id: "s1", entries: [entry], sessionNotes: nil,

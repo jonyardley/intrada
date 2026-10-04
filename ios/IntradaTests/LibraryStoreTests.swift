@@ -184,7 +184,7 @@ final class LibraryStoreTests: XCTestCase {
     SetlistEntry(
       id: id, itemId: "item-\(id)", itemTitle: "Etude", itemType: .exercise, position: 0,
       durationSecs: 300, status: .completed, notes: "good", intention: "evenness",
-      plannedDurationSecs: 300, groupId: nil, plannedSectionIds: [], plannedVariationIds: [],
+      plannedDurationSecs: 300, groupId: nil, plannedVariationIds: [],
       plannedRepTarget: 5,
       plays: [
         Play(
@@ -195,8 +195,8 @@ final class LibraryStoreTests: XCTestCase {
             RepEvent(action: .success, at: "2026-01-01T00:01:00Z", tempo: nil, clickSounding: nil),
             RepEvent(action: .missed, at: "2026-01-01T00:02:00Z", tempo: nil, clickSounding: nil),
             RepEvent(action: .success, at: "2026-01-01T00:03:30Z", tempo: nil, clickSounding: nil),
-          ], tempoChanges: [], achievedTempo: 120, clickPattern: nil, score: 4)
-      ])
+          ], tempoChanges: [], achievedTempo: 120, clickPattern: nil, score: 4, away: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
   }
 
   private func session(_ id: String, completedAt: String = "2026-01-01T00:10:00Z")
@@ -291,7 +291,7 @@ final class LibraryStoreTests: XCTestCase {
   func testEntriesBlobRoundTripsThePlanAndTheWayPlayed() throws {
     let store = try makeStore()
     var s = session("s1")
-    s.entries[0].plannedSectionIds = ["sec-a"]
+    s.entries[0].segments = [Segment(sectionId: "sec-a", plannedSecs: 300)]
     s.entries[0].plannedVariationIds = ["v-c", "v-d"]
     s.entries[0].plays[0].sectionId = "sec-a"
     s.entries[0].plays[0].key = Key(letter: .e, accidental: .flat, mode: .major)
@@ -305,7 +305,9 @@ final class LibraryStoreTests: XCTestCase {
     try store.saveSession(s)
 
     let got = try XCTUnwrap(try store.loadSessions().first)
-    XCTAssertEqual(got.entries[0].plannedSectionIds, ["sec-a"], "the plan rides the blob")
+    XCTAssertEqual(
+      got.entries[0].segments, [Segment(sectionId: "sec-a", plannedSecs: 300)],
+      "the plan rides the blob")
     XCTAssertEqual(got.entries[0].plannedVariationIds, ["v-c", "v-d"])
     XCTAssertEqual(got.entries[0].plays.first, s.entries[0].plays[0], "and so does the play")
     XCTAssertEqual(got.entries[1].plannedVariationIds, [])

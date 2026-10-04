@@ -53,7 +53,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
         buildingSetlist: BuildingSetlistView(
           entries: [.previewExercise], itemCount: 1, blocks: [],
           totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-          lengthSummary: nil, entryVariations: [])))
+          lengthSummary: nil, entryVariations: [], lastTimes: [])))
     assertSnapshot(
       of: host(AddToSessionSheet(), store: store),
       as: .image(

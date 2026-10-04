@@ -41,14 +41,14 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
+      groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
       plays: [
         Play(
           id: "e1-p1", sectionId: nil, key: nil, variationIds: [],
           startedAt: "2026-01-01T10:00:00Z", seconds: 60,
           repTarget: nil, repCount: nil, repHistory: nil,
-          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: 8)
-      ])
+          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: 8, away: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
     let session = PracticeSession(
       id: "sess-rt", entries: [entry],
       sessionNotes: nil,
@@ -130,14 +130,14 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: "block-1", plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
+      groupId: "block-1", plannedVariationIds: [], plannedRepTarget: nil,
       plays: [
         Play(
           id: "e1-p1", sectionId: nil, key: nil, variationIds: [],
           startedAt: "2026-01-01T10:00:00Z", seconds: 60,
           repTarget: nil, repCount: nil, repHistory: nil,
-          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: nil)
-      ])
+          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: nil, away: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
     let session = PracticeSession(
       id: "sess-g", entries: [entry],
       sessionNotes: nil,

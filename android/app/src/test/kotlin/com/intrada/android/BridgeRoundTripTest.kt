@@ -12,6 +12,8 @@ import com.intrada.shared.ClickPresetOption
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.FocusKind
+import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ExerciseLink
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
@@ -27,6 +29,7 @@ import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
 import com.intrada.shared.ScaffoldEntry
+import com.intrada.shared.Segment
 import com.intrada.shared.SectionEdit
 import com.intrada.shared.SectionKind
 import com.intrada.shared.SessionEvent
@@ -450,6 +453,65 @@ class BridgeRoundTripTest {
                         ),
                     )
             )
+
+    // Segments, a focus and time away cross on Kotlin's encoder and come back on its decoder
+    // (#846, #2249).
+    @Test
+    fun segmentsAndTimeAwayRunThroughThePracticeScreen() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        val sections =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.UpdateSections(
+                            nocturne,
+                            listOf("A", "B").map {
+                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                            },
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+                .sections
+                .map { it.id }
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
+        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
+        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 1200u)))
+        bridge.update(
+            Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
+        )
+        val focus = IntentionFocus(FocusKind.TEMPO, sections.first(), 84.toUShort())
+        bridge.update(Event.Session(SessionEvent.SetFocus(entryId, focus)))
+        val record = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record
+        assertEquals(listOf(600u, 600u), record?.segments?.map { it.plannedSecs })
+        assertEquals("A at 84", record?.focus?.label)
+
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-10-04T09:00:00Z")))
+        bridge.update(Event.Session(SessionEvent.WentAway("2026-10-04T09:01:00Z")))
+        bridge.update(Event.Session(SessionEvent.CameBack("2026-10-04T09:07:00Z")))
+        assertEquals(6u, bridge.view().activeSession?.record?.awayOffer?.minutes)
+        bridge.update(Event.Session(SessionEvent.LeaveAwayOut))
+        bridge.update(
+            Event.Session(
+                SessionEvent.MoveToNextSegment(
+                    "2026-10-04T09:16:40Z",
+                    TempoReading(bpm = 84.toUShort(), clickSounding = false),
+                )
+            )
+        )
+
+        val active = bridge.view().activeSession
+        assertEquals(sections.last(), active?.currentSectionId)
+        assertEquals("B", active?.record?.segment?.label)
+        assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
+    }
 
     private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =
         bridge

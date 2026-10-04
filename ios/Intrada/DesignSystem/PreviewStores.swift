@@ -251,24 +251,26 @@
             id: "re1", itemId: "i1", itemTitle: "Scales · D♭ major", itemType: .exercise,
             position: 0, durationSecs: 180, status: .completed,
             notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
+            groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
             plays: [
               Play(
                 id: "re1-p1", sectionId: nil, key: nil, variationIds: [],
                 startedAt: "2026-06-16T08:59:00Z", seconds: 180, repTarget: nil, repCount: nil,
                 repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
-                score: nil)
-            ]),
+                score: nil, away: [])
+            ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
+            notePoints: []),
           SetlistEntry(
             id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
             position: 1, durationSecs: 0, status: .notAttempted,
             notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
-            plays: []),
+            groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
+            plays: [], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
+            notePoints: []),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
-        reflection: nil)
+        reflection: nil, segment: nil)
       return store
     }
 
@@ -291,7 +293,7 @@
                 entries: [.previewExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [])))
     }
 
     static var previewBuildingEmpty: Store {
@@ -301,7 +303,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -313,7 +315,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -330,7 +332,7 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -357,7 +359,7 @@
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
-            lengthSummary: "12 of 30 min planned", entryVariations: [])))
+            lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [])))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -383,7 +385,7 @@
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [])))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -402,7 +404,7 @@
                 durationDisplay: "12 min", entries: block, takenElsewhere: [])
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [])))
     }
 
     /// Player Focus: a piece mid-session, no reps.
