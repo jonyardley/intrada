@@ -1,0 +1,144 @@
+{
+  "artboards": [
+    {
+      "file": "PieceEmpty.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Piece \u00b7 no sections yet"
+    },
+    {
+      "file": "PieceSections.dc.html",
+      "x": 500,
+      "y": 0,
+      "w": 390,
+      "h": 960,
+      "title": "Piece \u00b7 sections and variations"
+    },
+    {
+      "file": "SectionSheet.dc.html",
+      "x": 1000,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Edit a tricky spot"
+    },
+    {
+      "file": "SectionError.dc.html",
+      "x": 1500,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "New section \u00b7 bars refused"
+    },
+    {
+      "file": "SectionsReorder.dc.html",
+      "x": 0,
+      "y": 1250,
+      "w": 390,
+      "h": 844,
+      "title": "Sections \u00b7 reorder and remove"
+    },
+    {
+      "file": "ExerciseKeys.dc.html",
+      "x": 500,
+      "y": 1250,
+      "w": 390,
+      "h": 844,
+      "title": "Scale exercise \u00b7 twelve keys"
+    },
+    {
+      "file": "KeysSheet.dc.html",
+      "x": 1000,
+      "y": 1250,
+      "w": 390,
+      "h": 844,
+      "title": "Choose keys \u00b7 all major"
+    },
+    {
+      "file": "KeysMixed.dc.html",
+      "x": 1500,
+      "y": 1250,
+      "w": 390,
+      "h": 844,
+      "title": "Choose keys \u00b7 mixed, with spellings"
+    },
+    {
+      "file": "VariationsSheet.dc.html",
+      "x": 0,
+      "y": 2500,
+      "w": 390,
+      "h": 844,
+      "title": "Choose variations"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "PieceEmpty-note",
+      "x": 0,
+      "y": -170,
+      "w": 390,
+      "text": "First visit to a piece. Sections and variations both invite with the dashed add row the empty variations card already uses. Keys on a piece is one quiet row: rare, but the core allows it."
+    },
+    {
+      "id": "PieceSections-note",
+      "x": 500,
+      "y": -170,
+      "w": 390,
+      "text": "Rows in score order. A named section shows its bars beneath; a nameless tricky spot is labelled by its bars and carries the highlighter tag, the one bright colour, because a spot is literally highlighted bars. A target tempo shows only when set."
+    },
+    {
+      "id": "SectionSheet-note",
+      "x": 1000,
+      "y": -170,
+      "w": 390,
+      "text": "Tap a row to edit. One sheet does add, rename, bars, kind, target tempo and remove; Save sends the whole list once (UpdateSections). Blank tempo reads as the piece's own."
+    },
+    {
+      "id": "SectionError-note",
+      "x": 1500,
+      "y": -170,
+      "w": 390,
+      "text": "Bars is one text field: musicians type or dictate \"bars 5 to 12\", and the core parses it. A refusal keeps the sheet open, marks the field and says how to fix it. Wording comes from the core."
+    },
+    {
+      "id": "SectionsReorder-note",
+      "x": 0,
+      "y": 1080,
+      "w": 390,
+      "text": "Reorder puts the list in edit mode: drag to match the score, minus to remove. Removing hides the section; plays that name it stay readable."
+    },
+    {
+      "id": "ExerciseKeys-note",
+      "x": 500,
+      "y": 1080,
+      "w": 390,
+      "text": "Keys keep the ring scroller exactly as today, now as their own card. Variations sit beneath as rows. VoiceOver reads every ring as the name then the same caption as a row: \"F sharp major, Not yet played\" (#1925)."
+    },
+    {
+      "id": "KeysSheet-note",
+      "x": 1000,
+      "y": 1080,
+      "w": 390,
+      "text": "Choose opens the key wheel from the item's Key field (KeyPicker), same rings, fills, labels and spelling arrows, now taking several keys (#1769). All major fills the outer ring; the hub counts instead of naming one key."
+    },
+    {
+      "id": "KeysMixed-note",
+      "x": 1500,
+      "y": 1080,
+      "w": 390,
+      "text": "Each spoke cycles: off, then the circle's spelling, then the other spelling where the spoke has one, then off. A chosen F sharp leads its spoke, G flat drops to the arrow line, exactly as the single picker does."
+    },
+    {
+      "id": "VariationsSheet-note",
+      "x": 0,
+      "y": 2330,
+      "w": 390,
+      "text": "One list for the whole library. Typing filters it; a new label offers Add. Matches show where they are already used, so a musician reuses rather than duplicates."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

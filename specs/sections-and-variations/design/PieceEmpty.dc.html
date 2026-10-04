@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">
+  <style>
+    body { margin: 0; }
+
+.ph { width: 390px; background: #F7F4EF; color: #2A2725; font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; box-sizing: border-box; position: relative; overflow: hidden; }
+.ph * { box-sizing: border-box; }
+.ph .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 15px; font-weight: 600; }
+.ph .nav { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px 0; height: 40px; font-size: 17px; }
+.ph .nav .back { color: #2A2725; display: flex; align-items: center; gap: 4px; }
+.ph .nav .act { font-weight: 600; }
+.ph .body { padding: 8px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+.ph .ptitle { font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -0.3px; }
+.ph .sub { font-size: 15px; color: #6E6A66; margin-top: 4px; }
+.ph .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.ph .badge { font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 3px; background: #CBD6E0; }
+.ph .badge.ex { background: #DCD3C0; }
+.ph .badge.tag { background: #F3EFE8; font-weight: 500; color: #6E6A66; }
+.ph .group { display: flex; flex-direction: column; gap: 12px; }
+.ph .ghead { display: flex; align-items: baseline; gap: 8px; }
+.ph .glabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .gcount { font-size: 15px; color: #6E6A66; }
+.ph .gact { margin-left: auto; font-size: 15px; font-weight: 600; color: #2A2725; }
+.ph .card { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); }
+.ph .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.ph .row + .row, .ph .row + .addrow, .ph .hl { border-top: 1px solid #ECE6DA; }
+.ph .rmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ph .rlabel { font-size: 17px; font-weight: 500; }
+.ph .rcap { font-size: 15px; color: #6E6A66; }
+.ph .mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 15px; color: #6E6A66; }
+.ph .chev { color: #8F8070; font-size: 18px; }
+.ph .spot { display: inline-block; background: #FFE9A3; color: #2A2725; font-size: 13px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+.ph .addrow { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; font-size: 17px; font-weight: 500; }
+.ph .dashed { border: 1px dashed #C9BFB0; border-radius: 3px; padding: 16px; }
+.ph .hint { font-size: 13px; color: #6E6A66; text-align: center; }
+.ph .drows { display: flex; flex-direction: column; }
+.ph .drow { display: flex; justify-content: space-between; padding: 12px 16px; font-size: 15px; }
+.ph .drow + .drow { border-top: 1px solid #ECE6DA; }
+.ph .drow span:first-child { color: #6E6A66; }
+.ph .rings { display: flex; gap: 16px; padding: 12px; overflow: hidden; }
+.ph .ringcol { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.ph .ringcap { font-size: 15px; color: #8F8070; }
+.ph .ringcap.solid { color: #2A2725; }
+.ph .primary { background: #2A2725; color: #FFFFFF; font-size: 15px; font-weight: 700; text-align: center; padding: 14px; border-radius: 3px; }
+.ph .danger { color: #9C4A3A; font-size: 17px; font-weight: 500; text-align: center; padding: 12px; }
+.ph .handle { color: #8F8070; font-size: 18px; letter-spacing: -2px; }
+.ph .minus { width: 22px; height: 22px; border-radius: 50%; background: #9C4A3A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex: none; }
+.ph .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.2); }
+.ph .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #F7F4EF; border-radius: 12px 12px 0 0; padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 -3px 6px rgba(42,39,37,0.05); }
+.ph .grab { width: 36px; height: 5px; border-radius: 3px; background: #DDD7CA; margin: 0 auto; }
+.ph .shead { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+.ph .shead .t { font-size: 17px; font-weight: 600; }
+.ph .shead .c { color: #6E6A66; }
+.ph .shead .d { font-weight: 600; }
+.ph .field { display: flex; flex-direction: column; gap: 6px; }
+.ph .flabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .input { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); padding: 13px 14px; font-size: 17px; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+.ph .input.err { border-color: rgba(156,74,58,0.25); background: #FBF3F1; }
+.ph .ph-txt { color: #8F8070; }
+.ph .caret { display: inline-block; width: 2px; height: 20px; background: #2A2725; vertical-align: middle; margin-left: 1px; }
+.ph .errtxt { font-size: 15px; color: #9C4A3A; }
+.ph .ftip { font-size: 13px; color: #6E6A66; }
+.ph .seg { display: flex; background: #F3EFE8; border-radius: 3px; padding: 2px; }
+.ph .seg div { flex: 1; text-align: center; padding: 8px 4px; font-size: 15px; font-weight: 500; border-radius: 3px; color: #6E6A66; }
+.ph .seg .on { background: #FFFFFF; color: #2A2725; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #DDD7CA; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #FFFFFF; }
+.ph .check.on { background: #2A2725; border-color: #2A2725; }
+.ph .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ph .chip { font-size: 15px; font-weight: 500; padding: 7px 12px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .chip.on { background: #2A2725; color: #FFFFFF; }
+.ph .kbd { height: 216px; background: #D7D3CC; margin: 0 -16px -28px; display: flex; align-items: center; justify-content: center; color: #6E6A66; font-size: 13px; }
+
+  </style>
+</helmet>
+<div class="ph" style="height:844px"><div class="status"><span>9:41</span><span style="font-size:13px">&#9679;&#9679;&#9679; &#9646;</span></div><div class="nav"><span class="back">&#8249; Library</span><span class="act">Edit</span></div><div class="body"><div><div class="ptitle">Clair de lune</div><div class="sub">Debussy</div></div><div class="badges"><span class="badge">Piece</span><span class="badge tag">D flat major</span><span class="badge tag">&#9833; 66</span></div><div class="group"><div class="ghead"><span class="glabel">Sections</span></div><div class="dashed" style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="font-size:17px;font-weight:500">+ Add sections</span><span class="hint">A1, B, Coda, or bars 12 to 14</span></div></div><div class="group"><div class="ghead"><span class="glabel">Variations</span></div><div class="dashed" style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="font-size:17px;font-weight:500">+ Choose variations</span><span class="hint">Hands separately, dotted rhythms, your own</span></div></div><div class="card"><div class="addrow" style="font-size:15px;color:#6E6A66">+ Practise in other keys</div></div><div class="card drows"><div class="drow"><span>Composer</span><span>Debussy</span></div><div class="drow"><span>Key</span><span>D flat major</span></div><div class="drow"><span>Time signature</span><span>9/8</span></div></div></div></div>
+</x-dc>
+</body>
+</html>
