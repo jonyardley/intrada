@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap">
+  <style>
+    body { margin: 0; }
+
+.ph { width: 390px; background: #F7F4EF; color: #2A2725; font-family: 'Hanken Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; box-sizing: border-box; position: relative; overflow: hidden; }
+.ph * { box-sizing: border-box; }
+.ph .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 15px; font-weight: 600; }
+.ph .nav { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px 0; height: 40px; font-size: 17px; }
+.ph .nav .back { color: #2A2725; display: flex; align-items: center; gap: 4px; }
+.ph .nav .act { font-weight: 600; }
+.ph .body { padding: 8px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+.ph .ptitle { font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -0.3px; }
+.ph .sub { font-size: 15px; color: #6E6A66; margin-top: 4px; }
+.ph .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.ph .badge { font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 3px; background: #CBD6E0; }
+.ph .badge.ex { background: #DCD3C0; }
+.ph .badge.tag { background: #F3EFE8; font-weight: 500; color: #6E6A66; }
+.ph .group { display: flex; flex-direction: column; gap: 12px; }
+.ph .ghead { display: flex; align-items: baseline; gap: 8px; }
+.ph .glabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .gcount { font-size: 15px; color: #6E6A66; }
+.ph .gact { margin-left: auto; font-size: 15px; font-weight: 600; color: #2A2725; }
+.ph .card { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); }
+.ph .row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+.ph .row + .row, .ph .row + .addrow, .ph .hl { border-top: 1px solid #ECE6DA; }
+.ph .rmain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ph .rlabel { font-size: 17px; font-weight: 500; }
+.ph .rcap { font-size: 15px; color: #6E6A66; }
+.ph .mono { font-family: 'DM Mono', ui-monospace, monospace; font-size: 15px; color: #6E6A66; }
+.ph .chev { color: #8F8070; font-size: 18px; }
+.ph .spot { display: inline-block; background: #FFE9A3; color: #2A2725; font-size: 13px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+.ph .addrow { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; font-size: 17px; font-weight: 500; }
+.ph .dashed { border: 1px dashed #C9BFB0; border-radius: 3px; padding: 16px; }
+.ph .hint { font-size: 13px; color: #6E6A66; text-align: center; }
+.ph .drows { display: flex; flex-direction: column; }
+.ph .drow { display: flex; justify-content: space-between; padding: 12px 16px; font-size: 15px; }
+.ph .drow + .drow { border-top: 1px solid #ECE6DA; }
+.ph .drow span:first-child { color: #6E6A66; }
+.ph .rings { display: flex; gap: 16px; padding: 12px; overflow: hidden; }
+.ph .ringcol { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.ph .ringcap { font-size: 15px; color: #8F8070; }
+.ph .ringcap.solid { color: #2A2725; }
+.ph .primary { background: #2A2725; color: #FFFFFF; font-size: 15px; font-weight: 700; text-align: center; padding: 14px; border-radius: 3px; }
+.ph .danger { color: #9C4A3A; font-size: 17px; font-weight: 500; text-align: center; padding: 12px; }
+.ph .handle { color: #8F8070; font-size: 18px; letter-spacing: -2px; }
+.ph .minus { width: 22px; height: 22px; border-radius: 50%; background: #9C4A3A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex: none; }
+.ph .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.2); }
+.ph .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #F7F4EF; border-radius: 12px 12px 0 0; padding: 8px 16px 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 -3px 6px rgba(42,39,37,0.05); }
+.ph .grab { width: 36px; height: 5px; border-radius: 3px; background: #DDD7CA; margin: 0 auto; }
+.ph .shead { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+.ph .shead .t { font-size: 17px; font-weight: 600; }
+.ph .shead .c { color: #6E6A66; }
+.ph .shead .d { font-weight: 600; }
+.ph .field { display: flex; flex-direction: column; gap: 6px; }
+.ph .flabel { font-size: 15px; font-weight: 500; color: #6E6A66; }
+.ph .input { background: #FFFFFF; border-radius: 3px; box-shadow: 0 1px 1px rgba(42,39,37,0.05); padding: 13px 14px; font-size: 17px; border: 1px solid transparent; display: flex; justify-content: space-between; align-items: center; }
+.ph .input.err { border-color: rgba(156,74,58,0.25); background: #FBF3F1; }
+.ph .ph-txt { color: #8F8070; }
+.ph .caret { display: inline-block; width: 2px; height: 20px; background: #2A2725; vertical-align: middle; margin-left: 1px; }
+.ph .errtxt { font-size: 15px; color: #9C4A3A; }
+.ph .ftip { font-size: 13px; color: #6E6A66; }
+.ph .seg { display: flex; background: #F3EFE8; border-radius: 3px; padding: 2px; }
+.ph .seg div { flex: 1; text-align: center; padding: 8px 4px; font-size: 15px; font-weight: 500; border-radius: 3px; color: #6E6A66; }
+.ph .seg .on { background: #FFFFFF; color: #2A2725; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #DDD7CA; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #FFFFFF; }
+.ph .check.on { background: #2A2725; border-color: #2A2725; }
+.ph .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ph .chip { font-size: 15px; font-weight: 500; padding: 7px 12px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 1px rgba(42,39,37,0.06); }
+.ph .chip.on { background: #2A2725; color: #FFFFFF; }
+.ph .kbd { height: 216px; background: #D7D3CC; margin: 0 -16px -28px; display: flex; align-items: center; justify-content: center; color: #6E6A66; font-size: 13px; }
+
+  </style>
+</helmet>
+<div class="ph" style="height:844px"><div class="status"><span>9:41</span><span style="font-size:13px">&#9679;&#9679;&#9679; &#9646;</span></div><div class="nav"><span class="back">&#8249; Library</span><span class="act">Edit</span></div><div class="body"><div><div class="ptitle">Major scales</div><div class="sub">Two octaves, hands together</div></div><div class="badges"><span class="badge ex">Exercise</span><span class="badge tag">&#9833; 96</span></div></div><div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="shead"><span class="c">Cancel</span><span class="t">Keys</span><span class="d">Done</span></div><div style="display:flex;justify-content:center"><svg width="300" height="300" viewBox="0 0 300 300"><defs><filter id="hubsh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-color="#2A2725" flood-opacity="0.05"/></filter></defs><path d="M111.2,5.1 A150,150 0 0 1 188.8,5.1 L177.2,48.6 A105,105 0 0 0 122.8,48.6 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M122.8,48.6 A105,105 0 0 1 177.2,48.6 L165.5,92.0 A60,60 0 0 0 134.5,92.0 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M188.8,5.1 A150,150 0 0 1 256.1,43.9 L224.2,75.8 A105,105 0 0 0 177.2,48.6 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M177.2,48.6 A105,105 0 0 1 224.2,75.8 L192.4,107.6 A60,60 0 0 0 165.5,92.0 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M256.1,43.9 A150,150 0 0 1 294.9,111.2 L251.4,122.8 A105,105 0 0 0 224.2,75.8 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M224.2,75.8 A105,105 0 0 1 251.4,122.8 L208.0,134.5 A60,60 0 0 0 192.4,107.6 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M294.9,111.2 A150,150 0 0 1 294.9,188.8 L251.4,177.2 A105,105 0 0 0 251.4,122.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M251.4,122.8 A105,105 0 0 1 251.4,177.2 L208.0,165.5 A60,60 0 0 0 208.0,134.5 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M294.9,188.8 A150,150 0 0 1 256.1,256.1 L224.2,224.2 A105,105 0 0 0 251.4,177.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M251.4,177.2 A105,105 0 0 1 224.2,224.2 L192.4,192.4 A60,60 0 0 0 208.0,165.5 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M256.1,256.1 A150,150 0 0 1 188.8,294.9 L177.2,251.4 A105,105 0 0 0 224.2,224.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M224.2,224.2 A105,105 0 0 1 177.2,251.4 L165.5,208.0 A60,60 0 0 0 192.4,192.4 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M188.8,294.9 A150,150 0 0 1 111.2,294.9 L122.8,251.4 A105,105 0 0 0 177.2,251.4 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M177.2,251.4 A105,105 0 0 1 122.8,251.4 L134.5,208.0 A60,60 0 0 0 165.5,208.0 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M111.2,294.9 A150,150 0 0 1 43.9,256.1 L75.8,224.2 A105,105 0 0 0 122.8,251.4 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M122.8,251.4 A105,105 0 0 1 75.8,224.2 L107.6,192.4 A60,60 0 0 0 134.5,208.0 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M43.9,256.1 A150,150 0 0 1 5.1,188.8 L48.6,177.2 A105,105 0 0 0 75.8,224.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M75.8,224.2 A105,105 0 0 1 48.6,177.2 L92.0,165.5 A60,60 0 0 0 107.6,192.4 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M5.1,188.8 A150,150 0 0 1 5.1,111.2 L48.6,122.8 A105,105 0 0 0 48.6,177.2 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M48.6,177.2 A105,105 0 0 1 48.6,122.8 L92.0,134.5 A60,60 0 0 0 92.0,165.5 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M5.1,111.2 A150,150 0 0 1 43.9,43.9 L75.8,75.8 A105,105 0 0 0 48.6,122.8 Z" fill="#2A2725" stroke="#ECE6DA" stroke-width="1"/><path d="M48.6,122.8 A105,105 0 0 1 75.8,75.8 L107.6,107.6 A60,60 0 0 0 92.0,134.5 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><path d="M43.9,43.9 A150,150 0 0 1 111.2,5.1 L122.8,48.6 A105,105 0 0 0 75.8,75.8 Z" fill="#FFFFFF" stroke="#ECE6DA" stroke-width="1"/><path d="M75.8,75.8 A105,105 0 0 1 122.8,48.6 L134.5,92.0 A60,60 0 0 0 107.6,107.6 Z" fill="#F3EFE8" stroke="#ECE6DA" stroke-width="1"/><circle cx="150" cy="150" r="60" fill="#FFFFFF" stroke="#ECE6DA" filter="url(#hubsh)"/><text x="150" y="141" text-anchor="middle" dominant-baseline="central" font-family="DM Mono, monospace" font-size="20" fill="#2A2725">8</text><text x="150.0" y="165.0" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">keys chosen</text><text x="150.0" y="22.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#FFFFFF">C</text><text x="150.0" y="67.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#FFFFFF">Am</text><text x="213.8" y="39.6" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#FFFFFF">G</text><text x="191.2" y="78.6" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#FFFFFF">Em</text><text x="260.4" y="86.2" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#FFFFFF">D</text><text x="221.4" y="108.7" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">Bm</text><text x="277.5" y="150.0" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">A</text><text x="232.5" y="150.0" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">F&#9839;m</text><text x="260.4" y="213.8" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">E</text><text x="221.4" y="191.2" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">C&#9839;m</text><text x="213.7" y="252.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">B</text><text x="213.7" y="269.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#6E6A66">&#8645; C&#9837;</text><text x="191.2" y="213.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#6E6A66">&#8645;</text><text x="191.2" y="229.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">G&#9839;m</text><text x="150.0" y="269.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#FFFFFF">F&#9839;</text><text x="150.0" y="286.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#FFFFFF">&#8645; G&#9837;</text><text x="150.0" y="224.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#FFFFFF">&#8645;</text><text x="150.0" y="240.5" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#FFFFFF">D&#9839;m</text><text x="86.3" y="252.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">D&#9837;</text><text x="86.3" y="269.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#6E6A66">&#8645; C&#9839;</text><text x="108.8" y="213.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="13" font-weight="400" fill="#6E6A66">&#8645;</text><text x="108.8" y="229.4" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">B&#9837;m</text><text x="39.6" y="213.7" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">A&#9837;</text><text x="78.6" y="191.2" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">Fm</text><text x="22.5" y="150.0" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">E&#9837;</text><text x="67.5" y="150.0" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">Cm</text><text x="39.6" y="86.3" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#FFFFFF">B&#9837;</text><text x="78.6" y="108.8" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">Gm</text><text x="86.3" y="39.6" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="500" fill="#2A2725">F</text><text x="108.8" y="78.6" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, sans-serif" font-size="15" font-weight="400" fill="#6E6A66">Dm</text></svg></div><div class="chips"><span class="chip">All major</span><span class="chip">All minor</span><span class="chip">Clear</span></div><div class="ftip" style="text-align:center">F&#9839; major and D&#9839; minor are spelt with sharps here, so the rings and history read F&#9839; and D&#9839;m.</div></div></div>
+</x-dc>
+</body>
+</html>
