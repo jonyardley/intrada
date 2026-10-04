@@ -328,7 +328,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     };
     let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
     let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
-        item.linked_exercise_ids
+        item.linked_exercise_ids()
             .iter()
             .filter_map(|ex_id| {
                 model

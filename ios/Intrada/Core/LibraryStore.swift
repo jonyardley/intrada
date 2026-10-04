@@ -46,10 +46,15 @@ final class LibraryStore: ItemStore {
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
       let sectionsByItem = try Self.sectionsByItem(db)
+      let linksByPiece = try Self.linksByPiece(db)
       return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map { row in Self.item(from: row, sections: sectionsByItem[row["id"]] ?? []) }
+      .map { row in
+        Self.item(
+          from: row, sections: sectionsByItem[row["id"]] ?? [],
+          links: linksByPiece[row["id"]] ?? [])
+      }
     }
   }
 
@@ -87,16 +92,15 @@ final class LibraryStore: ItemStore {
       sql: """
         INSERT INTO item
           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-           linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id,
+           created_at, updated_at, priority, chord_chart, photo_id,
            metre, variation_ids, keys, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title, kind = excluded.kind, composer = excluded.composer,
           key = excluded.key, modality = excluded.modality,
           tempo_marking = excluded.tempo_marking,
           tempo_bpm = excluded.tempo_bpm, notes = excluded.notes,
           tags = \(keepingUnreadable("tags")),
-          linked_exercise_ids = \(keepingUnreadable("linked_exercise_ids")),
           updated_at = excluded.updated_at, priority = excluded.priority,
           chord_chart = excluded.chord_chart, photo_id = excluded.photo_id,
           metre = excluded.metre,
@@ -108,7 +112,6 @@ final class LibraryStore: ItemStore {
         key?.modality,
         item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
         try Self.encodeJSON(item.tags),
-        try Self.encodeJSON(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
         chordChart, item.photoId, metre,
         try Self.encodeJSON(item.variationIds), keys,
@@ -131,6 +134,21 @@ final class LibraryStore: ItemStore {
           s.id, item.id, s.name, s.bars.map { Int($0.first) }, s.bars.map { Int($0.last) },
           Self.sectionKinds.encode(s.kind), s.targetBpm.map { Int($0) }, Int(s.position),
           s.updatedAt, s.deletedAt,
+        ])
+    }
+    for l in item.exerciseLinks {
+      try db.execute(
+        sql: """
+          INSERT INTO exercise_link
+            (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            piece_id = excluded.piece_id, exercise_id = excluded.exercise_id,
+            section_id = excluded.section_id, position = excluded.position,
+            updated_at = excluded.updated_at, deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          l.id, item.id, l.exerciseId, l.sectionId, Int(l.position), l.updatedAt, l.deletedAt,
         ])
     }
   }
@@ -279,6 +297,17 @@ final class LibraryStore: ItemStore {
   /// `Set` — `SharedTypes`' domain `Set` shadows `Swift.Set` here.
   func columnNames(ofTable table: String) throws -> [String] {
     try dbQueue.read { db in try db.columns(in: table).map(\.name) }
+  }
+
+  /// Tombstones included: the core reconciles (#2248).
+  private static func linksByPiece(_ db: Database) throws -> [String: [ExerciseLink]] {
+    let rows = try Row.fetchAll(
+      db, sql: "SELECT * FROM exercise_link ORDER BY piece_id, position, id")
+    var byPiece: [String: [ExerciseLink]] = [:]
+    for row in rows {
+      byPiece[row["piece_id"], default: []].append(exerciseLink(from: row))
+    }
+    return byPiece
   }
 
   /// Tombstones included: the core reconciles (#2245).

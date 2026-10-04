@@ -5,6 +5,7 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::key::Key;
+pub use super::link::{ExerciseLink, LinkEdit, LinkTarget};
 use super::metre::Metre;
 pub use super::section::{BarRange, BarsInput, ItemSection, SectionEdit, SectionKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
@@ -54,9 +55,6 @@ pub struct Item {
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
-    // `#[serde(default)]` so absent fields (old clients / bincode) default to `[]`.
-    #[serde(default)]
-    pub linked_exercise_ids: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     #[serde(default)]
@@ -82,6 +80,9 @@ pub struct Item {
     /// The keys chosen for practice, in order; the written key is `key`.
     #[serde(default)]
     pub keys: Vec<Key>,
+    /// Pieces only; tombstones included (#2248).
+    #[serde(default)]
+    pub exercise_links: Vec<ExerciseLink>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -189,6 +190,19 @@ pub enum ItemEvent {
         id: String,
         keys: Vec<Key>,
     },
+    /// The piece's whole set of exercise links in card order, in one write
+    /// (#2248, #2232): a new exercise is created and linked, a live link the
+    /// set leaves out is tombstoned. Refused whole on the first invalid row.
+    SetPieceLinks {
+        piece_id: String,
+        links: Vec<LinkEdit>,
+    },
+    /// The exercise's whole set of links across pieces, every changed piece
+    /// saved in one batch. Refused whole on the first invalid row.
+    SetExerciseLinks {
+        exercise_id: String,
+        targets: Vec<LinkTarget>,
+    },
 }
 
 /// Acts on the library's own variation rows, not on any one item's set.
@@ -226,11 +240,11 @@ pub(crate) fn linked_scaffold_state(
     std::collections::HashSet<ScaffoldKind>,
     std::collections::HashSet<String>,
 ) {
-    let linked_ids: std::collections::HashSet<&String> = model
+    let linked_ids: std::collections::HashSet<String> = model
         .items
         .iter()
         .find(|i| i.id == piece_id)
-        .map(|p| p.linked_exercise_ids.iter().collect())
+        .map(|p| p.linked_exercise_ids().into_iter().collect())
         .unwrap_or_default();
     let linked = model.items.iter().filter(|i| linked_ids.contains(&i.id));
 
@@ -346,6 +360,13 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)
         }
+        ItemEvent::SetPieceLinks { piece_id, links } => {
+            links::set_piece_links(model, piece_id, links)
+        }
+        ItemEvent::SetExerciseLinks {
+            exercise_id,
+            targets,
+        } => links::set_exercise_links(model, exercise_id, targets),
     }
 }
 

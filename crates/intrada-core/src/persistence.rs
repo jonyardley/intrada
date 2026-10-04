@@ -228,7 +228,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],

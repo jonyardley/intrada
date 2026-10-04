@@ -126,7 +126,7 @@ mod tests {
             tags: vec![],
             created_at: at(created),
             updated_at: at(created),
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -237,7 +237,7 @@ mod tests {
 
     fn started_from_todays_plan() -> Model {
         let mut piece = item("p1", "Clair de Lune", 0);
-        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
         let exercise = Item {
             kind: ItemKind::Exercise,
             ..item("ex1", "Scales", 0)

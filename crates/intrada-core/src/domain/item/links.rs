@@ -1,4 +1,43 @@
 use super::*;
+use crate::domain::link::{reconcile_links, same_links, ExerciseLink, WantedLink};
+
+/// Whole-piece links to `ids` after the piece's last, skipping any already live.
+pub(super) fn append_whole_piece_links(
+    piece: &mut Item,
+    ids: &[String],
+    now: chrono::DateTime<chrono::Utc>,
+) {
+    for id in ids {
+        if !piece.has_live_link(id, None) {
+            let position = piece.next_link_position();
+            piece
+                .exercise_links
+                .push(ExerciseLink::new(id.clone(), None, position, now));
+        }
+    }
+}
+
+/// Live rows take positions in `order`, each exercise's rows kept together.
+fn renumber_live_links(piece: &mut Item, order: &[String], now: chrono::DateTime<chrono::Utc>) {
+    let live: Vec<String> = piece.live_links().iter().map(|l| l.id.clone()).collect();
+    let mut position = 0;
+    for exercise_id in order {
+        for link_id in &live {
+            let Some(link) = piece
+                .exercise_links
+                .iter_mut()
+                .find(|l| &l.id == link_id && &l.exercise_id == exercise_id)
+            else {
+                continue;
+            };
+            if link.position != position {
+                link.position = position;
+                link.updated_at = now;
+            }
+            position += 1;
+        }
+    }
+}
 
 pub(super) fn link_exercise(
     model: &mut Model,
@@ -15,10 +54,18 @@ pub(super) fn link_exercise(
         return crux_core::render::render();
     };
 
-    if !piece.linked_exercise_ids.contains(&exercise_id) {
-        piece.linked_exercise_ids.push(exercise_id);
-    }
-    piece.updated_at = chrono::Utc::now();
+    let now = chrono::Utc::now();
+    piece.exercise_links = reconcile_links(
+        &piece.exercise_links,
+        |l| l.exercise_id == exercise_id && l.section_id.is_none(),
+        vec![WantedLink {
+            exercise_id: exercise_id.clone(),
+            section_id: None,
+            position: None,
+        }],
+        now,
+    );
+    piece.updated_at = now;
     model.last_error = None;
 
     let piece = piece.clone();
@@ -35,8 +82,14 @@ pub(super) fn unlink_exercise(
         return crux_core::render::render();
     };
 
-    piece.linked_exercise_ids.retain(|id| id != &exercise_id);
-    piece.updated_at = chrono::Utc::now();
+    let now = chrono::Utc::now();
+    piece.exercise_links = reconcile_links(
+        &piece.exercise_links,
+        |l| l.exercise_id == exercise_id,
+        Vec::new(),
+        now,
+    );
+    piece.updated_at = now;
     model.last_error = None;
 
     let piece = piece.clone();
@@ -53,7 +106,7 @@ pub(super) fn reorder_linked_exercises(
         return crux_core::render::render();
     };
 
-    let current = piece.linked_exercise_ids.clone();
+    let current = piece.linked_exercise_ids();
     let current_set: std::collections::HashSet<&String> = current.iter().collect();
     let requested_set: std::collections::HashSet<&String> = ordered_ids.iter().collect();
     let mut seen: std::collections::HashSet<&String> = std::collections::HashSet::new();
@@ -67,8 +120,9 @@ pub(super) fn reorder_linked_exercises(
             next.push(id.clone());
         }
     }
-    piece.linked_exercise_ids = next;
-    piece.updated_at = chrono::Utc::now();
+    let now = chrono::Utc::now();
+    renumber_live_links(piece, &next, now);
+    piece.updated_at = now;
     model.last_error = None;
 
     let piece = piece.clone();
@@ -122,7 +176,7 @@ pub(super) fn commit_scaffold(
             tempo: None,
             notes: Some(s.rationale),
             tags: vec![s.kind.scaffold_tag()],
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             created_at: now,
             updated_at: now,
             priority: false,
@@ -148,7 +202,7 @@ pub(super) fn commit_scaffold(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
-    piece.linked_exercise_ids.extend(new_ids);
+    append_whole_piece_links(piece, &new_ids, now);
     piece.updated_at = now;
     let piece = piece.clone();
 
@@ -159,6 +213,157 @@ pub(super) fn commit_scaffold(
     batch.push(piece);
     Command::all([
         crate::persistence::save_items(model, batch),
+        crux_core::render::render(),
+    ])
+}
+
+pub(super) fn set_piece_links(
+    model: &mut Model,
+    piece_id: String,
+    links: Vec<LinkEdit>,
+) -> Command<Effect, Event> {
+    if let Err(e) = validation::validate_piece_host(&piece_id, model) {
+        model.raise_error(e.to_string());
+        return crux_core::render::render();
+    }
+
+    let mut rows = Vec::with_capacity(links.len());
+    for (index, edit) in links.into_iter().enumerate() {
+        let Some(piece) = model.items.iter().find(|i| i.id == piece_id) else {
+            model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
+            return crux_core::render::render();
+        };
+        if let Err(e) = validation::validate_link_section(piece, edit.section_id.as_deref()) {
+            model.last_error_target = Some(FormErrorTarget::Exercise { index, field: None });
+            model.raise_error(e.to_string());
+            return crux_core::render::render();
+        }
+        let Some(entry) = super::create::validate_entry(model, index, edit.exercise) else {
+            return crux_core::render::render();
+        };
+        rows.push((entry, edit.section_id));
+    }
+
+    let now = chrono::Utc::now();
+    let mut created: Vec<Item> = Vec::new();
+    let mut wanted: Vec<WantedLink> = Vec::new();
+    for (entry, section_id) in rows {
+        let exercise_id = match entry {
+            super::create::Entry::New(input, tempo) => {
+                let exercise = super::create::new_exercise(*input, tempo, now);
+                let id = exercise.id.clone();
+                created.push(exercise);
+                id
+            }
+            super::create::Entry::Existing(id) => id,
+        };
+        let repeated = wanted
+            .iter()
+            .any(|w| w.exercise_id == exercise_id && w.section_id == section_id);
+        if !repeated {
+            let position = Some(wanted.len());
+            wanted.push(WantedLink {
+                exercise_id,
+                section_id,
+                position,
+            });
+        }
+    }
+
+    let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
+        model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
+        return crux_core::render::render();
+    };
+    let stored: Vec<(&str, Option<&str>)> = piece
+        .live_links()
+        .into_iter()
+        .map(|l| (l.exercise_id.as_str(), l.section_id.as_deref()))
+        .collect();
+    let asked: Vec<(&str, Option<&str>)> = wanted
+        .iter()
+        .map(|w| (w.exercise_id.as_str(), w.section_id.as_deref()))
+        .collect();
+    if created.is_empty() && stored == asked {
+        model.last_error = None;
+        return crux_core::render::render();
+    }
+    piece.exercise_links = reconcile_links(&piece.exercise_links, |_| true, wanted, now);
+    piece.updated_at = now;
+    let piece = piece.clone();
+
+    if created.is_empty() {
+        return persist_item(model, piece);
+    }
+    model.items.extend(created.iter().cloned());
+    model.clear_error();
+    let mut batch = created;
+    batch.push(piece);
+    Command::all([
+        crate::persistence::save_items(model, batch),
+        crux_core::render::render(),
+    ])
+}
+
+pub(super) fn set_exercise_links(
+    model: &mut Model,
+    exercise_id: String,
+    targets: Vec<LinkTarget>,
+) -> Command<Effect, Event> {
+    if let Err(e) = validation::validate_exercise_link_target(&exercise_id, model) {
+        model.raise_error(e.to_string());
+        return crux_core::render::render();
+    }
+    let mut wanted: Vec<LinkTarget> = Vec::with_capacity(targets.len());
+    for t in targets {
+        if let Err(e) = validation::validate_piece_host(&t.piece_id, model) {
+            model.raise_error(e.to_string());
+            return crux_core::render::render();
+        }
+        let Some(piece) = model.items.iter().find(|i| i.id == t.piece_id) else {
+            model.raise_error(LibraryError::NotFound { id: t.piece_id }.to_string());
+            return crux_core::render::render();
+        };
+        if let Err(e) = validation::validate_link_section(piece, t.section_id.as_deref()) {
+            model.raise_error(e.to_string());
+            return crux_core::render::render();
+        }
+        if !wanted.contains(&t) {
+            wanted.push(t);
+        }
+    }
+
+    let now = chrono::Utc::now();
+    let mut changed: Vec<Item> = Vec::new();
+    for piece in model.items.iter_mut().filter(|i| i.kind == ItemKind::Piece) {
+        let mine: Vec<WantedLink> = wanted
+            .iter()
+            .filter(|t| t.piece_id == piece.id)
+            .map(|t| WantedLink {
+                exercise_id: exercise_id.clone(),
+                section_id: t.section_id.clone(),
+                position: None,
+            })
+            .collect();
+        let next = reconcile_links(
+            &piece.exercise_links,
+            |l| l.exercise_id == exercise_id,
+            mine,
+            now,
+        );
+        if !same_links(&piece.exercise_links, &next) {
+            piece.exercise_links = next;
+            piece.updated_at = now;
+            changed.push(piece.clone());
+        }
+    }
+
+    if changed.is_empty() {
+        model.last_error = None;
+        return crux_core::render::render();
+    }
+    model.clear_error();
+    Command::all([
+        crate::persistence::save_items(model, changed),
         crux_core::render::render(),
     ])
 }

@@ -68,7 +68,8 @@
     ) -> LinkedExerciseView {
       LinkedExerciseView(
         id: id, title: title, key: key, keyLabel: key.flatMap(KeyHelper.display),
-        tempoMarking: tempoMarking, tempoBpm: tempoBpm, practice: nil, pieceContextScore: nil)
+        tempoMarking: tempoMarking, tempoBpm: tempoBpm, practice: nil, pieceContextScore: nil,
+        wholePiece: true, sections: [])
     }
   }
 
@@ -87,13 +88,13 @@
             key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
             tempoMarking: nil,
             tempoBpm: 108,
-            practice: nil, pieceContextScore: 7),
+            practice: nil, pieceContextScore: 7, wholePiece: true, sections: []),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
             tempoMarking: nil,
             tempoBpm: nil, practice: nil,
-            pieceContextScore: nil),
+            pieceContextScore: nil, wholePiece: true, sections: []),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
@@ -224,7 +225,7 @@
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
               tempoTrend: .fixture([100, 104, 108]),
               lastPracticedAt: "2026-06-28T09:00:00Z"),
-            pieceContextScore: 5),
+            pieceContextScore: 5, wholePiece: true, sections: []),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
@@ -233,11 +234,11 @@
             practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
               lastPracticedAt: "2026-06-25T09:00:00Z"),
-            pieceContextScore: 6),
+            pieceContextScore: 6, wholePiece: true, sections: []),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, keyLabel: nil,
             tempoMarking: nil, tempoBpm: nil,
-            practice: nil, pieceContextScore: nil),
+            practice: nil, pieceContextScore: nil, wholePiece: true, sections: []),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
@@ -267,11 +268,13 @@
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
+            sections: []),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
+            sections: []),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
@@ -300,25 +303,26 @@
               id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
             linked: true, latestScore: 7, sessionCount: 3,
             lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: false),
+            offersLink: false, wholePiece: true, sections: []),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Blue Bossa", subtitle: "Kenny Dorham"),
             linked: false, latestScore: 5, sessionCount: 2,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: true),
+            offersLink: true, wholePiece: false, sections: []),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-3", title: "Autumn Leaves", subtitle: "Kosma"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
-            pieceRemoved: false, pieceInLibrary: true, offersLink: false),
+            pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
+            sections: []),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-gone", title: "Solar", subtitle: nil),
             linked: false, latestScore: 4, sessionCount: 2,
             lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true, pieceInLibrary: false,
-            offersLink: false),
+            offersLink: false, wholePiece: false, sections: []),
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
-            offersLink: false),
+            offersLink: false, wholePiece: false, sections: []),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
@@ -472,16 +476,16 @@
       id: String = "p1", title: String = "Etude", kind: ItemKind = .piece,
       composer: String? = nil, key: Key? = nil, tempo: Tempo? = nil, notes: String? = nil,
       tags: [String] = [],
-      linkedExerciseIds: [String] = [], createdAt: String = "2026-01-01T00:00:00Z",
+      exerciseLinks: [ExerciseLink] = [], createdAt: String = "2026-01-01T00:00:00Z",
       updatedAt: String? = nil, priority: Bool = false, chordChart: ChordChart? = nil,
       photoId: String? = nil, metre: Metre? = nil
     ) -> Item {
       Item(
         id: id, title: title, kind: kind, composer: composer, key: key,
-        tempo: tempo, notes: notes, tags: tags, linkedExerciseIds: linkedExerciseIds,
+        tempo: tempo, notes: notes, tags: tags,
         createdAt: createdAt, updatedAt: updatedAt ?? createdAt, priority: priority,
         chordChart: chordChart, photoId: photoId, metre: metre, sections: [], variationIds: [],
-        keys: [])
+        keys: [], exerciseLinks: exerciseLinks)
     }
   }
 #endif

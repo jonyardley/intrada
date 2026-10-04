@@ -1247,7 +1247,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],

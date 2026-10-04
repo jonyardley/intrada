@@ -6,7 +6,7 @@ import SharedTypes
 extension LibraryStore {
   // ── Row ↔ Item codec ─────────────────────────────────────────────────
 
-  static func item(from row: Row, sections: [ItemSection]) -> Item {
+  static func item(from row: Row, sections: [ItemSection], links: [ExerciseLink]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
@@ -15,8 +15,6 @@ extension LibraryStore {
       composer: row["composer"], key: key(text: row["key"], modality: row["modality"]),
       tempo: tempo, notes: row["notes"],
       tags: decodeJSON([String].self, from: row["tags"], field: "tags") ?? [],
-      linkedExerciseIds: decodeJSON(
-        [String].self, from: row["linked_exercise_ids"], field: "linked_exercise_ids") ?? [],
       createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"],
       chordChart: decodeChordChart(row["chord_chart"]),
@@ -24,7 +22,7 @@ extension LibraryStore {
       variationIds: (row["variation_ids"] as String?).flatMap {
         decodeJSON([String].self, from: $0, field: "variation_ids")
       } ?? [],
-      keys: decodeKeys(row["keys"]))
+      keys: decodeKeys(row["keys"]), exerciseLinks: links)
   }
 
   // ── Key codec (#2106) ────────────────────────────────────────────────
@@ -118,6 +116,15 @@ extension LibraryStore {
       id: row["id"], name: row["name"], bars: bars,
       kind: sectionKinds.decode(row["kind"]) ?? .form,
       targetBpm: (row["target_bpm"] as Int?).map { UInt16($0) },
+      position: UInt64(row["position"] as Int),
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  // ── Row ↔ ExerciseLink codec ─────────────────────────────────────────
+
+  static func exerciseLink(from row: Row) -> ExerciseLink {
+    ExerciseLink(
+      id: row["id"], exerciseId: row["exercise_id"], sectionId: row["section_id"],
       position: UInt64(row["position"] as Int),
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }

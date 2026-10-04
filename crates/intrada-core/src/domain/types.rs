@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn save_item_and_variation_ops_round_trip_on_ffi_bincode_wire() {
-        // Keys, variation ids and a tombstoned section ride SaveItem and
+        // Keys, variation ids, a tombstoned section and links ride SaveItem and
         // SaveItems to the GRDB store (#846 class).
         use crate::persistence::PersistenceOperation;
         use chrono::TimeZone;
@@ -521,7 +521,24 @@ mod tests {
             tempo: None,
             notes: None,
             tags: vec![],
-            linked_exercise_ids: vec![],
+            exercise_links: vec![
+                crate::domain::link::ExerciseLink {
+                    id: "l-1".to_string(),
+                    exercise_id: "ex-2".to_string(),
+                    section_id: Some("s-1".to_string()),
+                    position: 0,
+                    updated_at: at,
+                    deleted_at: None,
+                },
+                crate::domain::link::ExerciseLink {
+                    id: "l-2".to_string(),
+                    exercise_id: "ex-3".to_string(),
+                    section_id: None,
+                    position: 1,
+                    updated_at: at,
+                    deleted_at: Some(at),
+                },
+            ],
             created_at: at,
             updated_at: at,
             priority: false,

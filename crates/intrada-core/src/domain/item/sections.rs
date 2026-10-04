@@ -28,7 +28,24 @@ pub(super) fn update_sections(
         return crux_core::render::render();
     }
 
+    let removed: Vec<String> = reconciled
+        .iter()
+        .filter(|s| s.deleted_at.is_some())
+        .filter(|s| {
+            item.sections
+                .iter()
+                .any(|was| was.id == s.id && was.deleted_at.is_none())
+        })
+        .map(|s| s.id.clone())
+        .collect();
     item.sections = reconciled;
+    // A removed section takes its links with it, never the exercise (#2248).
+    for link in item.exercise_links.iter_mut().filter(|l| {
+        l.deleted_at.is_none() && l.section_id.as_ref().is_some_and(|id| removed.contains(id))
+    }) {
+        link.deleted_at = Some(now);
+        link.updated_at = now;
+    }
     item.updated_at = now;
     let item = item.clone();
     persist_item(model, item)

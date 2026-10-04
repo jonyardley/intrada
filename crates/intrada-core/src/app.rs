@@ -447,7 +447,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -623,7 +623,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -666,7 +666,7 @@ mod tests {
                     tags: vec!["classical".to_string()],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -689,7 +689,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -712,7 +712,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -732,7 +732,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -808,7 +808,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -828,7 +828,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -893,7 +893,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -913,7 +913,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -950,7 +950,7 @@ mod tests {
             tags: vec!["classical".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -970,7 +970,7 @@ mod tests {
             tags: vec!["romantic".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1006,7 +1006,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1050,7 +1050,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1089,7 +1089,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1246,8 +1246,15 @@ mod tests {
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: (0..5)
-                    .map(|k| format!("e{:05}", (i * 7 + k * 997) % pieces))
+                exercise_links: (0..5)
+                    .map(|k| {
+                        crate::domain::link::ExerciseLink::new(
+                            format!("e{:05}", (i * 7 + k * 997) % pieces),
+                            None,
+                            k,
+                            now,
+                        )
+                    })
                     .collect(),
                 priority: false,
                 chord_chart: None,
@@ -1270,7 +1277,7 @@ mod tests {
                 tags: vec![format!("etag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -1481,7 +1488,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1501,7 +1508,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1611,7 +1618,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1730,7 +1737,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1804,7 +1811,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -1907,7 +1914,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -2272,7 +2279,7 @@ mod tests {
             tags: vec![],
             created_at,
             updated_at: created_at,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -2291,7 +2298,7 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
-        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
         model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
 
         let up_next = app.view(&model).up_next.expect("a suggestion");
@@ -2312,9 +2319,10 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut first = make_item("p1", "Arabesque", ItemKind::Piece, now);
-        first.linked_exercise_ids = vec!["ex1".to_string()];
+        first.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
         let mut second = make_item("p2", "Berceuse", ItemKind::Piece, now);
-        second.linked_exercise_ids = vec!["ex2".to_string()];
+        second.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex2"], chrono::Utc::now());
         model.items = vec![
             first,
             second,
@@ -2338,7 +2346,7 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
         let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
-        piece.linked_exercise_ids = vec!["ex1".to_string()];
+        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], chrono::Utc::now());
         model.items = vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into();
         // Filtering the library to exercises hides the anchor piece from the
         // list; the suggestion is derived pre-filter and must survive it.
@@ -3491,7 +3499,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -3602,7 +3610,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -3657,7 +3665,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec!["ex-1".to_string()],
+            exercise_links: crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now()),
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -3677,7 +3685,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -3728,11 +3736,10 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![
-                        "ex-1".to_string(),
-                        "ex-missing".to_string(),
-                        "ex-2".to_string(),
-                    ],
+                    exercise_links: crate::domain::link::whole_piece_links(
+                        &["ex-1", "ex-missing", "ex-2"],
+                        chrono::Utc::now(),
+                    ),
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -3755,7 +3762,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -3775,7 +3782,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -3795,7 +3802,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -3871,7 +3878,8 @@ mod tests {
     fn used_in_includes_a_linked_piece_with_no_practice() {
         let app = Intrada;
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+        piece.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
@@ -3934,7 +3942,8 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+        piece.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
@@ -3968,9 +3977,10 @@ mod tests {
         // Ids deliberately run counter to the titles, so an id-only tie-break
         // would order these the other way round.
         let mut zeta = ctx_item("p-1", "Zeta", ItemKind::Piece, None);
-        zeta.linked_exercise_ids = vec!["ex-1".to_string()];
+        zeta.exercise_links = crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
         let mut alpha = ctx_item("p-2", "Alpha", ItemKind::Piece, None);
-        alpha.linked_exercise_ids = vec!["ex-1".to_string()];
+        alpha.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4041,7 +4051,8 @@ mod tests {
     #[test]
     fn used_in_derivation_seeds_nothing_for_a_link_to_a_missing_or_wrong_kind_item() {
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven"));
-        piece.linked_exercise_ids = vec!["gone".to_string(), "other-piece".to_string()];
+        piece.exercise_links =
+            crate::domain::link::whole_piece_links(&["gone", "other-piece"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4069,7 +4080,8 @@ mod tests {
         let recent = chrono::Utc::now() - chrono::Duration::days(1);
 
         let mut linked_only = ctx_item("p-live", "Live linked", ItemKind::Piece, None);
-        linked_only.linked_exercise_ids = vec!["ex-1".to_string()];
+        linked_only.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4110,7 +4122,8 @@ mod tests {
     fn used_in_offers_the_link_only_for_a_live_practised_unlinked_piece() {
         let now = chrono::Utc::now();
         let mut linked = ctx_item("p-linked", "Linked", ItemKind::Piece, None);
-        linked.linked_exercise_ids = vec!["ex-1".to_string()];
+        linked.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
 
         let model = Model {
             items: vec![
@@ -4225,7 +4238,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
-            linked_exercise_ids: vec![],
+            exercise_links: vec![],
             priority: false,
             chord_chart: None,
             variation_ids: vec![],
@@ -4594,7 +4607,8 @@ mod tests {
         let earlier = chrono::Utc::now() - chrono::Duration::days(1);
         let later = chrono::Utc::now();
         let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, None);
-        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+        piece.exercise_links =
+            crate::domain::link::whole_piece_links(&["ex-1"], chrono::Utc::now());
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)].into(),
             sessions: vec![
@@ -4698,7 +4712,10 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec!["item-b".to_string()],
+                    exercise_links: crate::domain::link::whole_piece_links(
+                        &["item-b"],
+                        chrono::Utc::now(),
+                    ),
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],
@@ -4718,7 +4735,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec![],
+                    exercise_links: vec![],
                     priority: false,
                     chord_chart: None,
                     variation_ids: vec![],

@@ -985,4 +985,121 @@ final class LibraryBridgeTests: XCTestCase {
       XCTAssertNil(exercise.pieceContextScore, "never scored against this piece yet")
     }
   }
+
+  // ── Section links (#2248) ──
+
+  private func add(_ bridge: RowsBridge, _ title: String, _ kind: ItemKind) throws -> String {
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: title, kind: kind, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    return try XCTUnwrap(try bridge.rendered().items.first { $0.title == title }?.id)
+  }
+
+  private func sectionIds(
+    _ bridge: RowsBridge, on piece: String, _ names: [String]
+  ) throws -> [String: String] {
+    _ = try bridge.update(
+      .item(
+        .updateSections(
+          id: piece,
+          sections: names.map {
+            SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "")
+          })))
+    let views = try XCTUnwrap(try bridge.rendered().items.first { $0.id == piece }?.sections)
+    return Dictionary(uniqueKeysWithValues: views.map { ($0.name, $0.id) })
+  }
+
+  /// Loaded links, a tombstone among them, cross into the core (#846).
+  func testRealBridgeLoadedLinksReachThePieceAndItsExercise() throws {
+    let bridge = RowsBridge()
+    let load = try XCTUnwrap(
+      try bridge.update(.startApp).first {
+        if case .persistence(.loadItems) = $0.effect { return true } else { return false }
+      })
+    var piece = LibraryItemFixture.record(id: "p1", title: "Nocturne")
+    piece.sections = [
+      ItemSection(
+        id: "s-a1", name: "A1", bars: nil, kind: .form, targetBpm: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil)
+    ]
+    piece.exerciseLinks = [
+      ExerciseLink(
+        id: "l1", exerciseId: "e1", sectionId: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil),
+      ExerciseLink(
+        id: "l2", exerciseId: "e1", sectionId: "s-a1", position: 1,
+        updatedAt: "2026-10-04T09:05:00Z", deletedAt: "2026-10-04T09:05:00Z"),
+    ]
+    let exercise = LibraryItemFixture.record(id: "e1", title: "Thirds", kind: .exercise)
+
+    _ = try bridge.resolve(load.id, persistenceOutput: .items([piece, exercise]))
+
+    let rows = try bridge.rendered().items
+    let card = try XCTUnwrap(rows.first { $0.id == "p1" }?.linkedExercises.first)
+    XCTAssertEqual(card.id, "e1")
+    XCTAssertTrue(card.wholePiece)
+    XCTAssertEqual(card.sections, [], "the tombstone stays hidden")
+    XCTAssertEqual(rows.first { $0.id == "e1" }?.usedIn.map(\.linked), [true])
+  }
+
+  /// Links made in the core, and both views of them, cross the bridge (#846).
+  func testRealBridgeLinksAnExerciseToSectionsOfTwoPieces() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let nocturne = try add(bridge, "Nocturne", .piece)
+    let etude = try add(bridge, "Étude", .piece)
+    let thirds = try add(bridge, "Thirds", .exercise)
+    let nocturneSections = try sectionIds(bridge, on: nocturne, ["A1", "A2"])
+    let coda = try XCTUnwrap(try sectionIds(bridge, on: etude, ["Coda"])["Coda"])
+    let a1 = try XCTUnwrap(nocturneSections["A1"])
+    let a2 = try XCTUnwrap(nocturneSections["A2"])
+
+    let targets: [LinkTarget] = [
+      LinkTarget(pieceId: nocturne, sectionId: a2), LinkTarget(pieceId: etude, sectionId: coda),
+    ]
+    let requests = try bridge.update(
+      .item(.setExerciseLinks(exerciseId: thirds, targets: targets)))
+
+    let written: [ExerciseLink] = requests.flatMap { request -> [Item] in
+      guard case .persistence(.saveItems(let items)) = request.effect else { return [] }
+      return items
+    }.flatMap(\.exerciseLinks)
+    XCTAssertEqual(Swift.Set(written.map(\.sectionId)), [a2, coda])
+    XCTAssertEqual(written.map(\.exerciseId), [thirds, thirds])
+    XCTAssertTrue(written.allSatisfy { $0.deletedAt == nil })
+
+    let linked = try bridge.rendered()
+    XCTAssertNil(linked.error)
+    let card = try XCTUnwrap(linked.items.first { $0.id == nocturne }?.linkedExercises.first)
+    let cardSections: [LinkedSectionView] = card.sections
+    XCTAssertEqual(card.id, thirds)
+    XCTAssertFalse(card.wholePiece)
+    XCTAssertEqual(cardSections.map(\.label), ["A2"])
+    let usedIn = try XCTUnwrap(linked.items.first { $0.id == thirds }?.usedIn)
+    XCTAssertEqual(
+      Swift.Set(usedIn.flatMap { $0.sections.map(\.label) }), ["A2", "Coda"],
+      "the exercise shows both links")
+    XCTAssertTrue(usedIn.allSatisfy { $0.linked && !$0.wholePiece })
+
+    let links: [LinkEdit] = [
+      LinkEdit(exercise: .existing(id: thirds), sectionId: nil),
+      LinkEdit(
+        exercise: .new(
+          CreateItem(
+            title: "Broken octaves", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
+        sectionId: a1),
+    ]
+    _ = try bridge.update(.item(.setPieceLinks(pieceId: nocturne, links: links)))
+
+    let after = try bridge.rendered()
+    XCTAssertNil(after.error)
+    let rows = try XCTUnwrap(after.items.first { $0.id == nocturne }?.linkedExercises)
+    XCTAssertEqual(rows.map(\.title), ["Thirds", "Broken octaves"])
+    XCTAssertEqual(rows.map(\.wholePiece), [true, false])
+    XCTAssertEqual(rows.map { $0.sections.map(\.label) }, [[], ["A1"]], "A2 left the set")
+  }
 }

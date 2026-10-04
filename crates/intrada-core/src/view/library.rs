@@ -26,7 +26,7 @@ pub(super) fn build_library_item_views(
         let subtitle = item.composer.clone().unwrap_or_default();
 
         let linked_exercises = if item.kind == ItemKind::Piece {
-            item.linked_exercise_ids
+            item.linked_exercise_ids()
                 .iter()
                 .filter_map(|ex_id| {
                     let ex = item_index.get(ex_id.as_str())?;
@@ -45,6 +45,7 @@ pub(super) fn build_library_item_views(
                                 })
                                 .and_then(|r| r.latest_score)
                         });
+                    let (whole_piece, sections) = link_summary(item, &ex.id);
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -54,6 +55,8 @@ pub(super) fn build_library_item_views(
                         tempo_bpm: ex.tempo.as_ref().and_then(|t| t.bpm),
                         practice: model.practice_summaries.get(&ex.id).cloned(),
                         piece_context_score,
+                        whole_piece,
+                        sections,
                     })
                 })
                 .collect()
@@ -292,7 +295,7 @@ pub(crate) fn build_exercise_usage(
     // Seeding from links first is what lets a piece appear before any history
     // exists. The kind check mirrors the piece side's forward filter.
     for piece in model.items.iter().filter(|i| i.kind == ItemKind::Piece) {
-        for ex_id in &piece.linked_exercise_ids {
+        for ex_id in &piece.linked_exercise_ids() {
             if !item_index
                 .get(ex_id.as_str())
                 .is_some_and(|t| t.kind == ItemKind::Exercise)
@@ -363,6 +366,13 @@ pub(crate) fn build_exercise_usage(
         let piece_removed = piece.as_ref().is_some_and(|(_, removed)| *removed);
         let piece_in_library = piece.is_some() && !piece_removed;
         let offers_link = piece_in_library && !record.linked;
+        let (whole_piece, sections) = match (&piece, record.linked) {
+            (Some((p, false)), true) => item_index
+                .get(p.id.as_str())
+                .map(|live| link_summary(live, &exercise_id))
+                .unwrap_or_default(),
+            _ => (false, Vec::new()),
+        };
         by_exercise
             .entry(exercise_id)
             .or_default()
@@ -375,6 +385,8 @@ pub(crate) fn build_exercise_usage(
                 piece_removed,
                 piece_in_library,
                 offers_link,
+                whole_piece,
+                sections,
             });
     }
 
@@ -502,6 +514,39 @@ pub(crate) fn build_key_views(
             }
         })
         .collect()
+}
+
+/// How `exercise_id` is linked to `piece`: as a whole, and to which live
+/// sections, in score order (#2248).
+fn link_summary(
+    piece: &crate::domain::item::Item,
+    exercise_id: &str,
+) -> (bool, Vec<crate::model::LinkedSectionView>) {
+    let links: Vec<_> = piece
+        .live_links()
+        .into_iter()
+        .filter(|l| l.exercise_id == exercise_id)
+        .collect();
+    let whole_piece = links.iter().any(|l| l.section_id.is_none());
+    let mut sections: Vec<_> = piece
+        .sections
+        .iter()
+        .filter(|s| s.deleted_at.is_none())
+        .filter(|s| {
+            links
+                .iter()
+                .any(|l| l.section_id.as_deref() == Some(s.id.as_str()))
+        })
+        .collect();
+    sections.sort_by_key(|s| s.position);
+    let sections = sections
+        .into_iter()
+        .map(|s| crate::model::LinkedSectionView {
+            id: s.id.clone(),
+            label: s.label(),
+        })
+        .collect();
+    (whole_piece, sections)
 }
 
 pub(crate) fn build_section_views(

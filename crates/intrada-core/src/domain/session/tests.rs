@@ -45,7 +45,7 @@ fn model_with_library() -> Model {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -65,7 +65,7 @@ fn model_with_library() -> Model {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -85,7 +85,7 @@ fn model_with_library() -> Model {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
                 variation_ids: vec![],
@@ -118,7 +118,7 @@ fn linked_model() -> Model {
         tempo: None,
         notes: None,
         tags: vec![],
-        linked_exercise_ids: linked.iter().map(|s| s.to_string()).collect(),
+        exercise_links: crate::domain::link::whole_piece_links(linked, now),
         created_at: now,
         updated_at: now,
         priority: false,
@@ -308,12 +308,10 @@ fn start_building_from_suggestion_caps_the_block_at_three_items() {
     let mut m = suggestion_model();
     for item in m.items.iter_mut() {
         if item.id == "piece-P" {
-            item.linked_exercise_ids = vec![
-                "ex-A".to_string(),
-                "ex-B".to_string(),
-                "ex-C".to_string(),
-                "ex-D".to_string(),
-            ];
+            item.exercise_links = crate::domain::link::whole_piece_links(
+                &["ex-A", "ex-B", "ex-C", "ex-D"],
+                chrono::Utc::now(),
+            );
         }
     }
     build_from_suggestion(&mut m);
@@ -627,7 +625,7 @@ fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
     let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") else {
         panic!("the fixture has piece-Q");
     };
-    piece.linked_exercise_ids = vec!["ex-C".to_string()];
+    piece.exercise_links = crate::domain::link::whole_piece_links(&["ex-C"], chrono::Utc::now());
     add(&mut m, "piece-Q");
     assert_eq!(
         ids(&m),
