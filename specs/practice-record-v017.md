@@ -92,8 +92,8 @@ start, allowance and what Stay has borrowed from the next.
   `ToggleObstacle`, `AnswerIntention`, each with the entry id. Their draft
   copies sit in `ReflectionAnswers` for crash recovery; the hand-off sends
   them after `NextItem`, like the marks, so a skipped sheet writes none.
-  Order: the note before the confirms (a span is read from the stored note),
-  the answer before any tempo edit. A note edit drops the points it no
+  Order: the note before the confirms (a span is read from the stored note).
+  A note edit drops the points it no
   longer reads, in the draft and on the entry.
 
 ## Rules the core owns

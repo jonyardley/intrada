@@ -3,6 +3,7 @@
 # entry that is now tested or gone, and on anything new that is missing here.
 ActiveSessionView
 AnalyticsView
+Bar
 BuildingSetlistView
 ChartChord
 ChartSection

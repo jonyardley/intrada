@@ -110,6 +110,7 @@ pub(super) fn move_to_next_segment(
         started_at: now,
         allowance_secs: next.planned_secs.saturating_sub(clock.taken_from_next_secs),
         taken_from_next_secs: 0,
+        left_out_secs: 0,
     });
     model.last_error = None;
     let SessionStatus::Active(ref active) = model.session_status else {

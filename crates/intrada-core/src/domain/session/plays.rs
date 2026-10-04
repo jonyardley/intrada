@@ -36,6 +36,7 @@ pub(super) fn first_segment_clock(
         started_at: now,
         allowance_secs: first.planned_secs,
         taken_from_next_secs: 0,
+        left_out_secs: 0,
     })
 }
 
@@ -51,9 +52,8 @@ pub(super) fn close_open_play(
     close_play(entry, now, reading, false)
 }
 
-/// `stamped` keeps the seconds the sheet's stamp wrote: after a resume the
-/// play's clock is re-anchored, and recounting would take left-out time off
-/// a second time.
+/// `stamped` keeps the sheet's seconds: recounting on a resumed clock would
+/// take left-out time off twice (#2306).
 pub(super) fn close_play(
     entry: &mut SetlistEntry,
     now: DateTime<Utc>,
@@ -335,7 +335,7 @@ pub(super) fn entry_for_plan_mut<'a>(
 
 /// The plays tile the item from its start, so their seconds are its time,
 /// and a resume, which backdates the item by that sum, cannot skew it.
-pub(super) fn item_seconds(entry: &SetlistEntry) -> u64 {
+pub(crate) fn item_seconds(entry: &SetlistEntry) -> u64 {
     entry
         .plays
         .iter()

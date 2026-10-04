@@ -300,9 +300,8 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
     }
 }
 
-/// Left-out time on the open play since `from`, which only the open play can
-/// still be adding to: closed plays carry theirs in their seconds, and so does
-/// the open play once the sheet's stamp has closed it.
+/// Closed plays carry their left-out time in their seconds; the open play,
+/// until the sheet's stamp closes it, does not.
 fn open_left_out(active: &ActiveSession, from: DateTime<Utc>) -> chrono::Duration {
     let entry = active.current_entry();
     let open = entry.open_play().filter(|_| active.reflection.is_none());
@@ -320,6 +319,13 @@ fn open_left_out(active: &ActiveSession, from: DateTime<Utc>) -> chrono::Duratio
 /// through the closed plays' seconds, so a resume cannot count a gap twice.
 fn shown_item_start(active: &ActiveSession) -> DateTime<Utc> {
     let current = active.current_entry();
+    if let Some(draft) = &active.reflection {
+        let held = i64::try_from(session::item_seconds(current)).unwrap_or(0);
+        return draft
+            .now
+            .checked_sub_signed(chrono::Duration::seconds(held))
+            .unwrap_or(active.current_item_started_at);
+    }
     let Some((open, closed)) = current.plays.split_last() else {
         return active.current_item_started_at;
     };
@@ -345,6 +351,7 @@ fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveReco
             .map(|s| labels.section(&s.section_id).unwrap_or_default());
         let ends_at = clock.started_at
             + chrono::Duration::seconds(i64::from(clock.allowance_secs))
+            + chrono::Duration::seconds(i64::from(clock.left_out_secs))
             + open_left_out(active, clock.started_at);
         let stay_label = next
             .as_ref()

@@ -754,7 +754,7 @@ use plays::{record_rep, record_tempo_change};
 pub(crate) const RETIRED_SESSION_NOTICE: &str =
     "A practice left open before the update couldn't be picked up again.";
 
-pub(crate) use plays::{play_would_survive_drop, standing_taps};
+pub(crate) use plays::{item_seconds, play_would_survive_drop, standing_taps};
 pub(crate) use summary::{save_acknowledged, save_refused};
 
 // ── Event Handler ──────────────────────────────────────────────────────

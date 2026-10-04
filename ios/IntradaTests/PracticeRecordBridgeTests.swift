@@ -110,6 +110,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertFalse(sheet.asksIntention)
     let felt: [FeltChoiceView] = sheet.feltChoices
     XCTAssertEqual(felt.map(\.label), ["Easy", "Effortful", "Tense"])
+    XCTAssertEqual(felt.map(\.felt), [Felt.easy, Felt.effortful, Felt.tense])
     let obstacles: [ObstacleChoiceView] = sheet.obstacleChoices
     XCTAssertEqual(obstacles.first?.obstacle, Obstacle.notes)
 
@@ -173,7 +174,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
       intentionMet: .partly, felt: .effortful, gotInTheWay: [.fingering, .tone],
       notePoints: [point])
     let clock = SegmentClock(
-      index: 0, startedAt: at(0), allowanceSecs: 720, takenFromNextSecs: 120)
+      index: 0, startedAt: at(0), allowanceSecs: 720, takenFromNextSecs: 120, leftOutSecs: 45)
     let blob = ActiveSession(
       id: "v7", entries: [entry], currentIndex: 0, currentItemStartedAt: at(0),
       sessionStartedAt: at(0), reflection: nil, segment: clock)
@@ -203,5 +204,6 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(back.plays.first?.away.last?.leftAt, at(700))
     XCTAssertEqual(saved.segment?.allowanceSecs, 720)
     XCTAssertEqual(saved.segment?.takenFromNextSecs, 120)
+    XCTAssertEqual(saved.segment?.leftOutSecs, 45)
   }
 }

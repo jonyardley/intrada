@@ -134,6 +134,9 @@ pub struct SegmentClock {
     pub allowance_secs: u32,
     /// What Stay has borrowed from the next segment so far.
     pub taken_from_next_secs: u32,
+    /// Left out on plays this segment has already closed, kept here because a
+    /// resume moves the timestamps it was read from.
+    pub left_out_secs: u32,
 }
 
 /// A screen lock for a few seconds is not time away.
@@ -164,7 +167,7 @@ pub(crate) fn rebalance(
     let min = validation::MIN_PLANNED_DURATION_SECS;
     if segments
         .iter()
-        .any(|s| s.planned_secs > planned || (s.planned_secs > 0 && s.planned_secs < min))
+        .any(|s| s.planned_secs > 0 && s.planned_secs < min)
     {
         return Err(refuse());
     }

@@ -963,6 +963,7 @@ fn every_field_set() -> ActiveSession {
             started_at: t(600),
             allowance_secs: 480,
             taken_from_next_secs: 0,
+            left_out_secs: 90,
         }),
     }
 }
@@ -1336,4 +1337,87 @@ fn a_gap_inside_the_stamped_time_is_not_taken_twice_after_a_resume() {
 
     assert_eq!(view.current_item_started_at, t(260).to_rfc3339());
     assert_eq!(entries(&fresh)[0].plays[0].seconds, 1000);
+}
+
+#[test]
+fn the_sheet_holds_the_item_at_its_time_less_what_was_left_out() {
+    let mut m = practising_q();
+    away(&mut m, 300, 900);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    let before = active_view(&m).current_item_started_at;
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(1200),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert_eq!(
+        (before, active_view(&m).current_item_started_at),
+        (t(600).to_rfc3339(), t(600).to_rfc3339())
+    );
+}
+
+#[test]
+fn a_segment_end_keeps_a_gap_left_out_before_a_switch() {
+    let mut m = practising_a_then_b();
+    away(&mut m, 60, 420);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    let id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SwitchPlay {
+            entry_id: id,
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+            now: t(500),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let clock = active_view(&m).record.segment.expect("segment clock");
+    assert_eq!(clock.ends_at, t(960).to_rfc3339());
+}
+
+#[test]
+fn a_gap_from_before_a_resume_mid_play_is_not_taken_off() {
+    let mut m = practising_q();
+    away(&mut m, 300, 900);
+    send(&mut m, SessionEvent::LeaveAwayOut);
+    let saved = active(&m).clone();
+    let mut fresh = model();
+    send(
+        &mut fresh,
+        SessionEvent::RecoverSession {
+            session: saved,
+            now: t(2000),
+        },
+    );
+    send(
+        &mut fresh,
+        SessionEvent::NextItem {
+            now: t(2100),
+            next_item_started_at: t(2100),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert_eq!(entries(&fresh)[0].plays[0].seconds, 100);
+}
+
+#[test]
+fn a_span_confirmed_twice_in_a_draft_is_kept_once() {
+    let note = "rushed in bar 12";
+    let m = sheet_open_on(
+        note,
+        ReflectionAnswers {
+            note_points: vec![span_of(note, "bar 12"), span_of(note, "bar 12")],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
 }

@@ -198,6 +198,12 @@ pub(super) fn switch_play(
     };
 
     let stamp = close_open_play(entry, now, Some(&reading));
+    if let (Some(clock), Some(closed)) = (active.segment.as_mut(), entry.open_play()) {
+        let gap = left_out_secs(&closed.away, closed.started_at.max(clock.started_at), now);
+        clock.left_out_secs = clock
+            .left_out_secs
+            .saturating_add(u32::try_from(gap).unwrap_or(u32::MAX));
+    }
     let rep_target = entry.planned_rep_target;
     entry.plays.push(Play::opened(way, rep_target, now));
 
@@ -318,9 +324,8 @@ pub(super) fn update_reflection_draft(
     persist_active(active)
 }
 
-/// An edit to the note moves its points, and only the core can read them
-/// again, so a confirmed span the note no longer offers is dropped, not
-/// refused: a refusal would leave the crash-recovery copy stale.
+/// A note edit moves its points: a span no longer offered is dropped, since
+/// refusing would leave the crash-recovery copy stale (#2137).
 fn keep_offered_points(answers: &mut ReflectionAnswers, sections: &[(&str, &str)]) {
     let offered: Vec<NoteSpan> = note_offers(&answers.note, sections)
         .into_iter()
