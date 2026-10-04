@@ -142,7 +142,7 @@ struct PracticeSessionDetailScreen: View {
           }
         }
         .padding(.top, 2)
-      } else if let play = entry.plays.first, play.variationLabel != nil {
+      } else if let play = entry.plays.first, play.label != nil {
         // A single variation still gets named (#1785), in the same style as
         // the multi-variation lines above rather than a one-off treatment.
         Text(singleVariationLine(play))
@@ -171,14 +171,14 @@ struct PracticeSessionDetailScreen: View {
       // With several variations each gets its own line below, so the entry
       // line stays what the item was and how long it took (#1739).
       var parts = [entry.itemType.label, entry.durationDisplay]
-      if entry.plays.count == 1, entry.plays[0].variationLabel == nil {
+      if entry.plays.count == 1, entry.plays[0].label == nil {
         parts.append(contentsOf: entry.plays[0].metaParts.dropFirst())
       }
       return parts.joined(separator: " · ")
     }
   }
 
-  private func playLine(_ play: VariationPlayView) -> String {
+  private func playLine(_ play: PlayView) -> String {
     var parts = [play.displayLabel]
     parts.append(contentsOf: play.metaParts)
     if let score = play.score { parts.append("marked \(score)") }
@@ -187,7 +187,7 @@ struct PracticeSessionDetailScreen: View {
 
   /// The single-variation line's copy (#1785): the key plus its facts, minus
   /// the score, which the ring beside it already shows.
-  private func singleVariationLine(_ play: VariationPlayView) -> String {
+  private func singleVariationLine(_ play: PlayView) -> String {
     var parts = [play.displayLabel]
     parts.append(contentsOf: play.metaParts.dropFirst())
     return parts.joined(separator: " · ")
@@ -197,7 +197,7 @@ struct PracticeSessionDetailScreen: View {
     var parts = [entry.itemTitle, entryMeta(entry)]
     if entry.plays.count > 1 {
       parts.append(contentsOf: entry.plays.map(playLine))
-    } else if let play = entry.plays.first, play.variationLabel != nil {
+    } else if let play = entry.plays.first, play.label != nil {
       parts.append(singleVariationLine(play))
     }
     if entry.status == .completed, let score = entry.scoreSummary {

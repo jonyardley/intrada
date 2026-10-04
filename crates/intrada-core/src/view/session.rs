@@ -4,13 +4,12 @@ use crate::analytics::{LocalClock, ScoreChange};
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    ActiveSession, EntryStatus, PracticeSession, SetlistEntry, SummarySession, VariationPlay,
+    ActiveSession, EntryStatus, Play, PracticeSession, SetlistEntry, SummarySession,
 };
-use crate::domain::variant::ladder_is_all_keys;
+use crate::domain::variation::Variation;
 use crate::model::{
-    saved_mark_caption, ActiveSessionView, ItemPracticeSummary, PickerVariationView,
-    PracticeSessionView, ReflectionView, SetlistBlockView, SetlistEntryView, SummaryView,
-    VariantView, VariationPlayView,
+    ActiveSessionView, ItemPracticeSummary, PickerVariationView, PlayView, PracticeSessionView,
+    ReflectionView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -63,36 +62,104 @@ pub fn format_duration_summary(secs: u64) -> String {
     }
 }
 
-/// Every variation label in the library, tombstoned ones included. A session
-/// practised on a variation that has since been deleted still has to say what
-/// it was, which is what the tombstone exists for (#1739).
-pub type VariationLabels<'a> = HashMap<&'a str, &'a str>;
-
-pub fn variation_labels(items: &[Item]) -> VariationLabels<'_> {
-    items
-        .iter()
-        .flat_map(|i| i.variants.iter())
-        .map(|v| (v.id.as_str(), v.label.as_str()))
-        .collect()
+/// Every variation and section name in the library, tombstoned ones
+/// included. A play on one since deleted still has to say what it was, which
+/// is what the tombstone exists for (#1739).
+pub struct PlayLabels<'a> {
+    variations: HashMap<&'a str, &'a str>,
+    sections: HashMap<&'a str, String>,
 }
 
-pub fn play_to_view(
-    play: &VariationPlay,
-    entry: &SetlistEntry,
-    labels: &VariationLabels,
-) -> VariationPlayView {
-    VariationPlayView {
+pub fn play_labels<'a>(items: &'a [Item], variations: &'a [Variation]) -> PlayLabels<'a> {
+    PlayLabels {
+        variations: variations
+            .iter()
+            .map(|v| (v.id.as_str(), v.label.as_str()))
+            .collect(),
+        sections: items
+            .iter()
+            .flat_map(|i| i.sections.iter())
+            .map(|s| (s.id.as_str(), s.label()))
+            .collect(),
+    }
+}
+
+#[cfg(test)]
+impl<'a> PlayLabels<'a> {
+    pub(crate) fn new() -> Self {
+        Self {
+            variations: HashMap::new(),
+            sections: HashMap::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl<'a> FromIterator<(&'a str, &'a str)> for PlayLabels<'a> {
+    fn from_iter<I: IntoIterator<Item = (&'a str, &'a str)>>(pairs: I) -> Self {
+        Self {
+            variations: pairs.into_iter().collect(),
+            sections: HashMap::new(),
+        }
+    }
+}
+
+impl PlayLabels<'_> {
+    fn variation(&self, id: &str) -> Option<&str> {
+        self.variations.get(id).copied()
+    }
+
+    /// The parts of a way of playing, in reading order; empty for the whole
+    /// item, plain, in the written key.
+    fn parts(
+        &self,
+        section_ids: &[&str],
+        key: Option<&crate::domain::key::Key>,
+        variation_ids: &[String],
+    ) -> Vec<String> {
+        section_ids
+            .iter()
+            .filter_map(|id| self.sections.get(id).cloned())
+            .chain(key.map(crate::domain::key::Key::label))
+            .chain(
+                variation_ids
+                    .iter()
+                    .filter_map(|id| self.variation(id).map(str::to_string)),
+            )
+            .collect()
+    }
+
+    fn joined(parts: Vec<String>) -> Option<String> {
+        (!parts.is_empty()).then(|| parts.join(" · "))
+    }
+
+    pub fn play(&self, play: &Play) -> Option<String> {
+        let sections: Vec<&str> = play.section_id.as_deref().into_iter().collect();
+        Self::joined(self.parts(&sections, play.key.as_ref(), &play.variation_ids))
+    }
+
+    pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
+        let sections: Vec<&str> = entry
+            .planned_section_ids
+            .iter()
+            .map(String::as_str)
+            .collect();
+        Self::joined(self.parts(&sections, None, &entry.planned_variation_ids))
+    }
+}
+
+pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> PlayView {
+    PlayView {
         id: play.id.clone(),
-        variation_id: play.variation_id.clone(),
-        variation_label: play
-            .variation_id
-            .as_deref()
-            .and_then(|id| labels.get(id).map(|l| (*l).to_string())),
+        section_id: play.section_id.clone(),
+        key: play.key,
+        variation_ids: play.variation_ids.clone(),
+        label: labels.play(play),
         seconds: play.seconds,
         duration_display: format_duration_display(play.seconds),
         rep_target: play.rep_target,
         rep_count: play.rep_count,
-        rep_target_reached: play.rep_target_reached,
+        rep_target_reached: target_reached(play),
         rep_history: play.rep_history.clone(),
         achieved_tempo: play.achieved_tempo,
         click_pattern: play.click_pattern.clone(),
@@ -106,7 +173,11 @@ pub fn play_to_view(
     }
 }
 
-pub fn entry_to_view(entry: &SetlistEntry, labels: &VariationLabels) -> SetlistEntryView {
+fn target_reached(play: &Play) -> Option<bool> {
+    Some(play.rep_count? >= play.rep_target?)
+}
+
+pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryView {
     SetlistEntryView {
         id: entry.id.clone(),
         item_id: entry.item_id.clone(),
@@ -122,7 +193,9 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &VariationLabels) -> SetlistE
             .planned_duration_secs
             .map(|secs| format_planned_duration(u64::from(secs))),
         group_id: entry.group_id.clone(),
-        planned_variation_id: entry.planned_variation_id.clone(),
+        planned_section_ids: entry.planned_section_ids.clone(),
+        planned_variation_ids: entry.planned_variation_ids.clone(),
+        planned_label: labels.plan(entry),
         planned_rep_target: entry.planned_rep_target,
         plays: entry
             .plays
@@ -189,8 +262,8 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
 pub fn build_active_session_view(
     active: &ActiveSession,
     item_index: &HashMap<&str, &Item>,
-    labels: &VariationLabels,
-    current_variations: &[VariantView],
+    labels: &PlayLabels,
+    current_variations: &[VariationView],
     defaults: &PracticeDefaults,
 ) -> ActiveSessionView {
     let safe_index = active.current_index.min(active.entries.len() - 1);
@@ -238,15 +311,15 @@ pub fn build_active_session_view(
         // opens the next one (#1739 decision 6).
         current_rep_target: open.and_then(|p| p.rep_target),
         current_rep_count: open.and_then(|p| p.rep_count),
-        current_rep_target_reached: open.and_then(|p| p.rep_target_reached),
+        current_rep_target_reached: open.and_then(target_reached),
         current_rep_history: open.and_then(|p| p.rep_history.clone()),
         current_rep_slots: open
             .and_then(|p| p.rep_target)
             .unwrap_or(defaults.rep_target),
-        current_variation_id: open.and_then(|p| p.variation_id.clone()),
-        current_variation_label: open
-            .and_then(|p| p.variation_id.as_deref())
-            .and_then(|id| labels.get(id).map(|l| (*l).to_string())),
+        current_section_id: open.and_then(|p| p.section_id.clone()),
+        current_key: open.and_then(|p| p.key),
+        current_variation_ids: open.map(|p| p.variation_ids.clone()).unwrap_or_default(),
+        current_play_label: open.and_then(|p| labels.play(p)),
         current_planned_duration_secs: current.planned_duration_secs,
         next_item_title: active
             .entries
@@ -270,6 +343,15 @@ pub fn build_active_session_view(
         click_seed_sounds_target,
         click_seed_presets: click_seed_metre.click_presets(),
         click_seed_metre,
+        current_reps_past_target: open
+            .and_then(|p| Some(p.rep_count?.saturating_sub(p.rep_target?)))
+            .unwrap_or(0),
+        current_can_undo: open
+            .and_then(|p| p.rep_history.as_deref())
+            .is_some_and(|h| {
+                h.len() < crate::validation::MAX_REP_HISTORY
+                    && !crate::domain::session::standing_taps(h).is_empty()
+            }),
     }
 }
 
@@ -277,18 +359,19 @@ pub fn build_active_session_view(
 /// the builder's entry settings so the two sheets cannot disagree.
 pub(crate) fn picker_variations(
     entry: &SetlistEntry,
-    variants: &[VariantView],
+    variations: &[VariationView],
 ) -> Vec<PickerVariationView> {
-    let playing_now = entry.open_play().and_then(|p| p.variation_id.as_deref());
-    variants
+    let on = |p: &Play, id: &str| p.variation_ids.iter().any(|v| v == id);
+    variations
         .iter()
         .map(|v| {
-            let played: Vec<&VariationPlay> = entry
+            let played: Vec<&Play> = entry
                 .plays
                 .iter()
-                .filter(|p| p.variation_id.as_deref() == Some(v.id.as_str()) && !p.is_incidental())
+                .filter(|p| on(p, &v.id) && !p.is_incidental())
                 .collect();
-            let caption = if playing_now == Some(v.id.as_str()) {
+            let playing_now = entry.open_play().is_some_and(|p| on(p, &v.id));
+            let caption = if playing_now {
                 "Playing now".to_string()
             } else if !played.is_empty() {
                 let played_secs: u64 = played.iter().map(|p| p.seconds).sum();
@@ -297,13 +380,12 @@ pub(crate) fn picker_variations(
                     format_duration_display(played_secs)
                 )
             } else {
-                saved_mark_caption(v.latest_score, v.is_solid)
+                v.caption.clone()
             };
             PickerVariationView {
                 id: v.id.clone(),
                 label: v.label.clone(),
                 caption,
-                is_solid: v.is_solid,
             }
         })
         .collect()
@@ -313,7 +395,7 @@ pub(crate) fn picker_variations(
 /// not include this one yet (#2076): the top mover is what this session moved.
 pub fn build_summary_view(
     summary: &SummarySession,
-    labels: &VariationLabels,
+    labels: &PlayLabels,
     before: &HashMap<String, ItemPracticeSummary>,
 ) -> SummaryView {
     let total_secs: u64 = summary.entries.iter().map(|e| e.duration_secs).sum();
@@ -367,7 +449,7 @@ fn session_changes(
 
 pub fn session_to_view(
     session: &PracticeSession,
-    labels: &VariationLabels,
+    labels: &PlayLabels,
     clock: LocalClock,
 ) -> PracticeSessionView {
     PracticeSessionView {
@@ -393,15 +475,15 @@ pub fn session_to_view(
 /// width, so it is a proxy for what fits on the card rather than a guarantee.
 const PLAYED_SUMMARY_MAX_CHARS: usize = 64;
 
-/// The most variation labels an entry names in full before collapsing to a
-/// count ("Major scales in 7 keys"), as mocked for #1785.
+/// The most ways an entry names in full before collapsing to a count ("Major
+/// scales in 7 keys"), as mocked for #1785.
 const PLAYED_SUMMARY_SPELL_OUT_LIMIT: usize = 3;
 
 /// The card's "what was played" line (#1785): every completed entry with
-/// something genuinely practised on it, pieces named plainly and an
-/// exercise's variations named when there are few, cut off with "and N more"
-/// rather than a mid-word ellipsis when the whole line still will not fit.
-fn format_played_summary(entries: &[SetlistEntry], labels: &VariationLabels) -> String {
+/// something genuinely practised on it, named plainly or with the ways it was
+/// played when there are few, cut off with "and N more" rather than a
+/// mid-word ellipsis when the whole line still will not fit.
+fn format_played_summary(entries: &[SetlistEntry], labels: &PlayLabels) -> String {
     let fragments: Vec<String> = entries
         .iter()
         .filter(|entry| entry.status == EntryStatus::Completed)
@@ -413,44 +495,33 @@ fn format_played_summary(entries: &[SetlistEntry], labels: &VariationLabels) -> 
 /// `None` when every play on the entry is incidental (#1758): a stray tap
 /// that survived only because an entry always keeps at least one play must
 /// not read as something the musician set out to practise.
-fn entry_played_fragment(entry: &SetlistEntry, labels: &VariationLabels) -> Option<String> {
-    let played: Vec<&VariationPlay> = entry.plays.iter().filter(|p| !p.is_incidental()).collect();
+fn entry_played_fragment(entry: &SetlistEntry, labels: &PlayLabels) -> Option<String> {
+    let played: Vec<&Play> = entry.plays.iter().filter(|p| !p.is_incidental()).collect();
     if played.is_empty() {
         return None;
     }
-    let variation_labels = ordered_distinct_variation_labels(&played, labels);
-    Some(match variation_labels.len() {
+    let ways = ordered_distinct_play_labels(&played, labels);
+    Some(match ways.len() {
         0 => entry.item_title.clone(),
         n if n <= PLAYED_SUMMARY_SPELL_OUT_LIMIT => {
-            format!(
-                "{} in {}",
-                entry.item_title,
-                join_with_and(&variation_labels)
-            )
+            format!("{} in {}", entry.item_title, join_with_and(&ways))
         }
         n => {
-            let noun = if ladder_is_all_keys(variation_labels.iter().map(String::as_str)) {
-                "keys"
-            } else {
-                "variations"
-            };
+            let only_keys = played.iter().all(|p| p.is_plain_run_through());
+            let noun = if only_keys { "keys" } else { "variations" };
             format!("{} in {n} {noun}", entry.item_title)
         }
     })
 }
 
-/// A play's variation, first-seen order, deduplicated: switching back to a
-/// key already played (rare, but possible) must not repeat it in the line.
-fn ordered_distinct_variation_labels(
-    plays: &[&VariationPlay],
-    labels: &VariationLabels,
-) -> Vec<String> {
+/// Each play's label, first-seen order, deduplicated: switching back to a
+/// key already played must not repeat it in the line.
+fn ordered_distinct_play_labels(plays: &[&Play], labels: &PlayLabels) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     plays
         .iter()
-        .filter_map(|play| play.variation_id.as_deref().and_then(|id| labels.get(id)))
-        .filter(|label| seen.insert(*label))
-        .map(|label| (*label).to_string())
+        .filter_map(|play| labels.play(play))
+        .filter(|label| seen.insert(label.clone()))
         .collect()
 }
 
@@ -563,7 +634,6 @@ mod tests {
             kind,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -572,7 +642,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -596,7 +667,7 @@ mod tests {
     fn entry_to_view_formats_duration() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
         entry.duration_secs = 125;
-        let view = entry_to_view(&entry, &VariationLabels::new());
+        let view = entry_to_view(&entry, &PlayLabels::new());
         assert_eq!(view.duration_display, "2m 5s");
     }
 
@@ -604,7 +675,7 @@ mod tests {
     fn entry_to_view_planned_duration_whole_minutes() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
         entry.planned_duration_secs = Some(300);
-        let view = entry_to_view(&entry, &VariationLabels::new());
+        let view = entry_to_view(&entry, &PlayLabels::new());
         assert_eq!(view.planned_duration_display.as_deref(), Some("5 min"));
     }
 
@@ -612,16 +683,108 @@ mod tests {
     fn entry_to_view_planned_duration_partial_minutes() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
         entry.planned_duration_secs = Some(90);
-        let view = entry_to_view(&entry, &VariationLabels::new());
+        let view = entry_to_view(&entry, &PlayLabels::new());
         assert_eq!(view.planned_duration_display.as_deref(), Some("1m 30s"));
     }
 
     #[test]
-    fn entry_to_view_carries_planned_variation_id() {
+    fn entry_to_view_carries_the_plan_and_names_it() {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
-        entry.planned_variation_id = Some("variant-1".to_string());
-        let view = entry_to_view(&entry, &VariationLabels::new());
-        assert_eq!(view.planned_variation_id.as_deref(), Some("variant-1"));
+        entry.planned_variation_ids = vec!["v-1".to_string(), "v-2".to_string()];
+        let labels: PlayLabels = [("v-1", "Hands separately"), ("v-2", "Slow")]
+            .into_iter()
+            .collect();
+        let view = entry_to_view(&entry, &labels);
+        assert_eq!(view.planned_variation_ids, entry.planned_variation_ids);
+        assert_eq!(
+            view.planned_label.as_deref(),
+            Some("Hands separately · Slow")
+        );
+        let unplanned = make_entry("e2", "i1", "Scale", 0);
+        assert_eq!(entry_to_view(&unplanned, &labels).planned_label, None);
+    }
+
+    /// Section first, then the key, then the variations, as a musician says
+    /// it; a section or variation deleted since still reads (#2246).
+    #[test]
+    fn a_play_label_names_the_section_the_key_and_the_variations() {
+        let mut item = make_item("i1", "Nocturne", ItemKind::Piece);
+        item.sections.push(crate::domain::section::ItemSection {
+            id: "s-1".to_string(),
+            name: "Coda".to_string(),
+            bars: None,
+            kind: crate::domain::section::SectionKind::Form,
+            target_bpm: None,
+            position: 0,
+            updated_at: Utc::now(),
+            deleted_at: Some(Utc::now()),
+        });
+        let library = vec![crate::domain::variation::Variation {
+            id: "v-1".to_string(),
+            label: "Dotted rhythms".to_string(),
+            updated_at: Utc::now(),
+            deleted_at: Some(Utc::now()),
+        }];
+        let items = [item];
+        let labels = play_labels(&items, &library);
+        let play = Play {
+            section_id: Some("s-1".to_string()),
+            key: crate::domain::key::Key::parse("Eb major"),
+            variation_ids: vec!["v-1".to_string()],
+            ..Play::fixture()
+        };
+
+        assert_eq!(
+            labels.play(&play).as_deref(),
+            Some("Coda · E\u{266d} major · Dotted rhythms")
+        );
+        assert_eq!(labels.play(&Play::fixture()), None);
+    }
+
+    /// The counter shows going past the target and whether undo has
+    /// anything to reverse; the core works both out (#2107).
+    #[test]
+    fn active_view_says_how_far_past_the_target_and_whether_undo_can_act() {
+        use crate::domain::session::RepAction;
+        let tap = |action| RepEvent {
+            action,
+            at: Utc::now(),
+            tempo: None,
+            click_sounding: None,
+        };
+        let view_of = |count: u8, history: Vec<RepEvent>| {
+            let play = Play {
+                rep_target: Some(3),
+                rep_count: Some(count),
+                rep_history: Some(history),
+                ..Play::fixture()
+            };
+            build_active_session_view(
+                &session_on(vec![play]),
+                &HashMap::new(),
+                &PlayLabels::new(),
+                &[],
+                &PracticeDefaults::default(),
+            )
+        };
+
+        let past = view_of(5, vec![tap(RepAction::Success); 5]);
+        assert_eq!(past.current_reps_past_target, 2);
+        assert_eq!(past.current_rep_target_reached, Some(true));
+        assert!(past.current_can_undo);
+
+        let under = view_of(1, vec![tap(RepAction::Success)]);
+        assert_eq!(under.current_reps_past_target, 0);
+        assert_eq!(under.current_rep_target_reached, Some(false));
+
+        let undone = view_of(0, vec![tap(RepAction::Missed), tap(RepAction::Undo)]);
+        assert!(!undone.current_can_undo);
+
+        let full = view_of(
+            255,
+            vec![tap(RepAction::Success); crate::validation::MAX_REP_HISTORY],
+        );
+        assert!(!full.current_can_undo, "a full history takes no undo");
     }
 
     // ── build_active_session_view ──────────────────────────────────────
@@ -654,7 +817,7 @@ mod tests {
             build_active_session_view(
                 &active,
                 &items,
-                &VariationLabels::new(),
+                &PlayLabels::new(),
                 &[],
                 &PracticeDefaults::default()
             )
@@ -669,7 +832,7 @@ mod tests {
             build_active_session_view(
                 &second,
                 &items,
-                &VariationLabels::new(),
+                &PlayLabels::new(),
                 &[],
                 &PracticeDefaults::default()
             )
@@ -709,7 +872,7 @@ mod tests {
             build_active_session_view(
                 active,
                 &items,
-                &VariationLabels::new(),
+                &PlayLabels::new(),
                 &[],
                 &PracticeDefaults::default(),
             )
@@ -785,7 +948,7 @@ mod tests {
                 click,
                 ..PracticeDefaults::default()
             };
-            build_active_session_view(&at, &items, &VariationLabels::new(), &[], &defaults)
+            build_active_session_view(&at, &items, &PlayLabels::new(), &[], &defaults)
                 .current_click_sounding
         };
         assert_eq!(sounding(0, ClickStart::TwoAndFour), 0b111_1111);
@@ -800,9 +963,9 @@ mod tests {
     fn active_session_view_draws_the_builder_target_or_the_musicians_default() {
         let mut targeted = make_entry("e1", "i1", "Scale", 0);
         targeted.planned_rep_target = Some(7);
-        targeted.plays = vec![VariationPlay {
+        targeted.plays = vec![Play {
             rep_target: Some(7),
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         }];
         let active = ActiveSession {
             id: "as1".to_string(),
@@ -817,14 +980,8 @@ mod tests {
             ..PracticeDefaults::default()
         };
         assert_eq!(
-            build_active_session_view(
-                &active,
-                &HashMap::new(),
-                &VariationLabels::new(),
-                &[],
-                &four
-            )
-            .current_rep_slots,
+            build_active_session_view(&active, &HashMap::new(), &PlayLabels::new(), &[], &four)
+                .current_rep_slots,
             7
         );
 
@@ -832,13 +989,8 @@ mod tests {
             current_index: 1,
             ..active
         };
-        let view = build_active_session_view(
-            &untouched,
-            &HashMap::new(),
-            &VariationLabels::new(),
-            &[],
-            &four,
-        );
+        let view =
+            build_active_session_view(&untouched, &HashMap::new(), &PlayLabels::new(), &[], &four);
         assert_eq!(view.current_rep_target, None);
         assert_eq!(view.current_rep_slots, 4);
     }
@@ -859,7 +1011,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -882,7 +1034,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -904,7 +1056,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -930,7 +1082,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -960,7 +1112,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -986,7 +1138,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -1012,7 +1164,6 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: Some(crate::domain::types::Tempo {
                 marking: Some("Allegro".to_string()),
                 bpm: Some(132),
@@ -1024,7 +1175,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -1033,7 +1185,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &item_index,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -1054,7 +1206,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -1087,7 +1239,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &item_index,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -1112,7 +1264,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &item_index,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -1121,7 +1273,7 @@ mod tests {
 
     // ── picker captions (#1784) ────────────────────────────────────────
 
-    fn session_on(plays: Vec<VariationPlay>) -> ActiveSession {
+    fn session_on(plays: Vec<Play>) -> ActiveSession {
         let mut entry = make_entry("e1", "i1", "Scale", 0);
         entry.plays = plays;
         ActiveSession {
@@ -1134,12 +1286,12 @@ mod tests {
         }
     }
 
-    fn play_on(id: &str, variation: &str, seconds: u64) -> VariationPlay {
-        VariationPlay {
+    fn play_on(id: &str, variation: &str, seconds: u64) -> Play {
+        Play {
             id: id.to_string(),
-            variation_id: Some(variation.to_string()),
+            variation_ids: vec![variation.to_string()],
             seconds,
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         }
     }
 
@@ -1156,13 +1308,13 @@ mod tests {
     fn picker_caption_reads_a_variation_played_earlier_in_the_item() {
         let active = session_on(vec![play_on("p1", "c", 250), play_on("p2", "g", 0)]);
         let variants = [
-            VariantView::fixture("c", "C", 0),
-            VariantView::fixture("g", "G", 1),
+            VariationView::fixture("c", "C"),
+            VariationView::fixture("g", "G"),
         ];
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1182,14 +1334,14 @@ mod tests {
             play_on("p4", "d", 0),
         ]);
         let variants = [
-            VariantView::fixture("c", "C", 0),
-            VariantView::fixture("g", "G", 1),
-            VariantView::fixture("d", "D", 2),
+            VariationView::fixture("c", "C"),
+            VariationView::fixture("g", "G"),
+            VariationView::fixture("d", "D"),
         ];
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1209,13 +1361,13 @@ mod tests {
     fn picker_caption_ignores_a_stray_tap() {
         let active = session_on(vec![play_on("p1", "c", 3), play_on("p2", "g", 0)]);
         let variants = [
-            VariantView::fixture("c", "C", 0),
-            VariantView::fixture("g", "G", 1),
+            VariationView::fixture("c", "C"),
+            VariationView::fixture("g", "G"),
         ];
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1224,29 +1376,23 @@ mod tests {
 
     #[test]
     fn picker_caption_falls_back_to_the_saved_mark_or_not_yet_played() {
-        let active = session_on(vec![VariationPlay::fixture()]);
+        let active = session_on(vec![Play::fixture()]);
         let variants = [
-            VariantView::fixture("c", "C", 0).scored(8),
-            VariantView::fixture("d", "D", 1).scored(5),
-            VariantView::fixture("e", "E", 2),
+            VariationView::fixture("c", "C").scored(8),
+            VariationView::fixture("d", "D").scored(5),
+            VariationView::fixture("e", "E"),
         ];
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
         assert_eq!(
             captions(&view),
-            vec![
-                ("c", "Solid · 8 of 10"),
-                ("d", "5 of 10"),
-                ("e", "Not yet played")
-            ]
+            vec![("c", "8 of 10"), ("d", "5 of 10"), ("e", "Not yet played")]
         );
-        let solid: Vec<bool> = view.current_variations.iter().map(|v| v.is_solid).collect();
-        assert_eq!(solid, vec![true, false, false]);
     }
 
     /// A mark taken the instant a switch opens the next play stamps at 0
@@ -1254,19 +1400,19 @@ mod tests {
     /// past this session's record and onto the saved mark (#1784).
     #[test]
     fn picker_caption_reads_a_zero_second_scored_play_as_played_this_session() {
-        let scored_at_switch = VariationPlay {
+        let scored_at_switch = Play {
             score: Some(7),
             ..play_on("p1", "c", 0)
         };
         let active = session_on(vec![scored_at_switch, play_on("p2", "g", 0)]);
         let variants = [
-            VariantView::fixture("c", "C", 0).scored(9),
-            VariantView::fixture("g", "G", 1),
+            VariationView::fixture("c", "C").scored(9),
+            VariationView::fixture("g", "G"),
         ];
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1278,7 +1424,7 @@ mod tests {
     #[test]
     fn active_session_view_round_trips_on_ffi_bincode_wire() {
         let active = session_on(vec![play_on("p1", "c", 250), play_on("p2", "g", 0)]);
-        let variants = [VariantView::fixture("c", "C", 0)];
+        let variants = [VariationView::fixture("c", "C")];
         let item = Item {
             notes: Some("Watch the thumb crossing".to_string()),
             ..make_item("i1", "Scale", ItemKind::Exercise)
@@ -1287,7 +1433,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &item_index,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1316,7 +1462,7 @@ mod tests {
             session_notes: None,
             session_score: None,
         };
-        let view = build_summary_view(&summary, &VariationLabels::new(), &HashMap::new());
+        let view = build_summary_view(&summary, &PlayLabels::new(), &HashMap::new());
         assert_eq!(view.total_duration_display, "2m 30s");
     }
 
@@ -1343,9 +1489,9 @@ mod tests {
         SetlistEntry {
             plays: marks
                 .iter()
-                .map(|m| VariationPlay {
+                .map(|m| Play {
                     score: Some(*m),
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 })
                 .collect(),
             ..entry_with(id, item_id, title, EntryStatus::Completed)
@@ -1395,7 +1541,7 @@ mod tests {
                 .collect();
             let view = build_summary_view(
                 &summary_of(entries, completion.clone()),
-                &VariationLabels::new(),
+                &PlayLabels::new(),
                 &HashMap::new(),
             );
             assert_eq!(view.completed_count, *expected, "{statuses:?}");
@@ -1408,7 +1554,7 @@ mod tests {
         let top = |entries: Vec<SetlistEntry>, before: &[(&str, u8)]| {
             build_summary_view(
                 &summary_of(entries, CompletionStatus::Completed),
-                &VariationLabels::new(),
+                &PlayLabels::new(),
                 &marked_before(before),
             )
             .top_mover
@@ -1489,11 +1635,7 @@ mod tests {
             vec![scored("e1", "i1", "Scales", &[5])],
             CompletionStatus::EndedEarly,
         );
-        let view = build_summary_view(
-            &summary,
-            &VariationLabels::new(),
-            &marked_before(&[("i1", 3)]),
-        );
+        let view = build_summary_view(&summary, &PlayLabels::new(), &marked_before(&[("i1", 3)]));
         assert_eq!(view.completed_count, 1);
         assert!(view.top_mover.is_some());
         crate::domain::types::assert_round_trips(view);
@@ -1502,8 +1644,8 @@ mod tests {
     #[test]
     fn a_builder_entry_offers_the_variations_the_focus_player_would() {
         let variants = [
-            VariantView::fixture("c", "C", 0).scored(8),
-            VariantView::fixture("g", "G", 1),
+            VariationView::fixture("c", "C").scored(8),
+            VariationView::fixture("g", "G"),
         ];
         let entry = make_entry("e1", "i1", "Scale", 0);
         let active = ActiveSession {
@@ -1517,7 +1659,7 @@ mod tests {
         let player = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &variants,
             &PracticeDefaults::default(),
         );
@@ -1530,7 +1672,7 @@ mod tests {
                 .iter()
                 .map(|v| (v.label.as_str(), v.caption.as_str()))
                 .collect::<Vec<_>>(),
-            vec![("C", "Solid · 8 of 10"), ("G", "Not yet played")]
+            vec![("C", "8 of 10"), ("G", "Not yet played")]
         );
     }
 
@@ -1547,10 +1689,11 @@ mod tests {
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
             session_score: None,
+            capture_version: None,
         };
         let view = session_to_view(
             &session,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             LocalClock::from_now(Utc::now(), 0),
         );
         // Precise (live-timer) form keeps seconds; the summary line drops them.
@@ -1569,7 +1712,7 @@ mod tests {
             session_notes: None,
             session_score: Some(7),
         };
-        let view = build_summary_view(&summary, &VariationLabels::new(), &HashMap::new());
+        let view = build_summary_view(&summary, &PlayLabels::new(), &HashMap::new());
         assert_eq!(view.session_score, Some(7));
     }
 
@@ -1584,10 +1727,11 @@ mod tests {
             total_duration_secs: 60,
             completion_status: CompletionStatus::Completed,
             session_score: Some(5),
+            capture_version: None,
         };
         let view = session_to_view(
             &session,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             LocalClock::from_now(Utc::now(), 0),
         );
         assert_eq!(view.session_score, Some(5));
@@ -1613,7 +1757,6 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: None,
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -1622,7 +1765,8 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
-                variants: vec![],
+                variation_ids: vec![],
+                keys: vec![],
                 sections: vec![],
                 photo_id: None,
                 metre: None,
@@ -1675,22 +1819,26 @@ mod tests {
 
     // ── Plays in the view (#1739) ──────────────────────────────────────
 
-    /// `VariationPlayView` crosses the bincode FFI wire inside every entry
+    /// `PlayView` crosses the bincode FFI wire inside every entry
     /// view; guard it against the #846 silent-drop class.
     #[test]
     fn variation_play_view_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(VariationPlayView {
+        crate::domain::types::assert_round_trips(PlayView {
             id: "p1".to_string(),
-            variation_id: Some("v-c".to_string()),
-            variation_label: Some("C".to_string()),
+            section_id: Some("s-1".to_string()),
+            key: crate::domain::key::Key::parse("Eb major"),
+            variation_ids: vec!["v-c".to_string(), "v-d".to_string()],
+            label: Some("Coda · E\u{266d} major · Hands separately".to_string()),
             seconds: 180,
             duration_display: "3m 0s".to_string(),
             rep_target: Some(10),
             rep_count: Some(4),
             rep_target_reached: Some(false),
             rep_history: Some(vec![RepEvent {
-                action: crate::domain::session::RepAction::Success,
+                action: crate::domain::session::RepAction::Undo,
                 at: Utc::now(),
+                tempo: Some(84),
+                click_sounding: Some(true),
             }]),
             achieved_tempo: Some(84),
             click_pattern: Some(ClickState {
@@ -1711,7 +1859,7 @@ mod tests {
     /// in: a quaver click at 168 stores 84 and reads back as 168 (#1761).
     #[test]
     fn a_play_stamped_by_a_quaver_click_displays_its_tempo_in_quavers() {
-        let play = VariationPlay {
+        let play = Play {
             achieved_tempo: Some(84),
             click_pattern: Some(ClickState {
                 metre: crate::domain::Metre {
@@ -1721,14 +1869,14 @@ mod tests {
                 },
                 sounding: 0b001001,
             }),
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         };
         let entry = SetlistEntry {
             plays: vec![play.clone()],
             ..SetlistEntry::fixture()
         };
 
-        let view = play_to_view(&play, &entry, &VariationLabels::new());
+        let view = play_to_view(&play, &entry, &PlayLabels::new());
 
         assert_eq!(view.achieved_tempo, Some(84));
         assert_eq!(view.tempo_display, Some(168));
@@ -1736,29 +1884,29 @@ mod tests {
 
     #[test]
     fn a_tempo_with_no_click_displays_in_crotchets() {
-        let play = VariationPlay {
+        let play = Play {
             achieved_tempo: Some(96),
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         };
         let entry = SetlistEntry {
             plays: vec![play.clone()],
             ..SetlistEntry::fixture()
         };
 
-        let view = play_to_view(&play, &entry, &VariationLabels::new());
+        let view = play_to_view(&play, &entry, &PlayLabels::new());
 
         assert_eq!(view.tempo_display, Some(96));
     }
 
     #[test]
     fn an_unmeasured_play_has_no_tempo_to_display() {
-        let play = VariationPlay::fixture();
+        let play = Play::fixture();
         let entry = SetlistEntry {
             plays: vec![play.clone()],
             ..SetlistEntry::fixture()
         };
 
-        let view = play_to_view(&play, &entry, &VariationLabels::new());
+        let view = play_to_view(&play, &entry, &PlayLabels::new());
 
         assert_eq!(view.tempo_display, None);
     }
@@ -1767,10 +1915,10 @@ mod tests {
     /// what it was, which is what the tombstone is for.
     #[test]
     fn a_play_resolves_the_label_of_a_deleted_variation() {
-        let labels: VariationLabels = [("v-gone", "E flat")].into_iter().collect();
-        let play = VariationPlay {
-            variation_id: Some("v-gone".to_string()),
-            ..VariationPlay::fixture()
+        let labels: PlayLabels = [("v-gone", "E flat")].into_iter().collect();
+        let play = Play {
+            variation_ids: vec!["v-gone".to_string()],
+            ..Play::fixture()
         };
         let entry = SetlistEntry {
             plays: vec![play.clone()],
@@ -1779,35 +1927,35 @@ mod tests {
 
         let view = play_to_view(&play, &entry, &labels);
 
-        assert_eq!(view.variation_label.as_deref(), Some("E flat"));
+        assert_eq!(view.label.as_deref(), Some("E flat"));
     }
 
     #[test]
     fn an_unattributed_play_has_no_label() {
-        let labels = VariationLabels::new();
-        let play = VariationPlay::fixture();
+        let labels = PlayLabels::new();
+        let play = Play::fixture();
         let entry = SetlistEntry {
             plays: vec![play.clone()],
             ..SetlistEntry::fixture()
         };
         let view = play_to_view(&play, &entry, &labels);
 
-        assert_eq!(view.variation_id, None);
-        assert_eq!(view.variation_label, None);
+        assert!(view.variation_ids.is_empty());
+        assert_eq!(view.label, None);
     }
 
     #[test]
     fn a_stray_tap_views_as_not_markable() {
-        let labels = VariationLabels::new();
-        let opened = VariationPlay {
+        let labels = PlayLabels::new();
+        let opened = Play {
             id: "play-1".to_string(),
             seconds: 60,
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         };
-        let stray_tap = VariationPlay {
+        let stray_tap = Play {
             id: "play-2".to_string(),
             seconds: 2,
-            ..VariationPlay::fixture()
+            ..Play::fixture()
         };
         let entry = SetlistEntry {
             plays: vec![opened.clone(), stray_tap.clone()],
@@ -1820,18 +1968,18 @@ mod tests {
 
     #[test]
     fn entry_to_view_carries_the_plays_and_their_mean() {
-        let labels = VariationLabels::new();
+        let labels = PlayLabels::new();
         let entry = SetlistEntry {
             plays: vec![
-                VariationPlay {
+                Play {
                     id: "p1".to_string(),
                     score: Some(8),
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 },
-                VariationPlay {
+                Play {
                     id: "p2".to_string(),
                     score: Some(5),
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 },
             ],
             ..SetlistEntry::fixture()
@@ -1848,11 +1996,11 @@ mod tests {
     /// A play on a named variation, otherwise identical to the fixture: long
     /// enough (#1785 uses the fixture's default 60 seconds) not to read as
     /// incidental.
-    fn labelled_play(id: &str, variation_id: &str) -> VariationPlay {
-        VariationPlay {
+    fn labelled_play(id: &str, variation_id: &str) -> Play {
+        Play {
             id: id.to_string(),
-            variation_id: Some(variation_id.to_string()),
-            ..VariationPlay::fixture()
+            variation_ids: vec![variation_id.to_string()],
+            ..Play::fixture()
         }
     }
 
@@ -1862,19 +2010,19 @@ mod tests {
             item_title: "Nocturne in E\u{266d}".to_string(),
             item_type: ItemKind::Piece,
             status: EntryStatus::Completed,
-            plays: vec![VariationPlay::fixture()],
+            plays: vec![Play::fixture()],
             ..SetlistEntry::fixture()
         }];
 
         assert_eq!(
-            format_played_summary(&entries, &VariationLabels::new()),
+            format_played_summary(&entries, &PlayLabels::new()),
             "Nocturne in E\u{266d}"
         );
     }
 
     #[test]
     fn played_summary_names_the_only_variation_played() {
-        let labels: VariationLabels = [("v-eb", "E\u{266d} major")].into_iter().collect();
+        let labels: PlayLabels = [("v-eb", "E\u{266d} major")].into_iter().collect();
         let entries = vec![SetlistEntry {
             item_title: "Arpeggios".to_string(),
             item_type: ItemKind::Exercise,
@@ -1891,7 +2039,7 @@ mod tests {
 
     #[test]
     fn played_summary_spells_out_a_few_variations() {
-        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
+        let labels: PlayLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
             .into_iter()
             .collect();
         let entries = vec![SetlistEntry {
@@ -1915,12 +2063,16 @@ mod tests {
     #[test]
     fn played_summary_collapses_many_keys_to_a_count() {
         let keys = ["C", "D", "E", "F", "G", "A", "B"];
-        let labels: VariationLabels = keys.iter().map(|k| (*k, *k)).collect();
         let plays = keys
             .iter()
             .enumerate()
-            .map(|(i, k)| labelled_play(&format!("p{i}"), k))
+            .map(|(i, k)| Play {
+                id: format!("p{i}"),
+                key: crate::domain::key::Key::parse(k),
+                ..Play::fixture()
+            })
             .collect();
+        let labels = PlayLabels::new();
         let entries = vec![SetlistEntry {
             item_title: "Major scales".to_string(),
             item_type: ItemKind::Exercise,
@@ -1944,7 +2096,7 @@ mod tests {
             "2nd inversion",
             "3rd inversion",
         ];
-        let labels: VariationLabels = ids.into_iter().zip(names).collect();
+        let labels: PlayLabels = ids.into_iter().zip(names).collect();
         let plays = ids
             .iter()
             .enumerate()
@@ -1978,13 +2130,13 @@ mod tests {
                 item_title: "Nocturne in E\u{266d}".to_string(),
                 item_type: ItemKind::Piece,
                 status: EntryStatus::Completed,
-                plays: vec![VariationPlay::fixture()],
+                plays: vec![Play::fixture()],
                 ..SetlistEntry::fixture()
             },
         ];
 
         assert_eq!(
-            format_played_summary(&entries, &VariationLabels::new()),
+            format_played_summary(&entries, &PlayLabels::new()),
             "Nocturne in E\u{266d}"
         );
     }
@@ -1998,14 +2150,14 @@ mod tests {
             item_title: "Hanon No. 1".to_string(),
             item_type: ItemKind::Exercise,
             status: EntryStatus::Skipped,
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 score: Some(6),
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
             ..SetlistEntry::fixture()
         }];
 
-        assert_eq!(format_played_summary(&entries, &VariationLabels::new()), "");
+        assert_eq!(format_played_summary(&entries, &PlayLabels::new()), "");
     }
 
     /// A stray tap on the picker leaves a play behind because an entry always
@@ -2018,16 +2170,16 @@ mod tests {
             item_title: "Major scales".to_string(),
             item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 seconds: 2,
                 score: None,
                 rep_count: None,
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
             ..SetlistEntry::fixture()
         }];
 
-        assert_eq!(format_played_summary(&entries, &VariationLabels::new()), "");
+        assert_eq!(format_played_summary(&entries, &PlayLabels::new()), "");
     }
 
     /// A play with no resolvable label (no variation, or one the label map
@@ -2035,17 +2187,16 @@ mod tests {
     /// names only what it can actually name (#1785).
     #[test]
     fn played_summary_counts_only_plays_with_a_resolvable_label() {
-        let labels: VariationLabels = [("v-c", "C")].into_iter().collect();
+        let labels: PlayLabels = [("v-c", "C")].into_iter().collect();
         let entries = vec![SetlistEntry {
             item_title: "Major scales".to_string(),
             item_type: ItemKind::Exercise,
             status: EntryStatus::Completed,
             plays: vec![
                 labelled_play("p1", "v-c"),
-                VariationPlay {
+                Play {
                     id: "p2".to_string(),
-                    variation_id: None,
-                    ..VariationPlay::fixture()
+                    ..Play::fixture()
                 },
             ],
             ..SetlistEntry::fixture()
@@ -2061,7 +2212,7 @@ mod tests {
     /// says "C and G", not "C, C and G" (#1785).
     #[test]
     fn played_summary_deduplicates_a_repeated_variation() {
-        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G")].into_iter().collect();
+        let labels: PlayLabels = [("v-c", "C"), ("v-g", "G")].into_iter().collect();
         let entries = vec![SetlistEntry {
             item_title: "Major scales".to_string(),
             item_type: ItemKind::Exercise,
@@ -2085,7 +2236,7 @@ mod tests {
             item_title: title.to_string(),
             item_type: ItemKind::Piece,
             status: EntryStatus::Completed,
-            plays: vec![VariationPlay::fixture()],
+            plays: vec![Play::fixture()],
             ..SetlistEntry::fixture()
         }
     }
@@ -2103,7 +2254,7 @@ mod tests {
         .map(piece_entry)
         .collect();
 
-        let summary = format_played_summary(&entries, &VariationLabels::new());
+        let summary = format_played_summary(&entries, &PlayLabels::new());
 
         assert!(!summary.contains('\u{2026}'), "no ellipsis: {summary:?}");
         assert!(
@@ -2127,7 +2278,7 @@ mod tests {
             piece_entry("Nocturne in E\u{266d}"),
         ];
 
-        let summary = format_played_summary(&entries, &VariationLabels::new());
+        let summary = format_played_summary(&entries, &PlayLabels::new());
 
         assert!(
             summary.ends_with("and 1 more"),
@@ -2140,7 +2291,7 @@ mod tests {
     /// (#1785 review).
     #[test]
     fn played_summary_separates_the_overflow_from_a_fragments_own_and() {
-        let labels: VariationLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
+        let labels: PlayLabels = [("v-c", "C"), ("v-g", "G"), ("v-d", "D")]
             .into_iter()
             .collect();
         let entries = vec![
@@ -2167,7 +2318,7 @@ mod tests {
 
     #[test]
     fn played_summary_is_empty_when_nothing_was_played() {
-        assert_eq!(format_played_summary(&[], &VariationLabels::new()), "");
+        assert_eq!(format_played_summary(&[], &PlayLabels::new()), "");
     }
 
     #[test]
@@ -2215,7 +2366,7 @@ mod tests {
                 item_title: "Nocturne in E\u{266d}".to_string(),
                 item_type: ItemKind::Piece,
                 status: EntryStatus::Completed,
-                plays: vec![VariationPlay::fixture()],
+                plays: vec![Play::fixture()],
                 ..SetlistEntry::fixture()
             }],
             session_notes: None,
@@ -2224,11 +2375,12 @@ mod tests {
             total_duration_secs: 60,
             completion_status: CompletionStatus::Completed,
             session_score: None,
+            capture_version: None,
         };
 
         let view = session_to_view(
             &session,
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             LocalClock::from_now(Utc::now(), 0),
         );
 
@@ -2243,7 +2395,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );
@@ -2277,7 +2429,7 @@ mod tests {
         let view = build_active_session_view(
             &active,
             &HashMap::new(),
-            &VariationLabels::new(),
+            &PlayLabels::new(),
             &[],
             &PracticeDefaults::default(),
         );

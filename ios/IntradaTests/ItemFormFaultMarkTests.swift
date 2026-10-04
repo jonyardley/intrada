@@ -22,7 +22,7 @@ struct ItemFormFaultMarkTests {
   private func twoRows() -> [StagedExercise] {
     [
       .existing(id: "ex-1", title: "Shell voicings", meta: "C major"),
-      .draft(id: UUID(), title: "   ", key: "", modality: nil, bpm: ""),
+      .draft(id: UUID(), title: "   ", key: nil, bpm: ""),
     ]
   }
 

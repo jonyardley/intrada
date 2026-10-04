@@ -7,8 +7,7 @@ import SwiftUI
 @Observable
 final class ItemFormModel {
   var kind: ItemKind
-  var key = ""
-  var modality: Modality?
+  var key: Key?
   var formError: String?
   /// Where the core said the refused save failed, until the thing it points at
   /// changes (#1595). The banner keeps its sentence either way.
@@ -89,7 +88,6 @@ final class ItemFormModel {
   var variations: [VariationRow] = [] {
     didSet { cleared(.variations) }
   }
-  private var loadedVariations = false
 
   private var storedTitle = ""
   private var storedComposer = ""
@@ -98,6 +96,7 @@ final class ItemFormModel {
   private var storedChart = ""
   private var storedNotes = ""
   private var storedTags: [String] = []
+  private var loadedVariationIds: [String] = []
 
   init(kind: ItemKind = .piece) {
     self.kind = kind
@@ -108,15 +107,14 @@ final class ItemFormModel {
     storedTitle = item.title
     storedComposer = item.subtitle
     storedTags = item.tags
-    key = item.keySelection?.spelling ?? item.key ?? ""
-    modality = item.keySelection?.modality ?? item.modality
+    key = item.key
     storedMarking = item.tempoMarking ?? ""
     storedBpm = item.tempoBpm.map(String.init) ?? ""
     storedNotes = item.notes ?? ""
-    variations = item.variants.map {
+    variations = item.variations.map {
       VariationRow(variantId: $0.id, label: $0.label, hasMarks: !$0.scoreHistory.isEmpty)
     }
-    loadedVariations = !item.variants.isEmpty
+    loadedVariationIds = item.variations.map(\.id)
   }
 
   /// The core picks the fields (#2229); a failed call is a wire break (#846).
@@ -207,33 +205,30 @@ final class ItemFormModel {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
 
-  /// The core decides (#1783): an exercise in several keys has no single key.
-  /// Blank rows count, so Key does not flicker back while a new row is empty.
-  var showsKey: Bool {
-    kind != .exercise || exerciseFormShowsKey(liveVariantCount: UInt32(variations.count))
-  }
-
   /// A row added and left blank is not a label, so it is left out rather than
-  /// refused. A saved row blanked is still sent, for the core to refuse, so a
-  /// row with marks never goes without the removal prompt.
-  private var sentEdits: [VariantEdit] {
+  /// refused. A saved row keeps its library variation; a typed one is a label
+  /// the core reuses or mints (#2246).
+  private var typedLabels: [String] {
     variations.compactMap { row in
+      guard row.variantId == nil else { return nil }
       let label = row.label.trimmingCharacters(in: .whitespacesAndNewlines)
-      guard !label.isEmpty || row.variantId != nil else { return nil }
-      return VariantEdit(id: row.variantId, label: label)
+      return label.isEmpty ? nil : label
     }
   }
 
-  /// Fields and rows are two events (#1910). With rows, the rows go last, or the
-  /// key the core has just folded into a new ladder comes back as a second key;
-  /// with none they go first, or a key typed after clearing them is refused
-  /// while the old ones still stand.
+  /// Fields and the variation set are two events (#1910), the set sent only
+  /// when the rows changed it. Only an exercise shows its rows, so only an
+  /// exercise sends them.
   func editEvents(id: String) -> [ItemEvent] {
     let fields = ItemEvent.update(id: id, input: updateInput())
-    let edits = sentEdits
-    guard kind == .exercise, loadedVariations || !edits.isEmpty else { return [fields] }
-    let rows = ItemEvent.updateVariants(id: id, variants: edits)
-    return edits.isEmpty ? [rows, fields] : [fields, rows]
+    let kept = variations.compactMap(\.variantId)
+    guard kind == .exercise, kept != loadedVariationIds || !typedLabels.isEmpty else {
+      return [fields]
+    }
+    return [
+      fields,
+      ItemEvent.updateItemVariations(id: id, variationIds: kept, newLabels: typedLabels),
+    ]
   }
 
   func createInput() -> CreateItem {
@@ -241,13 +236,12 @@ final class ItemFormModel {
       title: title.trimmingCharacters(in: .whitespacesAndNewlines),
       kind: kind,
       composer: emptyToNil(composer),
-      key: emptyToNil(key),
-      modality: modality,
+      key: key,
       tempo: typedTempo(),
       notes: emptyToNil(notes),
       tags: tags,
       photoId: photoId,
-      variantLabels: kind == .exercise ? sentEdits.map(\.label) : [])
+      variationLabels: kind == .exercise ? typedLabels : [])
   }
 
   var hasStagedExtras: Bool {
@@ -263,10 +257,7 @@ final class ItemFormModel {
       title: title,
       kind: kind,
       composer: .some(emptyToNil(composer)),
-      // Hidden over saved rows, Key is not the musician's to change, and a key
-      // sent then would be refused as a second key while those rows stand.
-      key: loadedVariations && !showsKey ? nil : .some(emptyToNil(key)),
-      modality: .some(modality),
+      key: .some(key),
       tempo: typedTempo(),
       notes: .some(emptyToNil(notes)),
       tags: tags,
@@ -284,7 +275,7 @@ final class ItemFormModel {
 }
 
 /// One row of the Variations section. `variantId` is the saved variation it was
-/// loaded from, so a rename keeps its marks; `nil` for a row typed on the form.
+/// loaded from, sent by id only; `nil` for a row typed on the form.
 struct VariationRow: Identifiable, Hashable {
   let id = UUID()
   var variantId: String?
@@ -308,12 +299,12 @@ extension [VariationRow] {
 }
 
 enum StagedExercise: Identifiable, Hashable {
-  case draft(id: UUID, title: String, key: String, modality: Modality?, bpm: String)
+  case draft(id: UUID, title: String, key: Key?, bpm: String)
   case existing(id: String, title: String, meta: String?)
 
   var id: String {
     switch self {
-    case .draft(let id, _, _, _, _): id.uuidString
+    case .draft(let id, _, _, _): id.uuidString
     case .existing(let id, _, _): id
     }
   }
@@ -327,17 +318,17 @@ enum StagedExercise: Identifiable, Hashable {
 
   var title: String {
     switch self {
-    case .draft(_, let title, _, _, _): title
+    case .draft(_, let title, _, _): title
     case .existing(_, let title, _): title
     }
   }
 
   var meta: String? {
     switch self {
-    case .draft(_, _, let key, let modality, let bpm):
+    case .draft(_, _, let key, let bpm):
       let tempo = TempoFormatting.display(
         marking: nil, bpm: UInt16(bpm.trimmingCharacters(in: .whitespaces)))
-      let parts = [KeyHelper.display(key: key, modality: modality), tempo].compactMap { $0 }
+      let parts = [key.flatMap(KeyHelper.display), tempo].compactMap { $0 }
       return parts.isEmpty ? nil : parts.joined(separator: " · ")
     case .existing(_, _, let meta): return meta
     }
@@ -345,19 +336,18 @@ enum StagedExercise: Identifiable, Hashable {
 
   var entry: ScaffoldEntry {
     switch self {
-    case .draft(_, let title, let key, let modality, let bpm):
+    case .draft(_, let title, let key, let bpm):
       .new(
         CreateItem(
           title: title.trimmingCharacters(in: .whitespacesAndNewlines),
           kind: .exercise,
           composer: nil,
-          key: key.isEmpty ? nil : key,
-          modality: modality,
+          key: key,
           tempo: TempoInput(marking: nil, bpm: bpm),
           notes: nil,
           tags: [],
           photoId: nil,
-          variantLabels: []))
+          variationLabels: []))
     case .existing(let id, _, _):
       .existing(id: id)
     }

@@ -318,6 +318,22 @@ extension LibraryStore {
           """)
       try db.execute(sql: "CREATE INDEX index_section_on_item_id ON section(item_id)")
     }
+    migrator.registerMigration("v19_keys_and_variations") { db in
+      // Additive (#2246): steps are retired, not moved, so the `variant` table
+      // stays unread until #2317 drops it. Null lists read as empty.
+      try db.execute(
+        sql: """
+          CREATE TABLE variation (
+            id TEXT PRIMARY KEY NOT NULL,
+            label TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN variation_ids TEXT")
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN keys TEXT")
+      try db.execute(sql: "ALTER TABLE session ADD COLUMN capture_version INTEGER")
+    }
     return migrator
   }()
 }

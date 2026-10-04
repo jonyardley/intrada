@@ -62,7 +62,7 @@ struct LibraryDetailScreen: View {
     }
     .sheet(isPresented: $editingChart) {
       ChordChartEditSheet(
-        pieceId: item.id, pieceKey: item.key, pieceModality: item.modality,
+        pieceId: item.id, pieceKey: item.key,
         existingChart: item.chordChart
       )
       .environment(store)
@@ -323,7 +323,7 @@ struct LibraryDetailScreen: View {
         .update(
           id: item.id,
           input: UpdateItem(
-            title: item.title, kind: item.itemType, composer: nil, key: nil, modality: nil,
+            title: item.title, kind: item.itemType, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: nil, priority: !item.priority))))
   }
 
@@ -331,10 +331,7 @@ struct LibraryDetailScreen: View {
     item.subtitle.isEmpty ? nil : item.subtitle
   }
 
-  // An exercise with variations drops the item-level Key/Tempo rows: each one carries
-  // its own target, so a single value here would be misleading (#1083 C2).
   private var detailRows: [(label: String, value: String)] {
-    guard item.itemType != .exercise || item.variants.isEmpty else { return [] }
     var rows: [(String, String)] = []
     if let key = item.keyDisplay { rows.append(("Key", key)) }
     if let tempo = item.tempoDisplay { rows.append(("Tempo", tempo)) }

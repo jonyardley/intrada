@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::item::Modality;
+use super::key::Key;
 
 // ── Pitch classes ─────────────────────────────────────────────────────────
 // A pitch class is a semitone offset from C, 0..=11 (C=0, C#=1, … B=11),
@@ -96,8 +96,8 @@ pub struct ChartSection {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ChordChart {
-    pub key: String,
-    pub modality: Modality,
+    /// The key it was parsed in; `None` when the stored key could not be read.
+    pub key: Option<Key>,
     pub sections: Vec<ChartSection>,
 }
 
@@ -139,11 +139,7 @@ impl std::fmt::Display for ChartParseError {
 /// `[Section]` labels on their own or leading a bar line; bars delimited by
 /// `|`, chords within a bar by whitespace. Strict on root + recognised quality;
 /// lenient on trailing tensions.
-pub fn parse_chart(
-    raw: &str,
-    key: &str,
-    modality: Modality,
-) -> Result<ChordChart, ChartParseError> {
+pub fn parse_chart(raw: &str, key: Key) -> Result<ChordChart, ChartParseError> {
     let mut sections: Vec<ChartSection> = Vec::new();
     let mut bar_no: usize = 0;
 
@@ -211,8 +207,7 @@ pub fn parse_chart(
     }
 
     Ok(ChordChart {
-        key: key.to_string(),
-        modality,
+        key: Some(key),
         sections,
     })
 }
@@ -579,7 +574,7 @@ pub struct ChangeVoicing {
 pub struct ScaffoldSpec {
     pub kind: ScaffoldKind,
     pub title: String,
-    pub key: String,
+    pub key: Option<Key>,
     pub rationale: String,
     pub content: Vec<ChangeVoicing>,
     pub fallback_count: u8,
@@ -589,22 +584,22 @@ pub struct ScaffoldSpec {
 /// the chart's own key (no twelve-key ladder — Phase C).
 pub fn derive_scaffold(chart: &ChordChart) -> Vec<ScaffoldSpec> {
     let changes = chart.changes();
-    let key = chart.key.clone();
+    let key = chart.key;
 
     vec![
-        melody_spec(&key),
-        shells_spec(&changes, &key),
-        guide_tone_spec(&changes, &key),
-        scales_spec(&changes, &key),
-        improv_spec(&changes, &key),
+        melody_spec(key),
+        shells_spec(&changes, key),
+        guide_tone_spec(&changes, key),
+        scales_spec(&changes, key),
+        improv_spec(&changes, key),
     ]
 }
 
-fn melody_spec(key: &str) -> ScaffoldSpec {
+fn melody_spec(key: Option<Key>) -> ScaffoldSpec {
     ScaffoldSpec {
         kind: ScaffoldKind::Melody,
         title: "Learn the melody".to_string(),
-        key: key.to_string(),
+        key,
         rationale: "Hear the tune before you build on it".to_string(),
         content: vec![], // placeholder — no notated content (copyright)
         fallback_count: 0,
@@ -618,7 +613,7 @@ fn shell_tones(sym: &ChordSymbol) -> Option<(u8, u8)> {
     Some(((sym.root + third) % OCTAVE, (sym.root + seventh) % OCTAVE))
 }
 
-fn shells_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
+fn shells_spec(changes: &[&ChordSymbol], key: Option<Key>) -> ScaffoldSpec {
     let mut fallback_count = 0;
     let content = changes
         .iter()
@@ -641,7 +636,7 @@ fn shells_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
     ScaffoldSpec {
         kind: ScaffoldKind::Shells,
         title: "Shells".to_string(),
-        key: key.to_string(),
+        key,
         rationale: "3rd + 7th of every chord · the voice-leading skeleton".to_string(),
         content,
         fallback_count,
@@ -654,7 +649,7 @@ fn pc_distance(a: u8, b: u8) -> u8 {
     d.min(OCTAVE - d)
 }
 
-fn guide_tone_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
+fn guide_tone_spec(changes: &[&ChordSymbol], key: Option<Key>) -> ScaffoldSpec {
     let mut fallback_count = 0;
     let mut content: Vec<ChangeVoicing> = Vec::with_capacity(changes.len());
     let mut prev: Option<u8> = None;
@@ -700,14 +695,14 @@ fn guide_tone_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
     ScaffoldSpec {
         kind: ScaffoldKind::GuideToneLines,
         title: "Guide-tone lines".to_string(),
-        key: key.to_string(),
+        key,
         rationale: "Connect 3rds to 7ths across each change".to_string(),
         content,
         fallback_count,
     }
 }
 
-fn scales_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
+fn scales_spec(changes: &[&ChordSymbol], key: Option<Key>) -> ScaffoldSpec {
     let mut fallback_count = 0;
     let content = changes
         .iter()
@@ -736,14 +731,14 @@ fn scales_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
     ScaffoldSpec {
         kind: ScaffoldKind::ScalesToChordTones,
         title: "Scales to chord tones".to_string(),
-        key: key.to_string(),
+        key,
         rationale: "Run each chord-scale, landing on a chord tone (ii–V aware)".to_string(),
         content,
         fallback_count,
     }
 }
 
-fn improv_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
+fn improv_spec(changes: &[&ChordSymbol], key: Option<Key>) -> ScaffoldSpec {
     let mut fallback_count = 0;
     let content = changes
         .iter()
@@ -766,7 +761,7 @@ fn improv_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
     ScaffoldSpec {
         kind: ScaffoldKind::ConstrainedImprov,
         title: "Constrained improv".to_string(),
-        key: key.to_string(),
+        key,
         rationale: "Chord tones only, then rhythm · one ladder".to_string(),
         content,
         fallback_count,
@@ -777,18 +772,22 @@ fn improv_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
 mod tests {
     use super::*;
 
+    fn key(raw: &str) -> Key {
+        Key::parse(raw).expect("a key")
+    }
+
     // ── Parser: roots + accidentals ──
 
     #[test]
     fn parses_natural_and_accidental_roots() {
-        let chart = parse_chart("| C | F# | Bb |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| C | F# | Bb |", key("C major")).unwrap();
         let roots: Vec<u8> = chart.changes().iter().map(|s| s.root).collect();
         assert_eq!(roots, vec![0, 6, 10]); // C, F#, Bb
     }
 
     #[test]
     fn rejects_a_non_note_root_naming_the_bar() {
-        let err = parse_chart("| Cm7 | F7 | Hm7b5 |", "C", Modality::Major).unwrap_err();
+        let err = parse_chart("| Cm7 | F7 | Hm7b5 |", key("C major")).unwrap_err();
         assert_eq!(err.bar, 3);
         assert_eq!(err.token, "Hm7b5");
         assert!(err.message.contains("isn't a note name"));
@@ -796,7 +795,7 @@ mod tests {
 
     #[test]
     fn empty_chart_is_an_error_not_a_partial() {
-        let err = parse_chart("   \n  \n", "C", Modality::Major).unwrap_err();
+        let err = parse_chart("   \n  \n", key("C major")).unwrap_err();
         assert_eq!(err.bar, 0);
     }
 
@@ -912,7 +911,7 @@ mod tests {
     #[test]
     fn tritone_sub_dominant_takes_lydian_dominant() {
         // Db7 → Cmaj7 (down a semitone): tritone-sub, Db lydian-dominant.
-        let chart = parse_chart("| Db7 | Cmaj7 |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| Db7 | Cmaj7 |", key("C major")).unwrap();
         let scales = &derive_scaffold(&chart)[3];
         assert_eq!(scales.content[0].chord, "Db7");
         assert_eq!(
@@ -974,8 +973,7 @@ mod tests {
 
     #[test]
     fn splits_sections_and_bars() {
-        let chart =
-            parse_chart("[A]\n| Cm7 | F7 |\n[B]\n| Bbmaj7 |", "Bb", Modality::Major).unwrap();
+        let chart = parse_chart("[A]\n| Cm7 | F7 |\n[B]\n| Bbmaj7 |", key("Bb major")).unwrap();
         assert_eq!(chart.sections.len(), 2);
         assert_eq!(chart.sections[0].label, Some("A".to_string()));
         assert_eq!(chart.sections[0].bars.len(), 2);
@@ -984,7 +982,7 @@ mod tests {
 
     #[test]
     fn a_label_can_lead_a_bar_line() {
-        let chart = parse_chart("[A] | Cm7 | F7 |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("[A] | Cm7 | F7 |", key("C major")).unwrap();
         assert_eq!(chart.sections.len(), 1);
         assert_eq!(chart.changes().len(), 2);
     }
@@ -995,8 +993,7 @@ mod tests {
     fn autumn_leaves() -> ChordChart {
         parse_chart(
             "| Cm7 | F7 | Bbmaj7 | Ebmaj7 | Am7b5 | D7 | Gm7 | Gm7 |",
-            "G",
-            Modality::Minor,
+            key("G minor"),
         )
         .unwrap()
     }
@@ -1094,7 +1091,7 @@ mod tests {
     #[test]
     fn out_of_vocab_chord_falls_back_to_arpeggio_and_is_flagged() {
         // `add9` stays out of vocab (major triad add 9, no mapped scale).
-        let chart = parse_chart("| Cadd9 |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| Cadd9 |", key("C major")).unwrap();
         let specs = derive_scaffold(&chart);
         let scales = &specs[3];
         assert!(scales.content[0].fallback);
@@ -1107,7 +1104,7 @@ mod tests {
     fn seventh_less_triads_fall_back_on_shells() {
         // Sus2 and Aug have no 7th, so shells (3rd + 7th) can't voice them and
         // flag the fallback rather than inventing a seventh.
-        let chart = parse_chart("| Csus2 | Caug |", "C", Modality::Major).unwrap();
+        let chart = parse_chart("| Csus2 | Caug |", key("C major")).unwrap();
         let shells = &derive_scaffold(&chart)[1];
         assert!(shells.content.iter().all(|c| c.fallback));
         assert_eq!(shells.fallback_count, 2);
@@ -1121,8 +1118,7 @@ mod tests {
         // variants are exercised on the bincode wire, not just the JSON one (#846).
         let chart = parse_chart(
             "[A] | Cmaj7 F7 | Dm7/G | Cø7 | Bbdim7 | Ealt | G7sus4 Dsus2 | Faug C7#5 |",
-            "C",
-            Modality::Major,
+            key("C major"),
         )
         .unwrap();
         crate::domain::types::assert_round_trips(chart);

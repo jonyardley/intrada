@@ -5,8 +5,7 @@ struct DraftExerciseSheet: View {
   @Environment(\.dismiss) private var dismiss
 
   @State private var title = ""
-  @State private var key = ""
-  @State private var modality: Modality?
+  @State private var key: Key?
   @State private var bpm = ""
 
   let onDone: (StagedExercise) -> Void
@@ -22,7 +21,7 @@ struct DraftExerciseSheet: View {
                 label: "Title", text: $title, placeholder: "Required",
                 identifier: "draftExercise.title")
               HairlineDivider()
-              KeyPicker(label: "Key", key: $key, modality: $modality)
+              KeyPicker(label: "Key", key: $key)
               HairlineDivider()
               FormField(
                 label: "Beats per minute", text: $bpm, keyboard: .numberPad,
@@ -57,8 +56,7 @@ struct DraftExerciseSheet: View {
   private func done() {
     onDone(
       .draft(
-        id: UUID(), title: title, key: key.trimmingCharacters(in: .whitespaces),
-        modality: modality, bpm: bpm.trimmingCharacters(in: .whitespaces)))
+        id: UUID(), title: title, key: key, bpm: bpm.trimmingCharacters(in: .whitespaces)))
     dismiss()
   }
 }

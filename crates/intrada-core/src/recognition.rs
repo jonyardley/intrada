@@ -1598,12 +1598,11 @@ mod tests {
                     .map(|f| f.value.clone())
                     .or_else(|| Some("Unknown".to_string())),
                 key: None,
-                modality: None,
                 tempo: draft.tempo.as_ref().map(|f| f.value.clone().into()),
                 notes: None,
                 tags: vec![],
                 photo_id: None,
-                variant_labels: Vec::new(),
+                variation_labels: Vec::new(),
             };
             validation::validate_create_item(&input)
                 .unwrap_or_else(|e| panic!("{name}: the create form rejected the read: {e}"));

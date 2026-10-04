@@ -43,7 +43,7 @@ struct StoredStringsTests {
   }
 
   @Test func repActionStrings() {
-    pin(LibraryStore.repActions, ["missed", "success"])
+    pin(LibraryStore.repActions, ["missed", "success", "undo"])
   }
 
   @Test(arguments: ["", "Piece", "ended-early", "notAttempted", " major"])

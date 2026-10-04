@@ -8,7 +8,7 @@ pub mod profile;
 pub mod section;
 pub mod session;
 pub mod types;
-pub mod variant;
+pub mod variation;
 
 pub use item::{Item, ItemEvent, ItemKind, Modality};
 pub use metre::Metre;
@@ -19,4 +19,4 @@ pub use session::{
 pub use types::{
     CreateItem, LibraryData, LibrarySort, ListQuery, SortDirection, SortField, Tempo, UpdateItem,
 };
-pub use variant::Variant;
+pub use variation::Variation;

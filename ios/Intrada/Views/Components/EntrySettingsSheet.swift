@@ -48,7 +48,7 @@ struct EntrySettingsSheet: View {
     _repTarget = State(initialValue: Self.initialRepTarget(for: entry, limits: limits))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
     _plannedMinutes = State(initialValue: Self.initialPlannedMinutes(for: entry, limits: limits))
-    _variantId = State(initialValue: entry.plannedVariationId)
+    _variantId = State(initialValue: entry.plannedVariationIds.first)
   }
 
   var body: some View {
@@ -97,7 +97,11 @@ struct EntrySettingsSheet: View {
           Button(variation.label) {
             guard variation.id != variantId else { return }
             variantId = variation.id
-            store.send(.session(.setEntryVariant(entryId: entry.id, variantId: variation.id)))
+            store.send(
+              .session(
+                .setEntryPlan(
+                  entryId: entry.id, sectionIds: entry.plannedSectionIds,
+                  variationIds: [variation.id])))
           }
         }
       } label: {

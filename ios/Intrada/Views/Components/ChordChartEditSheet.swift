@@ -12,28 +12,25 @@ struct ChordChartEditSheet: View {
   }
 
   let destination: Destination
-  let pieceKey: String?
-  let pieceModality: Modality?
+  let pieceKey: Key?
 
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @State private var text: String
   @State private var parseError: String?
 
-  init(pieceId: String, pieceKey: String?, pieceModality: Modality?, existingChart: ChordChart?) {
+  init(pieceId: String, pieceKey: Key?, existingChart: ChordChart?) {
     destination = .piece(id: pieceId)
     self.pieceKey = pieceKey
-    self.pieceModality = pieceModality
     _text = State(initialValue: existingChart.map(Self.reconstructText) ?? "")
   }
 
   init(
-    text: String, pieceKey: String?, pieceModality: Modality?,
+    text: String, pieceKey: Key?,
     onSave: @escaping (String) -> Void
   ) {
     destination = .caller(onSave)
     self.pieceKey = pieceKey
-    self.pieceModality = pieceModality
     _text = State(initialValue: text)
   }
 
@@ -83,9 +80,7 @@ struct ChordChartEditSheet: View {
   }
 
   private var keyDisplay: String {
-    let modality = pieceModality ?? .major
-    let key = pieceKey.flatMap { $0.isEmpty ? nil : $0 } ?? "C"
-    return KeyHelper.display(key: key, modality: modality) ?? "C \(KeyHelper.modeWord(modality))"
+    pieceKey.flatMap(KeyHelper.display) ?? "C major"
   }
 
   private var editor: some View {
@@ -196,7 +191,8 @@ struct ChordChartEditSheet: View {
   #Preview("Empty") {
     Color.clear.sheet(isPresented: .constant(true)) {
       ChordChartEditSheet(
-        pieceId: "p1", pieceKey: "G", pieceModality: .minor, existingChart: nil)
+        pieceId: "p1", pieceKey: Key(letter: .g, accidental: .natural, mode: .minor),
+        existingChart: nil)
     }
     .environment(Store.preview)
   }

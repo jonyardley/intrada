@@ -15,8 +15,8 @@ struct ReflectionHandoffTests {
       .item(
         .add(
           CreateItem(
-            title: "Clair de lune", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Clair de lune", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try #require(try bridge.rendered().items.first?.id)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
@@ -143,9 +143,9 @@ struct ReflectionHandoffTests {
       .item(
         .add(
           CreateItem(
-            title: "Gigue", kind: .piece, composer: nil, key: nil, modality: nil,
+            title: "Gigue", kind: .piece, composer: nil, key: nil,
             tempo: TempoInput(marking: nil, bpm: "240"), notes: nil, tags: [], photoId: nil,
-            variantLabels: []))))
+            variationLabels: []))))
     let itemId = try #require(try bridge.rendered().items.first?.id)
     _ = try bridge.update(
       .item(.setMetre(id: itemId, metre: Metre(beats: 6, unit: 8, groups: [3, 3]))))

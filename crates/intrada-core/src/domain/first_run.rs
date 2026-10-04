@@ -104,7 +104,7 @@ mod tests {
     use crate::app::Intrada;
     use crate::domain::item::{Item, ItemKind};
     use crate::domain::profile::ProfileEvent;
-    use crate::domain::session::{CompletionStatus, SetlistEntry, VariationPlay};
+    use crate::domain::session::{CompletionStatus, Play, SetlistEntry};
     use crate::domain::types::assert_round_trips;
     use crate::persistence::PersistenceOutput;
     use chrono::{DateTime, TimeZone, Utc};
@@ -121,7 +121,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -130,7 +129,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -147,15 +147,16 @@ mod tests {
             total_duration_secs: 600,
             completion_status: CompletionStatus::Completed,
             session_score,
+            capture_version: None,
         }
     }
 
     fn entry(status: EntryStatus, score: Option<u8>) -> SetlistEntry {
         SetlistEntry {
             status,
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 score,
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
             ..SetlistEntry::fixture()
         }

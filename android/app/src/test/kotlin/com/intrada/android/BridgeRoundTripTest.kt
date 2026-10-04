@@ -2,6 +2,7 @@ package com.intrada.android
 
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
+import com.intrada.shared.Accidental
 import com.intrada.shared.AppEffect
 import com.intrada.shared.BarRange
 import com.intrada.shared.BarsInput
@@ -14,7 +15,10 @@ import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.ItemSection
+import com.intrada.shared.Key
+import com.intrada.shared.Letter
 import com.intrada.shared.LibraryItemView
+import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
@@ -24,6 +28,7 @@ import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
 import com.intrada.shared.TempoReading
+import com.intrada.shared.Variation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,7 +55,8 @@ class BridgeRoundTripTest {
         )
         val satie = shown.single { it.title == "Gymnopédie No. 1" }
         assertEquals("Erik Satie", satie.subtitle)
-        assertEquals("D major", satie.key)
+        assertEquals(Key(Letter.D, Accidental.NATURAL, Modality.MAJOR), satie.key)
+        assertEquals("D major", satie.keyLabel)
         assertEquals("Lent", satie.tempoMarking)
         assertEquals(70.toUShort(), satie.tempoBpm)
         assertEquals(listOf("recital"), satie.tags)
@@ -84,7 +90,7 @@ class BridgeRoundTripTest {
                                 kind = ItemKind.PIECE,
                                 tempo = TempoInput(marking = "Lento", bpm = " 60 "),
                                 tags = emptyList(),
-                                variantLabels = emptyList(),
+                                variationLabels = emptyList(),
                             )
                         )
                     )
@@ -112,7 +118,7 @@ class BridgeRoundTripTest {
                             title = "Rondo",
                             kind = ItemKind.PIECE,
                             tags = emptyList(),
-                            variantLabels = emptyList(),
+                            variationLabels = emptyList(),
                         )
                     )
                 )
@@ -218,6 +224,97 @@ class BridgeRoundTripTest {
             "2026-09-27T09:05:00+00:00",
             bridge.view().activeSession?.reflection?.stoppedAt,
         )
+    }
+
+    // A play names a key and two variations on Kotlin's own encoder, and the new library-wide
+    // variations, a tombstone among them, load on Kotlin's encoder (#846, #2246).
+    @Test
+    fun aPlayInAKeyWithTwoVariationsDecodes() {
+        val bridge = LiveBridge()
+        val loads = bridge.update(Event.StartApp)
+        val loadVariations = loads.single {
+            (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadVariations
+        }
+        bridge.resolve(
+            loadVariations.id,
+            PersistenceOutput.Variations(
+                listOf(
+                    Variation("v-swung", "Swung", "2026-10-01T09:00:00Z", null),
+                    Variation("v-gone", "Gone", "2026-10-01T09:00:00Z", "2026-10-02T09:00:00Z"),
+                )
+            ),
+        )
+        assertEquals(listOf("v-swung"), bridge.view().variations.map { it.id })
+
+        val added =
+            bridge.update(
+                Event.Item(
+                    ItemEvent.Add(
+                        CreateItem(
+                            title = "Scales",
+                            kind = ItemKind.EXERCISE,
+                            tags = emptyList(),
+                            variationLabels = listOf("Slow", "Swung"),
+                        )
+                    )
+                )
+            )
+        val item =
+            added
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(item.id)))
+        bridge.update(Event.Session(SessionEvent.StartSession("2026-10-03T09:00:00Z")))
+        val entryId = bridge.view().activeSession?.entries?.firstOrNull()?.id.orEmpty()
+        val eFlat = Key(Letter.E, Accidental.FLAT, Modality.MAJOR)
+
+        bridge.update(
+            Event.Session(
+                SessionEvent.SwitchPlay(
+                    entryId,
+                    null,
+                    eFlat,
+                    item.variationIds.reversed(),
+                    "2026-10-03T09:01:00Z",
+                    TempoReading(bpm = 72.toUShort(), clickSounding = false),
+                )
+            )
+        )
+
+        val active = bridge.view().activeSession
+        assertEquals(eFlat, active?.currentKey)
+        assertEquals(item.variationIds.reversed(), active?.currentVariationIds)
+        assertEquals(2, item.variationIds.size)
+    }
+
+    // An empty first load seeds the four built-ins, which leave the core on Kotlin's decoder.
+    @Test
+    fun theBuiltInVariationsAreSavedOnAnEmptyFirstLoad() {
+        val bridge = LiveBridge()
+        val loadVariations =
+            bridge.update(Event.StartApp).single {
+                (it.effect as? Effect.Persistence)?.value == PersistenceOperation.LoadVariations
+            }
+
+        val saved =
+            bridge
+                .resolve(loadVariations.id, PersistenceOutput.Variations(emptyList()))
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value
+                            as? PersistenceOperation.SaveVariations)
+                        ?.value
+                }
+                .single()
+
+        assertEquals(
+            listOf("Hands separately", "Dotted rhythms", "Back to front", "Three chord tones only"),
+            saved.map { it.label },
+        )
+        assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
     }
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =

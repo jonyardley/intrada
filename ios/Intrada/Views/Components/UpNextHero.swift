@@ -189,13 +189,8 @@ struct UpNextHero: View {
     .accessibilityLabel(rowLabel(item))
   }
 
-  // Built from Text pieces: an AttributedString costs about 34 ms to convert on the
-  // first Practice draw (#1801).
   private func titleLine(_ item: SuggestedItem) -> Text {
-    let title = Text(verbatim: item.itemTitle)
-    guard let variation = item.variantLabel else { return title }
-    let suffix = Text(verbatim: " · \(variation)").foregroundStyle(item.itemType.onHeroAccent)
-    return Text("\(title)\(suffix)")
+    Text(verbatim: item.itemTitle)
   }
 
   private var startButton: some View {
@@ -276,7 +271,6 @@ struct UpNextHero: View {
 
   private func rowLabel(_ item: SuggestedItem) -> String {
     var parts = [item.itemTitle]
-    if let variation = item.variantLabel { parts.append("variation \(variation)") }
     parts.append(item.itemType.label)
     parts.append(spoken(item.reason))
     return parts.joined(separator: ", ")

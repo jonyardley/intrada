@@ -409,11 +409,11 @@ enum LinkApplyOutcome {
       library: [
         .previewExercise,
         LibraryItemFixture.view(
-          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", key: "Db",
-          modality: .major),
+          id: "exercise-2", itemType: .exercise, title: "Db Major Scale",
+          key: Key(letter: .d, accidental: .flat, mode: .major)),
         LibraryItemFixture.view(
-          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", key: "Db",
-          modality: .major),
+          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db",
+          key: Key(letter: .d, accidental: .flat, mode: .major)),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _, _ in .accepted })

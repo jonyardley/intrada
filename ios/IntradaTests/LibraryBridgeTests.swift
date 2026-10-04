@@ -19,8 +19,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Original", kind: .piece, composer: "Bach", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Original", kind: .piece, composer: "Bach", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
 
     let afterAdd = try bridge.rendered()
     XCTAssertEqual(
@@ -35,7 +35,7 @@ final class LibraryBridgeTests: XCTestCase {
           id: id,
           input: UpdateItem(
             title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .some(nil),
-            modality: .some(nil), tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
+            tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
             tags: nil, priority: nil))))
 
     let afterEdit = try bridge.rendered()
@@ -54,84 +54,119 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertTrue(weeks.flatMap(\.days).contains { $0.isToday }, "one day should be today")
   }
 
-  /// Real-bridge wire pin (#846, #1467): a `Bool` that never made it across
-  /// reads as `false`, so the row would say "steps" about a ladder of keys,
-  /// no crash, no error, just the wrong noun.
-  func testRealBridgeLadderIsKeysCrossesTheWire() throws {
+  /// An item's keys cross the wire as values (#846, #2106): the spelling
+  /// survives, and the core names each one.
+  func testRealBridgeAnItemsKeysCrossTheWire() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Shells", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    let keys = [
+      Key(letter: .e, accidental: .flat, mode: .major),
+      Key(letter: .c, accidental: .sharp, mode: .minor),
+    ]
 
-    _ = try bridge.update(
-      .item(.setVariants(id: id, labels: ["F major", "B\u{266D}"])))
+    _ = try bridge.update(.item(.updateKeys(id: id, keys: keys)))
 
-    let keys = try bridge.rendered()
-    XCTAssertEqual(
-      keys.items.first { $0.id == id }?.ladderIsKeys, true,
-      "a ladder of key names comes back as keys (err=\(keys.error ?? "nil"))")
-
-    _ = try bridge.update(
-      .item(.setVariants(id: id, labels: ["F major", "B\u{266D}", "Hands together"])))
-
-    XCTAssertEqual(
-      try bridge.rendered().items.first { $0.id == id }?.ladderIsKeys, false,
-      "one non-key rung and the whole ladder is steps")
+    let view = try bridge.rendered()
+    let item = try XCTUnwrap(view.items.first { $0.id == id })
+    let views: [ItemKeyView] = item.keys
+    XCTAssertEqual(views.map(\.key), keys, "(err=\(view.error ?? "nil"))")
+    XCTAssertEqual(item.keys.map(\.label), ["E\u{266D} major", "C\u{266F} minor"])
   }
 
-  /// Moved from `VariationManagementUITests` (#1825): a removed variation is archived, not hard-deleted, but drops from the view.
-  func testRealBridgeRemovingAVariationDropsItFromTheLadder() throws {
+  /// Moved from `VariationManagementUITests` (#1825): a variation taken off
+  /// an item drops from its list but stays in the library (#2246).
+  func testRealBridgeRemovingAVariationKeepsItInTheLibrary() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
-    let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "G", "D", "A", "E"])))
-
-    _ = try bridge.update(.item(.setVariants(id: id, labels: ["C", "G", "D", "E"])))
-
-    let labels = try bridge.rendered().items.first { $0.id == id }?.variants.map(\.label)
-    XCTAssertEqual(labels, ["C", "G", "D", "E"], "A is gone, the others keep their order")
-  }
-
-  /// Real-bridge pin for the Edit form's one-write ladder (#1783): the id on a
-  /// row crosses the wire and keeps the row through a rename, beside a fresh
-  /// row and a reorder in the same event.
-  func testRealBridgeUpdateVariantsRenamesByIdInOneWrite() throws {
-    let bridge = RowsBridge()
-    _ = try bridge.update(.startApp)
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "G"]))))
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil,
+            variationLabels: ["Slow", "Swung", "Staccato"]))))
     let item = try XCTUnwrap(try bridge.rendered().items.first)
-    let cId = try XCTUnwrap(item.variants.first { $0.label == "C" }?.id)
-    let gId = try XCTUnwrap(item.variants.first { $0.label == "G" }?.id)
+    let kept = item.variations.filter { $0.label != "Swung" }.map(\.id)
 
     _ = try bridge.update(
-      .item(
-        .updateVariants(
-          id: item.id,
-          variants: [
-            VariantEdit(id: gId, label: "Sol"), VariantEdit(id: nil, label: "A"),
-            VariantEdit(id: cId, label: "C"),
-          ])))
+      .item(.updateItemVariations(id: item.id, variationIds: kept, newLabels: [])))
 
-    let after = try XCTUnwrap(try bridge.rendered().items.first { $0.id == item.id })
-    XCTAssertEqual(after.variants.map(\.label), ["Sol", "A", "C"])
-    XCTAssertEqual(after.variants.first?.id, gId, "renamed in place, marks intact")
-    XCTAssertFalse(after.showsKey, "an exercise in several keys has no single key")
+    let view = try bridge.rendered()
+    XCTAssertEqual(
+      view.items.first { $0.id == item.id }?.variations.map(\.label), ["Slow", "Staccato"],
+      "Swung is gone, the others keep their order")
+    XCTAssertTrue(view.variations.contains { $0.label == "Swung" }, "and still offered")
+  }
+
+  /// The library's variations load through the bincode wire on every launch
+  /// after the first (#846, #2246): a tombstone stays hidden, a live row is
+  /// offered, and a loaded library is not seeded again.
+  func testRealBridgeLoadedVariationsReachTheView() throws {
+    let bridge = RowsBridge()
+    let load = try XCTUnwrap(
+      try bridge.update(.startApp).first {
+        if case .persistence(.loadVariations) = $0.effect { return true } else { return false }
+      })
+    let rows: [Variation] = [
+      Variation(
+        id: "v-swung", label: "Swung", updatedAt: "2026-10-01T09:00:00Z", deletedAt: nil),
+      Variation(
+        id: "v-gone", label: "Gone", updatedAt: "2026-10-01T09:00:00Z",
+        deletedAt: "2026-10-02T09:00:00Z"),
+    ]
+
+    let after = try bridge.resolve(load.id, persistenceOutput: .variations(rows))
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    XCTAssertEqual(view.variations.map(\.id), ["v-swung"])
+    XCTAssertEqual(view.variations.map(\.label), ["Swung"])
+    XCTAssertFalse(
+      after.contains {
+        if case .persistence(.saveVariations) = $0.effect { return true } else { return false }
+      }, "a library with rows is not seeded")
+  }
+
+  /// `VariationEvent` crosses the live bridge (#846, #2246): a rename keeps
+  /// the id, so the marks stay; a delete takes it out of every list.
+  func testRealBridgeRenamingAndDeletingAVariation() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let requests = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Slow", "Swung"]))))
+    let minted: [Variation] = requests.flatMap { request -> [Variation] in
+      guard case .persistence(.saveVariations(let rows)) = request.effect else { return [] }
+      return rows
+    }
+    XCTAssertEqual(minted.map(\.label), ["Slow", "Swung"], "the new rows are written")
+    let item = try XCTUnwrap(try bridge.rendered().items.first)
+    let rows: [VariationView] = item.variations
+    let slowId = try XCTUnwrap(rows.first { $0.label == "Slow" }?.id)
+    let swungId = try XCTUnwrap(rows.first { $0.label == "Swung" }?.id)
+
+    let rename: VariationEvent = .rename(id: slowId, label: "Very slow")
+    _ = try bridge.update(.variation(rename))
+    let renamed = try XCTUnwrap(try bridge.rendered().items.first { $0.id == item.id })
+    XCTAssertEqual(renamed.variations.first?.id, slowId, "renamed in place, marks intact")
+    XCTAssertEqual(renamed.variations.first?.label, "Very slow")
+
+    _ = try bridge.update(.variation(.delete(id: swungId)))
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    XCTAssertEqual(view.items.first { $0.id == item.id }?.variations.map(\.id), [slowId])
+    let offered: [VariationOptionView] = view.variations
+    XCTAssertFalse(offered.contains { $0.id == swungId })
   }
 
   /// `UpdateSections`, the new `Item` field and `SectionView` cross the real
@@ -143,8 +178,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Rondo", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Rondo", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let item = try XCTUnwrap(try bridge.rendered().items.first)
     let typed = BarsInput.typed("1\u{2013}16")
     let spot = SectionKind.troubleSpot
@@ -182,8 +217,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Rondo", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Rondo", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let item = try XCTUnwrap(try bridge.rendered().items.first)
 
     _ = try bridge.update(
@@ -210,8 +245,8 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(before?.map(\.label), ["A"])
   }
 
-  /// The new `FormErrorField` case decodes on the wire (#846, #1831): a
-  /// refused rung points the form at the Variations section.
+  /// The `FormErrorField` case decodes on the wire (#846, #1831): a refused
+  /// variation points the form at the Variations section.
   func testRealBridgeRefusedVariationPointsAtTheSection() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
@@ -219,8 +254,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Major Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: ["C", "c"]))))
+            title: "Major Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil,
+            variationLabels: [String(repeating: "x", count: 101)]))))
 
     let view = try bridge.rendered()
     XCTAssertNotNil(view.error)
@@ -237,9 +273,9 @@ final class LibraryBridgeTests: XCTestCase {
         .item(
           .add(
             CreateItem(
-              title: title, kind: .piece, composer: nil, key: nil, modality: nil,
+              title: title, kind: .piece, composer: nil, key: nil,
               tempo: TempoInput(marking: nil, bpm: bpm), notes: nil, tags: [], photoId: nil,
-              variantLabels: []))))
+              variationLabels: []))))
     }
 
     let saved = try add("Nocturne", " 92 ").compactMap { request -> Item? in
@@ -254,13 +290,6 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(refused.error, "BPM must be a whole number between 1 and 400")
     XCTAssertEqual(refused.errorTarget, .piece(field: .tempo))
     XCTAssertNil(refused.items.first { $0.title == "Etude" }, "nothing written")
-  }
-
-  /// The Add form has no saved exercise to read `showsKey` from, so it asks
-  /// the core with its own row count (#1783 decision 1).
-  func testExerciseFormShowsKeyOnlyWithNoRows() {
-    XCTAssertTrue(exerciseFormShowsKey(liveVariantCount: 0))
-    XCTAssertFalse(exerciseFormShowsKey(liveVariantCount: 1))
   }
 
   /// The draft crosses as Swift's own bincode (#2229): a Rust round trip cannot
@@ -285,51 +314,32 @@ final class LibraryBridgeTests: XCTestCase {
       ])
   }
 
-  /// The Edit form's two events against the real core (#1783): a key folded into
-  /// a new ladder must not come back as a second key, and a key typed after
-  /// clearing the rows must not be refused while they still stand.
-  func testRealBridgeEditFormFoldsAKeyInAndTakesOneBack() throws {
+  /// The Edit form's two events against the real core (#1783, #2246): the
+  /// written key and the item's variations are set side by side, and neither
+  /// takes the other's place.
+  func testRealBridgeEditFormSetsTheKeyAndTheVariationsApart() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Arpeggios", kind: .exercise, composer: nil, key: "G", modality: .major,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Arpeggios", kind: .exercise, composer: nil,
+            key: Key(letter: .g, accidental: .natural, mode: .major),
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let keyed = try XCTUnwrap(try bridge.rendered().items.first)
 
-    let adding = ItemFormModel(item: keyed)
-    adding.variations = ["C", "F"].map { VariationRow(label: $0) }
-    for event in adding.editEvents(id: keyed.id) {
+    let editing = ItemFormModel(item: keyed)
+    editing.key = Key(letter: .d, accidental: .natural, mode: .major)
+    editing.variations = ["Slow", "Swung"].map { VariationRow(label: $0) }
+    for event in editing.editEvents(id: keyed.id) {
       _ = try bridge.update(.item(event))
       XCTAssertNil(try bridge.rendered().error)
     }
-    let laddered = try XCTUnwrap(try bridge.rendered().items.first { $0.id == keyed.id })
-    XCTAssertEqual(
-      laddered.variants.map(\.label), ["G", "C", "F"], "the key became the first rung")
 
-    let refilling = ItemFormModel(item: laddered)
-    refilling.variations = []
-    refilling.key = "D"
-    refilling.variations = [VariationRow(label: "A")]
-    for event in refilling.editEvents(id: keyed.id) {
-      _ = try bridge.update(.item(event))
-      XCTAssertNil(try bridge.rendered().error, "a key chosen while no rows showed is not sent")
-    }
-    let refilled = try XCTUnwrap(try bridge.rendered().items.first { $0.id == keyed.id })
-    XCTAssertEqual(refilled.variants.map(\.label), ["A"])
-
-    let clearing = ItemFormModel(item: refilled)
-    clearing.variations = []
-    clearing.key = "D"
-    for event in clearing.editEvents(id: keyed.id) {
-      _ = try bridge.update(.item(event))
-      XCTAssertNil(try bridge.rendered().error)
-    }
-    let rekeyed = try XCTUnwrap(try bridge.rendered().items.first { $0.id == keyed.id })
-    XCTAssertTrue(rekeyed.variants.isEmpty)
-    XCTAssertEqual(rekeyed.key, "D")
+    let edited = try XCTUnwrap(try bridge.rendered().items.first { $0.id == keyed.id })
+    XCTAssertEqual(edited.variations.map(\.label), ["Slow", "Swung"])
+    XCTAssertEqual(edited.key, Key(letter: .d, accidental: .natural, mode: .major))
   }
 
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,
@@ -343,8 +353,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Nocturne", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Nocturne", kind: .piece, composer: "Chopin", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(.item(.setPhoto(id: id, photoId: "01ARZ3NDEKTSV4RRFFQ69G5FAV")))
@@ -419,7 +429,7 @@ final class LibraryBridgeTests: XCTestCase {
         .add(
           CreateItem(
             title: "Cry Me A River", kind: .piece, composer: "Arthur Hamilton", key: nil,
-            modality: nil, tempo: nil, notes: nil, tags: [], photoId: photoId, variantLabels: []))))
+            tempo: nil, notes: nil, tags: [], photoId: photoId, variationLabels: []))))
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error)
@@ -438,8 +448,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Gymnopedie", kind: .piece, composer: "Satie", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Gymnopedie", kind: .piece, composer: "Satie", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     let minted = Ulid.generate()
 
@@ -459,8 +469,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Take Five", kind: .piece, composer: "Desmond", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Take Five", kind: .piece, composer: "Desmond", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     let metre = Metre(beats: 5, unit: 4, groups: [3, 2])
 
@@ -482,8 +492,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma",
+            key: Key(letter: .g, accidental: .natural, mode: .minor), tempo: nil, notes: nil,
+            tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(
@@ -517,8 +528,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma",
+            key: Key(letter: .g, accidental: .natural, mode: .minor), tempo: nil, notes: nil,
+            tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     _ = try bridge.update(
       .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | F7 | Bbmaj7 |")))
@@ -551,23 +563,25 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Shell voicings", kind: .exercise, composer: nil, key: "G",
-            modality: nil, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Shell voicings", kind: .exercise, composer: nil,
+            key: Key(letter: .g, accidental: .natural, mode: nil), tempo: nil, notes: nil, tags: [],
+            photoId: nil, variationLabels: []))))
     let existingId = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(
       .item(
         .addPieceInFull(
           piece: CreateItem(
-            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []),
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma",
+            key: Key(letter: .g, accidental: .natural, mode: .minor), tempo: nil, notes: nil,
+            tags: [], photoId: nil, variationLabels: []),
           chart: "| Cm7 | F7 | Bbmaj7 |",
           exercises: [
             .existing(id: existingId),
             .new(
               CreateItem(
-                title: "Enclosures", kind: .exercise, composer: nil, key: nil, modality: nil,
-                tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: [])),
+                title: "Enclosures", kind: .exercise, composer: nil, key: nil,
+                tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
           ])))
 
     let after = try bridge.rendered()
@@ -585,14 +599,15 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .addPieceInFull(
           piece: CreateItem(
-            title: "Blue in Green", kind: .piece, composer: nil, key: "G", modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []),
+            title: "Blue in Green", kind: .piece, composer: nil,
+            key: Key(letter: .g, accidental: .natural, mode: nil),
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []),
           chart: "| Cm7 | Hxyz |",
           exercises: [
             .new(
               CreateItem(
-                title: "Orphan", kind: .exercise, composer: nil, key: nil, modality: nil,
-                tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))
+                title: "Orphan", kind: .exercise, composer: nil, key: nil,
+                tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))
           ])))
 
     let rejected = try bridge.rendered()
@@ -613,8 +628,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .addPieceInFull(
           piece: CreateItem(
-            title: "Blue in Green", kind: .piece, composer: "Bill Evans", key: "G",
-            modality: nil, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []),
+            title: "Blue in Green", kind: .piece, composer: "Bill Evans",
+            key: Key(letter: .g, accidental: .natural, mode: nil), tempo: nil, notes: nil, tags: [],
+            photoId: nil, variationLabels: []),
           chart: "| Cm7 | Hxyz |",
           exercises: [])))
 
@@ -626,8 +642,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .addPieceInFull(
           piece: CreateItem(
-            title: "Blue in Green", kind: .piece, composer: "Bill Evans", key: "G",
-            modality: nil, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []),
+            title: "Blue in Green", kind: .piece, composer: "Bill Evans",
+            key: Key(letter: .g, accidental: .natural, mode: nil), tempo: nil, notes: nil, tags: [],
+            photoId: nil, variationLabels: []),
           chart: "swing feel",
           exercises: [])))
 
@@ -639,18 +656,19 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .addPieceInFull(
           piece: CreateItem(
-            title: "Blue in Green", kind: .piece, composer: "Bill Evans", key: "G",
-            modality: nil, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []),
+            title: "Blue in Green", kind: .piece, composer: "Bill Evans",
+            key: Key(letter: .g, accidental: .natural, mode: nil), tempo: nil, notes: nil, tags: [],
+            photoId: nil, variationLabels: []),
           chart: nil,
           exercises: [
             .new(
               CreateItem(
-                title: "Enclosures", kind: .exercise, composer: nil, key: nil, modality: nil,
-                tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: [])),
+                title: "Enclosures", kind: .exercise, composer: nil, key: nil,
+                tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
             .new(
               CreateItem(
-                title: "   ", kind: .exercise, composer: nil, key: nil, modality: nil,
-                tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: [])),
+                title: "   ", kind: .exercise, composer: nil, key: nil,
+                tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
           ])))
 
     XCTAssertEqual(
@@ -662,14 +680,15 @@ final class LibraryBridgeTests: XCTestCase {
         .addPieceInFull(
           piece: CreateItem(
             title: "Blue in Green", kind: .piece, composer: String(repeating: "x", count: 201),
-            key: "G", modality: nil, tempo: nil, notes: nil, tags: [], photoId: nil,
-            variantLabels: []),
+            key: Key(letter: .g, accidental: .natural, mode: nil), tempo: nil, notes: nil, tags: [],
+            photoId: nil,
+            variationLabels: []),
           chart: nil,
           exercises: [])))
 
     XCTAssertEqual(try bridge.rendered().errorTarget, .piece(field: .composer))
 
-    _ = try bridge.update(.item(.setVariants(id: "no-such-exercise", labels: ["C"])))
+    _ = try bridge.update(.item(.updateKeys(id: "no-such-exercise", keys: [])))
 
     let unrelated = try bridge.rendered()
     XCTAssertNotNil(unrelated.error, "a failure with no field still reports what went wrong")
@@ -688,8 +707,8 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Etude", kind: .piece, composer: "Chopin", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let item = try XCTUnwrap(try bridge.rendered().items.first)
     XCTAssertFalse(item.priority, "new items start non-priority")
 
@@ -699,7 +718,7 @@ final class LibraryBridgeTests: XCTestCase {
           id: item.id,
           input: UpdateItem(
             title: item.title, kind: item.itemType,
-            composer: nil, key: nil, modality: nil, tempo: nil, notes: nil,
+            composer: nil, key: nil, tempo: nil, notes: nil,
             tags: nil, priority: on)))
     }
 
@@ -722,16 +741,17 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Clair de Lune", kind: .piece, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Db Major Scale", kind: .exercise, composer: nil, key: "Db",
-            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "72"), notes: nil,
+            title: "Db Major Scale", kind: .exercise, composer: nil,
+            key: Key(letter: .d, accidental: .flat, mode: .major),
+            tempo: TempoInput(marking: "Andante", bpm: "72"), notes: nil,
             tags: [],
-            photoId: nil, variantLabels: []))))
+            photoId: nil, variationLabels: []))))
     let items = try bridge.rendered().items
     let pieceId = try XCTUnwrap(items.first { $0.title == "Clair de Lune" }?.id)
     let exerciseId = try XCTUnwrap(items.first { $0.title == "Db Major Scale" }?.id)
@@ -743,24 +763,24 @@ final class LibraryBridgeTests: XCTestCase {
     let piece = try XCTUnwrap(view.items.first { $0.id == pieceId })
     let linked = try XCTUnwrap(piece.linkedExercises.first)
     XCTAssertEqual(linked.id, exerciseId)
-    XCTAssertEqual(linked.key, "Db")
-    XCTAssertEqual(linked.modality, .major)
+    XCTAssertEqual(linked.key, Key(letter: .d, accidental: .flat, mode: .major))
+    XCTAssertEqual(linked.keyLabel, "D\u{266D} major")
     XCTAssertEqual(linked.tempoMarking, "Andante")
     XCTAssertEqual(linked.tempoBpm, 72)
     XCTAssertNil(linked.pieceContextScore)
   }
 
-  /// A key saved before the wheel existed ("F# major", no modality) still
-  /// lights its wedge (#2074); a slip in the trailing field reads as no key.
-  func testRealBridgeLegacyKeyLightsItsWedge() throws {
+  /// A key lights its wedge (#2074); a slip in the trailing field reads as no key.
+  func testRealBridgeAKeyLightsItsWedge() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Scales", kind: .exercise, composer: nil, key: "F# major", modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Scales", kind: .exercise, composer: nil,
+            key: Key(letter: .f, accidental: .sharp, mode: .major),
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error, "err=\(view.error ?? "nil")")
@@ -779,9 +799,10 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Nocturne", kind: .piece, composer: "Chopin", key: "E\u{266D}",
-            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "92"), notes: "Slowly",
-            tags: ["romantic"], photoId: nil, variantLabels: []))))
+            title: "Nocturne", kind: .piece, composer: "Chopin",
+            key: Key(letter: .e, accidental: .flat, mode: .major),
+            tempo: TempoInput(marking: "Andante", bpm: "92"), notes: "Slowly",
+            tags: ["romantic"], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
     _ = try bridge.update(
@@ -789,7 +810,7 @@ final class LibraryBridgeTests: XCTestCase {
         .update(
           id: id,
           input: UpdateItem(
-            title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: nil, modality: nil,
+            title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: nil,
             tempo: nil, notes: nil, tags: nil, priority: nil))))
 
     let view = try bridge.rendered()
@@ -798,8 +819,7 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(item.title, "Nocturne Op. 9")
     XCTAssertEqual(item.subtitle, "", "the composer was cleared")
     XCTAssertEqual(item.itemType, .piece)
-    XCTAssertEqual(item.key, "E\u{266D}")
-    XCTAssertEqual(item.modality, .major)
+    XCTAssertEqual(item.key, Key(letter: .e, accidental: .flat, mode: .major))
     XCTAssertEqual(item.tempoMarking, "Andante")
     XCTAssertEqual(item.tempoBpm, 92)
     XCTAssertEqual(item.notes, "Slowly")
@@ -826,18 +846,19 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Nocturne in E-flat", kind: .piece, composer: "Chopin", key: "E\u{266D}",
-            modality: .major, tempo: TempoInput(marking: "Andante", bpm: "92"),
+            title: "Nocturne in E-flat", kind: .piece, composer: "Chopin",
+            key: Key(letter: .e, accidental: .flat, mode: .major),
+            tempo: TempoInput(marking: "Andante", bpm: "92"),
             notes: "Practise slowly, hands separately", tags: ["romantic", "chopin"],
-            photoId: photoId, variantLabels: []))))
+            photoId: photoId, variationLabels: []))))
 
     let created = try XCTUnwrap(try bridge.rendered().items.first)
     XCTAssertFalse(created.id.isEmpty, "the core must mint an id")
     XCTAssertEqual(created.itemType, .piece)
     XCTAssertEqual(created.title, "Nocturne in E-flat")
     XCTAssertEqual(created.subtitle, "Chopin", "subtitle mirrors the composer")
-    XCTAssertEqual(created.key, "E\u{266D}")
-    XCTAssertEqual(created.modality, .major)
+    XCTAssertEqual(created.key, Key(letter: .e, accidental: .flat, mode: .major))
+    XCTAssertEqual(created.keyLabel, "E\u{266D} major")
     XCTAssertEqual(created.tempoMarking, "Andante")
     XCTAssertEqual(created.tempoBpm, 92)
     XCTAssertEqual(created.notes, "Practise slowly, hands separately")
@@ -852,8 +873,9 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertNil(created.scaffoldPreview)
     XCTAssertNil(created.chordChart)
     XCTAssertNil(created.metre)
-    XCTAssertTrue(created.variants.isEmpty)
-    XCTAssertEqual(created.ladderIsKeys, false)
+    XCTAssertTrue(created.variations.isEmpty)
+    XCTAssertTrue(created.keys.isEmpty)
+    XCTAssertTrue(created.sections.isEmpty)
     XCTAssertEqual(created.photoId, photoId)
     XCTAssertNil(created.practice)
 
@@ -866,7 +888,8 @@ final class LibraryBridgeTests: XCTestCase {
           id: created.id,
           input: UpdateItem(
             title: "Nocturne in E-flat (revised)", kind: .piece,
-            composer: .some("Chopin (ed. Cortot)"), key: .some("D"), modality: .some(nil),
+            composer: .some("Chopin (ed. Cortot)"),
+            key: .some(Key(letter: .d, accidental: .natural, mode: nil)),
             tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
             tags: ["romantic", "edited"], priority: true))))
 
@@ -876,8 +899,9 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(patched.title, "Nocturne in E-flat (revised)")
     XCTAssertEqual(patched.itemType, .piece, "kind unchanged, so it must still read piece")
     XCTAssertEqual(patched.subtitle, "Chopin (ed. Cortot)")
-    XCTAssertEqual(patched.key, "D")
-    XCTAssertNil(patched.modality, "modality was cleared")
+    XCTAssertEqual(
+      patched.key, Key(letter: .d, accidental: .natural, mode: nil), "a key with no mode")
+    XCTAssertEqual(patched.keyLabel, "D")
     XCTAssertNil(patched.tempoMarking, "tempo was cleared")
     XCTAssertNil(patched.tempoBpm, "tempo was cleared")
     XCTAssertNil(patched.notes, "notes were cleared")
@@ -903,8 +927,9 @@ final class LibraryBridgeTests: XCTestCase {
       .item(
         .add(
           CreateItem(
-            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
-            modality: .minor, tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma",
+            key: Key(letter: .g, accidental: .natural, mode: .minor), tempo: nil, notes: nil,
+            tags: [], photoId: nil, variationLabels: []))))
     let id = try XCTUnwrap(try bridge.rendered().items.first?.id)
     let metre = Metre(beats: 3, unit: 4, groups: [3])
 
@@ -920,8 +945,7 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(piece.metre, metre)
 
     let chart = try XCTUnwrap(piece.chordChart)
-    XCTAssertEqual(chart.key, "G")
-    XCTAssertEqual(chart.modality, .minor)
+    XCTAssertEqual(chart.key, Key(letter: .g, accidental: .natural, mode: .minor))
     XCTAssertEqual(chart.sections.count, 1, "one line, no section labels")
     let bars = chart.sections[0].bars
     XCTAssertEqual(bars.count, 4)
@@ -953,8 +977,8 @@ final class LibraryBridgeTests: XCTestCase {
       let exercise = try XCTUnwrap(byTitle[title])
       XCTAssertFalse(exercise.id.isEmpty)
       XCTAssertEqual(
-        exercise.key, "G", "a scaffold-derived exercise is generated in the piece's key")
-      XCTAssertNil(exercise.modality)
+        exercise.key, Key(letter: .g, accidental: .natural, mode: .minor),
+        "a scaffold-derived exercise is generated in the piece's key")
       XCTAssertNil(exercise.tempoMarking)
       XCTAssertNil(exercise.tempoBpm)
       XCTAssertNil(exercise.practice, "never practised yet")

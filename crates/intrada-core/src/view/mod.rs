@@ -59,7 +59,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         .count();
     let visible_ids = visible.iter().map(|i| i.id.clone()).collect();
 
-    let labels = crate::view::session::variation_labels(&model.items);
+    let labels = crate::view::session::play_labels(&model.items, &model.variations);
 
     let (active_session, building_setlist, summary) = match &model.session_status {
         SessionStatus::Idle => (None, None, None),
@@ -94,9 +94,12 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 .filter_map(|entry| {
                     let item = cached.library.iter().find(|i| i.id == entry.item_id)?;
-                    (!item.variants.is_empty()).then(|| EntryVariationsView {
-                        entry_id: entry.id.clone(),
-                        variations: picker_variations(entry, &item.variants),
+                    (!item.variations.is_empty() || !item.sections.is_empty()).then(|| {
+                        EntryVariationsView {
+                            entry_id: entry.id.clone(),
+                            variations: picker_variations(entry, &item.variations),
+                            sections: item.sections.clone(),
+                        }
                     })
                 })
                 .collect();
@@ -126,7 +129,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .library
                 .iter()
                 .find(|i| i.id == current_entry.item_id)
-                .map_or(&[][..], |i| i.variants.as_slice());
+                .map_or(&[][..], |i| i.variations.as_slice());
             let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
                 model.items.iter().map(|i| (i.id.as_str(), i)).collect();
             (
@@ -189,6 +192,15 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         ),
         practice_defaults: model.practice_defaults,
         first_run: build_first_run_view(model),
+        variations: model
+            .variations
+            .iter()
+            .filter(|v| v.deleted_at.is_none())
+            .map(|v| crate::model::VariationOptionView {
+                id: v.id.clone(),
+                label: v.label.clone(),
+            })
+            .collect(),
     }
 }
 

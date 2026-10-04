@@ -41,18 +41,19 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: nil, plannedVariationId: nil, plannedRepTarget: nil,
+      groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
       plays: [
-        VariationPlay(
-          id: "e1-p1", variationId: nil, startedAt: "2026-01-01T10:00:00Z", seconds: 60,
-          repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-          achievedTempo: nil, clickPattern: nil, score: 8)
+        Play(
+          id: "e1-p1", sectionId: nil, key: nil, variationIds: [],
+          startedAt: "2026-01-01T10:00:00Z", seconds: 60,
+          repTarget: nil, repCount: nil, repHistory: nil,
+          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: 8)
       ])
     let session = PracticeSession(
       id: "sess-rt", entries: [entry],
       sessionNotes: nil,
       startedAt: "2026-01-01T10:00:00Z", completedAt: "2026-01-01T10:30:00Z",
-      totalDurationSecs: 1800, completionStatus: .completed, sessionScore: 7)
+      totalDurationSecs: 1800, completionStatus: .completed, sessionScore: 7, captureVersion: nil)
     try store.saveSession(session)
     let loaded = try store.loadSessions()
     XCTAssertEqual(loaded.count, 1)
@@ -129,18 +130,19 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, intention: nil, plannedDurationSecs: nil,
-      groupId: "block-1", plannedVariationId: nil, plannedRepTarget: nil,
+      groupId: "block-1", plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
       plays: [
-        VariationPlay(
-          id: "e1-p1", variationId: nil, startedAt: "2026-01-01T10:00:00Z", seconds: 60,
-          repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-          achievedTempo: nil, clickPattern: nil, score: nil)
+        Play(
+          id: "e1-p1", sectionId: nil, key: nil, variationIds: [],
+          startedAt: "2026-01-01T10:00:00Z", seconds: 60,
+          repTarget: nil, repCount: nil, repHistory: nil,
+          tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: nil)
       ])
     let session = PracticeSession(
       id: "sess-g", entries: [entry],
       sessionNotes: nil,
       startedAt: "2026-01-01T10:00:00Z", completedAt: "2026-01-01T10:30:00Z",
-      totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil)
+      totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil, captureVersion: nil)
     try store.saveSession(session)
     let loaded = try store.loadSessions()
     XCTAssertEqual(
@@ -326,7 +328,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1, "pre-existing row must survive v9 migration")
-    XCTAssertEqual(loaded[0].variants, [], "a pre-v9 exercise starts with an empty ladder")
+    XCTAssertEqual(loaded[0].variationIds, [], "a pre-v9 exercise starts with no variations")
   }
 
   func testV9OldEntriesBlobDecodesWithNilVariantId() throws {
@@ -348,8 +350,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let entry = try XCTUnwrap(got.entries.first)
     let play = try XCTUnwrap(entry.plays.first, "the old blob folds into one play")
     XCTAssertEqual(play.score, 6, "the old blob still decodes in full")
-    XCTAssertNil(play.variationId, "a pre-variant entry reads as unattributed")
-    XCTAssertNil(entry.plannedVariationId, "and it carries no plan either")
+    XCTAssertEqual(play.variationIds, [], "a pre-variant entry reads as plain")
+    XCTAssertEqual(entry.plannedVariationIds, [], "and it carries no plan either")
   }
 
   func testV16AddsPhotoIdColumnWithExistingItemsIntact() throws {
@@ -430,14 +432,15 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let symbol = ChordSymbol(
       root: 0, quality: .min7, extensions: [], bass: 7, raw: "Cm7/G")
     let chart = ChordChart(
-      key: "G", modality: .minor,
+      key: Key(letter: .g, accidental: .natural, mode: .minor),
       sections: [
         ChartSection(
           label: "A",
           bars: [Bar(chords: [ChartChord(symbol: symbol)])])
       ])
     let item = LibraryItemFixture.record(
-      id: "p3", title: "Autumn Leaves", key: "G", modality: .minor, chordChart: chart)
+      id: "p3", title: "Autumn Leaves", key: Key(letter: .g, accidental: .natural, mode: .minor),
+      chordChart: chart)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
@@ -491,15 +494,86 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let items = try store.loadItems()
     let piece = try XCTUnwrap(items.first { $0.id == "p1" })
     let expected = LibraryItemFixture.record(
-      id: "p1", title: "Waltz", kind: .piece, composer: "Chopin", key: "A", modality: .minor,
+      id: "p1", title: "Waltz", kind: .piece, composer: "Chopin",
+      key: Key(letter: .a, accidental: .natural, mode: .minor),
       tempo: Tempo(marking: "Lento", bpm: 60), notes: "slow", tags: ["rubato"],
       linkedExerciseIds: ["e1"], createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z", priority: true,
       metre: Metre(beats: 3, unit: 4, groups: nil))
     XCTAssertEqual(piece, expected, "an upgraded piece loads exactly as before, with no sections")
     let exercise = try XCTUnwrap(items.first { $0.id == "e1" })
-    XCTAssertEqual(exercise.variants.map(\.label), ["C"])
+    XCTAssertEqual(exercise.variationIds, [], "a step is retired, not moved (#2246)")
     XCTAssertEqual(exercise.sections, [])
+  }
+
+  /// The upgrade to v19 (#2246): every key, chart and session written at
+  /// v18 loads as it did, a key the core cannot read keeps its text, and the
+  /// new table and columns start empty.
+  func testV19UpgradeKeepsEveryKeyChartAndSession() throws {
+    let chart = #"{"key":"G","modality":"minor","sections":[]}"#
+    let entries =
+      #"[{"id":"e1","itemId":"p1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":300,"status":"completed","plannedVariationId":"v-old","plays":[{"id":"pl1","variationId":"v-old","startedAt":"2026-09-01T10:00:00Z","seconds":300,"repHistory":[{"action":"success","at":"2026-09-01T10:01:00Z"}],"score":7}]}]"#
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v18_section")
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO item (id, title, kind, key, modality, tags, created_at, updated_at,
+            chord_chart)
+          VALUES ('p1', 'Nocturne', 'piece', 'Eb', 'major', '[]', '2026-01-01T00:00:00Z',
+            '2026-01-01T00:00:00Z', '\(chart)');
+          INSERT INTO item (id, title, kind, key, modality, tags, created_at, updated_at)
+          VALUES ('p2', 'Freeform', 'piece', 'F# major', NULL, '[]', '2026-01-01T00:00:00Z',
+            '2026-01-01T00:00:00Z');
+          INSERT INTO item (id, title, kind, key, modality, tags, created_at, updated_at)
+          VALUES ('p3', 'Odd', 'piece', 'H dorian', NULL, '[]', '2026-01-01T00:00:00Z',
+            '2026-01-01T00:00:00Z');
+          INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+            completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
+          VALUES ('s1', '2026-09-01T10:00:00Z', '2026-09-01T10:05:00Z', 300, 'completed', NULL,
+            NULL, '\(entries)', '2026-09-01T10:05:00Z', NULL)
+          """)
+    }
+    let store = try LibraryStore(queue)
+
+    for (table, column) in [
+      ("variation", "label"), ("item", "variation_ids"), ("item", "keys"),
+      ("session", "capture_version"),
+    ] {
+      XCTAssertTrue(try store.columnNames(ofTable: table).contains(column), "\(table).\(column)")
+    }
+    XCTAssertEqual(try store.loadVariations(), [], "the library starts with no variations")
+
+    let items = Dictionary(uniqueKeysWithValues: try store.loadItems().map { ($0.id, $0) })
+    let nocturne = try XCTUnwrap(items["p1"])
+    XCTAssertEqual(nocturne.key, Key(letter: .e, accidental: .flat, mode: .major))
+    XCTAssertEqual(nocturne.chordChart?.key, Key(letter: .g, accidental: .natural, mode: .minor))
+    XCTAssertEqual(nocturne.variationIds, [])
+    XCTAssertEqual(nocturne.keys, [])
+    XCTAssertEqual(
+      items["p2"]?.key, Key(letter: .f, accidental: .sharp, mode: .major),
+      "a freeform key with its mode in the text still reads")
+
+    let odd = try XCTUnwrap(items["p3"])
+    XCTAssertNil(odd.key, "a key the core cannot read loads as none")
+    var renamed = odd
+    renamed.title = "Odd, renamed"
+    try store.save(renamed)
+    let kept = try queue.read { db in
+      try String.fetchOne(db, sql: "SELECT key FROM item WHERE id = 'p3'")
+    }
+    XCTAssertEqual(kept, "H dorian", "and its text stays until a key is picked")
+
+    let session = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertNil(session.captureVersion, "an older session has no capture version")
+    let entry = try XCTUnwrap(session.entries.first)
+    XCTAssertEqual(entry.plannedVariationIds, [], "a planned step is not read")
+    let play = try XCTUnwrap(entry.plays.first)
+    XCTAssertEqual(play.score, 7)
+    XCTAssertEqual(play.variationIds, [], "nor a played one")
+    XCTAssertEqual(play.repHistory?.map(\.action), [.success])
+    XCTAssertNil(play.repHistory?.first?.tempo, "an older tap kept no tempo")
+    XCTAssertEqual(play.tempoChanges, [])
   }
 
   func testSectionsAndATombstoneSurviveAReload() throws {

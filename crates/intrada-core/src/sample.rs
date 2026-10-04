@@ -1,5 +1,16 @@
 use crate::domain::item::{Item, ItemKind};
+use crate::domain::key::Key;
 use crate::domain::session::PracticeSession;
+use crate::domain::variation::{Variation, BUILT_INS};
+
+/// The built-ins, as a fresh library is seeded with.
+pub(crate) fn sample_variations() -> Vec<Variation> {
+    crate::domain::variation::seed_if_empty(&[], chrono::Utc::now()).unwrap_or_default()
+}
+
+fn sample_key(raw: &str) -> Option<Key> {
+    Key::parse(raw)
+}
 
 /// Canonical demo dataset for `Event::LoadSampleData`, shared by every shell
 /// (CI screenshots, local demos, E2E). Stable ids; staggered timestamps so the
@@ -26,8 +37,7 @@ pub(crate) fn sample_items() -> Vec<Item> {
             title: title.to_string(),
             kind,
             composer: composer.map(str::to_string),
-            key: key.map(str::to_string),
-            modality: None,
+            key: key.and_then(sample_key),
             tempo: Tempo::from_parts(marking.map(str::to_string), bpm),
             notes: notes.map(str::to_string),
             tags: tags.iter().map(|s| s.to_string()).collect(),
@@ -36,10 +46,11 @@ pub(crate) fn sample_items() -> Vec<Item> {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
+            variation_ids: vec![],
+            keys: vec![],
         }
     };
 
@@ -106,20 +117,14 @@ pub(crate) fn sample_items() -> Vec<Item> {
         ),
     ];
 
-    // Demo variation ladder (#1083): Major Scales climbs a starter run of keys, so
-    // seed mode shows per-variation progress (sample_sessions scores the first two).
+    // Major Scales runs through a starter set of keys with one variation, so
+    // seed mode shows plays in several keys (sample_sessions scores two).
     if let Some(scales) = items.iter_mut().find(|i| i.id == "sample-scales") {
-        scales.variants = ["C", "G", "D", "A", "E"]
+        scales.keys = ["C major", "G major", "D major", "A major", "E major"]
             .iter()
-            .enumerate()
-            .map(|(position, label)| crate::domain::variant::Variant {
-                id: format!("sample-scales-step-{}", label.to_lowercase()),
-                label: (*label).to_string(),
-                position,
-                updated_at: scales.updated_at,
-                deleted_at: None,
-            })
+            .filter_map(|raw| sample_key(raw))
             .collect();
+        scales.variation_ids = vec![BUILT_INS[0].0.to_string()];
     }
     // One related exercise, so seed mode has a block worth resuming and the Up
     // next card (#1082) has something to show. Anchored on the Nocturne, not
@@ -141,19 +146,21 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
 
     fn sample_play(
         id: &str,
-        variation_id: Option<&str>,
+        key: Option<&str>,
         seconds: u64,
         started_at: chrono::DateTime<chrono::Utc>,
-    ) -> crate::domain::session::VariationPlay {
-        crate::domain::session::VariationPlay {
+    ) -> crate::domain::session::Play {
+        crate::domain::session::Play {
             id: id.to_string(),
-            variation_id: variation_id.map(str::to_string),
+            section_id: None,
+            key: key.and_then(sample_key),
+            variation_ids: vec![],
             started_at,
             seconds,
             rep_target: None,
             rep_count: None,
-            rep_target_reached: None,
             rep_history: None,
+            tempo_changes: vec![],
             achieved_tempo: None,
             click_pattern: None,
             score: None,
@@ -178,7 +185,8 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             intention: None,
             planned_duration_secs: None,
             group_id: None,
-            planned_variation_id: None,
+            planned_section_ids: vec![],
+            planned_variation_ids: vec![],
             planned_rep_target: None,
             plays: vec![sample_play(
                 &format!("{item_id}-play-{position}"),
@@ -205,6 +213,7 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             total_duration_secs,
             completion_status,
             session_score: None,
+            capture_version: Some(crate::domain::session::CAPTURE_VERSION),
         }
     };
 
@@ -243,7 +252,7 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
                 },
                 {
                     let mut e = entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600);
-                    e.plays[0].variation_id = Some("sample-scales-step-g".to_string());
+                    e.plays[0].key = sample_key("G major");
                     e.plays[0].score = Some(7);
                     e
                 },
@@ -275,18 +284,15 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             CompletionStatus::Completed,
             vec![
                 {
-                    // Two variations in one sitting, which is the case #1739
-                    // exists for: the seed data has to show it.
+                    // Two plays in one sitting, which is the case #1739 exists
+                    // for: the seed data has to show it.
                     let mut e = entry(0, "sample-scales", "Major Scales", ItemKind::Exercise, 720);
-                    e.plays[0].variation_id = Some("sample-scales-step-c".to_string());
+                    e.plays[0].key = sample_key("C major");
                     e.plays[0].seconds = 420;
                     e.plays[0].score = Some(8);
-                    let mut second = sample_play(
-                        "sample-scales-play-0b",
-                        Some("sample-scales-step-g"),
-                        300,
-                        now,
-                    );
+                    let mut second =
+                        sample_play("sample-scales-play-0b", Some("G major"), 300, now);
+                    second.variation_ids = vec![BUILT_INS[0].0.to_string()];
                     second.score = Some(6);
                     e.plays.push(second);
                     e

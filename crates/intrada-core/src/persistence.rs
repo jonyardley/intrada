@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::app::{Effect, Event};
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
+use crate::domain::variation::Variation;
 use crate::model::Model;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -32,6 +33,10 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
+    /// Tombstones included: plays name deleted variations too (#2246).
+    LoadVariations,
+    /// Upsert the rows in one transaction.
+    SaveVariations(Vec<Variation>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -43,6 +48,7 @@ pub enum PersistenceOutput {
     Ack,
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
+    Variations(Vec<Variation>),
 }
 
 impl Operation for PersistenceOperation {
@@ -174,6 +180,29 @@ pub fn load_sessions(model: &mut Model) -> Command<Effect, Event> {
         .then_send(Event::SessionsStoreLoaded)
 }
 
+pub fn variations_load_ended(
+    model: &mut Model,
+    then: Command<Effect, Event>,
+) -> Command<Effect, Event> {
+    if model.variations_sync.load_ended() {
+        Command::all([then, load_variations(model)])
+    } else {
+        then
+    }
+}
+
+pub fn load_variations(model: &mut Model) -> Command<Effect, Event> {
+    model.variations_sync.load_sent();
+    Command::request_from_shell(PersistenceOperation::LoadVariations)
+        .then_send(Event::VariationsStoreLoaded)
+}
+
+pub fn save_variations(model: &mut Model, rows: Vec<Variation>) -> Command<Effect, Event> {
+    model.variations_sync.write_sent();
+    Command::request_from_shell(PersistenceOperation::SaveVariations(rows))
+        .then_send(Event::VariationsStoreWritten)
+}
+
 pub fn save_session(model: &mut Model, session: PracticeSession) -> Command<Effect, Event> {
     model.sessions_sync.write_sent();
     Command::request_from_shell(PersistenceOperation::SaveSession(session))
@@ -194,7 +223,6 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -203,7 +231,8 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
-            variants: vec![],
+            variation_ids: vec![],
+            keys: vec![],
             sections: vec![],
             photo_id: None,
             metre: None,
@@ -236,6 +265,104 @@ mod tests {
         );
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].id, "fresh");
+    }
+
+    fn variation(id: &str, deleted: bool) -> Variation {
+        let now = chrono::Utc::now();
+        Variation {
+            id: id.to_string(),
+            label: id.to_string(),
+            updated_at: now,
+            deleted_at: deleted.then_some(now),
+        }
+    }
+
+    fn saved_variations(cmd: &mut Command<Effect, Event>) -> Option<Vec<Variation>> {
+        cmd.effects().find_map(|e| match e {
+            Effect::Persistence(req) => match req.operation {
+                PersistenceOperation::SaveVariations(rows) => Some(rows),
+                _ => None,
+            },
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn start_app_loads_the_variations_too() {
+        let app = crate::app::Intrada;
+        let mut cmd = app.update(Event::StartApp, &mut Model::default());
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadVariations)));
+    }
+
+    /// The built-ins seed an empty library once, and are written so a second
+    /// launch finds them; a library of tombstones is not empty (#2246).
+    #[test]
+    fn an_empty_library_is_seeded_with_the_built_ins_and_saved() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = load_variations(&mut model);
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![])),
+            &mut model,
+        );
+
+        let saved = saved_variations(&mut cmd).expect("the seed is written");
+        assert_eq!(saved.len(), 4);
+        assert_eq!(model.variations.len(), 4);
+
+        let mut model = Model::default();
+        let _ = load_variations(&mut model);
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![variation(
+                crate::domain::variation::BUILT_INS[0].0,
+                true,
+            )])),
+            &mut model,
+        );
+        assert_eq!(
+            saved_variations(&mut cmd),
+            None,
+            "a deleted built-in stays deleted"
+        );
+        assert_eq!(model.variations.len(), 1);
+    }
+
+    #[test]
+    fn a_failed_seed_write_is_not_retried_on_the_reload() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = load_variations(&mut model);
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![])),
+            &mut model,
+        );
+        assert!(saved_variations(&mut cmd).is_some());
+        let _ = app.update(
+            Event::VariationsStoreWritten(PersistenceOutput::Failed),
+            &mut model,
+        );
+
+        let mut cmd = app.update(
+            Event::VariationsStoreLoaded(PersistenceOutput::Variations(vec![])),
+            &mut model,
+        );
+        assert_eq!(saved_variations(&mut cmd), None, "no write loop");
+        assert!(model.variations.is_empty());
+    }
+
+    #[test]
+    fn a_failed_variation_write_surfaces_and_reloads() {
+        let app = crate::app::Intrada;
+        let mut model = Model::default();
+        let _ = save_variations(&mut model, vec![variation("v1", false)]);
+        let mut cmd = app.update(
+            Event::VariationsStoreWritten(PersistenceOutput::Failed),
+            &mut model,
+        );
+        assert!(model.last_error.is_some(), "never a silent success");
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadVariations)));
     }
 
     #[test]
@@ -379,12 +506,11 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".into()), // pieces require a composer (validation)
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         }
     }
 
@@ -415,7 +541,6 @@ mod tests {
             kind: None,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: None,
@@ -613,7 +738,6 @@ mod tests {
             kind: None,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: None,
@@ -813,6 +937,7 @@ mod tests {
             total_duration_secs: 0,
             completion_status: crate::domain::session::CompletionStatus::Completed,
             session_score: None,
+            capture_version: None,
         }
     }
 

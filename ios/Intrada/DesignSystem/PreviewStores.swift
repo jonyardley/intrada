@@ -251,19 +251,20 @@
             id: "re1", itemId: "i1", itemTitle: "Scales · D♭ major", itemType: .exercise,
             position: 0, durationSecs: 180, status: .completed,
             notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedVariationId: nil, plannedRepTarget: nil,
+            groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
             plays: [
-              VariationPlay(
-                id: "re1-p1", variationId: nil, startedAt: "2026-06-16T08:59:00Z",
-                seconds: 180, repTarget: nil, repCount: nil, repTargetReached: nil,
-                repHistory: nil, achievedTempo: nil, clickPattern: nil,
+              Play(
+                id: "re1-p1", sectionId: nil, key: nil, variationIds: [],
+                startedAt: "2026-06-16T08:59:00Z", seconds: 180, repTarget: nil, repCount: nil,
+                repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
                 score: nil)
             ]),
           SetlistEntry(
             id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
             position: 1, durationSecs: 0, status: .notAttempted,
             notes: nil, intention: nil, plannedDurationSecs: nil,
-            groupId: nil, plannedVariationId: nil, plannedRepTarget: nil, plays: []),
+            groupId: nil, plannedSectionIds: [], plannedVariationIds: [], plannedRepTarget: nil,
+            plays: []),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",

@@ -12,14 +12,14 @@ struct LibraryQueryFilterTests {
       .item(
         .add(
           CreateItem(
-            title: "Clair de Lune", kind: .piece, composer: "Debussy", key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Clair de Lune", kind: .piece, composer: "Debussy", key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     _ = try bridge.update(
       .item(
         .add(
           CreateItem(
-            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variantLabels: []))))
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     return bridge
   }
 
@@ -56,7 +56,7 @@ struct LibraryQueryFilterTests {
         .update(
           id: hanon.id,
           input: UpdateItem(
-            title: hanon.title, kind: hanon.itemType, composer: nil, key: nil, modality: nil,
+            title: hanon.title, kind: hanon.itemType, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: nil, priority: true))))
 
     _ = try bridge.update(

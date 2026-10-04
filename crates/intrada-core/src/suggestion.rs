@@ -3,13 +3,13 @@
 //! derived from the same `LibraryItemView` projection the Library screens
 //! read, so the card and piece detail cannot disagree about a mark.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::LocalClock;
 use crate::domain::item::ItemKind;
-use crate::model::{ItemPracticeSummary, LibraryItemView, VariantView};
+use crate::model::{ItemPracticeSummary, LibraryItemView};
 use crate::staleness::{self, Staleness};
 
 /// Related exercises the card suggests alongside the piece; with the piece
@@ -51,12 +51,8 @@ pub struct SuggestedItem {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
-    /// The ladder variation to practise, where the exercise has one that isn't solid.
-    pub variant_id: Option<String>,
-    pub variant_label: Option<String>,
-    /// The mark this row's reason is drawn from: the variation's where a variation was
-    /// chosen, otherwise the exercise's mark in this piece's context, or the
-    /// piece's own latest mark.
+    /// The mark this row's reason is drawn from: the exercise's mark in this
+    /// piece's context, or the piece's own latest mark.
     pub latest_score: Option<u8>,
     pub reason: String,
 }
@@ -76,8 +72,6 @@ pub struct SuggestedPlan {
 
 /// Up next's ranking, best first, at most four blocks, no item in two.
 pub fn rank_blocks(items: &[LibraryItemView], clock: LocalClock) -> Vec<SuggestedSession> {
-    let by_id: HashMap<&str, &LibraryItemView> = items.iter().map(|i| (i.id.as_str(), i)).collect();
-
     let mut anchors: Vec<&LibraryItemView> = items
         .iter()
         .filter(|i| i.item_type == ItemKind::Piece && !i.linked_exercises.is_empty())
@@ -100,7 +94,7 @@ pub fn rank_blocks(items: &[LibraryItemView], clock: LocalClock) -> Vec<Suggeste
     anchors
         .into_iter()
         .map(|anchor| {
-            let block = block_for(anchor, &by_id, &taken, clock);
+            let block = block_for(anchor, &taken, clock);
             taken.extend(block.items.iter().map(|i| i.item_id.clone()));
             block
         })
@@ -134,7 +128,6 @@ pub fn plan(blocks: &[SuggestedSession], length_mins: Option<u16>) -> Option<Sug
 
 fn block_for(
     anchor: &LibraryItemView,
-    by_id: &HashMap<&str, &LibraryItemView>,
     taken: &HashSet<String>,
     clock: LocalClock,
 ) -> SuggestedSession {
@@ -146,20 +139,10 @@ fn block_for(
         .iter()
         .filter(|ex| !taken.contains(&ex.id))
         .map(|ex| {
-            // The first variation that is not yet solid. The ladder's "current
-            // rung" went with #1739 decision 1; the same rule stays here as
-            // this card's own recommendation until #1501 replaces it.
-            let variation = by_id
-                .get(ex.id.as_str())
-                .and_then(|full| full.variants.iter().find(|v| !v.is_solid));
-            let mark = match variation {
-                Some(variation) => variation.latest_score,
-                None => ex.piece_context_score,
-            };
+            let mark = ex.piece_context_score;
             Suggestable {
                 id: ex.id.as_str(),
                 title: ex.title.as_str(),
-                variation,
                 mark,
                 staleness: staleness::assess(ex.practice.as_ref(), mark, clock),
                 practice: ex.practice.as_ref(),
@@ -179,10 +162,8 @@ fn block_for(
             item_id: ex.id.to_string(),
             item_title: ex.title.to_string(),
             item_type: ItemKind::Exercise,
-            variant_id: ex.variation.map(|v| v.id.clone()),
-            variant_label: ex.variation.map(|v| v.label.clone()),
             latest_score: ex.mark,
-            reason: mark_clause(ex.mark, ex.variation.is_some()),
+            reason: mark_clause(ex.mark),
         })
         .collect();
 
@@ -191,8 +172,6 @@ fn block_for(
         item_id: anchor.id.clone(),
         item_title: anchor.title.clone(),
         item_type: ItemKind::Piece,
-        variant_id: None,
-        variant_label: None,
         latest_score: latest_mark(anchor),
         reason: piece_mark_clause(latest_mark(anchor)),
     });
@@ -225,15 +204,13 @@ fn block_for(
     }
 }
 
-/// A linked exercise plus the ladder rung it would practise, gathered once so
-/// ranking, reasons and the estimate all read the same numbers.
+/// A linked exercise, gathered once so ranking, reasons and the estimate all
+/// read the same numbers.
 struct Suggestable<'a> {
     id: &'a str,
     title: &'a str,
-    variation: Option<&'a VariantView>,
-    /// The variation's mark where one was chosen, otherwise the exercise's mark
-    /// in this piece's context. Per-piece, not flat: a drill solid under one
-    /// tune can be rough under another (#1081).
+    /// The exercise's mark in this piece's context. Per-piece, not flat: a
+    /// drill solid under one tune can be rough under another (#1081).
     mark: Option<u8>,
     staleness: Staleness,
     practice: Option<&'a ItemPracticeSummary>,
@@ -249,11 +226,10 @@ fn latest_mark(item: &LibraryItemView) -> Option<u8> {
     item.practice.as_ref().and_then(|p| p.latest_score)
 }
 
-fn mark_clause(mark: Option<u8>, has_variation: bool) -> String {
-    match (mark, has_variation) {
-        (Some(m), _) => marked_clause(m),
-        (None, true) => "Variation not marked yet".to_string(),
-        (None, false) => "Not marked with this piece".to_string(),
+fn mark_clause(mark: Option<u8>) -> String {
+    match mark {
+        Some(m) => marked_clause(m),
+        None => "Not marked with this piece".to_string(),
     }
 }
 
@@ -540,56 +516,6 @@ mod tests {
         assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
     }
 
-    // ── Variations ────────────────────────────────────────────────────
-
-    #[test]
-    fn a_laddered_exercise_carries_its_current_variation() {
-        let mut library = piece_with_exercises("p1", "Prelude", 1);
-        let ex = library
-            .iter_mut()
-            .find(|i| i.id == "p1-ex0")
-            .expect("the exercise");
-        ex.variants = vec![
-            VariantView::fixture("v0", "C", 0).scored(9),
-            VariantView::fixture("v1", "F", 1).scored(4),
-        ];
-
-        let first = &suggest(&library).items[0];
-        assert_eq!(first.variant_id.as_deref(), Some("v1"));
-        assert_eq!(first.variant_label.as_deref(), Some("F"));
-        assert_eq!(first.latest_score, Some(4));
-    }
-
-    #[test]
-    fn a_fully_solid_ladder_carries_no_variation() {
-        let mut library = piece_with_exercises("p1", "Prelude", 1);
-        library[0].linked_exercises[0].piece_context_score = Some(8);
-        let ex = library
-            .iter_mut()
-            .find(|i| i.id == "p1-ex0")
-            .expect("the exercise");
-        ex.variants = vec![VariantView::fixture("v0", "C", 0).scored(9)];
-
-        let first = &suggest(&library).items[0];
-        assert_eq!(first.variant_id, None);
-        assert_eq!(first.latest_score, Some(8));
-    }
-
-    #[test]
-    fn a_variations_mark_orders_the_exercise_not_its_flat_one() {
-        let mut library = piece_with_exercises("p1", "Prelude", 2);
-        library[0].linked_exercises[0].piece_context_score = Some(4);
-        library[0].linked_exercises[1].piece_context_score = Some(7);
-        // ex1's ladder is on a rung far rougher than its flat mark suggests.
-        let ex = library
-            .iter_mut()
-            .find(|i| i.id == "p1-ex1")
-            .expect("the exercise");
-        ex.variants = vec![VariantView::fixture("v1", "F♯", 0).scored(1)];
-
-        assert_eq!(suggest(&library).items[0].item_id, "p1-ex1");
-    }
-
     // ── Reasons ──────────────────────────────────────────────────────
 
     #[test]
@@ -698,7 +624,7 @@ mod tests {
         yesterday[0].linked_exercises[0].piece_context_score = Some(7);
         libraries.push(yesterday);
 
-        // Long gone, with a laddered exercise mid-climb.
+        // Long gone.
         let mut cold = piece_with_exercises("d", "Danza", 3);
         cold[0].practice = Some(practised(97, 30, 4));
         // Starred and long gone is the longest headline the formatter can
@@ -707,11 +633,6 @@ mod tests {
         starred_and_cold[0].priority = true;
         starred_and_cold[0].practice = Some(practised(97, 30, 4));
         libraries.push(starred_and_cold);
-        let ex = cold
-            .iter_mut()
-            .find(|i| i.id == "d-ex1")
-            .expect("the exercise");
-        ex.variants = vec![VariantView::fixture("v", "B♭", 0)];
         libraries.push(cold);
 
         for library in &libraries {
@@ -918,8 +839,6 @@ mod tests {
                     item_id: format!("{id}-{i}"),
                     item_title: format!("{id} {i}"),
                     item_type: ItemKind::Exercise,
-                    variant_id: None,
-                    variant_label: None,
                     latest_score: None,
                     reason: "Not marked yet".to_string(),
                 })
@@ -993,8 +912,7 @@ mod tests {
     }
 
     #[test]
-    fn unmarked_reason_names_the_variation_or_the_piece() {
-        assert_eq!(mark_clause(None, true), "Variation not marked yet");
-        assert_eq!(mark_clause(None, false), "Not marked with this piece");
+    fn unmarked_reason_names_the_piece() {
+        assert_eq!(mark_clause(None), "Not marked with this piece");
     }
 }

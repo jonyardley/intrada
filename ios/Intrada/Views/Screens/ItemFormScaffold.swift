@@ -71,10 +71,8 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
                     identifier: "itemForm.composer"
                   )
                   .id(FormAnchor.field(.composer))
-                  if form.showsKey {
-                    HairlineDivider()
-                    KeyPicker(label: "Key", key: $form.key, modality: $form.modality)
-                  }
+                  HairlineDivider()
+                  KeyPicker(label: "Key", key: $form.key)
                 }
                 .cardSurface()
 

@@ -1,39 +1,18 @@
 use super::*;
 use crate::app::{AppEffect, Effect, Event};
-use crate::domain::item::Item;
 use crate::model::Model;
 use crate::validation;
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 
-pub(super) fn freeze_rep_state(entry: &mut SetlistEntry) {
-    if let Some(play) = entry.open_play_mut() {
-        if let (Some(target), Some(count)) = (play.rep_target, play.rep_count) {
-            play.rep_target_reached = Some(count >= target);
-        }
-    }
-}
-
-/// An entry that has just become current opens its first play, seeded from
-/// the builder's plan (#1739 decisions 3 and 5), else the item's first live
-/// variation, lowest position first (#1758). No live variants means
-/// unattributed. Idempotent: a recovered session already carries its plays.
-pub(super) fn open_first_play(entry: &mut SetlistEntry, items: &[Item], now: DateTime<Utc>) {
+/// An entry that has just become current opens its first play on the whole
+/// item, plain, with no key (#2246): there is no current step and no default
+/// order, and the plan stays a plan. Idempotent: a recovered session already
+/// carries its plays.
+pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
-        let variation_id = entry.planned_variation_id.clone().or_else(|| {
-            items
-                .iter()
-                .find(|item| item.id == entry.item_id)
-                .and_then(|item| {
-                    item.variants
-                        .iter()
-                        .filter(|v| v.deleted_at.is_none())
-                        .min_by_key(|v| v.position)
-                        .map(|v| v.id.clone())
-                })
-        });
-        entry.plays.push(VariationPlay::opened(
-            variation_id,
+        entry.plays.push(Play::opened(
+            PlayWay::default(),
             entry.planned_rep_target,
             now,
         ));
@@ -76,25 +55,30 @@ pub(super) const UNUSABLE_TEMPO_NOTICE: &str =
 /// erases an earlier stamp, and a sounding one overwrites it: the later instant
 /// wins. An invalid reading stamps nothing and raises no error, since a close
 /// is not a user action (#944).
-pub(super) fn stamp_tempo(play: &mut VariationPlay, reading: &TempoReading) -> TempoStamp {
+pub(super) fn stamp_tempo(play: &mut Play, reading: &TempoReading) -> TempoStamp {
     if !reading.click_sounding {
         return TempoStamp::NothingToKeep;
     }
+    let Some(crotchets) = crotchet_tempo(reading) else {
+        return TempoStamp::Unusable;
+    };
+    play.achieved_tempo = Some(crotchets);
+    play.click_pattern = reading.click.clone();
+    TempoStamp::Kept
+}
+
+/// The reading in crotchets, `None` when the setting gives no usable tempo.
+/// Says nothing about evidence: whether the click sounded is the caller's.
+fn crotchet_tempo(reading: &TempoReading) -> Option<u16> {
     if let Some(click) = &reading.click {
-        if validation::validate_click_state(click).is_err() {
-            return TempoStamp::Unusable;
-        }
+        validation::validate_click_state(click).ok()?;
     }
     let crotchets = reading
         .click
         .as_ref()
         .map_or(reading.bpm, |c| c.metre.crotchet_bpm(reading.bpm));
-    if validation::validate_achieved_tempo(&Some(crotchets)).is_err() {
-        return TempoStamp::Unusable;
-    }
-    play.achieved_tempo = Some(crotchets);
-    play.click_pattern = reading.click.clone();
-    TempoStamp::Kept
+    validation::validate_achieved_tempo(&Some(crotchets)).ok()?;
+    Some(crotchets)
 }
 
 /// A stray tap on the picker is not practice: every terminal transition drops
@@ -124,22 +108,25 @@ pub(super) fn drop_incidental_plays(entries: &mut [SetlistEntry]) {
 /// `PrepareReflection` having stamped the open play's real seconds with the
 /// same `now` the terminal transition will use; otherwise an open play
 /// always reads as incidental regardless of how long it ran.
-pub(crate) fn play_would_survive_drop(entry: &SetlistEntry, play: &VariationPlay) -> bool {
+pub(crate) fn play_would_survive_drop(entry: &SetlistEntry, play: &Play) -> bool {
     if !play.is_incidental() {
         return true;
     }
-    entry.plays.iter().all(VariationPlay::is_incidental)
+    entry.plays.iter().all(Play::is_incidental)
         && entry.plays.first().is_some_and(|first| first.id == play.id)
 }
 
 /// The first tap is what switches the counter on: it writes the target along
-/// with itself, so an untouched entry keeps all four rep fields `None` and
-/// banks nothing (design-principles T19). A target set in the builder is kept;
-/// otherwise the musician's default is written (#1915).
+/// with itself, so an untouched entry keeps its rep fields `None` and banks
+/// nothing (design-principles T19). A target set in the builder is kept;
+/// otherwise the musician's default is written (#1915). The count is the
+/// replay of the taps still standing, so it goes on past the target (#2107)
+/// and a tap the full history cannot keep does not count.
 pub(super) fn record_rep(
     model: &mut Model,
     action: RepAction,
     now: DateTime<Utc>,
+    reading: &TempoReading,
 ) -> Command<Effect, Event> {
     let default_rep_target = model.practice_defaults.rep_target;
     let SessionStatus::Active(ref mut active) = model.session_status else {
@@ -148,32 +135,109 @@ pub(super) fn record_rep(
     let Some(entry) = active.entries.get_mut(active.current_index) else {
         return crux_core::render::render();
     };
-    // Repetitions belong to the variation being played, so they retarget the
-    // open play and reset when a switch opens the next one (#1739 decision 6).
-    open_first_play(entry, &model.items, now);
+    // Repetitions belong to the play open now, so they reset when a switch
+    // opens the next one (#1739 decision 6).
+    open_first_play(entry, now);
     let Some(play) = entry.open_play_mut() else {
         return crux_core::render::render();
     };
-    // A miss at the target steps the count back so an accidental tap can be
-    // corrected and re-earned (#1507).
-    if play.rep_target_reached == Some(true) && action == RepAction::Success {
+    let history = play.rep_history.as_deref().unwrap_or_default();
+    if history.len() >= validation::MAX_REP_HISTORY
+        || (action == RepAction::Undo && standing_taps(history).is_empty())
+    {
         return crux_core::render::render();
     }
 
-    let target = *play.rep_target.get_or_insert(default_rep_target);
-    let count = play.rep_count.unwrap_or(0);
-    let new_count = match action {
-        RepAction::Success => (count + 1).min(target),
-        RepAction::Missed => count.saturating_sub(1),
-    };
-    play.rep_count = Some(new_count);
-    play.rep_target_reached = Some(new_count >= target);
+    play.rep_target.get_or_insert(default_rep_target);
     let history = play.rep_history.get_or_insert_with(Vec::new);
-    if history.len() < validation::MAX_REP_HISTORY {
-        history.push(RepEvent { action, at: now });
-    }
+    history.push(RepEvent {
+        action,
+        at: now,
+        tempo: crotchet_tempo(reading),
+        click_sounding: Some(reading.click_sounding),
+    });
+    play.rep_count = Some(rep_count(history));
 
     model.last_error = None;
+    persist_active(active)
+}
+
+/// The got its and misses no undo has reversed, in order.
+pub(crate) fn standing_taps(history: &[RepEvent]) -> Vec<RepAction> {
+    let mut standing = Vec::new();
+    for event in history {
+        match event.action {
+            RepAction::Undo => {
+                standing.pop();
+            }
+            tap => standing.push(tap),
+        }
+    }
+    standing
+}
+
+/// Got it adds one, uncapped bar the byte; a miss steps back one, floor 0.
+pub(crate) fn rep_count(history: &[RepEvent]) -> u8 {
+    standing_taps(history)
+        .into_iter()
+        .fold(0u8, |count, tap| match tap {
+            RepAction::Success => count.saturating_add(1),
+            RepAction::Missed | RepAction::Undo => count.saturating_sub(1),
+        })
+}
+
+/// A change this soon after the last, with no tap between, is the same climb
+/// still moving: it replaces the last rather than adding to it.
+const TEMPO_SETTLE_SECS: i64 = 2;
+
+/// Keeps where the tempo rested on the open play (#2107). A setting that gives
+/// no crotchet tempo writes nothing and says nothing, like a tap's.
+pub(super) fn record_tempo_change(
+    model: &mut Model,
+    now: DateTime<Utc>,
+    reading: &TempoReading,
+) -> Command<Effect, Event> {
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        return crux_core::render::render();
+    };
+    // The stamped play is final while the sheet is open (#2137).
+    if active.reflection.is_some() {
+        return crux_core::render::render();
+    }
+    let Some(tempo) = crotchet_tempo(reading) else {
+        return crux_core::render::render();
+    };
+    let Some(entry) = active.entries.get_mut(active.current_index) else {
+        return crux_core::render::render();
+    };
+    open_first_play(entry, now);
+    let Some(play) = entry.open_play_mut() else {
+        return crux_core::render::render();
+    };
+    let change = TempoChange {
+        at: now,
+        tempo,
+        click_sounding: reading.click_sounding,
+    };
+    let last_tap_at = play
+        .rep_history
+        .as_ref()
+        .and_then(|h| h.last())
+        .map(|e| e.at);
+    let full = play.tempo_changes.len() >= validation::MAX_REP_HISTORY;
+    match play.tempo_changes.last_mut() {
+        Some(last) if last.tempo == tempo && last.click_sounding == reading.click_sounding => {
+            return crux_core::render::render();
+        }
+        Some(last)
+            if (now - last.at).num_seconds() < TEMPO_SETTLE_SECS
+                && last_tap_at.is_none_or(|tap| tap < last.at) =>
+        {
+            *last = change;
+        }
+        _ if full => return crux_core::render::render(),
+        _ => play.tempo_changes.push(change),
+    }
     persist_active(active)
 }
 
@@ -207,10 +271,10 @@ pub(super) fn entry_for_update_mut<'a>(
 }
 
 // Unlike score/notes (post-play reflection only, `entry_for_update_mut`), the
-// variation tag is also a Building-phase plan ("which rung am I about to climb"),
-// so its lookup spans all three phases (#1083). The immutable twin exists for
-// checks that also read the library (a mutable borrow would lock the model).
-pub(super) fn entry_for_variant<'a>(model: &'a Model, entry_id: &str) -> Option<&'a SetlistEntry> {
+// plan is a Building-phase write and a switch an Active one, so the lookup
+// spans all three phases (#1083). The immutable twin exists for checks that
+// also read the library (a mutable borrow would lock the model).
+pub(super) fn entry_for_plan<'a>(model: &'a Model, entry_id: &str) -> Option<&'a SetlistEntry> {
     match &model.session_status {
         SessionStatus::Building(building) => building.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Active(active) => active.entries.iter().find(|e| e.id == entry_id),
@@ -219,7 +283,7 @@ pub(super) fn entry_for_variant<'a>(model: &'a Model, entry_id: &str) -> Option<
     }
 }
 
-pub(super) fn entry_for_variant_mut<'a>(
+pub(super) fn entry_for_plan_mut<'a>(
     model: &'a mut Model,
     entry_id: &str,
 ) -> Option<&'a mut SetlistEntry> {
@@ -233,7 +297,6 @@ pub(super) fn entry_for_variant_mut<'a>(
 
 pub(super) fn transition_to_summary(
     active: &mut ActiveSession,
-    items: &[Item],
     now: DateTime<Utc>,
     reading: &TempoReading,
     completion_status: CompletionStatus,
@@ -243,9 +306,8 @@ pub(super) fn transition_to_summary(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, items, active.current_item_started_at);
+        open_first_play(entry, active.current_item_started_at);
         stamp = close_open_play(entry, now, Some(reading));
-        freeze_rep_state(entry);
     }
 
     if completion_status == CompletionStatus::EndedEarly {

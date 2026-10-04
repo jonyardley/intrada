@@ -47,7 +47,7 @@ struct VariationPickerSheet: View {
             .multilineTextAlignment(.leading)
           Text(variation.caption)
             .font(IntradaFont.secondary)
-            .foregroundStyle(variation.isSolid ? IntradaColor.ink : IntradaColor.inkSecondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
             .multilineTextAlignment(.leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -76,7 +76,7 @@ struct VariationPickerSheet: View {
         VariationPickerSheet(
           itemTitle: "Major Scales",
           currentVariations: ActiveSessionView.previewActiveVariations.currentVariations,
-          currentVariationId: ActiveSessionView.previewActiveVariations.currentVariationId,
+          currentVariationId: ActiveSessionView.previewActiveVariations.currentVariationIds.first,
           onPick: { _ in true })
       }
   }

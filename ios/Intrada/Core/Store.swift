@@ -201,7 +201,21 @@ final class Store {
 
   func loadRecoverableSession() {
     guard viewModel?.offersRecovery == true else { return }
+    clearRetiredSessionsInProgress()
     recoverableSession = pendingSessionInProgress()
+  }
+
+  /// A practice saved by an older build has a shape this one cannot read, so
+  /// it is never half restored: its key is deleted and the core says so (#2246).
+  private func clearRetiredSessionsInProgress() {
+    let retired = (1..<sessionBlobVersion())
+      .map {
+        DefaultsSlot(key: "intrada.session-in-progress.v\($0)", defaults: sessionSlot.defaults)
+      }
+      .filter { $0.read() != nil }
+    guard !retired.isEmpty else { return }
+    for slot in retired { slot.clear() }
+    send(.session(.retiredSessionFound))
   }
 
   func resumeRecoverableSession() {
@@ -316,6 +330,9 @@ private struct DiskJob: @unchecked Sendable {
       case .deleteItem(let id, let deletedAt): try store.delete(id: id, deletedAt: deletedAt)
       case .loadSessions: return Outcome(output: .sessions(try store.loadSessions()), error: nil)
       case .saveSession(let session): try store.saveSession(session)
+      case .loadVariations:
+        return Outcome(output: .variations(try store.loadVariations()), error: nil)
+      case .saveVariations(let variations): try store.save(variations)
       }
       return Outcome(output: .ack, error: nil)
     } catch {

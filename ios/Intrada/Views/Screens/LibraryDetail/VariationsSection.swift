@@ -9,22 +9,26 @@ struct VariationsSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      header
-      if item.variants.isEmpty {
+      if item.keys.isEmpty && item.variations.isEmpty {
+        SectionTitle("Variations")
         emptyState
-      } else if item.ladderIsKeys {
+      }
+      if !item.keys.isEmpty {
+        SectionTitle("Keys")
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: IntradaSpacing.card) {
-            ForEach(item.variants, id: \.id) { variation in
-              VariationRingItem(variation: variation)
+            ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
+              KeyRingItem(key: key)
             }
           }
           .padding(IntradaSpacing.cardCompact)
         }
         .cardSurface(cornerRadius: IntradaRadius.card)
-      } else {
+      }
+      if !item.variations.isEmpty {
+        SectionTitle("Variations")
         VStack(spacing: 0) {
-          ForEach(Array(item.variants.enumerated()), id: \.element.id) { index, variation in
+          ForEach(Array(item.variations.enumerated()), id: \.element.id) { index, variation in
             if index > 0 {
               HairlineDivider()
             }
@@ -36,82 +40,50 @@ struct VariationsSection: View {
     }
   }
 
-  private var header: some View {
-    HStack(alignment: .firstTextBaseline) {
-      SectionTitle(item.ladderIsKeys ? "Keys" : "Variations")
-      if !item.variants.isEmpty {
-        Text("\(item.solidVariationCount) of \(item.variants.count) solid")
-          .font(IntradaFont.secondary)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      Spacer()
-    }
-  }
-
   private var emptyState: some View {
     VStack(spacing: IntradaSpacing.controlGap) {
-      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circle(.major)) }
-        .accessibilityLabel("Add 12 major keys as this exercise's variations")
-      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circle(.minor)) }
-        .accessibilityLabel("Add 12 minor keys as this exercise's variations")
+      AddRowButton(title: "Add 12 major keys") { addKeyPreset(.major) }
+        .accessibilityLabel("Add 12 major keys to practise this in")
+      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(.minor) }
+        .accessibilityLabel("Add 12 minor keys to practise this in")
       AddRowButton(title: "Add variations", style: .plain, action: onAddVariations)
-        .accessibilityLabel("Add variations to this exercise")
+        .accessibilityLabel("Add variations to this item")
     }
     .padding(IntradaSpacing.card)
     .cardSurface()
   }
 
-  private func addKeyPreset(_ labels: [String]) {
-    store.send(.item(.setVariants(id: item.id, labels: labels)), onSuccess: .impact)
+  private func addKeyPreset(_ mode: Modality) {
+    store.send(.item(.updateKeys(id: item.id, keys: KeyHelper.circle(mode))), onSuccess: .impact)
   }
 }
 
-/// One column in the Variations horizontal scroller: a ring (letter + arc)
-/// and a state caption below: Solid, calm and static, no pulse (`breathe` and
-/// `metro` are retired per `design/CLAUDE.md` "Motion"), or a dash for not yet
-/// reached.
-private struct VariationRingItem: View {
-  let variation: VariantView
-
-  @Environment(\.scoreRange) private var scoreRange
+private struct KeyRingItem: View {
+  let key: ItemKeyView
 
   var body: some View {
     VStack(spacing: 6) {
-      ScoreRing(
-        score: variation.latestScore.map(Int.init), size: 44, solid: variation.isSolid,
-        labelOverride: variation.label)
-      Text(captionText)
+      ScoreRing(score: key.latestScore.map(Int.init), size: 44, labelOverride: shortLabel)
+      Text(key.caption)
         .font(IntradaFont.secondary)
-        .foregroundStyle(captionColor)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
+    .accessibilityLabel("\(key.label), \(key.caption)")
   }
 
-  private var captionText: String {
-    if variation.isSolid { return "Solid" }
-    return "—"
-  }
-
-  private var captionColor: Color {
-    variation.isSolid ? IntradaColor.accent : IntradaColor.inkFaintIcon
-  }
-
-  private var accessibilityLabel: String {
-    guard let score = variation.latestScore else { return "\(variation.label), not yet attempted" }
-    return variation.isSolid
-      ? "\(variation.label), solid, \(score) of \(scoreRange.upperBound)"
-      : "\(variation.label), \(score) of \(scoreRange.upperBound)"
+  private var shortLabel: String {
+    guard let selection = KeyHelper.selection(key.key) else { return key.label }
+    let tonic = KeyHelper.prettify(selection.spelling)
+    return selection.mode == .minor ? "\(tonic)m" : tonic
   }
 }
 
-/// Non-key variations row (#1786): a ring's label shrinks to fit, which a
-/// free-text name like "Hands together, two octaves" can't survive, so this
-/// lays out like `VariationPickerSheet.row` instead: full-width label above
-/// the caption, never sharing a line with it, so a long name always keeps
-/// the whole row rather than giving up width to the caption.
+/// A ring's label shrinks to fit, which a free-text name like "Hands
+/// together, two octaves" can't survive (#1786), so a variation lays out like
+/// `VariationPickerSheet.row`: the full-width label above the caption.
 private struct VariationListRow: View {
-  let variation: VariantView
+  let variation: VariationView
 
   var body: some View {
     VStack(alignment: .leading, spacing: 2) {
@@ -120,26 +92,14 @@ private struct VariationListRow: View {
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
-      Text(captionText)
+      Text(variation.caption)
         .font(IntradaFont.secondary)
-        .foregroundStyle(captionColor)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.card)
     .padding(.horizontal, IntradaSpacing.card)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var captionText: String {
-    variation.caption
-  }
-
-  private var captionColor: Color {
-    variation.isSolid ? IntradaColor.ink : IntradaColor.inkSecondary
-  }
-
-  private var accessibilityLabel: String {
-    "\(variation.label), \(variation.caption)"
+    .accessibilityLabel("\(variation.label), \(variation.caption)")
   }
 }

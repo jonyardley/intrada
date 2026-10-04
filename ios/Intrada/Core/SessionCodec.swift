@@ -7,6 +7,7 @@ extension LibraryStore {
 
   static func session(from row: Row) -> PracticeSession {
     let score: Int64? = row["session_score"]
+    let captureVersion: Int64? = row["capture_version"]
     // The intention and the three reflection columns stay in the table unread:
     // nothing can set them and the core no longer carries them (#1766, #1374).
     return PracticeSession(
@@ -15,16 +16,18 @@ extension LibraryStore {
       startedAt: row["started_at"], completedAt: row["completed_at"],
       totalDurationSecs: UInt64(row["total_duration_secs"] as Int64),
       completionStatus: completionStatuses.decode(row["completion_status"]) ?? .completed,
-      sessionScore: score.map { UInt8(clamping: $0) })
+      sessionScore: score.map { UInt8(clamping: $0) },
+      captureVersion: captureVersion.map { UInt32(clamping: $0) })
   }
 
   // Entries (a nested, optional-heavy aggregate) go to JSON via a Codable DTO,
   // not bincode: bincode is positional, so a future field change would fail to
   // decode old rows, unacceptable when the device is the only copy.
-  /// The per-play fields below `plannedDurationSecs` are LEGACY: every row
-  /// written before #1739 carries them at entry level and has no `plays`, and
-  /// `decodeEntries` folds them into one play. Nothing writes them any more,
-  /// and nothing on device is rewritten (#1739 decision 8).
+  /// The per-play fields below `plays` are LEGACY: every row written before
+  /// #1739 carries them at entry level and has no `plays`, and `decodeEntries`
+  /// folds them into one play. Nothing writes them any more, and nothing on
+  /// device is rewritten (#1739 decision 8). A step a row names, planned or
+  /// played, is not read: steps were retired, not moved (#2246).
   struct StoredEntry: Codable {
     var id: String
     var itemId: String
@@ -37,32 +40,39 @@ extension LibraryStore {
     var intention: String?
     var plannedDurationSecs: UInt32?
     var groupId: String?
-    var plannedVariationId: String?
+    var plannedSectionIds: [String]?
+    var plannedVariationIds: [String]?
     var plannedRepTarget: UInt8?
     var plays: [StoredPlay]?
 
     var score: UInt8?
     var repTarget: UInt8?
     var repCount: UInt8?
-    var repTargetReached: Bool?
     var repHistory: [StoredRepEvent]?
     var achievedTempo: UInt16?
-    var variantId: String?
     var clickPattern: StoredClickState?
   }
 
   struct StoredPlay: Codable {
     var id: String
-    var variationId: String?
+    var sectionId: String?
+    var key: StoredKeyJSON?
+    var variationIds: [String]?
     var startedAt: String
     var seconds: UInt64
     var repTarget: UInt8?
     var repCount: UInt8?
-    var repTargetReached: Bool?
     var repHistory: [StoredRepEvent]?
+    var tempoChanges: [StoredTempoChange]?
     var achievedTempo: UInt16?
     var clickPattern: StoredClickState?
     var score: UInt8?
+  }
+
+  struct StoredTempoChange: Codable {
+    var at: String
+    var tempo: UInt16
+    var clickSounding: Bool
   }
 
   struct StoredClickState: Codable {
@@ -88,47 +98,72 @@ extension LibraryStore {
 
   /// Rows written before the history was timestamped hold bare action strings;
   /// those decode with no `at`, and the session start stands in for it.
+  /// Taps before #2107 keep no tempo; those `nil`s read back as `nil`.
   struct StoredRepEvent: Codable {
     var action: String
     var at: String?
+    var tempo: UInt16?
+    var clickSounding: Bool?
 
-    init(action: String, at: String?) {
+    init(action: String, at: String?, tempo: UInt16?, clickSounding: Bool?) {
       self.action = action
       self.at = at
+      self.tempo = tempo
+      self.clickSounding = clickSounding
     }
 
     init(from decoder: Decoder) throws {
       if let legacy = try? decoder.singleValueContainer().decode(String.self) {
         action = legacy
-        at = nil
         return
       }
       let keyed = try decoder.container(keyedBy: CodingKeys.self)
       action = try keyed.decode(String.self, forKey: .action)
       at = try keyed.decodeIfPresent(String.self, forKey: .at)
+      tempo = try keyed.decodeIfPresent(UInt16.self, forKey: .tempo)
+      clickSounding = try keyed.decodeIfPresent(Bool.self, forKey: .clickSounding)
     }
   }
 
-  static func storedPlay(_ p: VariationPlay) -> StoredPlay {
+  static func storedPlay(_ p: Play) throws -> StoredPlay {
     StoredPlay(
-      id: p.id, variationId: p.variationId, startedAt: p.startedAt, seconds: p.seconds,
-      repTarget: p.repTarget, repCount: p.repCount, repTargetReached: p.repTargetReached,
+      id: p.id, sectionId: p.sectionId, key: try p.key.map(stored),
+      variationIds: p.variationIds, startedAt: p.startedAt, seconds: p.seconds,
+      repTarget: p.repTarget, repCount: p.repCount,
       repHistory: p.repHistory.map {
-        $0.map { StoredRepEvent(action: repActions.encode($0.action), at: $0.at) }
+        $0.map {
+          StoredRepEvent(
+            action: repActions.encode($0.action), at: $0.at, tempo: $0.tempo,
+            clickSounding: $0.clickSounding)
+        }
+      },
+      tempoChanges: p.tempoChanges.map {
+        StoredTempoChange(at: $0.at, tempo: $0.tempo, clickSounding: $0.clickSounding)
       },
       achievedTempo: p.achievedTempo, clickPattern: storedClick(p.clickPattern), score: p.score)
   }
 
   static func encodeEntries(_ entries: [SetlistEntry]) throws -> String {
-    let dtos = entries.map { e in
+    let dtos = try entries.map { e in
       StoredEntry(
         id: e.id, itemId: e.itemId, itemTitle: e.itemTitle, itemType: itemKinds.encode(e.itemType),
         position: e.position, durationSecs: e.durationSecs, status: entryStatuses.encode(e.status),
         notes: e.notes, intention: e.intention, plannedDurationSecs: e.plannedDurationSecs,
-        groupId: e.groupId, plannedVariationId: e.plannedVariationId,
-        plannedRepTarget: e.plannedRepTarget, plays: e.plays.map(storedPlay))
+        groupId: e.groupId, plannedSectionIds: e.plannedSectionIds,
+        plannedVariationIds: e.plannedVariationIds,
+        plannedRepTarget: e.plannedRepTarget, plays: try e.plays.map(storedPlay))
     }
     return try encodeJSON(dtos)
+  }
+
+  static func repHistory(_ stored: [StoredRepEvent]?, sessionStartedAt: String) -> [RepEvent]? {
+    stored.map {
+      $0.map {
+        RepEvent(
+          action: repAction(from: $0.action), at: $0.at ?? sessionStartedAt, tempo: $0.tempo,
+          clickSounding: $0.clickSounding)
+      }
+    }
   }
 
   /// A row written before #1739 has no `plays` and carries one score, one rep
@@ -136,14 +171,17 @@ extension LibraryStore {
   /// the record survives; nothing on device is rewritten (#1739 decision 8).
   /// An entry that was skipped or never reached keeps no play, which is what a
   /// zero-play entry means.
-  static func plays(from d: StoredEntry, sessionStartedAt: String) -> [VariationPlay] {
+  static func plays(from d: StoredEntry, sessionStartedAt: String) -> [Play] {
     if let stored = d.plays, !stored.isEmpty {
       return stored.map { p in
-        VariationPlay(
-          id: p.id, variationId: p.variationId, startedAt: p.startedAt, seconds: p.seconds,
-          repTarget: p.repTarget, repCount: p.repCount, repTargetReached: p.repTargetReached,
-          repHistory: p.repHistory.map {
-            $0.map { RepEvent(action: repAction(from: $0.action), at: $0.at ?? sessionStartedAt) }
+        Play(
+          id: p.id, sectionId: p.sectionId,
+          key: p.key.flatMap { key(text: $0.key, modality: $0.modality) },
+          variationIds: p.variationIds ?? [], startedAt: p.startedAt, seconds: p.seconds,
+          repTarget: p.repTarget, repCount: p.repCount,
+          repHistory: repHistory(p.repHistory, sessionStartedAt: sessionStartedAt),
+          tempoChanges: (p.tempoChanges ?? []).map {
+            TempoChange(at: $0.at, tempo: $0.tempo, clickSounding: $0.clickSounding)
           },
           achievedTempo: p.achievedTempo, clickPattern: clickState(p.clickPattern), score: p.score)
       }
@@ -156,13 +194,12 @@ extension LibraryStore {
     guard entryStatus(from: d.status) == .completed || recorded else { return [] }
 
     return [
-      VariationPlay(
-        id: "\(d.id)-play", variationId: d.variantId, startedAt: sessionStartedAt,
-        seconds: d.durationSecs, repTarget: d.repTarget, repCount: d.repCount,
-        repTargetReached: d.repTargetReached,
-        repHistory: d.repHistory.map {
-          $0.map { RepEvent(action: repAction(from: $0.action), at: $0.at ?? sessionStartedAt) }
-        },
+      Play(
+        id: "\(d.id)-play", sectionId: nil, key: nil, variationIds: [],
+        startedAt: sessionStartedAt, seconds: d.durationSecs, repTarget: d.repTarget,
+        repCount: d.repCount,
+        repHistory: repHistory(d.repHistory, sessionStartedAt: sessionStartedAt),
+        tempoChanges: [],
         achievedTempo: d.achievedTempo, clickPattern: clickState(d.clickPattern), score: d.score)
     ]
   }
@@ -176,7 +213,8 @@ extension LibraryStore {
         id: d.id, itemId: d.itemId, itemTitle: d.itemTitle, itemType: kind(from: d.itemType),
         position: d.position, durationSecs: d.durationSecs, status: entryStatus(from: d.status),
         notes: d.notes, intention: d.intention, plannedDurationSecs: d.plannedDurationSecs,
-        groupId: d.groupId, plannedVariationId: d.plannedVariationId ?? d.variantId,
+        groupId: d.groupId, plannedSectionIds: d.plannedSectionIds ?? [],
+        plannedVariationIds: d.plannedVariationIds ?? [],
         plannedRepTarget: d.plannedRepTarget ?? d.repTarget,
         plays: plays(from: d, sessionStartedAt: sessionStartedAt))
     }
@@ -201,10 +239,13 @@ extension LibraryStore {
     }
   }
 
-  static let repActions = StoredEnum<RepAction>(kind: "RepAction", cases: [.missed, .success]) {
+  static let repActions = StoredEnum<RepAction>(
+    kind: "RepAction", cases: [.missed, .success, .undo]
+  ) {
     switch $0 {
     case .missed: "missed"
     case .success: "success"
+    case .undo: "undo"
     }
   }
 

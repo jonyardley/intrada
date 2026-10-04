@@ -1,8 +1,12 @@
 package com.intrada.android
 
 import com.intrada.android.core.ItemStore
+import com.intrada.shared.Accidental
 import com.intrada.shared.Item
 import com.intrada.shared.ItemKind
+import com.intrada.shared.Key
+import com.intrada.shared.Letter
+import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Tempo
@@ -13,7 +17,7 @@ object Fixtures {
         title: String = "Clair de Lune",
         kind: ItemKind = ItemKind.PIECE,
         composer: String? = "Claude Debussy",
-        key: String? = null,
+        key: Key? = null,
         tempo: Tempo? = null,
         tags: List<String> = emptyList(),
     ) =
@@ -29,8 +33,9 @@ object Fixtures {
             createdAt = "2026-09-01T09:00:00Z",
             updatedAt = "2026-09-01T09:00:00Z",
             priority = false,
-            variants = emptyList(),
             sections = emptyList(),
+            variationIds = emptyList(),
+            keys = emptyList(),
         )
 
     val library =
@@ -40,7 +45,7 @@ object Fixtures {
                 id = "01J0000000000000000000SATI",
                 title = "Gymnopédie No. 1",
                 composer = "Erik Satie",
-                key = "D major",
+                key = Key(Letter.D, Accidental.NATURAL, Modality.MAJOR),
                 tempo = Tempo("Lent", 70u),
                 tags = listOf("recital"),
             ),

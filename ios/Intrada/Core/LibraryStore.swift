@@ -11,6 +11,9 @@ protocol ItemStore: Sendable {
   func delete(id: String, deletedAt: String) throws
   func loadSessions() throws -> [PracticeSession]
   func saveSession(_ session: PracticeSession) throws
+  func loadVariations() throws -> [Variation]
+  /// Upsert a batch in one transaction.
+  func save(_ variations: [Variation]) throws
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -42,18 +45,11 @@ final class LibraryStore: ItemStore {
 
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
-      // Variants load tombstones included: the core owns reconciliation
-      // (resurrect-by-label) and history labels resolve through them (#1083).
-      let variantsByItem = try Self.variantsByItem(db)
       let sectionsByItem = try Self.sectionsByItem(db)
       return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map { row in
-        Self.item(
-          from: row, variants: variantsByItem[row["id"]] ?? [],
-          sections: sectionsByItem[row["id"]] ?? [])
-      }
+      .map { row in Self.item(from: row, sections: sectionsByItem[row["id"]] ?? []) }
     }
   }
 
@@ -77,18 +73,23 @@ final class LibraryStore: ItemStore {
 
   private static func upsert(_ item: Item, in db: Database) throws {
     let chordChart =
-      try encodeChordChart(item.chordChart)
+      try encodeChordChart(
+        item.chordChart, keyIfUnreadable: storedChartKeyIfUnreadable(of: item.id, in: db))
       ?? storedIfUnreadable("chord_chart", of: item.id, as: StoredChart.self, in: db)
+    let keys =
+      try storedKeysIfUnreadable(of: item.id, unchanged: item.keys, in: db)
+      ?? encodeKeys(item.keys)
     let metre =
       try encodeMetre(item.metre)
       ?? storedIfUnreadable("metre", of: item.id, as: StoredMetre.self, in: db)
+    let key = try item.key.map(stored) ?? storedKeyIfUnreadable(of: item.id, in: db)
     try db.execute(
       sql: """
         INSERT INTO item
           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
            linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id,
-           metre, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           metre, variation_ids, keys, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           title = excluded.title, kind = excluded.kind, composer = excluded.composer,
           key = excluded.key, modality = excluded.modality,
@@ -98,33 +99,20 @@ final class LibraryStore: ItemStore {
           linked_exercise_ids = \(keepingUnreadable("linked_exercise_ids")),
           updated_at = excluded.updated_at, priority = excluded.priority,
           chord_chart = excluded.chord_chart, photo_id = excluded.photo_id,
-          metre = excluded.metre, deleted_at = NULL
+          metre = excluded.metre,
+          variation_ids = \(keepingUnreadable("variation_ids")),
+          keys = excluded.keys, deleted_at = NULL
         """,
       arguments: [
-        item.id, item.title, Self.itemKinds.encode(item.kind), item.composer, item.key,
-        item.modality.map(Self.modalities.encode),
+        item.id, item.title, Self.itemKinds.encode(item.kind), item.composer, key?.key,
+        key?.modality,
         item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
         try Self.encodeJSON(item.tags),
         try Self.encodeJSON(item.linkedExerciseIds),
         item.createdAt, item.updatedAt, item.priority,
         chordChart, item.photoId, metre,
+        try Self.encodeJSON(item.variationIds), keys,
       ])
-    // Same transaction as the item row, keyed by id; no delete-missing: the
-    // core always carries the tombstones it loaded and writes them back
-    // verbatim, so Swift never diffs and a tombstone round-trips (fixes the
-    // forced-NULL resurrect hazard, #1113).
-    for v in item.variants {
-      try db.execute(
-        sql: """
-          INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            item_id = excluded.item_id, label = excluded.label,
-            position = excluded.position, updated_at = excluded.updated_at,
-            deleted_at = excluded.deleted_at
-          """,
-        arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt, v.deletedAt])
-    }
     for s in item.sections {
       try db.execute(
         sql: """
@@ -172,6 +160,49 @@ final class LibraryStore: ItemStore {
     return stored
   }
 
+  /// A key list holding one the core cannot read loads without it; while the
+  /// item's list is what loaded, the stored one stays so that key is not lost
+  /// (#2097, #2106).
+  private static func storedKeysIfUnreadable(
+    of id: String, unchanged keys: [Key], in db: Database
+  ) throws -> String? {
+    guard
+      let stored = try String.fetchOne(
+        db, sql: "SELECT keys FROM item WHERE id = ?", arguments: [id])
+    else { return nil }
+    guard let dtos = tryDecodeJSON([StoredKeyJSON].self, from: stored) else {
+      return keys.isEmpty ? stored : nil
+    }
+    let readable = decodeKeys(stored)
+    return readable.count < dtos.count && readable == keys ? stored : nil
+  }
+
+  private static func storedChartKeyIfUnreadable(of id: String, in db: Database) throws
+    -> StoredKeyJSON?
+  {
+    guard
+      let stored = try String.fetchOne(
+        db, sql: "SELECT chord_chart FROM item WHERE id = ?", arguments: [id]),
+      let chart = tryDecodeJSON(StoredChart.self, from: stored),
+      !chart.key.isEmpty, key(text: chart.key, modality: chart.modality) == nil
+    else { return nil }
+    return StoredKeyJSON(key: chart.key, modality: chart.modality)
+  }
+
+  /// A key the core could not read loads as none, so writing none back would
+  /// lose the musician's text; it stays until they pick a key (#2106).
+  private static func storedKeyIfUnreadable(of id: String, in db: Database) throws
+    -> StoredKeyJSON?
+  {
+    guard
+      let row = try Row.fetchOne(
+        db, sql: "SELECT key, modality FROM item WHERE id = ?", arguments: [id]),
+      let text = row["key"] as String?,
+      key(text: text, modality: row["modality"]) == nil
+    else { return nil }
+    return StoredKeyJSON(key: text, modality: row["modality"])
+  }
+
   /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same
   /// format as `updated_at`) rather than removing the row, so the deletion can
   /// win a later last-write-wins sync.
@@ -200,23 +231,47 @@ final class LibraryStore: ItemStore {
         sql: """
           INSERT INTO session
             (id, started_at, completed_at, total_duration_secs, completion_status,
-             session_notes, entries, updated_at, deleted_at, session_score)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+             session_notes, entries, updated_at, deleted_at, session_score, capture_version)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             started_at = excluded.started_at, completed_at = excluded.completed_at,
             total_duration_secs = excluded.total_duration_secs,
             completion_status = excluded.completion_status,
             session_notes = excluded.session_notes,
             entries = excluded.entries, updated_at = excluded.updated_at, deleted_at = NULL,
-            session_score = excluded.session_score
+            session_score = excluded.session_score, capture_version = excluded.capture_version
           """,
         arguments: [
           session.id, session.startedAt, session.completedAt,
           Int(session.totalDurationSecs), Self.completionStatuses.encode(session.completionStatus),
           session.sessionNotes,
           try Self.encodeEntries(session.entries), session.completedAt,
-          session.sessionScore.map { Int($0) },
+          session.sessionScore.map { Int($0) }, session.captureVersion.map { Int($0) },
         ])
+    }
+  }
+
+  /// Tombstones included: plays name deleted variations too (#2246).
+  func loadVariations() throws -> [Variation] {
+    try dbQueue.read { db in
+      try Row.fetchAll(db, sql: "SELECT * FROM variation ORDER BY rowid").map(Self.variation)
+    }
+  }
+
+  /// Keyed by id, tombstones written as sent: the core owns every row.
+  func save(_ variations: [Variation]) throws {
+    try dbQueue.write { db in
+      for v in variations {
+        try db.execute(
+          sql: """
+            INSERT INTO variation (id, label, updated_at, deleted_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              label = excluded.label, updated_at = excluded.updated_at,
+              deleted_at = excluded.deleted_at
+            """,
+          arguments: [v.id, v.label, v.updatedAt, v.deletedAt])
+      }
     }
   }
 
@@ -224,20 +279,6 @@ final class LibraryStore: ItemStore {
   /// `Set` — `SharedTypes`' domain `Set` shadows `Swift.Set` here.
   func columnNames(ofTable table: String) throws -> [String] {
     try dbQueue.read { db in try db.columns(in: table).map(\.name) }
-  }
-
-  /// All variants (variations) grouped by owning item, in ladder order, tombstones
-  /// included, per the core's reconciliation contract (#1083). One query for
-  /// the whole library, keyed by `item_id`, so `loadItems` stays O(1) reads.
-  private static func variantsByItem(_ db: Database) throws -> [String: [Variant]] {
-    let rows = try Row.fetchAll(
-      db,
-      sql: "SELECT * FROM variant ORDER BY item_id, position, id")
-    var byItem: [String: [Variant]] = [:]
-    for row in rows {
-      byItem[row["item_id"], default: []].append(variant(from: row))
-    }
-    return byItem
   }
 
   /// Tombstones included: the core reconciles (#2245).

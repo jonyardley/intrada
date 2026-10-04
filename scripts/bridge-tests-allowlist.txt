@@ -27,7 +27,6 @@ LibrarySort
 LimitsView
 LinkedExerciseView
 ListQuery
-Modality
 NeglectedItem
 PhotoRecognitionStatus
 PhotoRecognitionView
@@ -63,11 +62,7 @@ TempoDraftField
 TempoTrendPoint
 TempoTrendView
 TextDraftField
-Variant
-VariantView
 VariationCoverageView
-VariationPlay
-VariationPlayView
 WeeklySummary
 ViewModel.activeQuery
 ViewModel.activeSort

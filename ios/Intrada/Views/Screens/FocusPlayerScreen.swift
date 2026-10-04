@@ -71,7 +71,7 @@ struct FocusPlayerScreen: View {
         VariationPickerSheet(
           itemTitle: active.currentItemTitle,
           currentVariations: active.currentVariations,
-          currentVariationId: active.currentVariationId,
+          currentVariationId: active.currentVariationIds.first,
           onPick: { switchVariation(active, to: $0) })
       }
     }
@@ -213,10 +213,10 @@ struct FocusPlayerScreen: View {
         switchingVariation = true
       } label: {
         HStack(spacing: 7) {
-          Text(active.currentVariationLabel ?? "Pick a variation")
+          Text(active.currentPlayLabel ?? "Pick a variation")
             .font(IntradaFont.segment)
             .foregroundStyle(
-              active.currentVariationLabel == nil
+              active.currentPlayLabel == nil
                 ? IntradaColor.inkSecondary : IntradaColor.ink
             )
             // A variation named "2nd inversion" shrinks rather than
@@ -236,7 +236,7 @@ struct FocusPlayerScreen: View {
       .buttonStyle(PressRebound())
       .accessibilityLabel("Variation")
       .accessibilityIdentifier("player.variation")
-      .accessibilityValue(active.currentVariationLabel ?? "none picked")
+      .accessibilityValue(active.currentPlayLabel ?? "none picked")
       .accessibilityHint("Switches to another variation of this exercise")
     }
   }
@@ -248,8 +248,9 @@ struct FocusPlayerScreen: View {
     guard active.entries.indices.contains(pos) else { return false }
     return store.sendAccepted(
       .session(
-        .switchVariation(
-          entryId: active.entries[pos].id, variationId: variationId,
+        .switchPlay(
+          entryId: active.entries[pos].id, sectionId: active.currentSectionId,
+          key: active.currentKey, variationIds: [variationId],
           now: SessionClock.nowRFC3339(), reading: tempoReading)))
   }
 
@@ -324,8 +325,12 @@ struct FocusPlayerScreen: View {
       slots: Int(active.currentRepSlots),
       touched: active.currentRepCount != nil,
       reached: active.currentRepTargetReached ?? false,
-      onGotIt: { store.send(.session(.repGotIt(now: SessionClock.nowRFC3339()))) },
-      onNotQuite: { store.send(.session(.repMissed(now: SessionClock.nowRFC3339()))) })
+      onGotIt: {
+        store.send(.session(.repGotIt(now: SessionClock.nowRFC3339(), reading: tempoReading)))
+      },
+      onNotQuite: {
+        store.send(.session(.repMissed(now: SessionClock.nowRFC3339(), reading: tempoReading)))
+      })
   }
 
   // ── Bottom: transport (advance + skip-forward) + next-item hint ──

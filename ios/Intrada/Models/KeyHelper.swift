@@ -14,8 +14,8 @@ enum KeyHelper {
   private static let wedges = keyWheel()
 
   /// Spoke order clockwise from 12 o'clock, the "Add 12 keys" presets' order.
-  static func circle(_ mode: Modality) -> [String] {
-    wedges.filter { $0.mode == wheelMode(mode) }.map(\.primary)
+  static func circle(_ mode: Modality) -> [Key] {
+    (0..<12).compactMap { nextOnTap(current: nil, ring: $0, mode: mode)?.key }
   }
 
   static func primary(ring: Int, mode: Modality) -> String {
@@ -26,21 +26,38 @@ enum KeyHelper {
     wedge(ring: ring, mode: mode)?.alt
   }
 
-  static func selection(key: String, modality: Modality?) -> Selection? {
-    keyWheelSelection(key: key, mode: modality.map(wheelMode)).map {
-      Selection(ring: Int($0.ring), mode: self.modality($0.mode), spelling: $0.spelling)
-    }
+  /// A failed call is a wire break (#846): reported, and the wheel lights nothing.
+  static func selection(_ key: Key) -> Selection? {
+    bridged {
+      try keyWheelSelection(key: Data(key.bincodeSerialize())).map {
+        Selection(ring: Int($0.ring), mode: self.modality($0.mode), spelling: $0.spelling)
+      }
+    } ?? nil
   }
 
-  static func nextOnTap(
-    currentKey: String, currentModality: Modality?, ring: Int, mode: Modality
-  ) -> (tonic: String, modality: Modality, flipped: Bool)? {
-    guard let ring = UInt8(exactly: ring),
-      let tap = keyNextOnTap(
-        currentKey: currentKey, currentMode: currentModality.map(wheelMode), ring: ring,
-        mode: wheelMode(mode))
-    else { return nil }
-    return (tap.tonic, modality(tap.mode), tap.flipped)
+  static func nextOnTap(current: Key?, ring: Int, mode: Modality) -> (key: Key, flipped: Bool)? {
+    guard let ring = UInt8(exactly: ring) else { return nil }
+    return bridged {
+      let bytes = try current.map { Data(try $0.bincodeSerialize()) }
+      guard let tap = try keyNextOnTap(current: bytes, ring: ring, mode: wheelMode(mode)) else {
+        return nil
+      }
+      return (try Key.bincodeDeserialize(input: [UInt8](tap.key)), tap.flipped)
+    } ?? nil
+  }
+
+  /// "E♭ major", in the core's words.
+  static func display(_ key: Key) -> String? {
+    bridged { try keyLabel(key: Data(key.bincodeSerialize())) }
+  }
+
+  private static func bridged<T>(_ call: () throws -> T) -> T? {
+    do {
+      return try call()
+    } catch {
+      report(error, "bridge")
+      return nil
+    }
   }
 
   /// `#`→`♯`; a `b` only counts as `♭` when it follows a note letter (so mode
@@ -66,14 +83,6 @@ enum KeyHelper {
     case .major: return "major"
     case .minor: return "minor"
     }
-  }
-
-  static func display(key: String?, modality: Modality?) -> String? {
-    guard let key, !key.isEmpty else { return nil }
-    if let modality {
-      return "\(prettify(key)) \(modeWord(modality))"
-    }
-    return prettify(key)
   }
 
   /// Enharmonic spokes announce both spellings, since one tap selects and a

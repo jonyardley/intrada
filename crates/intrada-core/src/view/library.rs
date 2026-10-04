@@ -15,9 +15,9 @@ pub(super) fn build_library_item_views(
 ) -> Vec<LibraryItemView> {
     let usage_by_exercise = build_exercise_usage(model, item_index);
 
-    // Per-variation score history, keyed by (item id, variant id); one pass
-    // over sessions, attached to laddered exercises below (#1083).
-    let variant_scores = build_variant_score_index(&model.sessions);
+    // The scored plays of each item, newest first; one pass over sessions,
+    // read by the item's variations and keys below (#2246).
+    let scored_plays = build_scored_plays(&model.sessions);
 
     let mut items: Vec<LibraryItemView> = Vec::new();
 
@@ -48,8 +48,8 @@ pub(super) fn build_library_item_views(
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
-                        key: ex.key.clone(),
-                        modality: ex.modality,
+                        key: ex.key,
+                        key_label: ex.key.as_ref().map(crate::domain::key::Key::label),
                         tempo_marking: ex.tempo.as_ref().and_then(|t| t.marking.clone()),
                         tempo_bpm: ex.tempo.as_ref().and_then(|t| t.bpm),
                         practice: model.practice_summaries.get(&ex.id).cloned(),
@@ -88,7 +88,7 @@ pub(super) fn build_library_item_views(
                         kind: s.kind,
                         title: s.title.clone(),
                         rationale: s.rationale.clone(),
-                        key: s.key.clone(),
+                        key: key_text(s.key.as_ref()),
                         fallback,
                         already_linked: crate::domain::item::scaffold_already_linked(
                             &linked_kinds,
@@ -100,29 +100,23 @@ pub(super) fn build_library_item_views(
                 })
                 .collect();
             ScaffoldPreviewView {
-                key: chart.key.clone(),
+                key: key_text(chart.key.as_ref()),
                 specs: spec_views,
                 fallback_total,
             }
         });
 
-        let variants = if item.kind == ItemKind::Exercise {
-            build_variant_views(item, &variant_scores)
-        } else {
-            vec![]
-        };
-        let ladder_is_keys =
-            crate::domain::variant::ladder_is_all_keys(variants.iter().map(|v| v.label.as_str()));
-        let shows_key = crate::domain::variant::shows_key_field(variants.len());
-        let solid_variation_count = variants.iter().filter(|v| v.is_solid).count();
+        let plays = scored_plays
+            .get(item.id.as_str())
+            .map_or(&[][..], Vec::as_slice);
 
         items.push(LibraryItemView {
             id: item.id.clone(),
             item_type: item.kind.clone(),
             title: item.title.clone(),
             subtitle,
-            key: item.key.clone(),
-            modality: item.modality,
+            key: item.key,
+            key_label: item.key.as_ref().map(crate::domain::key::Key::label),
             tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
             tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
             notes: item.notes.clone(),
@@ -143,15 +137,13 @@ pub(super) fn build_library_item_views(
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
             metre: item.metre.clone(),
-            variants,
-            ladder_is_keys,
+            variations: build_variation_views(item, &model.variations, plays),
             photo_id: item.photo_id.clone(),
-            shows_key,
-            solid_variation_count,
+            keys: build_key_views(item, plays),
             key_selection: item
                 .key
-                .as_deref()
-                .and_then(|key| crate::domain::key::wheel_selection(key, item.modality)),
+                .as_ref()
+                .and_then(crate::domain::key::wheel_selection),
             sections: build_section_views(item),
         });
     }
@@ -406,79 +398,110 @@ pub(crate) fn build_exercise_usage(
     by_exercise
 }
 
-/// Per-variation score history, read straight from the plays and keyed by
-/// (item id, variation id), newest first (#1083, #1739 decision 9). Never via
-/// `score_summary`, which is the lossy projection this exists to avoid.
-pub(crate) fn build_variant_score_index(
-    sessions: &[PracticeSession],
-) -> std::collections::HashMap<(&str, &str), Vec<crate::model::ScoreHistoryEntry>> {
-    use crate::model::ScoreHistoryEntry;
-    use std::collections::HashMap;
+/// A scaffold's key as its title reads it: the spelling, as charts were
+/// derived in before keys were values, else C.
+fn key_text(key: Option<&crate::domain::key::Key>) -> String {
+    key.map_or_else(|| "C".to_string(), crate::domain::key::Key::spelling)
+}
 
-    let mut index: HashMap<(&str, &str), Vec<ScoreHistoryEntry>> = HashMap::new();
+/// One scored play of an item, with the session it was in.
+pub(crate) struct ScoredPlay<'a> {
+    session: &'a PracticeSession,
+    play: &'a crate::domain::session::Play,
+}
+
+/// Every scored play, by item id, newest first (#1083, #1739 decision 9).
+/// Read straight from the plays, never via `score_summary`, which is the
+/// lossy projection this exists to avoid.
+pub(crate) fn build_scored_plays(
+    sessions: &[PracticeSession],
+) -> std::collections::HashMap<&str, Vec<ScoredPlay<'_>>> {
+    let mut index: std::collections::HashMap<&str, Vec<ScoredPlay>> =
+        std::collections::HashMap::new();
     for session in sessions {
         for entry in &session.entries {
-            for play in &entry.plays {
-                let (Some(variant_id), Some(score)) = (&play.variation_id, play.score) else {
-                    continue;
-                };
+            for play in entry.plays.iter().filter(|p| p.score.is_some()) {
                 index
-                    .entry((entry.item_id.as_str(), variant_id.as_str()))
+                    .entry(entry.item_id.as_str())
                     .or_default()
-                    .push(ScoreHistoryEntry {
-                        session_date: session.started_at.to_rfc3339(),
-                        score,
-                        session_id: session.id.clone(),
-                    });
+                    .push(ScoredPlay { session, play });
             }
         }
     }
-    for history in index.values_mut() {
-        history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
+    for plays in index.values_mut() {
+        plays.sort_by_key(|p| std::cmp::Reverse(p.session.started_at));
     }
     index
 }
 
-/// Project an exercise's variations for the view: live ones only, in display
-/// order, with their scores and the solid flag. No current rung: a variation
-/// is unordered, and what to practise next is a recommendation (#1739
-/// decision 1), which is #1501's job.
-pub(crate) fn build_variant_views(
-    item: &crate::domain::item::Item,
-    variant_scores: &std::collections::HashMap<(&str, &str), Vec<crate::model::ScoreHistoryEntry>>,
-) -> Vec<crate::model::VariantView> {
-    use crate::domain::variant::SOLID_SCORE_MIN;
-    use crate::model::{saved_mark_caption, VariantView};
-
-    let mut live: Vec<_> = item
-        .variants
+fn history<'a>(
+    plays: &'a [ScoredPlay<'a>],
+    on: impl Fn(&crate::domain::session::Play) -> bool,
+) -> Vec<crate::model::ScoreHistoryEntry> {
+    plays
         .iter()
-        .filter(|v| v.deleted_at.is_none())
-        .collect();
-    live.sort_by_key(|v| v.position);
+        .filter(|p| on(p.play))
+        .filter_map(|p| {
+            Some(crate::model::ScoreHistoryEntry {
+                session_date: p.session.started_at.to_rfc3339(),
+                score: p.play.score?,
+                session_id: p.session.id.clone(),
+            })
+        })
+        .collect()
+}
 
-    let views: Vec<VariantView> = live
-        .into_iter()
+/// The item's live variations, in the order chosen, with the marks of the
+/// plays on each. An id with no live library row is left out.
+pub(crate) fn build_variation_views(
+    item: &crate::domain::item::Item,
+    library: &[crate::domain::variation::Variation],
+    plays: &[ScoredPlay],
+) -> Vec<crate::model::VariationView> {
+    item.variation_ids
+        .iter()
+        .filter_map(|id| {
+            library
+                .iter()
+                .find(|v| &v.id == id && v.deleted_at.is_none())
+        })
         .map(|v| {
-            let score_history = variant_scores
-                .get(&(item.id.as_str(), v.id.as_str()))
-                .cloned()
-                .unwrap_or_default();
+            let score_history = history(plays, |p| p.variation_ids.contains(&v.id));
             let latest_score = score_history.first().map(|e| e.score);
-            let is_solid = latest_score.is_some_and(|s| s >= SOLID_SCORE_MIN);
-            VariantView {
+            crate::model::VariationView {
                 id: v.id.clone(),
                 label: v.label.clone(),
-                position: v.position,
                 latest_score,
                 score_history,
-                is_solid,
-                caption: saved_mark_caption(latest_score, is_solid),
+                caption: crate::model::saved_mark_caption(latest_score),
             }
         })
-        .collect();
+        .collect()
+}
 
-    views
+/// The item's keys, with the latest mark of a play in each, either spelling.
+pub(crate) fn build_key_views(
+    item: &crate::domain::item::Item,
+    plays: &[ScoredPlay],
+) -> Vec<crate::model::ItemKeyView> {
+    item.keys
+        .iter()
+        .map(|key| {
+            let written = item.key.is_some_and(|k| k.same_key(key));
+            let latest_score = history(plays, |p| match p.key {
+                Some(k) => k.same_key(key),
+                None => written,
+            })
+            .first()
+            .map(|e| e.score);
+            crate::model::ItemKeyView {
+                key: *key,
+                label: key.label(),
+                latest_score,
+                caption: crate::model::saved_mark_caption(latest_score),
+            }
+        })
+        .collect()
 }
 
 pub(crate) fn build_section_views(
@@ -608,7 +631,7 @@ pub(super) fn matches_query(item: &LibraryItemView, query: &ListQuery) -> bool {
     }
 
     if let Some(ref key) = query.key {
-        if item.key.as_deref() != Some(key.as_str()) {
+        if !item.key.is_some_and(|k| k.same_key(key)) {
             return false;
         }
     }
@@ -733,16 +756,14 @@ mod tests {
 
     #[test]
     fn latest_score_is_the_last_mark_in_a_session_that_scored_the_item_twice() {
-        use crate::domain::session::{
-            CompletionStatus, PracticeSession, SetlistEntry, VariationPlay,
-        };
+        use crate::domain::session::{CompletionStatus, Play, PracticeSession, SetlistEntry};
         let entry = |id: &str, position: usize, score: u8| SetlistEntry {
             id: id.to_string(),
             item_id: "p1".to_string(),
             position,
-            plays: vec![VariationPlay {
+            plays: vec![Play {
                 score: Some(score),
-                ..VariationPlay::fixture()
+                ..Play::fixture()
             }],
             ..SetlistEntry::fixture()
         };
@@ -756,6 +777,7 @@ mod tests {
             total_duration_secs: 600,
             completion_status: CompletionStatus::Completed,
             session_score: None,
+            capture_version: None,
         };
 
         let summaries = build_practice_summaries(&[session]);

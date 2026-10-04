@@ -4,6 +4,7 @@ import com.intrada.shared.Item
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.PracticeSession
+import com.intrada.shared.Variation
 
 /** Answers the core's persistence operations: rows in, rows out, no decisions. */
 interface ItemStore {
@@ -14,6 +15,7 @@ interface ItemStore {
 class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
     private val items = LinkedHashMap<String, Item>().apply { items.forEach { put(it.id, it) } }
     private val sessions = LinkedHashMap<String, PracticeSession>()
+    private val variations = LinkedHashMap<String, Variation>()
 
     @Synchronized
     override fun run(operation: PersistenceOperation): PersistenceOutput =
@@ -27,6 +29,10 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
             is PersistenceOperation.DeleteItem -> ack { items.remove(operation.id) }
             is PersistenceOperation.SaveSession ->
                 ack { sessions[operation.value.id] = operation.value }
+            PersistenceOperation.LoadVariations ->
+                PersistenceOutput.Variations(variations.values.toList())
+            is PersistenceOperation.SaveVariations ->
+                ack { operation.value.forEach { variations[it.id] = it } }
         }
 
     private inline fun ack(write: () -> Unit): PersistenceOutput {

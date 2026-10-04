@@ -1,8 +1,10 @@
 use super::*;
 use crate::app::Intrada;
+use crate::domain::key::Key;
 use crate::domain::types::TempoInput;
 use crate::model::{FormErrorField, FormErrorTarget, Model};
 use crux_core::App;
+use crux_core::Command;
 
 fn make_piece(id: &str) -> Item {
     let now = chrono::Utc::now();
@@ -12,7 +14,6 @@ fn make_piece(id: &str) -> Item {
         kind: ItemKind::Piece,
         composer: Some("Beethoven".to_string()),
         key: None,
-        modality: None,
         tempo: None,
         notes: None,
         tags: vec![],
@@ -21,7 +22,8 @@ fn make_piece(id: &str) -> Item {
         updated_at: now,
         priority: false,
         chord_chart: None,
-        variants: vec![],
+        variation_ids: vec![],
+        keys: vec![],
         sections: vec![],
         photo_id: None,
         metre: None,
@@ -36,7 +38,6 @@ fn make_exercise(id: &str) -> Item {
         kind: ItemKind::Exercise,
         composer: None,
         key: None,
-        modality: None,
         tempo: None,
         notes: None,
         tags: vec![],
@@ -45,7 +46,8 @@ fn make_exercise(id: &str) -> Item {
         updated_at: now,
         priority: false,
         chord_chart: None,
-        variants: vec![],
+        variation_ids: vec![],
+        keys: vec![],
         sections: vec![],
         photo_id: None,
         metre: None,
@@ -250,8 +252,7 @@ fn set_chord_chart_rejects_a_non_piece_host() {
 fn set_chord_chart_uses_the_piece_key() {
     let mut model = model_with_piece_and_exercise();
     if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
-        p.key = Some("G".to_string());
-        p.modality = Some(Modality::Minor);
+        p.key = Key::parse("G minor");
     }
 
     send(
@@ -270,8 +271,7 @@ fn set_chord_chart_uses_the_piece_key() {
         .chord_chart
         .as_ref()
         .unwrap();
-    assert_eq!(chart.key, "G");
-    assert_eq!(chart.modality, Modality::Minor);
+    assert_eq!(chart.key, Key::parse("G minor"));
 }
 
 // ── CommitScaffold ──
@@ -334,7 +334,7 @@ fn commit_scaffold_creates_selected_exercises_links_them_and_persists_a_batch() 
     let titles: std::collections::HashSet<&str> = new.iter().map(|e| e.title.as_str()).collect();
     assert!(titles.contains("Shells") && titles.contains("Guide-tone lines"));
     assert!(
-        new.iter().all(|e| e.key.as_deref() == Some("C")),
+        new.iter().all(|e| e.key == Some(Key::C_MAJOR)),
         "exercises carry the chart's key"
     );
 
@@ -543,647 +543,309 @@ fn commit_scaffold_empty_selection_is_a_benign_noop() {
     assert!(model.last_error.is_none());
 }
 
-// ── Update: a key cannot return to a laddered exercise (#1783) ──
+// ── Variations and keys (#2246) ──
 
-#[test]
-fn update_rejects_setting_a_key_on_an_exercise_with_a_live_variation() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::Update {
-            id: "ex-1".to_string(),
-            input: crate::domain::types::UpdateItem {
-                key: Some(Some("G".to_string())),
-                ..Default::default()
-            },
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.key, None, "the set was refused");
-    assert!(model.last_error.is_some());
-}
-
-/// A pre-this-change exercise can carry both a key and a live variation
-/// (#1783 self-review). Its edit form loads that key and resends it
-/// unchanged on every save (`ItemFormModel.updateInput()`), so an
-/// unchanged key must not be treated as a new one, or every other field
-/// on the same edit becomes unreachable until the key is cleared by
-/// hand.
-#[test]
-fn update_resending_an_unchanged_key_on_an_exercise_with_a_live_variation_still_updates_other_fields(
-) {
-    let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["F".to_string()],
-        },
-    );
-    // The migration above already cleared it; set it back by hand so
-    // this test exercises resending a key still on the exercise, not
-    // one only just cleared.
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("stale".to_string());
-
-    send(
-        &mut model,
-        ItemEvent::Update {
-            id: "ex-1".to_string(),
-            input: crate::domain::types::UpdateItem {
-                title: Some("Renamed".to_string()),
-                key: Some(Some("stale".to_string())),
-                ..Default::default()
-            },
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.title, "Renamed",
-        "the unrelated field update was refused"
-    );
-    assert_eq!(
-        ex.key,
-        Some("stale".to_string()),
-        "the unchanged key was kept"
-    );
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn update_still_allows_clearing_a_key_on_an_exercise_with_a_live_variation() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["F".to_string()],
-        },
-    );
-    // The migration above already cleared it; set it back by hand so this
-    // test still exercises a clear on a laddered exercise that has one.
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("stale".to_string());
-
-    send(
-        &mut model,
-        ItemEvent::Update {
-            id: "ex-1".to_string(),
-            input: crate::domain::types::UpdateItem {
-                key: Some(None),
-                ..Default::default()
-            },
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.key, None);
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn update_allows_setting_a_key_on_an_exercise_with_no_live_variation() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::Update {
-            id: "ex-1".to_string(),
-            input: crate::domain::types::UpdateItem {
-                key: Some(Some("G".to_string())),
-                ..Default::default()
-            },
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.key.as_deref(), Some("G"));
-    assert!(model.last_error.is_none());
-}
-
-// ── SetVariants ──
-
-#[test]
-fn set_variants_creates_a_ladder_and_persists_locally() {
-    let mut model = model_with_piece_and_exercise();
-
-    let mut cmd = send_cmd(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string(), "Bb".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.variants.len(), 3);
-    assert!(ex.variants.iter().all(|v| v.deleted_at.is_none()));
-    assert_eq!(
-        ex.variants
-            .iter()
-            .map(|v| v.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["C", "F", "Bb"]
-    );
-    assert_eq!(
-        ex.variants.iter().map(|v| v.position).collect::<Vec<_>>(),
-        vec![0, 1, 2]
-    );
-    assert!(model.last_error.is_none());
-    assert!(
-        emits_save(&mut cmd, "ex-1"),
-        "local-first persists the exercise"
-    );
-}
-
-#[test]
-fn set_variants_reorder_preserves_ids_by_label() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string(), "Bb".to_string()],
-        },
-    );
-    let ids_by_label: std::collections::HashMap<String, String> = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .variants
-        .iter()
-        .map(|v| (v.label.clone(), v.id.clone()))
-        .collect();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["Bb".to_string(), "C".to_string(), "F".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.variants.len(), 3);
-    for v in &ex.variants {
-        assert_eq!(
-            ids_by_label.get(&v.label),
-            Some(&v.id),
-            "reordering keeps each variation's id (and so its history)"
-        );
-    }
-    assert_eq!(
-        ex.variants
-            .iter()
-            .map(|v| (v.label.as_str(), v.position))
-            .collect::<Vec<_>>(),
-        vec![("Bb", 0), ("C", 1), ("F", 2)]
-    );
-}
-
-#[test]
-fn set_variants_removing_a_label_tombstones_never_hard_deletes() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    let live: Vec<_> = ex
-        .variants
-        .iter()
-        .filter(|v| v.deleted_at.is_none())
-        .collect();
-    assert_eq!(live.len(), 1);
-    assert_eq!(live[0].label, "C");
-    let dead: Vec<_> = ex
-        .variants
-        .iter()
-        .filter(|v| v.deleted_at.is_some())
-        .collect();
-    assert_eq!(
-        dead.len(),
-        1,
-        "the removed variation is kept as a tombstone"
-    );
-    assert_eq!(dead[0].label, "F");
-}
-
-#[test]
-fn set_variants_readding_a_label_resurrects_its_tombstone() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let f_id = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .variants
-        .iter()
-        .find(|v| v.label == "F")
-        .unwrap()
-        .id
-        .clone();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.variants.len(),
-        2,
-        "no duplicate row for the re-added label"
-    );
-    let f = ex.variants.iter().find(|v| v.label == "F").unwrap();
-    assert_eq!(
-        f.id, f_id,
-        "the re-added variation resurrects its old id (score history intact)"
-    );
-    assert!(f.deleted_at.is_none());
-    assert_eq!(f.position, 1);
-}
-
-fn exercise_variants(model: &Model) -> &Vec<crate::domain::variant::Variant> {
-    &model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .variants
-}
-
-#[test]
-fn set_variants_rejects_a_piece_host() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "piece-1".to_string(),
-            labels: vec!["C".to_string()],
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.variants.is_empty(), "a piece never gets a ladder");
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn set_variants_rejects_duplicate_labels_case_insensitively() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "c".to_string()],
-        },
-    );
-
-    assert!(exercise_variants(&model).is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn set_variants_rejects_a_blank_label() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "   ".to_string()],
-        },
-    );
-
-    assert!(exercise_variants(&model).is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn set_variants_trims_labels() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["  C  ".to_string()],
-        },
-    );
-
-    assert_eq!(exercise_variants(&model)[0].label, "C");
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn set_variants_rejects_more_than_the_cap() {
-    let mut model = model_with_piece_and_exercise();
-    let labels: Vec<String> = (0..=validation::MAX_VARIANTS)
-        .map(|i| i.to_string())
-        .collect();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels,
-        },
-    );
-
-    assert!(exercise_variants(&model).is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn set_variants_rejects_an_overlong_label() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["x".repeat(validation::MAX_VARIANT_LABEL + 1)],
-        },
-    );
-
-    assert!(exercise_variants(&model).is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn set_variants_empty_list_clears_the_ladder() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-
-    let mut cmd = send_cmd(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec![],
-        },
-    );
-
-    let variants = exercise_variants(&model);
-    assert_eq!(variants.len(), 2, "cleared variations remain as tombstones");
-    assert!(variants.iter().all(|v| v.deleted_at.is_some()));
-    assert!(model.last_error.is_none());
-    assert!(emits_save(&mut cmd, "ex-1"), "the clear persists");
-}
-
-#[test]
-fn set_variants_untouched_variation_keeps_its_updated_at() {
-    // Per-row LWW hygiene: only rows that changed get a new timestamp.
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let c_updated_at = exercise_variants(&model)[0].updated_at;
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "G".to_string()],
-        },
-    );
-
-    let variants = exercise_variants(&model);
-    let c = variants.iter().find(|v| v.label == "C").unwrap();
-    assert_eq!(
-        c.updated_at, c_updated_at,
-        "an untouched variation keeps its LWW timestamp"
-    );
-    let f = variants.iter().find(|v| v.label == "F").unwrap();
-    assert!(
-        f.updated_at > c_updated_at,
-        "the tombstoned variation is stamped"
-    );
-}
-
-#[test]
-fn set_variants_adopts_incoming_casing_keeping_the_id() {
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["bb".to_string()],
-        },
-    );
-    let id_before = exercise_variants(&model)[0].id.clone();
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["Bb".to_string()],
-        },
-    );
-
-    let variants = exercise_variants(&model);
-    assert_eq!(variants.len(), 1);
-    assert_eq!(
-        variants[0].label, "Bb",
-        "a relabel in casing only is adopted"
-    );
-    assert_eq!(variants[0].id, id_before, "same variation, history intact");
-}
-
-#[test]
-fn set_variants_identical_labels_is_a_noop_without_a_save() {
-    // LWW hygiene one level up: a no-op must not bump the parent row's
-    // timestamp or write, or it could spuriously win a future sync merge.
-    let mut model = model_with_piece_and_exercise();
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .updated_at;
-
-    let mut cmd = send_cmd(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.updated_at, before,
-        "an unchanged ladder leaves the item stamp"
-    );
-    assert!(!emits_save(&mut cmd, "ex-1"), "nothing to persist");
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn set_variants_migrates_an_existing_key_into_the_first_variation() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["F".to_string(), "Bb".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.key, None, "the key moved into the ladder");
-    assert_eq!(
-        ex.variants
-            .iter()
-            .map(|v| v.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["C", "F", "Bb"],
-        "the old key leads the ladder it is folded into"
-    );
-}
-
-#[test]
-fn set_variants_clears_a_key_already_named_among_the_labels_without_duplicating_it() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("c".to_string());
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["C".to_string(), "F".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.key, None,
-        "the ladder already covers the key, case-insensitively, so nothing folds in, \
-         but the exercise is still gaining its first live variation and the key stops \
-         being a fact about it"
-    );
-    assert_eq!(ex.variants.len(), 2, "no duplicate C variation was added");
-}
-
-#[test]
-fn set_variants_leaves_a_key_alone_when_the_exercise_already_had_variations() {
-    let mut model = model_with_piece_and_exercise();
-    let ex = model.items.iter_mut().find(|i| i.id == "ex-1").unwrap();
-    ex.key = Some("C".to_string());
-    ex.variants = vec![Variant {
-        id: "v-existing".to_string(),
-        label: "G".to_string(),
-        position: 0,
+fn library_row(id: &str, label: &str) -> crate::domain::variation::Variation {
+    crate::domain::variation::Variation {
+        id: id.to_string(),
+        label: label.to_string(),
         updated_at: chrono::Utc::now(),
         deleted_at: None,
-    }];
-
-    send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec!["G".to_string(), "D".to_string()],
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.key,
-        Some("C".to_string()),
-        "the transition already happened before this call; migration is not repeated"
-    );
-    assert_eq!(ex.variants.len(), 2);
+    }
 }
 
-#[test]
-fn set_variants_clearing_the_ladder_does_not_migrate_a_key() {
+fn model_with_variation_library() -> Model {
     let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("C".to_string());
+    model.variations.extend([
+        library_row("v-hs", "Hands separately"),
+        library_row("v-dot", "Dotted rhythms"),
+    ]);
+    model
+}
 
+fn set_item_variations(model: &mut Model, id: &str, ids: &[&str], labels: &[&str]) {
     send(
-        &mut model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: vec![],
+        model,
+        ItemEvent::UpdateItemVariations {
+            id: id.to_string(),
+            variation_ids: ids.iter().map(|s| s.to_string()).collect(),
+            new_labels: labels.iter().map(|s| s.to_string()).collect(),
         },
     );
+}
 
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(
-        ex.key,
-        Some("C".to_string()),
-        "clearing an empty ladder to empty is a no-op, the key is untouched"
-    );
-    assert!(ex.variants.is_empty());
+fn item_variations(model: &Model, id: &str) -> Vec<String> {
+    model
+        .items
+        .iter()
+        .find(|i| i.id == id)
+        .expect("the item")
+        .variation_ids
+        .clone()
+}
+
+fn saved_variation_rows(
+    cmd: &mut Command<Effect, Event>,
+) -> Vec<crate::domain::variation::Variation> {
+    cmd.effects()
+        .filter_map(|e| match e {
+            Effect::Persistence(req) => match req.operation {
+                crate::persistence::PersistenceOperation::SaveVariations(rows) => Some(rows),
+                _ => None,
+            },
+            _ => None,
+        })
+        .flatten()
+        .collect()
 }
 
 #[test]
-fn set_variants_event_round_trips_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetVariants {
+fn an_item_takes_library_variations_in_the_order_chosen() {
+    let mut model = model_with_variation_library();
+
+    set_item_variations(&mut model, "piece-1", &["v-dot", "v-hs"], &[]);
+
+    assert!(model.last_error.is_none());
+    assert_eq!(item_variations(&model, "piece-1"), vec!["v-dot", "v-hs"]);
+}
+
+#[test]
+fn a_new_label_mints_one_library_row_and_saves_it() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = Intrada.update(
+        Event::Item(ItemEvent::UpdateItemVariations {
+            id: "ex-1".to_string(),
+            variation_ids: vec!["v-hs".to_string()],
+            new_labels: vec![" Slow ".to_string(), "slow".to_string()],
+        }),
+        &mut model,
+    );
+
+    let minted = saved_variation_rows(&mut cmd);
+    assert_eq!(minted.len(), 1, "one row, typed twice");
+    assert_eq!(minted[0].label, "Slow", "trimmed");
+    assert_eq!(model.variations.len(), 3);
+    assert_eq!(
+        item_variations(&model, "ex-1"),
+        vec!["v-hs".to_string(), minted[0].id.clone()]
+    );
+}
+
+/// A variation made on one item is offered on every item: typing its label
+/// on another reuses the row rather than making a second one.
+#[test]
+fn a_live_label_typed_on_another_item_reuses_the_row() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = Intrada.update(
+        Event::Item(ItemEvent::UpdateItemVariations {
+            id: "ex-1".to_string(),
+            variation_ids: vec![],
+            new_labels: vec!["hands SEPARATELY".to_string()],
+        }),
+        &mut model,
+    );
+
+    assert!(saved_variation_rows(&mut cmd).is_empty());
+    assert_eq!(item_variations(&model, "ex-1"), vec!["v-hs"]);
+    assert_eq!(model.variations.len(), 2);
+}
+
+#[test]
+fn removing_a_variation_from_an_item_keeps_it_in_the_library() {
+    let mut model = model_with_variation_library();
+    set_item_variations(&mut model, "ex-1", &["v-hs", "v-dot"], &[]);
+
+    set_item_variations(&mut model, "ex-1", &["v-dot"], &[]);
+
+    assert_eq!(item_variations(&model, "ex-1"), vec!["v-dot"]);
+    assert!(crate::domain::variation::is_live(&model.variations, "v-hs"));
+}
+
+#[test]
+fn an_unchanged_set_writes_nothing() {
+    let mut model = model_with_variation_library();
+    set_item_variations(&mut model, "ex-1", &["v-hs"], &[]);
+
+    let mut cmd = Intrada.update(
+        Event::Item(ItemEvent::UpdateItemVariations {
+            id: "ex-1".to_string(),
+            variation_ids: vec!["v-hs".to_string()],
+            new_labels: vec!["Hands separately".to_string()],
+        }),
+        &mut model,
+    );
+
+    assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+}
+
+#[test]
+fn an_item_set_is_refused_whole_on_a_bad_row() {
+    let long = "x".repeat(crate::validation::MAX_VARIATION_LABEL + 1);
+    let cases: Vec<(Vec<&str>, Vec<&str>)> = vec![
+        (vec!["v-gone"], vec![]),
+        (vec!["v-hs", "v-hs"], vec![]),
+        (vec![], vec![long.as_str()]),
+    ];
+    for (ids, labels) in cases {
+        let mut model = model_with_variation_library();
+
+        set_item_variations(&mut model, "ex-1", &ids, &labels);
+
+        assert!(model.last_error.is_some(), "{ids:?} {labels:?}");
+        assert!(item_variations(&model, "ex-1").is_empty());
+        assert_eq!(model.variations.len(), 2, "nothing minted");
+    }
+}
+
+#[test]
+fn renaming_a_variation_renames_it_everywhere_and_refuses_a_clash() {
+    let mut model = model_with_variation_library();
+
+    send_variation(
+        &mut model,
+        VariationEvent::Rename {
+            id: "v-hs".to_string(),
+            label: " Left hand alone ".to_string(),
+        },
+    );
+    assert!(model.last_error.is_none());
+    assert_eq!(model.variations[0].label, "Left hand alone");
+
+    send_variation(
+        &mut model,
+        VariationEvent::Rename {
+            id: "v-hs".to_string(),
+            label: "dotted RHYTHMS".to_string(),
+        },
+    );
+    assert!(model.last_error.is_some());
+    assert_eq!(model.variations[0].label, "Left hand alone");
+}
+
+#[test]
+fn deleting_a_variation_tombstones_it() {
+    let mut model = model_with_variation_library();
+    set_item_variations(&mut model, "ex-1", &["v-hs"], &[]);
+
+    let mut cmd = Intrada.update(
+        Event::Variation(VariationEvent::Delete {
+            id: "v-hs".to_string(),
+        }),
+        &mut model,
+    );
+
+    let saved = saved_variation_rows(&mut cmd);
+    assert_eq!(saved.len(), 1);
+    assert!(
+        saved[0].deleted_at.is_some(),
+        "a tombstone, never a hard delete"
+    );
+    assert_eq!(model.variations.len(), 2, "the row stays for the plays");
+    assert!(!crate::domain::variation::is_live(
+        &model.variations,
+        "v-hs"
+    ));
+    set_item_variations(&mut model, "ex-2", &["v-hs"], &[]);
+    assert!(model.last_error.is_some(), "gone from every picker");
+}
+
+fn send_variation(model: &mut Model, event: VariationEvent) {
+    let _ = Intrada.update(Event::Variation(event), model);
+}
+
+fn key(raw: &str) -> Key {
+    Key::parse(raw).expect("a key")
+}
+
+#[test]
+fn an_item_keeps_its_keys_in_order_and_refuses_one_twice() {
+    let mut model = model_with_piece_and_exercise();
+    let keys = vec![key("C major"), key("G major"), key("Eb major")];
+
+    send(
+        &mut model,
+        ItemEvent::UpdateKeys {
+            id: "ex-1".to_string(),
+            keys: keys.clone(),
+        },
+    );
+    assert!(model.last_error.is_none());
+    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+    assert_eq!(ex.keys, keys);
+
+    send(
+        &mut model,
+        ItemEvent::UpdateKeys {
+            id: "ex-1".to_string(),
+            keys: vec![key("Eb major"), key("D# major")],
+        },
+    );
+    assert!(model.last_error.is_some(), "both spellings are one key");
+    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+    assert_eq!(ex.keys, keys);
+}
+
+#[test]
+fn variation_and_key_events_round_trip_on_the_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(
+        ItemEvent::UpdateItemVariations {
+            id: "ex-1".to_string(),
+            variation_ids: vec!["v1".to_string()],
+            new_labels: vec!["Slow".to_string()],
+        },
+    ));
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::UpdateKeys {
         id: "ex-1".to_string(),
-        labels: vec!["C".to_string(), "F♯".to_string()],
+        keys: vec![key("F# minor"), key("Bb")],
     }));
+    crate::domain::types::assert_round_trips(crate::app::Event::Variation(
+        VariationEvent::Rename {
+            id: "v1".to_string(),
+            label: "Slow".to_string(),
+        },
+    ));
+    crate::domain::types::assert_round_trips(crate::app::Event::Variation(
+        VariationEvent::Delete {
+            id: "v1".to_string(),
+        },
+    ));
+    let mut ex = make_exercise("ex-1");
+    ex.key = Some(key("Db major"));
+    ex.keys = vec![key("C"), key("C# minor")];
+    ex.variation_ids = vec!["v1".to_string(), "v2".to_string()];
+    crate::domain::types::assert_round_trips(ex);
+    crate::domain::types::assert_round_trips(library_row("v1", "Hands separately"));
+}
+
+// ── Add: variations chosen on create (#2246) ──
+
+#[test]
+fn add_creates_the_item_with_its_variations() {
+    let mut model = model_with_variation_library();
+
+    send(
+        &mut model,
+        ItemEvent::Add(CreateItem {
+            title: "Nocturne".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Chopin".to_string()),
+            key: Some(key("Eb major")),
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            photo_id: None,
+            variation_labels: vec!["Hands separately".to_string(), "Slow".to_string()],
+        }),
+    );
+
+    assert!(model.last_error.is_none());
+    let added = model.items.iter().find(|i| i.title == "Nocturne").unwrap();
+    assert_eq!(added.key, Some(key("Eb major")));
+    assert_eq!(added.variation_ids.len(), 2);
+    assert_eq!(added.variation_ids[0], "v-hs");
+    assert_eq!(model.variations.len(), 3, "Slow minted");
 }
 
 // ── Bridge round-trip for the write events (#846) ──
@@ -1198,41 +860,6 @@ fn chord_chart_events_round_trip_on_the_ffi_bincode_wire() {
         piece_id: "P".to_string(),
         kinds: vec![ScaffoldKind::Shells, ScaffoldKind::ScalesToChordTones],
     }));
-}
-
-#[test]
-fn variant_payloads_round_trip_on_the_ffi_bincode_wire() {
-    // Bare Variant, with the tombstone set (deleted_at is a later bincode
-    // field, so guard both levels).
-    let now = chrono::Utc::now();
-    crate::domain::types::assert_round_trips(Variant {
-        id: "v1".to_string(),
-        label: "F major".to_string(),
-        position: 2,
-        updated_at: now,
-        deleted_at: Some(now),
-    });
-
-    // The whole exercise carries its ladder in ViewModel/persistence
-    // payloads, so round-trip an Item with variants populated.
-    let mut ex = make_exercise("ex-1");
-    ex.variants = vec![
-        Variant {
-            id: "v1".to_string(),
-            label: "F".to_string(),
-            position: 0,
-            updated_at: now,
-            deleted_at: None,
-        },
-        Variant {
-            id: "v2".to_string(),
-            label: "Bb".to_string(),
-            position: 1,
-            updated_at: now,
-            deleted_at: None,
-        },
-    ];
-    crate::domain::types::assert_round_trips(ex);
 }
 
 // ── LinkExercise ──
@@ -1512,155 +1139,6 @@ fn reorder_linked_exercises_dedupes_repeated_ids() {
     assert!(model.last_error.is_none());
 }
 
-// ── Add: variations added inline (#1783) ──
-
-#[test]
-fn add_creates_the_exercise_with_its_inline_variations() {
-    let mut model = model_with_piece_and_exercise();
-    let mut input = new_exercise_input("Shell voicings");
-    input.key = None;
-    input.variant_labels = vec!["C".to_string(), "F".to_string()];
-
-    send(&mut model, ItemEvent::Add(input));
-
-    let created = model
-        .items
-        .iter()
-        .find(|i| i.title == "Shell voicings")
-        .expect("the exercise is created");
-    assert_eq!(
-        created
-            .variants
-            .iter()
-            .map(|v| v.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["C", "F"]
-    );
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn add_migrates_the_typed_key_into_the_first_inline_variation() {
-    let mut model = model_with_piece_and_exercise();
-    let mut input = new_exercise_input("Shell voicings");
-    input.key = Some("G".to_string());
-    input.variant_labels = vec!["C".to_string(), "F".to_string()];
-
-    send(&mut model, ItemEvent::Add(input));
-
-    let created = model
-        .items
-        .iter()
-        .find(|i| i.title == "Shell voicings")
-        .expect("the exercise is created");
-    assert_eq!(created.key, None, "the typed key moved into the ladder");
-    assert_eq!(
-        created
-            .variants
-            .iter()
-            .map(|v| v.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["G", "C", "F"],
-        "the typed key leads the ladder it is folded into"
-    );
-}
-
-#[test]
-fn add_clears_a_typed_key_already_named_among_the_inline_variations() {
-    let mut model = model_with_piece_and_exercise();
-    let mut input = new_exercise_input("Shell voicings");
-    input.key = Some("g".to_string());
-    input.variant_labels = vec!["G".to_string(), "C".to_string()];
-
-    send(&mut model, ItemEvent::Add(input));
-
-    let created = model
-        .items
-        .iter()
-        .find(|i| i.title == "Shell voicings")
-        .expect("the exercise is created");
-    assert_eq!(created.key, None, "the ladder already covers the key");
-    assert_eq!(
-        created
-            .variants
-            .iter()
-            .map(|v| v.label.as_str())
-            .collect::<Vec<_>>(),
-        vec!["G", "C"],
-        "no duplicate G variation was added"
-    );
-}
-
-#[test]
-fn add_with_no_inline_variations_keeps_the_key_as_a_key() {
-    let mut model = model_with_piece_and_exercise();
-    let mut input = new_exercise_input("Shell voicings");
-    input.key = Some("G".to_string());
-
-    send(&mut model, ItemEvent::Add(input));
-
-    let created = model
-        .items
-        .iter()
-        .find(|i| i.title == "Shell voicings")
-        .expect("the exercise is created");
-    assert_eq!(created.key.as_deref(), Some("G"));
-    assert!(created.variants.is_empty());
-}
-
-#[test]
-fn add_rejects_inline_variations_on_a_piece() {
-    let mut model = model_with_piece_and_exercise();
-    let before = model.items.len();
-    let input = CreateItem {
-        title: "Clair de Lune".to_string(),
-        kind: ItemKind::Piece,
-        composer: Some("Debussy".to_string()),
-        key: None,
-        modality: None,
-        tempo: None,
-        notes: None,
-        tags: vec![],
-        photo_id: None,
-        variant_labels: vec!["Slow".to_string()],
-    };
-
-    send(&mut model, ItemEvent::Add(input));
-
-    assert!(model.last_error.is_some());
-    assert_eq!(
-        model.items.len(),
-        before,
-        "a rejected create writes nothing"
-    );
-}
-
-#[test]
-fn add_rejects_inline_variations_over_the_cap_once_the_key_is_folded_in() {
-    let mut model = model_with_piece_and_exercise();
-    let before = model.items.len();
-    let mut input = new_exercise_input("Shell voicings");
-    input.key = Some("G".to_string());
-    input.variant_labels = (0..crate::validation::MAX_VARIANTS)
-        .map(|i| format!("Variation {i}"))
-        .collect();
-
-    send(&mut model, ItemEvent::Add(input));
-
-    assert!(
-        model.last_error.is_some(),
-        "the migrated key pushes the ladder one over the cap"
-    );
-    assert_eq!(model.items.len(), before);
-}
-
-#[test]
-fn add_event_with_variant_labels_round_trips_on_ffi_bincode_wire() {
-    let mut input = new_exercise_input("Shell voicings");
-    input.variant_labels = vec!["C".to_string(), "F\u{266F}".to_string()];
-    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::Add(input)));
-}
-
 // ── AddLinkedExercise ──
 
 fn new_exercise_input(title: &str) -> CreateItem {
@@ -1668,13 +1146,12 @@ fn new_exercise_input(title: &str) -> CreateItem {
         title: title.to_string(),
         kind: ItemKind::Exercise,
         composer: None,
-        key: Some("G".to_string()),
-        modality: None,
+        key: crate::domain::key::Key::parse("G"),
         tempo: None,
         notes: None,
         tags: vec![],
         photo_id: None,
-        variant_labels: Vec::new(),
+        variation_labels: Vec::new(),
     }
 }
 
@@ -1696,7 +1173,7 @@ fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
         .find(|i| i.title == "Shell voicings")
         .expect("the exercise is created");
     assert_eq!(created.kind, ItemKind::Exercise);
-    assert_eq!(created.key.as_deref(), Some("G"));
+    assert_eq!(created.key, Key::parse("G"));
 
     let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
     assert!(
@@ -1800,7 +1277,7 @@ fn add_linked_exercise_rejects_inline_variations_rather_than_dropping_them() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
     let mut input = new_exercise_input("Shell voicings");
-    input.variant_labels = vec!["C".to_string()];
+    input.variation_labels = vec!["C".to_string()];
 
     send(
         &mut model,
@@ -1830,12 +1307,11 @@ fn a_piece_created_from_a_scan_keeps_the_page_it_was_read_from() {
             kind: ItemKind::Piece,
             composer: Some("Arthur Hamilton".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: Some(PHOTO.to_string()),
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         })),
         &mut model,
     );
@@ -1856,12 +1332,11 @@ fn a_create_naming_an_unreadable_photo_is_refused() {
             kind: ItemKind::Piece,
             composer: Some("Arthur Hamilton".to_string()),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: Some("../../etc/passwd".to_string()),
-            variant_labels: Vec::new(),
+            variation_labels: Vec::new(),
         })),
         &mut model,
     );
@@ -2089,13 +1564,12 @@ fn one_pass_piece_input(title: &str) -> CreateItem {
         title: title.to_string(),
         kind: ItemKind::Piece,
         composer: Some("Kosma".to_string()),
-        key: Some("G".to_string()),
-        modality: Some(Modality::Minor),
+        key: crate::domain::key::Key::parse("G minor"),
         tempo: None,
         notes: None,
         tags: vec![],
         photo_id: None,
-        variant_labels: Vec::new(),
+        variation_labels: Vec::new(),
     }
 }
 
@@ -2200,7 +1674,7 @@ fn add_piece_in_full_rejects_inline_variations_on_a_staged_exercise_rather_than_
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
     let mut staged = new_exercise_input("Shell voicings");
-    staged.variant_labels = vec!["C".to_string()];
+    staged.variation_labels = vec!["C".to_string()];
 
     send(
         &mut model,
@@ -2472,9 +1946,9 @@ fn a_failure_from_anywhere_else_stops_pointing_at_the_form() {
 
     send(
         &mut model,
-        ItemEvent::SetVariants {
-            id: "piece-1".to_string(),
-            labels: vec!["C".to_string()],
+        ItemEvent::UpdateKeys {
+            id: "no-such-item".to_string(),
+            keys: vec![],
         },
     );
 
@@ -2560,253 +2034,13 @@ fn add_piece_in_full_round_trips_on_the_ffi_bincode_wire() {
     }));
 }
 
-// ── UpdateVariants ──
-
-fn set_ladder(model: &mut Model, labels: &[&str]) {
-    send(
-        model,
-        ItemEvent::SetVariants {
-            id: "ex-1".to_string(),
-            labels: labels.iter().map(|l| l.to_string()).collect(),
-        },
-    );
-}
-
-fn variant_id(model: &Model, label: &str) -> String {
-    exercise_variants(model)
-        .iter()
-        .find(|v| v.label == label && v.deleted_at.is_none())
-        .unwrap_or_else(|| panic!("live variation {label}"))
-        .id
-        .clone()
-}
-
-fn live_ladder(model: &Model) -> Vec<(String, String)> {
-    let mut live: Vec<_> = exercise_variants(model)
-        .iter()
-        .filter(|v| v.deleted_at.is_none())
-        .collect();
-    live.sort_by_key(|v| v.position);
-    live.iter()
-        .map(|v| (v.id.clone(), v.label.clone()))
-        .collect()
-}
-
-fn edit(id: Option<String>, label: &str) -> VariantEdit {
-    VariantEdit {
-        id,
-        label: label.to_string(),
-    }
-}
-
-fn update_variants(
-    model: &mut Model,
-    id: &str,
-    variants: Vec<VariantEdit>,
-) -> Command<Effect, Event> {
-    send_cmd(
-        model,
-        ItemEvent::UpdateVariants {
-            id: id.to_string(),
-            variants,
-        },
-    )
-}
-
-#[test]
-fn update_variants_renames_by_id_keeping_the_row() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-
-    let mut cmd = update_variants(
-        &mut model,
-        "ex-1",
-        vec![edit(Some(c.clone()), "Do"), edit(Some(f.clone()), "F")],
-    );
-
-    assert_eq!(
-        live_ladder(&model),
-        vec![(c, "Do".to_string()), (f, "F".to_string())]
-    );
-    assert_eq!(
-        exercise_variants(&model).len(),
-        2,
-        "a rename is not remove plus add"
-    );
-    assert!(model.last_error.is_none());
-    assert!(emits_save(&mut cmd, "ex-1"));
-}
-
-#[test]
-fn update_variants_swaps_two_labels_in_one_write() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-
-    let _ = update_variants(
-        &mut model,
-        "ex-1",
-        vec![edit(Some(c.clone()), "F"), edit(Some(f.clone()), "C")],
-    );
-
-    assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    assert_eq!(
-        live_ladder(&model),
-        vec![(c, "F".to_string()), (f, "C".to_string())]
-    );
-}
-
-#[test]
-fn update_variants_adds_removes_and_reorders_together() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F", "G"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-    let g = variant_id(&model, "G");
-
-    let _ = update_variants(
-        &mut model,
-        "ex-1",
-        vec![
-            edit(Some(g.clone()), "G"),
-            edit(None, "A"),
-            edit(Some(c.clone()), "C"),
-        ],
-    );
-
-    let live = live_ladder(&model);
-    let labels: Vec<&str> = live.iter().map(|(_, l)| l.as_str()).collect();
-    assert_eq!(labels, ["G", "A", "C"]);
-    assert_eq!(live[0].0, g);
-    assert_eq!(live[2].0, c);
-    let removed = exercise_variants(&model)
-        .iter()
-        .find(|v| v.id == f)
-        .unwrap();
-    assert!(removed.deleted_at.is_some(), "F is tombstoned, not dropped");
-}
-
-#[test]
-fn update_variants_reads_a_bare_label_as_the_existing_row() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C"]);
-    let c = variant_id(&model, "C");
-
-    let _ = update_variants(&mut model, "ex-1", vec![edit(None, "c")]);
-
-    assert_eq!(live_ladder(&model), vec![(c, "c".to_string())]);
-}
-
-#[test]
-fn update_variants_resurrects_a_removed_label() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-    set_ladder(&mut model, &["C"]);
-
-    let _ = update_variants(
-        &mut model,
-        "ex-1",
-        vec![edit(None, "F"), edit(Some(c.clone()), "C")],
-    );
-
-    assert_eq!(
-        live_ladder(&model),
-        vec![(f, "F".to_string()), (c, "C".to_string())]
-    );
-}
-
-#[test]
-fn update_variants_rejects_a_duplicate_and_marks_the_section() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-
-    let mut cmd = update_variants(
-        &mut model,
-        "ex-1",
-        vec![edit(Some(c.clone()), "f"), edit(Some(f.clone()), "F")],
-    );
-
-    assert!(model.last_error.is_some());
-    assert_eq!(
-        model.last_error_target,
-        Some(FormErrorTarget::Piece {
-            field: FormErrorField::Variations
-        })
-    );
-    assert_eq!(
-        live_ladder(&model),
-        vec![(c, "C".to_string()), (f, "F".to_string())]
-    );
-    assert!(!emits_save(&mut cmd, "ex-1"));
-}
-
-#[test]
-fn update_variants_folds_the_key_into_the_first_rung() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.iter_mut().find(|i| i.id == "ex-1").unwrap().key = Some("D".to_string());
-
-    let _ = update_variants(&mut model, "ex-1", vec![edit(None, "C")]);
-
-    let labels: Vec<String> = live_ladder(&model).into_iter().map(|(_, l)| l).collect();
-    assert_eq!(labels, ["D", "C"]);
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert!(
-        ex.key.is_none(),
-        "an exercise in several keys has no single key"
-    );
-}
-
-#[test]
-fn update_variants_is_a_noop_without_a_save_when_unchanged() {
-    let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
-    let c = variant_id(&model, "C");
-    let f = variant_id(&model, "F");
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "ex-1")
-        .unwrap()
-        .updated_at;
-
-    let mut cmd = update_variants(
-        &mut model,
-        "ex-1",
-        vec![edit(Some(c), "C"), edit(Some(f), "F")],
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert_eq!(ex.updated_at, before);
-    assert!(!emits_save(&mut cmd, "ex-1"));
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn update_variants_rejects_a_piece_host() {
-    let mut model = model_with_piece_and_exercise();
-
-    let _ = update_variants(&mut model, "piece-1", vec![edit(None, "C")]);
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.variants.is_empty());
-    assert!(model.last_error.is_some());
-}
-
 // ── Error targets on the item form (#1831) ──
 
 #[test]
-fn set_variants_marks_the_variations_section() {
+fn an_item_set_marks_the_variations_section() {
     let mut model = model_with_piece_and_exercise();
-    set_ladder(&mut model, &["C", "F"]);
 
-    set_ladder(&mut model, &["C", "c"]);
+    set_item_variations(&mut model, "ex-1", &[], &[&"x".repeat(101)]);
     assert_eq!(
         model.last_error_target,
         Some(FormErrorTarget::Piece {
@@ -2826,12 +2060,11 @@ fn add_marks_the_field_it_refused() {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: vec!["C".to_string(), "c".to_string()],
+            variation_labels: vec!["x".repeat(101)],
         }),
     );
     assert_eq!(
@@ -2839,7 +2072,7 @@ fn add_marks_the_field_it_refused() {
         Some(FormErrorTarget::Piece {
             field: FormErrorField::Variations
         }),
-        "a duplicate rung"
+        "an overlong label"
     );
 
     send(
@@ -2849,12 +2082,11 @@ fn add_marks_the_field_it_refused() {
             kind: ItemKind::Exercise,
             composer: Some("x".repeat(201)),
             key: None,
-            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
             photo_id: None,
-            variant_labels: vec![],
+            variation_labels: vec![],
         }),
     );
     assert_eq!(
@@ -2879,7 +2111,6 @@ fn update_marks_the_field_it_refused() {
                 kind: Some(ItemKind::Exercise),
                 composer: Some(Some("x".repeat(201))),
                 key: None,
-                modality: None,
                 tempo: None,
                 notes: None,
                 tags: Some(vec![]),

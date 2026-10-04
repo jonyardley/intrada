@@ -3,9 +3,8 @@ import XCTest
 /// Drives the player's variation picker against the real bridge (#1739): the
 /// item-complete sheet offers a mark per variation, proved through
 /// `ScoreSelector`'s coordinate-based pill taps, which only a real rendered
-/// view can exercise. "Major Scales" is the seeded exercise whose
-/// variations are deterministic (`C`, `G`, `D`, `A`, `E`; see `app.rs`'s
-/// `LoadSampleData` seed).
+/// view can exercise. "Major Scales" is the seeded exercise whose one
+/// variation is "Hands separately" (`sample.rs`); a play opens plain (#2246).
 ///
 /// #1825 moved the chip/rep-count switch assertion to `VariationPlayBridgeTests`.
 @MainActor
@@ -58,38 +57,39 @@ final class VariationPickerUITests: XCTestCase {
   func testTheItemCompleteSheetOffersAMarkPerVariation() {
     let app = startScalesSession()
 
-    pick(app, "C")
-    app.control("player.gotIt", spoken: "Got it").tap()
-    pick(app, "G")
+    app.control("player.gotIt", spoken: "Got it", timeout: 10).tap()
+    pick(app, "Hands separately")
     app.control("player.gotIt", spoken: "Got it").tap()
 
     app.control("player.advance", spoken: "Finish session").tap()
 
-    let markC = app.mark("reflection.mark", "Mark for C")
+    let markPlain = app.mark("reflection.mark", "Mark for No variation")
     XCTAssertTrue(
-      markC.waitForExistence(timeout: 10), "the stretch played in C has its own mark")
-    let markG = app.mark("reflection.mark", "Mark for G")
-    XCTAssertTrue(markG.exists, "and so does the stretch played in G")
+      markPlain.waitForExistence(timeout: 10), "the plain stretch has its own mark")
+    let markHands = app.mark("reflection.mark", "Mark for Hands separately")
+    XCTAssertTrue(markHands.exists, "and so does the stretch hands separately")
 
     // Two different marks, so one write cannot satisfy both, then save: the
     // sheet's marks only reach the core once the item is completed, which is
     // the path a "Skip rating" test never covers. ScoreSelector hides its ten
     // pills behind one accessibility element, so the taps go by position:
     // pill N's centre sits at (N - 0.5) / 10 across the row.
-    tapPill(markC, 7)
-    tapPill(markG, 3)
+    tapPill(markPlain, 7)
+    tapPill(markHands, 3)
 
     app.control("reflection.save", spoken: "Save & continue").tap()
 
     // The summary is the core's answer: each variation kept the mark it was
     // given, rather than one overwriting the other.
-    let summaryC = app.mark("summary.mark", "Mark for Major Scales, C")
+    let summaryPlain = app.mark("summary.mark", "Mark for Major Scales, No variation")
     XCTAssertTrue(
-      summaryC.waitForExistence(timeout: 10), "the summary marks each variation separately")
-    XCTAssertEqual(summaryC.value as? String, "7 of 10", "C kept the seven it was given")
+      summaryPlain.waitForExistence(timeout: 10), "the summary marks each variation separately")
     XCTAssertEqual(
-      app.mark("summary.mark", "Mark for Major Scales, G").value as? String, "3 of 10",
-      "and G kept its three rather than C's seven")
+      summaryPlain.value as? String, "7 of 10", "the plain play kept the seven it was given")
+    XCTAssertEqual(
+      app.mark("summary.mark", "Mark for Major Scales, Hands separately").value as? String,
+      "3 of 10",
+      "and hands separately kept its three rather than seven")
 
     app.discardSummary()
   }
