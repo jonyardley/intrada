@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # inkFaint is 2.45:1 on paper, below the AA floor for text (#1941): 67 uses had
 # drifted onto metadata and body text, and a pixel snapshot cannot see
-# contrast. Text takes inkSecondary and glyphs inkFaintIcon. iOS dropped the
-# token with the capitals section label (#1881); the check stays for Android.
+# contrast. Text takes inkSecondary and glyphs inkFaintIcon. Both themes have
+# dropped the token (#1881, #2351); the check keeps it off the screens if a
+# theme brings it back.
 #
 # A `//` inside a string literal is read as a comment, so a use after one on
 # the same line slips through: deliberate, not tracked.
 #
-# Kotlin too, since the Android theme carries the token (#2309): its theme is
-# the one place the name may appear.
+# Kotlin too (#2309): each shell's theme is the one place the name may appear.
 #
 # The root is overridable so the self-test can point it at fixtures
 # (scripts/tests/hygiene-checks-test.sh).
