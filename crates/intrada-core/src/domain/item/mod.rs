@@ -97,16 +97,6 @@ pub enum ItemEvent {
     Delete {
         id: String,
     },
-    /// Create one hand-written exercise already linked to `piece_id`. Single
-    /// event so the shell never has to learn the minted ulid: `Add` alone
-    /// leaves the exercise unlinked and the shell with no id to link it by
-    /// (#1431). Local-first only: the online create path reassigns ids
-    /// server-side, which is the dangling-link trap #1108 marks inside
-    /// `CommitScaffold`.
-    AddLinkedExercise {
-        piece_id: String,
-        input: CreateItem,
-    },
     /// Parse `raw_chart` and store it on the piece. A parse error surfaces on
     /// `last_error` and stores nothing, never a partial chart.
     SetChordChart {
@@ -150,8 +140,7 @@ pub enum ItemEvent {
     /// Create a piece with everything the add form could carry: its chord
     /// chart and the exercises written or chosen alongside it, in one save
     /// (#1390). `chart` is raw text, parsed here against the piece's own key,
-    /// so a rejected bar leaves no half-made piece. Local-first only, like
-    /// `AddLinkedExercise`.
+    /// so a rejected bar leaves no half-made piece.
     AddPieceInFull {
         piece: CreateItem,
         chart: Option<String>,
@@ -306,9 +295,6 @@ mod variations;
 pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         ItemEvent::Add(input) => create::add(model, input),
-        ItemEvent::AddLinkedExercise { piece_id, input } => {
-            create::add_linked_exercise(model, piece_id, input)
-        }
         ItemEvent::AddPieceInFull {
             piece,
             chart,

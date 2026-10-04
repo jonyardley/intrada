@@ -67,37 +67,9 @@ struct LinkSectionsSheet: View {
   private func row(
     _ label: String, caption: String?, chosen: Bool, toggle: @escaping () -> Void
   ) -> some View {
-    Button {
-      toggle()
-      Haptic.selection.play()
-    } label: {
-      HStack(spacing: IntradaSpacing.cardCompact) {
-        Image(systemName: chosen ? "checkmark.circle.fill" : "circle")
-          .iconSize(.control)
-          .foregroundStyle(chosen ? IntradaColor.ink : IntradaColor.inkFaintIcon)
-        VStack(alignment: .leading, spacing: 3) {
-          Text(label)
-            .font(IntradaFont.body)
-            .foregroundStyle(IntradaColor.ink)
-          if let caption {
-            Text(caption)
-              .font(IntradaFont.secondary)
-              .foregroundStyle(IntradaColor.inkSecondary)
-          }
-        }
-        .multilineTextAlignment(.leading)
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .padding(.vertical, IntradaSpacing.cardCompact)
-      .padding(.horizontal, IntradaSpacing.card)
-      .frame(minHeight: 44)
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel(label)
-    .accessibilityAddTraits(chosen ? .isSelected : [])
-    .accessibilityIdentifier("linkSectionsSheet.row")
+    TickRow(
+      label: label, caption: caption, chosen: chosen, identifier: "linkSectionsSheet.row",
+      toggle: toggle)
   }
 
   private func save() {

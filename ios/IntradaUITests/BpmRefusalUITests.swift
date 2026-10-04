@@ -69,6 +69,34 @@ final class BpmRefusalUITests: XCTestCase {
       "nothing was created, so it is not in the list")
   }
 
+  func testARefusedSetKeepsAnUntickedExerciseUnticked() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--seed-sample-data", "--disable-animations"]
+    app.launch()
+
+    app.tabBars.buttons["Library"].tap()
+    let nocturne = app.row("library.row", spokenContaining: "Nocturne")
+    XCTAssertTrue(nocturne.waitForExistence(timeout: 10), "Nocturne library row")
+    nocturne.tap()
+    app.control(
+      "libraryDetail.addExercise", spoken: "Add an exercise for this piece", timeout: 10
+    ).tap()
+    let scales = app.row("linkedPicker.row", spokenContaining: "Major Scales")
+    XCTAssertTrue(scales.waitForExistence(timeout: 5), "the linked exercise in the list")
+    XCTAssertTrue(scales.isSelected, "ticked, since it is linked")
+    scales.tap()
+    draft("Bad tempo", bpm: "12a", in: app)
+    app.control("sheet.done", spoken: "Done").tap()
+
+    XCTAssertTrue(
+      app.descendants(matching: .any)["Error: BPM must be a whole number between 1 and 400"]
+        .waitForExistence(timeout: 5),
+      "the core's own sentence, inside the sheet")
+    XCTAssertFalse(
+      app.row("linkedPicker.row", spokenContaining: "Major Scales").isSelected,
+      "the untick stands, so a second Done still removes it (#2248)")
+  }
+
   private func draft(_ title: String, bpm: String, in app: XCUIApplication) {
     app.control("linkedPicker.create", spoken: "Create an exercise").tap()
     let bpmField = app.element("draftExercise.bpm")

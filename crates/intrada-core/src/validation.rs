@@ -142,7 +142,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
 }
 
 /// `ItemEvent::Add` is the only event that honours
-/// `CreateItem.variation_labels` (#1783): `AddLinkedExercise` and
+/// `CreateItem.variation_labels` (#1783): `SetPieceLinks` and
 /// `AddPieceInFull` create items too, and silently dropping a caller's labels
 /// there would be the #846 shape, a field that validates but never lands.
 /// Both reject instead.

@@ -80,10 +80,8 @@ struct LibraryDetailScreen: View {
         .environment(store)
     }
     .sheet(item: $choosingSectionsFor) { target in
-      if let exercise = item.linkedExercises.first(where: { $0.id == target.id }) {
-        LinkSectionsSheet(piece: item, exercise: exercise)
-          .environment(store)
-      }
+      LinkSectionsSheet(piece: item, exercise: target.exercise)
+        .environment(store)
     }
     .sheet(item: $editingSection) { target in
       SectionSheet(item: item, target: target)
@@ -159,11 +157,7 @@ struct LibraryDetailScreen: View {
 
   private var library: [LibraryItemView] { store.libraryRows }
 
-  /// The pieces that declare the link, as opposed to the ones this exercise has
-  /// merely been practised alongside — only a declared link can be unticked.
-  private var linkedPieceIds: [String] {
-    item.usedIn.filter { $0.linked }.compactMap { $0.piece?.id }
-  }
+  private var linkedPieceIds: [String] { item.linkedPieceIds }
 
   private func linkPiece(id: String) {
     let targets = item.exerciseTargets(pieceIds: linkedPieceIds + [id])
@@ -172,35 +166,25 @@ struct LibraryDetailScreen: View {
 
   private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
     guard selected != Swift.Set(linkedPieceIds) else { return }
-    let kept = linkedPieceIds.filter(selected.contains)
-    let added = library.map(\.id).filter { selected.contains($0) && !kept.contains($0) }
-    let targets = item.exerciseTargets(pieceIds: kept + added)
+    let targets = item.exerciseTargets(choosing: selected, in: library.map(\.id))
     store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
   }
 
-  // The whole set in one event (#2232): kept exercises keep their sections,
-  // a newly chosen one links to the whole piece, and each draft is created and
-  // linked. A refusal saves nothing, so every draft stays staged (#2224).
+  // One event for the whole set (#2232); a refusal saves nothing, so the
+  // picker keeps every tick and draft as the musician left them.
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
     -> LinkApplyOutcome
   {
     let row = liveRow
-    let current = row.linkedExercises.map(\.id)
-    let kept = row.linkedExercises.filter { selected.contains($0.id) }.flatMap(\.linkEdits)
-    let added = library.map(\.id)
-      .filter { selected.contains($0) && !current.contains($0) }
-      .map { LinkEdit(exercise: .existing(id: $0), sectionId: nil) }
-    let written = drafts.compactMap { draft -> LinkEdit? in
-      guard case .new = draft.entry else { return nil }
-      return LinkEdit(exercise: draft.entry, sectionId: nil)
+    let written = drafts.map(\.entry).filter {
+      if case .new = $0 { return true } else { return false }
     }
-    let unchanged = Swift.Set(current) == selected && written.isEmpty
-    if unchanged { return .accepted }
-    let event = Event.item(.setPieceLinks(pieceId: item.id, links: kept + added + written))
-    guard store.sendAccepted(event) else {
-      return .refused(
-        message: store.viewModel?.error ?? "Couldn't save. Try again.",
-        remainingDrafts: drafts, nowLinked: Swift.Set(current))
+    if Swift.Set(row.linkedExercises.map(\.id)) == selected && written.isEmpty {
+      return .accepted
+    }
+    let links = row.pieceLinks(choosing: selected, in: library.map(\.id), written: written)
+    guard store.sendAccepted(.item(.setPieceLinks(pieceId: item.id, links: links))) else {
+      return .refused(message: store.viewModel?.error ?? "Couldn't save. Try again.")
     }
     Haptic.success.play()
     return .accepted
@@ -279,7 +263,7 @@ struct LibraryDetailScreen: View {
             item: item, editing: $editingLinks,
             onAdd: { showingPicker = true },
             onShowSuggestions: { showingScaffold = true },
-            onChooseSections: { choosingSectionsFor = SectionLinkTarget(id: $0.id) })
+            onChooseSections: { choosingSectionsFor = SectionLinkTarget(exercise: $0) })
         }
 
         if item.itemType == .exercise {
@@ -437,5 +421,6 @@ private struct DetailRow: View {
 #endif
 
 private struct SectionLinkTarget: Identifiable {
-  let id: String
+  let exercise: LinkedExerciseView
+  var id: String { exercise.id }
 }

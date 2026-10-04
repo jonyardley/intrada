@@ -861,7 +861,7 @@ fn chord_chart_events_round_trip_on_the_ffi_bincode_wire() {
     }));
 }
 
-// ── AddLinkedExercise ──
+// ── A written exercise in the set (#1431, #2248) ──
 
 fn new_exercise_input(title: &str) -> CreateItem {
     CreateItem {
@@ -878,14 +878,17 @@ fn new_exercise_input(title: &str) -> CreateItem {
 }
 
 #[test]
-fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
+fn a_written_exercise_creates_it_already_linked_and_persists_one_batch() {
     let mut model = model_with_piece_and_exercise();
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -910,16 +913,19 @@ fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
 }
 
 #[test]
-fn add_linked_exercise_forces_the_kind_to_exercise() {
+fn a_written_exercise_forces_the_kind_to_exercise() {
     let mut model = model_with_piece_and_exercise();
     let mut input = new_exercise_input("Not a piece");
     input.kind = ItemKind::Piece;
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input,
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(input),
+                section_id: None,
+            }],
         },
     );
 
@@ -937,14 +943,17 @@ fn add_linked_exercise_forces_the_kind_to_exercise() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_a_non_piece_host() {
+fn a_written_exercise_rejects_a_non_piece_host() {
     let mut model = model_with_piece_and_exercise();
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "ex-1".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -957,14 +966,17 @@ fn add_linked_exercise_rejects_a_non_piece_host() {
 }
 
 #[test]
-fn add_linked_exercise_missing_piece_surfaces_not_found() {
+fn a_written_exercise_missing_piece_surfaces_not_found() {
     let mut model = model_with_piece_and_exercise();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "nope".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -973,15 +985,18 @@ fn add_linked_exercise_missing_piece_surfaces_not_found() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_a_blank_title() {
+fn a_written_exercise_rejects_a_blank_title() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: new_exercise_input("   "),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("   ")),
+                section_id: None,
+            }],
         },
     );
 
@@ -995,7 +1010,7 @@ fn add_linked_exercise_rejects_a_blank_title() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_inline_variations_rather_than_dropping_them() {
+fn a_written_exercise_rejects_inline_variations_rather_than_dropping_them() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
     let mut input = new_exercise_input("Shell voicings");
@@ -1003,9 +1018,12 @@ fn add_linked_exercise_rejects_inline_variations_rather_than_dropping_them() {
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input,
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(input),
+                section_id: None,
+            }],
         },
     );
 
@@ -2205,18 +2223,21 @@ fn update_refuses_a_bpm_it_cannot_read_and_keeps_the_old_tempo() {
 }
 
 #[test]
-fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
+fn a_written_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
     let mut model = model_with_piece_and_exercise();
     let links_before = model.items[0].linked_exercise_ids().clone();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: CreateItem {
-                tempo: typed_bpm("12a"),
-                ..new_exercise_input("Guide tones")
-            },
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("12a"),
+                    ..new_exercise_input("Guide tones")
+                }),
+                section_id: None,
+            }],
         },
     );
 
@@ -2229,17 +2250,20 @@ fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
 }
 
 #[test]
-fn add_linked_exercise_reads_the_typed_bpm_onto_the_exercise() {
+fn a_written_exercise_reads_the_typed_bpm_onto_the_exercise() {
     let mut model = model_with_piece_and_exercise();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: CreateItem {
-                tempo: typed_bpm("80"),
-                ..new_exercise_input("Guide tones")
-            },
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("80"),
+                    ..new_exercise_input("Guide tones")
+                }),
+                section_id: None,
+            }],
         },
     );
 

@@ -95,9 +95,7 @@ struct LinkedItemPickerSheet: View {
     switch onApply(selected, drafts) {
     case .accepted:
       dismiss()
-    case .refused(let message, let remainingDrafts, let nowLinked):
-      selected.formUnion(nowLinked)
-      drafts = remainingDrafts
+    case .refused(let message):
       refusal = message
     }
   }
@@ -399,7 +397,8 @@ private struct PickerCopy {
 
 enum LinkApplyOutcome {
   case accepted
-  case refused(message: String, remainingDrafts: [StagedExercise], nowLinked: Swift.Set<String>)
+  /// Nothing was saved, so the ticks and drafts stay as the musician left them.
+  case refused(message: String)
 }
 
 #if DEBUG

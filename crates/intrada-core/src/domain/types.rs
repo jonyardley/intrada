@@ -67,7 +67,7 @@ pub struct CreateItem {
     /// Variations chosen while creating the item, as labels: a live library
     /// row with the label is reused, any other is minted (#2246). Only
     /// `ItemEvent::Add` honours this: a `CreateItem` reaching
-    /// `AddLinkedExercise` or `AddPieceInFull` never carries any (#1436's
+    /// `SetPieceLinks` or `AddPieceInFull` never carries any (#1436's
     /// `photo_id` sets the precedent for a shared field meaning one thing by
     /// event).
     #[serde(default)]
@@ -331,45 +331,6 @@ mod tests {
     }
 
     // Remaining bridge-crossing write payloads — guard against a #846-class break.
-
-    #[test]
-    fn item_link_events_round_trip_on_ffi_bincode_wire() {
-        use crate::domain::item::ItemEvent;
-        // A nested CreateItem inside an event payload, with the Option-heavy
-        // fields on both their Some and None sides — the #846 shape, pinned
-        // here before any screen sends it (#1431).
-        assert_round_trips(ItemEvent::AddLinkedExercise {
-            piece_id: "p1".to_string(),
-            input: CreateItem {
-                title: "Shell voicings".to_string(),
-                kind: ItemKind::Exercise,
-                composer: None,
-                key: crate::domain::key::Key::parse("G minor"),
-                tempo: Some(TempoInput {
-                    marking: Some("Andante".to_string()),
-                    bpm: Some("96".to_string()),
-                }),
-                notes: Some("3rds and 7ths".to_string()),
-                tags: vec!["voicings".to_string()],
-                photo_id: None,
-                variation_labels: Vec::new(),
-            },
-        });
-        assert_round_trips(ItemEvent::AddLinkedExercise {
-            piece_id: "p1".to_string(),
-            input: CreateItem {
-                title: "Bare".to_string(),
-                kind: ItemKind::Exercise,
-                composer: None,
-                key: None,
-                tempo: None,
-                notes: None,
-                tags: vec![],
-                photo_id: None,
-                variation_labels: Vec::new(),
-            },
-        });
-    }
 
     #[test]
     fn save_session_persistence_op_round_trips_on_ffi_bincode_wire() {

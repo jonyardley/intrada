@@ -90,7 +90,7 @@ enum TempoFormatting {
   }
 }
 
-/// "For A2 and the coda", or "For the whole piece and A2" (#2248); nil for a
+/// "For A2 and Coda", or "For the whole piece and A2" (#2248); nil for a
 /// whole-piece link alone, which is how every link read before sections.
 func sectionLinkCaption(wholePiece: Bool, sections: [LinkedSectionView]) -> String? {
   guard !sections.isEmpty else { return nil }
