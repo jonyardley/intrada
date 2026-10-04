@@ -191,6 +191,56 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: axConfig)
   }
 
+  // #2247: the piece's sections, one a tricky spot with its own tempo.
+  func testPieceDetailWithSections() {
+    assertSnapshot(of: sectionsScreen(), as: config)
+  }
+
+  func testPieceDetailWithSectionsAccessibilitySize() {
+    assertSnapshot(of: sectionsScreen(), as: axConfig)
+  }
+
+  func testSectionsReordering() {
+    let card = ZStack {
+      PaperBackground()
+      SectionsSection(
+        item: .previewPieceWithSections, startReordering: true, onAdd: {}, onEdit: { _ in }
+      )
+      .padding(16)
+    }
+    assertSnapshot(of: host(card), as: config)
+  }
+
+  func testSectionSheetEditingATrickySpot() {
+    assertSnapshot(of: sectionSheet(), as: config)
+  }
+
+  func testSectionSheetEditingATrickySpotAccessibilitySize() {
+    assertSnapshot(of: sectionSheet(), as: tallAxConfig(height: 2400))
+  }
+
+  func testSectionSheetRefused() {
+    assertSnapshot(
+      of: host(
+        SectionSheet(
+          item: .previewPieceWithSections, target: .new,
+          previewError: "Bars run from the lower bar to the higher")),
+      as: config)
+  }
+
+  private func sectionsScreen() -> UIViewController {
+    let store = Store(bridge: PreviewBridge(items: [.previewPieceWithSections]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewPieceWithSections.id])
+    ) { LibraryScreen() }
+    return host(pushed, store: store)
+  }
+
+  private func sectionSheet() -> UIViewController {
+    let item = LibraryItemView.previewPieceWithSections
+    return host(SectionSheet(item: item, target: .existing(item.sections[2])))
+  }
+
   func testAddRelatedExerciseSheet() {
     assertSnapshot(
       of: host(

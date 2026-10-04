@@ -11,10 +11,7 @@ struct VariationRowsSection: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @FocusState private var focusedRow: UUID?
   @State private var confirmingRemoval: VariationRow?
-  @State private var dragged: UUID?
-  @State private var dragTravel: CGFloat = 0
-  @State private var rowsPassed = 0
-  @State private var rowPitch: CGFloat = 44
+  @State private var drag = DragReorder<UUID>()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -58,7 +55,7 @@ struct VariationRowsSection: View {
 
   // VoiceOver gets move up and down, since a drag alone is not screen-reader-operable.
   private func rowView(_ current: VariationRow) -> some View {
-    let isDragged = dragged == current.id
+    let isDragged = drag.dragged == current.id
     return VStack(spacing: 0) {
       HStack(spacing: IntradaSpacing.cardCompact) {
         Image(systemName: "line.3.horizontal")
@@ -66,7 +63,11 @@ struct VariationRowsSection: View {
           .foregroundStyle(isDragged ? IntradaColor.ink : IntradaColor.inkFaintIcon)
           .frame(height: 44)
           .contentShape(Rectangle().inset(by: -8))
-          .gesture(reorder(current.id))
+          .gesture(
+            drag.gesture(for: current.id, ids: { rows.map(\.id) }, reduceMotion: reduceMotion) {
+              rows.move($0, by: $1)
+            }
+          )
           .accessibilityLabel(
             current.label.isEmpty ? "Reorder this variation" : "Reorder \(current.label)"
           )
@@ -111,50 +112,7 @@ struct VariationRowsSection: View {
       .padding(.trailing, IntradaSpacing.controlGap)
       HairlineDivider()
     }
-    .background(isDragged ? IntradaColor.cardFill : Color.clear)
-    .onGeometryChange(for: CGFloat.self) {
-      $0.size.height
-    } action: {
-      rowPitch = $0
-    }
-    .offset(y: isDragged ? dragTravel : 0)
-    .zIndex(isDragged ? 1 : 0)
-    // The finger places the dragged row; only its neighbours animate aside.
-    .transaction { if isDragged { $0.animation = nil } }
-  }
-
-  // A gesture on the handle rather than the system drag and drop, which never
-  // delivered a drop to these rows on the simulator (#1783): the row moves as the
-  // finger passes half of its neighbour, so the list reorders under the finger.
-  private func reorder(_ id: UUID) -> some Gesture {
-    DragGesture(minimumDistance: 4, coordinateSpace: .global)
-      .onChanged { value in
-        if dragged != id {
-          dragged = id
-          rowsPassed = 0
-        }
-        var travel = value.translation.height - CGFloat(rowsPassed) * rowPitch
-        while abs(travel) > rowPitch / 2,
-          let index = rows.firstIndex(where: { $0.id == id })
-        {
-          let step = travel > 0 ? 1 : -1
-          guard rows.indices.contains(index + step) else { break }
-          withAnimation(reduceMotion ? nil : IntradaMotion.standard) {
-            rows.move(id, by: step)
-          }
-          rowsPassed += step
-          travel -= CGFloat(step) * rowPitch
-          Haptic.selection.play()
-        }
-        dragTravel = travel
-      }
-      .onEnded { _ in
-        withAnimation(reduceMotion ? nil : IntradaMotion.standard) {
-          dragged = nil
-          dragTravel = 0
-        }
-        rowsPassed = 0
-      }
+    .reorderableRow(current.id, in: drag)
   }
 
   // By id, not index: a row removed while its field still has focus would

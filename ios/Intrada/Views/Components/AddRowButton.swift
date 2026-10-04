@@ -2,22 +2,31 @@ import SwiftUI
 
 /// Full-width "+ Add …" affordance. Two styles share one label: `.dashed`
 /// (default) reads as an empty slot inviting input; `.plain` is the borderless
-/// text footer.
+/// text footer. `hint` sits under the label, saying what the slot is for.
 struct AddRowButton: View {
   enum Style { case dashed, plain }
 
   let title: String
+  var hint: String?
   var style: Style = .dashed
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
-      Label(title, systemImage: "plus")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, verticalPadding)
-        .background(background)
+      VStack(spacing: 4) {
+        Label(title, systemImage: "plus")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+        if let hint {
+          Text(hint)
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .multilineTextAlignment(.center)
+        }
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, verticalPadding)
+      .background(background)
     }
     .buttonStyle(.plain)
   }
@@ -46,6 +55,7 @@ struct AddRowButton: View {
     VStack(spacing: 16) {
       AddRowButton(title: "Add a related exercise") {}
       AddRowButton(title: "Add a related exercise", style: .plain) {}
+      AddRowButton(title: "Add sections", hint: "A1, B, Coda, or bars 12 to 14") {}
     }
     .padding()
     .background(IntradaColor.cardFill)

@@ -284,13 +284,6 @@ struct VariationRow: Identifiable, Hashable {
 }
 
 extension [VariationRow] {
-  mutating func move(_ id: UUID, by offset: Int) {
-    guard let from = firstIndex(where: { $0.id == id }), indices.contains(from + offset) else {
-      return
-    }
-    swapAt(from, from + offset)
-  }
-
   mutating func move(_ id: UUID, before target: UUID) {
     guard id != target, let from = firstIndex(where: { $0.id == id }) else { return }
     let row = remove(at: from)
