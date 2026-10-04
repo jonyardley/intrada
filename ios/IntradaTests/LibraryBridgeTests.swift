@@ -1078,6 +1078,7 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(card.id, thirds)
     XCTAssertFalse(card.wholePiece)
     XCTAssertEqual(cardSections.map(\.label), ["A2"])
+    XCTAssertEqual(cardSections.map(\.labelInText), ["A2"])
     let usedIn = try XCTUnwrap(linked.items.first { $0.id == thirds }?.usedIn)
     XCTAssertEqual(
       Swift.Set(usedIn.flatMap { $0.sections.map(\.label) }), ["A2", "Coda"],

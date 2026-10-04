@@ -3545,3 +3545,41 @@ fn a_repeated_row_links_once() {
     );
     assert_eq!(item(&model, "piece-2").exercise_links.len(), 1);
 }
+
+/// How each kind of link reads in a sentence on both screens, from sections a
+/// musician would mark (#2248).
+#[test]
+fn a_linked_section_reads_in_sentence_case() {
+    for (name, bars, whole_piece, expected) in [
+        ("A2", None, false, vec!["A2"]),
+        ("A2", Some((27, 42)), false, vec!["A2"]),
+        ("", Some((19, 20)), false, vec!["bars 19 to 20"]),
+        ("", Some((12, 12)), false, vec!["bar 12"]),
+        ("", None, true, vec![]),
+    ] {
+        let mut model = linking_model();
+        let mut spot = section("s-x", name, 3);
+        spot.bars = bars.map(|(first, last)| BarRange { first, last });
+        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+            p.sections.push(spot);
+        }
+        let section_id = (!whole_piece).then_some("s-x");
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", section_id)]);
+
+        let card = &view_of(&model, "piece-1").linked_exercises[0];
+        let in_text: Vec<String> = card
+            .sections
+            .iter()
+            .map(|s| s.label_in_text.clone())
+            .collect();
+        assert_eq!(in_text, expected, "{name:?} {bars:?}");
+        assert_eq!(card.whole_piece, whole_piece);
+        let used_in = &view_of(&model, "ex-1").used_in[0];
+        let in_text: Vec<String> = used_in
+            .sections
+            .iter()
+            .map(|s| s.label_in_text.clone())
+            .collect();
+        assert_eq!(in_text, expected, "the exercise's side reads the same");
+    }
+}

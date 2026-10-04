@@ -14,11 +14,13 @@ struct ExerciseLinkSetsTests {
   @Test(arguments: [
     (true, [String](), nil as String?),
     (false, ["A2"], "For A2"),
+    (false, ["bars 19 to 20"], "For bars 19 to 20"),
+    (false, ["bar 12"], "For bar 12"),
     (true, ["A2"], "For the whole piece and A2"),
     (false, ["A1", "B", "Coda"], "For A1, B and Coda"),
   ])
   func theCaptionNamesWhatTheLinkIsFor(wholePiece: Bool, labels: [String], expected: String?) {
-    let sections = labels.map { LinkedSectionView(id: $0, label: $0) }
+    let sections = labels.map { LinkedSectionView(id: $0, label: $0, labelInText: $0) }
     #expect(sectionLinkCaption(wholePiece: wholePiece, sections: sections) == expected)
   }
 

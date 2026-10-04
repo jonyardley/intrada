@@ -544,6 +544,7 @@ fn link_summary(
         .map(|s| crate::model::LinkedSectionView {
             id: s.id.clone(),
             label: s.label(),
+            label_in_text: s.label_in_text(),
         })
         .collect();
     (whole_piece, sections)

@@ -376,6 +376,7 @@ class BridgeRoundTripTest {
             setOf("A2", "Coda"),
             usedIn.flatMap { row -> row.sections.map { it.label } }.toSet(),
         )
+        assertEquals(listOf("A2"), sections.map { it.labelInText })
     }
 
     // Links loaded from the store cross into the core on Kotlin's encoder, a tombstone among them

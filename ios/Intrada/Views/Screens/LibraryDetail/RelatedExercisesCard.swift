@@ -283,7 +283,7 @@ private struct LinkedExerciseEditRow: View {
       LinkedExerciseTitle(exercise: exercise)
       HStack(spacing: IntradaSpacing.controlGap) {
         if let onChooseSections {
-          CapsuleActionButton(title: "Sections", action: onChooseSections)
+          CapsuleActionButton(title: "Choose sections", action: onChooseSections)
             .accessibilityLabel("Choose the sections \(exercise.title) is for")
             .accessibilityIdentifier("relatedExercises.sections")
         }

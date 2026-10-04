@@ -127,12 +127,14 @@
       var item = previewPieceWithSections
       item.id = "piece-section-links"
       var octaves = LinkedExerciseView.fixture(id: "exercise-octaves", title: "Broken octaves")
-      octaves.sections = [LinkedSectionView(id: "s4", label: "A2")]
+      octaves.sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
       var thirds = LinkedExerciseView.fixture(
         id: "exercise-thirds", title: "Thirds in D\u{266D}",
         key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60)
       thirds.wholePiece = false
-      thirds.sections = [LinkedSectionView(id: "s3", label: "Bars 19 to 20")]
+      thirds.sections = [
+        LinkedSectionView(id: "s3", label: "Bars 19 to 20", labelInText: "bars 19 to 20")
+      ]
       item.linkedExercises = [octaves, thirds]
       return item
     }
@@ -142,8 +144,8 @@
       var item = previewExerciseLinkedOnly
       item.id = "exercise-sections"
       item.usedIn[0].wholePiece = false
-      item.usedIn[0].sections = [LinkedSectionView(id: "s4", label: "A2")]
-      item.usedIn[1].sections = [LinkedSectionView(id: "s9", label: "Coda")]
+      item.usedIn[0].sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
+      item.usedIn[1].sections = [LinkedSectionView(id: "s9", label: "Coda", labelInText: "Coda")]
       return item
     }
 
