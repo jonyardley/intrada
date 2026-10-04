@@ -334,6 +334,38 @@ extension LibraryStore {
       try db.execute(sql: "ALTER TABLE item ADD COLUMN keys TEXT")
       try db.execute(sql: "ALTER TABLE session ADD COLUMN capture_version INTEGER")
     }
+    migrator.registerMigration("v20_exercise_link") { db in
+      // Each id in a piece's old list becomes a whole-piece link, a repeat
+      // once at its first place (#2248). A list that will not read is
+      // skipped, and the old column stays, unread, until #2317.
+      try db.execute(
+        sql: """
+          CREATE TABLE exercise_link (
+            id TEXT PRIMARY KEY NOT NULL,
+            piece_id TEXT NOT NULL,
+            exercise_id TEXT NOT NULL,
+            section_id TEXT,
+            position INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: "CREATE INDEX index_exercise_link_on_piece_id ON exercise_link(piece_id)")
+      try db.execute(
+        sql: """
+          INSERT OR IGNORE INTO exercise_link
+            (id, piece_id, exercise_id, section_id, position, updated_at, deleted_at)
+          SELECT 'link-' || item.id || '-' || j.value, item.id, j.value, NULL, MIN(j.key),
+            item.updated_at, NULL
+          FROM item, json_each(
+            CASE WHEN json_valid(item.linked_exercise_ids)
+              AND json_type(item.linked_exercise_ids) = 'array'
+            THEN item.linked_exercise_ids ELSE '[]' END) AS j
+          WHERE j.type = 'text'
+          GROUP BY item.id, j.value
+          """)
+    }
     return migrator
   }()
 }

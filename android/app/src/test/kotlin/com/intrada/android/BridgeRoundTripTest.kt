@@ -12,16 +12,21 @@ import com.intrada.shared.ClickPresetOption
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.ExerciseLink
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.ItemSection
 import com.intrada.shared.Key
 import com.intrada.shared.Letter
 import com.intrada.shared.LibraryItemView
+import com.intrada.shared.LinkEdit
+import com.intrada.shared.LinkTarget
+import com.intrada.shared.LinkedSectionView
 import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
+import com.intrada.shared.ScaffoldEntry
 import com.intrada.shared.SectionEdit
 import com.intrada.shared.SectionKind
 import com.intrada.shared.SessionEvent
@@ -316,6 +321,100 @@ class BridgeRoundTripTest {
         )
         assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
     }
+
+    // Section links cross on a second decoder: a skewed LinkTarget, LinkEdit or link view shows
+    // only here (#846, #2248).
+    @Test
+    fun anExerciseLinkedToSectionsOfTwoPiecesDecodes() {
+        val bridge = LiveBridge()
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        val etude = addItem(bridge, "Étude", ItemKind.PIECE)
+        val thirds = addItem(bridge, "Thirds", ItemKind.EXERCISE)
+        val a2 = addSection(bridge, nocturne, "A2")
+        val coda = addSection(bridge, etude, "Coda")
+
+        val written: List<ExerciseLink> =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.SetExerciseLinks(
+                            thirds,
+                            listOf(LinkTarget(nocturne, a2), LinkTarget(etude, coda)),
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItems)
+                        ?.value
+                }
+                .single()
+                .flatMap { it.exerciseLinks }
+
+        assertEquals(setOf(a2, coda), written.map { it.sectionId }.toSet())
+        assertEquals(listOf(thirds, thirds), written.map { it.exerciseId })
+
+        val rows =
+            libraryChanged(
+                bridge.update(
+                    Event.Item(
+                        ItemEvent.SetPieceLinks(
+                            nocturne,
+                            listOf(
+                                LinkEdit(ScaffoldEntry.Existing(thirds), null),
+                                LinkEdit(ScaffoldEntry.Existing(thirds), a2),
+                            ),
+                        )
+                    )
+                )
+            )
+        val card = rows.single { it.id == nocturne }.linkedExercises.single()
+        val sections: List<LinkedSectionView> = card.sections
+        assertTrue(card.wholePiece)
+        assertEquals(listOf("A2"), sections.map { it.label })
+        val usedIn = rows.single { it.id == thirds }.usedIn
+        assertEquals(
+            setOf("A2", "Coda"),
+            usedIn.flatMap { row -> row.sections.map { it.label } }.toSet(),
+        )
+    }
+
+    private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =
+        bridge
+            .update(
+                Event.Item(
+                    ItemEvent.Add(
+                        CreateItem(
+                            title = title,
+                            kind = kind,
+                            tags = emptyList(),
+                            variationLabels = emptyList(),
+                        )
+                    )
+                )
+            )
+            .mapNotNull {
+                ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value
+            }
+            .single()
+            .id
+
+    private fun addSection(bridge: LiveBridge, piece: String, name: String): String =
+        bridge
+            .update(
+                Event.Item(
+                    ItemEvent.UpdateSections(
+                        piece,
+                        listOf(SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")),
+                    )
+                )
+            )
+            .mapNotNull {
+                ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value
+            }
+            .single()
+            .sections
+            .single()
+            .id
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =
         requests

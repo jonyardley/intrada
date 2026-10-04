@@ -44,7 +44,6 @@ ReflectionDraft
 ReflectionView
 RepAction
 RepEvent
-ScaffoldEntry
 ScaffoldKind
 ScaffoldPreviewView
 ScaffoldSpecView

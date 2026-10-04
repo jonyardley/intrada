@@ -28,7 +28,7 @@ struct ExerciseUsageDisplayTests {
       piece: PieceRefView(id: "piece-1", title: title, subtitle: subtitle),
       linked: linked, latestScore: latestScore, sessionCount: sessionCount,
       lastPracticedAt: lastPracticedAt, pieceRemoved: pieceRemoved,
-      pieceInLibrary: !pieceRemoved, offersLink: offersLink)
+      pieceInLibrary: !pieceRemoved, offersLink: offersLink, wholePiece: linked, sections: [])
   }
 
   @Test("A linked piece with no practice says so rather than counting to zero")

@@ -118,8 +118,10 @@ CREATE INDEX index_exercise_link_on_piece_id ON exercise_link(piece_id);
 INSERT OR IGNORE INTO exercise_link
   SELECT 'link-' || item.id || '-' || j.value, item.id, j.value, NULL,
          MIN(j.key), item.updated_at, NULL
-  FROM item, json_each(item.linked_exercise_ids) AS j
-  WHERE json_valid(item.linked_exercise_ids) AND j.type = 'text'
+  FROM item, json_each(CASE WHEN json_valid(item.linked_exercise_ids)
+      AND json_type(item.linked_exercise_ids) = 'array'
+    THEN item.linked_exercise_ids ELSE '[]' END) AS j
+  WHERE j.type = 'text'
   GROUP BY item.id, j.value;
 ```
 

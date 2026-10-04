@@ -29,13 +29,13 @@ object Fixtures {
             key = key,
             tempo = tempo,
             tags = tags,
-            linkedExerciseIds = emptyList(),
             createdAt = "2026-09-01T09:00:00Z",
             updatedAt = "2026-09-01T09:00:00Z",
             priority = false,
             sections = emptyList(),
             variationIds = emptyList(),
             keys = emptyList(),
+            exerciseLinks = emptyList(),
         )
 
     val library =

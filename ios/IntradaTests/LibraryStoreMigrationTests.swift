@@ -283,9 +283,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
 
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1, "pre-existing row must survive v6 migration")
-    XCTAssertEqual(
-      loaded[0].linkedExerciseIds, [],
-      "pre-existing row gets empty-array default for linked_exercise_ids")
+    XCTAssertEqual(loaded[0].exerciseLinks, [], "an empty list carries no links across")
   }
 
   func testV8AddsChordChartColumnDefaultingToNull() throws {
@@ -497,7 +495,11 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "p1", title: "Waltz", kind: .piece, composer: "Chopin",
       key: Key(letter: .a, accidental: .natural, mode: .minor),
       tempo: Tempo(marking: "Lento", bpm: 60), notes: "slow", tags: ["rubato"],
-      linkedExerciseIds: ["e1"], createdAt: "2026-01-01T00:00:00Z",
+      exerciseLinks: [
+        ExerciseLink(
+          id: "link-p1-e1", exerciseId: "e1", sectionId: nil, position: 0,
+          updatedAt: "2026-01-02T00:00:00Z", deletedAt: nil)
+      ], createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z", priority: true,
       metre: Metre(beats: 3, unit: 4, groups: nil))
     XCTAssertEqual(piece, expected, "an upgraded piece loads exactly as before, with no sections")
@@ -621,16 +623,65 @@ final class LibraryStoreMigrationTests: XCTestCase {
     }
   }
 
-  func testV6LinkedExerciseIdsRoundTrip() throws {
+  // ── v20: exercise links (#2248) ──
+
+  /// Every piece's links come across as whole-piece links in their order; a
+  /// repeat becomes one row, and a list that will not read is skipped with
+  /// its text kept.
+  func testV20CopiesEveryLinkAsAWholePieceLink() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v19_keys_and_variations")
+    try queue.write { db in
+      for (id, kind, links) in [
+        ("p1", "piece", #"["b", "a", "b"]"#), ("p2", "piece", "{"),
+        ("p3", "piece", #"{"x": "y"}"#), ("p4", "piece", #"[1, "a"]"#),
+        ("a", "exercise", "[]"), ("b", "exercise", "[]"),
+      ] {
+        try db.execute(
+          sql: """
+            INSERT INTO item (id, title, kind, tags, linked_exercise_ids, created_at, updated_at)
+            VALUES (?, ?, ?, '[]', ?, '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z')
+            """,
+          arguments: [id, id, kind, links])
+      }
+    }
+    let store = try LibraryStore(queue)
+
+    let items = Dictionary(uniqueKeysWithValues: try store.loadItems().map { ($0.id, $0) })
+    func link(_ piece: String, _ exercise: String, _ position: UInt64) -> ExerciseLink {
+      ExerciseLink(
+        id: "link-\(piece)-\(exercise)", exerciseId: exercise, sectionId: nil,
+        position: position, updatedAt: "2026-01-02T00:00:00Z", deletedAt: nil)
+    }
+    XCTAssertEqual(items["p1"]?.exerciseLinks, [link("p1", "b", 0), link("p1", "a", 1)])
+    XCTAssertEqual(items["p2"]?.exerciseLinks, [], "a list that will not read carries nothing")
+    XCTAssertEqual(items["p3"]?.exerciseLinks, [], "nor does an object")
+    XCTAssertEqual(items["p4"]?.exerciseLinks, [link("p4", "a", 1)], "only the ids come across")
+    XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "p2"), "{", "and it is kept")
+    XCTAssertEqual(items["a"]?.exerciseLinks, [])
+  }
+
+  func testLinksAndATombstoneSurviveAReloadWithoutTouchingTheOldColumn() throws {
     let store = try LibraryStore.inMemory()
-    let item = LibraryItemFixture.record(
-      id: "p2", title: "Étude", linkedExerciseIds: ["e1", "e2"])
+    var item = LibraryItemFixture.record(id: "p1", title: "Nocturne")
+    item.exerciseLinks = [
+      ExerciseLink(
+        id: "l1", exerciseId: "e1", sectionId: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil),
+      ExerciseLink(
+        id: "l2", exerciseId: "e2", sectionId: "s2", position: 1,
+        updatedAt: "2026-10-04T09:05:00Z", deletedAt: "2026-10-04T09:05:00Z"),
+    ]
     try store.save(item)
-    let loaded = try store.loadItems()
-    XCTAssertEqual(loaded.count, 1)
+    XCTAssertEqual(try store.loadItems().first?.exerciseLinks, item.exerciseLinks)
+
+    item.exerciseLinks[0].position = 2
+    item.exerciseLinks[1].deletedAt = nil
+    try store.save(item)
     XCTAssertEqual(
-      loaded[0].linkedExerciseIds, ["e1", "e2"],
-      "linked_exercise_ids must round-trip through JSON storage intact")
+      try store.loadItems().first?.exerciseLinks, item.exerciseLinks.reversed(),
+      "a second save updates each row by id, adding none, and loads by position")
+    XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "p1"), "[]")
   }
 
 }

@@ -416,7 +416,7 @@ final class LibraryStoreTests: XCTestCase {
         """)
     let item = try XCTUnwrap(try store.loadItems().first)
     XCTAssertEqual(item.tags, [])
-    XCTAssertEqual(item.linkedExerciseIds, [])
+    XCTAssertEqual(item.exerciseLinks, [])
     XCTAssertNil(item.chordChart)
     XCTAssertNil(item.metre)
     XCTAssertEqual(try XCTUnwrap(try store.loadSessions().first).entries, [])
@@ -440,10 +440,16 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "i1"), "[1, 2]")
 
     loaded.tags = ["scales"]
-    loaded.linkedExerciseIds = ["e1"]
+    loaded.exerciseLinks = [
+      ExerciseLink(
+        id: "l1", exerciseId: "e1", sectionId: nil, position: 0,
+        updatedAt: "2026-10-04T09:00:00Z", deletedAt: nil)
+    ]
     try store.save(loaded)
     XCTAssertEqual(try store.rawText("tags", ofItem: "i1"), #"["scales"]"#)
-    XCTAssertEqual(try store.rawText("linked_exercise_ids", ofItem: "i1"), #"["e1"]"#)
+    XCTAssertEqual(
+      try store.rawText("linked_exercise_ids", ofItem: "i1"), "[1, 2]",
+      "links live in their own table, so the old list is never written (#2248)")
   }
 
   func testSavingAnEmptyListOverReadableTagsClearsThem() throws {
