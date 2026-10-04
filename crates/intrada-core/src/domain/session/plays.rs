@@ -5,18 +5,39 @@ use crate::validation;
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 
-/// An entry that has just become current opens its first play on the whole
-/// item, plain, with no key (#2246): there is no current step and no default
-/// order, and the plan stays a plan. Idempotent: a recovered session already
-/// carries its plays.
+/// An entry that has just become current opens its first play on its first
+/// segment, else the focus's section, else the whole item; plain, with no
+/// key (#2246, #2249). Last time is an offer, never a start. Idempotent: a
+/// recovered session already carries its plays.
 pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
-        entry.plays.push(Play::opened(
-            PlayWay::default(),
-            entry.planned_rep_target,
-            now,
-        ));
+        let section_id = entry
+            .segments
+            .first()
+            .map(|s| s.section_id.clone())
+            .or_else(|| entry.focus.as_ref().and_then(|f| f.section_id.clone()));
+        let way = PlayWay {
+            section_id,
+            ..PlayWay::default()
+        };
+        entry
+            .plays
+            .push(Play::opened(way, entry.planned_rep_target, now));
     }
+}
+
+/// Only an entry run through two or more segments has a segment clock.
+pub(super) fn first_segment_clock(
+    entry: &SetlistEntry,
+    now: DateTime<Utc>,
+) -> Option<SegmentClock> {
+    let first = entry.segments.first()?;
+    (entry.segments.len() > 1 && first.planned_secs > 0).then_some(SegmentClock {
+        index: 0,
+        started_at: now,
+        allowance_secs: first.planned_secs,
+        taken_from_next_secs: 0,
+    })
 }
 
 /// Stamp the open play's seconds from its own start, so a switch mid item
@@ -31,7 +52,11 @@ pub(super) fn close_open_play(
     let Some(play) = entry.open_play_mut() else {
         return TempoStamp::NothingToKeep;
     };
-    play.seconds = (now - play.started_at).num_seconds().max(0) as u64;
+    if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
+        away.back_at = Some(now.max(away.left_at));
+    }
+    let elapsed = (now - play.started_at).num_seconds().max(0) as u64;
+    play.seconds = elapsed.saturating_sub(left_out_secs(&play.away, play.started_at, now));
     match reading {
         Some(reading) => stamp_tempo(play, reading),
         None => TempoStamp::NothingToKeep,
@@ -295,19 +320,29 @@ pub(super) fn entry_for_plan_mut<'a>(
     }
 }
 
+/// The item's time less what the musician left out.
+pub(super) fn item_seconds(
+    entry: &SetlistEntry,
+    started: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> u64 {
+    let elapsed = (now - started).num_seconds().max(0) as u64;
+    elapsed.saturating_sub(entry_left_out_secs(entry, started, now))
+}
+
 pub(super) fn transition_to_summary(
     active: &mut ActiveSession,
     now: DateTime<Utc>,
     reading: &TempoReading,
     completion_status: CompletionStatus,
 ) -> (SummarySession, TempoStamp) {
-    let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
+    let started = active.current_item_started_at;
     let mut stamp = TempoStamp::NothingToKeep;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
-        entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, active.current_item_started_at);
+        open_first_play(entry, started);
         stamp = close_open_play(entry, now, Some(reading));
+        entry.duration_secs = item_seconds(entry, started, now);
     }
 
     if completion_status == CompletionStatus::EndedEarly {

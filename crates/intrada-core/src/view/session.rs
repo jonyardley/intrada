@@ -1,15 +1,20 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
+
 use crate::analytics::{LocalClock, ScoreChange};
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    ActiveSession, EntryStatus, Play, PracticeSession, SetlistEntry, SummarySession,
+    self as session, ActiveSession, EntryStatus, IntentionFocus, NotePoint, Play, PlayWay,
+    PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
 };
 use crate::domain::variation::Variation;
 use crate::model::{
-    ActiveSessionView, ItemPracticeSummary, PickerVariationView, PlayView, PracticeSessionView,
-    ReflectionView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
+    ActiveRecordView, ActiveSessionView, AwayOfferView, EntryRecordView, FeltChoiceView,
+    FinishSheetView, FocusView, ItemPracticeSummary, LastTimeView, NotePointView,
+    ObstacleChoiceView, PickerVariationView, PlayView, PracticeSessionView, ReflectionView,
+    SegmentClockView, SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -68,6 +73,8 @@ pub fn format_duration_summary(secs: u64) -> String {
 pub struct PlayLabels<'a> {
     variations: HashMap<&'a str, &'a str>,
     sections: HashMap<&'a str, String>,
+    /// Each item's live named sections as (id, name), for reading its notes.
+    named_sections: HashMap<&'a str, Vec<(&'a str, &'a str)>>,
 }
 
 pub fn play_labels<'a>(items: &'a [Item], variations: &'a [Variation]) -> PlayLabels<'a> {
@@ -81,6 +88,18 @@ pub fn play_labels<'a>(items: &'a [Item], variations: &'a [Variation]) -> PlayLa
             .flat_map(|i| i.sections.iter())
             .map(|s| (s.id.as_str(), s.label()))
             .collect(),
+        named_sections: items
+            .iter()
+            .map(|i| {
+                let named = i
+                    .sections
+                    .iter()
+                    .filter(|s| s.deleted_at.is_none() && !s.name.is_empty())
+                    .map(|s| (s.id.as_str(), s.name.as_str()))
+                    .collect();
+                (i.id.as_str(), named)
+            })
+            .collect(),
     }
 }
 
@@ -90,6 +109,7 @@ impl<'a> PlayLabels<'a> {
         Self {
             variations: HashMap::new(),
             sections: HashMap::new(),
+            named_sections: HashMap::new(),
         }
     }
 }
@@ -100,6 +120,7 @@ impl<'a> FromIterator<(&'a str, &'a str)> for PlayLabels<'a> {
         Self {
             variations: pairs.into_iter().collect(),
             sections: HashMap::new(),
+            named_sections: HashMap::new(),
         }
     }
 }
@@ -140,11 +161,41 @@ impl PlayLabels<'_> {
 
     pub fn plan(&self, entry: &SetlistEntry) -> Option<String> {
         let sections: Vec<&str> = entry
-            .planned_section_ids
+            .segments
             .iter()
-            .map(String::as_str)
+            .map(|s| s.section_id.as_str())
             .collect();
         Self::joined(self.parts(&sections, None, &entry.planned_variation_ids))
+    }
+
+    pub fn way(&self, way: &PlayWay) -> Option<String> {
+        let sections: Vec<&str> = way.section_id.as_deref().into_iter().collect();
+        Self::joined(self.parts(&sections, way.key.as_ref(), &way.variation_ids))
+    }
+
+    fn section(&self, id: &str) -> Option<String> {
+        self.sections.get(id).cloned()
+    }
+
+    fn named_sections(&self, item_id: &str) -> &[(&str, &str)] {
+        self.named_sections.get(item_id).map_or(&[], Vec::as_slice)
+    }
+
+    fn focus(&self, focus: &IntentionFocus) -> FocusView {
+        let section = focus.section_id.as_deref().and_then(|id| self.section(id));
+        FocusView {
+            focus: focus.clone(),
+            label: session::focus_label(focus, section.as_deref()),
+        }
+    }
+
+    fn note_point(&self, point: &NotePoint, confirmed: bool) -> NotePointView {
+        NotePointView {
+            span: point.span,
+            label: session::note_point_label(&point.kind),
+            section_label: point.section_id.as_deref().and_then(|id| self.section(id)),
+            confirmed,
+        }
     }
 }
 
@@ -193,7 +244,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .planned_duration_secs
             .map(|secs| format_planned_duration(u64::from(secs))),
         group_id: entry.group_id.clone(),
-        planned_section_ids: entry.planned_section_ids.clone(),
+        planned_section_ids: entry.planned_section_ids(),
         planned_variation_ids: entry.planned_variation_ids.clone(),
         planned_label: labels.plan(entry),
         planned_rep_target: entry.planned_rep_target,
@@ -203,6 +254,135 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .map(|p| play_to_view(p, entry, labels))
             .collect(),
         score_summary: entry.score_summary(),
+        record: entry_record_view(entry, labels),
+    }
+}
+
+fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordView {
+    let read = session::intention_met_read(entry);
+    let suggested_focus = entry
+        .intention
+        .as_deref()
+        .and_then(|text| session::suggest_focus(text, labels.named_sections(&entry.item_id)))
+        .filter(|suggested| entry.focus.as_ref() != Some(suggested))
+        .map(|suggested| labels.focus(&suggested));
+    EntryRecordView {
+        segments: entry
+            .segments
+            .iter()
+            .map(|s| SegmentView {
+                section_id: s.section_id.clone(),
+                label: labels.section(&s.section_id).unwrap_or_default(),
+                planned_secs: s.planned_secs,
+                planned_display: format_planned_duration(u64::from(s.planned_secs)),
+            })
+            .collect(),
+        focus: entry.focus.as_ref().map(|f| labels.focus(f)),
+        suggested_focus,
+        intention_met: read.or(entry.intention_met),
+        intention_met_read: read.is_some(),
+        felt: entry.felt,
+        got_in_the_way: entry.got_in_the_way.clone(),
+        note_points: entry
+            .note_points
+            .iter()
+            .map(|p| labels.note_point(p, true))
+            .collect(),
+    }
+}
+
+pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -> LastTimeView {
+    LastTimeView {
+        entry_id: entry.id.clone(),
+        label: format!("Last time: {}", labels.way(&way).unwrap_or_default()),
+        section_id: way.section_id,
+        variation_ids: way.variation_ids,
+    }
+}
+
+fn active_record_view(active: &ActiveSession, labels: &PlayLabels) -> ActiveRecordView {
+    let current = active.current_entry();
+    let segment = active.segment.as_ref().and_then(|clock| {
+        let here = current.segments.get(clock.index as usize)?;
+        let label = labels.section(&here.section_id).unwrap_or_default();
+        let next = current
+            .segments
+            .get(clock.index as usize + 1)
+            .map(|s| labels.section(&s.section_id).unwrap_or_default());
+        let away =
+            session::entry_left_out_secs(current, clock.started_at, DateTime::<Utc>::MAX_UTC);
+        let ends_at = clock.started_at
+            + chrono::Duration::seconds(i64::from(clock.allowance_secs))
+            + chrono::Duration::seconds(i64::try_from(away).unwrap_or(0));
+        let stay_label = next
+            .as_ref()
+            .filter(|_| session::can_stay(current, clock))
+            .map(|next| {
+                format!(
+                    "Stay on {label}, {} more minutes taken from {next}",
+                    session::STAY_SECS / 60
+                )
+            });
+        Some(SegmentClockView {
+            move_label: next.as_ref().map(|next| format!("On to {next}")),
+            stay_label,
+            ends_at: ends_at.to_rfc3339(),
+            label,
+        })
+    });
+    let away_offer = current
+        .open_play()
+        .filter(|_| active.reflection.is_none())
+        .and_then(session::away_to_offer)
+        .map(|(_, secs)| {
+            let minutes = u32::try_from(secs / 60).unwrap_or(u32::MAX);
+            let unit = if minutes == 1 { "minute" } else { "minutes" };
+            AwayOfferView {
+                minutes,
+                label: format!("Away {minutes} {unit}. Leave it out?"),
+            }
+        });
+    ActiveRecordView {
+        segment,
+        away_offer,
+        finish: active
+            .reflection
+            .as_ref()
+            .map(|draft| finish_sheet_view(current, draft, labels)),
+        last_time: None,
+    }
+}
+
+fn finish_sheet_view(
+    entry: &SetlistEntry,
+    draft: &ReflectionDraft,
+    labels: &PlayLabels,
+) -> FinishSheetView {
+    let read = session::intention_met_read(entry);
+    FinishSheetView {
+        note_offers: session::note_offers(
+            &draft.answers.note,
+            labels.named_sections(&entry.item_id),
+        )
+        .iter()
+        .map(|p| labels.note_point(p, draft.answers.note_points.contains(&p.span)))
+        .collect(),
+        asks_intention: session::asks_intention(entry),
+        intention_met_read: read,
+        felt_choices: session::FELT_CHOICES
+            .iter()
+            .map(|&felt| FeltChoiceView {
+                felt,
+                label: session::felt_label(felt).to_string(),
+            })
+            .collect(),
+        obstacle_choices: session::OBSTACLE_CHOICES
+            .iter()
+            .map(|&obstacle| ObstacleChoiceView {
+                obstacle,
+                label: session::obstacle_label(obstacle).to_string(),
+            })
+            .collect(),
     }
 }
 
@@ -301,7 +481,18 @@ pub fn build_active_session_view(
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
-        current_item_started_at: active.current_item_started_at.to_rfc3339(),
+        // Left-out time away moves the item's clock on, so the shell's timer
+        // and the sheet's stopped time drop the gap too (#2306).
+        current_item_started_at: (active.current_item_started_at
+            + chrono::Duration::seconds(
+                i64::try_from(session::entry_left_out_secs(
+                    current,
+                    active.current_item_started_at,
+                    DateTime::<Utc>::MAX_UTC,
+                ))
+                .unwrap_or(0),
+            ))
+        .to_rfc3339(),
         entries: active
             .entries
             .iter()
@@ -352,6 +543,7 @@ pub fn build_active_session_view(
                 h.len() < crate::validation::MAX_REP_HISTORY
                     && !crate::domain::session::standing_taps(h).is_empty()
             }),
+        record: active_record_view(active, labels),
     }
 }
 
@@ -812,6 +1004,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         assert_eq!(
             build_active_session_view(
@@ -867,6 +1060,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = |active: &ActiveSession| {
             build_active_session_view(
@@ -938,6 +1132,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let sounding = |index: usize, click: ClickStart| {
             let at = ActiveSession {
@@ -974,6 +1169,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let four = PracticeDefaults {
             rep_target: 4,
@@ -1007,6 +1203,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1030,6 +1227,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1052,6 +1250,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1078,6 +1277,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1108,6 +1308,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1134,6 +1335,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1157,6 +1359,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let item = Item {
             id: "i1".to_string(),
@@ -1202,6 +1405,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let view = build_active_session_view(
             &active,
@@ -1226,6 +1430,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let item1 = Item {
             notes: Some("Watch the thumb crossing".to_string()),
@@ -1258,6 +1463,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let item = make_item("i1", "Scale", ItemKind::Exercise);
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
@@ -1283,6 +1489,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         }
     }
 
@@ -1655,6 +1862,7 @@ mod tests {
             session_started_at: Utc::now(),
             current_item_started_at: Utc::now(),
             reflection: None,
+            segment: None,
         };
         let player = build_active_session_view(
             &active,
@@ -2413,6 +2621,10 @@ mod tests {
             }],
             note: "even quavers".to_string(),
             tempos: vec![],
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
+            intention_met: None,
         };
         let reading = TempoReading {
             bpm: 72,

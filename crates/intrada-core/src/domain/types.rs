@@ -381,8 +381,14 @@ mod tests {
                 achieved_tempo: Some(120),
                 click_pattern: None,
                 score: Some(4),
+                away: Vec::new(),
             }],
-            planned_section_ids: vec![],
+            segments: Vec::new(),
+            focus: None,
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
             planned_variation_ids: vec![],
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
@@ -552,7 +558,12 @@ mod tests {
             group_id: Some("block-1".to_string()),
             planned_rep_target: None,
             plays: Vec::new(),
-            planned_section_ids: vec![],
+            segments: Vec::new(),
+            focus: None,
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
             planned_variation_ids: vec![],
         });
     }
@@ -570,6 +581,7 @@ mod tests {
                 current_item_started_at: anchor,
                 session_started_at: anchor,
                 reflection: None,
+                segment: None,
             },
             now: anchor,
         });

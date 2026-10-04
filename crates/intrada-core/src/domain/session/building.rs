@@ -26,10 +26,15 @@ pub(super) fn create_entry(
         intention: None,
         planned_duration_secs: None,
         group_id: None,
-        planned_section_ids: Vec::new(),
         planned_variation_ids: Vec::new(),
         planned_rep_target: None,
         plays: Vec::new(),
+        segments: Vec::new(),
+        focus: None,
+        intention_met: None,
+        felt: None,
+        got_in_the_way: Vec::new(),
+        note_points: Vec::new(),
     }
 }
 
@@ -142,7 +147,15 @@ pub(super) fn set_entry_plan(
         model.raise_error(format!("Entry '{entry_id}' not found"));
         return crux_core::render::render();
     };
-    entry.planned_section_ids = section_ids;
+    let mut segments: Vec<Segment> = section_ids
+        .into_iter()
+        .map(|section_id| Segment {
+            section_id,
+            planned_secs: 0,
+        })
+        .collect();
+    split_evenly(&mut segments, entry.planned_duration_secs);
+    entry.segments = segments;
     entry.planned_variation_ids = variation_ids;
     model.last_error = None;
     crux_core::render::render()
@@ -167,7 +180,115 @@ pub(super) fn set_entry_duration(
     let check = validation::validate_planned_duration(&duration_secs);
     set_planned(model, &entry_id, check, |entry| {
         entry.planned_duration_secs = duration_secs;
+        split_evenly(&mut entry.segments, duration_secs);
     })
+}
+
+pub(super) fn set_segments(
+    model: &mut Model,
+    entry_id: String,
+    mut segments: Vec<Segment>,
+) -> Command<Effect, Event> {
+    if !matches!(model.session_status, SessionStatus::Building(_)) {
+        model.raise_error("Segments can only be set while building".to_string());
+        return crux_core::render::render();
+    }
+    let Some(entry) = entry_for_plan(model, &entry_id) else {
+        model.raise_error(format!("Entry '{entry_id}' not found"));
+        return crux_core::render::render();
+    };
+    let check = validation::validate_segment_sections(entry, &segments, model)
+        .and_then(|()| rebalance(&mut segments, entry.planned_duration_secs));
+    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+}
+
+pub(super) fn set_focus(
+    model: &mut Model,
+    entry_id: String,
+    focus: Option<IntentionFocus>,
+) -> Command<Effect, Event> {
+    let check = match (&focus, entry_for_plan(model, &entry_id)) {
+        (Some(focus), Some(entry)) => {
+            let sections = live_section_ids(model, &entry.item_id);
+            validate_focus(focus, &sections)
+        }
+        _ => Ok(()),
+    };
+    set_planned(model, &entry_id, check, |entry| entry.focus = focus)
+}
+
+fn live_section_ids<'a>(model: &'a Model, item_id: &str) -> Vec<&'a str> {
+    model
+        .items
+        .iter()
+        .find(|i| i.id == item_id)
+        .map(|i| {
+            i.sections
+                .iter()
+                .filter(|s| s.deleted_at.is_none())
+                .map(|s| s.id.as_str())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Effect, Event> {
+    let way = entry_for_plan(model, &entry_id).and_then(|e| last_time(model, &e.item_id));
+    let Some(way) = way else {
+        model.raise_error("There's no last time to plan from".to_string());
+        return crux_core::render::render();
+    };
+    set_planned(model, &entry_id, Ok(()), |entry| {
+        let mut segments: Vec<Segment> = way
+            .section_id
+            .into_iter()
+            .map(|section_id| Segment {
+                section_id,
+                planned_secs: 0,
+            })
+            .collect();
+        split_evenly(&mut segments, entry.planned_duration_secs);
+        entry.segments = segments;
+        entry.planned_variation_ids = way.variation_ids;
+    })
+}
+
+/// The way the item was last played, from the newest saved practice of it,
+/// kept to what is still in the library. `None` for the whole piece, plain:
+/// there is nothing to offer.
+pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
+    let play = model
+        .sessions
+        .iter()
+        .filter(|s| s.entries.iter().any(|e| e.item_id == item_id))
+        .max_by_key(|s| s.started_at)?
+        .entries
+        .iter()
+        .filter(|e| e.item_id == item_id)
+        .flat_map(|e| e.plays.iter())
+        .rev()
+        .find(|p| !p.is_incidental())?;
+    let sections = live_section_ids(model, item_id);
+    let live_variation = |id: &String| {
+        model
+            .variations
+            .iter()
+            .any(|v| &v.id == id && v.deleted_at.is_none())
+    };
+    let way = PlayWay {
+        section_id: play
+            .section_id
+            .clone()
+            .filter(|id| sections.contains(&id.as_str())),
+        key: None,
+        variation_ids: play
+            .variation_ids
+            .iter()
+            .filter(|id| live_variation(id))
+            .cloned()
+            .collect(),
+    };
+    (way.section_id.is_some() || !way.variation_ids.is_empty()).then_some(way)
 }
 
 pub(super) fn set_session_length(
@@ -618,11 +739,13 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
         current_item_started_at: now,
         session_started_at: now,
         reflection: None,
+        segment: None,
     };
 
     if let Some(entry) = active.entries.first_mut() {
         open_first_play(entry, now);
     }
+    active.segment = first_segment_clock(active.current_entry(), now);
 
     let persist = persist_active(&active);
     model.session_status = SessionStatus::Active(active);

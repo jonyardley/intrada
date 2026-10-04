@@ -8,9 +8,11 @@ use serde::{Deserialize, Serialize};
 use crate::domain::item::{ItemKind, Modality};
 use crate::domain::key::{key_from_stored, key_to_stored};
 use crate::domain::metre::Metre;
+use crate::domain::section::BarRange;
 use crate::domain::session::{
-    ClickState, CompletionStatus, EntryStatus, Play, PracticeSession, RepAction, RepEvent,
-    SetlistEntry, TempoChange,
+    split_evenly, Away, ClickState, CompletionStatus, EntryStatus, Felt, FocusKind, IntentionFocus,
+    IntentionMet, NotePoint, NotePointKind, NoteSpan, Obstacle, Play, PracticeSession, RepAction,
+    RepEvent, Segment, SetlistEntry, TempoChange,
 };
 
 /// The `session` table's columns, as the shell reads and writes them.
@@ -192,6 +194,82 @@ fn modality_text(modality: Modality) -> &'static str {
     }
 }
 
+fn focus_kind(raw: &str) -> Option<FocusKind> {
+    match raw {
+        "tempo" => Some(FocusKind::Tempo),
+        "clean_reps" => Some(FocusKind::CleanReps),
+        "from_memory" => Some(FocusKind::FromMemory),
+        "evenness" => Some(FocusKind::Evenness),
+        _ => None,
+    }
+}
+
+fn focus_kind_text(kind: FocusKind) -> &'static str {
+    match kind {
+        FocusKind::Tempo => "tempo",
+        FocusKind::CleanReps => "clean_reps",
+        FocusKind::FromMemory => "from_memory",
+        FocusKind::Evenness => "evenness",
+    }
+}
+
+fn intention_met(raw: &str) -> Option<IntentionMet> {
+    match raw {
+        "yes" => Some(IntentionMet::Yes),
+        "partly" => Some(IntentionMet::Partly),
+        "not_yet" => Some(IntentionMet::NotYet),
+        _ => None,
+    }
+}
+
+fn intention_met_text(met: IntentionMet) -> &'static str {
+    match met {
+        IntentionMet::Yes => "yes",
+        IntentionMet::Partly => "partly",
+        IntentionMet::NotYet => "not_yet",
+    }
+}
+
+fn felt(raw: &str) -> Option<Felt> {
+    match raw {
+        "easy" => Some(Felt::Easy),
+        "effortful" => Some(Felt::Effortful),
+        "tense" => Some(Felt::Tense),
+        _ => None,
+    }
+}
+
+fn felt_text(felt: Felt) -> &'static str {
+    match felt {
+        Felt::Easy => "easy",
+        Felt::Effortful => "effortful",
+        Felt::Tense => "tense",
+    }
+}
+
+fn obstacle(raw: &str) -> Option<Obstacle> {
+    match raw {
+        "notes" => Some(Obstacle::Notes),
+        "rhythm" => Some(Obstacle::Rhythm),
+        "fingering" => Some(Obstacle::Fingering),
+        "memory" => Some(Obstacle::Memory),
+        "tone" => Some(Obstacle::Tone),
+        "tension" => Some(Obstacle::Tension),
+        _ => None,
+    }
+}
+
+fn obstacle_text(obstacle: Obstacle) -> &'static str {
+    match obstacle {
+        Obstacle::Notes => "notes",
+        Obstacle::Rhythm => "rhythm",
+        Obstacle::Fingering => "fingering",
+        Obstacle::Memory => "memory",
+        Obstacle::Tone => "tone",
+        Obstacle::Tension => "tension",
+    }
+}
+
 fn parse_time(raw: &str) -> Option<DateTime<Utc>> {
     raw.parse().ok()
 }
@@ -234,14 +312,27 @@ struct StoredEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     group_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    planned_section_ids: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     planned_variation_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     planned_rep_target: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     plays: Option<Vec<StoredPlay>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    segments: Option<Vec<StoredSegment>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    focus: Option<StoredFocus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    intention_met: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    felt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    got_in_the_way: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    note_points: Option<Vec<StoredNotePoint>>,
 
+    /// The v0.16 plan, at most one section, before segments (#2315).
+    #[serde(default, skip_serializing)]
+    planned_section_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing)]
     score: Option<u8>,
     #[serde(default, skip_serializing)]
@@ -282,6 +373,58 @@ struct StoredPlay {
     click_pattern: Option<StoredClickState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     score: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    away: Option<Vec<StoredAway>>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredSegment {
+    section_id: String,
+    planned_secs: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredFocus {
+    kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    section_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    target: Option<u16>,
+}
+
+/// `kind` is "bars" with `first` and `last`, "tempo" with `bpm`, or
+/// "repetitions" with `count`, `clean` and `inARow`.
+#[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct StoredNotePoint {
+    kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    first: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bpm: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    count: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    clean: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    in_a_row: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    section_id: Option<String>,
+    start: u32,
+    end: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredAway {
+    left_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    back_at: Option<String>,
+    left_out: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -383,6 +526,59 @@ impl Reader {
             EntryStatus::NotAttempted,
         );
         let plays = self.plays(e, &status);
+        let segments = match &e.segments {
+            Some(stored) => stored
+                .iter()
+                .map(|s| Segment {
+                    section_id: s.section_id.clone(),
+                    planned_secs: s.planned_secs,
+                })
+                .collect(),
+            None => {
+                let mut legacy: Vec<Segment> = e
+                    .planned_section_ids
+                    .iter()
+                    .flatten()
+                    .map(|id| Segment {
+                        section_id: id.clone(),
+                        planned_secs: 0,
+                    })
+                    .collect();
+                split_evenly(&mut legacy, e.planned_duration_secs);
+                legacy
+            }
+        };
+        let focus = e.focus.as_ref().and_then(|f| {
+            let kind = focus_kind(&f.kind).or_else(|| {
+                self.note(format!("unknown FocusKind on decode: {:?}", f.kind));
+                None
+            })?;
+            Some(IntentionFocus {
+                kind,
+                section_id: f.section_id.clone(),
+                target: f.target,
+            })
+        });
+        let intention_met = e
+            .intention_met
+            .as_deref()
+            .and_then(|raw| self.known("IntentionMet", raw, |r| intention_met(r).map(Some), None));
+        let felt = e
+            .felt
+            .as_deref()
+            .and_then(|raw| self.known("Felt", raw, |r| felt(r).map(Some), None));
+        let got_in_the_way = e
+            .got_in_the_way
+            .iter()
+            .flatten()
+            .filter_map(|raw| self.known("Obstacle", raw, |r| obstacle(r).map(Some), None))
+            .collect();
+        let note_points = e
+            .note_points
+            .iter()
+            .flatten()
+            .filter_map(|p| self.note_point(p))
+            .collect();
         SetlistEntry {
             id: e.id.clone(),
             item_id: e.item_id.clone(),
@@ -395,11 +591,42 @@ impl Reader {
             intention: e.intention.clone(),
             planned_duration_secs: e.planned_duration_secs,
             group_id: e.group_id.clone(),
-            planned_section_ids: e.planned_section_ids.clone().unwrap_or_default(),
             planned_variation_ids: e.planned_variation_ids.clone().unwrap_or_default(),
             planned_rep_target: e.planned_rep_target.or(e.rep_target),
             plays,
+            segments,
+            focus,
+            intention_met,
+            felt,
+            got_in_the_way,
+            note_points,
         }
+    }
+
+    fn note_point(&mut self, p: &StoredNotePoint) -> Option<NotePoint> {
+        let kind = match (p.kind.as_str(), p.first, p.last, p.bpm, p.count) {
+            ("bars", Some(first), Some(last), _, _) => {
+                NotePointKind::Bars(BarRange { first, last })
+            }
+            ("tempo", _, _, Some(bpm), _) => NotePointKind::Tempo { bpm },
+            ("repetitions", _, _, _, Some(count)) => NotePointKind::Repetitions {
+                count,
+                clean: p.clean.unwrap_or(false),
+                in_a_row: p.in_a_row.unwrap_or(false),
+            },
+            _ => {
+                self.note(format!("unreadable note point on decode: {:?}", p.kind));
+                return None;
+            }
+        };
+        Some(NotePoint {
+            kind,
+            section_id: p.section_id.clone(),
+            span: NoteSpan {
+                start: p.start,
+                end: p.end,
+            },
+        })
     }
 
     /// A row written before #1739 has no `plays` and folds into a single play
@@ -428,6 +655,7 @@ impl Reader {
             achieved_tempo: e.achieved_tempo,
             click_pattern: e.click_pattern.as_ref().map(click_state),
             score: e.score,
+            away: Vec::new(),
         }]
     }
 
@@ -462,6 +690,16 @@ impl Reader {
             achieved_tempo: p.achieved_tempo,
             click_pattern: p.click_pattern.as_ref().map(click_state),
             score: p.score,
+            away: p
+                .away
+                .iter()
+                .flatten()
+                .map(|a| Away {
+                    left_at: self.time(&a.left_at),
+                    back_at: a.back_at.as_ref().map(|at| self.time(at)),
+                    left_out: a.left_out,
+                })
+                .collect(),
         }
     }
 
@@ -518,10 +756,33 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
         intention: e.intention.clone(),
         planned_duration_secs: e.planned_duration_secs,
         group_id: e.group_id.clone(),
-        planned_section_ids: Some(e.planned_section_ids.clone()),
         planned_variation_ids: Some(e.planned_variation_ids.clone()),
         planned_rep_target: e.planned_rep_target,
         plays: Some(e.plays.iter().map(stored_play).collect()),
+        segments: Some(
+            e.segments
+                .iter()
+                .map(|s| StoredSegment {
+                    section_id: s.section_id.clone(),
+                    planned_secs: s.planned_secs,
+                })
+                .collect(),
+        ),
+        focus: e.focus.as_ref().map(|f| StoredFocus {
+            kind: focus_kind_text(f.kind).to_string(),
+            section_id: f.section_id.clone(),
+            target: f.target,
+        }),
+        intention_met: e.intention_met.map(|m| intention_met_text(m).to_string()),
+        felt: e.felt.map(|f| felt_text(f).to_string()),
+        got_in_the_way: Some(
+            e.got_in_the_way
+                .iter()
+                .map(|o| obstacle_text(*o).to_string())
+                .collect(),
+        ),
+        note_points: Some(e.note_points.iter().map(stored_note_point).collect()),
+        planned_section_ids: None,
         score: None,
         rep_target: None,
         rep_count: None,
@@ -580,6 +841,49 @@ fn stored_play(p: &Play) -> StoredPlay {
             sounding: c.sounding,
         }),
         score: p.score,
+        away: Some(
+            p.away
+                .iter()
+                .map(|a| StoredAway {
+                    left_at: time_text(&a.left_at),
+                    back_at: a.back_at.as_ref().map(time_text),
+                    left_out: a.left_out,
+                })
+                .collect(),
+        ),
+    }
+}
+
+fn stored_note_point(p: &NotePoint) -> StoredNotePoint {
+    let base = StoredNotePoint {
+        section_id: p.section_id.clone(),
+        start: p.span.start,
+        end: p.span.end,
+        ..StoredNotePoint::default()
+    };
+    match p.kind {
+        NotePointKind::Bars(bars) => StoredNotePoint {
+            kind: "bars".to_string(),
+            first: Some(bars.first),
+            last: Some(bars.last),
+            ..base
+        },
+        NotePointKind::Tempo { bpm } => StoredNotePoint {
+            kind: "tempo".to_string(),
+            bpm: Some(bpm),
+            ..base
+        },
+        NotePointKind::Repetitions {
+            count,
+            clean,
+            in_a_row,
+        } => StoredNotePoint {
+            kind: "repetitions".to_string(),
+            count: Some(count),
+            clean: Some(clean),
+            in_a_row: Some(in_a_row),
+            ..base
+        },
     }
 }
 

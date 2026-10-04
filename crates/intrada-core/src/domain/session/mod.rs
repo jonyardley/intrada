@@ -94,6 +94,7 @@ pub struct Play {
     pub achieved_tempo: Option<u16>,
     pub click_pattern: Option<ClickState>,
     pub score: Option<u8>,
+    pub away: Vec<Away>,
 }
 
 /// How a play is played: the part of the item, the key and the variations.
@@ -120,6 +121,7 @@ impl Play {
             achieved_tempo: None,
             click_pattern: None,
             score: None,
+            away: Vec::new(),
         }
     }
 
@@ -178,10 +180,6 @@ pub struct SetlistEntry {
     /// its related exercises share one `group_id`. A block is the contiguous run
     /// of entries with the same id; `None` = standalone.
     pub group_id: Option<String>,
-    /// The section the builder planned, at most one for now (#2246); a list so
-    /// segments (#2315) need no second shape. The plan, not the record:
-    /// planned against played is the clearest sign of avoiding a hard part.
-    pub planned_section_ids: Vec<String>,
     pub planned_variation_ids: Vec<String>,
     /// The repetition target set in the builder. Every play the entry opens
     /// starts from it, so a switch redraws the same number of slots.
@@ -190,9 +188,23 @@ pub struct SetlistEntry {
     /// attempted; every practised entry has at least one, a piece included
     /// (#1739 decision 3).
     pub plays: Vec<Play>,
+    /// The sections the builder planned, in order, with their time (#2315).
+    /// The plan, not the record: planned against played is the clearest sign
+    /// of avoiding a hard part.
+    pub segments: Vec<Segment>,
+    pub focus: Option<IntentionFocus>,
+    /// The musician's answer, only when the sheet asked and they gave one.
+    pub intention_met: Option<IntentionMet>,
+    pub felt: Option<Felt>,
+    pub got_in_the_way: Vec<Obstacle>,
+    pub note_points: Vec<NotePoint>,
 }
 
 impl SetlistEntry {
+    pub fn planned_section_ids(&self) -> Vec<String> {
+        self.segments.iter().map(|s| s.section_id.clone()).collect()
+    }
+
     pub fn open_play(&self) -> Option<&Play> {
         self.plays.last()
     }
@@ -238,6 +250,7 @@ impl Play {
             achieved_tempo: None,
             click_pattern: None,
             score: None,
+            away: Vec::new(),
         }
     }
 }
@@ -257,10 +270,15 @@ impl SetlistEntry {
             intention: None,
             planned_duration_secs: None,
             group_id: None,
-            planned_section_ids: Vec::new(),
             planned_variation_ids: Vec::new(),
             planned_rep_target: None,
             plays: Vec::new(),
+            segments: Vec::new(),
+            focus: None,
+            intention_met: None,
+            felt: None,
+            got_in_the_way: Vec::new(),
+            note_points: Vec::new(),
         }
     }
 }
@@ -330,6 +348,11 @@ pub struct ReflectionAnswers {
     pub note: String,
     /// Only the rows set by hand; the rest reseed from their stamps.
     pub tempos: Vec<DraftTempo>,
+    pub felt: Option<Felt>,
+    pub got_in_the_way: Vec<Obstacle>,
+    /// The spans of the note's points the musician confirmed.
+    pub note_points: Vec<NoteSpan>,
+    pub intention_met: Option<IntentionMet>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -383,17 +406,19 @@ pub struct ActiveSession {
     pub session_started_at: DateTime<Utc>,
     /// `Some` while the item-complete sheet is open on the current entry.
     pub reflection: Option<ReflectionDraft>,
+    /// `Some` while the current entry runs through two or more segments.
+    pub segment: Option<SegmentClock>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 5;
+const RETIRED_BLOB_VERSION_MAX: u32 = 6;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 5 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 6;
+    /// 6 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 7;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -651,14 +676,78 @@ pub enum SessionEvent {
     /// The shell found a practice saved by an older build, whose shape this
     /// one cannot read, and deleted it (#2246).
     RetiredSessionFound,
+
+    // === v0.17 record (#2249), appended ===
+    /// The sections an entry runs through, in order. Segments sent at zero
+    /// share what the others leave of the planned time. Building phase only.
+    SetSegments {
+        entry_id: String,
+        segments: Vec<Segment>,
+    },
+    SetFocus {
+        entry_id: String,
+        focus: Option<IntentionFocus>,
+    },
+    /// Plan the section and variations the item was last played on.
+    ApplyLastTime {
+        entry_id: String,
+    },
+    /// A nameless trouble spot on the item, in score order (#2245's rules).
+    AddTroubleSpot {
+        item_id: String,
+        bars: crate::domain::section::BarRange,
+    },
+    MoveToNextSegment {
+        now: DateTime<Utc>,
+        reading: TempoReading,
+    },
+    StayOnSegment,
+    WentAway {
+        at: DateTime<Utc>,
+    },
+    CameBack {
+        at: DateTime<Utc>,
+    },
+    LeaveAwayOut,
+    /// The finish answers, sent after `NextItem` like the marks, so a skipped
+    /// sheet writes none of them. `span` must be a point read from the note.
+    ConfirmNotePoint {
+        entry_id: String,
+        span: NoteSpan,
+    },
+    SetFelt {
+        entry_id: String,
+        felt: Option<Felt>,
+    },
+    ToggleObstacle {
+        entry_id: String,
+        obstacle: Obstacle,
+    },
+    AnswerIntention {
+        entry_id: String,
+        answer: Option<IntentionMet>,
+    },
 }
 
 mod active;
 mod building;
+mod finish;
+mod live;
 mod plays;
+mod record;
+#[cfg(test)]
+mod record_tests;
 mod summary;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use building::last_time;
+pub(crate) use live::can_stay;
+pub(crate) use record::*;
+pub use record::{
+    Away, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint, NotePointKind, NoteSpan,
+    Obstacle, Segment, SegmentClock,
+};
 
 use plays::{record_rep, record_tempo_change};
 
@@ -797,6 +886,44 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::UpdateReflectionDraft { answers } => {
             active::update_reflection_draft(model, answers)
+        }
+
+        SessionEvent::SetSegments { entry_id, segments } => {
+            building::set_segments(model, entry_id, segments)
+        }
+
+        SessionEvent::SetFocus { entry_id, focus } => building::set_focus(model, entry_id, focus),
+
+        SessionEvent::ApplyLastTime { entry_id } => building::apply_last_time(model, entry_id),
+
+        SessionEvent::AddTroubleSpot { item_id, bars } => {
+            live::add_trouble_spot(model, item_id, bars)
+        }
+
+        SessionEvent::MoveToNextSegment { now, reading } => {
+            live::move_to_next_segment(model, now, reading)
+        }
+
+        SessionEvent::StayOnSegment => live::stay_on_segment(model),
+
+        SessionEvent::WentAway { at } => live::went_away(model, at),
+
+        SessionEvent::CameBack { at } => live::came_back(model, at),
+
+        SessionEvent::LeaveAwayOut => live::leave_away_out(model),
+
+        SessionEvent::ConfirmNotePoint { entry_id, span } => {
+            finish::confirm_note_point(model, entry_id, span)
+        }
+
+        SessionEvent::SetFelt { entry_id, felt } => finish::set_felt(model, entry_id, felt),
+
+        SessionEvent::ToggleObstacle { entry_id, obstacle } => {
+            finish::toggle_obstacle(model, entry_id, obstacle)
+        }
+
+        SessionEvent::AnswerIntention { entry_id, answer } => {
+            finish::answer_intention(model, entry_id, answer)
         }
 
         // ── Entry Updates (Active or Summary) ──────────────────────

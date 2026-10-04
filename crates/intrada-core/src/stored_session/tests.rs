@@ -307,13 +307,17 @@ fn current_session() -> PracticeSession {
             sounding: 0b101,
         }),
         score: Some(4),
+        away: Vec::new(),
     };
     let entry = SetlistEntry {
         item_type: ItemKind::Exercise,
         status: EntryStatus::Completed,
         duration_secs: 240,
         notes: Some("lighter thumb".to_string()),
-        planned_section_ids: vec!["sec-b".to_string()],
+        segments: vec![Segment {
+            section_id: "sec-b".to_string(),
+            planned_secs: 240,
+        }],
         planned_variation_ids: vec!["v-dotted".to_string()],
         planned_rep_target: Some(5),
         plays: vec![play, Play::fixture()],
@@ -361,7 +365,8 @@ fn a_written_row_keeps_the_shape_the_swift_encoder_wrote() {
         &serde_json::json!({
             "id": "entry-2", "itemId": "item-1", "itemTitle": "Item", "itemType": "piece",
             "position": 1, "durationSecs": 0, "status": "skipped",
-            "plannedSectionIds": [], "plannedVariationIds": [], "plays": []
+            "plannedVariationIds": [], "plays": [], "segments": [], "gotInTheWay": [],
+            "notePoints": []
         })
     );
     let play = &entries[0]["plays"][0];
@@ -443,4 +448,41 @@ fn every_stored_enum_text_reads_back() {
     for m in [Modality::Major, Modality::Minor] {
         assert_eq!(modality(modality_text(m)), Some(m));
     }
+}
+
+/// The shape v0.16 wrote (#2246): one planned section, before segments.
+const V016_ENTRY: &str = r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":900,"status":"completed","plannedDurationSecs":900,"plannedSectionIds":["sec-b"],"plannedVariationIds":["v-dotted"],"plays":[{"id":"e1-play","sectionId":"sec-b","variationIds":["v-dotted"],"startedAt":"2026-09-01T10:00:00Z","seconds":900,"tempoChanges":[]}]}]"#;
+
+#[test]
+fn a_v016_planned_section_reads_as_one_segment_of_the_planned_time() {
+    let read = session_from_stored(&row(V016_ENTRY)).expect("reads");
+
+    let entry = &read.session.entries[0];
+    assert_eq!(
+        entry.segments,
+        [Segment {
+            section_id: "sec-b".to_string(),
+            planned_secs: 900,
+        }]
+    );
+    assert_eq!(read.unreadable, Vec::<String>::new());
+    let rewritten = session_to_stored(&read.session).expect("writes");
+    assert!(
+        !rewritten.entries.contains("plannedSectionIds"),
+        "the old field is read, never written"
+    );
+}
+
+#[test]
+fn an_unknown_finish_answer_is_dropped_and_reported() {
+    let read = session_from_stored(&row(
+        r#"[{"id":"e1","itemId":"i1","itemTitle":"Nocturne","itemType":"piece","position":0,"durationSecs":60,"status":"completed","felt":"serene","gotInTheWay":["memory","weather"],"intentionMet":"mostly"}]"#,
+    ))
+    .expect("reads");
+
+    let entry = &read.session.entries[0];
+    assert_eq!(entry.felt, None);
+    assert_eq!(entry.got_in_the_way, [Obstacle::Memory]);
+    assert_eq!(entry.intention_met, None);
+    assert_eq!(read.unreadable.len(), 3, "{:?}", read.unreadable);
 }

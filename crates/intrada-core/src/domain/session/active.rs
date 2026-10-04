@@ -57,14 +57,13 @@ pub(super) fn next_item(
         return finish(model, summary, stamp);
     }
 
-    let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
-
     let mut stamp = TempoStamp::NothingToKeep;
+    let started = active.current_item_started_at;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
-        entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
-        open_first_play(entry, active.current_item_started_at);
+        open_first_play(entry, started);
         stamp = close_open_play(entry, now, Some(&reading));
+        entry.duration_secs = item_seconds(entry, started, now);
         drop_incidental_play(entry);
     }
 
@@ -256,7 +255,16 @@ pub(super) fn recover_session(
     // The open play's clock is the same clock one level down: left
     // alone, its close would record the gap as practice (#1795).
     if let Some(play) = entry.and_then(SetlistEntry::open_play_mut) {
-        play.started_at = recorded(play.seconds);
+        let anchor = recorded(play.seconds);
+        if let Some(clock) = session.segment.as_mut() {
+            clock.started_at =
+                anchor - (play.started_at - clock.started_at).max(chrono::Duration::zero());
+        }
+        play.started_at = anchor;
+        // The blob was last saved as they left, so that is when it closes.
+        if let Some(away) = play.away.last_mut().filter(|a| a.back_at.is_none()) {
+            away.back_at = Some(away.left_at);
+        }
     }
     model.session_status = SessionStatus::Active(session);
     model.last_error = None;
@@ -267,8 +275,10 @@ fn advance(active: &mut ActiveSession, started_at: DateTime<Utc>) {
     active.current_index += 1;
     active.current_item_started_at = started_at;
     active.reflection = None;
+    active.segment = None;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         open_first_play(entry, started_at);
+        active.segment = first_segment_clock(entry, started_at);
     }
 }
 
@@ -283,17 +293,42 @@ pub(super) fn update_reflection_draft(
     model: &mut Model,
     answers: ReflectionAnswers,
 ) -> Command<Effect, Event> {
-    let SessionStatus::Active(ref mut active) = model.session_status else {
+    let SessionStatus::Active(ref active) = model.session_status else {
         return crux_core::render::render();
     };
     let entry = active.current_entry();
-    if active.reflection.is_none() || !draft_answers_valid(entry, &answers) {
+    let sections = super::finish::named_sections(model, &entry.item_id);
+    if active.reflection.is_none()
+        || !draft_answers_valid(entry, &answers)
+        || !draft_finish_valid(&answers, &sections)
+    {
         return crux_core::render::render();
     }
+    let SessionStatus::Active(ref mut active) = model.session_status else {
+        return crux_core::render::render();
+    };
     if let Some(draft) = active.reflection.as_mut() {
         draft.answers = answers;
     }
     persist_active(active)
+}
+
+/// Every confirmed span is a point the draft's note offers, once; each
+/// obstacle once.
+fn draft_finish_valid(answers: &ReflectionAnswers, sections: &[(&str, &str)]) -> bool {
+    let offered: Vec<NoteSpan> = note_offers(&answers.note, sections)
+        .into_iter()
+        .map(|p| p.span)
+        .collect();
+    let mut spans = answers.note_points.clone();
+    spans.sort_by_key(|s| (s.start, s.end));
+    spans.dedup();
+    let mut obstacles = answers.got_in_the_way.clone();
+    obstacles.sort_by_key(|o| *o as u8);
+    obstacles.dedup();
+    spans.len() == answers.note_points.len()
+        && answers.note_points.iter().all(|s| offered.contains(s))
+        && obstacles.len() == answers.got_in_the_way.len()
 }
 
 fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {
