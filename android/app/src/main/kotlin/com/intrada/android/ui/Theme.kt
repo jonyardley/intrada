@@ -39,7 +39,6 @@ object IntradaColor {
 
     val ink = Color(0xFF2A2725)
     val inkSecondary = Color(0xFF6E6A66)
-    val inkFaint = Color(0xFFA99C8C)
     val inkFaintIcon = Color(0xFF8F8070)
     val iconInk = Color(0xFF3B2A1E)
 

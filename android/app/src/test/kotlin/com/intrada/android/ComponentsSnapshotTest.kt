@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -22,8 +23,11 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaFont
 import com.intrada.android.ui.IntradaGlyph
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.components.FieldCard
+import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.InstrumentGlyph
@@ -159,6 +163,41 @@ class ComponentsSnapshotTest {
                 LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
             ) {
                 FormErrorBanners()
+            }
+        }
+    }
+
+    @Test
+    fun fieldCards() {
+        captureRoboImage("src/test/snapshots/field-card.png") { FieldCards() }
+    }
+
+    @Test
+    fun fieldCardsAtTheLargestFontScale() {
+        captureRoboImage("src/test/snapshots/field-card-largest-font.png") {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
+            ) {
+                FieldCards()
+            }
+        }
+    }
+
+    @Composable
+    private fun FieldCards() {
+        Paper {
+            Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
+                FieldLabel("Practice defaults")
+                FieldCard("Beats in the bar") {
+                    BasicText("4", style = IntradaFont.body.copy(color = IntradaColor.ink))
+                }
+                FieldCard("Notes") {
+                    BasicText(
+                        "Keep the left hand light through the second half",
+                        style = IntradaFont.body.copy(color = IntradaColor.ink),
+                    )
+                }
             }
         }
     }
