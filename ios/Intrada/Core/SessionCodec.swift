@@ -4,9 +4,7 @@ import IntradaCoreFFI
 import SharedTypes
 
 extension LibraryStore {
-  // ── Row ↔ PracticeSession codec ──────────────────────────────────────
-  // The core reads what the columns mean, old rows included, and writes them
-  // back, so Android shares the one set of rules (#2234).
+  // ── Row ↔ PracticeSession codec, read and written by the core (#2234) ──
 
   struct UnreadableStoredValue: Error, CustomStringConvertible {
     let description: String

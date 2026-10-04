@@ -149,9 +149,7 @@ struct LegacyEntryPlaysTests {
     #expect(entry.plays.map(\.variationIds) == [[], []], "the steps they name are not read")
   }
 
-  /// A start time the core cannot read refuses that row alone, so one bad row
-  /// never empties History (#2234). Both it and any value the core replaced
-  /// are reported, never dropped silently (#949).
+  /// One unreadable row never empties History, and nothing is dropped silently (#2234, #949).
   @Test("a refused row is skipped and reported, and a replaced value is reported")
   func aRefusedRowIsSkippedAndReported() throws {
     let reports = OSAllocatedUnfairLock<[String]>(initialState: [])
