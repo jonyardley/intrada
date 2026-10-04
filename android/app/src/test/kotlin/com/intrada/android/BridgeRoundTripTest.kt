@@ -12,9 +12,9 @@ import com.intrada.shared.ClickPresetOption
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.ExerciseLink
 import com.intrada.shared.FocusKind
 import com.intrada.shared.IntentionFocus
-import com.intrada.shared.ExerciseLink
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.ItemSection
@@ -29,9 +29,9 @@ import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
 import com.intrada.shared.ScaffoldEntry
-import com.intrada.shared.Segment
 import com.intrada.shared.SectionEdit
 import com.intrada.shared.SectionKind
+import com.intrada.shared.Segment
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
