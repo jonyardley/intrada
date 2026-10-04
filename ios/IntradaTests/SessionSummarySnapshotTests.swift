@@ -160,4 +160,40 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     .dynamicTypeSize(.accessibility1)
     assertSnapshot(of: host(sheet), as: config)
   }
+
+  // The aim asked, two points read from the note (one kept), detail open (#2303, #2307, #2308).
+  func testReflectionSheetWithFinishAnswers() {
+    assertSnapshot(of: host(finishSheet), as: config)
+  }
+
+  func testReflectionSheetWithFinishAnswersAccessibilitySize() {
+    assertSnapshot(of: host(finishSheet), as: axConfig)
+  }
+
+  func testReflectionSheetWithTheAimReadFromThePlays() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        plays: [.preview("p1", "A1", "4:10"), .preview("p2", "B", "4:00")],
+        limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "A1 at 84",
+        onSave: { _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  private var finishSheet: some View {
+    ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        plays: [.preview("p1", nil, "12:00")],
+        limits: .preview, finish: .preview(asksIntention: true), aim: "A1 from memory",
+        seed: ReflectionResult(
+          marks: [:], note: "A1: left hand rushed in bar 12, got it at 84", tempos: [],
+          felt: .strained, obstacles: [.rhythm, .tension],
+          notePoints: [NoteSpan(start: 38, end: 40)], intentionMet: .partly),
+        onSave: { _ in }, onSkip: {})
+    }
+  }
 }

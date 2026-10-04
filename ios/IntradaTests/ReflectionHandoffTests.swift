@@ -99,6 +99,84 @@ struct ReflectionHandoffTests {
     #expect(handoff.after.count == 1, "the tempo row, and no score")
   }
 
+  // ── The finish answers (#2307, #2308, #2303) ──
+
+  @Test func theKeptPointTheFeltWordAndWhatGotInTheWayLandOnTheEntry() throws {
+    let bridge = RowsBridge()
+    let (entryId, plays) = try pieceMidSession(bridge)
+    let note = "Left hand rushed in bar 12, got it at 84"
+    _ = try bridge.update(
+      .session(
+        .updateReflectionDraft(
+          answers: ReflectionHandoff.draft(
+            ReflectionResult(marks: [:], note: note, tempos: []), plays: plays))))
+    let offers = try #require(try bridge.rendered().activeSession?.record.finish?.noteOffers)
+    let bar = try #require(offers.first { $0.label.contains("12") })
+    let result = ReflectionResult(
+      marks: [:], note: note, tempos: [], felt: .strained, obstacles: [.rhythm, .tension],
+      notePoints: [bar.span])
+
+    #expect(
+      ReflectionHandoff.run(
+        ReflectionHandoff.plan(
+          entryId: entryId, now: "2026-09-21T10:05:00Z",
+          nextItemStartedAt: "2026-09-21T10:05:30Z", reading: .silent, plays: plays,
+          result: result),
+        send: accepting(bridge)))
+
+    let record = try #require(try bridge.rendered().summary?.entries.first?.record)
+    #expect(record.felt == .strained)
+    #expect(record.gotInTheWay == [.rhythm, .tension])
+    #expect(record.notePoints.map(\.span) == [bar.span])
+  }
+
+  @Test func anAimAnsweredOnTheSheetIsKept() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Clair de lune", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let itemId = try #require(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try #require(try bridge.rendered().buildingSetlist?.entries.first?.id)
+    _ = try bridge.update(.session(.setEntryIntention(entryId: entryId, intention: "From memory")))
+    _ = try bridge.update(.session(.startSession(now: "2026-09-21T10:00:00Z")))
+    _ = try bridge.update(
+      .session(.prepareReflection(now: "2026-09-21T10:05:00Z", reading: .silent)))
+    #expect(try bridge.rendered().activeSession?.record.finish?.asksIntention == true)
+    let plays = try ReflectionPlay.rows(
+      #require(try bridge.rendered().activeSession?.entries.first).plays)
+
+    let handoff = ReflectionHandoff.plan(
+      entryId: entryId, now: "2026-09-21T10:05:00Z", nextItemStartedAt: "2026-09-21T10:05:30Z",
+      reading: .silent, plays: plays,
+      result: ReflectionResult(marks: [:], note: "", tempos: [], intentionMet: .partly))
+    #expect(ReflectionHandoff.run(handoff, send: accepting(bridge)))
+
+    #expect(try bridge.rendered().summary?.entries.first?.record.intentionMet == .partly)
+  }
+
+  @Test func theFinishAnswersSurviveAResumeFromTheDraft() throws {
+    let bridge = RowsBridge()
+    let (_, plays) = try pieceMidSession(bridge)
+    let result = ReflectionResult(
+      marks: [:], note: "", tempos: [], felt: .hardWork, obstacles: [.memory],
+      intentionMet: .notYet)
+
+    _ = try bridge.update(
+      .session(.updateReflectionDraft(answers: ReflectionHandoff.draft(result, plays: plays))))
+
+    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    let seed = ReflectionHandoff.seed(saved)
+    #expect(seed.felt == .hardWork)
+    #expect(seed.obstacles == [.memory])
+    #expect(seed.intentionMet == .notYet)
+  }
+
   // ── The open sheet's draft (#2137) ──
 
   @Test func theSheetReopensFromTheSavedDraftWithWhatWasWritten() throws {

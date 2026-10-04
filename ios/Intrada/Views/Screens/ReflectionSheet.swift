@@ -75,6 +75,11 @@ struct ReflectionResult {
   let marks: [String: UInt8]
   let note: String
   let tempos: [ReflectionRowTempo]
+  var felt: Felt?
+  var obstacles: [Obstacle] = []
+  /// Points the musician kept, as spans into the note as drafted.
+  var notePoints: [NoteSpan] = []
+  var intentionMet: IntentionMet?
 }
 
 struct ReflectionSheet: View {
@@ -93,6 +98,9 @@ struct ReflectionSheet: View {
   /// decision 10).
   let plays: [ReflectionPlay]
   let limits: LimitsView
+  /// The core's finish answers to offer, and the aim they are asked against.
+  let finish: FinishSheetView?
+  let aim: String?
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
   let onSave: (ReflectionResult) -> Void
@@ -107,6 +115,11 @@ struct ReflectionSheet: View {
   @State private var draftedNote: String
   /// One per play, seeded from its stamp or the current click (#1761 rule 6).
   @State private var tempos: [String: TrackedTempo]
+  @State private var felt: Felt?
+  @State private var obstacles: [Obstacle]
+  @State private var notePoints: [NoteSpan]
+  @State private var intentionMet: IntentionMet?
+  @State private var detailOpen: Bool
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
@@ -114,6 +127,8 @@ struct ReflectionSheet: View {
     currentClick: ClickState? = nil,
     plays: [ReflectionPlay],
     limits: LimitsView,
+    finish: FinishSheetView? = nil,
+    aim: String? = nil,
     refusal: String? = nil,
     seed: ReflectionResult? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
@@ -126,6 +141,8 @@ struct ReflectionSheet: View {
     self.currentClick = currentClick
     self.plays = plays
     self.limits = limits
+    self.finish = finish
+    self.aim = aim
     self.refusal = refusal
     self.onSave = onSave
     self.onSkip = onSkip
@@ -148,6 +165,11 @@ struct ReflectionSheet: View {
       tempos[row.playId]?.set(Int(row.tempo))
     }
     _tempos = State(initialValue: tempos)
+    _felt = State(initialValue: seed?.felt)
+    _obstacles = State(initialValue: seed?.obstacles ?? [])
+    _notePoints = State(initialValue: seed?.notePoints ?? [])
+    _intentionMet = State(initialValue: seed?.intentionMet)
+    _detailOpen = State(initialValue: seed?.felt != nil || !(seed?.obstacles.isEmpty ?? true))
   }
 
   static func heading(elapsedDisplay: String?) -> String {
@@ -169,6 +191,14 @@ struct ReflectionSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, IntradaSpacing.card)
+
+        if let finish, let aim, finish.asksIntention || finish.intentionMetRead != nil {
+          AimAnswer(
+            aim: aim, asks: finish.asksIntention, read: finish.intentionMetRead,
+            answer: drafting($intentionMet)
+          )
+          .padding(.top, IntradaSpacing.section)
+        }
 
         if plays.count > 1 {
           sectionTitle("What you played").padding(.top, IntradaSpacing.section)
@@ -209,6 +239,21 @@ struct ReflectionSheet: View {
         .padding(IntradaSpacing.cardCompact)
         .cardSurface(cornerRadius: IntradaRadius.control)
         .padding(.top, IntradaSpacing.controlGap)
+
+        if let finish {
+          if !finish.noteOffers.isEmpty {
+            NoteOffers(
+              offers: finish.noteOffers, isKept: { notePoints.contains($0) },
+              onTap: toggleNotePoint
+            )
+            .padding(.top, IntradaSpacing.card)
+          }
+          FinishDetail(
+            feltChoices: finish.feltChoices, obstacleChoices: finish.obstacleChoices,
+            felt: drafting($felt), obstacles: drafting($obstacles), open: $detailOpen
+          )
+          .padding(.top, IntradaSpacing.card)
+        }
 
         if let refusal {
           FormErrorBanner(message: refusal)
@@ -254,6 +299,31 @@ struct ReflectionSheet: View {
             playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
             click: play.clickPattern ?? currentClick)
         }
+      }, felt: felt, obstacles: obstacles, notePoints: keptPoints, intentionMet: intentionMet)
+  }
+
+  /// Only points the drafted note still offers: an edit can drop one the musician kept.
+  private var keptPoints: [NoteSpan] {
+    let offered = Set((finish?.noteOffers ?? []).map(\.span))
+    return notePoints.filter(offered.contains)
+  }
+
+  private func toggleNotePoint(_ span: NoteSpan) {
+    if let at = notePoints.firstIndex(of: span) {
+      notePoints.remove(at: at)
+    } else {
+      notePoints.append(span)
+    }
+    draft()
+  }
+
+  /// A binding that saves the draft as soon as the answer changes (#2137).
+  private func drafting<Value>(_ binding: Binding<Value>) -> Binding<Value> {
+    Binding(
+      get: { binding.wrappedValue },
+      set: {
+        binding.wrappedValue = $0
+        draft()
       })
   }
 

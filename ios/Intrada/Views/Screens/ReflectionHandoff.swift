@@ -34,7 +34,22 @@ enum ReflectionHandoff {
       note: note,
       nextItem: .session(
         .nextItem(now: now, nextItemStartedAt: nextItemStartedAt, reading: reading)),
-      after: scores + tempos)
+      after: scores + tempos + answers(entryId: entryId, result))
+  }
+
+  /// The finish answers (#2307, #2308, #2303), after the note so a kept point
+  /// is read from the note as stored.
+  private static func answers(entryId: String, _ result: ReflectionResult) -> [Event] {
+    let points: [Event] = result.notePoints.map {
+      .session(.confirmNotePoint(entryId: entryId, span: $0))
+    }
+    let felt: [Event] = result.felt.map { [.session(.setFelt(entryId: entryId, felt: $0))] } ?? []
+    let obstacles: [Event] = result.obstacles.map {
+      .session(.toggleObstacle(entryId: entryId, obstacle: $0))
+    }
+    let met: [Event] =
+      result.intentionMet.map { [.session(.answerIntention(entryId: entryId, answer: $0))] } ?? []
+    return points + felt + obstacles + met
   }
 
   /// False keeps the sheet up with its answers and the refusal shown in it:
@@ -57,7 +72,8 @@ enum ReflectionHandoff {
       note: result.note,
       tempos: result.tempos.filter(\.userSet).map {
         DraftTempo(playId: $0.playId, tempo: $0.tempo, click: $0.click)
-      }, felt: nil, gotInTheWay: [], notePoints: [], intentionMet: nil)
+      }, felt: result.felt, gotInTheWay: result.obstacles, notePoints: result.notePoints,
+      intentionMet: result.intentionMet)
   }
 
   /// The saved draft as the sheet's starting answers, after a resume (#2137).
@@ -68,7 +84,8 @@ enum ReflectionHandoff {
       note: answers.note,
       tempos: answers.tempos.map {
         ReflectionRowTempo(playId: $0.playId, tempo: $0.tempo, userSet: true, click: $0.click)
-      })
+      }, felt: answers.felt, obstacles: answers.gotInTheWay, notePoints: answers.notePoints,
+      intentionMet: answers.intentionMet)
   }
 
   /// An untouched click sat on the item's own bar, so a quaver bar's tempo is quavers (#2304).

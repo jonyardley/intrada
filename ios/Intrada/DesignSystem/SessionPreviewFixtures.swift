@@ -676,4 +676,53 @@
         plays: plays, scoreSummary: nil, record: .empty)
     }
   }
+
+  extension ActiveSessionView {
+    /// Clair de Lune split into A1, B and A2, with A1's time up four seconds
+    /// before the reference instant, so the move-on offer is drawn (#2315).
+    static var previewActiveSectionTimeUp: ActiveSessionView {
+      var active = previewActive
+      active.record.segment = SegmentClockView(
+        label: "A1", endsAt: "2026-05-30T09:04:08Z", moveLabel: "On to B",
+        stayLabel: "Stay on A1, 2 more minutes taken from B")
+      return active
+    }
+
+    /// Back after six minutes away (#2306).
+    static var previewActiveAway: ActiveSessionView {
+      var active = previewActive
+      active.record.awayOffer = AwayOfferView(
+        minutes: 6, label: "Away 6 minutes. Leave it out?")
+      return active
+    }
+  }
+
+  extension FinishSheetView {
+    /// The core's words for the choices, copied for previews only.
+    static func preview(asksIntention: Bool, read: IntentionMet? = nil) -> FinishSheetView {
+      FinishSheetView(
+        noteOffers: [
+          NotePointView(
+            span: NoteSpan(start: 23, end: 29), label: "Bar 12", sectionLabel: "A1",
+            confirmed: false),
+          NotePointView(
+            span: NoteSpan(start: 38, end: 40), label: "\u{2669} = 84", sectionLabel: "A1",
+            confirmed: true),
+        ],
+        asksIntention: asksIntention, intentionMetRead: read,
+        feltChoices: [
+          FeltChoiceView(felt: .comfortable, label: "Comfortable"),
+          FeltChoiceView(felt: .hardWork, label: "Hard work"),
+          FeltChoiceView(felt: .strained, label: "Strained"),
+        ],
+        obstacleChoices: [
+          ObstacleChoiceView(obstacle: .notes, label: "Notes"),
+          ObstacleChoiceView(obstacle: .rhythm, label: "Rhythm"),
+          ObstacleChoiceView(obstacle: .fingering, label: "Fingering"),
+          ObstacleChoiceView(obstacle: .memory, label: "Memory"),
+          ObstacleChoiceView(obstacle: .tone, label: "Tone"),
+          ObstacleChoiceView(obstacle: .tension, label: "Tension"),
+        ])
+    }
+  }
 #endif

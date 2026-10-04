@@ -47,6 +47,7 @@ is_large() {
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
       testFocusPlayerWithVariations | testFocusPlayerWithVariationsAccessibilitySize | \
       testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen | \
+      testFocusPlayerSectionTimeUp | testFocusPlayerAwayOffer | \
       testPracticeSessionDetailAccessibilitySize | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testSessionSummaryWithVariations) return 0 ;;

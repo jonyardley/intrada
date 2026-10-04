@@ -31,6 +31,36 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         store: Store(bridge: PreviewBridge(activeSession: active))), as: config)
   }
 
+  // A1's time ran out four seconds ago: On to B and Stay are offered (#2315).
+  func testFocusPlayerSectionTimeUp() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveSectionTimeUp))),
+      as: config)
+  }
+
+  func testFocusPlayerAwayOffer() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveAway))),
+      as: config)
+  }
+
+  func testTroubleSpotSheet() {
+    let sheet = TroubleSpotSheet(
+      context: "Clair de Lune · in A1", barMax: 9999, refusal: nil, onAdd: { _, _ in true })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testTroubleSpotSheetAccessibilitySize() {
+    let sheet = TroubleSpotSheet(
+      context: "Clair de Lune · in A1", barMax: 9999,
+      refusal: "Bars must run from first to last", onAdd: { _, _ in false })
+    assertSnapshot(of: host(sheet), as: axConfig)
+  }
+
   func testClickControlStates() {
     // Flat player paper, not the radial wash: the gradient is not what's under
     // test here and it is most of a reference's bytes (snapshot hygiene).
