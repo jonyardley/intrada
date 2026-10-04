@@ -861,284 +861,7 @@ fn chord_chart_events_round_trip_on_the_ffi_bincode_wire() {
     }));
 }
 
-// ── LinkExercise ──
-
-#[test]
-fn link_exercise_adds_id_and_bumps_updated_at() {
-    let mut model = model_with_piece_and_exercise();
-    let before = model
-        .items
-        .iter()
-        .find(|i| i.id == "piece-1")
-        .unwrap()
-        .updated_at;
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids(), vec!["ex-1".to_string()]);
-    assert!(piece.updated_at >= before);
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn link_exercise_rejects_nonexistent_exercise() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "no-such-id".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids().is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn link_exercise_rejects_non_exercise_target() {
-    let mut model = model_with_piece_and_exercise();
-    // Add a second piece to try linking as exercise.
-    model.items.push(make_piece("piece-2"));
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "piece-2".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids().is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn link_exercise_rejects_non_piece_host() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.push(make_exercise("ex-2"));
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "ex-1".to_string(),
-            exercise_id: "ex-2".to_string(),
-        },
-    );
-
-    let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-    assert!(ex.linked_exercise_ids().is_empty());
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn link_exercise_rejects_duplicate() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-    assert!(model.last_error.is_none());
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids().len(), 1);
-    assert!(model.last_error.is_some());
-}
-
-#[test]
-fn link_exercise_rejects_self_link() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "piece-1".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids().is_empty());
-    assert!(model.last_error.is_some());
-}
-
-// ── UnlinkExercise ──
-
-#[test]
-fn unlink_exercise_removes_id() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-    assert!(model.last_error.is_none());
-
-    send(
-        &mut model,
-        ItemEvent::UnlinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert!(piece.linked_exercise_ids().is_empty());
-    assert!(model.last_error.is_none());
-}
-
-// ── ReorderLinkedExercises ──
-
-#[test]
-fn reorder_linked_exercises_sets_new_order() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.push(make_exercise("ex-2"));
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-2".to_string(),
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::ReorderLinkedExercises {
-            piece_id: "piece-1".to_string(),
-            ordered_ids: vec!["ex-2".to_string(), "ex-1".to_string()],
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(
-        piece.linked_exercise_ids(),
-        vec!["ex-2".to_string(), "ex-1".to_string()]
-    );
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn reorder_linked_exercises_preserves_omitted_ids() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.push(make_exercise("ex-2"));
-    model.items.push(make_exercise("ex-3"));
-
-    for ex in ["ex-1", "ex-2", "ex-3"] {
-        send(
-            &mut model,
-            ItemEvent::LinkExercise {
-                piece_id: "piece-1".to_string(),
-                exercise_id: ex.to_string(),
-            },
-        );
-    }
-
-    send(
-        &mut model,
-        ItemEvent::ReorderLinkedExercises {
-            piece_id: "piece-1".to_string(),
-            ordered_ids: vec!["ex-3".to_string(), "ex-1".to_string()],
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(
-        piece.linked_exercise_ids(),
-        vec!["ex-3".to_string(), "ex-1".to_string(), "ex-2".to_string()]
-    );
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn reorder_linked_exercises_ignores_foreign_ids() {
-    let mut model = model_with_piece_and_exercise();
-
-    send(
-        &mut model,
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    );
-
-    send(
-        &mut model,
-        ItemEvent::ReorderLinkedExercises {
-            piece_id: "piece-1".to_string(),
-            ordered_ids: vec!["ex-1".to_string(), "foreign-id".to_string()],
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(piece.linked_exercise_ids(), vec!["ex-1".to_string()]);
-    assert!(model.last_error.is_none());
-}
-
-#[test]
-fn reorder_linked_exercises_dedupes_repeated_ids() {
-    let mut model = model_with_piece_and_exercise();
-    model.items.push(make_exercise("ex-2"));
-
-    for ex in ["ex-1", "ex-2"] {
-        send(
-            &mut model,
-            ItemEvent::LinkExercise {
-                piece_id: "piece-1".to_string(),
-                exercise_id: ex.to_string(),
-            },
-        );
-    }
-
-    send(
-        &mut model,
-        ItemEvent::ReorderLinkedExercises {
-            piece_id: "piece-1".to_string(),
-            ordered_ids: vec!["ex-2".to_string(), "ex-1".to_string(), "ex-2".to_string()],
-        },
-    );
-
-    let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
-    assert_eq!(
-        piece.linked_exercise_ids(),
-        vec!["ex-2".to_string(), "ex-1".to_string()]
-    );
-    assert!(model.last_error.is_none());
-}
-
-// ── AddLinkedExercise ──
+// ── A written exercise in the set (#1431, #2248) ──
 
 fn new_exercise_input(title: &str) -> CreateItem {
     CreateItem {
@@ -1155,14 +878,17 @@ fn new_exercise_input(title: &str) -> CreateItem {
 }
 
 #[test]
-fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
+fn a_written_exercise_creates_it_already_linked_and_persists_one_batch() {
     let mut model = model_with_piece_and_exercise();
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -1187,16 +913,19 @@ fn add_linked_exercise_creates_it_already_linked_and_persists_one_batch() {
 }
 
 #[test]
-fn add_linked_exercise_forces_the_kind_to_exercise() {
+fn a_written_exercise_forces_the_kind_to_exercise() {
     let mut model = model_with_piece_and_exercise();
     let mut input = new_exercise_input("Not a piece");
     input.kind = ItemKind::Piece;
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input,
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(input),
+                section_id: None,
+            }],
         },
     );
 
@@ -1214,14 +943,17 @@ fn add_linked_exercise_forces_the_kind_to_exercise() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_a_non_piece_host() {
+fn a_written_exercise_rejects_a_non_piece_host() {
     let mut model = model_with_piece_and_exercise();
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "ex-1".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -1234,14 +966,17 @@ fn add_linked_exercise_rejects_a_non_piece_host() {
 }
 
 #[test]
-fn add_linked_exercise_missing_piece_surfaces_not_found() {
+fn a_written_exercise_missing_piece_surfaces_not_found() {
     let mut model = model_with_piece_and_exercise();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "nope".to_string(),
-            input: new_exercise_input("Shell voicings"),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
+                section_id: None,
+            }],
         },
     );
 
@@ -1250,15 +985,18 @@ fn add_linked_exercise_missing_piece_surfaces_not_found() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_a_blank_title() {
+fn a_written_exercise_rejects_a_blank_title() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: new_exercise_input("   "),
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(new_exercise_input("   ")),
+                section_id: None,
+            }],
         },
     );
 
@@ -1272,7 +1010,7 @@ fn add_linked_exercise_rejects_a_blank_title() {
 }
 
 #[test]
-fn add_linked_exercise_rejects_inline_variations_rather_than_dropping_them() {
+fn a_written_exercise_rejects_inline_variations_rather_than_dropping_them() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
     let mut input = new_exercise_input("Shell voicings");
@@ -1280,9 +1018,12 @@ fn add_linked_exercise_rejects_inline_variations_rather_than_dropping_them() {
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input,
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(input),
+                section_id: None,
+            }],
         },
     );
 
@@ -2482,18 +2223,21 @@ fn update_refuses_a_bpm_it_cannot_read_and_keeps_the_old_tempo() {
 }
 
 #[test]
-fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
+fn a_written_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
     let mut model = model_with_piece_and_exercise();
     let links_before = model.items[0].linked_exercise_ids().clone();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: CreateItem {
-                tempo: typed_bpm("12a"),
-                ..new_exercise_input("Guide tones")
-            },
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("12a"),
+                    ..new_exercise_input("Guide tones")
+                }),
+                section_id: None,
+            }],
         },
     );
 
@@ -2506,17 +2250,20 @@ fn add_linked_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
 }
 
 #[test]
-fn add_linked_exercise_reads_the_typed_bpm_onto_the_exercise() {
+fn a_written_exercise_reads_the_typed_bpm_onto_the_exercise() {
     let mut model = model_with_piece_and_exercise();
 
     send(
         &mut model,
-        ItemEvent::AddLinkedExercise {
+        ItemEvent::SetPieceLinks {
             piece_id: "piece-1".to_string(),
-            input: CreateItem {
-                tempo: typed_bpm("80"),
-                ..new_exercise_input("Guide tones")
-            },
+            links: vec![LinkEdit {
+                exercise: ScaffoldEntry::New(CreateItem {
+                    tempo: typed_bpm("80"),
+                    ..new_exercise_input("Guide tones")
+                }),
+                section_id: None,
+            }],
         },
     );
 
@@ -3726,32 +3473,6 @@ fn set_piece_links_with_the_stored_set_at_gapped_positions_writes_nothing() {
 }
 
 #[test]
-fn link_exercise_after_an_unlink_revives_the_same_row() {
-    let mut model = linking_model();
-    seed_links(&mut model, &[("ex-1", None, 0)]);
-    let first = link_row(&model, "ex-1", None).id.clone();
-
-    for event in [
-        ItemEvent::UnlinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-        ItemEvent::LinkExercise {
-            piece_id: "piece-1".to_string(),
-            exercise_id: "ex-1".to_string(),
-        },
-    ] {
-        send(&mut model, event);
-    }
-
-    let rows = &item(&model, "piece-1").exercise_links;
-    assert_eq!(rows.len(), 1, "no twin row minted");
-    assert_eq!(rows[0].id, first);
-    assert!(rows[0].deleted_at.is_none());
-    assert!(rows[0].updated_at > old_stamp());
-}
-
-#[test]
 fn every_link_write_stamps_the_rows_it_changes() {
     let stale = |model: &Model, ex: &str, section: Option<&str>| {
         link_row(model, ex, section).updated_at <= old_stamp()
@@ -3780,12 +3501,10 @@ fn every_link_write_stamps_the_rows_it_changes() {
 
     let mut model = linking_model();
     seed_links(&mut model, &[("ex-1", None, 0), ("ex-2", None, 1)]);
-    send(
+    let _ = set_piece_links(
         &mut model,
-        ItemEvent::ReorderLinkedExercises {
-            piece_id: "piece-1".to_string(),
-            ordered_ids: vec!["ex-2".to_string(), "ex-1".to_string()],
-        },
+        "piece-1",
+        vec![existing("ex-2", None), existing("ex-1", None)],
     );
     assert!(!stale(&model, "ex-1", None), "a reordered row is stamped");
 
@@ -3825,4 +3544,42 @@ fn a_repeated_row_links_once() {
         ],
     );
     assert_eq!(item(&model, "piece-2").exercise_links.len(), 1);
+}
+
+/// How each kind of link reads in a sentence on both screens, from sections a
+/// musician would mark (#2248).
+#[test]
+fn a_linked_section_reads_in_sentence_case() {
+    for (name, bars, whole_piece, expected) in [
+        ("A2", None, false, vec!["A2"]),
+        ("A2", Some((27, 42)), false, vec!["A2"]),
+        ("", Some((19, 20)), false, vec!["bars 19 to 20"]),
+        ("", Some((12, 12)), false, vec!["bar 12"]),
+        ("", None, true, vec![]),
+    ] {
+        let mut model = linking_model();
+        let mut spot = section("s-x", name, 3);
+        spot.bars = bars.map(|(first, last)| BarRange { first, last });
+        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+            p.sections.push(spot);
+        }
+        let section_id = (!whole_piece).then_some("s-x");
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", section_id)]);
+
+        let card = &view_of(&model, "piece-1").linked_exercises[0];
+        let in_text: Vec<String> = card
+            .sections
+            .iter()
+            .map(|s| s.label_in_text.clone())
+            .collect();
+        assert_eq!(in_text, expected, "{name:?} {bars:?}");
+        assert_eq!(card.whole_piece, whole_piece);
+        let used_in = &view_of(&model, "ex-1").used_in[0];
+        let in_text: Vec<String> = used_in
+            .sections
+            .iter()
+            .map(|s| s.label_in_text.clone())
+            .collect();
+        assert_eq!(in_text, expected, "the exercise's side reads the same");
+    }
 }

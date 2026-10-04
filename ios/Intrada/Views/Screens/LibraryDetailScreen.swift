@@ -24,6 +24,7 @@ struct LibraryDetailScreen: View {
   @State private var editingSection: SectionSheetTarget?
   @State private var choosingKeys = false
   @State private var choosingVariations = false
+  @State private var choosingSectionsFor: SectionLinkTarget?
 
   init(item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false) {
     self.item = item
@@ -76,6 +77,10 @@ struct LibraryDetailScreen: View {
     }
     .sheet(isPresented: $choosingVariations) {
       VariationsSheet(item: item)
+        .environment(store)
+    }
+    .sheet(item: $choosingSectionsFor) { target in
+      LinkSectionsSheet(piece: item, exercise: target.exercise)
         .environment(store)
     }
     .sheet(item: $editingSection) { target in
@@ -152,82 +157,43 @@ struct LibraryDetailScreen: View {
 
   private var library: [LibraryItemView] { store.libraryRows }
 
-  /// The pieces that declare the link, as opposed to the ones this exercise has
-  /// merely been practised alongside — only a declared link can be unticked.
-  private var linkedPieceIds: [String] {
-    item.usedIn.filter { $0.linked }.compactMap { $0.piece?.id }
-  }
+  private var linkedPieceIds: [String] { item.linkedPieceIds }
 
   private func linkPiece(id: String) {
-    store.send(.item(.linkExercise(pieceId: id, exerciseId: item.id)), onSuccess: .success)
+    let targets = item.exerciseTargets(pieceIds: linkedPieceIds + [id])
+    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
   }
 
   private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
-    let current = Swift.Set(linkedPieceIds)
-    let toLink = selected.subtracting(current)
-    let toUnlink = current.subtracting(selected)
-    var ok = true
-    for pieceId in toLink {
-      if !store.sendAccepted(.item(.linkExercise(pieceId: pieceId, exerciseId: item.id))) {
-        ok = false
-      }
-    }
-    for pieceId in toUnlink {
-      if !store.sendAccepted(.item(.unlinkExercise(pieceId: pieceId, exerciseId: item.id))) {
-        ok = false
-      }
-    }
-    if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
-      Haptic.success.play()
-    }
+    guard selected != Swift.Set(linkedPieceIds) else { return }
+    let targets = item.exerciseTargets(choosing: selected, in: library.map(\.id))
+    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
   }
 
-  // Links, unlinks and creates+links each draft (#1431); the haptic fires once
-  // the core accepts them all, and a failed disk write arrives later on the
-  // banner (#846, #2004). A refusal hands back only the drafts the core did not
-  // take, so a second Done never creates an accepted one twice (#2224).
+  // One event for the whole set (#2232); a refusal saves nothing, so the
+  // picker keeps every tick and draft as the musician left them.
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
     -> LinkApplyOutcome
   {
-    let current = liveLinkedExerciseIds
-    let toLink = selected.subtracting(current)
-    let toUnlink = current.subtracting(selected)
-    // Each accepted send clears the core's error, so the first refusal's
-    // message is taken the moment it lands.
-    var refusal: String?
-    func send(_ event: Event) -> Bool {
-      if store.sendAccepted(event) { return true }
-      if refusal == nil { refusal = store.viewModel?.error ?? "Couldn't save. Try again." }
-      return false
+    let row = liveRow
+    let written = drafts.map(\.entry).filter {
+      if case .new = $0 { return true } else { return false }
     }
-    for id in toLink {
-      _ = send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
+    if Swift.Set(row.linkedExercises.map(\.id)) == selected && written.isEmpty {
+      return .accepted
     }
-    for id in toUnlink {
-      _ = send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
+    let links = row.pieceLinks(choosing: selected, in: library.map(\.id), written: written)
+    guard store.sendAccepted(.item(.setPieceLinks(pieceId: item.id, links: links))) else {
+      return .refused(message: store.viewModel?.error ?? "Couldn't save. Try again.")
     }
-    var refusedDrafts: [StagedExercise] = []
-    for draft in drafts {
-      guard case .new(let input) = draft.entry else { continue }
-      if !send(.item(.addLinkedExercise(pieceId: item.id, input: input))) {
-        refusedDrafts.append(draft)
-      }
-    }
-    if let refusal {
-      return .refused(
-        message: refusal, remainingDrafts: refusedDrafts, nowLinked: liveLinkedExerciseIds)
-    }
-    if !(toLink.isEmpty && toUnlink.isEmpty && drafts.isEmpty) {
-      Haptic.success.play()
-    }
+    Haptic.success.play()
     return .accepted
   }
 
   // `item` is the value this screen was built with; a send made a moment ago
   // has already reached the store's rows but not this copy.
-  private var liveLinkedExerciseIds: Swift.Set<String> {
-    let row = store.libraryRows.first { $0.id == item.id } ?? item
-    return Swift.Set(row.linkedExercises.map(\.id))
+  private var liveRow: LibraryItemView {
+    store.libraryRows.first { $0.id == item.id } ?? item
   }
 
   private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {
@@ -296,7 +262,8 @@ struct LibraryDetailScreen: View {
           RelatedExercisesCard(
             item: item, editing: $editingLinks,
             onAdd: { showingPicker = true },
-            onShowSuggestions: { showingScaffold = true })
+            onShowSuggestions: { showingScaffold = true },
+            onChooseSections: { choosingSectionsFor = SectionLinkTarget(exercise: $0) })
         }
 
         if item.itemType == .exercise {
@@ -452,3 +419,8 @@ private struct DetailRow: View {
     }
   }
 #endif
+
+private struct SectionLinkTarget: Identifiable {
+  let exercise: LinkedExerciseView
+  var id: String { exercise.id }
+}

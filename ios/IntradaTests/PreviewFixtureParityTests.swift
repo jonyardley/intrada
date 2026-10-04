@@ -156,7 +156,7 @@ struct PreviewFixtureParityTests {
       let exerciseId = try add(
         bridge, title: exercise.title, kind: .exercise, key: exercise.key,
         tempo: exercise.tempoBpm.map { TempoInput(marking: nil, bpm: String($0)) }, labels: [])
-      _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+      try bridge.link(exercise: exerciseId, to: pieceId)
     }
     return try item(bridge, pieceId)
   }

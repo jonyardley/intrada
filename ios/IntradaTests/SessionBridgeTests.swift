@@ -486,10 +486,7 @@ final class SessionBridgeTests: XCTestCase {
     let ids = Dictionary(
       uniqueKeysWithValues: try bridge.rendered().items.map { ($0.title, $0.id) })
     for (piece, exercise) in [("Arabesque", "Scales"), ("Berceuse", "Arpeggios")] {
-      _ = try bridge.update(
-        .item(
-          .linkExercise(
-            pieceId: try XCTUnwrap(ids[piece]), exerciseId: try XCTUnwrap(ids[exercise]))))
+      try bridge.link(exercise: try XCTUnwrap(ids[exercise]), to: try XCTUnwrap(ids[piece]))
     }
 
     let plan: SuggestedPlan = try XCTUnwrap(try bridge.rendered().upNext)
@@ -696,8 +693,7 @@ final class SessionBridgeTests: XCTestCase {
     }
     let pieceId = try XCTUnwrap(ids["Clair de Lune"])
     for exercise in ["Hanon No. 1", "Major Scales"] {
-      _ = try bridge.update(
-        .item(.linkExercise(pieceId: pieceId, exerciseId: try XCTUnwrap(ids[exercise]))))
+      try bridge.link(exercise: try XCTUnwrap(ids[exercise]), to: pieceId)
     }
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
@@ -722,7 +718,7 @@ final class SessionBridgeTests: XCTestCase {
     }
     let pieceId = try XCTUnwrap(ids["Clair de Lune"])
     let exerciseId = try XCTUnwrap(ids["Hanon No. 1"])
-    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    try bridge.link(exercise: exerciseId, to: pieceId)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: pieceId)))
     _ = try bridge.update(.session(.startSession(now: "2026-09-04T09:00:00Z")))
@@ -734,7 +730,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertNotNil(try bridge.rendered().summary, "the block plays through to the summary")
     try acknowledgeSave(
       bridge, try bridge.update(.session(.saveSession(now: "2026-09-04T09:06:00Z"))))
-    _ = try bridge.update(.item(.unlinkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    try bridge.unlink(exercise: exerciseId, from: pieceId)
 
     func row() throws -> ExerciseUsageView {
       let exercise = try XCTUnwrap(try bridge.rendered().items.first { $0.id == exerciseId })
@@ -744,7 +740,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertTrue(try row().offersLink, "practised alongside, no longer linked")
     XCTAssertTrue(try row().pieceInLibrary)
 
-    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    try bridge.link(exercise: exerciseId, to: pieceId)
     XCTAssertFalse(try row().offersLink, "linked again, so nothing to offer")
   }
 
@@ -842,7 +838,7 @@ final class SessionBridgeTests: XCTestCase {
             title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let exerciseId = try XCTUnwrap(try bridge.rendered().items.first { $0.id != pieceId }?.id)
-    _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+    try bridge.link(exercise: exerciseId, to: pieceId)
     _ = try bridge.update(
       .item(.updateItemVariations(id: exerciseId, variationIds: [], newLabels: ["Slow"])))
     let variantId = try XCTUnwrap(

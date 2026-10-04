@@ -142,7 +142,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
 }
 
 /// `ItemEvent::Add` is the only event that honours
-/// `CreateItem.variation_labels` (#1783): `AddLinkedExercise` and
+/// `CreateItem.variation_labels` (#1783): `SetPieceLinks` and
 /// `AddPieceInFull` create items too, and silently dropping a caller's labels
 /// there would be the #846 shape, a field that validates but never lands.
 /// Both reject instead.
@@ -426,9 +426,7 @@ pub fn validate_click_state(
     Ok(())
 }
 
-/// The host half of `validate_link_exercise`: the id names an item that exists
-/// and is a piece. Shared with `AddLinkedExercise`, where the exercise does not
-/// exist yet and so only this half can run.
+/// The id names an item that exists and is a piece.
 pub fn validate_piece_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
     let piece = model
         .items
@@ -448,9 +446,7 @@ pub fn validate_piece_host(piece_id: &str, model: &Model) -> Result<(), LibraryE
     Ok(())
 }
 
-/// The linked half of `validate_link_exercise`: the id names an item that
-/// exists and is an exercise. Shared with `AddPieceInFull`, where the host
-/// piece does not exist yet and so only this half can run.
+/// The id names an item that exists and is an exercise.
 pub fn validate_exercise_link_target(exercise_id: &str, model: &Model) -> Result<(), LibraryError> {
     let exercise = model
         .items
@@ -464,37 +460,6 @@ pub fn validate_exercise_link_target(exercise_id: &str, model: &Model) -> Result
         return Err(LibraryError::Validation {
             field: "exercise_id".to_string(),
             message: "Linked item must be an exercise, not a piece".to_string(),
-        });
-    }
-
-    Ok(())
-}
-
-pub fn validate_link_exercise(
-    piece_id: &str,
-    exercise_id: &str,
-    model: &Model,
-) -> Result<(), LibraryError> {
-    if piece_id == exercise_id {
-        return Err(LibraryError::Validation {
-            field: "exercise_id".to_string(),
-            message: "A piece cannot be linked to itself".to_string(),
-        });
-    }
-
-    validate_piece_host(piece_id, model)?;
-
-    validate_exercise_link_target(exercise_id, model)?;
-
-    let already_linked = model
-        .items
-        .iter()
-        .find(|i| i.id == piece_id)
-        .is_some_and(|p| p.has_live_link(exercise_id, None));
-    if already_linked {
-        return Err(LibraryError::Validation {
-            field: "exercise_id".to_string(),
-            message: "Exercise is already linked to this piece".to_string(),
         });
     }
 

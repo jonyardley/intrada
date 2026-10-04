@@ -97,28 +97,6 @@ pub enum ItemEvent {
     Delete {
         id: String,
     },
-    LinkExercise {
-        piece_id: String,
-        exercise_id: String,
-    },
-    /// Create one hand-written exercise already linked to `piece_id`. Single
-    /// event so the shell never has to learn the minted ulid: `Add` alone
-    /// leaves the exercise unlinked and the shell with no id to link it by
-    /// (#1431). Local-first only: the online create path reassigns ids
-    /// server-side, which is the dangling-link trap #1108 marks inside
-    /// `CommitScaffold`.
-    AddLinkedExercise {
-        piece_id: String,
-        input: CreateItem,
-    },
-    UnlinkExercise {
-        piece_id: String,
-        exercise_id: String,
-    },
-    ReorderLinkedExercises {
-        piece_id: String,
-        ordered_ids: Vec<String>,
-    },
     /// Parse `raw_chart` and store it on the piece. A parse error surfaces on
     /// `last_error` and stores nothing, never a partial chart.
     SetChordChart {
@@ -162,8 +140,7 @@ pub enum ItemEvent {
     /// Create a piece with everything the add form could carry: its chord
     /// chart and the exercises written or chosen alongside it, in one save
     /// (#1390). `chart` is raw text, parsed here against the piece's own key,
-    /// so a rejected bar leaves no half-made piece. Local-first only, like
-    /// `AddLinkedExercise`.
+    /// so a rejected bar leaves no half-made piece.
     AddPieceInFull {
         piece: CreateItem,
         chart: Option<String>,
@@ -318,9 +295,6 @@ mod variations;
 pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         ItemEvent::Add(input) => create::add(model, input),
-        ItemEvent::AddLinkedExercise { piece_id, input } => {
-            create::add_linked_exercise(model, piece_id, input)
-        }
         ItemEvent::AddPieceInFull {
             piece,
             chart,
@@ -332,18 +306,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::ClearPhoto { id } => photo::set_photo(model, id, None),
         ItemEvent::ReadPhoto { photo_id } => photo::read_photo(model, photo_id),
         ItemEvent::SetMetre { id, metre } => metre::set_metre(model, id, metre),
-        ItemEvent::LinkExercise {
-            piece_id,
-            exercise_id,
-        } => links::link_exercise(model, piece_id, exercise_id),
-        ItemEvent::UnlinkExercise {
-            piece_id,
-            exercise_id,
-        } => links::unlink_exercise(model, piece_id, exercise_id),
-        ItemEvent::ReorderLinkedExercises {
-            piece_id,
-            ordered_ids,
-        } => links::reorder_linked_exercises(model, piece_id, ordered_ids),
         ItemEvent::SetChordChart {
             piece_id,
             raw_chart,

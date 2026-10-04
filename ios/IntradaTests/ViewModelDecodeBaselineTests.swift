@@ -51,7 +51,7 @@ struct ViewModelDecodeBaselineTests {
     for (index, pieceId) in pieceIds.enumerated() {
       for offset in 0..<3 {
         let exerciseId = exerciseIds[(index * 3 + offset) % exerciseIds.count]
-        _ = try bridge.update(.item(.linkExercise(pieceId: pieceId, exerciseId: exerciseId)))
+        try bridge.link(exercise: exerciseId, to: pieceId)
       }
     }
 

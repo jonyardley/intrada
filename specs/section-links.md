@@ -78,8 +78,9 @@ pub struct LinkTarget { pub piece_id: String, pub section_id: Option<String> }
 `LinkExercise`, `UnlinkExercise`, `ReorderLinkedExercises`, `AddLinkedExercise`,
 `CommitScaffold` and `AddPieceInFull` keep working in the core PR, rewritten
 over the link table and making whole-piece links only. The screens PR moves
-both screens to the two new events, then deletes the first three, which have
-no other reader (#1176). The last three stay: they create items.
+both screens to the two new events, then deletes the first four, which have
+no other reader (#1176). `CommitScaffold` and `AddPieceInFull` stay: other
+screens send them.
 
 ## View
 

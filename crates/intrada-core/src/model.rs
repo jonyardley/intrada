@@ -441,6 +441,8 @@ pub struct LinkedExerciseView {
 pub struct LinkedSectionView {
     pub id: String,
     pub label: String,
+    /// The label as it reads inside a sentence: "A2", "bars 19 to 20".
+    pub label_in_text: String,
 }
 
 /// The derived scaffold curriculum for a charted piece — the read-only preview
@@ -1227,6 +1229,7 @@ mod tests {
             sections: vec![LinkedSectionView {
                 id: "s-1".to_string(),
                 label: "A2".to_string(),
+                label_in_text: "A2".to_string(),
             }],
         });
     }
@@ -1290,6 +1293,7 @@ mod tests {
             sections: vec![LinkedSectionView {
                 id: "s-1".to_string(),
                 label: "Bars 12 to 14".to_string(),
+                label_in_text: "bars 12 to 14".to_string(),
             }],
         });
     }

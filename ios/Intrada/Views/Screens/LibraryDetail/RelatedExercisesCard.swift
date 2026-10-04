@@ -6,6 +6,7 @@ struct RelatedExercisesCard: View {
   @Binding var editing: Bool
   let onAdd: () -> Void
   let onShowSuggestions: () -> Void
+  let onChooseSections: (LinkedExerciseView) -> Void
 
   @Environment(Store.self) private var store
 
@@ -75,6 +76,7 @@ struct RelatedExercisesCard: View {
           exercise: exercise,
           isFirst: index == 0,
           isLast: index == item.linkedExercises.count - 1,
+          onChooseSections: item.sections.isEmpty ? nil : { onChooseSections(exercise) },
           onMoveUp: { moveExercise(at: index, by: -1) },
           onMoveDown: { moveExercise(at: index, by: 1) },
           onRemove: { removeExercise(id: exercise.id) })
@@ -193,11 +195,15 @@ struct RelatedExercisesCard: View {
     guard dest >= 0, dest < ids.count else { return }
     ids.swapAt(index, dest)
     store.send(
-      .item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)), onSuccess: .selection)
+      .item(.setPieceLinks(pieceId: item.id, links: item.pieceLinks(order: ids))),
+      onSuccess: .selection)
   }
 
   private func removeExercise(id: String) {
-    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)), onSuccess: .impact)
+    let kept = item.linkedExercises.map(\.id).filter { $0 != id }
+    store.send(
+      .item(.setPieceLinks(pieceId: item.id, links: item.pieceLinks(order: kept))),
+      onSuccess: .impact)
   }
 }
 
@@ -212,6 +218,11 @@ private struct LinkedExerciseTitle: View {
         .foregroundStyle(IntradaColor.ink)
       if let meta = exercise.metaLine {
         Text(meta)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      if let sections = exercise.sectionsCaption {
+        Text(sections)
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -247,6 +258,7 @@ private struct LinkedExerciseRow: View {
   private var accessibilityLabel: String {
     var parts = ["Exercise", exercise.title]
     if let meta = exercise.metaSpoken { parts.append(meta) }
+    if let sections = exercise.sectionsCaption { parts.append(sections) }
     if let score = exercise.pieceContextScore {
       parts.append("Mark \(score) of \(scoreRange.upperBound) on this piece")
     } else {
@@ -261,14 +273,28 @@ private struct LinkedExerciseEditRow: View {
   let exercise: LinkedExerciseView
   let isFirst: Bool
   let isLast: Bool
+  let onChooseSections: (() -> Void)?
   let onMoveUp: () -> Void
   let onMoveDown: () -> Void
   let onRemove: () -> Void
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  // At accessibility sizes the controls drop under the title, which would
+  // otherwise shrink to a few letters a line (#2248).
   var body: some View {
-    HStack(spacing: IntradaSpacing.cardCompact) {
+    let layout: AnyLayout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: IntradaSpacing.cardCompact))
+      : AnyLayout(HStackLayout(spacing: IntradaSpacing.cardCompact))
+    return layout {
       LinkedExerciseTitle(exercise: exercise)
       HStack(spacing: IntradaSpacing.controlGap) {
+        if let onChooseSections {
+          CapsuleActionButton(title: "Choose sections", action: onChooseSections)
+            .accessibilityLabel("Choose the sections \(exercise.title) is for")
+            .accessibilityIdentifier("relatedExercises.sections")
+        }
         VStack(spacing: 0) {
           Button(action: onMoveUp) {
             Image(systemName: "chevron.up")

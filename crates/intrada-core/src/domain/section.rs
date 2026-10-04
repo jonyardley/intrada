@@ -78,6 +78,14 @@ impl BarRange {
             format!("Bars {} to {}", self.first, self.last)
         }
     }
+
+    pub fn in_text(&self) -> String {
+        if self.first == self.last {
+            format!("bar {}", self.first)
+        } else {
+            format!("bars {} to {}", self.first, self.last)
+        }
+    }
 }
 
 impl ItemSection {
@@ -85,6 +93,15 @@ impl ItemSection {
     pub fn label(&self) -> String {
         match &self.bars {
             Some(bars) if self.name.is_empty() => bars.caption(),
+            _ => self.name.clone(),
+        }
+    }
+
+    /// `label` as it reads inside a sentence (#2248): a name as typed, bars
+    /// in lower case.
+    pub fn label_in_text(&self) -> String {
+        match &self.bars {
+            Some(bars) if self.name.is_empty() => bars.in_text(),
             _ => self.name.clone(),
         }
     }

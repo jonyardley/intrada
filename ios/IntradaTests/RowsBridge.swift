@@ -58,3 +58,24 @@ struct Rendered {
   var visibleItems: [LibraryItemView] { items.rows(withIds: view.visibleIds) }
   var recentlyPractisedItems: [LibraryItemView] { items.rows(withIds: view.recentlyPractisedIds) }
 }
+
+extension RowsBridge {
+  /// A whole-piece link added to the piece's set as it stands (#2248).
+  func link(exercise: String, to piece: String) throws {
+    try setLinks(of: piece) { $0 + [LinkEdit(exercise: .existing(id: exercise), sectionId: nil)] }
+  }
+
+  func unlink(exercise: String, from piece: String) throws {
+    try setLinks(of: piece) { links in
+      links.filter {
+        guard case .existing(let id) = $0.exercise else { return true }
+        return id != exercise
+      }
+    }
+  }
+
+  private func setLinks(of piece: String, _ change: ([LinkEdit]) -> [LinkEdit]) throws {
+    let current = items.first { $0.id == piece }?.linkedExercises.flatMap(\.linkEdits) ?? []
+    _ = try update(.item(.setPieceLinks(pieceId: piece, links: change(current))))
+  }
+}
