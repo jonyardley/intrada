@@ -22,6 +22,8 @@ struct LibraryDetailScreen: View {
   @State private var editingChart = false
   @State private var showingScaffold = false
   @State private var editingSection: SectionSheetTarget?
+  @State private var choosingKeys = false
+  @State private var choosingVariations = false
 
   init(item: LibraryItemView, showsBackButton: Bool = true, startEditingLinks: Bool = false) {
     self.item = item
@@ -67,6 +69,14 @@ struct LibraryDetailScreen: View {
         existingChart: item.chordChart
       )
       .environment(store)
+    }
+    .sheet(isPresented: $choosingKeys) {
+      KeysSheet(item: item)
+        .environment(store)
+    }
+    .sheet(isPresented: $choosingVariations) {
+      VariationsSheet(item: item)
+        .environment(store)
     }
     .sheet(item: $editingSection) { target in
       SectionSheet(item: item, target: target)
@@ -245,10 +255,11 @@ struct LibraryDetailScreen: View {
 
         if item.itemType == .piece {
           sectionsSection
+          variationsSection
         }
 
         if item.itemType == .exercise {
-          VariationsSection(item: item, onAddVariations: { editing = true })
+          variationsSection
           sectionsSection
         }
 
@@ -302,6 +313,12 @@ struct LibraryDetailScreen: View {
       .padding(IntradaSpacing.card)
     }
     .scrollEdgeShadow()
+  }
+
+  private var variationsSection: some View {
+    VariationsSection(
+      item: item, onChooseKeys: { choosingKeys = true },
+      onChooseVariations: { choosingVariations = true })
   }
 
   private var sectionsSection: some View {
