@@ -408,6 +408,36 @@
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [])))
     }
 
+    /// The builder with a split, focused piece and one offering last time
+    /// (#2249, #2303, #2315). `entry` replaces the first row, for the sheet.
+    static func previewBuildingPlanned(_ first: SetlistEntryView = .previewPlannedPiece) -> Store {
+      let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: entries,
+            itemCount: 3,
+            blocks: entries.map {
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0,
+                durationDisplay: $0.plannedDurationDisplay ?? "\u{2014}", entries: [$0],
+                takenElsewhere: [])
+            },
+            totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,
+            lengthSummary: "22 of 30 min planned",
+            entryVariations: [
+              EntryVariationsView(
+                entryId: first.id, variations: [], sections: SectionView.previewClairSections)
+            ],
+            lastTimes: [
+              LastTimeView(
+                entryId: SetlistEntryView.previewLastTimePiece.id, sectionId: "sec-b",
+                variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms")
+            ],
+            focusChoices: FocusChoiceView.previewChoices)))
+    }
+
     /// Player Focus: a piece mid-session, no reps.
     static var previewActive: Store {
       Store(bridge: PreviewBridge(activeSession: .previewActive))

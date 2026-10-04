@@ -375,10 +375,12 @@ struct SessionBuilderScreen: View {
           Text("\(entry.itemType.label)\(durationSuffix(block.durationDisplay))")
             .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
             .lineLimit(rowLineLimit)
+          planLine(entry)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
       }
       .accessibilityElement(children: .combine)
+      .lastTimeAction(lastTime(entry)) { applyLastTime(entry) }
       .accessibilityAddTraits(isEditing ? [] : .isButton)
       .accessibilityHint(isEditing ? "" : "Opens settings")
       .accessibilityIdentifier("builder.row")
@@ -437,6 +439,7 @@ struct SessionBuilderScreen: View {
             Text(subtitle).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
           }
+          if let piece = pieceEntry(block) { planLine(piece) }
         }
         Spacer(minLength: IntradaSpacing.controlGap)
       }
@@ -444,7 +447,11 @@ struct SessionBuilderScreen: View {
       .accessibilityAddTraits(.isButton)
       .accessibilityLabel(
         "\(block.pieceTitle ?? "Related exercises"), \(relatedLabel(block))"
+          + (pieceEntry(block).map(spokenPlan) ?? "")
       )
+      .lastTimeAction(pieceEntry(block).flatMap(lastTime)) {
+        if let piece = pieceEntry(block) { applyLastTime(piece) }
+      }
       .accessibilityHint(collapsed ? "Expands the block" : "Collapses the block")
       .accessibilityAction(named: "Move up") { moveUnit(block, by: -1) }
       .accessibilityAction(named: "Move down") { moveUnit(block, by: 1) }
@@ -480,10 +487,12 @@ struct SessionBuilderScreen: View {
             Text(nestedMeta(entry)).font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
+            planLine(entry)
           }
           Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
+        .lastTimeAction(lastTime(entry)) { applyLastTime(entry) }
         .accessibilityAddTraits(isEditing ? [] : .isButton)
         .accessibilityHint(isEditing ? "" : "Opens settings")
         .accessibilityIdentifier("builder.row")
@@ -521,6 +530,52 @@ struct SessionBuilderScreen: View {
       .buttonStyle(.plain)
     }
     .cardSegment(.bottom)
+  }
+
+  // ── Plan (#2249, #2303, #2315) ──────────────────────────────────────
+
+  @ViewBuilder private func planLine(_ entry: SetlistEntryView) -> some View {
+    let tags = planTags(entry)
+    if !tags.isEmpty {
+      FlowLayout(spacing: 6) {
+        ForEach(tags, id: \.self) { TagChip($0) }
+      }
+      .padding(.top, 4)
+    }
+    if let offer = lastTime(entry) {
+      OfferChip(offer.label) { applyLastTime(entry) }
+        .accessibilityIdentifier("builder.lastTime")
+        .padding(.top, 2)
+    }
+  }
+
+  private func planTags(_ entry: SetlistEntryView) -> [String] {
+    let segments = entry.record.segments
+    let split = segments.count > 1
+    let variations =
+      setlist?.entryVariations.first { $0.entryId == entry.id }?.variations ?? []
+    return segments.map {
+      split && $0.plannedSecs > 0 ? "\($0.label) \($0.plannedDisplay)" : $0.label
+    }
+      + entry.plannedVariationIds.compactMap { id in variations.first { $0.id == id }?.label }
+      + (entry.record.focus.map { ["Focus: \($0.label)"] } ?? [])
+  }
+
+  /// The header sets its own label, which drops the tags it holds.
+  private func spokenPlan(_ entry: SetlistEntryView) -> String {
+    planTags(entry).map { ", \($0)" }.joined()
+  }
+
+  private func lastTime(_ entry: SetlistEntryView) -> LastTimeView? {
+    setlist?.lastTimes.first { $0.entryId == entry.id }
+  }
+
+  private func pieceEntry(_ block: SetlistBlockView) -> SetlistEntryView? {
+    block.entries.first { $0.itemType == .piece }
+  }
+
+  private func applyLastTime(_ entry: SetlistEntryView) {
+    store.send(.session(.applyLastTime(entryId: entry.id)), onSuccess: .impact)
   }
 
   private var groupPill: some View {
@@ -711,6 +766,17 @@ extension View {
         Label("Remove", systemImage: "trash")
       }
       .accessibilityLabel("Remove \(title)")
+    }
+  }
+
+  /// VoiceOver's path to the last-time chip, which a combined row swallows.
+  @ViewBuilder fileprivate func lastTimeAction(
+    _ offer: LastTimeView?, perform action: @escaping () -> Void
+  ) -> some View {
+    if let offer {
+      accessibilityAction(named: offer.label, action)
+    } else {
+      self
     }
   }
 

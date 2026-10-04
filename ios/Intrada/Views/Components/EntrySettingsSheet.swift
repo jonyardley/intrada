@@ -18,9 +18,16 @@ struct EntrySettingsSheet: View {
   @State private var plannedMinutes: Int
   @State private var variantId: String?
 
-  private var variants: [PickerVariationView] {
-    store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }?.variations
-      ?? []
+  private var plannable: EntryVariationsView? {
+    store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }
+  }
+  private var variants: [PickerVariationView] { plannable?.variations ?? [] }
+  private var sections: [SectionView] { plannable?.sections ?? [] }
+
+  /// The entry as the core holds it now: `entry` is the snapshot the sheet
+  /// opened on, and the focus and sections cards read what each tap changed.
+  private var live: SetlistEntryView {
+    store.viewModel?.buildingSetlist?.entries.first { $0.id == entry.id } ?? entry
   }
 
   var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }
@@ -52,12 +59,14 @@ struct EntrySettingsSheet: View {
   }
 
   var body: some View {
-    BottomSheet(
-      title: entry.itemTitle, detents: typeSize.isAccessibilitySize ? [.medium, .large] : [.medium]
-    ) {
+    BottomSheet(title: entry.itemTitle, detents: [.medium, .large]) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
+          focusSection
+          if !sections.isEmpty {
+            segmentsSection
+          }
           if !variants.isEmpty {
             stepSection
           }
@@ -87,7 +96,37 @@ struct EntrySettingsSheet: View {
           guard next != entry.intention else { return }
           store.send(.session(.setEntryIntention(entryId: entry.id, intention: next)))
         }
+      if let suggested = live.record.suggestedFocus {
+        OfferChip("Focus: \(suggested.label)", systemImage: "plus") {
+          setFocus(suggested.focus)
+        }
+        .accessibilityIdentifier("entrySettings.suggestedFocus")
+      }
     }
+  }
+
+  @ViewBuilder private var focusSection: some View {
+    if let limits = store.viewModel?.limits {
+      EntryFocusCard(
+        current: live.record.focus,
+        choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
+        sections: sections,
+        limits: limits,
+        send: setFocus)
+    }
+  }
+
+  private func setFocus(_ focus: IntentionFocus?) {
+    store.send(.session(.setFocus(entryId: entry.id, focus: focus)))
+  }
+
+  private var segmentsSection: some View {
+    EntrySegmentsCard(
+      segments: live.record.segments,
+      sections: sections,
+      hasPlannedTime: live.plannedDurationSecs != nil,
+      minimumSecs: limits.plannedDurationMinSecs
+    ) { store.send(.session(.setSegments(entryId: entry.id, segments: $0))) }
   }
 
   private var stepSection: some View {
@@ -122,11 +161,32 @@ struct EntrySettingsSheet: View {
   private func plan(_ id: String?) {
     guard id != variantId else { return }
     variantId = id
-    store.send(
+    for event in Self.planEvents(entryId: entry.id, segments: live.record.segments, variationId: id)
+    {
+      store.send(event)
+    }
+  }
+
+  /// The plan event holds one section at most and re-splits the minutes, so
+  /// a split item puts its segments back as they were.
+  static func planEvents(entryId: String, segments: [SegmentView], variationId: String?)
+    -> [Event]
+  {
+    let variationIds = variationId.map { [$0] } ?? []
+    guard segments.count > 1 else {
+      return [
+        .session(
+          .setEntryPlan(
+            entryId: entryId, sectionIds: segments.map(\.sectionId), variationIds: variationIds))
+      ]
+    }
+    return [
+      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: variationIds)),
       .session(
-        .setEntryPlan(
-          entryId: entry.id, sectionIds: entry.plannedSectionIds,
-          variationIds: id.map { [$0] } ?? [])))
+        .setSegments(
+          entryId: entryId,
+          segments: segments.map { Segment(sectionId: $0.sectionId, plannedSecs: $0.plannedSecs) })),
+    ]
   }
 
   private var repsSection: some View {

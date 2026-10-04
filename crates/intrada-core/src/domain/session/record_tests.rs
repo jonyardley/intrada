@@ -1183,6 +1183,79 @@ fn last_time_is_offered_and_one_tap_plans_it() {
 }
 
 #[test]
+fn last_time_is_offered_only_while_nothing_is_planned() {
+    let mut m = model();
+    m.sessions = vec![saved_session_playing(
+        "p",
+        PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        },
+        t(-100_000),
+    )]
+    .into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let id = entry_id(&m, 0);
+    assert_eq!(building_view(&m).last_times.len(), 1);
+
+    set_focus(&mut m, &id, FocusKind::FromMemory, None, None);
+    assert!(building_view(&m).last_times.is_empty(), "a focus is a plan");
+
+    send(
+        &mut m,
+        SessionEvent::SetFocus {
+            entry_id: id.clone(),
+            focus: None,
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::SetEntryPlan {
+            entry_id: id.clone(),
+            section_ids: vec![],
+            variation_ids: vec!["v-dot".to_string()],
+        },
+    );
+    assert!(
+        building_view(&m).last_times.is_empty(),
+        "a variation is a plan"
+    );
+
+    send(
+        &mut m,
+        SessionEvent::SetEntryPlan {
+            entry_id: id.clone(),
+            section_ids: vec!["s-a".to_string()],
+            variation_ids: vec![],
+        },
+    );
+    assert!(
+        building_view(&m).last_times.is_empty(),
+        "a section is a plan"
+    );
+
+    send(
+        &mut m,
+        SessionEvent::SetEntryPlan {
+            entry_id: id,
+            section_ids: vec![],
+            variation_ids: vec![],
+        },
+    );
+    assert_eq!(
+        building_view(&m).last_times.len(),
+        1,
+        "cleared, it offers again"
+    );
+}
+
+#[test]
 fn a_trouble_spot_lands_nameless_in_score_order() {
     let mut m = practising_a_then_b();
     send(

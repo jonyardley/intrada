@@ -17,6 +17,27 @@
     }
   }
 
+  extension SectionView {
+    static var previewClairSections: [SectionView] {
+      [("sec-a1", "A1", 1, 14), ("sec-b", "B", 15, 26), ("sec-a2", "A2", 27, 42)].map {
+        SectionView(
+          id: $0.0, name: $0.1, kind: .form, targetBpm: nil, firstBar: UInt16($0.2),
+          lastBar: UInt16($0.3), label: $0.1, barsCaption: "Bars \($0.2) to \($0.3)")
+      }
+    }
+  }
+
+  extension FocusChoiceView {
+    static var previewChoices: [FocusChoiceView] {
+      [
+        FocusChoiceView(kind: .tempo, label: "Tempo"),
+        FocusChoiceView(kind: .cleanReps, label: "Clean in a row"),
+        FocusChoiceView(kind: .fromMemory, label: "From memory"),
+        FocusChoiceView(kind: .evenness, label: "Evenness"),
+      ]
+    }
+  }
+
   extension LimitsView {
     /// The core's own answer, so a preview or test never carries a band or bar
     /// table of its own that could drift from it (#2225).
@@ -131,6 +152,37 @@
     }
     static var previewStandaloneExercise: SetlistEntryView {
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
+    }
+
+    /// Twelve minutes split into A1, B and A2 with a tempo focus on A1 (#2315, #2303).
+    static var previewPlannedPiece: SetlistEntryView {
+      var e = building(
+        id: "plan-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
+      e.intention = "Get A1 up to 84 with the click"
+      e.plannedDurationSecs = 720
+      e.plannedDurationDisplay = "12 min"
+      e.record.segments = SectionView.previewClairSections.map {
+        SegmentView(sectionId: $0.id, label: $0.label, plannedSecs: 240, plannedDisplay: "4 min")
+      }
+      e.record.focus = FocusView(
+        focus: IntentionFocus(kind: .tempo, sectionId: "sec-a1", target: 84), label: "A1 at 84")
+      return e
+    }
+
+    /// Nothing planned yet, with a typed aim the core reads a focus from.
+    static var previewSuggestingPiece: SetlistEntryView {
+      var e = previewPlannedPiece
+      e.record = .empty
+      e.record.suggestedFocus = previewPlannedPiece.record.focus
+      return e
+    }
+
+    static var previewLastTimePiece: SetlistEntryView {
+      var e = building(
+        id: "plan-i", item: "piece-2", title: "Invention No. 8", type: .piece, position: 1)
+      e.plannedDurationSecs = 600
+      e.plannedDurationDisplay = "10 min"
+      return e
     }
 
     /// All three per-entry settings set: the "populated" `EntrySettingsSheet` snapshot.

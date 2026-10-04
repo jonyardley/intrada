@@ -108,4 +108,34 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     assertSnapshot(
       of: host(EntrySettingsSheet(entry: entry, limits: limits), store: store), as: axConfig)
   }
+
+  func testSessionBuilderPlanned() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingPlanned()),
+      as: config)
+  }
+
+  func testEntrySettingsSheetSplitWithFocus() throws {
+    let store = Store.previewBuildingPlanned()
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
+      as: config)
+  }
+
+  func testEntrySettingsSheetSplitWithFocusAccessibilitySize() throws {
+    let store = Store.previewBuildingPlanned()
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
+      as: axConfig)
+  }
+
+  func testEntrySettingsSheetSuggestsAFocus() throws {
+    let store = Store.previewBuildingPlanned(.previewSuggestingPiece)
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewSuggestingPiece, limits: limits), store: store),
+      as: config)
+  }
 }
