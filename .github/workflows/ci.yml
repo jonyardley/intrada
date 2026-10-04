@@ -708,7 +708,7 @@ jobs:
         run: bash scripts/check-app-version.sh
       # ── faint ink ──────────────────────────────────────────────────────
       # inkFaint fails AA on text and a snapshot cannot see contrast, so the
-      # token is kept to the section eyebrow (#1941).
+      # token stays out of the screens (#1941).
       - name: Faint ink stays on eyebrows
         run: bash scripts/check-faint-ink.sh
       # A haptic built by hand can fire before the core confirms, and a change
