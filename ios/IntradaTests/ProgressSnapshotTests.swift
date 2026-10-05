@@ -28,7 +28,8 @@ final class ProgressSnapshotTests: SnapshotTestCase {
   }
 
   /// Monday morning: nothing played this week and nothing marked, so no
-  /// "0 sessions" line and no empty Recent mastery heading (#2374).
+  /// "0 sessions" line, no empty Recent mastery heading (#2374) and no
+  /// climbing line (#2399).
   func testProgressScreenNothingThisWeek() {
     var analytics = AnalyticsView.previewAnalytics
     analytics.weeklySummary.totalMinutes = 0
@@ -37,6 +38,7 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     analytics.scoreChanges = []
     analytics.topMover = nil
     analytics.masteryChange = nil
+    analytics.climbing = nil
     analytics.weeklyMinutes = [40, 75, 55, 95, 0]
     let store = Store(bridge: PreviewBridge(analytics: analytics))
     assertSnapshot(of: host(AnalyticsScreen(), store: store), as: config)
@@ -118,8 +120,10 @@ final class ProgressSnapshotTests: SnapshotTestCase {
   func testMasteryHeroCardAccessibilitySize() {
     let hero = ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
-        .padding(16)
+      MasteryHeroCard(
+        mastery: 6.4, change: "+1.2 this week", climbing: "Climbing steadily across 5 items."
+      )
+      .padding(16)
     }
     .dynamicTypeSize(.accessibility5)
     assertSnapshot(of: host(hero), as: config)
