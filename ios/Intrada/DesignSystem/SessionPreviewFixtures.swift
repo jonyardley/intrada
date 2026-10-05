@@ -754,6 +754,14 @@
         minutes: 6, label: "Away 6 minutes. Leave it out?")
       return active
     }
+
+    static var previewActiveLastTime: ActiveSessionView {
+      var active = previewActive
+      active.record.lastTime = LastTimeView(
+        entryId: "entry-1", sectionId: "sec-b", variationIds: ["v-dot"],
+        label: "Last time: B · Dotted rhythms", key: nil)
+      return active
+    }
   }
 
   extension FinishSheetView {
@@ -782,6 +790,26 @@
           ObstacleChoiceView(obstacle: .tone, label: "Tone"),
           ObstacleChoiceView(obstacle: .tension, label: "Tension"),
         ], rows: [], sections: [], keys: [])
+    }
+
+    /// Clair de Lune's sections and keys, for changing what a row says was played (#2249).
+    static var previewWayChoices: FinishSheetView {
+      func part(_ id: String, _ label: String) -> SectionView {
+        SectionView(
+          id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
+          label: label, barsCaption: nil)
+      }
+      var finish = preview(asksIntention: false)
+      finish.noteOffers = []
+      finish.sections = [part("sec-a1", "A1"), part("sec-b", "B"), part("sec-a2", "A2")]
+      finish.keys = [
+        KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266d} major"),
+        KeyChoiceView(
+          key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
+        KeyChoiceView(
+          key: Key(letter: .g, accidental: .natural, mode: .major), label: "G major", caption: nil),
+      ]
+      return finish
     }
   }
 #endif

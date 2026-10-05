@@ -212,6 +212,70 @@ struct ReflectionHandoffTests {
     #expect(ReflectionHandoff.draft(result, plays: plays).tempos.isEmpty)
   }
 
+  // ── What a row says was played (#2249) ──
+
+  @Test func aRowChangedToAnotherKeyRecordsThatKeyOnThePlay() throws {
+    let bridge = RowsBridge()
+    let (entryId, plays) = try pieceMidSession(bridge)
+    let play = try #require(plays.first)
+    let g = Key(letter: .g, accidental: .natural, mode: .major)
+    var changed = play.recordedWay
+    changed.key = g
+    let result = ReflectionResult(
+      marks: [:], note: "", tempos: [],
+      ways: PlayWayChoices.drafting(changed, recorded: play.recordedWay, into: []))
+    _ = try bridge.update(
+      .session(.updateReflectionDraft(answers: ReflectionHandoff.draft(result, plays: plays))))
+    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    let reopened = ReflectionHandoff.seed(saved)
+
+    #expect(
+      ReflectionHandoff.run(
+        ReflectionHandoff.plan(
+          entryId: entryId, now: "2026-09-21T10:05:00Z",
+          nextItemStartedAt: "2026-09-21T10:05:30Z", reading: .silent, plays: plays,
+          result: reopened),
+        send: accepting(bridge)))
+
+    let recorded = try #require(try bridge.rendered().summary?.entries.first?.plays.first)
+    #expect(recorded.key == g)
+  }
+
+  @Test func aSkippedSheetLeavesThePlayAsItWas() throws {
+    let bridge = RowsBridge()
+    let (_, plays) = try pieceMidSession(bridge)
+    let play = try #require(plays.first)
+    var changed = play.recordedWay
+    changed.key = Key(letter: .g, accidental: .natural, mode: .major)
+    _ = try bridge.update(
+      .session(
+        .updateReflectionDraft(
+          answers: ReflectionHandoff.draft(
+            ReflectionResult(marks: [:], note: "", tempos: [], ways: [changed]), plays: plays))))
+
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-09-21T10:05:00Z", nextItemStartedAt: "2026-09-21T10:05:30Z",
+          reading: .silent)))
+
+    let recorded = try #require(try bridge.rendered().summary?.entries.first?.plays.first)
+    #expect(recorded.key == nil)
+  }
+
+  @Test func aWayChangedBackToWhatWasRecordedLeavesTheDraft() {
+    let recorded = DraftWay(
+      playId: "p1", sectionId: "s1", key: nil, variationIds: ["v1", "v2"])
+    var changed = recorded
+    changed.key = Key(letter: .g, accidental: .natural, mode: .major)
+    let drafted = PlayWayChoices.drafting(changed, recorded: recorded, into: [])
+    var back = recorded
+    back.variationIds = ["v2", "v1"]
+
+    #expect(drafted == [changed])
+    #expect(PlayWayChoices.drafting(back, recorded: recorded, into: drafted).isEmpty)
+  }
+
   // ── The stepper's beat value (#2304) ──
 
   @Test func anUntouchedClickOnAQuaverBarCountsAndSavesInQuavers() throws {

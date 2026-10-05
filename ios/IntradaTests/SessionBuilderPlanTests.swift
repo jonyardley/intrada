@@ -4,7 +4,7 @@ import Testing
 @testable import Intrada
 
 /// What the item sheet's sections card sends, run through the real core
-/// (#2315, #2398).
+/// (#2315, #2398, #2249).
 @MainActor
 struct SessionBuilderPlanTests {
   /// A twelve-minute piece split into A1, B and A2 by three taps on "Add a
@@ -99,5 +99,53 @@ struct SessionBuilderPlanTests {
     #expect(try bridge.rendered().error == nil)
     #expect(entry.plannedVariationIds == [variation])
     #expect(entry.record.segments.map(\.plannedSecs) == [360, 120, 240])
+  }
+
+  @Test("ticking a drill puts it in a block with the piece")
+  func tickingADrillJoinsThePiecesBlock() throws {
+    let (bridge, entryId, _) = try splitPiece()
+    let pieceId = try #require(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Left hand arpeggios", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let exerciseId = try #require(
+      try bridge.rendered().items.first { $0.title == "Left hand arpeggios" }?.id)
+    let a2 = try segments(bridge)[2].sectionId
+    _ = try bridge.update(
+      .item(
+        .setPieceLinks(
+          pieceId: pieceId, links: [LinkEdit(exercise: .existing(id: exerciseId), sectionId: a2)])))
+    let offer = try #require(try bridge.rendered().buildingSetlist?.drillOffers.first)
+    #expect(offer.addedEntryId == nil)
+
+    _ = try bridge.update(.session(.addDrill(entryId: entryId, exerciseId: offer.exerciseId)))
+
+    let building = try #require(try bridge.rendered().buildingSetlist)
+    let piece = try #require(building.entries.first { $0.id == entryId })
+    let drill = try #require(building.entries.first { $0.itemId == exerciseId })
+    #expect(try bridge.rendered().error == nil)
+    #expect(piece.groupId != nil)
+    #expect(drill.groupId == piece.groupId)
+    #expect(building.drillOffers.first?.addedEntryId == drill.id)
+  }
+
+  @Test("choosing a key sets the entry's planned key")
+  func choosingAKeySetsThePlannedKey() throws {
+    let (bridge, entryId, _) = try splitPiece()
+    let pieceId = try #require(try bridge.rendered().items.first?.id)
+    let d = Key(letter: .d, accidental: .natural, mode: .major)
+    _ = try bridge.update(.item(.updateKeys(id: pieceId, keys: [d])))
+    let choices = try #require(
+      try bridge.rendered().buildingSetlist?.entryKeys.first { $0.entryId == entryId }?.keys)
+    let choice = try #require(choices.first { $0.key == d })
+
+    _ = try bridge.update(.session(.setEntryKey(entryId: entryId, key: choice.key)))
+
+    let entry = try #require(try bridge.rendered().buildingSetlist?.entries.first)
+    #expect(try bridge.rendered().error == nil)
+    #expect(entry.plannedKey == d)
   }
 }

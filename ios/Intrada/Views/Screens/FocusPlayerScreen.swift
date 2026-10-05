@@ -51,8 +51,9 @@ struct FocusPlayerScreen: View {
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
           tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
           currentClick: target.sheetClick, plays: target.plays,
-          limits: limits, finish: target.finish, aim: target.aim,
-          refusal: reflectionRefusal, seed: target.seed,
+          limits: limits, finish: target.finish,
+          variations: target.variations, plannedLabel: target.plannedLabel,
+          aim: target.aim, refusal: reflectionRefusal, seed: target.seed,
           onSave: { result in handleReflection(target, result) },
           onSkip: { handleSkipRating(target) },
           onDraft: { result in
@@ -238,8 +239,29 @@ struct FocusPlayerScreen: View {
           .truncationMode(.tail)
       }
       variationChip(active)
+      lastTimeOffer(active)
     }
     .padding(.horizontal, IntradaSpacing.card)
+  }
+
+  // ── Last time on this piece (#2249) ──
+
+  @ViewBuilder private func lastTimeOffer(_ active: ActiveSessionView) -> some View {
+    if let offer = active.record.lastTime {
+      OfferChip(offer.label) { playLastTime(offer) }
+        .accessibilityIdentifier("player.lastTime")
+        .accessibilityHint("Plays it the way you did last time")
+    }
+  }
+
+  private func playLastTime(_ offer: LastTimeView) {
+    store.send(
+      .session(
+        .switchPlay(
+          entryId: offer.entryId, sectionId: offer.sectionId, key: offer.key,
+          variationIds: offer.variationIds,
+          now: SessionClock.nowRFC3339(), reading: tempoReading)),
+      onSuccess: .impact)
   }
 
   // ── The variation being practised right now (#1739 decision 6) ──
@@ -503,6 +525,8 @@ struct FocusPlayerScreen: View {
     let finish: FinishSheetView?
     /// The focus the aim is asked against, or the musician's own words for it.
     let aim: String?
+    let variations: [PickerVariationView]
+    let plannedLabel: String?
   }
 
   private var reflectionTarget: ReflectionTarget? {
@@ -521,7 +545,8 @@ struct FocusPlayerScreen: View {
       plays: ReflectionPlay.rows(entry.plays),
       seed: ReflectionHandoff.seed(draft.answers),
       finish: active.record.finish,
-      aim: entry.record.focus?.label ?? active.currentItemIntention)
+      aim: entry.record.focus?.label ?? active.currentItemIntention,
+      variations: active.currentVariations, plannedLabel: entry.plannedLabel)
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
