@@ -3146,3 +3146,14 @@ fn a_piece_whose_sections_are_all_deleted_reads_no_variation() {
 
     assert_eq!(finish_row(&m).label, "No variation");
 }
+
+#[test]
+fn no_key_row_when_the_only_key_kept_is_the_written_one() {
+    let (mut m, id) = building_clair(false);
+    let clair = clair_mut(&mut m);
+    clair.key = key("D flat major");
+    clair.keys = vec![key("C sharp major").expect("key")];
+
+    let view = building_view(&m);
+    assert!(view.entry_keys.iter().all(|k| k.entry_id != id));
+}

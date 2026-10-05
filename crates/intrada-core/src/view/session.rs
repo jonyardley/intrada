@@ -362,13 +362,13 @@ fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<
     )
 }
 
-/// The builder's Key row: listed while the item keeps keys or a key is
-/// planned, so a key from last time can be set back to the written one.
+/// The builder's Key row: listed while there is a key besides the written
+/// one, so a key from last time can be set back to the written one.
 pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
-    if item.keys.is_empty() && entry.planned_key.is_none() {
+    let keys = key_choices(item, entry.planned_key.as_slice());
+    if keys.len() < 2 {
         return None;
     }
-    let keys = key_choices(item, entry.planned_key.as_slice());
     let current = spelt_as(item, &keys, entry.planned_key);
     let current_label = keys
         .iter()
