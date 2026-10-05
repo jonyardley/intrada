@@ -66,6 +66,24 @@ final class ProfileUITests: XCTestCase {
     XCTAssertTrue(app.highlighterRow("Coral").exists, "the highlighter survived")
   }
 
+  /// The icon's Change button is a full 44pt target and its edge takes the
+  /// tap, not just the word (#2318).
+  func testChangeIconButtonTakesATapAtItsEdge() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--disable-animations", "--reset-profile", "--skip-welcome"]
+    app.launch()
+
+    app.tabBars.buttons["Practice"].tap()
+    app.control("practice.profile", spoken: "Profile", timeout: 10).tap()
+    app.control("profile.edit", spoken: "Edit").tap()
+
+    let change = app.control("profileEdit.changeIcon", spoken: "Change icon")
+    XCTAssertGreaterThanOrEqual(change.frame.height, 44, "the button is a finger tall")
+    change.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+    XCTAssertTrue(
+      app.staticTexts["All icons"].waitForExistence(timeout: 5), "the icon picker opens")
+  }
+
   /// The practice defaults the musician sets on the Profile screen are still
   /// there after a relaunch (#1915).
   func testPracticeDefaultsSurviveARelaunch() {
