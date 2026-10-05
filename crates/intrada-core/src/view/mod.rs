@@ -4,7 +4,7 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, EntryVariationsView, FocusChoiceView, LimitsView, Model,
+    BuildingSetlistView, EntryVariationsView, FocusChoiceView, FocusTargetView, LimitsView, Model,
     PhotoRecognitionView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
@@ -132,6 +132,13 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         .map(|&kind| FocusChoiceView {
                             kind,
                             label: crate::domain::session::focus_kind_label(kind).to_string(),
+                            target: crate::domain::session::focus_target_range(kind).map(
+                                |(range, step)| FocusTargetView {
+                                    min: *range.start(),
+                                    max: *range.end(),
+                                    step,
+                                },
+                            ),
                         })
                         .collect(),
                 }),

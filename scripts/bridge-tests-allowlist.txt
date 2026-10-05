@@ -51,7 +51,6 @@ ScoreChange
 ScoreHistoryEntry
 SessionsData
 SetlistBlockView
-SetlistEntryView
 SortDirection
 SortField
 SuggestedFields

@@ -207,14 +207,66 @@ pub(super) fn set_focus(
     entry_id: String,
     focus: Option<IntentionFocus>,
 ) -> Command<Effect, Event> {
-    let check = match (&focus, entry_for_plan(model, &entry_id)) {
-        (Some(focus), Some(entry)) => {
-            let sections = live_section_ids(model, &entry.item_id);
+    let item_id = entry_for_plan(model, &entry_id).map(|e| e.item_id.clone());
+    let focus = focus.map(|mut focus| {
+        if focus.target.is_none() {
+            let section_bpm = item_id.as_deref().and_then(|item_id| {
+                section_target_bpm(model, item_id, focus.section_id.as_deref()?)
+            });
+            focus.target = starting_target(focus.kind, section_bpm);
+        }
+        focus
+    });
+    let check = match (&focus, &item_id) {
+        (Some(focus), Some(item_id)) => {
+            let sections = live_section_ids(model, item_id);
             validate_focus(focus, &sections)
         }
         _ => Ok(()),
     };
     set_planned(model, &entry_id, check, |entry| entry.focus = focus)
+}
+
+pub(super) fn set_entry_variations(
+    model: &mut Model,
+    entry_id: String,
+    variation_ids: Vec<String>,
+) -> Command<Effect, Event> {
+    let check = validation::validate_variation_ids(model, &variation_ids);
+    set_planned(model, &entry_id, check, |entry| {
+        entry.planned_variation_ids = variation_ids;
+    })
+}
+
+pub(super) fn step_segment(
+    model: &mut Model,
+    entry_id: String,
+    section_id: String,
+    minutes: i8,
+) -> Command<Effect, Event> {
+    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.segments.clone()) else {
+        return set_planned(model, &entry_id, Ok(()), |_| {});
+    };
+    let check = segments
+        .iter()
+        .position(|s| s.section_id == section_id)
+        .ok_or_else(|| LibraryError::Validation {
+            field: "segments".to_string(),
+            message: "That section isn't in this item's plan".to_string(),
+        })
+        .and_then(|index| record::step_segment(&mut segments, index, minutes));
+    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+}
+
+fn section_target_bpm(model: &Model, item_id: &str, section_id: &str) -> Option<u16> {
+    model
+        .items
+        .iter()
+        .find(|i| i.id == item_id)?
+        .sections
+        .iter()
+        .find(|s| s.id == section_id && s.deleted_at.is_none())?
+        .target_bpm
 }
 
 fn live_section_ids<'a>(model: &'a Model, item_id: &str) -> Vec<&'a str> {

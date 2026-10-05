@@ -15,6 +15,7 @@ import com.intrada.shared.Event
 import com.intrada.shared.ExerciseLink
 import com.intrada.shared.Felt
 import com.intrada.shared.FocusKind
+import com.intrada.shared.FocusTargetView
 import com.intrada.shared.IntentionFocus
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
@@ -514,6 +515,60 @@ class BridgeRoundTripTest {
         assertEquals(640uL, active?.entries?.firstOrNull()?.plays?.firstOrNull()?.seconds)
     }
 
+    // The builder rules the core owns cross both ways on Kotlin's codec (#2393).
+    @Test
+    fun minuteStepsVariationsAndFocusTargetsCrossTheBridge() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE, listOf("Dotted"))
+        val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
+        val sections =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.UpdateSections(
+                            nocturne,
+                            listOf("A", "B").map {
+                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                            },
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+                .sections
+                .map { it.id }
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
+        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
+        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 600u)))
+        bridge.update(
+            Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
+        )
+
+        bridge.update(Event.Session(SessionEvent.StepSegment(entryId, sections.first(), 1)))
+        bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
+        bridge.update(
+            Event.Session(
+                SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.CLEANREPS, null, null))
+            )
+        )
+
+        val building = bridge.view().buildingSetlist
+        val record = building?.entries?.firstOrNull()?.record
+        assertEquals(listOf(dotted), building?.entries?.firstOrNull()?.plannedVariationIds)
+        assertEquals(listOf(360u, 240u), record?.segments?.map { it.plannedSecs })
+        assertEquals(listOf(true, true), record?.segments?.map { it.canAddMinute })
+        assertEquals("1 clean in a row", record?.focus?.targetCaption)
+        assertEquals(
+            listOf(FocusTargetView(40u, 208u, 2u), FocusTargetView(1u, 100u, 1u), null, null),
+            building?.focusChoices?.map { it.target },
+        )
+    }
+
     @Test
     fun theBuilderAndTheFinishSheetCarryTheChoiceWordsFromTheCore() {
         val bridge = LiveBridge()
@@ -545,7 +600,12 @@ class BridgeRoundTripTest {
         assertEquals(listOf(Felt.COMFORTABLE, Felt.HARDWORK, Felt.STRAINED), felt?.map { it.felt })
     }
 
-    private fun addItem(bridge: LiveBridge, title: String, kind: ItemKind): String =
+    private fun addItem(
+        bridge: LiveBridge,
+        title: String,
+        kind: ItemKind,
+        variationLabels: List<String> = emptyList(),
+    ): String =
         bridge
             .update(
                 Event.Item(
@@ -554,7 +614,7 @@ class BridgeRoundTripTest {
                             title = title,
                             kind = kind,
                             tags = emptyList(),
-                            variationLabels = emptyList(),
+                            variationLabels = variationLabels,
                         )
                     )
                 )

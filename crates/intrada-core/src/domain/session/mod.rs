@@ -727,6 +727,20 @@ pub enum SessionEvent {
         entry_id: String,
         answer: Option<IntentionMet>,
     },
+
+    // === Builder rules (#2393), appended ===
+    /// The entry's variations, its segments left as they are. Building only.
+    SetEntryVariations {
+        entry_id: String,
+        variation_ids: Vec<String>,
+    },
+    /// Moves whole minutes onto a segment from its neighbour, which the core
+    /// picks. Refused when either would drop under a minute.
+    StepSegment {
+        entry_id: String,
+        section_id: String,
+        minutes: i8,
+    },
 }
 
 mod active;
@@ -925,6 +939,17 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::AnswerIntention { entry_id, answer } => {
             finish::answer_intention(model, entry_id, answer)
         }
+
+        SessionEvent::SetEntryVariations {
+            entry_id,
+            variation_ids,
+        } => building::set_entry_variations(model, entry_id, variation_ids),
+
+        SessionEvent::StepSegment {
+            entry_id,
+            section_id,
+            minutes,
+        } => building::step_segment(model, entry_id, section_id, minutes),
 
         // ── Entry Updates (Active or Summary) ──────────────────────
         // Accepted in both phases so the mid-session reflection sheet can record

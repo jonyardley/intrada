@@ -806,6 +806,9 @@ pub struct SegmentView {
     pub label: String,
     pub planned_secs: u32,
     pub planned_display: String,
+    /// Whether a minute more, or a minute less, would land (#2393).
+    pub can_add_minute: bool,
+    pub can_take_minute: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -814,6 +817,8 @@ pub struct FocusView {
     pub focus: crate::domain::session::IntentionFocus,
     /// "A1 at 84", "5 clean in a row", "From memory".
     pub label: String,
+    /// "♩ = 84", "5 clean in a row"; `None` for a focus with no number.
+    pub target_caption: Option<String>,
 }
 
 /// A point from the note: offered on the sheet, or confirmed on the entry.
@@ -1019,6 +1024,16 @@ pub struct BuildingSetlistView {
 pub struct FocusChoiceView {
     pub kind: crate::domain::session::FocusKind,
     pub label: String,
+    pub target: Option<FocusTargetView>,
+}
+
+/// What a numbered focus's target is held to, and the stepper's step.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FocusTargetView {
+    pub min: u16,
+    pub max: u16,
+    pub step: u16,
 }
 
 /// What an entry's plan can name: its item's variations and live sections.

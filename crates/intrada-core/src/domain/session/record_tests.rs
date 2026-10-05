@@ -483,8 +483,8 @@ fn a_focus_is_refused_without_what_it_needs() {
     let mut m = building(&["p"]);
     let id = entry_id(&m, 0);
     for (kind, section, target) in [
-        (FocusKind::Tempo, Some("s-a"), None),
         (FocusKind::Tempo, None, Some(500)),
+        (FocusKind::Tempo, None, Some(30)),
         (FocusKind::Tempo, Some("s-elsewhere"), Some(84)),
         (FocusKind::CleanReps, None, Some(0)),
         (FocusKind::Evenness, None, Some(3)),
@@ -803,6 +803,309 @@ fn finish_answers_are_refused_on_an_entry_never_finished() {
     assert_eq!(entries(&m)[0].felt, None);
 }
 
+// ── Builder rules the core owns (#2393) ──
+
+fn step(m: &mut Model, id: &str, section_id: &str, minutes: i8) {
+    send(
+        m,
+        SessionEvent::StepSegment {
+            entry_id: id.to_string(),
+            section_id: section_id.to_string(),
+            minutes,
+        },
+    );
+}
+
+fn twelve_split_three() -> (Model, String) {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("s-a", 0), seg("s-b", 0), seg("s-coda", 0)],
+    );
+    (m, id)
+}
+
+#[test]
+fn a_variation_on_a_two_minute_item_split_into_three_keeps_its_sections() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("s-a", 0), seg("s-b", 0), seg("s-coda", 0)],
+    );
+    set_duration(&mut m, &id, 120);
+    send(
+        &mut m,
+        SessionEvent::SetEntryVariations {
+            entry_id: id,
+            variation_ids: vec!["v-dot".to_string()],
+        },
+    );
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    let entry = &entries(&m)[0];
+    assert_eq!(entry.planned_section_ids(), ["s-a", "s-b", "s-coda"]);
+    assert_eq!(entry.planned_variation_ids, ["v-dot"]);
+}
+
+#[test]
+fn a_variation_leaves_tuned_minutes_as_they_were() {
+    let (mut m, id) = twelve_split_three();
+    step(&mut m, &id, "s-a", 2);
+    send(
+        &mut m,
+        SessionEvent::SetEntryVariations {
+            entry_id: id,
+            variation_ids: vec!["v-dot".to_string()],
+        },
+    );
+
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("s-a", 6), pair("s-b", 2), pair("s-coda", 4)]
+    );
+}
+
+#[test]
+fn an_unknown_variation_is_refused_and_plans_nothing() {
+    let (mut m, id) = twelve_split_three();
+    send(
+        &mut m,
+        SessionEvent::SetEntryVariations {
+            entry_id: id,
+            variation_ids: vec!["v-gone".to_string()],
+        },
+    );
+
+    assert!(m.last_error.is_some());
+    assert!(entries(&m)[0].planned_variation_ids.is_empty());
+}
+
+#[test]
+fn three_taps_on_a1_take_from_the_next_and_the_fourth_is_refused() {
+    let (mut m, id) = twelve_split_three();
+    for _ in 0..3 {
+        step(&mut m, &id, "s-a", 1);
+        assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    }
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("s-a", 7), pair("s-b", 1), pair("s-coda", 4)]
+    );
+
+    step(&mut m, &id, "s-a", 1);
+    assert!(m.last_error.is_some());
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("s-a", 7), pair("s-b", 1), pair("s-coda", 4)]
+    );
+}
+
+#[test]
+fn the_last_segment_takes_from_the_one_before() {
+    let (mut m, id) = twelve_split_three();
+    step(&mut m, &id, "s-coda", 1);
+
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("s-a", 4), pair("s-b", 3), pair("s-coda", 5)]
+    );
+}
+
+#[test]
+fn a_minute_taken_off_goes_to_the_same_neighbour() {
+    let (mut m, id) = twelve_split_three();
+    step(&mut m, &id, "s-a", -1);
+
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("s-a", 3), pair("s-b", 5), pair("s-coda", 4)]
+    );
+}
+
+#[test]
+fn a_step_is_refused_without_a_neighbour_or_a_planned_time() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_segments(&mut m, &id, vec![seg("s-a", 0), seg("s-b", 0)]);
+    step(&mut m, &id, "s-a", 1);
+    assert!(m.last_error.is_some(), "no planned time");
+
+    set_duration(&mut m, &id, 600);
+    set_segments(&mut m, &id, vec![seg("s-a", 0)]);
+    step(&mut m, &id, "s-a", 1);
+    assert!(m.last_error.is_some(), "one segment");
+
+    set_segments(&mut m, &id, vec![seg("s-a", 0), seg("s-b", 0)]);
+    step(&mut m, &id, "s-coda", 1);
+    assert!(m.last_error.is_some(), "not a segment");
+    assert_eq!(minutes(&m, 0), [pair("s-a", 5), pair("s-b", 5)]);
+}
+
+#[test]
+fn each_segment_says_which_taps_would_land() {
+    let (mut m, id) = twelve_split_three();
+    for _ in 0..3 {
+        step(&mut m, &id, "s-a", 1);
+    }
+
+    let taps: Vec<(bool, bool)> = building_view(&m).entries[0]
+        .record
+        .segments
+        .iter()
+        .map(|s| (s.can_add_minute, s.can_take_minute))
+        .collect();
+    assert_eq!(taps, [(false, true), (true, false), (false, true)]);
+}
+
+#[test]
+fn without_a_planned_time_no_tap_lands() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    set_segments(&mut m, &id, vec![seg("s-a", 0), seg("s-b", 0)]);
+
+    assert!(building_view(&m).entries[0]
+        .record
+        .segments
+        .iter()
+        .all(|s| !s.can_add_minute && !s.can_take_minute));
+}
+
+fn with_target_bpm(m: &mut Model, section_id: &str, bpm: u16) {
+    let mut items: Vec<Item> = m.items.iter().cloned().collect();
+    for section in items.iter_mut().flat_map(|i| i.sections.iter_mut()) {
+        if section.id == section_id {
+            section.target_bpm = Some(bpm);
+        }
+    }
+    m.items = items.into();
+}
+
+#[test]
+fn a_numbered_focus_sent_without_a_target_starts_from_the_core() {
+    let mut m = building(&["p"]);
+    with_target_bpm(&mut m, "s-a", 72);
+    with_target_bpm(&mut m, "s-b", 300);
+    let id = entry_id(&m, 0);
+    for (kind, section, starts) in [
+        (FocusKind::Tempo, Some("s-a"), 72),
+        (FocusKind::Tempo, Some("s-b"), 208),
+        (FocusKind::Tempo, Some("s-coda"), 96),
+        (FocusKind::Tempo, None, 96),
+        (FocusKind::CleanReps, Some("s-a"), 1),
+    ] {
+        set_focus(&mut m, &id, kind, section, None);
+        assert!(m.last_error.is_none(), "{:?}", m.last_error);
+        assert_eq!(
+            entries(&m)[0].focus.as_ref().and_then(|f| f.target),
+            Some(starts),
+            "{kind:?} {section:?}"
+        );
+    }
+}
+
+#[test]
+fn each_focus_choice_carries_the_range_its_target_is_held_to() {
+    let m = building(&["p"]);
+    let ranges: Vec<Option<(u16, u16, u16)>> = building_view(&m)
+        .focus_choices
+        .iter()
+        .map(|c| c.target.as_ref().map(|t| (t.min, t.max, t.step)))
+        .collect();
+
+    assert_eq!(ranges, [Some((40, 208, 2)), Some((1, 100, 1)), None, None]);
+}
+
+#[test]
+fn a_target_at_each_end_of_its_range_is_taken() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    for (kind, target) in [
+        (FocusKind::Tempo, 40),
+        (FocusKind::Tempo, 208),
+        (FocusKind::CleanReps, 1),
+        (FocusKind::CleanReps, 100),
+    ] {
+        set_focus(&mut m, &id, kind, None, Some(target));
+        assert!(m.last_error.is_none(), "{kind:?} {target}");
+    }
+    for (kind, target) in [
+        (FocusKind::Tempo, 39),
+        (FocusKind::Tempo, 209),
+        (FocusKind::CleanReps, 101),
+    ] {
+        set_focus(&mut m, &id, kind, None, Some(target));
+        assert!(m.last_error.is_some(), "{kind:?} {target}");
+    }
+}
+
+#[test]
+fn a_focus_shows_its_target_as_a_caption() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    for (kind, target, caption) in [
+        (FocusKind::Tempo, Some(84), Some("\u{2669} = 84")),
+        (FocusKind::CleanReps, Some(5), Some("5 clean in a row")),
+        (FocusKind::FromMemory, None, None),
+    ] {
+        set_focus(&mut m, &id, kind, Some("s-a"), target);
+        let focus = building_view(&m).entries[0].record.focus.clone();
+        assert_eq!(
+            focus.and_then(|f| f.target_caption).as_deref(),
+            caption,
+            "{kind:?}"
+        );
+    }
+}
+
+#[test]
+fn twenty_clean_in_a_row_offers_a_focus_the_stepper_can_show() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SetEntryIntention {
+            entry_id: id,
+            intention: Some("20 clean in a row".to_string()),
+        },
+    );
+
+    let view = building_view(&m);
+    let suggested = view.entries[0]
+        .record
+        .suggested_focus
+        .clone()
+        .expect("a suggestion");
+    assert_eq!(suggested.focus.kind, FocusKind::CleanReps);
+    assert_eq!(suggested.focus.target, Some(20));
+    let range = view
+        .focus_choices
+        .iter()
+        .find(|c| c.kind == FocusKind::CleanReps)
+        .and_then(|c| c.target.clone())
+        .expect("a range");
+    assert!((range.min..=range.max).contains(&20));
+}
+
+#[test]
+fn a_typed_tempo_the_click_cannot_play_suggests_nothing() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SetEntryIntention {
+            entry_id: id,
+            intention: Some("A1 at 30".to_string()),
+        },
+    );
+
+    assert_eq!(building_view(&m).entries[0].record.suggested_focus, None);
+}
+
 // ── Last time and trouble spots ──
 
 fn saved_session_playing(item_id: &str, way: PlayWay, started: DateTime<Utc>) -> PracticeSession {
@@ -987,6 +1290,15 @@ fn the_v017_record_and_its_events_round_trip_on_the_ffi_bincode_wire() {
         },
         SessionEvent::ApplyLastTime {
             entry_id: "e1".to_string(),
+        },
+        SessionEvent::SetEntryVariations {
+            entry_id: "e1".to_string(),
+            variation_ids: vec!["v-dot".to_string()],
+        },
+        SessionEvent::StepSegment {
+            entry_id: "e1".to_string(),
+            section_id: "s-a".to_string(),
+            minutes: -1,
         },
         SessionEvent::AddTroubleSpot {
             item_id: "p".to_string(),

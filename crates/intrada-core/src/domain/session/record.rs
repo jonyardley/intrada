@@ -4,12 +4,14 @@
 //! asked, and never stored.
 
 use super::{Play, SetlistEntry};
+use crate::domain::metre;
 use crate::domain::note_patterns::{self, NotePointKind as ReadKind};
 use crate::domain::section::BarRange;
 use crate::error::LibraryError;
 use crate::validation;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::ops::RangeInclusive;
 
 // ── Plan ──
 
@@ -209,6 +211,39 @@ pub(crate) fn rebalance(
     Ok(())
 }
 
+pub(crate) fn step_segment(
+    segments: &mut [Segment],
+    index: usize,
+    minutes: i8,
+) -> Result<(), LibraryError> {
+    let refuse = || LibraryError::Validation {
+        field: "segments".to_string(),
+        message: "Each section keeps at least a minute".to_string(),
+    };
+    let donor = if index + 1 == segments.len() {
+        index.checked_sub(1)
+    } else {
+        Some(index + 1)
+    };
+    let donor = donor
+        .filter(|&d| d < segments.len() && minutes != 0)
+        .ok_or_else(refuse)?;
+    let delta = i64::from(minutes) * 60;
+    let min = i64::from(validation::MIN_PLANNED_DURATION_SECS);
+    let taker = i64::from(segments[index].planned_secs) + delta;
+    let giver = i64::from(segments[donor].planned_secs) - delta;
+    if taker < min || giver < min {
+        return Err(refuse());
+    }
+    segments[index].planned_secs = u32::try_from(taker).map_err(|_| refuse())?;
+    segments[donor].planned_secs = u32::try_from(giver).map_err(|_| refuse())?;
+    Ok(())
+}
+
+pub(crate) fn can_step_segment(segments: &[Segment], index: usize, minutes: i8) -> bool {
+    step_segment(&mut segments.to_vec(), index, minutes).is_ok()
+}
+
 pub(crate) fn split_evenly(segments: &mut [Segment], planned: Option<u32>) {
     for segment in segments.iter_mut() {
         segment.planned_secs = 0;
@@ -299,23 +334,45 @@ pub(crate) fn validate_focus(
             return Err(refuse("That section isn't part of this item"));
         }
     }
-    match (focus.kind, focus.target) {
-        (FocusKind::Tempo, Some(bpm))
-            if (validation::MIN_BPM..=validation::MAX_BPM).contains(&bpm) =>
-        {
-            Ok(())
+    match (focus_target_range(focus.kind), focus.target) {
+        (Some((range, _)), Some(target)) if range.contains(&target) => Ok(()),
+        (Some(_), _) if focus.kind == FocusKind::Tempo => {
+            Err(refuse("Give a tempo the click can play"))
         }
-        (FocusKind::Tempo, _) => Err(refuse("Give the tempo to aim for")),
-        (FocusKind::CleanReps, Some(count))
-            if (1..=validation::MAX_CLEAN_REPS).contains(&count) =>
-        {
-            Ok(())
-        }
-        (FocusKind::CleanReps, _) => Err(refuse("Give how many clean in a row")),
-        (FocusKind::FromMemory | FocusKind::Evenness, None) => Ok(()),
-        (FocusKind::FromMemory | FocusKind::Evenness, Some(_)) => {
-            Err(refuse("This focus has no number to aim for"))
-        }
+        (Some(_), _) => Err(refuse("Give how many clean in a row")),
+        (None, None) => Ok(()),
+        (None, Some(_)) => Err(refuse("This focus has no number to aim for")),
+    }
+}
+
+/// One range for the core and the builder's stepper, with the stepper's step.
+/// A tempo is checked with the click, so it is held to what the click plays.
+pub(crate) fn focus_target_range(kind: FocusKind) -> Option<(RangeInclusive<u16>, u16)> {
+    match kind {
+        FocusKind::Tempo => Some((
+            metre::CLICK_TEMPO_MIN..=metre::CLICK_TEMPO_MAX,
+            metre::CLICK_TEMPO_STEP,
+        )),
+        FocusKind::CleanReps => Some((1..=validation::MAX_CLEAN_REPS, 1)),
+        FocusKind::FromMemory | FocusKind::Evenness => None,
+    }
+}
+
+pub(crate) fn starting_target(kind: FocusKind, section_bpm: Option<u16>) -> Option<u16> {
+    let (range, _) = focus_target_range(kind)?;
+    let start = match kind {
+        FocusKind::Tempo => section_bpm.unwrap_or(metre::CLICK_TEMPO_DEFAULT),
+        _ => *range.start(),
+    };
+    Some(start.clamp(*range.start(), *range.end()))
+}
+
+pub(crate) fn target_caption(focus: &IntentionFocus) -> Option<String> {
+    let target = focus.target?;
+    match focus.kind {
+        FocusKind::Tempo => Some(format!("\u{2669} = {target}")),
+        FocusKind::CleanReps => Some(format!("{target} clean in a row")),
+        FocusKind::FromMemory | FocusKind::Evenness => None,
     }
 }
 
