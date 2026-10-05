@@ -780,6 +780,7 @@ pub struct SetlistEntryView {
     /// decision 9): per-variation history reads `plays` and never this.
     pub score_summary: Option<u8>,
     pub record: EntryRecordView,
+    pub planned_key: Option<crate::domain::key::Key>,
 }
 
 /// What v0.17 adds to an entry (`specs/practice-record-v017.md`).
@@ -843,6 +844,36 @@ pub struct LastTimeView {
     pub variation_ids: Vec<String>,
     /// "Last time: B · Dotted".
     pub label: String,
+    pub key: Option<crate::domain::key::Key>,
+}
+
+/// One row of a key picker: `key: None` is the written key.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct KeyChoiceView {
+    pub key: Option<crate::domain::key::Key>,
+    pub label: String,
+    /// The written key's name under "Written key", when the item has one.
+    pub caption: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct EntryKeysView {
+    pub entry_id: String,
+    pub keys: Vec<KeyChoiceView>,
+}
+
+/// An exercise linked to a section the entry plans, offered with a tick.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct DrillOfferView {
+    pub entry_id: String,
+    pub section_id: String,
+    pub exercise_id: String,
+    pub title: String,
+    /// The drill's own entry once ticked, for `RemoveFromSetlist`.
+    pub added_entry_id: Option<String>,
 }
 
 /// What the practice screen offers on the current entry beyond the play.
@@ -888,6 +919,9 @@ pub struct FinishSheetView {
     pub intention_met_read: Option<crate::domain::session::IntentionMet>,
     pub felt_choices: Vec<FeltChoiceView>,
     pub obstacle_choices: Vec<ObstacleChoiceView>,
+    /// What each row can be changed to; the variations are `current_variations`.
+    pub sections: Vec<SectionView>,
+    pub keys: Vec<KeyChoiceView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1019,6 +1053,10 @@ pub struct BuildingSetlistView {
     /// For the entries whose item was last played on a section or variations.
     pub last_times: Vec<LastTimeView>,
     pub focus_choices: Vec<FocusChoiceView>,
+    /// For the entries whose item keeps keys of its own.
+    pub entry_keys: Vec<EntryKeysView>,
+    /// By entry, then the plan's section order, then the link order.
+    pub drill_offers: Vec<DrillOfferView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

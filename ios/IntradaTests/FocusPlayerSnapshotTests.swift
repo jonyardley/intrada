@@ -22,7 +22,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     active.reflection = ReflectionView(
       answers: ReflectionAnswers(
         marks: [], note: "", tempos: [], felt: nil, gotInTheWay: [], notePoints: [],
-        intentionMet: nil),
+        intentionMet: nil, ways: []),
       reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
       stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)))
     assertSnapshot(

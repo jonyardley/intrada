@@ -12,7 +12,7 @@ use crate::domain::session::{
 use crate::domain::variation::Variation;
 use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryRecordView, FeltChoiceView,
-    FinishSheetView, FocusView, ItemPracticeSummary, LastTimeView, NotePointView,
+    FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView, LastTimeView, NotePointView,
     ObstacleChoiceView, PickerVariationView, PlayView, PracticeSessionView, ReflectionView,
     SegmentClockView, SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
 };
@@ -165,7 +165,11 @@ impl PlayLabels<'_> {
             .iter()
             .map(|s| s.section_id.as_str())
             .collect();
-        Self::joined(self.parts(&sections, None, &entry.planned_variation_ids))
+        Self::joined(self.parts(
+            &sections,
+            entry.planned_key.as_ref(),
+            &entry.planned_variation_ids,
+        ))
     }
 
     pub fn way(&self, way: &PlayWay) -> Option<String> {
@@ -256,6 +260,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .collect(),
         score_summary: entry.score_summary(),
         record: entry_record_view(entry, labels),
+        planned_key: entry.planned_key,
     }
 }
 
@@ -302,7 +307,29 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
         label: format!("Last time: {}", labels.way(&way).unwrap_or_default()),
         section_id: way.section_id,
         variation_ids: way.variation_ids,
+        key: way.key,
     }
+}
+
+/// The written key first, then the item's own, skipping one that repeats it.
+pub fn key_choices(item: &crate::domain::item::Item) -> Vec<KeyChoiceView> {
+    let written = KeyChoiceView {
+        key: None,
+        label: "Written key".to_string(),
+        caption: item.key.as_ref().map(crate::domain::key::Key::label),
+    };
+    std::iter::once(written)
+        .chain(
+            item.keys
+                .iter()
+                .filter(|k| !item.key.is_some_and(|w| w.same_key(k)))
+                .map(|k| KeyChoiceView {
+                    key: Some(*k),
+                    label: k.label(),
+                    caption: None,
+                }),
+        )
+        .collect()
 }
 
 /// Closed plays carry their left-out time in their seconds; the open play,
@@ -427,6 +454,8 @@ fn finish_sheet_view(
                 label: session::obstacle_label(obstacle).to_string(),
             })
             .collect(),
+        sections: Vec::new(),
+        keys: Vec::new(),
     }
 }
 
@@ -2658,6 +2687,7 @@ mod tests {
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
             intention_met: None,
+            ways: Vec::new(),
         };
         let reading = TempoReading {
             bpm: 72,

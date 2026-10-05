@@ -2156,3 +2156,625 @@ fn sections_are_only_added_while_building() {
     assert!(m.last_error.is_some());
     assert_eq!(entries(&m)[0].segments.len(), 3);
 }
+
+// ── Drills, keys and the scoring confirm (the rest of #2249) ──
+
+fn exercise(id: &str, title: &str) -> Item {
+    Item {
+        title: title.to_string(),
+        kind: ItemKind::Exercise,
+        ..piece(id, vec![])
+    }
+}
+
+fn link(
+    exercise_id: &str,
+    section_id: Option<&str>,
+    position: usize,
+) -> crate::domain::item::ExerciseLink {
+    crate::domain::item::ExerciseLink::new(
+        exercise_id.to_string(),
+        section_id.map(str::to_string),
+        position,
+        t(0),
+    )
+}
+
+/// Clair de Lune with two drills for A2, one for A1 and, when asked, one
+/// for the whole piece; written in D flat, kept in D and C.
+fn clair_with_drills(whole_piece_drill: bool) -> Model {
+    let mut m = model();
+    let mut items: Vec<Item> = m.items.iter().cloned().collect();
+    let clair = items.iter_mut().find(|i| i.id == "clair").expect("clair");
+    clair.key = crate::domain::key::Key::parse("D flat major");
+    clair.keys = vec![
+        crate::domain::key::Key::parse("D major").expect("key"),
+        crate::domain::key::Key::parse("C major").expect("key"),
+    ];
+    clair.exercise_links = vec![
+        link("ex-arp", Some("c-a2"), 0),
+        link("ex-pedal", Some("c-a2"), 1),
+        link("ex-a1", Some("c-a1"), 2),
+    ];
+    if whole_piece_drill {
+        clair.exercise_links.push(link("ex-warm", None, 3));
+    }
+    items.extend([
+        exercise("ex-arp", "Left hand arpeggios"),
+        exercise("ex-pedal", "Pedal changes"),
+        exercise("ex-a1", "Voicing the melody"),
+        exercise("ex-warm", "Five finger warm-up"),
+    ]);
+    m.items = items.into();
+    m
+}
+
+fn building_clair(whole_piece_drill: bool) -> (Model, String) {
+    let mut m = clair_with_drills(whole_piece_drill);
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "clair".to_string(),
+        },
+    );
+    let id = entries(&m)
+        .iter()
+        .find(|e| e.item_id == "clair")
+        .expect("clair entry")
+        .id
+        .clone();
+    (m, id)
+}
+
+fn add_segment(m: &mut Model, id: &str, section_id: &str) {
+    send(
+        m,
+        SessionEvent::AddSegment {
+            entry_id: id.to_string(),
+            section_id: section_id.to_string(),
+        },
+    );
+}
+
+fn offered(m: &Model) -> Vec<(String, String, bool)> {
+    building_view(m)
+        .drill_offers
+        .iter()
+        .map(|d| {
+            (
+                d.section_id.clone(),
+                d.exercise_id.clone(),
+                d.added_entry_id.is_some(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn adding_a_piece_brings_only_its_whole_piece_drills() {
+    let (m, _) = building_clair(true);
+
+    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    assert_eq!(items, ["ex-warm", "clair"]);
+}
+
+#[test]
+fn adding_a2_offers_its_two_drills_and_adds_neither() {
+    let (mut m, id) = building_clair(false);
+    assert!(offered(&m).is_empty(), "nothing planned, nothing offered");
+
+    add_segment(&mut m, &id, "c-a2");
+
+    assert_eq!(
+        offered(&m),
+        [
+            ("c-a2".to_string(), "ex-arp".to_string(), false),
+            ("c-a2".to_string(), "ex-pedal".to_string(), false),
+        ]
+    );
+    assert_eq!(entries(&m).len(), 1);
+}
+
+#[test]
+fn ticking_a_drill_puts_it_in_a_block_with_its_piece() {
+    let (mut m, id) = building_clair(false);
+    add_segment(&mut m, &id, "c-a2");
+
+    send(
+        &mut m,
+        SessionEvent::AddDrill {
+            entry_id: id.clone(),
+            exercise_id: "ex-arp".to_string(),
+        },
+    );
+
+    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    assert_eq!(items, ["ex-arp", "clair"]);
+    let group = entries(&m)[1].group_id.clone();
+    assert!(group.is_some());
+    assert_eq!(entries(&m)[0].group_id, group);
+    assert!(offered(&m)[0].2, "the ticked drill reads as added");
+}
+
+#[test]
+fn a_drill_joins_the_block_the_piece_already_heads() {
+    let (mut m, id) = building_clair(true);
+    add_segment(&mut m, &id, "c-a2");
+
+    send(
+        &mut m,
+        SessionEvent::AddDrill {
+            entry_id: id,
+            exercise_id: "ex-pedal".to_string(),
+        },
+    );
+
+    let items: Vec<&str> = entries(&m).iter().map(|e| e.item_id.as_str()).collect();
+    assert_eq!(items, ["ex-warm", "ex-pedal", "clair"]);
+    let groups: std::collections::HashSet<_> =
+        entries(&m).iter().map(|e| e.group_id.clone()).collect();
+    assert_eq!(groups.len(), 1);
+}
+
+#[test]
+fn a_drill_for_a_section_not_planned_is_refused() {
+    let (mut m, id) = building_clair(false);
+    add_segment(&mut m, &id, "c-a2");
+
+    send(
+        &mut m,
+        SessionEvent::AddDrill {
+            entry_id: id,
+            exercise_id: "ex-a1".to_string(),
+        },
+    );
+
+    assert_eq!(entries(&m).len(), 1);
+    assert!(m.last_error.is_some());
+}
+
+#[test]
+fn the_key_picker_offers_the_written_key_then_the_pieces_own() {
+    let (m, id) = building_clair(false);
+
+    let view = building_view(&m);
+    let keys = &view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("clair keeps keys")
+        .keys;
+    let labels: Vec<(&str, Option<&str>)> = keys
+        .iter()
+        .map(|k| (k.label.as_str(), k.caption.as_deref()))
+        .collect();
+    assert_eq!(
+        labels,
+        [
+            ("Written key", Some("D♭ major")),
+            ("D major", None),
+            ("C major", None)
+        ]
+    );
+    assert_eq!(keys[0].key, None);
+}
+
+#[test]
+fn a_planned_key_opens_the_first_play_and_variations_stay_a_plan() {
+    let (mut m, id) = building_clair(false);
+    add_segment(&mut m, &id, "c-a1");
+    let d = crate::domain::key::Key::parse("D major");
+    send(
+        &mut m,
+        SessionEvent::SetEntryKey {
+            entry_id: id.clone(),
+            key: d,
+        },
+    );
+    send(
+        &mut m,
+        SessionEvent::SetEntryVariations {
+            entry_id: id,
+            variation_ids: vec!["v-dot".to_string()],
+        },
+    );
+    assert_eq!(
+        building_view(&m).entries[0].planned_label.as_deref(),
+        Some("A1 · D major · Dotted")
+    );
+
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+
+    let play = entries(&m)[0].open_play().expect("open play").clone();
+    assert_eq!(play.section_id.as_deref(), Some("c-a1"));
+    assert_eq!(play.key, d);
+    assert!(play.variation_ids.is_empty());
+}
+
+fn finishing_clair_in_d() -> (Model, String, String) {
+    let (mut m, id) = building_clair(false);
+    add_segment(&mut m, &id, "c-a1");
+    send(
+        &mut m,
+        SessionEvent::SetEntryKey {
+            entry_id: id.clone(),
+            key: crate::domain::key::Key::parse("D major"),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+    let play_id = entries(&m)[0].plays[0].id.clone();
+    (m, id, play_id)
+}
+
+fn in_g(play_id: &str) -> DraftWay {
+    DraftWay {
+        play_id: play_id.to_string(),
+        section_id: Some("c-a1".to_string()),
+        key: crate::domain::key::Key::parse("G major"),
+        variation_ids: vec![],
+    }
+}
+
+fn next(m: &mut Model) {
+    send(
+        m,
+        SessionEvent::NextItem {
+            now: t(300),
+            next_item_started_at: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+}
+
+#[test]
+fn the_finish_sheet_offers_the_sections_and_keys_to_confirm() {
+    let (m, _, _) = finishing_clair_in_d();
+
+    let finish = active_view(&m).record.finish.expect("the sheet");
+    let sections: Vec<&str> = finish.sections.iter().map(|s| s.label.as_str()).collect();
+    assert_eq!(sections, ["A1", "B", "A2", "Coda"]);
+    let keys: Vec<&str> = finish.keys.iter().map(|k| k.label.as_str()).collect();
+    assert_eq!(keys, ["Written key", "D major", "C major"]);
+}
+
+#[test]
+fn planned_a1_in_d_scored_as_g_records_g() {
+    let (mut m, id, play_id) = finishing_clair_in_d();
+    let answers = ReflectionAnswers {
+        ways: vec![in_g(&play_id)],
+        ..ReflectionAnswers::default()
+    };
+    send(&mut m, SessionEvent::UpdateReflectionDraft { answers });
+    assert_eq!(
+        active(&m).reflection.as_ref().expect("draft").answers.ways,
+        [in_g(&play_id)],
+        "the change survives a crash before Next"
+    );
+
+    next(&mut m);
+    let way = in_g(&play_id);
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id: way.play_id,
+            section_id: way.section_id,
+            key: way.key,
+            variation_ids: way.variation_ids,
+        },
+    );
+
+    assert_eq!(entries(&m)[0].plays[0].key, way.key);
+}
+
+#[test]
+fn a_draft_way_alone_changes_no_play() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    let answers = ReflectionAnswers {
+        ways: vec![in_g(&play_id)],
+        ..ReflectionAnswers::default()
+    };
+    send(&mut m, SessionEvent::UpdateReflectionDraft { answers });
+
+    next(&mut m);
+
+    assert_eq!(
+        entries(&m)[0].plays[0].key,
+        crate::domain::key::Key::parse("D major")
+    );
+}
+
+#[test]
+fn a_way_naming_another_pieces_section_is_refused() {
+    let (mut m, id, play_id) = finishing_clair_in_d();
+    next(&mut m);
+
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id,
+            section_id: Some("s-a".to_string()),
+            key: None,
+            variation_ids: vec![],
+        },
+    );
+
+    assert_eq!(entries(&m)[0].plays[0].section_id.as_deref(), Some("c-a1"));
+    assert!(m.last_error.is_some());
+}
+
+#[test]
+fn a_draft_way_for_a_section_not_on_the_piece_is_refused_whole() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    let answers = ReflectionAnswers {
+        ways: vec![DraftWay {
+            section_id: Some("s-a".to_string()),
+            ..in_g(&play_id)
+        }],
+        felt: Some(Felt::Strained),
+        ..ReflectionAnswers::default()
+    };
+
+    send(&mut m, SessionEvent::UpdateReflectionDraft { answers });
+
+    let kept = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert!(kept.ways.is_empty());
+    assert_eq!(kept.felt, None, "the felt word went with it");
+}
+
+#[test]
+fn last_time_carries_its_key_into_the_plan() {
+    let mut m = model();
+    let mut saved = saved_session_playing(
+        "p",
+        PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        },
+        t(-100_000),
+    );
+    saved.entries[0].plays[0].key = crate::domain::key::Key::parse("G major");
+    m.sessions = vec![saved].into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let id = entry_id(&m, 0);
+    assert_eq!(
+        building_view(&m).last_times[0].label,
+        "Last time: B · G major"
+    );
+
+    send(&mut m, SessionEvent::ApplyLastTime { entry_id: id });
+
+    assert_eq!(
+        entries(&m)[0].planned_key,
+        crate::domain::key::Key::parse("G major")
+    );
+    assert!(
+        building_view(&m).last_times.is_empty(),
+        "a planned key is a plan"
+    );
+}
+
+#[test]
+fn the_practice_screen_offers_last_time_only_on_the_whole_piece_plain() {
+    let mut m = model();
+    m.sessions = vec![saved_session_playing(
+        "p",
+        PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        },
+        t(-100_000),
+    )]
+    .into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    let offer = active_view(&m)
+        .record
+        .last_time
+        .expect("offered on the whole piece");
+    assert_eq!(offer.section_id.as_deref(), Some("s-b"));
+
+    let id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::SwitchPlay {
+            entry_id: id,
+            section_id: offer.section_id,
+            key: offer.key,
+            variation_ids: offer.variation_ids,
+            now: t(60),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert!(active_view(&m).record.last_time.is_none());
+}
+
+fn d_flat_major() -> Option<crate::domain::key::Key> {
+    crate::domain::key::Key::parse("D flat major")
+}
+
+#[test]
+fn a_way_sent_before_next_changes_no_play() {
+    let (mut m, id, play_id) = finishing_clair_in_d();
+
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id,
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+        },
+    );
+
+    let play = &entries(&m)[0].plays[0];
+    assert_eq!(play.section_id.as_deref(), Some("c-a1"));
+    assert_eq!(play.key, crate::domain::key::Key::parse("D major"));
+}
+
+#[test]
+fn a_way_naming_a_play_from_elsewhere_is_refused() {
+    let (mut m, id, _) = finishing_clair_in_d();
+    next(&mut m);
+
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id: "someone-elses-play".to_string(),
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+        },
+    );
+
+    assert!(m.last_error.is_some());
+}
+
+#[test]
+fn the_written_key_is_stored_as_no_key_wherever_it_is_named() {
+    let (mut m, id) = building_clair(false);
+    send(
+        &mut m,
+        SessionEvent::SetEntryKey {
+            entry_id: id,
+            key: d_flat_major(),
+        },
+    );
+    assert_eq!(entries(&m)[0].planned_key, None, "planning");
+
+    let (mut m, id, play_id) = finishing_clair_in_d();
+    let answers = ReflectionAnswers {
+        ways: vec![DraftWay {
+            key: d_flat_major(),
+            ..in_g(&play_id)
+        }],
+        ..ReflectionAnswers::default()
+    };
+    send(&mut m, SessionEvent::UpdateReflectionDraft { answers });
+    let drafted = &active(&m).reflection.as_ref().expect("draft").answers.ways;
+    assert_eq!(drafted[0].key, None, "the draft");
+
+    next(&mut m);
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id,
+            section_id: Some("c-a1".to_string()),
+            key: d_flat_major(),
+            variation_ids: vec![],
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].key, None, "the confirm");
+}
+
+#[test]
+fn a_planned_key_alone_hides_last_time_in_the_builder() {
+    let mut m = model();
+    m.sessions = vec![saved_session_playing(
+        "p",
+        PlayWay {
+            section_id: Some("s-b".to_string()),
+            ..PlayWay::default()
+        },
+        t(-100_000),
+    )]
+    .into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "p".to_string(),
+        },
+    );
+    let id = entry_id(&m, 0);
+    assert_eq!(building_view(&m).last_times.len(), 1);
+
+    send(
+        &mut m,
+        SessionEvent::SetEntryKey {
+            entry_id: id,
+            key: crate::domain::key::Key::parse("G major"),
+        },
+    );
+
+    assert!(building_view(&m).last_times.is_empty());
+}
+
+#[test]
+fn the_finish_sheet_hides_last_time() {
+    let mut m = model();
+    let mut saved = saved_session_playing("q", PlayWay::default(), t(-100_000));
+    saved.entries[0].plays[0].key = crate::domain::key::Key::parse("G major");
+    m.sessions = vec![saved].into();
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "q".to_string(),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    assert!(active_view(&m).record.last_time.is_some());
+
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert!(active_view(&m).record.last_time.is_none());
+}
+
+#[test]
+fn ticking_a_drill_already_in_the_session_forms_no_block() {
+    let mut m = clair_with_drills(false);
+    send(&mut m, SessionEvent::StartBuilding);
+    for item_id in ["ex-arp", "clair"] {
+        send(
+            &mut m,
+            SessionEvent::AddToSetlist {
+                item_id: item_id.to_string(),
+            },
+        );
+    }
+    let id = entry_id(&m, 1);
+    add_segment(&mut m, &id, "c-a2");
+
+    send(
+        &mut m,
+        SessionEvent::AddDrill {
+            entry_id: id,
+            exercise_id: "ex-arp".to_string(),
+        },
+    );
+
+    assert!(entries(&m).iter().all(|e| e.group_id.is_none()));
+    assert!(offered(&m)[0].2, "it reads as ticked");
+}

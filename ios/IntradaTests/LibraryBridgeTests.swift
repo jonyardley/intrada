@@ -1113,6 +1113,48 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(rows.map { $0.sections.map(\.label) }, [[], ["A1"]], "A2 left the set")
   }
 
+  /// A drill linked to A2 is offered once A2 is planned, never brought along, and the
+  /// key picker offers the written key then the piece's own (#2249).
+  func testRealBridgeTheBuilderOffersAPlannedSectionsDrillAndThePiecesKeys() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let nocturne = try add(bridge, "Nocturne", .piece)
+    let thirds = try add(bridge, "Thirds", .exercise)
+    let a2 = try XCTUnwrap(try sectionIds(bridge, on: nocturne, ["A2"])["A2"])
+    _ = try bridge.update(
+      .item(
+        .setExerciseLinks(
+          exerciseId: thirds, targets: [LinkTarget(pieceId: nocturne, sectionId: a2)])))
+    let dMajor = Key(letter: .d, accidental: .natural, mode: .major)
+    _ = try bridge.update(.item(.updateKeys(id: nocturne, keys: [dMajor])))
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: nocturne)))
+    let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+    XCTAssertEqual(
+      try bridge.rendered().buildingSetlist?.entries.count, 1, "a section's drill stays behind")
+
+    _ = try bridge.update(.session(.addSegment(entryId: entryId, sectionId: a2)))
+    let building = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    let offers: [DrillOfferView] = building.drillOffers
+    XCTAssertEqual(offers.map(\.exerciseId), [thirds])
+    XCTAssertEqual(offers.map(\.title), ["Thirds"])
+    XCTAssertEqual(offers.map(\.sectionId), [a2])
+    XCTAssertNil(offers.first?.addedEntryId)
+    let entryKeys: [EntryKeysView] = building.entryKeys
+    let keys: [KeyChoiceView] = try XCTUnwrap(entryKeys.first { $0.entryId == entryId }).keys
+    XCTAssertEqual(keys.map(\.label), ["Written key", "D major"])
+    XCTAssertEqual(keys.map(\.key), [nil, dMajor])
+
+    _ = try bridge.update(.session(.addDrill(entryId: entryId, exerciseId: thirds)))
+    _ = try bridge.update(.session(.setEntryKey(entryId: entryId, key: dMajor)))
+
+    let after = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertNil(try bridge.rendered().error)
+    XCTAssertNotNil(after.drillOffers.first?.addedEntryId)
+    XCTAssertEqual(after.entries.map(\.itemId), [thirds, nocturne])
+    XCTAssertEqual(after.entries.last?.plannedKey, dMajor)
+  }
+
   /// The pickers send only what was ticked; the core keeps the sections (#2379).
   func testRealBridgePickersKeepSectionsAndLinkNewTicksWhole() throws {
     let bridge = RowsBridge()

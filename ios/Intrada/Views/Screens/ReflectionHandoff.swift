@@ -73,7 +73,7 @@ enum ReflectionHandoff {
       tempos: result.tempos.filter(\.userSet).map {
         DraftTempo(playId: $0.playId, tempo: $0.tempo, click: $0.click)
       }, felt: result.felt, gotInTheWay: result.obstacles, notePoints: result.notePoints,
-      intentionMet: result.intentionMet)
+      intentionMet: result.intentionMet, ways: [])
   }
 
   /// The saved draft as the sheet's starting answers, after a resume (#2137).

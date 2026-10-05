@@ -196,7 +196,8 @@ final class LibraryStoreTests: XCTestCase {
             RepEvent(action: .missed, at: "2026-01-01T00:02:00Z", tempo: nil, clickSounding: nil),
             RepEvent(action: .success, at: "2026-01-01T00:03:30Z", tempo: nil, clickSounding: nil),
           ], tempoChanges: [], achievedTempo: 120, clickPattern: nil, score: 4, away: [])
-      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [],
+      plannedKey: nil)
   }
 
   private func session(_ id: String, completedAt: String = "2026-01-01T00:10:00Z")

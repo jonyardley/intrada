@@ -80,6 +80,10 @@ fn a_legacy_entry_folds_into_one_play_carrying_everything() {
         "the old target plans the entry"
     );
     assert!(entry.planned_variation_ids.is_empty());
+    assert_eq!(
+        entry.planned_key, None,
+        "a row from before #2249 plans the written key"
+    );
 }
 
 /// A timed run-through with no mark: the status alone is the record.
@@ -320,6 +324,7 @@ fn current_session() -> PracticeSession {
         }],
         planned_variation_ids: vec!["v-dotted".to_string()],
         planned_rep_target: Some(5),
+        planned_key: crate::domain::key::Key::parse("A flat major"),
         plays: vec![play, Play::fixture()],
         ..SetlistEntry::fixture()
     };

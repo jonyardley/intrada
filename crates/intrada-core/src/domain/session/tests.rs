@@ -5467,6 +5467,7 @@ fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
         got_in_the_way: Vec::new(),
         note_points: Vec::new(),
         planned_variation_ids: vec!["v-2".to_string()],
+        planned_key: None,
     });
 }
 
@@ -5508,6 +5509,7 @@ fn pinned_active_session() -> ActiveSession {
     }];
     touched.planned_variation_ids = vec!["v-1".to_string()];
     touched.planned_rep_target = Some(10);
+    touched.planned_key = crate::domain::key::Key::parse("G major");
     touched.plays = vec![Play {
         id: "e1-play".to_string(),
         section_id: Some("s-1".to_string()),
@@ -5588,6 +5590,12 @@ fn pinned_active_session() -> ActiveSession {
                 got_in_the_way: vec![Obstacle::Tone],
                 note_points: vec![NoteSpan { start: 0, end: 6 }],
                 intention_met: Some(IntentionMet::Yes),
+                ways: vec![DraftWay {
+                    play_id: "e2-play".to_string(),
+                    section_id: Some("s-2".to_string()),
+                    key: crate::domain::key::Key::parse("D major"),
+                    variation_ids: vec!["v-1".to_string()],
+                }],
             },
         }),
         segment: Some(SegmentClock {
@@ -5618,19 +5626,21 @@ const PINNED_ACTIVE_SESSION_HEX: &str = concat!(
     "0002000000000000000300000000000000732d31b40000000300000000000000732d3278000000",
     "0100000000010300000000000000732d3101540001010000000102000000020000000000000002",
     "000000030000000100000000000000000000000c000e00010300000000000000732d3100000000",
-    "0c000000020000000000000065320200000000000000783106000000000000005363616c657301",
-    "000000010000000000000000000000000000000200000000000000000000000000000000000000",
-    "000000000000000000000000000000000000000000000000000000000000000001000000000000",
-    "001400000000000000323032362d30392d30335430393a30303a30305a14000000000000003230",
-    "32362d30392d30335430383a34373a30305a011400000000000000323032362d30392d30335430",
-    "393a30303a30305aa8000101070801030000000000000003020229000100000000000000070000",
-    "000000000065322d706c6179060600000000000000737465616479010000000000000007000000",
-    "0000000065322d706c617996000001000000000100000000000000040000000100000000000000",
-    "0000000006000000010000000001010000001400000000000000323032362d30392d3033543039",
-    "3a30303a30305af0000000780000003c000000",
+    "0c0000000104000000000000000100000000020000000000000065320200000000000000783106",
+    "000000000000005363616c65730100000001000000000000000000000000000000020000000000",
+    "000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "000000000000000001000000000000001400000000000000323032362d30392d30335430393a30",
+    "303a30305a1400000000000000323032362d30392d30335430383a34373a30305a011400000000",
+    "000000323032362d30392d30335430393a30303a30305aa8000101070801030000000000000003",
+    "020229000100000000000000070000000000000065322d706c6179060600000000000000737465",
+    "6164790100000000000000070000000000000065322d706c617996000001000000000100000000",
+    "000000040000000100000000000000000000000600000001000000000100000000000000070000",
+    "000000000065322d706c6179010300000000000000732d32010100000000000000010000000001",
+    "000000000000000300000000000000762d3101010000001400000000000000323032362d30392d",
+    "30335430393a30303a30305af0000000780000003c000000",
 );
 
-const PINNED_BLOB_VERSION: u32 = 7;
+const PINNED_BLOB_VERSION: u32 = 8;
 
 /// The blob is positional bincode written by one build and read by the
 /// next (#1345); the shell's storage key follows `BLOB_VERSION`, so a bump
@@ -6562,7 +6572,7 @@ fn assert_saved_what_is_active(saves: &[ActiveSession], model: &Model) {
     let SessionStatus::Active(ref active) = model.session_status else {
         panic!("Expected Active state");
     };
-    assert_eq!(saves, std::slice::from_ref(active));
+    assert_eq!(saves, std::slice::from_ref(active.as_ref()));
 }
 
 #[test]
@@ -7038,6 +7048,7 @@ fn answers_for(play_id: &str) -> ReflectionAnswers {
         got_in_the_way: Vec::new(),
         note_points: Vec::new(),
         intention_met: None,
+        ways: Vec::new(),
     }
 }
 
@@ -7125,7 +7136,7 @@ fn a_resumed_sheet_still_stops_the_item_clock_at_the_stamp() {
     update(
         &mut model,
         Event::Session(SessionEvent::RecoverSession {
-            session: saved,
+            session: *saved,
             now: start + chrono::Duration::hours(3),
         }),
     );

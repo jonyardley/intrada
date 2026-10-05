@@ -159,18 +159,7 @@ pub(super) fn switch_play(
         return crux_core::render::render();
     };
 
-    let written = model
-        .items
-        .iter()
-        .find(|i| i.id == entry.item_id)
-        .and_then(|i| i.key);
-    if way
-        .key
-        .zip(written)
-        .is_some_and(|(named, written)| named.same_key(&written))
-    {
-        way.key = None;
-    }
+    way.key = written_key_as_none(model, &entry.item_id, way.key);
 
     // Switching to the way already open writes nothing, so a stray tap
     // cannot clear the dots (#1739 decision 6). Checked before capacity,
@@ -276,7 +265,7 @@ pub(super) fn recover_session(
             away.back_at = Some(away.left_at);
         }
     }
-    model.session_status = SessionStatus::Active(session);
+    model.session_status = SessionStatus::Active(Box::new(session));
     model.last_error = None;
     crux_core::render::render()
 }
@@ -309,8 +298,12 @@ pub(super) fn update_reflection_draft(
     let entry = active.current_entry();
     let sections = super::finish::named_sections(model, &entry.item_id);
     keep_offered_points(&mut answers, &sections);
+    for way in &mut answers.ways {
+        way.key = written_key_as_none(model, &entry.item_id, way.key);
+    }
     if active.reflection.is_none()
         || !draft_answers_valid(entry, &answers)
+        || !draft_ways_valid(entry, &answers.ways, model)
         || !obstacles_distinct(&answers.got_in_the_way)
     {
         return crux_core::render::render();
@@ -347,6 +340,20 @@ fn obstacles_distinct(obstacles: &[Obstacle]) -> bool {
     seen.len() == obstacles.len()
 }
 
+fn draft_ways_valid(entry: &SetlistEntry, ways: &[DraftWay], model: &Model) -> bool {
+    let mut seen = std::collections::HashSet::new();
+    ways.iter().all(|row| {
+        let way = PlayWay {
+            section_id: row.section_id.clone(),
+            key: row.key,
+            variation_ids: row.variation_ids.clone(),
+        };
+        seen.insert(row.play_id.as_str())
+            && validation::validate_play_belongs(entry, &row.play_id).is_ok()
+            && validation::validate_play_way(entry, &way, model).is_ok()
+    })
+}
+
 fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> bool {
     let distinct = |ids: Vec<&str>| {
         let count = ids.len();
@@ -378,4 +385,19 @@ fn draft_answers_valid(entry: &SetlistEntry, answers: &ReflectionAnswers) -> boo
     marks_valid
         && tempos_valid
         && validation::validate_entry_notes(&Some(answers.note.clone())).is_ok()
+}
+
+/// The written key is stored as `None`, so a way named in it reads the same
+/// as one that never named a key.
+pub(super) fn written_key_as_none(
+    model: &Model,
+    item_id: &str,
+    key: Option<crate::domain::key::Key>,
+) -> Option<crate::domain::key::Key> {
+    let written = model
+        .items
+        .iter()
+        .find(|i| i.id == item_id)
+        .and_then(|i| i.key);
+    key.filter(|named| !written.is_some_and(|written| named.same_key(&written)))
 }

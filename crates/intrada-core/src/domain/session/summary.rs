@@ -38,6 +38,44 @@ pub(super) fn update_entry_score(
     persist_if_active(model)
 }
 
+pub(super) fn update_play_way(
+    model: &mut Model,
+    entry_id: String,
+    play_id: String,
+    mut way: PlayWay,
+) -> Command<Effect, Event> {
+    let Some(entry) = entry_for_update_mut(model, &entry_id).map(|e| e.clone()) else {
+        return crux_core::render::render();
+    };
+    // Like the marks: the open play and the sheet's stamped play stay as
+    // `SwitchPlay` left them (#2137).
+    if entry.status != EntryStatus::Completed {
+        return crux_core::render::render();
+    }
+    way.key = written_key_as_none(model, &entry.item_id, way.key);
+    let check = validation::validate_play_belongs(&entry, &play_id)
+        .and_then(|()| validation::validate_play_way(&entry, &way, model));
+    if let Err(e) = check {
+        model.raise_error(e.to_string());
+        return crux_core::render::render();
+    }
+    let Some(entry) = entry_for_update_mut(model, &entry_id) else {
+        return crux_core::render::render();
+    };
+    let Some(play) = entry.plays.iter_mut().find(|p| p.id == play_id) else {
+        return crux_core::render::render();
+    };
+    if play.is_played(&way) {
+        model.last_error = None;
+        return crux_core::render::render();
+    }
+    play.section_id = way.section_id;
+    play.key = way.key;
+    play.variation_ids = way.variation_ids;
+    model.last_error = None;
+    persist_if_active(model)
+}
+
 pub(super) fn update_entry_tempo(
     model: &mut Model,
     entry_id: String,

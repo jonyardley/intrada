@@ -198,6 +198,8 @@ pub struct SetlistEntry {
     pub felt: Option<Felt>,
     pub got_in_the_way: Vec<Obstacle>,
     pub note_points: Vec<NotePoint>,
+    /// `None` is the written key. The first play opens in it.
+    pub planned_key: Option<Key>,
 }
 
 impl SetlistEntry {
@@ -279,6 +281,7 @@ impl SetlistEntry {
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
+            planned_key: None,
         }
     }
 }
@@ -353,6 +356,18 @@ pub struct ReflectionAnswers {
     /// The spans of the note's points the musician confirmed.
     pub note_points: Vec<NoteSpan>,
     pub intention_met: Option<IntentionMet>,
+    /// Only the rows whose section, key or variations were changed by hand.
+    pub ways: Vec<DraftWay>,
+}
+
+/// What a finish row says was played, in place of what the play recorded.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct DraftWay {
+    pub play_id: String,
+    pub section_id: Option<String>,
+    pub key: Option<Key>,
+    pub variation_ids: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -410,15 +425,15 @@ pub struct ActiveSession {
     pub segment: Option<SegmentClock>,
 }
 
-const RETIRED_BLOB_VERSION_MAX: u32 = 6;
+const RETIRED_BLOB_VERSION_MAX: u32 = 7;
 const _: () = assert!(ActiveSession::BLOB_VERSION > RETIRED_BLOB_VERSION_MAX);
 
 impl ActiveSession {
     /// The crash-recovery blob is positional bincode, so a build reads only a
     /// blob of its own shape. The shell names its storage key by this number,
     /// so a shape change bumps it here and nowhere else (#1116). Versions 1 to
-    /// 6 named earlier shapes and are never reused.
-    pub const BLOB_VERSION: u32 = 7;
+    /// 7 named earlier shapes and are never reused.
+    pub const BLOB_VERSION: u32 = 8;
 
     /// `entries` is never empty during an active session, so this indexes
     /// unconditionally rather than returning an `Option`.
@@ -446,7 +461,7 @@ pub enum SessionStatus {
     #[default]
     Idle,
     Building(BuildingSession),
-    Active(ActiveSession),
+    Active(Box<ActiveSession>),
     Summary(SummarySession),
 }
 
@@ -755,6 +770,28 @@ pub enum SessionEvent {
         entry_id: String,
         section_id: String,
     },
+
+    // === The rest of #2249, appended ===
+    /// `None` is the written key. Building only; any key is valid.
+    SetEntryKey {
+        entry_id: String,
+        key: Option<Key>,
+    },
+    /// An exercise linked to a planned section of the piece, into the
+    /// piece's block, forming one when it has none. Building only.
+    AddDrill {
+        entry_id: String,
+        exercise_id: String,
+    },
+    /// The finish sheet's confirm, sent after `NextItem` like the marks.
+    /// `play_id` must belong to `entry_id`; the same way writes nothing.
+    UpdatePlayWay {
+        entry_id: String,
+        play_id: String,
+        section_id: Option<String>,
+        key: Option<Key>,
+        variation_ids: Vec<String>,
+    },
 }
 
 mod active;
@@ -777,6 +814,7 @@ pub use record::{
     Obstacle, Segment, SegmentClock,
 };
 
+use active::written_key_as_none;
 use plays::{record_rep, record_tempo_change};
 
 pub(crate) const RETIRED_SESSION_NOTICE: &str =
@@ -974,6 +1012,30 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             section_id,
         } => building::remove_segment(model, entry_id, section_id),
+
+        SessionEvent::SetEntryKey { entry_id, key } => {
+            building::set_entry_key(model, entry_id, key)
+        }
+
+        SessionEvent::AddDrill {
+            entry_id,
+            exercise_id,
+        } => building::add_drill(model, entry_id, exercise_id),
+
+        SessionEvent::UpdatePlayWay {
+            entry_id,
+            play_id,
+            section_id,
+            key,
+            variation_ids,
+        } => {
+            let way = PlayWay {
+                section_id,
+                key,
+                variation_ids,
+            };
+            summary::update_play_way(model, entry_id, play_id, way)
+        }
 
         // ── Entry Updates (Active or Summary) ──────────────────────
         // Accepted in both phases so the mid-session reflection sheet can record

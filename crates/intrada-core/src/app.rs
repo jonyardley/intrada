@@ -1559,6 +1559,7 @@ mod tests {
                         score: None,
                         ..Play::fixture()
                     }],
+                    planned_key: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -1586,6 +1587,7 @@ mod tests {
                         score: None,
                         ..Play::fixture()
                     }],
+                    planned_key: None,
                 },
             ],
             capture_version: None,
@@ -1677,6 +1679,7 @@ mod tests {
                     score: Some(3),
                     ..Play::fixture()
                 }],
+                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1716,6 +1719,7 @@ mod tests {
                     score: Some(5),
                     ..Play::fixture()
                 }],
+                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1806,6 +1810,7 @@ mod tests {
                     score: None,
                     ..Play::fixture()
                 }],
+                planned_key: None,
             }],
             capture_version: None,
         });
@@ -1886,6 +1891,7 @@ mod tests {
                         score: Some(2),
                         ..Play::fixture()
                     }],
+                    planned_key: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -1913,6 +1919,7 @@ mod tests {
                         score: Some(4),
                         ..Play::fixture()
                     }],
+                    planned_key: None,
                 },
             ],
             capture_version: None,
@@ -1994,6 +2001,7 @@ mod tests {
                 planned_rep_target: None,
                 // A skipped entry records no play, so it never carries a mark.
                 plays: Vec::new(),
+                planned_key: None,
             }],
             capture_version: None,
         });
@@ -2075,6 +2083,7 @@ mod tests {
                     score,
                     ..Play::fixture()
                 }],
+                planned_key: None,
             }],
             capture_version: None,
         }
@@ -2222,6 +2231,7 @@ mod tests {
                     score: None,
                     ..Play::fixture()
                 }],
+                planned_key: None,
             }],
             capture_version: None,
         };
@@ -4259,6 +4269,7 @@ mod tests {
                 score,
                 ..Play::fixture()
             }],
+            planned_key: None,
         }
     }
 
@@ -4321,15 +4332,17 @@ mod tests {
         let model = Model {
             items: vec![exercise].into(),
             variations: library.into(),
-            session_status: SessionStatus::Active(crate::domain::session::ActiveSession {
-                id: "as1".to_string(),
-                entries: vec![entry],
-                current_index: 0,
-                current_item_started_at: chrono::Utc::now(),
-                session_started_at: chrono::Utc::now(),
-                reflection: None,
-                segment: None,
-            }),
+            session_status: SessionStatus::Active(Box::new(
+                crate::domain::session::ActiveSession {
+                    id: "as1".to_string(),
+                    entries: vec![entry],
+                    current_index: 0,
+                    current_item_started_at: chrono::Utc::now(),
+                    session_started_at: chrono::Utc::now(),
+                    reflection: None,
+                    segment: None,
+                },
+            )),
             active_query: Some(ListQuery {
                 item_type: Some(ItemKind::Piece),
                 ..Default::default()
@@ -4889,6 +4902,7 @@ mod tests {
                 got_in_the_way: Vec::new(),
                 note_points: Vec::new(),
                 planned_variation_ids: vec![],
+                planned_key: None,
             }],
             capture_version: None,
         }

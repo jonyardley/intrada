@@ -212,7 +212,7 @@
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: [], scoreSummary: nil, record: .empty)
+        plays: [], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
   }
 
@@ -409,7 +409,7 @@
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
     }
   }
 
@@ -446,7 +446,7 @@
             durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
-        ], scoreSummary: nil, record: .empty)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
 
     static var previewActive: ActiveSessionView {
@@ -567,7 +567,7 @@
             durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-        ], scoreSummary: nil, record: .empty)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -663,7 +663,7 @@
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
     }
   }
 
@@ -716,7 +716,7 @@
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, plannedSectionIds: [],
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
-        plays: plays, scoreSummary: 8, record: .empty)
+        plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil)
     }
 
     /// One exercise practised in a single key: the detail screen names it
@@ -732,7 +732,7 @@
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
-        plays: plays, scoreSummary: nil, record: .empty)
+        plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil)
     }
   }
 
@@ -781,7 +781,7 @@
           ObstacleChoiceView(obstacle: .memory, label: "Memory"),
           ObstacleChoiceView(obstacle: .tone, label: "Tone"),
           ObstacleChoiceView(obstacle: .tension, label: "Tension"),
-        ])
+        ], sections: [], keys: [])
     }
   }
 #endif

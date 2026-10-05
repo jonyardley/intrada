@@ -390,6 +390,7 @@ mod tests {
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
             planned_variation_ids: vec![],
+            planned_key: crate::domain::key::Key::parse("E flat major"),
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -565,6 +566,7 @@ mod tests {
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
             planned_variation_ids: vec![],
+            planned_key: None,
         });
     }
 
