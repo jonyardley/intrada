@@ -247,15 +247,50 @@ pub(super) fn step_segment(
     let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.segments.clone()) else {
         return set_planned(model, &entry_id, Ok(()), |_| {});
     };
-    let check = segments
+    let check = section_index(&segments, &section_id)
+        .and_then(|index| record::step_segment(&mut segments, index, minutes));
+    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+}
+
+pub(super) fn add_segment(
+    model: &mut Model,
+    entry_id: String,
+    section_id: String,
+) -> Command<Effect, Event> {
+    let Some(entry) = entry_for_plan(model, &entry_id) else {
+        return set_planned(model, &entry_id, Ok(()), |_| {});
+    };
+    let mut segments = entry.segments.clone();
+    let added = record::add_segment(&mut segments, section_id, entry.planned_duration_secs);
+    // A refused section outranks refused minutes: a duplicate says so, not
+    // that the minutes don't fit.
+    let check = validation::validate_segment_sections(entry, &segments, model).and(added);
+    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+}
+
+/// Unchecked against the piece, so a section deleted from it mid-build can
+/// still be taken out.
+pub(super) fn remove_segment(
+    model: &mut Model,
+    entry_id: String,
+    section_id: String,
+) -> Command<Effect, Event> {
+    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.segments.clone()) else {
+        return set_planned(model, &entry_id, Ok(()), |_| {});
+    };
+    let check = section_index(&segments, &section_id)
+        .map(|index| record::remove_segment(&mut segments, index));
+    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
+}
+
+fn section_index(segments: &[Segment], section_id: &str) -> Result<usize, LibraryError> {
+    segments
         .iter()
         .position(|s| s.section_id == section_id)
         .ok_or_else(|| LibraryError::Validation {
             field: "segments".to_string(),
             message: "That section isn't in this item's plan".to_string(),
         })
-        .and_then(|index| record::step_segment(&mut segments, index, minutes));
-    set_planned(model, &entry_id, check, |entry| entry.segments = segments)
 }
 
 fn section_target_bpm(model: &Model, item_id: &str, section_id: &str) -> Option<u16> {

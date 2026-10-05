@@ -58,6 +58,15 @@ fn model() -> Model {
                 ],
             ),
             piece("q", vec![]),
+            piece(
+                "clair",
+                vec![
+                    section("c-a1", "A1", Some((1, 14)), 0),
+                    section("c-b", "B", Some((15, 26)), 1),
+                    section("c-a2", "A2", Some((27, 50)), 2),
+                    section("c-coda", "Coda", Some((51, 72)), 3),
+                ],
+            ),
         ]
         .into(),
         variations: vec![Variation {
@@ -1300,6 +1309,14 @@ fn the_v017_record_and_its_events_round_trip_on_the_ffi_bincode_wire() {
             section_id: "s-a".to_string(),
             minutes: -1,
         },
+        SessionEvent::AddSegment {
+            entry_id: "e1".to_string(),
+            section_id: "s-a".to_string(),
+        },
+        SessionEvent::RemoveSegment {
+            entry_id: "e1".to_string(),
+            section_id: "s-a".to_string(),
+        },
         SessionEvent::AddTroubleSpot {
             item_id: "p".to_string(),
             bars: BarRange { first: 3, last: 4 },
@@ -1796,4 +1813,234 @@ fn a_span_confirmed_twice_in_a_draft_is_kept_once() {
 
     let draft = &active(&m).reflection.as_ref().expect("draft").answers;
     assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
+}
+
+// ── Adding and removing a section keeps the tuning (#2398) ──
+
+fn add_section(m: &mut Model, id: &str, section_id: &str) {
+    send(
+        m,
+        SessionEvent::AddSegment {
+            entry_id: id.to_string(),
+            section_id: section_id.to_string(),
+        },
+    );
+}
+
+fn remove_section(m: &mut Model, id: &str, section_id: &str) {
+    send(
+        m,
+        SessionEvent::RemoveSegment {
+            entry_id: id.to_string(),
+            section_id: section_id.to_string(),
+        },
+    );
+}
+
+/// Clair de Lune's twelve minutes tuned to A1 7, B 1, A2 4.
+fn clair_tuned() -> (Model, String) {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("c-a1", 420), seg("c-b", 60), seg("c-a2", 240)],
+    );
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("c-a1", 7), pair("c-b", 1), pair("c-a2", 4)]
+    );
+    (m, id)
+}
+
+#[test]
+fn adding_the_coda_takes_its_share_from_the_largest_section() {
+    let (mut m, id) = clair_tuned();
+    add_section(&mut m, &id, "c-coda");
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    assert_eq!(
+        minutes(&m, 0),
+        [
+            pair("c-a1", 4),
+            pair("c-b", 1),
+            pair("c-a2", 4),
+            pair("c-coda", 3)
+        ]
+    );
+}
+
+#[test]
+fn removing_a_section_gives_its_minutes_to_the_next() {
+    let (mut m, id) = clair_tuned();
+    remove_section(&mut m, &id, "c-b");
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    assert_eq!(minutes(&m, 0), [pair("c-a1", 7), pair("c-a2", 5)]);
+}
+
+#[test]
+fn removing_the_last_section_gives_its_minutes_to_the_one_before() {
+    let (mut m, id) = clair_tuned();
+    remove_section(&mut m, &id, "c-a2");
+
+    assert_eq!(minutes(&m, 0), [pair("c-a1", 7), pair("c-b", 5)]);
+}
+
+#[test]
+fn a_two_minute_item_split_one_and_one_refuses_a_third_section() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 120);
+    set_segments(&mut m, &id, vec![seg("c-a1", 0), seg("c-b", 0)]);
+    add_section(&mut m, &id, "c-a2");
+
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Those minutes don't fit in this item's 2 min")
+    );
+    assert_eq!(minutes(&m, 0), [pair("c-a1", 1), pair("c-b", 1)]);
+    assert!(!building_view(&m).entries[0].record.can_add_section);
+}
+
+#[test]
+fn a_section_already_in_a_full_split_says_so_rather_than_the_minutes() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 120);
+    set_segments(&mut m, &id, vec![seg("c-a1", 0), seg("c-b", 0)]);
+    add_section(&mut m, &id, "c-b");
+
+    assert_eq!(
+        m.last_error.as_deref(),
+        Some("Each section can be one segment only")
+    );
+}
+
+#[test]
+fn a_split_with_room_offers_another_section() {
+    let (m, _) = clair_tuned();
+
+    assert!(building_view(&m).entries[0].record.can_add_section);
+}
+
+#[test]
+fn a_section_deleted_from_the_piece_mid_build_can_still_be_removed() {
+    let (mut m, id) = clair_tuned();
+    let clair = m.items.iter_mut().find(|i| i.id == "clair").expect("clair");
+    clair.sections[1].deleted_at = Some(t(5));
+    remove_section(&mut m, &id, "c-a1");
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    assert_eq!(minutes(&m, 0), [pair("c-b", 8), pair("c-a2", 4)]);
+}
+
+#[test]
+fn a_tie_for_the_largest_gives_from_the_earliest() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    set_segments(&mut m, &id, vec![seg("c-a1", 0), seg("c-b", 0)]);
+    add_section(&mut m, &id, "c-a2");
+
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("c-a1", 2), pair("c-b", 6), pair("c-a2", 4)]
+    );
+}
+
+#[test]
+fn odd_seconds_stay_with_the_section_that_gives() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 750);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("c-a1", 0), seg("c-b", 60), seg("c-a2", 240)],
+    );
+    add_section(&mut m, &id, "c-coda");
+
+    let secs: Vec<u32> = entries(&m)[0]
+        .segments
+        .iter()
+        .map(|s| s.planned_secs)
+        .collect();
+    assert_eq!(secs, [270, 60, 240, 180]);
+}
+
+#[test]
+fn the_first_section_takes_the_whole_planned_time() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    add_section(&mut m, &id, "c-b");
+
+    assert_eq!(minutes(&m, 0), [pair("c-b", 12)]);
+}
+
+#[test]
+fn removing_the_only_section_leaves_no_split() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    add_section(&mut m, &id, "c-b");
+    remove_section(&mut m, &id, "c-b");
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    assert!(entries(&m)[0].segments.is_empty());
+}
+
+#[test]
+fn without_a_planned_time_sections_are_just_added_and_dropped() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    add_section(&mut m, &id, "c-a1");
+    add_section(&mut m, &id, "c-b");
+    add_section(&mut m, &id, "c-a2");
+    remove_section(&mut m, &id, "c-b");
+
+    assert!(m.last_error.is_none(), "{:?}", m.last_error);
+    assert_eq!(minutes(&m, 0), [pair("c-a1", 0), pair("c-a2", 0)]);
+}
+
+#[test]
+fn a_section_already_in_the_split_is_not_added_twice() {
+    let (mut m, id) = clair_tuned();
+    add_section(&mut m, &id, "c-b");
+
+    assert!(m.last_error.is_some());
+    assert_eq!(
+        minutes(&m, 0),
+        [pair("c-a1", 7), pair("c-b", 1), pair("c-a2", 4)]
+    );
+}
+
+#[test]
+fn a_section_from_another_piece_is_refused() {
+    let (mut m, id) = clair_tuned();
+    add_section(&mut m, &id, "s-coda");
+
+    assert!(m.last_error.is_some());
+    assert_eq!(entries(&m)[0].segments.len(), 3);
+}
+
+#[test]
+fn removing_a_section_not_in_the_split_is_refused() {
+    let (mut m, id) = clair_tuned();
+    remove_section(&mut m, &id, "c-coda");
+
+    assert!(m.last_error.is_some());
+    assert_eq!(entries(&m)[0].segments.len(), 3);
+}
+
+#[test]
+fn sections_are_only_added_while_building() {
+    let (mut m, id) = clair_tuned();
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    add_section(&mut m, &id, "c-coda");
+
+    assert!(m.last_error.is_some());
+    assert_eq!(entries(&m)[0].segments.len(), 3);
 }
