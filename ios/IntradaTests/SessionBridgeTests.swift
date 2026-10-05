@@ -1015,4 +1015,51 @@ final class SessionBridgeTests: XCTestCase {
     let practice = try XCTUnwrap(view.items.first { $0.id == itemId }?.practice)
     XCTAssertEqual(practice.scoreTrend, ScoreTrend(from: 5, to: 7))
   }
+
+  // The core reads the wall clock for "this week", so both sessions are timed
+  // back from now (#2399).
+  func testRealBridgeProgressSaysClimbingOnlyWhenAMarkRose() throws {
+    var utc = Calendar(identifier: .iso8601)
+    utc.timeZone = TimeZone(identifier: "UTC") ?? .gmt
+    let now = Date()
+    let thisWeek = now.addingTimeInterval(-600)
+    try XCTSkipIf(
+      utc.component(.weekOfYear, from: thisWeek) != utc.component(.weekOfYear, from: now),
+      "minutes after Monday midnight UTC, neither session would fall in this week")
+    let iso = ISO8601DateFormatter()
+    let at = { (start: Date, minutes: Double) in
+      iso.string(from: start.addingTimeInterval(minutes * 60))
+    }
+
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Clair de Lune", kind: .piece, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+    let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
+
+    func play(at start: Date, score: UInt8) throws {
+      _ = try bridge.update(.session(.startBuilding))
+      _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+      let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+      _ = try bridge.update(.session(.startSession(now: at(start, 0))))
+      _ = try bridge.update(
+        .session(.nextItem(now: at(start, 5), nextItemStartedAt: at(start, 5), reading: .silent)))
+      let playId = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays.last?.id)
+      _ = try bridge.update(
+        .session(.updateEntryScore(entryId: entryId, playId: playId, score: score)))
+      try acknowledgeSave(bridge, try bridge.update(.session(.saveSession(now: at(start, 6)))))
+    }
+
+    try play(at: thisWeek.addingTimeInterval(-7 * 86_400), score: 5)
+    XCTAssertNil(
+      try XCTUnwrap(bridge.rendered().analytics).climbing, "nothing marked this week yet")
+
+    try play(at: thisWeek, score: 7)
+    XCTAssertEqual(
+      try bridge.rendered().analytics?.climbing, "Climbing steadily across 1 item.")
+  }
 }

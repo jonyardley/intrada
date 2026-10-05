@@ -64,7 +64,6 @@ VariationCoverageView
 WeeklySummary
 ViewModel.activeQuery
 ViewModel.activeSort
-ViewModel.analytics
 ViewModel.availableComposers
 ViewModel.availableTags
 ViewModel.lastPractised
