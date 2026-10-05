@@ -2932,6 +2932,7 @@ fn a_play_keeps_a_variation_deleted_since_when_its_key_changes() {
 #[test]
 fn a_deleted_variation_the_play_never_recorded_is_still_refused() {
     let (mut m, _, play_id) = finishing_clair_in_d();
+    draft(&mut m, vec![in_g(&play_id)]);
     m.variations[0].deleted_at = Some(t(1));
 
     draft(
@@ -2942,7 +2943,7 @@ fn a_deleted_variation_the_play_never_recorded_is_still_refused() {
         }],
     );
 
-    assert!(drafted(&m).is_empty());
+    assert_eq!(drafted(&m), [in_g(&play_id)], "the earlier draft stands");
 }
 
 #[test]
@@ -2996,4 +2997,152 @@ fn the_key_row_reads_written_key_when_nothing_is_planned() {
         .expect("clair keeps keys");
     assert_eq!(keys.current_label, "Written key");
     assert_eq!(keys.current, None);
+}
+
+fn clair_mut(m: &mut Model) -> &mut Item {
+    m.items.iter_mut().find(|i| i.id == "clair").expect("clair")
+}
+
+#[test]
+fn a_play_keeps_a_section_deleted_since_when_its_key_changes() {
+    let (mut m, id, play_id) = finishing_clair_in_d();
+    clair_mut(&mut m).sections[0].deleted_at = Some(t(1));
+
+    draft(&mut m, vec![in_g(&play_id)]);
+    assert_eq!(drafted(&m), [in_g(&play_id)]);
+
+    next(&mut m);
+    let way = in_g(&play_id);
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id: way.play_id,
+            section_id: way.section_id,
+            key: way.key,
+            variation_ids: way.variation_ids,
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].key, key("G major"));
+    assert!(m.last_error.is_none());
+}
+
+#[test]
+fn a_recorded_variation_named_twice_is_refused() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    active_play_mut(&mut m).variation_ids = vec!["v-dot".to_string()];
+
+    draft(
+        &mut m,
+        vec![DraftWay {
+            variation_ids: vec!["v-dot".to_string(), "v-dot".to_string()],
+            ..in_g(&play_id)
+        }],
+    );
+
+    assert!(drafted(&m).is_empty());
+}
+
+#[test]
+fn a_finish_row_spells_its_key_as_the_piece_keeps_it() {
+    let (mut m, _, _) = finishing_clair_in_d();
+    clair_mut(&mut m)
+        .keys
+        .push(key("G flat major").expect("key"));
+    active_play_mut(&mut m).key = key("F sharp major");
+
+    let row = finish_row(&m);
+    assert_eq!(row.key, key("G flat major"));
+    assert_eq!(row.label, "A1 · G\u{266d} major");
+}
+
+#[test]
+fn enharmonic_keys_are_listed_once() {
+    let item = piece("q", vec![]);
+    let (f_sharp, g_flat) = (
+        key("F sharp major").expect("key"),
+        key("G flat major").expect("key"),
+    );
+
+    let labels: Vec<String> = crate::view::session::key_choices(&item, &[f_sharp, g_flat])
+        .into_iter()
+        .map(|k| k.label)
+        .collect();
+
+    assert_eq!(labels, ["Written key", "F\u{266f} major"]);
+}
+
+#[test]
+fn the_key_row_spells_a_planned_key_as_the_piece_keeps_it() {
+    let (mut m, id) = building_clair(false);
+    clair_mut(&mut m)
+        .keys
+        .push(key("G flat major").expect("key"));
+    if let SessionStatus::Building(b) = &mut m.session_status {
+        b.entries
+            .iter_mut()
+            .find(|e| e.id == id)
+            .expect("clair")
+            .planned_key = key("F sharp major");
+    }
+
+    let view = building_view(&m);
+    let keys = view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("clair keeps keys");
+    assert_eq!(keys.current, key("G flat major"));
+    assert_eq!(keys.current_label, "G\u{266d} major");
+    assert_eq!(keys.keys.len(), 4, "listed once");
+}
+
+#[test]
+fn a_plain_item_with_keys_of_its_own_can_change_its_rows() {
+    let mut m = model();
+    m.items.iter_mut().find(|i| i.id == "q").expect("q").keys = vec![key("D major").expect("key")];
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "q".to_string(),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let row = finish_row(&m);
+    assert!(row.can_change);
+    assert_eq!(row.label, "No variation");
+}
+
+#[test]
+fn a_piece_whose_sections_are_all_deleted_reads_no_variation() {
+    let mut m = model();
+    let q = m.items.iter_mut().find(|i| i.id == "q").expect("q");
+    q.sections = vec![section("s-gone", "A", None, 0)];
+    q.sections[0].deleted_at = Some(t(0));
+    send(&mut m, SessionEvent::StartBuilding);
+    send(
+        &mut m,
+        SessionEvent::AddToSetlist {
+            item_id: "q".to_string(),
+        },
+    );
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    assert_eq!(finish_row(&m).label, "No variation");
 }
