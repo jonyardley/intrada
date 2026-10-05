@@ -57,10 +57,7 @@ struct LibraryDetailScreen: View {
         kind: .piece,
         library: library,
         linkedIds: linkedPieceIds,
-        onApply: { ids, _ in
-          applyPieceLinkChanges(ids)
-          return .accepted
-        }
+        onApply: { ids, _ in applyPieceLinkChanges(ids) }
       )
       .environment(store)
     }
@@ -160,30 +157,38 @@ struct LibraryDetailScreen: View {
   private var linkedPieceIds: [String] { item.linkedPieceIds }
 
   private func linkPiece(id: String) {
-    let targets = item.exerciseTargets(pieceIds: linkedPieceIds + [id])
-    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
+    store.send(
+      .item(.chooseExercisePieces(exerciseId: item.id, pieceIds: linkedPieceIds + [id])),
+      onSuccess: .success)
   }
 
-  private func applyPieceLinkChanges(_ selected: Swift.Set<String>) {
-    guard selected != Swift.Set(linkedPieceIds) else { return }
-    let targets = item.exerciseTargets(choosing: selected, in: library.map(\.id))
-    store.send(.item(.setExerciseLinks(exerciseId: item.id, targets: targets)), onSuccess: .success)
+  // The core builds each set from the ticks (#2379); a refusal saves nothing,
+  // so the picker keeps every tick and draft as the musician left them.
+  private func applyPieceLinkChanges(_ selected: Swift.Set<String>) -> LinkApplyOutcome {
+    guard selected != Swift.Set(linkedPieceIds) else { return .accepted }
+    let pieceIds = library.map(\.id).filter(selected.contains)
+    let event = ItemEvent.chooseExercisePieces(exerciseId: item.id, pieceIds: pieceIds)
+    guard store.sendAccepted(.item(event)) else {
+      return .refused(message: store.viewModel?.error ?? "Couldn't save. Try again.")
+    }
+    Haptic.success.play()
+    return .accepted
   }
 
-  // One event for the whole set (#2232); a refusal saves nothing, so the
-  // picker keeps every tick and draft as the musician left them.
   private func applyLinkChanges(_ selected: Swift.Set<String>, _ drafts: [StagedExercise])
     -> LinkApplyOutcome
   {
     let row = liveRow
-    let written = drafts.map(\.entry).filter {
-      if case .new = $0 { return true } else { return false }
+    let written = drafts.compactMap { draft -> CreateItem? in
+      if case .new(let input) = draft.entry { return input } else { return nil }
     }
     if Swift.Set(row.linkedExercises.map(\.id)) == selected && written.isEmpty {
       return .accepted
     }
-    let links = row.pieceLinks(choosing: selected, in: library.map(\.id), written: written)
-    guard store.sendAccepted(.item(.setPieceLinks(pieceId: item.id, links: links))) else {
+    let exerciseIds = library.map(\.id).filter(selected.contains)
+    let event = ItemEvent.choosePieceExercises(
+      pieceId: item.id, exerciseIds: exerciseIds, written: written)
+    guard store.sendAccepted(.item(event)) else {
       return .refused(message: store.viewModel?.error ?? "Couldn't save. Try again.")
     }
     Haptic.success.play()
