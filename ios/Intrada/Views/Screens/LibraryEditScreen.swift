@@ -1,8 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// Edit sheet for a library item. Sends the fields and, for an exercise, its
-/// variation rows; the core validates and reconciles.
+/// Edit sheet for a library item. Sends the fields and the variation rows as
+/// one save; the core validates and reconciles.
 struct LibraryEditScreen: View {
   let item: LibraryItemView
   @Environment(Store.self) private var store
@@ -30,12 +30,7 @@ struct LibraryEditScreen: View {
       composerSuggestions: store.viewModel?.availableComposers ?? [],
       tagSuggestions: store.viewModel?.availableTags ?? []
     ) {
-      // Stop at the first refusal: an event that lands after it clears the error
-      // the form is about to show.
-      for event in form.editEvents(id: item.id) {
-        store.send(.item(event))
-        if store.viewModel?.error != nil { return }
-      }
+      store.send(.item(form.editEvent(id: item.id)))
     }
   }
 }

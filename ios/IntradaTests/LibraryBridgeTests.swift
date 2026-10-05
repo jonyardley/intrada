@@ -348,9 +348,9 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(edited.variations.map(\.label), ["Swung", "Staccato"])
   }
 
-  /// The Edit form's two events against the real core (#1783, #2246): the
-  /// written key and the item's variations are set side by side, and neither
-  /// takes the other's place.
+  /// The Edit form's one save against the real core (#1783, #2246, #2228):
+  /// the written key and the item's variations are set side by side, and
+  /// neither takes the other's place.
   func testRealBridgeEditFormSetsTheKeyAndTheVariationsApart() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
@@ -366,14 +366,36 @@ final class LibraryBridgeTests: XCTestCase {
     let editing = ItemFormModel(item: keyed)
     editing.key = Key(letter: .d, accidental: .natural, mode: .major)
     editing.variations = ["Slow", "Swung"].map { VariationRow(label: $0) }
-    for event in editing.editEvents(id: keyed.id) {
-      _ = try bridge.update(.item(event))
-      XCTAssertNil(try bridge.rendered().error)
-    }
+    _ = try bridge.update(.item(editing.editEvent(id: keyed.id)))
+    XCTAssertNil(try bridge.rendered().error)
 
     let edited = try XCTUnwrap(try bridge.rendered().items.first { $0.id == keyed.id })
     XCTAssertEqual(edited.variations.map(\.label), ["Slow", "Swung"])
     XCTAssertEqual(edited.key, Key(letter: .d, accidental: .natural, mode: .major))
+  }
+
+  /// A refused variation saves nothing from the form, the title included (#2228).
+  func testRealBridgeEditFormRefusedVariationLeavesTheTitle() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Arpeggios", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Slow"]))))
+    let saved = try XCTUnwrap(try bridge.rendered().items.first)
+
+    let editing = ItemFormModel(item: saved)
+    editing.title = "Broken chords"
+    editing.variations.append(VariationRow(variantId: "stale-variation", label: "Gone"))
+    _ = try bridge.update(.item(editing.editEvent(id: saved.id)))
+
+    let view = try bridge.rendered()
+    XCTAssertNotNil(view.error)
+    let after = try XCTUnwrap(view.items.first { $0.id == saved.id })
+    XCTAssertEqual(after.title, "Arpeggios")
+    XCTAssertEqual(after.variations.map(\.label), ["Slow"])
   }
 
   /// Real-bridge wire pin for the photo id (#846, #1355): the Swift serializer,

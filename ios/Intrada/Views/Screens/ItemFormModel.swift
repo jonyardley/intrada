@@ -96,7 +96,6 @@ final class ItemFormModel {
   private var storedChart = ""
   private var storedNotes = ""
   private var storedTags: [String] = []
-  private var loadedVariationIds: [String] = []
 
   init(kind: ItemKind = .piece) {
     self.kind = kind
@@ -114,7 +113,6 @@ final class ItemFormModel {
     variations = item.variations.map {
       VariationRow(variantId: $0.id, label: $0.label, hasMarks: !$0.scoreHistory.isEmpty)
     }
-    loadedVariationIds = item.variations.map(\.id)
   }
 
   /// The core picks the fields (#2229); a failed call is a wire break (#846).
@@ -216,19 +214,12 @@ final class ItemFormModel {
     }
   }
 
-  /// Fields and the variation set are two events (#1910), the set sent only
-  /// when the rows changed it. Only an exercise shows its rows, so only an
-  /// exercise sends them.
-  func editEvents(id: String) -> [ItemEvent] {
-    let fields = ItemEvent.update(id: id, input: updateInput())
-    let kept = variations.compactMap(\.variantId)
-    guard kind == .exercise, kept != loadedVariationIds || !typedLabels.isEmpty else {
-      return [fields]
-    }
-    return [
-      fields,
-      ItemEvent.updateItemVariations(id: id, variationIds: kept, newLabels: typedLabels),
-    ]
+  /// The fields and the variation set in one save (#2228); the core decides
+  /// whether the set applies and refuses all or nothing.
+  func editEvent(id: String) -> ItemEvent {
+    .edit(
+      id: id, input: updateInput(), variationIds: variations.compactMap(\.variantId),
+      newLabels: typedLabels)
   }
 
   func createInput() -> CreateItem {
