@@ -24,8 +24,6 @@ struct EntrySettingsSheet: View {
   private var variants: [PickerVariationView] { plannable?.variations ?? [] }
   private var sections: [SectionView] { plannable?.sections ?? [] }
 
-  /// The entry as the core holds it now: `entry` is the snapshot the sheet
-  /// opened on, and the focus and sections cards read what each tap changed.
   private var live: SetlistEntryView {
     store.viewModel?.buildingSetlist?.entries.first { $0.id == entry.id } ?? entry
   }
@@ -105,15 +103,12 @@ struct EntrySettingsSheet: View {
     }
   }
 
-  @ViewBuilder private var focusSection: some View {
-    if let limits = store.viewModel?.limits {
-      EntryFocusCard(
-        current: live.record.focus,
-        choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
-        sections: sections,
-        limits: limits,
-        send: setFocus)
-    }
+  private var focusSection: some View {
+    EntryFocusCard(
+      current: live.record.focus,
+      choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
+      sections: sections,
+      send: setFocus)
   }
 
   private func setFocus(_ focus: IntentionFocus?) {
@@ -125,8 +120,8 @@ struct EntrySettingsSheet: View {
       segments: live.record.segments,
       sections: sections,
       hasPlannedTime: live.plannedDurationSecs != nil,
-      minimumSecs: limits.plannedDurationMinSecs
-    ) { store.send(.session(.setSegments(entryId: entry.id, segments: $0))) }
+      send: { store.send(.session(.setSegments(entryId: entry.id, segments: $0))) },
+      step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) })
   }
 
   private var stepSection: some View {
@@ -161,32 +156,8 @@ struct EntrySettingsSheet: View {
   private func plan(_ id: String?) {
     guard id != variantId else { return }
     variantId = id
-    for event in Self.planEvents(entryId: entry.id, segments: live.record.segments, variationId: id)
-    {
-      store.send(event)
-    }
-  }
-
-  /// The plan event holds one section at most and re-splits the minutes, so
-  /// a split item puts its segments back as they were.
-  static func planEvents(entryId: String, segments: [SegmentView], variationId: String?)
-    -> [Event]
-  {
-    let variationIds = variationId.map { [$0] } ?? []
-    guard segments.count > 1 else {
-      return [
-        .session(
-          .setEntryPlan(
-            entryId: entryId, sectionIds: segments.map(\.sectionId), variationIds: variationIds))
-      ]
-    }
-    return [
-      .session(.setEntryPlan(entryId: entryId, sectionIds: [], variationIds: variationIds)),
-      .session(
-        .setSegments(
-          entryId: entryId,
-          segments: segments.map { Segment(sectionId: $0.sectionId, plannedSecs: $0.plannedSecs) })),
-    ]
+    store.send(
+      .session(.setEntryVariations(entryId: entry.id, variationIds: id.map { [$0] } ?? [])))
   }
 
   private var repsSection: some View {

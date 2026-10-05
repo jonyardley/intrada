@@ -409,7 +409,7 @@
     }
 
     /// The builder with a split, focused piece and one offering last time
-    /// (#2249, #2303, #2315). `entry` replaces the first row, for the sheet.
+    /// (#2249, #2303, #2315). `first` replaces the first row, for the sheet.
     static func previewBuildingPlanned(_ first: SetlistEntryView = .previewPlannedPiece) -> Store {
       let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
       return Store(
@@ -421,7 +421,7 @@
             blocks: entries.map {
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0,
-                durationDisplay: $0.plannedDurationDisplay ?? "\u{2014}", entries: [$0],
+                durationDisplay: $0.plannedDurationDisplay ?? "", entries: [$0],
                 takenElsewhere: [])
             },
             totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,

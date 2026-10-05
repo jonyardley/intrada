@@ -30,10 +30,13 @@
   extension FocusChoiceView {
     static var previewChoices: [FocusChoiceView] {
       [
-        FocusChoiceView(kind: .tempo, label: "Tempo"),
-        FocusChoiceView(kind: .cleanReps, label: "Clean in a row"),
-        FocusChoiceView(kind: .fromMemory, label: "From memory"),
-        FocusChoiceView(kind: .evenness, label: "Evenness"),
+        FocusChoiceView(
+          kind: .tempo, label: "Tempo", target: FocusTargetView(min: 40, max: 208, step: 2)),
+        FocusChoiceView(
+          kind: .cleanReps, label: "Clean in a row",
+          target: FocusTargetView(min: 1, max: 100, step: 1)),
+        FocusChoiceView(kind: .fromMemory, label: "From memory", target: nil),
+        FocusChoiceView(kind: .evenness, label: "Evenness", target: nil),
       ]
     }
   }
@@ -162,10 +165,13 @@
       e.plannedDurationSecs = 720
       e.plannedDurationDisplay = "12 min"
       e.record.segments = SectionView.previewClairSections.map {
-        SegmentView(sectionId: $0.id, label: $0.label, plannedSecs: 240, plannedDisplay: "4 min")
+        SegmentView(
+          sectionId: $0.id, label: $0.label, plannedSecs: 240, plannedDisplay: "4 min",
+          canAddMinute: true, canTakeMinute: true)
       }
       e.record.focus = FocusView(
-        focus: IntentionFocus(kind: .tempo, sectionId: "sec-a1", target: 84), label: "A1 at 84")
+        focus: IntentionFocus(kind: .tempo, sectionId: "sec-a1", target: 84), label: "A1 at 84",
+        targetCaption: "\u{2669} = 84")
       return e
     }
 

@@ -26,7 +26,7 @@ struct OfferChip: View {
           .multilineTextAlignment(.leading)
       }
       .foregroundStyle(IntradaColor.ink)
-      .padding(.vertical, 8)
+      .padding(.vertical, IntradaSpacing.controlGap)
       .padding(.horizontal, IntradaSpacing.cardCompact)
       .background(IntradaColor.cardFill, in: Capsule())
       .overlay {

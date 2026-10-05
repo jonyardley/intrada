@@ -7,7 +7,6 @@ struct EntryFocusCard: View {
   let current: FocusView?
   let choices: [FocusChoiceView]
   let sections: [SectionView]
-  let limits: LimitsView
   let send: (IntentionFocus?) -> Void
 
   private var focus: IntentionFocus? { current?.focus }
@@ -21,7 +20,7 @@ struct EntryFocusCard: View {
           Button("Clear") { send(nil) }
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
-            .frame(minHeight: 32)
+            .frame(minHeight: 44)
             .accessibilityIdentifier("entrySettings.focusClear")
         }
       }
@@ -33,7 +32,7 @@ struct EntryFocusCard: View {
       }
       if let focus {
         if !sections.isEmpty {
-          Text("Where").font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
+          FieldLabel("Where")
           FlowLayout(spacing: IntradaSpacing.controlGap) {
             ChoiceBox("Whole piece", isOn: focus.sectionId == nil) { place(nil) }
             ForEach(sections, id: \.id) { section in
@@ -41,7 +40,7 @@ struct EntryFocusCard: View {
             }
           }
         }
-        if let range = Self.targetRange(for: focus.kind, limits: limits) {
+        if let range = choices.first(where: { $0.kind == focus.kind })?.target {
           targetStepper(focus, range: range)
         }
       }
@@ -49,18 +48,20 @@ struct EntryFocusCard: View {
     .fieldCardSurface()
   }
 
-  private func targetStepper(_ focus: IntentionFocus, range: ClosedRange<Int>) -> some View {
+  private func targetStepper(_ focus: IntentionFocus, range: FocusTargetView) -> some View {
     let value = Binding(
-      get: { Int(focus.target ?? UInt16(range.lowerBound)) },
+      get: { Int(focus.target ?? range.min) },
       set: { next in
         var updated = focus
         updated.target = UInt16(next)
         send(updated)
       })
-    return Stepper(value: value, in: range, step: focus.kind == .tempo ? limits.clickStep : 1) {
+    return Stepper(
+      value: value, in: Int(range.min)...Int(range.max), step: Int(range.step)
+    ) {
       VStack(alignment: .leading, spacing: 2) {
-        Text("Target").font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
-        Text(Self.targetText(focus))
+        FieldLabel("Target")
+        Text(current?.targetCaption ?? "")
           .font(IntradaFont.figure).foregroundStyle(IntradaColor.ink)
       }
     }
@@ -69,42 +70,13 @@ struct EntryFocusCard: View {
 
   private func pick(_ kind: FocusKind) {
     guard focus?.kind != kind else { return }
-    let sectionId = focus?.sectionId
-    send(
-      IntentionFocus(
-        kind: kind, sectionId: sectionId,
-        target: Self.startingTarget(
-          for: kind, section: sections.first { $0.id == sectionId }, limits: limits)))
+    send(IntentionFocus(kind: kind, sectionId: focus?.sectionId, target: nil))
   }
 
   private func place(_ sectionId: String?) {
     guard var updated = focus, updated.sectionId != sectionId else { return }
     updated.sectionId = sectionId
     send(updated)
-  }
-
-  static func targetText(_ focus: IntentionFocus) -> String {
-    let target = focus.target.map(String.init) ?? ""
-    return focus.kind == .tempo ? "♩ = \(target)" : "\(target) in a row"
-  }
-
-  static func targetRange(for kind: FocusKind, limits: LimitsView) -> ClosedRange<Int>? {
-    switch kind {
-    case .tempo: limits.clickBand(unit: 4)
-    case .cleanReps: 1...Int(limits.repTargetMax)
-    case .fromMemory, .evenness: nil
-    }
-  }
-
-  /// A tempo starts from the section's own target where it has one.
-  static func startingTarget(for kind: FocusKind, section: SectionView?, limits: LimitsView)
-    -> UInt16?
-  {
-    switch kind {
-    case .tempo: section?.targetBpm ?? limits.clickTempoDefault
-    case .cleanReps: UInt16(limits.repTargetMin)
-    case .fromMemory, .evenness: nil
-    }
   }
 }
 
