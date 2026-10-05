@@ -22,6 +22,11 @@ struct FocusPlayerScreen: View {
   @State private var click = ClickController()
   @State private var configuringClick = false
   @State private var switchingVariation = false
+  @State private var addingSpot = false
+  @State private var spotRefusal: String?
+  /// The away offer the musician waved off, so it stays gone until the next time away.
+  @State private var keptAway: String?
+  @State private var offeringMoveOn = false
 
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
@@ -46,7 +51,7 @@ struct FocusPlayerScreen: View {
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
           tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
           currentClick: target.sheetClick, plays: target.plays,
-          limits: limits,
+          limits: limits, finish: target.finish, aim: target.aim,
           refusal: reflectionRefusal, seed: target.seed,
           onSave: { result in handleReflection(target, result) },
           onSkip: { handleSkipRating(target) },
@@ -75,16 +80,30 @@ struct FocusPlayerScreen: View {
           onPick: { switchVariation(active, to: $0) })
       }
     }
+    .sheet(
+      isPresented: $addingSpot,
+      onDismiss: { spotRefusal = nil }
+    ) {
+      if let active, let limits = store.viewModel?.limits {
+        TroubleSpotSheet(
+          context: spotContext(active), barMax: Int(limits.barMax), refusal: spotRefusal,
+          onAdd: { addSpot(active, first: $0, last: $1) })
+      }
+    }
     .task { reseedClick() }
     .onChange(of: active?.reflection == nil) { _, closed in
       if closed { reflectionRefusal = nil }
     }
     .onChange(of: active?.currentPosition) { _, _ in reseedClick() }
+    .onChange(of: active?.record.segment?.moveLabel == nil) { _, gone in
+      if gone { offeringMoveOn = false }
+    }
     // `initial: true` is what takes the hold for a session started in the
     // foreground, where the phase never changes (#1513).
     .onChange(of: scenePhase, initial: true) { _, phase in
       wakeLock.update(sessionActive: active != nil, phase: phase)
       if phase == .active { click.enteredForeground() } else { click.enteredBackground() }
+      recordAway(phase)
     }
     .onDisappear {
       click.dispose()
@@ -102,13 +121,31 @@ struct FocusPlayerScreen: View {
 
   private func content(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 0) {
-      topChrome(active).fadeUp(0)
+      topChrome(active).fadeUp(0).zIndex(1)
+      awayOffer(active)
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
+      if let segment = active.record.segment {
+        SegmentClockRow(
+          segment: segment,
+          referenceDate: SessionClock.heldAt(
+            stoppedAt: active.reflection?.stoppedAt, reference: referenceDate),
+          offering: $offeringMoveOn,
+          onMove: {
+            store.send(
+              .session(.moveToNextSegment(now: SessionClock.nowRFC3339(), reading: tempoReading)))
+          },
+          onStay: { store.send(.session(.stayOnSegment)) }
+        )
+        .padding(.top, IntradaSpacing.cardCompact)
+      }
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       clickRow(active).padding(.top, IntradaSpacing.controlGap)
       if click.isRunning {
         barLine.padding(.top, IntradaSpacing.controlGap)
+      }
+      if !offeringMoveOn {
+        troubleSpotButton.padding(.top, IntradaSpacing.controlGap)
       }
       repCounter(active).fadeUp(3).padding(.top, IntradaSpacing.section)
       Spacer(minLength: IntradaSpacing.card)
@@ -279,7 +316,8 @@ struct FocusPlayerScreen: View {
   }
 
   @ViewBuilder private func timerBody(elapsed: Int, planned: UInt32?) -> some View {
-    TimerRing(elapsed: elapsed, planned: planned.map(Int.init))
+    TimerRing(
+      elapsed: elapsed, planned: planned.map(Int.init), size: offeringMoveOn ? 160 : 200)
   }
 
   // A marking with no BPM, or one outside the click's range (crotchet = 240
@@ -380,6 +418,71 @@ struct FocusPlayerScreen: View {
     .padding(.bottom, IntradaSpacing.card)
   }
 
+  // ── Time away and trouble spots (#2306, #2249) ──
+
+  @ViewBuilder private func awayOffer(_ active: ActiveSessionView) -> some View {
+    if let offer = active.record.awayOffer, keptAway != offer.label {
+      AwayOfferBanner(
+        label: offer.label,
+        onLeaveOut: { store.send(.session(.leaveAwayOut)) },
+        onKeep: { withAnimation { keptAway = offer.label } }
+      )
+      .padding(.top, IntradaSpacing.controlGap)
+      .transition(.opacity)
+    }
+  }
+
+  private func recordAway(_ phase: ScenePhase) {
+    guard active != nil else { return }
+    let now = SessionClock.nowRFC3339()
+    switch phase {
+    case .background:
+      keptAway = nil
+      store.send(.session(.wentAway(at: now)))
+    case .active:
+      store.send(.session(.cameBack(at: now)))
+    default:
+      break
+    }
+  }
+
+  private var troubleSpotButton: some View {
+    Button {
+      addingSpot = true
+    } label: {
+      Label("Trouble spot", systemImage: "flag")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.ink)
+        .padding(.horizontal, IntradaSpacing.card)
+        .frame(minHeight: 44)
+        .background(IntradaColor.cardFill, in: Capsule())
+        .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
+    }
+    .buttonStyle(PressRebound())
+    .accessibilityIdentifier("player.troubleSpot")
+  }
+
+  private func spotContext(_ active: ActiveSessionView) -> String {
+    guard let segment = active.record.segment else { return active.currentItemTitle }
+    return "\(active.currentItemTitle) · in \(segment.label)"
+  }
+
+  private func addSpot(_ active: ActiveSessionView, first: Int, last: Int) -> Bool {
+    let pos = Int(active.currentPosition)
+    guard active.entries.indices.contains(pos) else { return false }
+    let accepted = store.send(
+      .session(
+        .addTroubleSpot(
+          itemId: active.entries[pos].itemId,
+          bars: BarRange(first: UInt16(clamping: first), last: UInt16(clamping: last)))),
+      onSuccess: .success)
+    if !accepted {
+      spotRefusal = store.viewModel?.error ?? "Couldn't add the spot. Try again."
+      store.send(.clearError)
+    }
+    return accepted
+  }
+
   // ── Reflection at hand-off ───────────────────────────────────────────
 
   private struct ReflectionTarget: Identifiable {
@@ -397,6 +500,9 @@ struct FocusPlayerScreen: View {
     /// then closes.
     let plays: [ReflectionPlay]
     let seed: ReflectionResult
+    let finish: FinishSheetView?
+    /// The focus the aim is asked against, or the musician's own words for it.
+    let aim: String?
   }
 
   private var reflectionTarget: ReflectionTarget? {
@@ -413,7 +519,9 @@ struct FocusPlayerScreen: View {
       tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
       sheetClick: ReflectionHandoff.sheetClick(draft.reading, active: active),
       plays: ReflectionPlay.rows(entry.plays),
-      seed: ReflectionHandoff.seed(draft.answers))
+      seed: ReflectionHandoff.seed(draft.answers),
+      finish: active.record.finish,
+      aim: entry.record.focus?.label ?? active.currentItemIntention)
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -468,6 +576,8 @@ struct FocusPlayerScreen: View {
 private struct TimerRing: View {
   let elapsed: Int
   let planned: Int?
+  /// Smaller while the move-on offer needs the room, as in the design pass (#2315).
+  let size: CGFloat
 
   private var fraction: Double {
     guard let planned, planned > 0 else { return 0 }
@@ -493,7 +603,7 @@ private struct TimerRing: View {
       .padding(18)
       VStack(spacing: 4) {
         Text(SessionClock.clockDisplay(elapsed))
-          .font(IntradaFont.timer(48))
+          .font(IntradaFont.timer(size < 200 ? 40 : 48))
           .monospacedDigit()
           .foregroundStyle(IntradaColor.ink)
         if let planned {
@@ -503,7 +613,7 @@ private struct TimerRing: View {
         }
       }
     }
-    .frame(width: 200, height: 200)
+    .frame(width: size, height: size)
     .accessibilityElement(children: .ignore)
     // Named for the item rather than just "Elapsed": the orientation band now
     // carries a session timer too, so an unqualified label reads as either (T19).
