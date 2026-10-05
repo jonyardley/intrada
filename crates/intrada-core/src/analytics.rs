@@ -83,6 +83,8 @@ pub struct AnalyticsView {
     pub top_mover: Option<ScoreChange>,
     /// The line under the dial, `+0.7 this week`; `None` unless the week rose.
     pub mastery_change: Option<String>,
+    /// `Climbing steadily across 3 items.`; `None` unless a mark rose (#2399).
+    pub climbing: Option<String>,
 }
 
 /// Aggregated stats for the current and previous ISO weeks (Monday–Sunday).
@@ -202,6 +204,7 @@ pub(crate) fn analytics_from_changes(
         overall_mastery: compute_overall_mastery(item_views),
         top_mover: top_mover(changes),
         mastery_change: mastery_change(changes),
+        climbing: climbing(changes),
     }
 }
 
@@ -508,6 +511,14 @@ fn mastery_change(changes: &[ScoreChange]) -> Option<String> {
     }
     let tenths = (sum * 20 + count) / (count * 2);
     (tenths > 0).then(|| format!("+{}.{} this week", tenths / 10, tenths % 10))
+}
+
+fn climbing(changes: &[ScoreChange]) -> Option<String> {
+    match changes.iter().filter(|c| c.delta > 0).count() {
+        0 => None,
+        1 => Some("Climbing steadily across 1 item.".to_string()),
+        n => Some(format!("Climbing steadily across {n} items.")),
+    }
 }
 
 // ── Last practised ───────────────────────────────────────────────────
@@ -945,6 +956,7 @@ mod tests {
             overall_mastery: 6.5,
             top_mover: Some(change("a", Some(3), 5)),
             mastery_change: Some("+0.7 this week".to_string()),
+            climbing: Some("Climbing steadily across 2 items.".to_string()),
             ..AnalyticsView::default()
         });
     }
@@ -1076,6 +1088,43 @@ mod tests {
         }
     }
 
+    #[test]
+    fn the_climbing_line_counts_only_the_items_that_rose() {
+        let from = |deltas: &[i8]| -> Vec<ScoreChange> {
+            deltas
+                .iter()
+                .enumerate()
+                .map(|(i, d)| change(&format!("i{i}"), Some(5), (5 + d) as u8))
+                .collect()
+        };
+        let mut with_first_mark = from(&[2]);
+        with_first_mark.push(change("new", None, 4));
+
+        let cases: [(&str, Vec<ScoreChange>, Option<&str>); 6] = [
+            ("no changes", vec![], None),
+            ("first marks only", vec![change("new", None, 4)], None),
+            ("every mark fell", from(&[-1, -2, -3]), None),
+            (
+                "one rose",
+                with_first_mark,
+                Some("Climbing steadily across 1 item."),
+            ),
+            (
+                "three rose",
+                from(&[1, 2, 1]),
+                Some("Climbing steadily across 3 items."),
+            ),
+            (
+                "three rose among falls",
+                from(&[1, -4, 2, -1, 1]),
+                Some("Climbing steadily across 3 items."),
+            ),
+        ];
+        for (name, changes, expected) in cases {
+            assert_eq!(climbing(&changes).as_deref(), expected, "{name}");
+        }
+    }
+
     /// Six items marked last week and again this week; `before` and `after`
     /// are their marks, items `a` to `f`.
     fn six_item_analytics(before: [u8; 6], after: [u8; 6]) -> AnalyticsView {
@@ -1106,12 +1155,19 @@ mod tests {
         let rising = six_item_analytics([5, 5, 5, 5, 5, 3], [6, 6, 6, 6, 6, 7]);
         assert_eq!(rising.score_changes.len(), 5);
         assert_eq!(rising.mastery_change.as_deref(), Some("+1.5 this week"));
+        assert_eq!(
+            rising.climbing.as_deref(),
+            Some("Climbing steadily across 6 items.")
+        );
 
         // Five items down by three push `f`, up by one, off the five rows.
         let falling = six_item_analytics([8, 8, 8, 8, 8, 5], [5, 5, 5, 5, 5, 6]);
         assert!(falling.score_changes.iter().all(|c| c.item_id != "f"));
         assert_eq!(falling.top_mover.map(|c| c.item_id), Some("f".to_string()));
         assert_eq!(falling.mastery_change, None);
+
+        let all_fell = six_item_analytics([8; 6], [5; 6]);
+        assert_eq!(all_fell.climbing, None);
     }
 
     // ── Top Items Tests ───────────────────────────────────────────────

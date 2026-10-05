@@ -92,7 +92,8 @@
         topMover: ScoreChange(
           itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
           currentScore: 3, delta: 1, isNew: false),
-        masteryChange: "+1.0 this week")
+        masteryChange: "+1.0 this week",
+        climbing: "Climbing steadily across 2 items.")
     }
   }
 
