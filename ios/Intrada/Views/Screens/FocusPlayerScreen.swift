@@ -428,7 +428,7 @@ struct FocusPlayerScreen: View {
         onKeep: { withAnimation { keptAway = offer.label } }
       )
       .padding(.top, IntradaSpacing.controlGap)
-      .transition(.move(edge: .top).combined(with: .opacity))
+      .transition(.opacity)
     }
   }
 
