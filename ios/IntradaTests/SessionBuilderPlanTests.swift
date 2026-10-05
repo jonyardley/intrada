@@ -121,7 +121,7 @@ struct SessionBuilderPlanTests {
     let offer = try #require(try bridge.rendered().buildingSetlist?.drillOffers.first)
     #expect(offer.addedEntryId == nil)
 
-    _ = try bridge.update(.session(.addDrill(entryId: entryId, exerciseId: offer.exerciseId)))
+    _ = try bridge.update(.session(EntrySettingsSheet.tickEvent(offer)))
 
     let building = try #require(try bridge.rendered().buildingSetlist)
     let piece = try #require(building.entries.first { $0.id == entryId })

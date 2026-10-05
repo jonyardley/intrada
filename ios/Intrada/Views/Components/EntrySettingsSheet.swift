@@ -142,7 +142,6 @@ struct EntrySettingsSheet: View {
     store.send(.session(Self.tickEvent(offer)))
   }
 
-  /// Ticked removes the drill's own entry; unticked adds it to the block.
   static func tickEvent(_ offer: DrillOfferView) -> SessionEvent {
     offer.addedEntryId.map { .removeFromSetlist(entryId: $0) }
       ?? .addDrill(entryId: offer.entryId, exerciseId: offer.exerciseId)

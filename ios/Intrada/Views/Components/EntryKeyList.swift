@@ -1,8 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-/// The key one entry is planned in (#2249). Pushed from the item sheet; a tap
-/// sends and steps back.
+/// The key one entry is planned in (#2249).
 struct EntryKeyList: View {
   let entryId: String
   @Environment(Store.self) private var store
