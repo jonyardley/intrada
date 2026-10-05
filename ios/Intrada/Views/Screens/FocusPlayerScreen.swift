@@ -238,8 +238,22 @@ struct FocusPlayerScreen: View {
           .lineLimit(3)
           .truncationMode(.tail)
       }
-      variationChip(active)
-      lastTimeOffer(active)
+      // Side by side where they fit: stacked, they push the header under the
+      // status bar on a 6.3 inch phone (#2249).
+      if active.record.lastTime == nil {
+        variationChip(active)
+      } else {
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: IntradaSpacing.controlGap) {
+            variationChip(active)
+            lastTimeOffer(active)
+          }
+          VStack(spacing: IntradaSpacing.controlGap) {
+            variationChip(active)
+            lastTimeOffer(active)
+          }
+        }
+      }
     }
     .padding(.horizontal, IntradaSpacing.card)
   }
