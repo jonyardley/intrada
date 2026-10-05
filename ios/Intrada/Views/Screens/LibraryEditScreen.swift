@@ -1,8 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-/// Edit sheet for a library item. Sends the fields and the variation rows as
-/// one save; the core validates and reconciles.
+/// Edit sheet for a library item; the core validates and saves all or nothing.
 struct LibraryEditScreen: View {
   let item: LibraryItemView
   @Environment(Store.self) private var store

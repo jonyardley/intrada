@@ -348,9 +348,7 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(edited.variations.map(\.label), ["Swung", "Staccato"])
   }
 
-  /// The Edit form's one save against the real core (#1783, #2246, #2228):
-  /// the written key and the item's variations are set side by side, and
-  /// neither takes the other's place.
+  /// The written key and the variations land together, neither replacing the other (#1783).
   func testRealBridgeEditFormSetsTheKeyAndTheVariationsApart() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)

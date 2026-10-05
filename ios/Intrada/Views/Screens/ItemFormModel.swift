@@ -214,8 +214,6 @@ final class ItemFormModel {
     }
   }
 
-  /// The fields and the variation set in one save (#2228); the core decides
-  /// whether the set applies and refuses all or nothing.
   func editEvent(id: String) -> ItemEvent {
     .edit(
       id: id, input: updateInput(), variationIds: variations.compactMap(\.variantId),
