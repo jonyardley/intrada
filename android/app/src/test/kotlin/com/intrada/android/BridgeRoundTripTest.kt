@@ -38,6 +38,7 @@ import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoBand
 import com.intrada.shared.TempoInput
 import com.intrada.shared.TempoReading
+import com.intrada.shared.UpdateItem
 import com.intrada.shared.Variation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -299,6 +300,66 @@ class BridgeRoundTripTest {
         assertEquals(eFlat, active?.currentKey)
         assertEquals(item.variationIds.reversed(), active?.currentVariationIds)
         assertEquals(2, item.variationIds.size)
+    }
+
+    // The edit form's one save crosses a second decoder: the fields, the variation ids and the
+    // typed labels all land in one item write (#2228).
+    @Test
+    fun anEditSavesTheFieldsAndTheVariationsInOneWrite() {
+        val bridge = LiveBridge()
+        val added =
+            bridge.update(
+                Event.Item(
+                    ItemEvent.Add(
+                        CreateItem(
+                            title = "Scales",
+                            kind = ItemKind.EXERCISE,
+                            tags = emptyList(),
+                            variationLabels = listOf("Slow", "Swung"),
+                        )
+                    )
+                )
+            )
+        val item =
+            added
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+        val dMinor = Key(Letter.D, Accidental.NATURAL, Modality.MINOR)
+
+        val effects =
+            bridge.update(
+                Event.Item(
+                    ItemEvent.Edit(
+                        item.id,
+                        UpdateItem(title = "Scales in thirds", key = dMinor),
+                        listOf(item.variationIds.last()),
+                        listOf("Staccato"),
+                    )
+                )
+            )
+
+        val saved =
+            effects
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+        val minted =
+            effects
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value
+                            as? PersistenceOperation.SaveVariations)
+                        ?.value
+                }
+                .flatten()
+        assertEquals("Scales in thirds", saved.title)
+        assertEquals(dMinor, saved.key)
+        assertEquals(listOf("Staccato"), minted.map { it.label })
+        assertEquals(listOf(item.variationIds.last(), minted.single().id), saved.variationIds)
     }
 
     // An empty first load seeds the four built-ins, which leave the core on Kotlin's decoder.

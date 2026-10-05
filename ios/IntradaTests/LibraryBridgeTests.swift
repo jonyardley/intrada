@@ -314,6 +314,40 @@ final class LibraryBridgeTests: XCTestCase {
       ])
   }
 
+  /// The edit form's one save against the real core (#2228): the fields, the
+  /// kept variation and a typed label all land, and the key is set while the
+  /// variations change.
+  func testRealBridgeEditSavesTheFieldsAndTheVariationsTogether() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil,
+            tempo: nil, notes: nil, tags: [], photoId: nil,
+            variationLabels: ["Slow", "Swung"]))))
+    let item = try XCTUnwrap(try bridge.rendered().items.first)
+    let swung = try XCTUnwrap(item.variations.first { $0.label == "Swung" })
+    let dMinor = Key(letter: .d, accidental: .natural, mode: .minor)
+
+    _ = try bridge.update(
+      .item(
+        .edit(
+          id: item.id,
+          input: UpdateItem(
+            title: "Scales in thirds", kind: nil, composer: nil, key: .some(dMinor),
+            tempo: nil, notes: nil, tags: nil, priority: nil),
+          variationIds: [swung.id], newLabels: ["Staccato"])))
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    let edited = try XCTUnwrap(view.items.first { $0.id == item.id })
+    XCTAssertEqual(edited.title, "Scales in thirds")
+    XCTAssertEqual(edited.key, dMinor)
+    XCTAssertEqual(edited.variations.map(\.label), ["Swung", "Staccato"])
+  }
+
   /// The Edit form's two events against the real core (#1783, #2246): the
   /// written key and the item's variations are set side by side, and neither
   /// takes the other's place.

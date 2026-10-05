@@ -194,6 +194,15 @@ pub enum ItemEvent {
         exercise_id: String,
         piece_ids: Vec<String>,
     },
+    /// The edit form's whole save (#2228): fields and, for an exercise, the
+    /// variation set as `UpdateItemVariations` takes it. Every part is checked
+    /// before any lands, so a refusal leaves the item as it was.
+    Edit {
+        id: String,
+        input: UpdateItem,
+        variation_ids: Vec<String>,
+        new_labels: Vec<String>,
+    },
 }
 
 /// Acts on the library's own variation rows, not on any one item's set.
@@ -316,6 +325,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercises,
         } => create::add_piece_in_full(model, piece, chart, exercises),
         ItemEvent::Update { id, input } => edit::update(model, id, input),
+        ItemEvent::Edit {
+            id,
+            input,
+            variation_ids,
+            new_labels,
+        } => edit::edit(model, id, input, variation_ids, new_labels),
         ItemEvent::Delete { id } => edit::delete(model, id),
         ItemEvent::SetPhoto { id, photo_id } => photo::set_photo(model, id, Some(photo_id)),
         ItemEvent::ClearPhoto { id } => photo::set_photo(model, id, None),
