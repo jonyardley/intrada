@@ -60,7 +60,7 @@ targets:
         # `PhotosPicker`, which runs out of process and reads nothing we hold.
         INFOPLIST_KEY_NSCameraUsageDescription: To scan the page you practise from.
         INFOPLIST_KEY_NSMicrophoneUsageDescription: To hear a note you speak instead of type.
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: To turn a note you speak into text, on this device where it can.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: To turn a note you speak into text, on this iPhone when it can.
         # App icon = the Icon Composer AppIcon.icon bundle, not the asset
         # catalogue (which holds the instrument icons only, #1693).
         # actool rasterises back-compat PNG icons for iOS 17/18; iOS 26 gets the

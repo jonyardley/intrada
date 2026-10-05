@@ -122,6 +122,10 @@ final class SpeechInputModel {
     }
   }
 
+  func sceneChanged(to scene: ScenePhase) {
+    if scene == .background { stop() }
+  }
+
   func stop() {
     guard phase != .idle else { return }
     if phase == .listening { recogniser.stop() }
@@ -230,9 +234,8 @@ final class LiveSpeechRecogniser: SpeechRecogniser {
     task = nil
   }
 
-  // Swift 6 gives a closure formed on the main actor that actor's isolation,
-  // and these callbacks arrive on audio and Speech queues, so a main-actor
-  // closure traps there. Each is built in a nonisolated function instead.
+  // Swift 6 isolates a closure formed on the main actor, and these callbacks run on
+  // audio and Speech queues where that traps, so each is built nonisolated.
 
   private nonisolated static func speechAuthorisation() async
     -> SFSpeechRecognizerAuthorizationStatus
@@ -337,9 +340,7 @@ struct SpeechInputButton: View {
       Text(problem.message)
     }
     .onDisappear { model.stop() }
-    .onChange(of: scenePhase) { _, phase in
-      if phase != .active { model.stop() }
-    }
+    .onChange(of: scenePhase) { _, phase in model.sceneChanged(to: phase) }
   }
 
   private func openSettings() {

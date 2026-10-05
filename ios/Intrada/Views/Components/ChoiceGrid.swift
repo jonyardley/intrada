@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// A grid of boxed answers, three to a row, any number of them on: how an item
-/// felt, what got in the way, whether the aim was met. Tapping one that is on
-/// turns it off, so every answer stays optional.
+/// Boxed answers three to a row; tapping one that is on turns it off.
 struct ChoiceGrid<Option: Hashable>: View {
   let options: [Option]
   let isOn: (Option) -> Bool

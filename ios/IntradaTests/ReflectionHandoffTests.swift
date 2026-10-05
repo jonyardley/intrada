@@ -160,7 +160,7 @@ struct ReflectionHandoffTests {
     #expect(try bridge.rendered().summary?.entries.first?.record.intentionMet == .partly)
   }
 
-  @Test func theFinishAnswersSurviveAResumeFromTheDraft() throws {
+  @Test func theFinishAnswersRideTheSheetsDraft() throws {
     let bridge = RowsBridge()
     let (_, plays) = try pieceMidSession(bridge)
     let result = ReflectionResult(

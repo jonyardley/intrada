@@ -82,10 +82,7 @@ struct FocusPlayerScreen: View {
     }
     .sheet(
       isPresented: $addingSpot,
-      onDismiss: {
-        spotRefusal = nil
-        store.send(.clearError)
-      }
+      onDismiss: { spotRefusal = nil }
     ) {
       if let active, let limits = store.viewModel?.limits {
         TroubleSpotSheet(
@@ -124,13 +121,16 @@ struct FocusPlayerScreen: View {
 
   private func content(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 0) {
-      topChrome(active).fadeUp(0)
+      topChrome(active).fadeUp(0).zIndex(1)
       awayOffer(active)
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
       if let segment = active.record.segment {
         SegmentClockRow(
-          segment: segment, referenceDate: referenceDate, offering: $offeringMoveOn,
+          segment: segment,
+          referenceDate: SessionClock.heldAt(
+            stoppedAt: active.reflection?.stoppedAt, reference: referenceDate),
+          offering: $offeringMoveOn,
           onMove: {
             store.send(
               .session(.moveToNextSegment(now: SessionClock.nowRFC3339(), reading: tempoReading)))

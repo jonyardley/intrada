@@ -242,11 +242,8 @@ struct ReflectionSheet: View {
 
         if let finish {
           if !finish.noteOffers.isEmpty {
-            NoteOffers(
-              offers: finish.noteOffers, isKept: { notePoints.contains($0) },
-              onTap: toggleNotePoint
-            )
-            .padding(.top, IntradaSpacing.card)
+            NoteOffers(offers: finish.noteOffers, onTap: toggleNotePoint)
+              .padding(.top, IntradaSpacing.card)
           }
           FinishDetail(
             feltChoices: finish.feltChoices, obstacleChoices: finish.obstacleChoices,
@@ -299,25 +296,20 @@ struct ReflectionSheet: View {
             playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
             click: play.clickPattern ?? currentClick)
         }
-      }, felt: felt, obstacles: obstacles, notePoints: keptPoints, intentionMet: intentionMet)
-  }
-
-  /// Only points the drafted note still offers: an edit can drop one the musician kept.
-  private var keptPoints: [NoteSpan] {
-    let offered = Set((finish?.noteOffers ?? []).map(\.span))
-    return notePoints.filter(offered.contains)
+      }, felt: felt, obstacles: obstacles, notePoints: notePoints, intentionMet: intentionMet)
   }
 
   private func toggleNotePoint(_ span: NoteSpan) {
-    if let at = notePoints.firstIndex(of: span) {
-      notePoints.remove(at: at)
+    var kept = finish?.noteOffers.filter(\.confirmed).map(\.span) ?? []
+    if let at = kept.firstIndex(of: span) {
+      kept.remove(at: at)
     } else {
-      notePoints.append(span)
+      kept.append(span)
     }
+    notePoints = kept
     draft()
   }
 
-  /// A binding that saves the draft as soon as the answer changes (#2137).
   private func drafting<Value>(_ binding: Binding<Value>) -> Binding<Value> {
     Binding(
       get: { binding.wrappedValue },

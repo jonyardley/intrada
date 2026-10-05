@@ -177,6 +177,8 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
         plays: [.preview("p1", "A1", "4:10"), .preview("p2", "B", "4:00")],
         limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "A1 at 84",
+        seed: ReflectionResult(
+          marks: [:], note: "A1: left hand rushed in bar 12, got it at 84", tempos: []),
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)

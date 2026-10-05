@@ -19,9 +19,15 @@ struct AimAnswer: View {
         HStack(spacing: IntradaSpacing.controlGap) {
           VStack(alignment: .leading, spacing: 2) {
             Text(aim).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
-            Label(Self.readLabel(read), systemImage: "checkmark")
-              .font(IntradaFont.small)
-              .foregroundStyle(read == .yes ? IntradaColor.success : IntradaColor.inkSecondary)
+            Group {
+              if read == .yes {
+                Label(Self.readLabel(read), systemImage: "checkmark")
+              } else {
+                Text(Self.readLabel(read))
+              }
+            }
+            .font(IntradaFont.small)
+            .foregroundStyle(read == .yes ? IntradaColor.success : IntradaColor.inkSecondary)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
           Button("Change") { changing = true }
@@ -30,7 +36,7 @@ struct AimAnswer: View {
             .frame(minHeight: 44)
             .accessibilityIdentifier("reflection.changeAim")
         }
-        .padding(.leading, IntradaSpacing.cardCompact)
+        .padding(.horizontal, IntradaSpacing.cardCompact)
         .padding(.vertical, 6)
         .cardSurface(cornerRadius: IntradaRadius.control)
       } else {
@@ -67,7 +73,6 @@ struct AimAnswer: View {
 
 struct NoteOffers: View {
   let offers: [NotePointView]
-  let isKept: (NoteSpan) -> Bool
   let onTap: (NoteSpan) -> Void
 
   @Environment(\.marker) private var marker
@@ -77,7 +82,7 @@ struct NoteOffers: View {
       SectionTitle("From your note").frame(maxWidth: .infinity, alignment: .leading)
       FlowLayout(spacing: IntradaSpacing.controlGap) {
         ForEach(offers, id: \.span) { offer in
-          chip(offer, kept: isKept(offer.span))
+          chip(offer, kept: offer.confirmed)
         }
       }
     }

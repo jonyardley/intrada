@@ -1,3 +1,4 @@
+import SwiftUI
 import Testing
 
 @testable import Intrada
@@ -6,6 +7,7 @@ import Testing
 private final class StubRecogniser: SpeechRecogniser {
   var access: SpeechAccess
   var startError: Error?
+  var whileAuthorising: (() -> Void)?
   private(set) var stopCount = 0
   private(set) var startCount = 0
   private var onText: (@MainActor @Sendable (String) -> Void)?
@@ -16,7 +18,10 @@ private final class StubRecogniser: SpeechRecogniser {
     self.startError = startError
   }
 
-  func authorise() async -> SpeechAccess { access }
+  func authorise() async -> SpeechAccess {
+    whileAuthorising?()
+    return access
+  }
 
   func start(
     onText: @escaping @MainActor @Sendable (String) -> Void,
@@ -169,6 +174,28 @@ struct SpeechInputModelTests {
     await model.toggle(current: "") { _ in }
     #expect(model.isListening)
     await model.toggle(current: "") { _ in }
+
+    #expect(model.phase == .idle)
+    #expect(stub.stopCount == 1)
+  }
+
+  @Test func thePermissionAlertsDoNotStopAStart() async {
+    let stub = StubRecogniser()
+    let model = SpeechInputModel(recogniser: stub)
+    stub.whileAuthorising = { model.sceneChanged(to: .inactive) }
+
+    await model.start(current: "") { _ in }
+
+    #expect(model.isListening)
+    #expect(stub.startCount == 1)
+  }
+
+  @Test func goingToTheBackgroundStopsListening() async {
+    let stub = StubRecogniser()
+    let model = SpeechInputModel(recogniser: stub)
+
+    await model.start(current: "") { _ in }
+    model.sceneChanged(to: .background)
 
     #expect(model.phase == .idle)
     #expect(stub.stopCount == 1)
