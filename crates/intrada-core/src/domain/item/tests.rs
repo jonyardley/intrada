@@ -818,6 +818,213 @@ fn variation_and_key_events_round_trip_on_the_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(library_row("v1", "Hands separately"));
 }
 
+// ── Edit: fields and variations in one save (#2228) ──
+
+fn edit(
+    model: &mut Model,
+    id: &str,
+    input: UpdateItem,
+    ids: &[&str],
+    labels: &[&str],
+) -> Command<Effect, Event> {
+    Intrada.update(
+        Event::Item(ItemEvent::Edit {
+            id: id.to_string(),
+            input,
+            variation_ids: ids.iter().map(|s| s.to_string()).collect(),
+            new_labels: labels.iter().map(|s| s.to_string()).collect(),
+        }),
+        model,
+    )
+}
+
+fn renamed(title: &str) -> UpdateItem {
+    UpdateItem {
+        title: Some(title.to_string()),
+        ..Default::default()
+    }
+}
+
+/// The items and library rows one command saves, read in one pass because
+/// reading a command's effects drains them.
+fn saved_writes(
+    cmd: &mut Command<Effect, Event>,
+) -> (Vec<Item>, Vec<crate::domain::variation::Variation>) {
+    let (mut items, mut rows) = (vec![], vec![]);
+    for effect in cmd.effects() {
+        if let Effect::Persistence(req) = effect {
+            match req.operation {
+                crate::persistence::PersistenceOperation::SaveItem(item) => items.push(item),
+                crate::persistence::PersistenceOperation::SaveVariations(saved) => {
+                    rows.extend(saved)
+                }
+                _ => {}
+            }
+        }
+    }
+    (items, rows)
+}
+
+#[test]
+fn an_edit_clears_every_variation_and_sets_the_key_in_one_save() {
+    let mut model = model_with_variation_library();
+    set_item_variations(&mut model, "ex-1", &["v-hs", "v-dot"], &[]);
+
+    let mut cmd = edit(
+        &mut model,
+        "ex-1",
+        UpdateItem {
+            key: Some(Some(key("D minor"))),
+            ..Default::default()
+        },
+        &[],
+        &[],
+    );
+
+    assert!(model.last_error.is_none());
+    assert_eq!(item(&model, "ex-1").key, Some(key("D minor")));
+    assert!(item_variations(&model, "ex-1").is_empty());
+    let (saved, _) = saved_writes(&mut cmd);
+    assert_eq!(saved.len(), 1, "one write for the whole edit");
+    assert!(saved[0].variation_ids.is_empty());
+    assert_eq!(saved[0].key, Some(key("D minor")));
+}
+
+#[test]
+fn a_refused_variation_saves_none_of_the_edit() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = edit(&mut model, "ex-1", renamed("Renamed"), &["v-gone"], &[]);
+
+    assert!(model.last_error.is_some());
+    assert_eq!(item(&model, "ex-1").title, "C Major Scale");
+    assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+}
+
+#[test]
+fn a_refused_field_mints_no_variation() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = edit(&mut model, "ex-1", renamed("   "), &[], &["Slow"]);
+
+    assert!(model.last_error.is_some());
+    assert_eq!(model.variations.len(), 2, "nothing minted");
+    assert!(item_variations(&model, "ex-1").is_empty());
+    assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+}
+
+#[test]
+fn an_edit_mints_a_typed_label_beside_the_saved_item() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = edit(&mut model, "ex-1", renamed("Scales"), &["v-hs"], &["Slow"]);
+
+    assert!(model.last_error.is_none());
+    let (saved, minted) = saved_writes(&mut cmd);
+    assert_eq!(minted.len(), 1);
+    assert_eq!(minted[0].label, "Slow");
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].title, "Scales");
+    assert_eq!(
+        saved[0].variation_ids,
+        vec!["v-hs".to_string(), minted[0].id.clone()]
+    );
+}
+
+#[test]
+fn an_unchanged_set_keeps_the_ids_of_deleted_rows() {
+    let mut model = model_with_variation_library();
+    set_item_variations(&mut model, "ex-1", &["v-hs", "v-dot"], &[]);
+    send_variation(
+        &mut model,
+        VariationEvent::Delete {
+            id: "v-dot".to_string(),
+        },
+    );
+
+    let _ = edit(&mut model, "ex-1", renamed("Scales"), &["v-hs"], &[]);
+
+    assert_eq!(item(&model, "ex-1").title, "Scales");
+    assert_eq!(item_variations(&model, "ex-1"), vec!["v-hs", "v-dot"]);
+}
+
+#[test]
+fn a_piece_keeps_its_variations_whatever_the_lists_say() {
+    let cases: Vec<(&str, Option<ItemKind>)> =
+        vec![("piece-1", None), ("ex-1", Some(ItemKind::Piece))];
+    for (id, kind) in cases {
+        let mut model = model_with_variation_library();
+        set_item_variations(&mut model, id, &["v-hs"], &[]);
+
+        let _ = edit(
+            &mut model,
+            id,
+            UpdateItem {
+                title: Some("Renamed".to_string()),
+                kind,
+                ..Default::default()
+            },
+            &["v-gone"],
+            &["Slow"],
+        );
+
+        assert!(model.last_error.is_none(), "{id}");
+        assert_eq!(item(&model, id).title, "Renamed");
+        assert_eq!(item_variations(&model, id), vec!["v-hs"], "{id}");
+        assert_eq!(model.variations.len(), 2, "{id}: nothing minted");
+    }
+}
+
+#[test]
+fn a_piece_turned_exercise_takes_the_lists() {
+    let mut model = model_with_variation_library();
+
+    let _ = edit(
+        &mut model,
+        "piece-1",
+        UpdateItem {
+            kind: Some(ItemKind::Exercise),
+            ..Default::default()
+        },
+        &["v-dot"],
+        &[],
+    );
+
+    assert!(model.last_error.is_none());
+    assert_eq!(item(&model, "piece-1").kind, ItemKind::Exercise);
+    assert_eq!(item_variations(&model, "piece-1"), vec!["v-dot"]);
+}
+
+#[test]
+fn an_edit_of_a_missing_item_mints_nothing() {
+    let mut model = model_with_variation_library();
+
+    let mut cmd = edit(&mut model, "gone", renamed("Renamed"), &[], &["Slow"]);
+
+    assert!(model.last_error.is_some());
+    assert_eq!(model.variations.len(), 2);
+    assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+}
+
+#[test]
+fn the_edit_event_round_trips_on_the_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::Edit {
+        id: "ex-1".to_string(),
+        input: UpdateItem {
+            title: Some("Scales".to_string()),
+            kind: Some(ItemKind::Exercise),
+            composer: Some(None),
+            key: Some(Some(key("Eb major"))),
+            tempo: Some(TempoInput::default()),
+            notes: Some(Some("slowly".to_string())),
+            tags: Some(vec!["warm-up".to_string()]),
+            priority: None,
+        },
+        variation_ids: vec!["v1".to_string()],
+        new_labels: vec!["Slow".to_string()],
+    }));
+}
+
 // ── Add: variations chosen on create (#2246) ──
 
 #[test]

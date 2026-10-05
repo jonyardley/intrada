@@ -7,30 +7,11 @@ pub(super) fn update_item_variations(
     variation_ids: Vec<String>,
     new_labels: Vec<String>,
 ) -> Command<Effect, Event> {
-    let new_labels = validation::distinct_ignoring_case(new_labels);
-    if let Err(e) = validation::validate_variation_labels(&new_labels)
-        .and_then(|()| validation::validate_variation_ids(model, &variation_ids))
-    {
-        return refuse(model, &e);
-    }
     let now = chrono::Utc::now();
-    let (minted_ids, minted) = variation::ids_for_labels(&model.variations, &new_labels, now);
-    let mut ids = variation_ids;
-    for minted_id in minted_ids {
-        if !ids.contains(&minted_id) {
-            ids.push(minted_id);
-        }
-    }
-    if ids.len() > validation::MAX_VARIATIONS {
-        let e = LibraryError::Validation {
-            field: "labels".to_string(),
-            message: format!(
-                "An item can have at most {} variations",
-                validation::MAX_VARIATIONS
-            ),
-        };
-        return refuse(model, &e);
-    }
+    let (ids, minted) = match resolve_variations(model, variation_ids, new_labels, now) {
+        Ok(set) => set,
+        Err(e) => return refuse(model, &e),
+    };
 
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
         model.raise_error(LibraryError::NotFound { id }.to_string());
@@ -44,7 +25,44 @@ pub(super) fn update_item_variations(
     item.updated_at = now;
     let item = item.clone();
     model.last_error = None;
+    save_with_minted(model, item, minted)
+}
 
+/// The item's variation ids in order, and the library rows to mint for labels
+/// no live row has yet.
+pub(super) fn resolve_variations(
+    model: &Model,
+    variation_ids: Vec<String>,
+    new_labels: Vec<String>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<(Vec<String>, Vec<Variation>), LibraryError> {
+    let new_labels = validation::distinct_ignoring_case(new_labels);
+    validation::validate_variation_labels(&new_labels)?;
+    validation::validate_variation_ids(model, &variation_ids)?;
+    let (minted_ids, minted) = variation::ids_for_labels(&model.variations, &new_labels, now);
+    let mut ids = variation_ids;
+    for minted_id in minted_ids {
+        if !ids.contains(&minted_id) {
+            ids.push(minted_id);
+        }
+    }
+    if ids.len() > validation::MAX_VARIATIONS {
+        return Err(LibraryError::Validation {
+            field: "labels".to_string(),
+            message: format!(
+                "An item can have at most {} variations",
+                validation::MAX_VARIATIONS
+            ),
+        });
+    }
+    Ok((ids, minted))
+}
+
+pub(super) fn save_with_minted(
+    model: &mut Model,
+    item: Item,
+    minted: Vec<Variation>,
+) -> Command<Effect, Event> {
     if minted.is_empty() {
         return persist_item(model, item);
     }
