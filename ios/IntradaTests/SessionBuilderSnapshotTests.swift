@@ -33,6 +33,19 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
+  func testSessionBuilderGroupedAccessibilitySize() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
+      as: tallAxConfig(height: 1800))
+  }
+
+  func testSessionBuilderGroupedCollapsedAccessibilitySize() {
+    assertSnapshot(
+      of: host(
+        NavigationStack { SessionBuilderScreen(startCollapsedGroups: ["g1"]) },
+        store: .previewBuildingGrouped), as: tallAxConfig(height: 1800))
+  }
+
   func testAddToSessionSheet() {
     assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
   }

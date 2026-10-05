@@ -17,10 +17,11 @@ struct SessionBuilderScreen: View {
   @State private var configuringEntry: EntrySettingsTarget?
   @State private var addingExerciseTarget: AddExerciseTarget?
 
-  /// `startInEditMode` seeds the Edit-mode row controls for snapshot tests
-  /// (they can't drive the Edit/Done toggle interactively).
-  init(startInEditMode: Bool = false) {
+  /// The `start` arguments seed the Edit-mode row controls and collapsed blocks
+  /// for snapshot tests (they can't drive the toggles interactively).
+  init(startInEditMode: Bool = false, startCollapsedGroups: Swift.Set<String> = []) {
     _editMode = State(initialValue: startInEditMode ? .active : .inactive)
+    _collapsedGroups = State(initialValue: startCollapsedGroups)
   }
 
   private struct EntrySettingsTarget: Identifiable {
@@ -346,6 +347,12 @@ struct SessionBuilderScreen: View {
 
   private var rowLineLimit: Int { typeSize.isAccessibilitySize ? 3 : 1 }
 
+  private var titleLayout: AnyLayout {
+    typeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+      : AnyLayout(HStackLayout(spacing: 6))
+  }
+
   // ── Rows ─────────────────────────────────────────────────────────────
 
   @ViewBuilder private func rowView(_ row: BuilderRow) -> some View {
@@ -424,10 +431,11 @@ struct SessionBuilderScreen: View {
       HStack(spacing: IntradaSpacing.cardCompact) {
         ItemKind.piece.bar.frame(width: 4, height: 34).clipShape(Capsule())
         VStack(alignment: .leading, spacing: 2) {
-          HStack(spacing: 6) {
+          titleLayout {
             Text(block.pieceTitle ?? "Related exercises")
               .font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
               .lineLimit(rowLineLimit)
+              .fixedSize(horizontal: false, vertical: true)
             if collapsed {
               Text(relatedLabel(block)).font(IntradaFont.secondary)
                 .foregroundStyle(IntradaColor.inkSecondary)
