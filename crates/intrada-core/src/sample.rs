@@ -192,6 +192,7 @@ pub(crate) fn sample_sessions() -> Vec<PracticeSession> {
             felt: None,
             got_in_the_way: Vec::new(),
             note_points: Vec::new(),
+            planned_key: None,
             planned_variation_ids: vec![],
             planned_rep_target: None,
             plays: vec![sample_play(

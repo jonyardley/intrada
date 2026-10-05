@@ -379,7 +379,7 @@ final class SessionBridgeTests: XCTestCase {
     let answers = ReflectionAnswers(
       marks: [DraftMark(playId: playId, score: 7)], note: "bar 12 rushed",
       tempos: [DraftTempo(playId: playId, tempo: 160, click: click)], felt: nil, gotInTheWay: [],
-      notePoints: [], intentionMet: nil)
+      notePoints: [], intentionMet: nil, ways: [])
     let requests = try bridge.update(.session(.updateReflectionDraft(answers: answers)))
 
     let open = try XCTUnwrap(try bridge.rendered().activeSession?.reflection)
@@ -617,7 +617,7 @@ final class SessionBridgeTests: XCTestCase {
       position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, intention: nil, plannedDurationSecs: nil,
       groupId: nil, plannedVariationIds: [], plannedRepTarget: nil, plays: [], segments: [],
-      focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: []
+      focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [], plannedKey: nil
     )
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,

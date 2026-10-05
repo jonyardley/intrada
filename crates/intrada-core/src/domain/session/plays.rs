@@ -6,9 +6,10 @@ use chrono::{DateTime, Utc};
 use crux_core::Command;
 
 /// An entry that has just become current opens its first play on its first
-/// segment, else the focus's section, else the whole item; plain, with no
-/// key (#2246, #2249). Last time is an offer, never a start. Idempotent: a
-/// recovered session already carries its plays.
+/// segment, else the focus's section, else the whole item, in the planned key
+/// (#2249). Planned variations stay a plan, so the play starts plain (#2246).
+/// Last time is an offer, never a start. Idempotent: a recovered session
+/// already carries its plays.
 pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
     if entry.plays.is_empty() {
         let section_id = entry
@@ -18,6 +19,7 @@ pub(super) fn open_first_play(entry: &mut SetlistEntry, now: DateTime<Utc>) {
             .or_else(|| entry.focus.as_ref().and_then(|f| f.section_id.clone()));
         let way = PlayWay {
             section_id,
+            key: entry.planned_key,
             ..PlayWay::default()
         };
         entry

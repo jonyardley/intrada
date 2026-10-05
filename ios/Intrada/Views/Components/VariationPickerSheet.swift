@@ -35,37 +35,13 @@ struct VariationPickerSheet: View {
   }
 
   private func row(_ variation: PickerVariationView) -> some View {
-    let isCurrent = variation.id == currentVariationId
-    return Button {
+    PickerRow(
+      label: variation.label, caption: variation.caption,
+      isCurrent: variation.id == currentVariationId,
+      hint: "Switches \(itemTitle) to this variation", identifier: "variationPicker.row"
+    ) {
       if onPick(variation.id) { dismiss() }
-    } label: {
-      HStack(spacing: IntradaSpacing.cardCompact) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(variation.label)
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.ink)
-            .multilineTextAlignment(.leading)
-          Text(variation.caption)
-            .font(IntradaFont.secondary)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .multilineTextAlignment(.leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        if isCurrent {
-          Image(systemName: "checkmark")
-            .font(IntradaFont.segment.weight(.semibold))
-            .foregroundStyle(IntradaColor.accent)
-        }
-      }
-      .padding(.horizontal, IntradaSpacing.card)
-      .frame(minHeight: 56)
-      .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("\(variation.label), \(variation.caption)")
-    .accessibilityHint(isCurrent ? "" : "Switches \(itemTitle) to this variation")
-    .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
-    .accessibilityIdentifier("variationPicker.row")
   }
 }
 

@@ -5,7 +5,7 @@ enum ReflectionHandoff {
   struct Plan {
     /// Sent first with no status guard, so a refused note stops the hand-off before the entry moves on.
     let note: Event?
-    /// Completes the entry; the scores and tempos after it need that.
+    /// Completes the entry; the scores, ways and tempos after it need that.
     let nextItem: Event
     let after: [Event]
   }
@@ -22,6 +22,12 @@ enum ReflectionHandoff {
         .session(.updateEntryScore(entryId: entryId, playId: play.id, score: $0))
       }
     }
+    let ways: [Event] = result.ways.map {
+      .session(
+        .updatePlayWay(
+          entryId: entryId, playId: $0.playId, sectionId: $0.sectionId, key: $0.key,
+          variationIds: $0.variationIds))
+    }
     // The click's tempo already landed on each play as it closed; this is the
     // manual path, and the core ignores a row nobody moved (#1761).
     let tempos: [Event] = result.tempos.map { row in
@@ -34,7 +40,7 @@ enum ReflectionHandoff {
       note: note,
       nextItem: .session(
         .nextItem(now: now, nextItemStartedAt: nextItemStartedAt, reading: reading)),
-      after: scores + tempos + answers(entryId: entryId, result))
+      after: scores + ways + tempos + answers(entryId: entryId, result))
   }
 
   /// The finish answers (#2307, #2308, #2303), after the note so a kept point
@@ -73,7 +79,7 @@ enum ReflectionHandoff {
       tempos: result.tempos.filter(\.userSet).map {
         DraftTempo(playId: $0.playId, tempo: $0.tempo, click: $0.click)
       }, felt: result.felt, gotInTheWay: result.obstacles, notePoints: result.notePoints,
-      intentionMet: result.intentionMet)
+      intentionMet: result.intentionMet, ways: result.ways)
   }
 
   /// The saved draft as the sheet's starting answers, after a resume (#2137).
@@ -85,7 +91,7 @@ enum ReflectionHandoff {
       tempos: answers.tempos.map {
         ReflectionRowTempo(playId: $0.playId, tempo: $0.tempo, userSet: true, click: $0.click)
       }, felt: answers.felt, obstacles: answers.gotInTheWay, notePoints: answers.notePoints,
-      intentionMet: answers.intentionMet)
+      intentionMet: answers.intentionMet, ways: answers.ways)
   }
 
   /// An untouched click sat on the item's own bar, so a quaver bar's tempo is quavers (#2304).

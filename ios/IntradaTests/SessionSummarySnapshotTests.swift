@@ -184,6 +184,36 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  // A1's row open, its key changed from D major to G major (#2249).
+  func testReflectionSheetChangingWhatWasPlayed() {
+    assertSnapshot(of: host(wayChangeSheet), as: config)
+  }
+
+  func testReflectionSheetChangingWhatWasPlayedAccessibilitySize() {
+    assertSnapshot(of: host(wayChangeSheet), as: axConfig)
+  }
+
+  private var wayChangeSheet: some View {
+    let g = Key(letter: .g, accidental: .natural, mode: .major)
+    let a1 = ReflectionPlay.preview("p1", "A1 · D major", "8:10")
+    let b = ReflectionPlay.preview("p2", "B", "3:50")
+    return ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        plays: [a1, b], limits: .preview, finish: .previewWayChoices,
+        variations: [
+          PickerVariationView(id: "v-hs", label: "Hands separately", caption: ""),
+          PickerVariationView(id: "v-dot", label: "Dotted rhythms", caption: ""),
+        ],
+        plannedLabel: "A1 · D major",
+        seed: ReflectionResult(
+          marks: [:], note: "", tempos: [],
+          ways: [DraftWay(playId: "p1", sectionId: "sec-a1", key: g, variationIds: [])]),
+        onSave: { _ in }, onSkip: {}, changingPlayId: "p1")
+    }
+  }
+
   private var finishSheet: some View {
     ZStack(alignment: .bottom) {
       PaperBackground()

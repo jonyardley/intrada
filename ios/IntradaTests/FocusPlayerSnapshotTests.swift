@@ -22,7 +22,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     active.reflection = ReflectionView(
       answers: ReflectionAnswers(
         marks: [], note: "", tempos: [], felt: nil, gotInTheWay: [], notePoints: [],
-        intentionMet: nil),
+        intentionMet: nil, ways: []),
       reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
       stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)))
     assertSnapshot(
@@ -244,6 +244,14 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         traits: UITraitCollection { traits in
           traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
         }))
+  }
+
+  func testFocusPlayerLastTimeOffer() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveLastTime))),
+      as: config)
   }
 
   func testFocusPlayerWithReps() {

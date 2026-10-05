@@ -750,15 +750,32 @@ pub fn validate_segment_sections(
     Ok(())
 }
 
+/// `recorded` is the play being changed, if any: a section or variation it
+/// already holds stays sayable after the library deletes it, so changing only
+/// the key of such a play is not refused (#2249).
 pub fn validate_play_way(
     entry: &SetlistEntry,
     way: &PlayWay,
+    recorded: Option<&crate::domain::session::Play>,
     model: &Model,
 ) -> Result<(), LibraryError> {
     if let Some(id) = &way.section_id {
-        validate_entry_section(entry, id, model)?;
+        if !recorded.is_some_and(|p| p.section_id.as_ref() == Some(id)) {
+            validate_entry_section(entry, id, model)?;
+        }
     }
-    validate_variation_ids(model, &way.variation_ids)
+    let mut seen = std::collections::HashSet::new();
+    let repeats = !way.variation_ids.iter().all(|id| seen.insert(id.as_str()));
+    if repeats || way.variation_ids.len() > MAX_VARIATIONS {
+        return validate_variation_ids(model, &way.variation_ids);
+    }
+    let new: Vec<String> = way
+        .variation_ids
+        .iter()
+        .filter(|id| !recorded.is_some_and(|p| p.variation_ids.contains(id)))
+        .cloned()
+        .collect();
+    validate_variation_ids(model, &new)
 }
 
 /// A `play_id` from the shell must name a play of the entry it was sent with,

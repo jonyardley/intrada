@@ -35,6 +35,7 @@ pub(super) fn create_entry(
         felt: None,
         got_in_the_way: Vec::new(),
         note_points: Vec::new(),
+        planned_key: None,
     }
 }
 
@@ -238,6 +239,65 @@ pub(super) fn set_entry_variations(
     })
 }
 
+pub(super) fn set_entry_key(
+    model: &mut Model,
+    entry_id: String,
+    key: Option<crate::domain::key::Key>,
+) -> Command<Effect, Event> {
+    let key =
+        entry_for_plan(model, &entry_id).and_then(|e| written_key_as_none(model, &e.item_id, key));
+    set_planned(model, &entry_id, Ok(()), |entry| entry.planned_key = key)
+}
+
+/// Offered drills only: an exercise linked to a section the entry plans.
+pub(super) fn add_drill(
+    model: &mut Model,
+    entry_id: String,
+    exercise_id: String,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref building) = model.session_status else {
+        model.raise_error("A drill can only be added while building".to_string());
+        return crux_core::render::render();
+    };
+    let Some(entry) = building.entries.iter().find(|e| e.id == entry_id) else {
+        model.raise_error(format!("Entry '{entry_id}' not found in setlist"));
+        return crux_core::render::render();
+    };
+    let offered = model
+        .items
+        .iter()
+        .find(|i| i.id == entry.item_id)
+        .is_some_and(|piece| {
+            entry
+                .segments
+                .iter()
+                .any(|s| piece.has_live_link(&exercise_id, Some(&s.section_id)))
+        });
+    let is_exercise = model
+        .items
+        .iter()
+        .any(|i| i.id == exercise_id && i.kind == ItemKind::Exercise);
+    if !offered || !is_exercise {
+        model.raise_error("That exercise isn't linked to a section in this plan".to_string());
+        return crux_core::render::render();
+    }
+    // Membership is binary (#939): a drill already in the session is ticked.
+    if building.entries.iter().any(|e| e.item_id == exercise_id) {
+        model.last_error = None;
+        return crux_core::render::render();
+    }
+    let group_id = entry.group_id.clone().unwrap_or_else(|| {
+        let group_id = ulid::Ulid::generate().to_string();
+        if let SessionStatus::Building(ref mut building) = model.session_status {
+            if let Some(piece) = building.entries.iter_mut().find(|e| e.id == entry_id) {
+                piece.group_id = Some(group_id.clone());
+            }
+        }
+        group_id
+    });
+    add_exercise_to_block(model, group_id, exercise_id)
+}
+
 pub(super) fn step_segment(
     model: &mut Model,
     entry_id: String,
@@ -338,6 +398,7 @@ pub(super) fn apply_last_time(model: &mut Model, entry_id: String) -> Command<Ef
             .collect();
         split_evenly(&mut segments, entry.planned_duration_secs);
         entry.segments = segments;
+        entry.planned_key = way.key;
         entry.planned_variation_ids = way.variation_ids;
     })
 }
@@ -367,7 +428,7 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .section_id
             .clone()
             .filter(|id| sections.contains(&id.as_str())),
-        key: None,
+        key: play.key,
         variation_ids: play
             .variation_ids
             .iter()
@@ -375,7 +436,7 @@ pub(crate) fn last_time(model: &Model, item_id: &str) -> Option<PlayWay> {
             .cloned()
             .collect(),
     };
-    (way.section_id.is_some() || !way.variation_ids.is_empty()).then_some(way)
+    (way != PlayWay::default()).then_some(way)
 }
 
 pub(super) fn set_session_length(
@@ -536,7 +597,7 @@ pub(super) fn add_to_setlist(model: &mut Model, item_id: String) -> Command<Effe
     };
     let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
     let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
-        item.linked_exercise_ids()
+        item.whole_piece_exercise_ids()
             .iter()
             .filter_map(|ex_id| {
                 model
@@ -835,7 +896,7 @@ pub(super) fn start_session(model: &mut Model, now: DateTime<Utc>) -> Command<Ef
     active.segment = first_segment_clock(active.current_entry(), now);
 
     let persist = persist_active(&active);
-    model.session_status = SessionStatus::Active(active);
+    model.session_status = SessionStatus::Active(Box::new(active));
     model.last_error = None;
     persist
 }

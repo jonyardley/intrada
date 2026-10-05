@@ -3,16 +3,19 @@ import SwiftUI
 
 /// Splits an entry into its sections, each with its own minutes (#2315). The
 /// core keeps the minutes summing to the item's planned time, and adding or
-/// removing a section keeps the others' tuning (#2398).
+/// removing a section keeps the others' tuning (#2398). A planned section
+/// offers the drills linked to it (#2249).
 struct EntrySegmentsCard: View {
   let segments: [SegmentView]
   let sections: [SectionView]
+  let drills: [DrillOfferView]
   let hasPlannedTime: Bool
   let canAddSection: Bool
   let wholePiece: () -> Void
   let add: (_ sectionId: String) -> Void
   let remove: (_ sectionId: String) -> Void
   let step: (_ sectionId: String, _ minutes: Int8) -> Void
+  let tickDrill: (DrillOfferView) -> Void
 
   private var unplanned: [SectionView] {
     sections.filter { section in !segments.contains { $0.sectionId == section.id } }
@@ -40,6 +43,10 @@ struct EntrySegmentsCard: View {
       }
       ForEach(Array(segments.enumerated()), id: \.element.sectionId) { index, segment in
         segmentRow(segment)
+        let offers = drills.filter { $0.sectionId == segment.sectionId }
+        if !offers.isEmpty {
+          drillGroup(segment.label, offers)
+        }
         if index < segments.count - 1 || offersAdd {
           HairlineDivider()
         }
@@ -97,5 +104,25 @@ struct EntrySegmentsCard: View {
       .accessibilityLabel("Remove \(segment.label)")
     }
     .padding(.vertical, IntradaSpacing.controlGap)
+  }
+
+  private func drillGroup(_ sectionLabel: String, _ offers: [DrillOfferView]) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      FieldLabel("Drills for \(sectionLabel)")
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.cardCompact)
+        .accessibilityAddTraits(.isHeader)
+      ForEach(offers, id: \.exerciseId) { offer in
+        TickRow(
+          label: offer.title, chosen: offer.addedEntryId != nil, identifier: "entrySettings.drill"
+        ) {
+          tickDrill(offer)
+        }
+        .accessibilityValue("drill for \(sectionLabel)")
+      }
+    }
+    .background(IntradaColor.paperTop)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.control))
+    .padding(.bottom, IntradaSpacing.controlGap)
   }
 }

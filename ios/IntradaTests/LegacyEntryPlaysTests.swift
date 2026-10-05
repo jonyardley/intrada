@@ -199,7 +199,7 @@ struct LegacyEntryPlaysTests {
       plannedDurationSecs: nil, groupId: nil, plannedVariationIds: ["v-c"],
       plannedRepTarget: nil,
       plays: [play("p1", "v-c", 8), play("p2", "v-d", 6)], segments: [], focus: nil,
-      intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
+      intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [], plannedKey: nil)
     try store.saveSession(
       PracticeSession(
         id: "s1", entries: [entry], sessionNotes: nil,

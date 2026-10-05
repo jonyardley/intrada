@@ -259,14 +259,14 @@
                 repHistory: nil, tempoChanges: [], achievedTempo: nil, clickPattern: nil,
                 score: nil, away: [])
             ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
-            notePoints: []),
+            notePoints: [], plannedKey: nil),
           SetlistEntry(
             id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
             position: 1, durationSecs: 0, status: .notAttempted,
             notes: nil, intention: nil, plannedDurationSecs: nil,
             groupId: nil, plannedVariationIds: [], plannedRepTarget: nil,
             plays: [], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [],
-            notePoints: []),
+            notePoints: [], plannedKey: nil),
         ],
         currentIndex: 1,
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
@@ -293,7 +293,8 @@
                 entries: [.previewExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
+            entryKeys: [], drillOffers: [])))
     }
 
     static var previewBuildingEmpty: Store {
@@ -303,7 +304,8 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
-            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [])))
+            lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
+            entryKeys: [], drillOffers: [])))
     }
 
     /// Session builder's add-items sheet with a "Recently practised" quick-add
@@ -315,7 +317,8 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            drillOffers: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -332,7 +335,8 @@
           buildingSetlist: BuildingSetlistView(
             entries: [], itemCount: 0, blocks: [],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: []),
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            drillOffers: []),
           recentlyPractisedIds: [
             LibraryItemView.previewPiece.id, LibraryItemView.previewExercise.id,
           ]))
@@ -360,7 +364,7 @@
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
-            focusChoices: [])))
+            focusChoices: [], entryKeys: [], drillOffers: [])))
     }
 
     /// `previewBuildingGrouped` as the related-exercise sheet sees it: the
@@ -386,7 +390,8 @@
                 entries: [.previewStandaloneExercise], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            drillOffers: [])))
     }
 
     /// Session builder where one of the block's related exercises is also in
@@ -405,12 +410,16 @@
                 durationDisplay: "12 min", entries: block, takenElsewhere: [])
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
-            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [])))
+            lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+            drillOffers: [])))
     }
 
     /// The builder with a split, focused piece and one offering last time
     /// (#2249, #2303, #2315). `first` replaces the first row, for the sheet.
-    static func previewBuildingPlanned(_ first: SetlistEntryView = .previewPlannedPiece) -> Store {
+    static func previewBuildingPlanned(
+      _ first: SetlistEntryView = .previewPlannedPiece, drillOffers: [DrillOfferView] = [],
+      entryKeys: [EntryKeysView] = []
+    ) -> Store {
       let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
       return Store(
         bridge: PreviewBridge(
@@ -433,9 +442,10 @@
             lastTimes: [
               LastTimeView(
                 entryId: SetlistEntryView.previewLastTimePiece.id, sectionId: "sec-b",
-                variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms")
+                variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms", key: nil)
             ],
-            focusChoices: FocusChoiceView.previewChoices)))
+            focusChoices: FocusChoiceView.previewChoices, entryKeys: entryKeys,
+            drillOffers: drillOffers)))
     }
 
     /// Player Focus: a piece mid-session, no reps.

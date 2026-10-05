@@ -51,8 +51,9 @@ struct FocusPlayerScreen: View {
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
           tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
           currentClick: target.sheetClick, plays: target.plays,
-          limits: limits, finish: target.finish, aim: target.aim,
-          refusal: reflectionRefusal, seed: target.seed,
+          limits: limits, finish: target.finish,
+          variations: target.variations, plannedLabel: target.plannedLabel,
+          aim: target.aim, refusal: reflectionRefusal, seed: target.seed,
           onSave: { result in handleReflection(target, result) },
           onSkip: { handleSkipRating(target) },
           onDraft: { result in
@@ -237,9 +238,48 @@ struct FocusPlayerScreen: View {
           .lineLimit(3)
           .truncationMode(.tail)
       }
-      variationChip(active)
+      // Side by side where they fit: stacked, they push the header under the
+      // status bar on a 6.3 inch phone (#2249).
+      if active.record.lastTime == nil {
+        variationChip(active)
+      } else {
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: IntradaSpacing.controlGap) {
+            variationChip(active)
+            lastTimeOffer(active)
+          }
+          VStack(spacing: IntradaSpacing.controlGap) {
+            variationChip(active)
+            lastTimeOffer(active)
+          }
+        }
+      }
     }
     .padding(.horizontal, IntradaSpacing.card)
+  }
+
+  // ── Last time on this piece (#2249) ──
+
+  @ViewBuilder private func lastTimeOffer(_ active: ActiveSessionView) -> some View {
+    if let offer = active.record.lastTime {
+      OfferChip(offer.label) { playLastTime(offer) }
+        .accessibilityIdentifier("player.lastTime")
+        .accessibilityHint("Plays it the way you did last time")
+    }
+  }
+
+  private func playLastTime(_ offer: LastTimeView) {
+    store.send(
+      .session(Self.lastTimeEvent(offer, now: SessionClock.nowRFC3339(), reading: tempoReading)),
+      onSuccess: .impact)
+  }
+
+  static func lastTimeEvent(_ offer: LastTimeView, now: String, reading: TempoReading)
+    -> SessionEvent
+  {
+    .switchPlay(
+      entryId: offer.entryId, sectionId: offer.sectionId, key: offer.key,
+      variationIds: offer.variationIds, now: now, reading: reading)
   }
 
   // ── The variation being practised right now (#1739 decision 6) ──
@@ -503,6 +543,8 @@ struct FocusPlayerScreen: View {
     let finish: FinishSheetView?
     /// The focus the aim is asked against, or the musician's own words for it.
     let aim: String?
+    let variations: [PickerVariationView]
+    let plannedLabel: String?
   }
 
   private var reflectionTarget: ReflectionTarget? {
@@ -521,7 +563,8 @@ struct FocusPlayerScreen: View {
       plays: ReflectionPlay.rows(entry.plays),
       seed: ReflectionHandoff.seed(draft.answers),
       finish: active.record.finish,
-      aim: entry.record.focus?.label ?? active.currentItemIntention)
+      aim: entry.record.focus?.label ?? active.currentItemIntention,
+      variations: active.currentVariations, plannedLabel: entry.plannedLabel)
   }
 
   private func presentReflection(_ active: ActiveSessionView) {

@@ -212,7 +212,7 @@
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
-        plays: [], scoreSummary: nil, record: .empty)
+        plays: [], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
   }
 
@@ -409,7 +409,7 @@
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
     }
   }
 
@@ -446,7 +446,7 @@
             durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
-        ], scoreSummary: nil, record: .empty)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
 
     static var previewActive: ActiveSessionView {
@@ -567,7 +567,7 @@
             durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
-        ], scoreSummary: nil, record: .empty)
+        ], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -663,7 +663,7 @@
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
-        scoreSummary: plays.isEmpty ? nil : score, record: .empty)
+        scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
     }
   }
 
@@ -716,7 +716,7 @@
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
         plannedDurationDisplay: nil, groupId: nil, plannedSectionIds: [],
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
-        plays: plays, scoreSummary: 8, record: .empty)
+        plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil)
     }
 
     /// One exercise practised in a single key: the detail screen names it
@@ -732,7 +732,7 @@
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
         groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
-        plays: plays, scoreSummary: nil, record: .empty)
+        plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil)
     }
   }
 
@@ -752,6 +752,14 @@
       var active = previewActive
       active.record.awayOffer = AwayOfferView(
         minutes: 6, label: "Away 6 minutes. Leave it out?")
+      return active
+    }
+
+    static var previewActiveLastTime: ActiveSessionView {
+      var active = previewActive
+      active.record.lastTime = LastTimeView(
+        entryId: "entry-1", sectionId: "sec-b", variationIds: ["v-dot"],
+        label: "Last time: B · Dotted rhythms", key: nil)
       return active
     }
   }
@@ -781,7 +789,35 @@
           ObstacleChoiceView(obstacle: .memory, label: "Memory"),
           ObstacleChoiceView(obstacle: .tone, label: "Tone"),
           ObstacleChoiceView(obstacle: .tension, label: "Tension"),
-        ])
+        ], rows: [], sections: [], keys: [])
+    }
+
+    /// Clair de Lune's sections and keys, for changing what a row says was played (#2249).
+    static var previewWayChoices: FinishSheetView {
+      func part(_ id: String, _ label: String) -> SectionView {
+        SectionView(
+          id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
+          label: label, barsCaption: nil)
+      }
+      var finish = preview(asksIntention: false)
+      finish.noteOffers = []
+      finish.sections = [part("sec-a1", "A1"), part("sec-b", "B"), part("sec-a2", "A2")]
+      finish.keys = [
+        KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266d} major"),
+        KeyChoiceView(
+          key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
+        KeyChoiceView(
+          key: Key(letter: .g, accidental: .natural, mode: .major), label: "G major", caption: nil),
+      ]
+      finish.rows = [
+        FinishRowView(
+          playId: "p1", label: "A1 · G major", sectionId: "sec-a1",
+          key: Key(letter: .g, accidental: .natural, mode: .major), variationIds: [],
+          canChange: true),
+        FinishRowView(
+          playId: "p2", label: "B", sectionId: "sec-b", key: nil, variationIds: [], canChange: true),
+      ]
+      return finish
     }
   }
 #endif

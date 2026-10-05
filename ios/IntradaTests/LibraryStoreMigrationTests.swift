@@ -48,7 +48,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
           startedAt: "2026-01-01T10:00:00Z", seconds: 60,
           repTarget: nil, repCount: nil, repHistory: nil,
           tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: 8, away: [])
-      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [],
+      plannedKey: nil)
     let session = PracticeSession(
       id: "sess-rt", entries: [entry],
       sessionNotes: nil,
@@ -137,7 +138,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
           startedAt: "2026-01-01T10:00:00Z", seconds: 60,
           repTarget: nil, repCount: nil, repHistory: nil,
           tempoChanges: [], achievedTempo: nil, clickPattern: nil, score: nil, away: [])
-      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [])
+      ], segments: [], focus: nil, intentionMet: nil, felt: nil, gotInTheWay: [], notePoints: [],
+      plannedKey: nil)
     let session = PracticeSession(
       id: "sess-g", entries: [entry],
       sessionNotes: nil,

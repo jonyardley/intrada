@@ -6,7 +6,7 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::item::{ItemKind, Modality};
-use crate::domain::key::{key_from_stored, key_to_stored};
+use crate::domain::key::{key_from_stored, key_to_stored, Key};
 use crate::domain::metre::Metre;
 use crate::domain::section::BarRange;
 use crate::domain::session::{
@@ -329,6 +329,8 @@ struct StoredEntry {
     got_in_the_way: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     note_points: Option<Vec<StoredNotePoint>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    planned_key: Option<StoredKey>,
 
     /// The v0.16 plan, at most one section, before segments (#2315).
     #[serde(default, skip_serializing)]
@@ -579,6 +581,7 @@ impl Reader {
             .flatten()
             .filter_map(|p| self.note_point(p))
             .collect();
+        let planned_key = e.planned_key.as_ref().and_then(|k| self.key(k));
         SetlistEntry {
             id: e.id.clone(),
             item_id: e.item_id.clone(),
@@ -600,6 +603,7 @@ impl Reader {
             felt,
             got_in_the_way,
             note_points,
+            planned_key,
         }
     }
 
@@ -659,14 +663,16 @@ impl Reader {
         }]
     }
 
+    fn key(&mut self, k: &StoredKey) -> Option<Key> {
+        let mode = k
+            .modality
+            .as_deref()
+            .and_then(|m| self.known("Modality", m, |raw| modality(raw).map(Some), None));
+        key_from_stored(Some(&k.key), mode)
+    }
+
     fn play(&mut self, p: &StoredPlay) -> Play {
-        let key = p.key.as_ref().and_then(|k| {
-            let mode = k
-                .modality
-                .as_deref()
-                .and_then(|m| self.known("Modality", m, |raw| modality(raw).map(Some), None));
-            key_from_stored(Some(&k.key), mode)
-        });
+        let key = p.key.as_ref().and_then(|k| self.key(k));
         Play {
             id: p.id.clone(),
             section_id: p.section_id.clone(),
@@ -782,6 +788,7 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
                 .collect(),
         ),
         note_points: Some(e.note_points.iter().map(stored_note_point).collect()),
+        planned_key: e.planned_key.as_ref().map(stored_key),
         planned_section_ids: None,
         score: None,
         rep_target: None,
@@ -792,17 +799,19 @@ fn stored_entry(e: &SetlistEntry) -> StoredEntry {
     }
 }
 
+fn stored_key(key: &Key) -> StoredKey {
+    let (text, mode) = key_to_stored(key);
+    StoredKey {
+        key: text,
+        modality: mode.map(|m| modality_text(m).to_string()),
+    }
+}
+
 fn stored_play(p: &Play) -> StoredPlay {
     StoredPlay {
         id: p.id.clone(),
         section_id: p.section_id.clone(),
-        key: p.key.as_ref().map(|key| {
-            let (text, mode) = key_to_stored(key);
-            StoredKey {
-                key: text,
-                modality: mode.map(|m| modality_text(m).to_string()),
-            }
-        }),
+        key: p.key.as_ref().map(stored_key),
         variation_ids: Some(p.variation_ids.clone()),
         started_at: time_text(&p.started_at),
         seconds: p.seconds,

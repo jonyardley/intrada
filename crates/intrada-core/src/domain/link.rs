@@ -98,6 +98,18 @@ impl Item {
         ids
     }
 
+    /// Each exercise linked to the whole piece once; a section's drills are
+    /// offered when that section is planned, never brought along (#2249).
+    pub(crate) fn whole_piece_exercise_ids(&self) -> Vec<String> {
+        let mut ids: Vec<String> = Vec::new();
+        for link in self.live_links() {
+            if link.section_id.is_none() && !ids.contains(&link.exercise_id) {
+                ids.push(link.exercise_id.clone());
+            }
+        }
+        ids
+    }
+
     pub(crate) fn has_live_link(&self, exercise_id: &str, section_id: Option<&str>) -> bool {
         self.live_links()
             .iter()

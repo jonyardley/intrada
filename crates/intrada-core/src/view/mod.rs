@@ -4,8 +4,8 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, EntryVariationsView, FocusChoiceView, FocusTargetView, LimitsView, Model,
-    PhotoRecognitionView, ViewModel,
+    BuildingSetlistView, DrillOfferView, EntryVariationsView, FocusChoiceView, FocusTargetView,
+    LimitsView, Model, PhotoRecognitionView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::matches_query;
@@ -112,12 +112,22 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     entry.segments.is_empty()
                         && entry.focus.is_none()
                         && entry.planned_variation_ids.is_empty()
+                        && entry.planned_key.is_none()
                 })
                 .filter_map(|entry| {
                     let way = crate::domain::session::last_time(model, &entry.item_id)?;
                     Some(crate::view::session::last_time_view(entry, way, &labels))
                 })
                 .collect();
+            let entry_keys = building
+                .entries
+                .iter()
+                .filter_map(|entry| {
+                    let item = model.items.iter().find(|i| i.id == entry.item_id)?;
+                    crate::view::session::entry_keys_view(entry, item)
+                })
+                .collect();
+            let drill_offers = drill_offers(model, &building.entries);
             (
                 None,
                 Some(BuildingSetlistView {
@@ -147,6 +157,8 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                             ),
                         })
                         .collect(),
+                    entry_keys,
+                    drill_offers,
                 }),
                 None,
             )
@@ -169,9 +181,28 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 current_variations,
                 &model.practice_defaults,
             );
+            // Offered only before the musician has chosen a way (#2249).
+            let on_the_whole_piece_plain = current_entry
+                .open_play()
+                .is_some_and(|p| p.is_played(&crate::domain::session::PlayWay::default()));
             view.record.last_time =
                 crate::domain::session::last_time(model, &current_entry.item_id)
+                    .filter(|_| on_the_whole_piece_plain && active.reflection.is_none())
                     .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
+            if let (Some(finish), Some(item), Some(draft)) = (
+                view.record.finish.as_mut(),
+                model.items.iter().find(|i| i.id == current_entry.item_id),
+                active.reflection.as_ref(),
+            ) {
+                crate::view::session::fill_finish_choices(
+                    finish,
+                    current_entry,
+                    draft,
+                    item,
+                    !current_variations.is_empty(),
+                    &labels,
+                );
+            }
             (Some(view), None, None)
         }
         SessionStatus::Summary(summary_session) => (
@@ -308,6 +339,39 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             read_nothing: false,
         },
     }
+}
+
+fn drill_offers(
+    model: &Model,
+    entries: &[crate::domain::session::SetlistEntry],
+) -> Vec<DrillOfferView> {
+    let mut offers = Vec::new();
+    for entry in entries {
+        let Some(piece) = model.items.iter().find(|i| i.id == entry.item_id) else {
+            continue;
+        };
+        for segment in &entry.segments {
+            for link in piece.live_links() {
+                if link.section_id.as_deref() != Some(segment.section_id.as_str()) {
+                    continue;
+                }
+                let Some(exercise) = model.items.iter().find(|i| i.id == link.exercise_id) else {
+                    continue;
+                };
+                offers.push(DrillOfferView {
+                    entry_id: entry.id.clone(),
+                    section_id: segment.section_id.clone(),
+                    exercise_id: exercise.id.clone(),
+                    title: exercise.title.clone(),
+                    added_entry_id: entries
+                        .iter()
+                        .find(|e| e.item_id == exercise.id)
+                        .map(|e| e.id.clone()),
+                });
+            }
+        }
+    }
+    offers
 }
 
 #[cfg(test)]

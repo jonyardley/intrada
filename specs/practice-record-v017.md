@@ -140,3 +140,41 @@ start, allowance and what Stay has borrowed from the next.
 
 Mock-ups: <https://claude.ai/artifact/UEkgR3M6Xn1wkBSoKjRNfL>. Review page
 with both decisions: <https://claude.ai/artifact/1ZTXDfEHjjRuZECqBeZQeW>.
+
+## The rest of #2249 (5 October 2026)
+
+Plan on #2249, approved 5 October; mock-ups in row 4 of the screens canvas.
+One more blob bump, 7 to 8 (7 never shipped).
+
+On `SetlistEntry`, appended last: `planned_key: Option<Key>` (`None` is the
+written key). On `ReflectionAnswers`, appended: `ways: Vec<DraftWay>`, with
+`DraftWay { play_id, section_id, key, variation_ids }`, the rows changed by
+hand. Stored entries gain `planned_key` as JSON; no migration.
+
+- **Drills are offered, then ticked into the block.** Adding a piece brings only the
+  exercises linked to the whole piece (#939). An exercise linked to a section
+  is offered under that section once it is planned; `AddDrill { entry_id,
+  exercise_id }` puts it in the piece's block, forming one if needed; one
+  already in the session reads as ticked. Removing it is `RemoveFromSetlist`.
+- **The plan opens the first play.** Its section (first segment, else the
+  focus's) and the planned key; planned variations stay a plan (#2246). `SetEntryKey
+  { entry_id, key }` sets the key while building; any key is valid, and the
+  view offers the written key and the item's own keys, plus a planned key
+  outside them, and names the current choice.
+- **Last time carries the key.** In the builder it shows while nothing is
+  planned, key included. On the practice screen it shows while the open play
+  is the whole piece, plain, in the written key; one tap is a `SwitchPlay`.
+- **Scoring confirms the way.** Each finish row can change its section, key
+  and variations. The draft keeps the change for crash recovery; the hand-off
+  sends `UpdatePlayWay { entry_id, play_id, section_id, key, variation_ids }`
+  after `NextItem`, like the marks, and the core refuses it before then. The
+  written key is stored as no key wherever it is named. The core projects
+  each row (label, way, whether it can change), drops a drafted way equal
+  to the recorded one, and lets a play keep a variation it already recorded
+  after the library deletes it.
+
+Tests: adding A2 offers its two drills and adds neither; ticking one joins
+A2's block; planned A1 in D opens in D and, scored as G, records G; a skipped
+sheet changes no play; a v7 blob is discarded; a v8 round-trips through
+`LiveBridge` with a planned key and a draft way; a stored entry with no key
+reads as the written key.
