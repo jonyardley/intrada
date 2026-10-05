@@ -120,8 +120,11 @@ final class PracticeRecordBridgeTests: XCTestCase {
     let obstacles: [ObstacleChoiceView] = sheet.obstacleChoices
     XCTAssertEqual(obstacles.first?.obstacle, Obstacle.notes)
 
-    XCTAssertEqual(sheet.keys.first?.label, "Written key")
+    XCTAssertEqual(sheet.keys, [], "the written key alone is no choice")
     XCTAssertEqual(sheet.sections.map(\.label), ["A", "B"])
+    let rows: [FinishRowView] = sheet.rows
+    XCTAssertEqual(rows.map(\.label), ["A", "B"])
+    XCTAssertEqual(rows.map(\.canChange), [true, true])
     let firstPlayId = try XCTUnwrap(
       try bridge.rendered().activeSession?.entries.first?.plays.first?.id)
     let dMajor = Key(letter: .d, accidental: .natural, mode: .major)
@@ -139,6 +142,10 @@ final class PracticeRecordBridgeTests: XCTestCase {
     XCTAssertEqual(offers.map(\.confirmed), [true, false])
     XCTAssertEqual(offers.first?.sectionLabel, "A")
     XCTAssertEqual(try bridge.rendered().activeSession?.reflection?.answers, answers)
+    let drafted = try XCTUnwrap(try bridge.rendered().activeSession?.record.finish)
+    XCTAssertEqual(drafted.rows.first?.label, "A · D major")
+    XCTAssertEqual(drafted.rows.first?.key, dMajor)
+    XCTAssertEqual(drafted.keys.map(\.label), ["Written key", "D major"])
 
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: note)))
     _ = try bridge.update(

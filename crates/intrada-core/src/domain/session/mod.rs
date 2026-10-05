@@ -207,6 +207,10 @@ impl SetlistEntry {
         self.segments.iter().map(|s| s.section_id.clone()).collect()
     }
 
+    pub fn play(&self, id: &str) -> Option<&Play> {
+        self.plays.iter().find(|p| p.id == id)
+    }
+
     pub fn open_play(&self) -> Option<&Play> {
         self.plays.last()
     }

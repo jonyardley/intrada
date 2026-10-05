@@ -169,7 +169,7 @@ pub(super) fn switch_play(
         return crux_core::render::render();
     }
 
-    if let Err(e) = validation::validate_play_way(entry, &way, model) {
+    if let Err(e) = validation::validate_play_way(entry, &way, None, model) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
     }
@@ -308,6 +308,15 @@ pub(super) fn update_reflection_draft(
     {
         return crux_core::render::render();
     }
+    answers.ways.retain(|row| {
+        !entry.play(&row.play_id).is_some_and(|play| {
+            play.is_played(&PlayWay {
+                section_id: row.section_id.clone(),
+                key: row.key,
+                variation_ids: row.variation_ids.clone(),
+            })
+        })
+    });
     let SessionStatus::Active(ref mut active) = model.session_status else {
         return crux_core::render::render();
     };
@@ -350,7 +359,7 @@ fn draft_ways_valid(entry: &SetlistEntry, ways: &[DraftWay], model: &Model) -> b
         };
         seen.insert(row.play_id.as_str())
             && validation::validate_play_belongs(entry, &row.play_id).is_ok()
-            && validation::validate_play_way(entry, &way, model).is_ok()
+            && validation::validate_play_way(entry, &way, entry.play(&row.play_id), model).is_ok()
     })
 }
 

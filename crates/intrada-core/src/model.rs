@@ -862,6 +862,9 @@ pub struct KeyChoiceView {
 pub struct EntryKeysView {
     pub entry_id: String,
     pub keys: Vec<KeyChoiceView>,
+    /// The planned key, spelt as its row in `keys`.
+    pub current: Option<crate::domain::key::Key>,
+    pub current_label: String,
 }
 
 /// An exercise linked to a section the entry plans, offered with a tick.
@@ -919,9 +922,25 @@ pub struct FinishSheetView {
     pub intention_met_read: Option<crate::domain::session::IntentionMet>,
     pub felt_choices: Vec<FeltChoiceView>,
     pub obstacle_choices: Vec<ObstacleChoiceView>,
+    /// One per play, in play order.
+    pub rows: Vec<FinishRowView>,
     /// What each row can be changed to; the variations are `current_variations`.
     pub sections: Vec<SectionView>,
+    /// Empty when the written key is the only choice.
     pub keys: Vec<KeyChoiceView>,
+}
+
+/// What one finish row says was played: the drafted way, else the recorded one.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct FinishRowView {
+    pub play_id: String,
+    pub label: String,
+    pub section_id: Option<String>,
+    /// Spelt as its row in the sheet's `keys`.
+    pub key: Option<crate::domain::key::Key>,
+    pub variation_ids: Vec<String>,
+    pub can_change: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

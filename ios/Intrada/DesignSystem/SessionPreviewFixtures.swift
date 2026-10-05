@@ -781,7 +781,7 @@
           ObstacleChoiceView(obstacle: .memory, label: "Memory"),
           ObstacleChoiceView(obstacle: .tone, label: "Tone"),
           ObstacleChoiceView(obstacle: .tension, label: "Tension"),
-        ], sections: [], keys: [])
+        ], rows: [], sections: [], keys: [])
     }
   }
 #endif

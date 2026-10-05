@@ -159,7 +159,8 @@ hand. Stored entries gain `planned_key` as JSON; no migration.
 - **The plan opens the first play.** Its section (first segment, else the
   focus's) and the planned key; planned variations stay a plan (#2246). `SetEntryKey
   { entry_id, key }` sets the key while building; any key is valid, and the
-  view offers the written key and the item's own keys.
+  view offers the written key and the item's own keys, plus a planned key
+  outside them, and names the current choice.
 - **Last time carries the key.** In the builder it shows while nothing is
   planned, key included. On the practice screen it shows while the open play
   is the whole piece, plain, in the written key; one tap is a `SwitchPlay`.
@@ -167,7 +168,10 @@ hand. Stored entries gain `planned_key` as JSON; no migration.
   and variations. The draft keeps the change for crash recovery; the hand-off
   sends `UpdatePlayWay { entry_id, play_id, section_id, key, variation_ids }`
   after `NextItem`, like the marks, and the core refuses it before then. The
-  written key is stored as no key wherever it is named.
+  written key is stored as no key wherever it is named. The core projects
+  each row (label, way, whether it can change), drops a drafted way equal
+  to the recorded one, and lets a play keep a variation it already recorded
+  after the library deletes it.
 
 Tests: adding A2 offers its two drills and adds neither; ticking one joins
 A2's block; planned A1 in D opens in D and, scored as G, records G; a skipped

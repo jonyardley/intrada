@@ -54,7 +54,7 @@ pub(super) fn update_play_way(
     }
     way.key = written_key_as_none(model, &entry.item_id, way.key);
     let check = validation::validate_play_belongs(&entry, &play_id)
-        .and_then(|()| validation::validate_play_way(&entry, &way, model));
+        .and_then(|()| validation::validate_play_way(&entry, &way, entry.play(&play_id), model));
     if let Err(e) = check {
         model.raise_error(e.to_string());
         return crux_core::render::render();

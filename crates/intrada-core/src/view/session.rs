@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 
 use crate::analytics::{LocalClock, ScoreChange};
 use crate::domain::item::{Item, ItemKind};
+use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
     self as session, ActiveSession, EntryStatus, IntentionFocus, NotePoint, Play, PlayWay,
@@ -11,10 +12,11 @@ use crate::domain::session::{
 };
 use crate::domain::variation::Variation;
 use crate::model::{
-    ActiveRecordView, ActiveSessionView, AwayOfferView, EntryRecordView, FeltChoiceView,
-    FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView, LastTimeView, NotePointView,
-    ObstacleChoiceView, PickerVariationView, PlayView, PracticeSessionView, ReflectionView,
-    SegmentClockView, SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
+    ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
+    FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
+    LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
+    PracticeSessionView, ReflectionView, SegmentClockView, SegmentView, SetlistBlockView,
+    SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -311,14 +313,15 @@ pub fn last_time_view(entry: &SetlistEntry, way: PlayWay, labels: &PlayLabels) -
     }
 }
 
-/// The written key first, then the item's own, skipping one that repeats it.
-pub fn key_choices(item: &crate::domain::item::Item) -> Vec<KeyChoiceView> {
+/// The written key first, then the item's own, skipping one that repeats it,
+/// then any of `also` the list does not hold in either spelling.
+pub fn key_choices(item: &Item, also: &[Key]) -> Vec<KeyChoiceView> {
     let written = KeyChoiceView {
         key: None,
         label: "Written key".to_string(),
-        caption: item.key.as_ref().map(crate::domain::key::Key::label),
+        caption: item.key.as_ref().map(Key::label),
     };
-    std::iter::once(written)
+    let mut choices: Vec<KeyChoiceView> = std::iter::once(written)
         .chain(
             item.keys
                 .iter()
@@ -329,7 +332,118 @@ pub fn key_choices(item: &crate::domain::item::Item) -> Vec<KeyChoiceView> {
                     caption: None,
                 }),
         )
-        .collect()
+        .collect();
+    for key in also {
+        if spelt_as(item, &choices, Some(*key)) == Some(*key)
+            && !choices.iter().any(|c| c.key == Some(*key))
+        {
+            choices.push(KeyChoiceView {
+                key: Some(*key),
+                label: key.label(),
+                caption: None,
+            });
+        }
+    }
+    choices
+}
+
+/// `key` as its row in `choices` spells it, so the shell can compare keys
+/// by equality; the written key in either spelling is `None`.
+fn spelt_as(item: &Item, choices: &[KeyChoiceView], key: Option<Key>) -> Option<Key> {
+    let key = key?;
+    if item.key.is_some_and(|w| w.same_key(&key)) {
+        return None;
+    }
+    Some(
+        choices
+            .iter()
+            .find_map(|c| c.key.filter(|c| c.same_key(&key)))
+            .unwrap_or(key),
+    )
+}
+
+/// The builder's Key row: listed while the item keeps keys or a key is
+/// planned, so a key from last time can be set back to the written one.
+pub fn entry_keys_view(entry: &SetlistEntry, item: &Item) -> Option<EntryKeysView> {
+    if item.keys.is_empty() && entry.planned_key.is_none() {
+        return None;
+    }
+    let keys = key_choices(item, entry.planned_key.as_slice());
+    let current = spelt_as(item, &keys, entry.planned_key);
+    let current_label = keys
+        .iter()
+        .find(|k| k.key == current)
+        .map_or_else(|| "Written key".to_string(), |k| k.label.clone());
+    Some(EntryKeysView {
+        entry_id: entry.id.clone(),
+        keys,
+        current,
+        current_label,
+    })
+}
+
+/// Fills what the finish sheet reads from the item: the choices, and each
+/// row's way, drafted or recorded, with its label (#2249).
+pub fn fill_finish_choices(
+    finish: &mut FinishSheetView,
+    entry: &SetlistEntry,
+    draft: &ReflectionDraft,
+    item: &Item,
+    has_variations: bool,
+    labels: &PlayLabels,
+) {
+    let ways: Vec<PlayWay> = entry
+        .plays
+        .iter()
+        .map(|play| {
+            draft
+                .answers
+                .ways
+                .iter()
+                .find(|w| w.play_id == play.id)
+                .map_or_else(
+                    || PlayWay {
+                        section_id: play.section_id.clone(),
+                        key: play.key,
+                        variation_ids: play.variation_ids.clone(),
+                    },
+                    |w| PlayWay {
+                        section_id: w.section_id.clone(),
+                        key: w.key,
+                        variation_ids: w.variation_ids.clone(),
+                    },
+                )
+        })
+        .collect();
+    let recorded: Vec<Key> = ways.iter().filter_map(|w| w.key).collect();
+    let keys = key_choices(item, &recorded);
+    finish.sections = crate::view::library::build_section_views(item);
+    let can_change = !finish.sections.is_empty() || keys.len() > 1 || has_variations;
+    let plain = if item.sections.is_empty() {
+        "No variation"
+    } else {
+        "Whole piece"
+    };
+    finish.rows = entry
+        .plays
+        .iter()
+        .zip(ways)
+        .map(|(play, way)| {
+            let way = PlayWay {
+                key: spelt_as(item, &keys, way.key),
+                ..way
+            };
+            FinishRowView {
+                play_id: play.id.clone(),
+                label: labels.way(&way).unwrap_or_else(|| plain.to_string()),
+                section_id: way.section_id,
+                key: way.key,
+                variation_ids: way.variation_ids,
+                can_change,
+            }
+        })
+        .collect();
+    finish.keys = if keys.len() > 1 { keys } else { Vec::new() };
 }
 
 /// Closed plays carry their left-out time in their seconds; the open play,
@@ -454,6 +568,7 @@ fn finish_sheet_view(
                 label: session::obstacle_label(obstacle).to_string(),
             })
             .collect(),
+        rows: Vec::new(),
         sections: Vec::new(),
         keys: Vec::new(),
     }

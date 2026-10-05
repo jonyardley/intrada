@@ -4,8 +4,8 @@ use crate::domain::item::ItemKind;
 use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
-    BuildingSetlistView, DrillOfferView, EntryKeysView, EntryVariationsView, FocusChoiceView,
-    FocusTargetView, LimitsView, Model, PhotoRecognitionView, ViewModel,
+    BuildingSetlistView, DrillOfferView, EntryVariationsView, FocusChoiceView, FocusTargetView,
+    LimitsView, Model, PhotoRecognitionView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::matches_query;
@@ -124,10 +124,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 .filter_map(|entry| {
                     let item = model.items.iter().find(|i| i.id == entry.item_id)?;
-                    (!item.keys.is_empty()).then(|| EntryKeysView {
-                        entry_id: entry.id.clone(),
-                        keys: crate::view::session::key_choices(item),
-                    })
+                    crate::view::session::entry_keys_view(entry, item)
                 })
                 .collect();
             let drill_offers = drill_offers(model, &building.entries);
@@ -192,12 +189,19 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 crate::domain::session::last_time(model, &current_entry.item_id)
                     .filter(|_| on_the_whole_piece_plain && active.reflection.is_none())
                     .map(|way| crate::view::session::last_time_view(current_entry, way, &labels));
-            if let (Some(finish), Some(item)) = (
+            if let (Some(finish), Some(item), Some(draft)) = (
                 view.record.finish.as_mut(),
                 model.items.iter().find(|i| i.id == current_entry.item_id),
+                active.reflection.as_ref(),
             ) {
-                finish.sections = crate::view::library::build_section_views(item);
-                finish.keys = crate::view::session::key_choices(item);
+                crate::view::session::fill_finish_choices(
+                    finish,
+                    current_entry,
+                    draft,
+                    item,
+                    !current_variations.is_empty(),
+                    &labels,
+                );
             }
             (Some(view), None, None)
         }

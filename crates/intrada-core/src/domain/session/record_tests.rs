@@ -2778,3 +2778,222 @@ fn ticking_a_drill_already_in_the_session_forms_no_block() {
     assert!(entries(&m).iter().all(|e| e.group_id.is_none()));
     assert!(offered(&m)[0].2, "it reads as ticked");
 }
+
+fn key(name: &str) -> Option<crate::domain::key::Key> {
+    crate::domain::key::Key::parse(name)
+}
+
+fn finish_row(m: &Model) -> crate::model::FinishRowView {
+    active_view(m)
+        .record
+        .finish
+        .expect("the sheet")
+        .rows
+        .into_iter()
+        .next()
+        .expect("one row")
+}
+
+fn draft(m: &mut Model, ways: Vec<DraftWay>) {
+    let answers = ReflectionAnswers {
+        ways,
+        ..ReflectionAnswers::default()
+    };
+    send(m, SessionEvent::UpdateReflectionDraft { answers });
+}
+
+fn drafted(m: &Model) -> &[DraftWay] {
+    &active(m).reflection.as_ref().expect("draft").answers.ways
+}
+
+fn active_play_mut(m: &mut Model) -> &mut Play {
+    let SessionStatus::Active(a) = &mut m.session_status else {
+        panic!("expected Active");
+    };
+    &mut a.entries[0].plays[0]
+}
+
+#[test]
+fn a_finish_row_names_the_way_recorded_until_one_is_drafted() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    let row = finish_row(&m);
+    assert_eq!(row.play_id, play_id);
+    assert_eq!(row.label, "A1 · D major");
+    assert_eq!(row.section_id.as_deref(), Some("c-a1"));
+    assert_eq!(row.key, key("D major"));
+    assert!(row.can_change);
+
+    draft(&mut m, vec![in_g(&play_id)]);
+
+    let row = finish_row(&m);
+    assert_eq!(row.label, "A1 · G major");
+    assert_eq!(row.key, key("G major"));
+}
+
+#[test]
+fn a_finish_row_on_the_whole_piece_plain_reads_whole_piece() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    draft(
+        &mut m,
+        vec![DraftWay {
+            play_id,
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+        }],
+    );
+
+    assert_eq!(finish_row(&m).label, "Whole piece");
+}
+
+#[test]
+fn a_finish_row_keeps_a_key_the_piece_no_longer_keeps() {
+    let (mut m, _, _) = finishing_clair_in_d();
+    active_play_mut(&mut m).key = key("G major");
+
+    let row = finish_row(&m);
+    assert_eq!(row.label, "A1 · G major");
+    let finish = active_view(&m).record.finish.expect("the sheet");
+    let keys: Vec<&str> = finish.keys.iter().map(|k| k.label.as_str()).collect();
+    assert_eq!(keys, ["Written key", "D major", "C major", "G major"]);
+}
+
+#[test]
+fn a_finish_row_reads_the_written_key_in_either_spelling_as_written() {
+    let (mut m, _, _) = finishing_clair_in_d();
+    active_play_mut(&mut m).key = key("C sharp major");
+
+    let row = finish_row(&m);
+    assert_eq!(row.key, None);
+    assert_eq!(row.label, "A1");
+}
+
+#[test]
+fn nothing_to_change_on_a_plain_item_offers_no_change() {
+    let mut m = building(&["q"]);
+    send(&mut m, SessionEvent::StartSession { now: t(0) });
+    send(
+        &mut m,
+        SessionEvent::PrepareReflection {
+            now: t(300),
+            reading: TempoReading::silent(),
+        },
+    );
+
+    let finish = active_view(&m).record.finish.expect("the sheet");
+    assert!(finish.keys.is_empty(), "the written key alone is no choice");
+    assert!(!finish.rows[0].can_change);
+}
+
+#[test]
+fn a_drafted_way_back_to_the_recorded_one_leaves_the_draft() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    draft(&mut m, vec![in_g(&play_id)]);
+
+    draft(
+        &mut m,
+        vec![DraftWay {
+            key: key("D major"),
+            ..in_g(&play_id)
+        }],
+    );
+
+    assert!(drafted(&m).is_empty());
+}
+
+#[test]
+fn a_play_keeps_a_variation_deleted_since_when_its_key_changes() {
+    let (mut m, id, play_id) = finishing_clair_in_d();
+    active_play_mut(&mut m).variation_ids = vec!["v-dot".to_string()];
+    m.variations[0].deleted_at = Some(t(1));
+    let way = DraftWay {
+        variation_ids: vec!["v-dot".to_string()],
+        ..in_g(&play_id)
+    };
+
+    draft(&mut m, vec![way.clone()]);
+    assert_eq!(drafted(&m), std::slice::from_ref(&way));
+
+    next(&mut m);
+    send(
+        &mut m,
+        SessionEvent::UpdatePlayWay {
+            entry_id: id,
+            play_id: way.play_id,
+            section_id: way.section_id,
+            key: way.key,
+            variation_ids: way.variation_ids,
+        },
+    );
+    assert_eq!(entries(&m)[0].plays[0].key, key("G major"));
+    assert!(m.last_error.is_none());
+}
+
+#[test]
+fn a_deleted_variation_the_play_never_recorded_is_still_refused() {
+    let (mut m, _, play_id) = finishing_clair_in_d();
+    m.variations[0].deleted_at = Some(t(1));
+
+    draft(
+        &mut m,
+        vec![DraftWay {
+            variation_ids: vec!["v-dot".to_string()],
+            ..in_g(&play_id)
+        }],
+    );
+
+    assert!(drafted(&m).is_empty());
+}
+
+#[test]
+fn the_key_row_names_a_planned_key_outside_the_pieces_own() {
+    let (mut m, id) = building_clair(false);
+    if let SessionStatus::Building(b) = &mut m.session_status {
+        b.entries
+            .iter_mut()
+            .find(|e| e.id == id)
+            .expect("clair")
+            .planned_key = key("G major");
+    }
+
+    let view = building_view(&m);
+    let keys = view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("clair keeps keys");
+    assert_eq!(keys.current_label, "G major");
+    assert_eq!(keys.current, key("G major"));
+    let labels: Vec<&str> = keys.keys.iter().map(|k| k.label.as_str()).collect();
+    assert_eq!(labels, ["Written key", "D major", "C major", "G major"]);
+}
+
+#[test]
+fn the_key_row_shows_for_a_planned_key_on_a_piece_that_keeps_none() {
+    let mut m = building(&["p"]);
+    let id = entry_id(&m, 0);
+    if let SessionStatus::Building(b) = &mut m.session_status {
+        b.entries[0].planned_key = key("G major");
+    }
+
+    let view = building_view(&m);
+    let keys = view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("a way back to the written key");
+    assert_eq!(keys.current_label, "G major");
+}
+
+#[test]
+fn the_key_row_reads_written_key_when_nothing_is_planned() {
+    let (m, id) = building_clair(false);
+    let view = building_view(&m);
+    let keys = view
+        .entry_keys
+        .iter()
+        .find(|k| k.entry_id == id)
+        .expect("clair keeps keys");
+    assert_eq!(keys.current_label, "Written key");
+    assert_eq!(keys.current, None);
+}
