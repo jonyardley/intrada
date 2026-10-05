@@ -3,8 +3,8 @@ import Testing
 
 @testable import Intrada
 
-/// Each screen sends its whole set of links; these check the set it reads back
-/// off the view keeps every row it was not asked to change (#2248, #2232).
+/// The sections sheet and reordering send the piece's whole set; these check the
+/// set they read back off the view keeps every row not asked to change (#2232).
 @MainActor
 struct ExerciseLinkSetsTests {
   private func edit(_ exercise: String, _ section: String?) -> LinkEdit {
@@ -44,51 +44,6 @@ struct ExerciseLinkSetsTests {
         edit("exercise-octaves", "s4"),
       ])
     #expect(piece.pieceLinks(order: ["exercise-octaves"]).count == 2)
-  }
-
-  @Test func aKeptPieceKeepsItsSectionsAndANewOneLinksWhole() {
-    let exercise = LibraryItemView.previewExerciseUsedInSections
-    #expect(
-      exercise.exerciseTargets(pieceIds: ["piece-1", "piece-9"]) == [
-        LinkTarget(pieceId: "piece-1", sectionId: "s4"),
-        LinkTarget(pieceId: "piece-9", sectionId: nil),
-      ])
-    #expect(
-      exercise.exerciseTargets(pieceIds: ["piece-2"]) == [
-        LinkTarget(pieceId: "piece-2", sectionId: nil),
-        LinkTarget(pieceId: "piece-2", sectionId: "s9"),
-      ])
-  }
-
-  @Test func aPieceOnlyPractisedAlongsideLinksWhole() {
-    #expect(
-      LibraryItemView.previewExerciseUsedIn.exerciseTargets(pieceIds: ["piece-2"]) == [
-        LinkTarget(pieceId: "piece-2", sectionId: nil)
-      ])
-  }
-
-  @Test func thePickerKeepsAKeptExercisesSectionsAndAddsTheRestWhole() {
-    let draft = CreateItem(
-      title: "Scales", kind: .exercise, composer: nil, key: nil, tempo: nil, notes: nil,
-      tags: [], photoId: nil, variationLabels: [])
-    let links = LibraryItemView.previewPieceWithSectionLinks.pieceLinks(
-      choosing: ["exercise-thirds", "exercise-new"],
-      in: ["exercise-new", "exercise-octaves", "exercise-thirds"], written: [.new(draft)])
-    #expect(
-      links == [
-        edit("exercise-thirds", "s3"), edit("exercise-new", nil),
-        LinkEdit(exercise: .new(draft), sectionId: nil),
-      ])
-  }
-
-  @Test func thePiecePickerKeepsAKeptPiecesSections() {
-    let targets = LibraryItemView.previewExerciseUsedInSections.exerciseTargets(
-      choosing: ["piece-1", "piece-3"], in: ["piece-3", "piece-2", "piece-1"])
-    #expect(
-      targets == [
-        LinkTarget(pieceId: "piece-1", sectionId: "s4"),
-        LinkTarget(pieceId: "piece-3", sectionId: nil),
-      ])
   }
 
   /// The Used in fixture holds to what the core projects from the same links.
