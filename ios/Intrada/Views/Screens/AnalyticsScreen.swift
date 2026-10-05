@@ -32,8 +32,10 @@ struct AnalyticsScreen: View {
           }
           consistencySection(analytics)
             .fadeUp(3)
-          recentMasterySection(analytics)
-            .fadeUp(4)
+          if !analytics.scoreChanges.isEmpty {
+            recentMasterySection(analytics)
+              .fadeUp(4)
+          }
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -98,12 +100,14 @@ struct AnalyticsScreen: View {
 
   // ── Derivations ──
 
-  private var subtitle: String {
+  private var subtitle: String? {
     guard let summary = analytics?.weeklySummary else { return "No sessions yet" }
+    guard summary.sessionCount > 0 else { return nil }
     let h = summary.totalMinutes / 60
     let m = summary.totalMinutes % 60
     let duration = h == 0 ? "\(m)m" : "\(h)h \(m)m"
-    return "\(summary.sessionCount) sessions · \(duration) this week"
+    let noun = summary.sessionCount == 1 ? "session" : "sessions"
+    return "\(summary.sessionCount) \(noun) · \(duration) this week"
   }
 
   private func weeklyBuckets(_ analytics: AnalyticsView) -> [ConsistencyWeek] {
