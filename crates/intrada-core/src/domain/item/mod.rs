@@ -180,6 +180,20 @@ pub enum ItemEvent {
         exercise_id: String,
         targets: Vec<LinkTarget>,
     },
+    /// The piece's exercise picker (#2379): only the ticked exercises and the
+    /// ones written there. A kept exercise keeps its sections; a new tick, then
+    /// each written one, links to the whole piece after them.
+    ChoosePieceExercises {
+        piece_id: String,
+        exercise_ids: Vec<String>,
+        written: Vec<CreateItem>,
+    },
+    /// The exercise's piece picker (#2379): only the ticked pieces. A kept piece
+    /// keeps the exercise's sections on it; a new one links as a whole.
+    ChooseExercisePieces {
+        exercise_id: String,
+        piece_ids: Vec<String>,
+    },
 }
 
 /// Acts on the library's own variation rows, not on any one item's set.
@@ -330,6 +344,15 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercise_id,
             targets,
         } => links::set_exercise_links(model, exercise_id, targets),
+        ItemEvent::ChoosePieceExercises {
+            piece_id,
+            exercise_ids,
+            written,
+        } => links::choose_piece_exercises(model, piece_id, exercise_ids, written),
+        ItemEvent::ChooseExercisePieces {
+            exercise_id,
+            piece_ids,
+        } => links::choose_exercise_pieces(model, exercise_id, piece_ids),
     }
 }
 

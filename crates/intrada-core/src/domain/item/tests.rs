@@ -3583,3 +3583,234 @@ fn a_linked_section_reads_in_sentence_case() {
         assert_eq!(in_text, expected, "the exercise's side reads the same");
     }
 }
+
+// ── The link pickers send only what was ticked (#2379) ──
+
+fn choose_piece_exercises(
+    model: &mut Model,
+    piece_id: &str,
+    exercise_ids: &[&str],
+    written: Vec<CreateItem>,
+) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::ChoosePieceExercises {
+            piece_id: piece_id.to_string(),
+            exercise_ids: exercise_ids.iter().map(|s| s.to_string()).collect(),
+            written,
+        },
+    )
+}
+
+fn choose_exercise_pieces(
+    model: &mut Model,
+    exercise_id: &str,
+    piece_ids: &[&str],
+) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::ChooseExercisePieces {
+            exercise_id: exercise_id.to_string(),
+            piece_ids: piece_ids.iter().map(|s| s.to_string()).collect(),
+        },
+    )
+}
+
+#[test]
+fn a_kept_exercise_keeps_its_sections_and_a_new_tick_links_whole_after_it() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", Some("s-a1")),
+            existing("ex-1", Some("s-a2")),
+        ],
+    );
+
+    let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-2", "ex-1"], vec![]);
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![
+            pair("ex-1", Some("s-a1")),
+            pair("ex-1", Some("s-a2")),
+            pair("ex-2", None),
+        ]
+    );
+}
+
+#[test]
+fn an_unticked_exercise_is_unlinked_from_the_piece() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+
+    let _ = choose_piece_exercises(&mut model, "piece-1", &["ex-2"], vec![]);
+
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-2", Some("s-a2"))]
+    );
+}
+
+#[test]
+fn a_written_exercise_from_the_picker_links_whole_after_the_ticked_ones() {
+    let mut model = linking_model();
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", Some("s-a1"))]);
+
+    let mut cmd = choose_piece_exercises(
+        &mut model,
+        "piece-1",
+        &["ex-1", "ex-2"],
+        vec![new_exercise_input("Shell voicings")],
+    );
+
+    let created = model
+        .items
+        .iter()
+        .find(|i| i.title == "Shell voicings")
+        .expect("the exercise is created")
+        .id
+        .clone();
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![
+            pair("ex-1", Some("s-a1")),
+            pair("ex-2", None),
+            pair(&created, None),
+        ]
+    );
+    assert_eq!(emits_save_items(&mut cmd).map(|b| b.len()), Some(2));
+}
+
+#[test]
+fn ticking_the_same_exercises_again_persists_nothing() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-2", Some("s-a2")), existing("ex-1", None)],
+    );
+
+    let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-1", "ex-2"], vec![]);
+
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-2", Some("s-a2")), pair("ex-1", None)]
+    );
+}
+
+#[test]
+fn an_exercise_picker_tick_that_is_not_an_exercise_is_refused_whole() {
+    for bad in ["nope", "piece-2"] {
+        let mut model = linking_model();
+        let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+
+        let mut cmd = choose_piece_exercises(&mut model, "piece-1", &["ex-2", bad], vec![]);
+
+        assert!(model.last_error.is_some(), "{bad}");
+        assert!(!persists_anything(&mut cmd), "{bad}");
+        assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-1", None)]);
+    }
+}
+
+#[test]
+fn a_tick_sent_twice_links_once() {
+    let mut model = linking_model();
+
+    let _ = choose_piece_exercises(&mut model, "piece-1", &["ex-2", "ex-2"], vec![]);
+    let _ = choose_exercise_pieces(&mut model, "ex-1", &["piece-2", "piece-2"]);
+
+    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+}
+
+#[test]
+fn a_kept_piece_keeps_its_sections_and_a_new_piece_links_whole() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-2", None), existing("ex-1", Some("s-a2"))],
+    );
+
+    let mut cmd = choose_exercise_pieces(&mut model, "ex-1", &["piece-2", "piece-1"]);
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save_items(&mut cmd).is_some());
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-2", None), pair("ex-1", Some("s-a2"))],
+        "another exercise's links on a kept piece stay its own"
+    );
+    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+}
+
+#[test]
+fn an_unticked_piece_drops_the_exercise_and_leaves_its_other_links() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-2", None), existing("ex-1", Some("s-a1"))],
+    );
+    let _ = set_exercise_links(
+        &mut model,
+        "ex-1",
+        vec![target("piece-1", Some("s-a1")), target("piece-2", None)],
+    );
+
+    let _ = choose_exercise_pieces(&mut model, "ex-1", &["piece-2"]);
+
+    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-2", None)]);
+    assert_eq!(live_pairs(&model, "piece-2"), vec![pair("ex-1", None)]);
+}
+
+#[test]
+fn ticking_the_same_pieces_again_persists_nothing() {
+    let mut model = linking_model();
+    let _ = set_exercise_links(&mut model, "ex-1", vec![target("piece-1", Some("s-a2"))]);
+
+    let mut cmd = choose_exercise_pieces(&mut model, "ex-1", &["piece-1"]);
+
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-1", Some("s-a2"))]
+    );
+}
+
+#[test]
+fn a_piece_picker_tick_that_is_not_a_piece_is_refused_whole() {
+    let mut model = linking_model();
+
+    let mut cmd = choose_exercise_pieces(&mut model, "ex-1", &["piece-1", "ex-2"]);
+
+    assert!(model.last_error.is_some());
+    assert!(!persists_anything(&mut cmd));
+    assert!(live_pairs(&model, "piece-1").is_empty());
+}
+
+#[test]
+fn picker_events_round_trip_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(
+        ItemEvent::ChoosePieceExercises {
+            piece_id: "piece-1".to_string(),
+            exercise_ids: vec!["ex-1".to_string()],
+            written: vec![draft("Thirds")],
+        },
+    ));
+    crate::domain::types::assert_round_trips(crate::app::Event::Item(
+        ItemEvent::ChooseExercisePieces {
+            exercise_id: "ex-1".to_string(),
+            piece_ids: vec!["piece-1".to_string(), "piece-2".to_string()],
+        },
+    ));
+}
