@@ -18,9 +18,14 @@ struct EntrySettingsSheet: View {
   @State private var plannedMinutes: Int
   @State private var variantId: String?
 
-  private var variants: [PickerVariationView] {
-    store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }?.variations
-      ?? []
+  private var plannable: EntryVariationsView? {
+    store.viewModel?.buildingSetlist?.entryVariations.first { $0.entryId == entry.id }
+  }
+  private var variants: [PickerVariationView] { plannable?.variations ?? [] }
+  private var sections: [SectionView] { plannable?.sections ?? [] }
+
+  private var live: SetlistEntryView {
+    store.viewModel?.buildingSetlist?.entries.first { $0.id == entry.id } ?? entry
   }
 
   var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }
@@ -52,12 +57,14 @@ struct EntrySettingsSheet: View {
   }
 
   var body: some View {
-    BottomSheet(
-      title: entry.itemTitle, detents: typeSize.isAccessibilitySize ? [.medium, .large] : [.medium]
-    ) {
+    BottomSheet(title: entry.itemTitle, detents: [.medium, .large]) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
+          focusSection
+          if !sections.isEmpty {
+            segmentsSection
+          }
           if !variants.isEmpty {
             stepSection
           }
@@ -87,7 +94,37 @@ struct EntrySettingsSheet: View {
           guard next != entry.intention else { return }
           store.send(.session(.setEntryIntention(entryId: entry.id, intention: next)))
         }
+      if let suggested = live.record.suggestedFocus {
+        OfferChip("Focus: \(suggested.label)", systemImage: "plus") {
+          setFocus(suggested.focus)
+        }
+        .accessibilityIdentifier("entrySettings.suggestedFocus")
+      }
     }
+  }
+
+  private var focusSection: some View {
+    EntryFocusCard(
+      current: live.record.focus,
+      choices: store.viewModel?.buildingSetlist?.focusChoices ?? [],
+      sections: sections,
+      send: setFocus)
+  }
+
+  private func setFocus(_ focus: IntentionFocus?) {
+    store.send(.session(.setFocus(entryId: entry.id, focus: focus)))
+  }
+
+  private var segmentsSection: some View {
+    EntrySegmentsCard(
+      segments: live.record.segments,
+      sections: sections,
+      hasPlannedTime: live.plannedDurationSecs != nil,
+      canAddSection: live.record.canAddSection,
+      wholePiece: { store.send(.session(.setSegments(entryId: entry.id, segments: []))) },
+      add: { store.send(.session(.addSegment(entryId: entry.id, sectionId: $0))) },
+      remove: { store.send(.session(.removeSegment(entryId: entry.id, sectionId: $0))) },
+      step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) })
   }
 
   private var stepSection: some View {
@@ -123,10 +160,7 @@ struct EntrySettingsSheet: View {
     guard id != variantId else { return }
     variantId = id
     store.send(
-      .session(
-        .setEntryPlan(
-          entryId: entry.id, sectionIds: entry.plannedSectionIds,
-          variationIds: id.map { [$0] } ?? [])))
+      .session(.setEntryVariations(entryId: entry.id, variationIds: id.map { [$0] } ?? [])))
   }
 
   private var repsSection: some View {

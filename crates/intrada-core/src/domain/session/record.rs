@@ -244,14 +244,15 @@ pub(crate) fn step_segment(
     Ok(())
 }
 
-/// The new section's share is the planned minutes over the new count, at
-/// least one, taken from the largest segment so the others keep their tuning
-/// (#2398).
+/// An untuned split shares evenly again. A tuned one keeps its tuning: the
+/// new section's share is the planned minutes over the new count, at least
+/// one, taken from the largest segment (#2398).
 pub(crate) fn add_segment(
     segments: &mut Vec<Segment>,
     section_id: String,
     planned: Option<u32>,
 ) -> Result<(), LibraryError> {
+    let untuned = is_even(segments, planned);
     segments.push(Segment {
         section_id,
         planned_secs: 0,
@@ -259,6 +260,10 @@ pub(crate) fn add_segment(
     let Some(planned) = planned else {
         return Ok(());
     };
+    if untuned {
+        segments.iter_mut().for_each(|s| s.planned_secs = 0);
+        return rebalance(segments, Some(planned));
+    }
     let count = u32::try_from(segments.len()).unwrap_or(u32::MAX);
     let Some((added, rest)) = segments.split_last_mut() else {
         return Ok(());
@@ -283,11 +288,16 @@ pub(crate) fn can_add_segment(segments: &[Segment], planned: Option<u32>) -> boo
     add_segment(&mut segments.to_vec(), String::new(), planned).is_ok()
 }
 
-pub(crate) fn remove_segment(segments: &mut Vec<Segment>, index: usize) {
+pub(crate) fn remove_segment(segments: &mut Vec<Segment>, index: usize, planned: Option<u32>) {
     if index >= segments.len() {
         return;
     }
+    let untuned = is_even(segments, planned);
     let secs = segments.remove(index).planned_secs;
+    if untuned {
+        split_evenly(segments, planned);
+        return;
+    }
     let to = if index < segments.len() {
         Some(index)
     } else {
@@ -300,6 +310,12 @@ pub(crate) fn remove_segment(segments: &mut Vec<Segment>, index: usize) {
 
 pub(crate) fn can_step_segment(segments: &[Segment], index: usize, minutes: i8) -> bool {
     step_segment(&mut segments.to_vec(), index, minutes).is_ok()
+}
+
+fn is_even(segments: &[Segment], planned: Option<u32>) -> bool {
+    let mut even = segments.to_vec();
+    split_evenly(&mut even, planned);
+    even == segments
 }
 
 pub(crate) fn split_evenly(segments: &mut [Segment], planned: Option<u32>) {

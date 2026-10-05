@@ -107,6 +107,12 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let last_times = building
                 .entries
                 .iter()
+                // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
+                .filter(|entry| {
+                    entry.segments.is_empty()
+                        && entry.focus.is_none()
+                        && entry.planned_variation_ids.is_empty()
+                })
                 .filter_map(|entry| {
                     let way = crate::domain::session::last_time(model, &entry.item_id)?;
                     Some(crate::view::session::last_time_view(entry, way, &labels))
