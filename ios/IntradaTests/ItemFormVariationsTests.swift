@@ -13,8 +13,8 @@ struct ItemFormVariationsTests {
     labels.map { VariationRow(label: $0) }
   }
 
-  private func set(_ event: ItemEvent?) -> (ids: [String], labels: [String])? {
-    guard case .updateItemVariations(_, let ids, let labels) = event else { return nil }
+  private func set(_ event: ItemEvent) -> (ids: [String], labels: [String])? {
+    guard case .edit(_, _, let ids, let labels) = event else { return nil }
     return (ids, labels)
   }
 
@@ -22,7 +22,7 @@ struct ItemFormVariationsTests {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations.append(VariationRow(label: " Swung "))
 
-    let sent = set(form.editEvents(id: "exercise-2").last)
+    let sent = set(form.editEvent(id: "exercise-2"))
 
     #expect(sent?.ids == ["variation-c", "variation-f", "variation-bb"])
     #expect(sent?.labels == ["Swung"])
@@ -33,7 +33,7 @@ struct ItemFormVariationsTests {
     form.variations[0].label = "Renamed"
     form.variations.swapAt(0, 2)
 
-    let sent = set(form.editEvents(id: "exercise-2").last)
+    let sent = set(form.editEvent(id: "exercise-2"))
 
     #expect(sent?.ids == ["variation-bb", "variation-f", "variation-c"])
     #expect(sent?.labels == [])
@@ -43,7 +43,7 @@ struct ItemFormVariationsTests {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations.remove(at: 1)
 
-    #expect(set(form.editEvents(id: "exercise-2").last)?.ids == ["variation-c", "variation-bb"])
+    #expect(set(form.editEvent(id: "exercise-2"))?.ids == ["variation-c", "variation-bb"])
   }
 
   @Test func theKeyIsSentBesideSavedRows() {
@@ -51,7 +51,14 @@ struct ItemFormVariationsTests {
     let d = Key(letter: .d, accidental: .natural, mode: .major)
     form.key = d
 
-    #expect(form.updateInput().key == .some(d))
+    let event = form.editEvent(id: "exercise-2")
+
+    guard case .edit(_, let input, let ids, _) = event else {
+      Issue.record("expected one edit event")
+      return
+    }
+    #expect(input.key == .some(d))
+    #expect(ids == ["variation-c", "variation-f", "variation-bb"])
   }
 
   @Test func aRowNeverFilledIsLeftOutAndLabelsAreTrimmed() {
@@ -70,32 +77,14 @@ struct ItemFormVariationsTests {
     #expect(form.createInput().variationLabels.isEmpty)
   }
 
-  @Test func withRowsTheFieldsGoFirst() {
-    let form = ItemFormModel(item: .previewExercise)
-    form.variations = rows(["Slow"])
-
-    let events = form.editEvents(id: "exercise-1")
-
-    #expect(events.count == 2)
-    #expect(set(events.first) == nil, "fields first")
-    #expect(set(events.last)?.labels == ["Slow"])
-  }
-
   @Test func clearingEveryRowSendsTheEmptySet() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations = rows(["", " "])
 
-    let events = form.editEvents(id: "exercise-2")
+    let sent = set(form.editEvent(id: "exercise-2"))
 
-    #expect(events.count == 2)
-    #expect(set(events.last)?.ids == [])
-    #expect(set(events.last)?.labels == [])
-  }
-
-  @Test func anExerciseWhoseRowsDidNotChangeSendsOnlyItsFields() {
-    #expect(ItemFormModel(item: .previewExercise).editEvents(id: "exercise-1").count == 1)
-    #expect(
-      ItemFormModel(item: .previewExerciseWithVariations).editEvents(id: "exercise-2").count == 1)
+    #expect(sent?.ids == [])
+    #expect(sent?.labels == [])
   }
 
   @Test func aDroppedRowLandsBeforeTheTarget() {
