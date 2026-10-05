@@ -3,11 +3,12 @@ import Testing
 
 @testable import Intrada
 
-/// What the item sheet's sections and focus cards send, run through the real
-/// core (#2303, #2315).
+/// What the item sheet's sections card sends, run through the real core
+/// (#2315, #2398).
 @MainActor
 struct SessionBuilderPlanTests {
-  /// A twelve-minute piece split into A1, B and A2, with a "Dotted" variation.
+  /// A twelve-minute piece split into A1, B and A2 by three taps on "Add a
+  /// section", with a "Dotted" variation.
   private func splitPiece() throws -> (RowsBridge, String, String) {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
@@ -32,9 +33,9 @@ struct SessionBuilderPlanTests {
     let sections = try #require(building.entryVariations.first?.sections)
     let variation = try #require(building.entryVariations.first?.variations.first?.id)
     _ = try bridge.update(.session(.setEntryDuration(entryId: entryId, durationSecs: 720)))
-    _ = try bridge.update(
-      .session(
-        .setSegments(entryId: entryId, segments: EntrySegmentsCard.evenly(sections.map(\.id)))))
+    for section in sections {
+      _ = try bridge.update(.session(.addSegment(entryId: entryId, sectionId: section.id)))
+    }
     return (bridge, entryId, variation)
   }
 
@@ -46,6 +47,23 @@ struct SessionBuilderPlanTests {
   func aNewSplitStartsEven() throws {
     let (bridge, _, _) = try splitPiece()
     #expect(try segments(bridge).map(\.plannedSecs) == [240, 240, 240])
+  }
+
+  @Test("removing a section from an untuned split shares evenly again")
+  func removingFromAnUntunedSplitSharesEvenly() throws {
+    let (bridge, entryId, _) = try splitPiece()
+    let middle = try segments(bridge)[1].sectionId
+    _ = try bridge.update(.session(.removeSegment(entryId: entryId, sectionId: middle)))
+    #expect(try segments(bridge).map(\.plannedSecs) == [360, 360])
+  }
+
+  @Test("removing a section from a tuned split gives its minutes to the next")
+  func removingFromATunedSplitGivesToTheNext() throws {
+    let (bridge, entryId, _) = try splitPiece()
+    let ids = try segments(bridge).map(\.sectionId)
+    _ = try bridge.update(.session(.stepSegment(entryId: entryId, sectionId: ids[0], minutes: 1)))
+    _ = try bridge.update(.session(.removeSegment(entryId: entryId, sectionId: ids[1])))
+    #expect(try segments(bridge).map(\.plannedSecs) == [300, 420])
   }
 
   @Test(

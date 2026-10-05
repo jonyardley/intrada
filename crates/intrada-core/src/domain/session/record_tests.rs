@@ -2014,13 +2014,52 @@ fn a_tie_for_the_largest_gives_from_the_earliest() {
     let mut m = building(&["clair"]);
     let id = entry_id(&m, 0);
     set_duration(&mut m, &id, 720);
-    set_segments(&mut m, &id, vec![seg("c-a1", 0), seg("c-b", 0)]);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("c-a1", 300), seg("c-b", 300), seg("c-a2", 0)],
+    );
+    add_section(&mut m, &id, "c-coda");
+
+    assert_eq!(
+        minutes(&m, 0),
+        [
+            pair("c-a1", 2),
+            pair("c-b", 5),
+            pair("c-a2", 2),
+            pair("c-coda", 3)
+        ]
+    );
+}
+
+#[test]
+fn sections_added_one_by_one_to_a_fresh_split_share_evenly() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    add_section(&mut m, &id, "c-a1");
+    add_section(&mut m, &id, "c-b");
     add_section(&mut m, &id, "c-a2");
 
     assert_eq!(
         minutes(&m, 0),
-        [pair("c-a1", 2), pair("c-b", 6), pair("c-a2", 4)]
+        [pair("c-a1", 4), pair("c-b", 4), pair("c-a2", 4)]
     );
+}
+
+#[test]
+fn removing_from_an_untuned_split_shares_evenly_again() {
+    let mut m = building(&["clair"]);
+    let id = entry_id(&m, 0);
+    set_duration(&mut m, &id, 720);
+    set_segments(
+        &mut m,
+        &id,
+        vec![seg("c-a1", 0), seg("c-b", 0), seg("c-a2", 0)],
+    );
+    remove_section(&mut m, &id, "c-b");
+
+    assert_eq!(minutes(&m, 0), [pair("c-a1", 6), pair("c-a2", 6)]);
 }
 
 #[test]

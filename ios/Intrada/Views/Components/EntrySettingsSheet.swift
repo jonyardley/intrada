@@ -120,7 +120,10 @@ struct EntrySettingsSheet: View {
       segments: live.record.segments,
       sections: sections,
       hasPlannedTime: live.plannedDurationSecs != nil,
-      send: { store.send(.session(.setSegments(entryId: entry.id, segments: $0))) },
+      canAddSection: live.record.canAddSection,
+      wholePiece: { store.send(.session(.setSegments(entryId: entry.id, segments: []))) },
+      add: { store.send(.session(.addSegment(entryId: entry.id, sectionId: $0))) },
+      remove: { store.send(.session(.removeSegment(entryId: entry.id, sectionId: $0))) },
       step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) })
   }
 

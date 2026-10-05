@@ -5,7 +5,7 @@
   extension EntryRecordView {
     static var empty: EntryRecordView {
       EntryRecordView(
-        segments: [], canAddSection: false, focus: nil, suggestedFocus: nil, intentionMet: nil,
+        segments: [], canAddSection: true, focus: nil, suggestedFocus: nil, intentionMet: nil,
         intentionMetRead: false,
         felt: nil, gotInTheWay: [], notePoints: [])
     }

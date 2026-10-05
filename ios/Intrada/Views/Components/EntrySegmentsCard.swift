@@ -2,18 +2,23 @@ import SharedTypes
 import SwiftUI
 
 /// Splits an entry into its sections, each with its own minutes (#2315). The
-/// core keeps the minutes summing to the item's planned time: a segment sent
-/// at zero shares what the others leave.
+/// core keeps the minutes summing to the item's planned time, and adding or
+/// removing a section keeps the others' tuning (#2398).
 struct EntrySegmentsCard: View {
   let segments: [SegmentView]
   let sections: [SectionView]
   let hasPlannedTime: Bool
-  let send: ([Segment]) -> Void
+  let canAddSection: Bool
+  let wholePiece: () -> Void
+  let add: (_ sectionId: String) -> Void
+  let remove: (_ sectionId: String) -> Void
   let step: (_ sectionId: String, _ minutes: Int8) -> Void
 
   private var unplanned: [SectionView] {
     sections.filter { section in !segments.contains { $0.sectionId == section.id } }
   }
+
+  private var offersAdd: Bool { canAddSection && !unplanned.isEmpty }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -21,7 +26,7 @@ struct EntrySegmentsCard: View {
         FieldLabel("Sections")
         Spacer()
         if !segments.isEmpty {
-          Button("Whole piece") { send([]) }
+          Button("Whole piece") { wholePiece() }
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .frame(minHeight: 44)
@@ -34,12 +39,12 @@ struct EntrySegmentsCard: View {
           .padding(.vertical, IntradaSpacing.controlGap)
       }
       ForEach(Array(segments.enumerated()), id: \.element.sectionId) { index, segment in
-        segmentRow(segment, at: index)
-        if index < segments.count - 1 || !unplanned.isEmpty {
+        segmentRow(segment)
+        if index < segments.count - 1 || offersAdd {
           HairlineDivider()
         }
       }
-      if !unplanned.isEmpty {
+      if offersAdd {
         Menu {
           ForEach(unplanned, id: \.id) { section in
             Button(section.label) { add(section.id) }
@@ -57,7 +62,7 @@ struct EntrySegmentsCard: View {
     .fieldCardSurface()
   }
 
-  private func segmentRow(_ segment: SegmentView, at index: Int) -> some View {
+  private func segmentRow(_ segment: SegmentView) -> some View {
     let caption = sections.first { $0.id == segment.sectionId }?.barsCaption
     return HStack(spacing: IntradaSpacing.cardCompact) {
       VStack(alignment: .leading, spacing: 2) {
@@ -80,7 +85,7 @@ struct EntrySegmentsCard: View {
         .accessibilityIdentifier("entrySettings.segmentMinutes")
       }
       Button {
-        remove(index)
+        remove(segment.sectionId)
       } label: {
         Image(systemName: "xmark")
           .iconSize(.badge, weight: .semibold)
@@ -92,19 +97,5 @@ struct EntrySegmentsCard: View {
       .accessibilityLabel("Remove \(segment.label)")
     }
     .padding(.vertical, IntradaSpacing.controlGap)
-  }
-
-  private func add(_ sectionId: String) {
-    send(Self.evenly(segments.map(\.sectionId) + [sectionId]))
-  }
-
-  private func remove(_ index: Int) {
-    var ids = segments.map(\.sectionId)
-    ids.remove(at: index)
-    send(Self.evenly(ids))
-  }
-
-  static func evenly(_ sectionIds: [String]) -> [Segment] {
-    sectionIds.map { Segment(sectionId: $0, plannedSecs: 0) }
   }
 }

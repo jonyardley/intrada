@@ -107,7 +107,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let last_times = building
                 .entries
                 .iter()
-                // Decided 2026-10-04 (spec): an offer only while nothing is planned.
+                // Decided 2026-10-04 (#2249, spec): an offer only while nothing is planned.
                 .filter(|entry| {
                     entry.segments.is_empty()
                         && entry.focus.is_none()

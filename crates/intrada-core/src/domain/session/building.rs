@@ -275,11 +275,13 @@ pub(super) fn remove_segment(
     entry_id: String,
     section_id: String,
 ) -> Command<Effect, Event> {
-    let Some(mut segments) = entry_for_plan(model, &entry_id).map(|e| e.segments.clone()) else {
+    let Some((mut segments, planned)) =
+        entry_for_plan(model, &entry_id).map(|e| (e.segments.clone(), e.planned_duration_secs))
+    else {
         return set_planned(model, &entry_id, Ok(()), |_| {});
     };
     let check = section_index(&segments, &section_id)
-        .map(|index| record::remove_segment(&mut segments, index));
+        .map(|index| record::remove_segment(&mut segments, index, planned));
     set_planned(model, &entry_id, check, |entry| entry.segments = segments)
 }
 

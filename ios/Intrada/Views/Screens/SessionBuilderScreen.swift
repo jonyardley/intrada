@@ -544,7 +544,7 @@ struct SessionBuilderScreen: View {
     }
     if let offer = lastTime(entry) {
       OfferChip(offer.label) { applyLastTime(entry) }
-        .accessibilityIdentifier("builder.lastTime")
+        .accessibilityHidden(true)
         .padding(.top, 2)
     }
   }
@@ -769,7 +769,8 @@ extension View {
     }
   }
 
-  /// VoiceOver's path to the last-time chip, which a combined row swallows.
+  /// VoiceOver's path to the last-time chip. The chip itself is hidden from
+  /// it, so a double tap on the row never lands on the chip.
   @ViewBuilder fileprivate func lastTimeAction(
     _ offer: LastTimeView?, perform action: @escaping () -> Void
   ) -> some View {
