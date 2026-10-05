@@ -110,17 +110,25 @@ struct ProfileEditSheet: View {
       if !stacked {
         Spacer(minLength: IntradaSpacing.controlGap)
       }
-      Button("Change") { choosingIcon = true }
-        .font(IntradaFont.button)
-        .foregroundStyle(IntradaColor.ink)
-        .padding(.horizontal, IntradaSpacing.cardCompact)
-        .frame(minHeight: 36)
-        .background(IntradaColor.cardFill)
-        .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.control)
-            .stroke(IntradaColor.divider, lineWidth: 1)
-        )
-        .accessibilityLabel("Change icon")
+      // The frame sits inside the label so the whole 44pt box takes the tap (#2318).
+      Button {
+        choosingIcon = true
+      } label: {
+        Text("Change")
+          .font(IntradaFont.button)
+          .foregroundStyle(IntradaColor.ink)
+          .padding(.horizontal, IntradaSpacing.cardCompact)
+          .frame(minHeight: 44)
+          .background(IntradaColor.cardFill)
+          .overlay(
+            RoundedRectangle(cornerRadius: IntradaRadius.control)
+              .stroke(IntradaColor.divider, lineWidth: 1)
+          )
+          .contentShape(RoundedRectangle(cornerRadius: IntradaRadius.control))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Change icon")
+      .accessibilityIdentifier("profileEdit.changeIcon")
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, IntradaSpacing.cardCompact)
