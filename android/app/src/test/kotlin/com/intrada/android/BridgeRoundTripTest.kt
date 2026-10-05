@@ -644,6 +644,11 @@ class BridgeRoundTripTest {
         val felt = bridge.view().activeSession?.record?.finish?.feltChoices
         assertEquals(listOf("Comfortable", "Hard work", "Strained"), felt?.map { it.label })
         assertEquals(listOf(Felt.COMFORTABLE, Felt.HARDWORK, Felt.STRAINED), felt?.map { it.felt })
+        val active = bridge.view().activeSession
+        assertEquals(
+            active?.entries?.first()?.plays?.map { it.id },
+            active?.record?.finish?.rows?.map { it.playId },
+        )
     }
 
     private fun addItem(

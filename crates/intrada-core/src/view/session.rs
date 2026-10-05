@@ -419,7 +419,7 @@ pub fn fill_finish_choices(
     let keys = key_choices(item, &recorded);
     finish.sections = crate::view::library::build_section_views(item);
     let can_change = !finish.sections.is_empty() || keys.len() > 1 || has_variations;
-    let plain = if item.sections.is_empty() {
+    let plain = if finish.sections.is_empty() {
         "No variation"
     } else {
         "Whole piece"

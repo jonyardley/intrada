@@ -750,9 +750,9 @@ pub fn validate_segment_sections(
     Ok(())
 }
 
-/// `recorded` is the play being changed, if any: a variation it already
-/// holds stays sayable after it leaves the library, so changing only the key
-/// of such a play is not refused (#2249).
+/// `recorded` is the play being changed, if any: a section or variation it
+/// already holds stays sayable after the library deletes it, so changing only
+/// the key of such a play is not refused (#2249).
 pub fn validate_play_way(
     entry: &SetlistEntry,
     way: &PlayWay,
@@ -760,7 +760,9 @@ pub fn validate_play_way(
     model: &Model,
 ) -> Result<(), LibraryError> {
     if let Some(id) = &way.section_id {
-        validate_entry_section(entry, id, model)?;
+        if !recorded.is_some_and(|p| p.section_id.as_ref() == Some(id)) {
+            validate_entry_section(entry, id, model)?;
+        }
     }
     let mut seen = std::collections::HashSet::new();
     let repeats = !way.variation_ids.iter().all(|id| seen.insert(id.as_str()));
