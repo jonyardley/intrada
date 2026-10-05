@@ -246,6 +246,14 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         }))
   }
 
+  func testFocusPlayerLastTimeOffer() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: Store(bridge: PreviewBridge(activeSession: .previewActiveLastTime))),
+      as: config)
+  }
+
   func testFocusPlayerWithReps() {
     assertSnapshot(
       of: host(

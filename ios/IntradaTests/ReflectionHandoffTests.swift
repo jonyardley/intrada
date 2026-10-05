@@ -212,6 +212,75 @@ struct ReflectionHandoffTests {
     #expect(ReflectionHandoff.draft(result, plays: plays).tempos.isEmpty)
   }
 
+  // ── What a row says was played (#2249) ──
+
+  @Test func aRowChangedToAnotherKeyRecordsThatKeyOnThePlay() throws {
+    let bridge = RowsBridge()
+    let (entryId, plays) = try pieceMidSession(bridge)
+    let play = try #require(plays.first)
+    let g = Key(letter: .g, accidental: .natural, mode: .major)
+    let changed = DraftWay(playId: play.id, sectionId: nil, key: g, variationIds: [])
+    let result = ReflectionResult(marks: [:], note: "", tempos: [], ways: [changed])
+    _ = try bridge.update(
+      .session(.updateReflectionDraft(answers: ReflectionHandoff.draft(result, plays: plays))))
+    let row = try #require(try bridge.rendered().activeSession?.record.finish?.rows.first)
+    #expect(row.label == "G major", "the row reads what the core drafted")
+    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    let reopened = ReflectionHandoff.seed(saved)
+
+    #expect(
+      ReflectionHandoff.run(
+        ReflectionHandoff.plan(
+          entryId: entryId, now: "2026-09-21T10:05:00Z",
+          nextItemStartedAt: "2026-09-21T10:05:30Z", reading: .silent, plays: plays,
+          result: reopened),
+        send: accepting(bridge)))
+
+    let recorded = try #require(try bridge.rendered().summary?.entries.first?.plays.first)
+    #expect(recorded.key == g)
+  }
+
+  @Test func aSkippedSheetLeavesThePlayAsItWas() throws {
+    let bridge = RowsBridge()
+    let (_, plays) = try pieceMidSession(bridge)
+    let play = try #require(plays.first)
+    let changed = DraftWay(
+      playId: play.id, sectionId: nil, key: Key(letter: .g, accidental: .natural, mode: .major),
+      variationIds: [])
+    _ = try bridge.update(
+      .session(
+        .updateReflectionDraft(
+          answers: ReflectionHandoff.draft(
+            ReflectionResult(marks: [:], note: "", tempos: [], ways: [changed]), plays: plays))))
+
+    _ = try bridge.update(
+      .session(
+        .nextItem(
+          now: "2026-09-21T10:05:00Z", nextItemStartedAt: "2026-09-21T10:05:30Z",
+          reading: .silent)))
+
+    let recorded = try #require(try bridge.rendered().summary?.entries.first?.plays.first)
+    #expect(recorded.key == nil)
+  }
+
+  @Test func aWayChangedBackToWhatWasRecordedLeavesTheDraft() throws {
+    let bridge = RowsBridge()
+    let (_, plays) = try pieceMidSession(bridge)
+    let play = try #require(plays.first)
+    let g = Key(letter: .g, accidental: .natural, mode: .major)
+    for key in [g, nil] {
+      let way = DraftWay(playId: play.id, sectionId: nil, key: key, variationIds: [])
+      let result = ReflectionResult(marks: [:], note: "", tempos: [], ways: [way])
+      _ = try bridge.update(
+        .session(.updateReflectionDraft(answers: ReflectionHandoff.draft(result, plays: plays))))
+    }
+
+    let saved = try #require(try bridge.rendered().activeSession?.reflection?.answers)
+    #expect(saved.ways.isEmpty)
+    let row = try #require(try bridge.rendered().activeSession?.record.finish?.rows.first)
+    #expect(row.label == "No variation")
+  }
+
   // ── The stepper's beat value (#2304) ──
 
   @Test func anUntouchedClickOnAQuaverBarCountsAndSavesInQuavers() throws {

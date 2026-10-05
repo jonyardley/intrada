@@ -80,6 +80,8 @@ struct ReflectionResult {
   /// Points the musician kept, as spans into the note as drafted.
   var notePoints: [NoteSpan] = []
   var intentionMet: IntentionMet?
+  /// Only the rows whose way was changed by hand (#2249).
+  var ways: [DraftWay] = []
 }
 
 struct ReflectionSheet: View {
@@ -100,6 +102,9 @@ struct ReflectionSheet: View {
   let limits: LimitsView
   /// The core's finish answers to offer, and the aim they are asked against.
   let finish: FinishSheetView?
+  /// The item's live variations, for changing what a row says was played (#2249).
+  let variations: [PickerVariationView]
+  let plannedLabel: String?
   let aim: String?
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
@@ -120,6 +125,8 @@ struct ReflectionSheet: View {
   @State private var notePoints: [NoteSpan]
   @State private var intentionMet: IntentionMet?
   @State private var detailOpen: Bool
+  @State private var ways: [DraftWay]
+  @State private var changingPlayId: String?
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
@@ -128,12 +135,15 @@ struct ReflectionSheet: View {
     plays: [ReflectionPlay],
     limits: LimitsView,
     finish: FinishSheetView? = nil,
+    variations: [PickerVariationView] = [],
+    plannedLabel: String? = nil,
     aim: String? = nil,
     refusal: String? = nil,
     seed: ReflectionResult? = nil,
     onSave: @escaping (ReflectionResult) -> Void,
     onSkip: @escaping () -> Void,
-    onDraft: @escaping (ReflectionResult) -> Void = { _ in }
+    onDraft: @escaping (ReflectionResult) -> Void = { _ in },
+    changingPlayId: String? = nil
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
@@ -142,6 +152,8 @@ struct ReflectionSheet: View {
     self.plays = plays
     self.limits = limits
     self.finish = finish
+    self.variations = variations
+    self.plannedLabel = plannedLabel
     self.aim = aim
     self.refusal = refusal
     self.onSave = onSave
@@ -170,6 +182,8 @@ struct ReflectionSheet: View {
     _notePoints = State(initialValue: seed?.notePoints ?? [])
     _intentionMet = State(initialValue: seed?.intentionMet)
     _detailOpen = State(initialValue: seed?.felt != nil || !(seed?.obstacles.isEmpty ?? true))
+    _ways = State(initialValue: seed?.ways ?? [])
+    _changingPlayId = State(initialValue: changingPlayId)
   }
 
   static func heading(elapsedDisplay: String?) -> String {
@@ -296,7 +310,8 @@ struct ReflectionSheet: View {
             playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
             click: play.clickPattern ?? currentClick)
         }
-      }, felt: felt, obstacles: obstacles, notePoints: notePoints, intentionMet: intentionMet)
+      }, felt: felt, obstacles: obstacles, notePoints: notePoints, intentionMet: intentionMet,
+      ways: ways)
   }
 
   private func toggleNotePoint(_ span: NoteSpan) {
@@ -334,19 +349,19 @@ struct ReflectionSheet: View {
       ForEach(Array(plays.enumerated()), id: \.element.id) { index, play in
         if index > 0 { HairlineDivider() }
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-          HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
-            Text(play.title)
-              .font(IntradaFont.bodyMedium)
-              .foregroundStyle(IntradaColor.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
-            Text(play.meta)
-              .font(IntradaFont.secondary)
-              .foregroundStyle(IntradaColor.inkSecondary)
+          playHeader(play)
+          if changingPlayId == play.id {
+            if let row = finishRow(play) {
+              PlayWayEditor(row: row, choices: wayChoices) { next in
+                ways = ways.filter { $0.playId != next.playId } + [next]
+                draft()
+              }
+            }
           }
           if play.isMarkable {
             ScoreSelector(
               score: mark(for: play.id), range: limits.scoreRange,
-              accessibilityLabel: "Mark for \(play.title)"
+              accessibilityLabel: "Mark for \(rowTitle(play))"
             ) { next in
               setMark(next, for: play.id)
             }
@@ -354,7 +369,7 @@ struct ReflectionSheet: View {
             TempoStepper(
               value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
               step: limits.clickStep, band: limits.clickBand(unit: stepperUnit(for: play)),
-              accessibilityLabel: "Tempo for \(play.title)"
+              accessibilityLabel: "Tempo for \(rowTitle(play))"
             )
             .accessibilityIdentifier("reflection.tempo")
           }
@@ -362,6 +377,59 @@ struct ReflectionSheet: View {
         .padding(.vertical, IntradaSpacing.cardCompact)
       }
     }
+  }
+
+  @ViewBuilder private func playHeader(_ play: ReflectionPlay) -> some View {
+    let title = rowTitle(play)
+    if finishRow(play)?.canChange != true {
+      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
+        Text(title)
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.ink)
+          .frame(maxWidth: .infinity, alignment: .leading)
+        Text(play.meta)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+    } else {
+      let open = changingPlayId == play.id
+      HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.ink)
+            .fixedSize(horizontal: false, vertical: true)
+          Text(play.meta)
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        Button(open ? "Done" : "Change") {
+          withAnimation { changingPlayId = open ? nil : play.id }
+        }
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .frame(minHeight: 44)
+        .accessibilityLabel(
+          open ? "Done changing \(title)" : "Change what you played on \(title)"
+        )
+        .accessibilityIdentifier("reflection.changeWay")
+      }
+    }
+  }
+
+  private var wayChoices: PlayWayChoices {
+    PlayWayChoices(
+      sections: finish?.sections ?? [], keys: finish?.keys ?? [], variations: variations,
+      planned: plannedLabel)
+  }
+
+  private func finishRow(_ play: ReflectionPlay) -> FinishRowView? {
+    finish?.rows.first { $0.playId == play.id }
+  }
+
+  private func rowTitle(_ play: ReflectionPlay) -> String {
+    finishRow(play)?.label ?? play.title
   }
 
   private var singlePlayTempoHeading: String {

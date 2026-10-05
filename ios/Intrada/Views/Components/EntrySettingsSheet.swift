@@ -23,6 +23,12 @@ struct EntrySettingsSheet: View {
   }
   private var variants: [PickerVariationView] { plannable?.variations ?? [] }
   private var sections: [SectionView] { plannable?.sections ?? [] }
+  private var drills: [DrillOfferView] {
+    store.viewModel?.buildingSetlist?.drillOffers.filter { $0.entryId == entry.id } ?? []
+  }
+  private var keys: EntryKeysView? {
+    store.viewModel?.buildingSetlist?.entryKeys.first { $0.entryId == entry.id }
+  }
 
   private var live: SetlistEntryView {
     store.viewModel?.buildingSetlist?.entries.first { $0.id == entry.id } ?? entry
@@ -64,6 +70,9 @@ struct EntrySettingsSheet: View {
           focusSection
           if !sections.isEmpty {
             segmentsSection
+          }
+          if let keys {
+            keySection(keys)
           }
           if !variants.isEmpty {
             stepSection
@@ -119,12 +128,49 @@ struct EntrySettingsSheet: View {
     EntrySegmentsCard(
       segments: live.record.segments,
       sections: sections,
+      drills: drills,
       hasPlannedTime: live.plannedDurationSecs != nil,
       canAddSection: live.record.canAddSection,
       wholePiece: { store.send(.session(.setSegments(entryId: entry.id, segments: []))) },
       add: { store.send(.session(.addSegment(entryId: entry.id, sectionId: $0))) },
       remove: { store.send(.session(.removeSegment(entryId: entry.id, sectionId: $0))) },
-      step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) })
+      step: { store.send(.session(.stepSegment(entryId: entry.id, sectionId: $0, minutes: $1))) },
+      tickDrill: tickDrill)
+  }
+
+  private func tickDrill(_ offer: DrillOfferView) {
+    store.send(.session(Self.tickEvent(offer)))
+  }
+
+  static func tickEvent(_ offer: DrillOfferView) -> SessionEvent {
+    offer.addedEntryId.map { .removeFromSetlist(entryId: $0) }
+      ?? .addDrill(entryId: offer.entryId, exerciseId: offer.exerciseId)
+  }
+
+  private func keySection(_ keys: EntryKeysView) -> some View {
+    let current = keys.currentLabel
+    return NavigationLink {
+      EntryKeyList(entryId: entry.id)
+    } label: {
+      HStack(spacing: IntradaSpacing.cardCompact) {
+        FieldLabel("Key")
+        Spacer(minLength: IntradaSpacing.controlGap)
+        Text(current)
+          .font(IntradaFont.body)
+          .foregroundStyle(IntradaColor.ink)
+          .multilineTextAlignment(.trailing)
+        Image(systemName: "chevron.right")
+          .iconSize(.caption, weight: .semibold)
+          .foregroundStyle(IntradaColor.inkFaintIcon)
+      }
+      .frame(minHeight: 44)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Key")
+    .accessibilityValue(current)
+    .accessibilityIdentifier("entrySettings.key")
+    .fieldCardSurface()
   }
 
   private var stepSection: some View {

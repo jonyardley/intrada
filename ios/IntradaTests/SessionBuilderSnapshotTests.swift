@@ -139,4 +139,57 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       of: host(EntrySettingsSheet(entry: .previewSuggestingPiece, limits: limits), store: store),
       as: config)
   }
+
+  private static let clairDrills = [
+    DrillOfferView(
+      entryId: "plan-p", sectionId: "sec-a2", exerciseId: "ex-arp", title: "Left hand arpeggios",
+      addedEntryId: "drill-arp"),
+    DrillOfferView(
+      entryId: "plan-p", sectionId: "sec-a2", exerciseId: "ex-pedal", title: "Pedal changes",
+      addedEntryId: nil),
+  ]
+
+  private static let clairKeys = EntryKeysView(
+    entryId: "plan-p",
+    keys: [
+      KeyChoiceView(key: nil, label: "Written key", caption: "D\u{266D} major"),
+      KeyChoiceView(
+        key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
+      KeyChoiceView(
+        key: Key(letter: .c, accidental: .natural, mode: .major), label: "C major", caption: nil),
+    ], current: Key(letter: .d, accidental: .natural, mode: .major), currentLabel: "D major")
+
+  private static var plannedInD: SetlistEntryView {
+    var entry = SetlistEntryView.previewPlannedPiece
+    entry.plannedKey = Key(letter: .d, accidental: .natural, mode: .major)
+    return entry
+  }
+
+  func testEntrySettingsSheetOffersDrillsOneTicked() throws {
+    let store = Store.previewBuildingPlanned(drillOffers: Self.clairDrills)
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
+      as: tallFormConfig)
+  }
+
+  func testEntrySettingsSheetKeyRow() throws {
+    let store = Store.previewBuildingPlanned(Self.plannedInD, entryKeys: [Self.clairKeys])
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: Self.plannedInD, limits: limits), store: store),
+      as: tallFormConfig)
+  }
+
+  func testEntryKeyList() {
+    let store = Store.previewBuildingPlanned(Self.plannedInD, entryKeys: [Self.clairKeys])
+    assertSnapshot(
+      of: host(NavigationStack { EntryKeyList(entryId: "plan-p") }, store: store), as: config)
+  }
+
+  func testEntryKeyListAccessibilitySize() {
+    let store = Store.previewBuildingPlanned(Self.plannedInD, entryKeys: [Self.clairKeys])
+    assertSnapshot(
+      of: host(NavigationStack { EntryKeyList(entryId: "plan-p") }, store: store), as: axConfig)
+  }
 }

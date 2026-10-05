@@ -416,7 +416,10 @@
 
     /// The builder with a split, focused piece and one offering last time
     /// (#2249, #2303, #2315). `first` replaces the first row, for the sheet.
-    static func previewBuildingPlanned(_ first: SetlistEntryView = .previewPlannedPiece) -> Store {
+    static func previewBuildingPlanned(
+      _ first: SetlistEntryView = .previewPlannedPiece, drillOffers: [DrillOfferView] = [],
+      entryKeys: [EntryKeysView] = []
+    ) -> Store {
       let entries: [SetlistEntryView] = [first, .previewLastTimePiece, .previewExercise]
       return Store(
         bridge: PreviewBridge(
@@ -441,7 +444,8 @@
                 entryId: SetlistEntryView.previewLastTimePiece.id, sectionId: "sec-b",
                 variationIds: ["v-dot"], label: "Last time: B · Dotted rhythms", key: nil)
             ],
-            focusChoices: FocusChoiceView.previewChoices, entryKeys: [], drillOffers: [])))
+            focusChoices: FocusChoiceView.previewChoices, entryKeys: entryKeys,
+            drillOffers: drillOffers)))
     }
 
     /// Player Focus: a piece mid-session, no reps.
