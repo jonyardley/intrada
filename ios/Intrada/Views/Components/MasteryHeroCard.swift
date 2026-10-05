@@ -5,7 +5,7 @@ import SwiftUI
 struct MasteryHeroCard: View {
   let mastery: Double
   let change: String?
-  let itemsCovered: Int
+  let climbing: String?
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -46,9 +46,11 @@ struct MasteryHeroCard: View {
         .font(IntradaFont.secondary)
         .foregroundStyle(IntradaColor.success)
       }
-      Text("Climbing steadily across \(itemsCovered) pieces.")
-        .font(IntradaFont.secondary)
-        .foregroundStyle(IntradaColor.inkSecondary)
+      if let climbing {
+        Text(climbing)
+          .font(IntradaFont.secondary)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
     }
   }
 }
@@ -57,16 +59,20 @@ struct MasteryHeroCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
-        .padding(IntradaSpacing.card)
+      MasteryHeroCard(
+        mastery: 6.4, change: "+1.2 this week", climbing: "Climbing steadily across 5 items."
+      )
+      .padding(IntradaSpacing.card)
     }
   }
 
   #Preview("Accessibility size") {
     ZStack {
       PaperBackground()
-      MasteryHeroCard(mastery: 6.4, change: "+1.2 this week", itemsCovered: 5)
-        .padding(IntradaSpacing.card)
+      MasteryHeroCard(
+        mastery: 6.4, change: "+1.2 this week", climbing: "Climbing steadily across 5 items."
+      )
+      .padding(IntradaSpacing.card)
     }
     .dynamicTypeSize(.accessibility3)
   }

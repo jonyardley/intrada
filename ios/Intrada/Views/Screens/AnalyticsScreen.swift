@@ -59,7 +59,7 @@ struct AnalyticsScreen: View {
     MasteryHeroCard(
       mastery: analytics.overallMastery,
       change: analytics.masteryChange,
-      itemsCovered: Int(analytics.weeklySummary.itemsCovered))
+      climbing: analytics.climbing)
   }
 
   // ── Consistency ──
