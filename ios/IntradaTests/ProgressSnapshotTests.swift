@@ -27,6 +27,21 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(AnalyticsScreen(), store: .previewProgress), as: config)
   }
 
+  /// Monday morning: nothing played this week and nothing marked, so no
+  /// "0 sessions" line and no empty Recent mastery heading (#2374).
+  func testProgressScreenNothingThisWeek() {
+    var analytics = AnalyticsView.previewAnalytics
+    analytics.weeklySummary.totalMinutes = 0
+    analytics.weeklySummary.sessionCount = 0
+    analytics.weeklySummary.itemsCovered = 0
+    analytics.scoreChanges = []
+    analytics.topMover = nil
+    analytics.masteryChange = nil
+    analytics.weeklyMinutes = [40, 75, 55, 95, 0]
+    let store = Store(bridge: PreviewBridge(analytics: analytics))
+    assertSnapshot(of: host(AnalyticsScreen(), store: store), as: config)
+  }
+
   /// The top of the Progress screen at the largest text size: the mover toast
   /// and the hero card stack rather than squash. The coverage rows sit below
   /// this frame; they get their own snapshot.
