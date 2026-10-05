@@ -1112,4 +1112,43 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(rows.map(\.wholePiece), [true, false])
     XCTAssertEqual(rows.map { $0.sections.map(\.label) }, [[], ["A1"]], "A2 left the set")
   }
+
+  /// The pickers send only what was ticked; the core keeps the sections (#2379).
+  func testRealBridgePickersKeepSectionsAndLinkNewTicksWhole() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let nocturne = try add(bridge, "Nocturne", .piece)
+    let etude = try add(bridge, "Étude", .piece)
+    let thirds = try add(bridge, "Thirds", .exercise)
+    let a2 = try XCTUnwrap(try sectionIds(bridge, on: nocturne, ["A2"])["A2"])
+    _ = try bridge.update(
+      .item(
+        .setExerciseLinks(
+          exerciseId: thirds, targets: [LinkTarget(pieceId: nocturne, sectionId: a2)])))
+
+    let written = CreateItem(
+      title: "Broken octaves", kind: .exercise, composer: nil, key: nil,
+      tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])
+    _ = try bridge.update(
+      .item(.choosePieceExercises(pieceId: nocturne, exerciseIds: [thirds], written: [written])))
+
+    let picked = try bridge.rendered()
+    XCTAssertNil(picked.error)
+    let rows = try XCTUnwrap(picked.items.first { $0.id == nocturne }?.linkedExercises)
+    XCTAssertEqual(rows.map(\.title), ["Thirds", "Broken octaves"])
+    XCTAssertEqual(rows.map(\.wholePiece), [false, true])
+    XCTAssertEqual(rows.map { $0.sections.map(\.label) }, [["A2"], []])
+
+    _ = try bridge.update(
+      .item(.chooseExercisePieces(exerciseId: thirds, pieceIds: [nocturne, etude])))
+
+    let after = try bridge.rendered()
+    XCTAssertNil(after.error)
+    let usedIn = try XCTUnwrap(after.items.first { $0.id == thirds }?.usedIn)
+    let byPiece = Dictionary(
+      usedIn.compactMap { row in row.piece.map { ($0.id, row) } }, uniquingKeysWith: { a, _ in a })
+    XCTAssertEqual(byPiece[nocturne]?.sections.map(\.label), ["A2"])
+    XCTAssertEqual(byPiece[nocturne]?.wholePiece, false)
+    XCTAssertEqual(byPiece[etude]?.wholePiece, true)
+  }
 }

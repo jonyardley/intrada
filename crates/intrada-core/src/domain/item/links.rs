@@ -255,3 +255,88 @@ pub(super) fn set_exercise_links(
         crux_core::render::render(),
     ])
 }
+
+pub(super) fn choose_piece_exercises(
+    model: &mut Model,
+    piece_id: String,
+    exercise_ids: Vec<String>,
+    written: Vec<CreateItem>,
+) -> Command<Effect, Event> {
+    let stored: Vec<LinkEdit> = model
+        .items
+        .iter()
+        .find(|i| i.id == piece_id)
+        .map(|piece| {
+            piece
+                .live_links()
+                .into_iter()
+                .map(|l| LinkEdit {
+                    exercise: ScaffoldEntry::Existing {
+                        id: l.exercise_id.clone(),
+                    },
+                    section_id: l.section_id.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let linked = |id: &str| {
+        stored
+            .iter()
+            .any(|e| matches!(&e.exercise, ScaffoldEntry::Existing { id: s } if s == id))
+    };
+    let added: Vec<LinkEdit> = exercise_ids
+        .iter()
+        .filter(|id| !linked(id))
+        .map(|id| LinkEdit {
+            exercise: ScaffoldEntry::Existing { id: id.clone() },
+            section_id: None,
+        })
+        .collect();
+    let kept = stored.iter().filter(
+        |e| matches!(&e.exercise, ScaffoldEntry::Existing { id } if exercise_ids.contains(id)),
+    );
+    let links = kept
+        .cloned()
+        .chain(added)
+        .chain(written.into_iter().map(|input| LinkEdit {
+            exercise: ScaffoldEntry::New(input),
+            section_id: None,
+        }))
+        .collect();
+    set_piece_links(model, piece_id, links)
+}
+
+pub(super) fn choose_exercise_pieces(
+    model: &mut Model,
+    exercise_id: String,
+    piece_ids: Vec<String>,
+) -> Command<Effect, Event> {
+    let targets = piece_ids
+        .into_iter()
+        .flat_map(|piece_id| {
+            let sections: Vec<Option<String>> = model
+                .items
+                .iter()
+                .find(|i| i.id == piece_id && i.kind == ItemKind::Piece)
+                .map(|piece| {
+                    piece
+                        .live_links()
+                        .into_iter()
+                        .filter(|l| l.exercise_id == exercise_id)
+                        .map(|l| l.section_id.clone())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let sections = if sections.is_empty() {
+                vec![None]
+            } else {
+                sections
+            };
+            sections.into_iter().map(move |section_id| LinkTarget {
+                piece_id: piece_id.clone(),
+                section_id,
+            })
+        })
+        .collect();
+    set_exercise_links(model, exercise_id, targets)
+}
