@@ -186,6 +186,7 @@ impl PlayLabels<'_> {
         FocusView {
             focus: focus.clone(),
             label: session::focus_label(focus, section.as_deref()),
+            target_caption: session::target_caption(focus),
         }
     }
 
@@ -270,11 +271,14 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
         segments: entry
             .segments
             .iter()
-            .map(|s| SegmentView {
+            .enumerate()
+            .map(|(index, s)| SegmentView {
                 section_id: s.section_id.clone(),
                 label: labels.section(&s.section_id).unwrap_or_default(),
                 planned_secs: s.planned_secs,
                 planned_display: format_planned_duration(u64::from(s.planned_secs)),
+                can_add_minute: session::can_step_segment(&entry.segments, index, 1),
+                can_take_minute: session::can_step_segment(&entry.segments, index, -1),
             })
             .collect(),
         focus: entry.focus.as_ref().map(|f| labels.focus(f)),
