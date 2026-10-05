@@ -113,12 +113,12 @@ struct EntrySegmentsCard: View {
         .padding(.top, IntradaSpacing.cardCompact)
         .accessibilityAddTraits(.isHeader)
       ForEach(offers, id: \.exerciseId) { offer in
-        let added = offer.addedEntryId != nil
-        TickRow(label: offer.title, chosen: added, identifier: "entrySettings.drill") {
+        TickRow(
+          label: offer.title, chosen: offer.addedEntryId != nil, identifier: "entrySettings.drill"
+        ) {
           tickDrill(offer)
         }
-        .accessibilityValue(
-          added ? "drill for \(sectionLabel), added" : "drill for \(sectionLabel)")
+        .accessibilityValue("drill for \(sectionLabel)")
       }
     }
     .background(IntradaColor.paperTop)

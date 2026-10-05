@@ -157,7 +157,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
         key: Key(letter: .d, accidental: .natural, mode: .major), label: "D major", caption: nil),
       KeyChoiceView(
         key: Key(letter: .c, accidental: .natural, mode: .major), label: "C major", caption: nil),
-    ])
+    ], current: Key(letter: .d, accidental: .natural, mode: .major), currentLabel: "D major")
 
   private static var plannedInD: SetlistEntryView {
     var entry = SetlistEntryView.previewPlannedPiece

@@ -809,6 +809,14 @@
         KeyChoiceView(
           key: Key(letter: .g, accidental: .natural, mode: .major), label: "G major", caption: nil),
       ]
+      finish.rows = [
+        FinishRowView(
+          playId: "p1", label: "A1 · G major", sectionId: "sec-a1",
+          key: Key(letter: .g, accidental: .natural, mode: .major), variationIds: [],
+          canChange: true),
+        FinishRowView(
+          playId: "p2", label: "B", sectionId: "sec-b", key: nil, variationIds: [], canChange: true),
+      ]
       return finish
     }
   }

@@ -270,12 +270,16 @@ struct FocusPlayerScreen: View {
 
   private func playLastTime(_ offer: LastTimeView) {
     store.send(
-      .session(
-        .switchPlay(
-          entryId: offer.entryId, sectionId: offer.sectionId, key: offer.key,
-          variationIds: offer.variationIds,
-          now: SessionClock.nowRFC3339(), reading: tempoReading)),
+      .session(Self.lastTimeEvent(offer, now: SessionClock.nowRFC3339(), reading: tempoReading)),
       onSuccess: .impact)
+  }
+
+  static func lastTimeEvent(_ offer: LastTimeView, now: String, reading: TempoReading)
+    -> SessionEvent
+  {
+    .switchPlay(
+      entryId: offer.entryId, sectionId: offer.sectionId, key: offer.key,
+      variationIds: offer.variationIds, now: now, reading: reading)
   }
 
   // ── The variation being practised right now (#1739 decision 6) ──

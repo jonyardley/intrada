@@ -194,13 +194,9 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
   }
 
   private var wayChangeSheet: some View {
-    let d = Key(letter: .d, accidental: .natural, mode: .major)
     let g = Key(letter: .g, accidental: .natural, mode: .major)
-    var a1 = ReflectionPlay.preview("p1", "A1 · D major", "8:10")
-    a1.sectionId = "sec-a1"
-    a1.key = d
-    var b = ReflectionPlay.preview("p2", "B", "3:50")
-    b.sectionId = "sec-b"
+    let a1 = ReflectionPlay.preview("p1", "A1 · D major", "8:10")
+    let b = ReflectionPlay.preview("p2", "B", "3:50")
     return ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
@@ -210,7 +206,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
           PickerVariationView(id: "v-hs", label: "Hands separately", caption: ""),
           PickerVariationView(id: "v-dot", label: "Dotted rhythms", caption: ""),
         ],
-        plannedLabel: "A1 in D major",
+        plannedLabel: "A1 · D major",
         seed: ReflectionResult(
           marks: [:], note: "", tempos: [],
           ways: [DraftWay(playId: "p1", sectionId: "sec-a1", key: g, variationIds: [])]),

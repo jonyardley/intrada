@@ -26,8 +26,8 @@ struct EntrySettingsSheet: View {
   private var drills: [DrillOfferView] {
     store.viewModel?.buildingSetlist?.drillOffers.filter { $0.entryId == entry.id } ?? []
   }
-  private var keyChoices: [KeyChoiceView]? {
-    store.viewModel?.buildingSetlist?.entryKeys.first { $0.entryId == entry.id }?.keys
+  private var keys: EntryKeysView? {
+    store.viewModel?.buildingSetlist?.entryKeys.first { $0.entryId == entry.id }
   }
 
   private var live: SetlistEntryView {
@@ -71,8 +71,8 @@ struct EntrySettingsSheet: View {
           if !sections.isEmpty {
             segmentsSection
           }
-          if let keyChoices {
-            keySection(keyChoices)
+          if let keys {
+            keySection(keys)
           }
           if !variants.isEmpty {
             stepSection
@@ -139,15 +139,17 @@ struct EntrySettingsSheet: View {
   }
 
   private func tickDrill(_ offer: DrillOfferView) {
-    if let added = offer.addedEntryId {
-      store.send(.session(.removeFromSetlist(entryId: added)))
-    } else {
-      store.send(.session(.addDrill(entryId: entry.id, exerciseId: offer.exerciseId)))
-    }
+    store.send(.session(Self.tickEvent(offer)))
   }
 
-  private func keySection(_ choices: [KeyChoiceView]) -> some View {
-    let current = EntryKeyList.currentLabel(choices, planned: live.plannedKey)
+  /// Ticked removes the drill's own entry; unticked adds it to the block.
+  static func tickEvent(_ offer: DrillOfferView) -> SessionEvent {
+    offer.addedEntryId.map { .removeFromSetlist(entryId: $0) }
+      ?? .addDrill(entryId: offer.entryId, exerciseId: offer.exerciseId)
+  }
+
+  private func keySection(_ keys: EntryKeysView) -> some View {
+    let current = keys.currentLabel
     return NavigationLink {
       EntryKeyList(entryId: entry.id)
     } label: {

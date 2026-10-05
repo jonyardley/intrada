@@ -38,15 +38,8 @@ struct ReflectionPlay: Identifiable, Equatable {
   /// The stamp in its own unit, and the metre it counted in; both `nil` unstamped (#1761).
   let tempoDisplay: UInt16?
   let clickPattern: ClickState?
-  var sectionId: String? = nil
-  var key: Key? = nil
-  var variationIds: [String] = []
 
   var title: String { variationLabel ?? "No variation" }
-
-  var recordedWay: DraftWay {
-    DraftWay(playId: id, sectionId: sectionId, key: key, variationIds: variationIds)
-  }
 
   var meta: String {
     var parts = [durationDisplay]
@@ -61,8 +54,7 @@ struct ReflectionPlay: Identifiable, Equatable {
         id: play.id, variationLabel: play.label,
         durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
         repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable,
-        tempoDisplay: play.tempoDisplay, clickPattern: play.clickPattern,
-        sectionId: play.sectionId, key: play.key, variationIds: play.variationIds)
+        tempoDisplay: play.tempoDisplay, clickPattern: play.clickPattern)
     }
   }
 }
@@ -359,9 +351,11 @@ struct ReflectionSheet: View {
         VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
           playHeader(play)
           if changingPlayId == play.id {
-            PlayWayEditor(way: way(for: play), choices: wayChoices) { next in
-              ways = PlayWayChoices.drafting(next, recorded: play.recordedWay, into: ways)
-              draft()
+            if let row = finishRow(play) {
+              PlayWayEditor(row: row, choices: wayChoices) { next in
+                ways = ways.filter { $0.playId != next.playId } + [next]
+                draft()
+              }
             }
           }
           if play.isMarkable {
@@ -387,7 +381,7 @@ struct ReflectionSheet: View {
 
   @ViewBuilder private func playHeader(_ play: ReflectionPlay) -> some View {
     let title = rowTitle(play)
-    if !wayChangeable {
+    if finishRow(play)?.canChange != true {
       HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
         Text(title)
           .font(IntradaFont.bodyMedium)
@@ -424,22 +418,18 @@ struct ReflectionSheet: View {
     }
   }
 
-  private var wayChangeable: Bool {
-    !wayChoices.sections.isEmpty || wayChoices.keys.count > 1 || !variations.isEmpty
-  }
-
   private var wayChoices: PlayWayChoices {
     PlayWayChoices(
       sections: finish?.sections ?? [], keys: finish?.keys ?? [], variations: variations,
       planned: plannedLabel)
   }
 
-  private func way(for play: ReflectionPlay) -> DraftWay {
-    ways.first { $0.playId == play.id } ?? play.recordedWay
+  private func finishRow(_ play: ReflectionPlay) -> FinishRowView? {
+    finish?.rows.first { $0.playId == play.id }
   }
 
   private func rowTitle(_ play: ReflectionPlay) -> String {
-    ways.first { $0.playId == play.id }.flatMap(wayChoices.label) ?? play.title
+    finishRow(play)?.label ?? play.title
   }
 
   private var singlePlayTempoHeading: String {

@@ -1145,14 +1145,30 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(keys.map(\.label), ["Written key", "D major"])
     XCTAssertEqual(keys.map(\.key), [nil, dMajor])
 
-    _ = try bridge.update(.session(.addDrill(entryId: entryId, exerciseId: thirds)))
+    let keyRow = try XCTUnwrap(entryKeys.first { $0.entryId == entryId })
+    XCTAssertEqual(keyRow.currentLabel, "Written key")
+    XCTAssertNil(keyRow.current)
+
+    let offer = try XCTUnwrap(offers.first)
+    _ = try bridge.update(.session(EntrySettingsSheet.tickEvent(offer)))
     _ = try bridge.update(.session(.setEntryKey(entryId: entryId, key: dMajor)))
 
     let after = try XCTUnwrap(try bridge.rendered().buildingSetlist)
     XCTAssertNil(try bridge.rendered().error)
-    XCTAssertNotNil(after.drillOffers.first?.addedEntryId)
+    let ticked = try XCTUnwrap(after.drillOffers.first)
+    XCTAssertNotNil(ticked.addedEntryId)
     XCTAssertEqual(after.entries.map(\.itemId), [thirds, nocturne])
     XCTAssertEqual(after.entries.last?.plannedKey, dMajor)
+    let planned = try XCTUnwrap(after.entryKeys.first { $0.entryId == entryId })
+    XCTAssertEqual(planned.currentLabel, "D major")
+    XCTAssertEqual(planned.current, dMajor)
+
+    _ = try bridge.update(.session(EntrySettingsSheet.tickEvent(ticked)))
+
+    let unticked = try XCTUnwrap(try bridge.rendered().buildingSetlist)
+    XCTAssertNil(try bridge.rendered().error)
+    XCTAssertEqual(unticked.entries.map(\.itemId), [nocturne], "unticking takes the drill out")
+    XCTAssertNil(unticked.drillOffers.first?.addedEntryId)
   }
 
   /// The pickers send only what was ticked; the core keeps the sections (#2379).

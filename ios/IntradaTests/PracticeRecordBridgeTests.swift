@@ -77,6 +77,36 @@ final class PracticeRecordBridgeTests: XCTestCase {
     return (bridge, entryId, a, b)
   }
 
+  /// Played as A then B and saved, the piece offers B next time, and the
+  /// chip's tap plays it (#2249).
+  func testRealBridgeLastTimesTapPlaysTheWayLastPlayed() throws {
+    let (bridge, _, _, b) = try practisingAThenB()
+    _ = try bridge.update(.session(.moveToNextSegment(now: at(600), reading: sounding(84))))
+    _ = try bridge.update(.session(.prepareReflection(now: at(900), reading: sounding(84))))
+    _ = try bridge.update(
+      .session(.nextItem(now: at(900), nextItemStartedAt: at(900), reading: sounding(84))))
+    let saving = try bridge.update(.session(.saveSession(now: at(910))))
+    let write = try XCTUnwrap(
+      saving.first {
+        if case .persistence(.saveSession) = $0.effect { return true } else { return false }
+      })
+    _ = try bridge.resolve(write.id, persistenceOutput: .ack)
+    let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    _ = try bridge.update(.session(.startSession(now: at(2000))))
+    let offer: LastTimeView = try XCTUnwrap(try bridge.rendered().activeSession?.record.lastTime)
+    XCTAssertEqual(offer.sectionId, b)
+
+    _ = try bridge.update(
+      .session(FocusPlayerScreen.lastTimeEvent(offer, now: at(2060), reading: sounding(84))))
+
+    let active = try XCTUnwrap(try bridge.rendered().activeSession)
+    XCTAssertNil(try bridge.rendered().error)
+    XCTAssertEqual(active.currentSectionId, b)
+    XCTAssertNil(active.record.lastTime, "the chip goes once it is played")
+  }
+
   func testRealBridgeSegmentsAndTimeAwayRunThroughThePracticeScreen() throws {
     let (bridge, _, a, b) = try practisingAThenB()
     let live: ActiveRecordView = try XCTUnwrap(try bridge.rendered().activeSession?.record)
