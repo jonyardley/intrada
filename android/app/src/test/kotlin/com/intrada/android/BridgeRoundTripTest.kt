@@ -569,6 +569,52 @@ class BridgeRoundTripTest {
         )
     }
 
+    // Adding and removing a section keep the tuned minutes (#2398).
+    @Test
+    fun addingAndRemovingASectionCrossTheBridge() {
+        val bridge = LiveBridge()
+        bridge.update(Event.StartApp)
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        val sections =
+            bridge
+                .update(
+                    Event.Item(
+                        ItemEvent.UpdateSections(
+                            nocturne,
+                            listOf("A", "B", "C").map {
+                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                            },
+                        )
+                    )
+                )
+                .mapNotNull {
+                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
+                        ?.value
+                }
+                .single()
+                .sections
+                .map { it.id }
+        bridge.update(Event.Session(SessionEvent.StartBuilding))
+        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
+        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
+        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 720u)))
+        val tuned = listOf(Segment(sections[0], 420u), Segment(sections[1], 300u))
+        bridge.update(Event.Session(SessionEvent.SetSegments(entryId, tuned)))
+
+        bridge.update(Event.Session(SessionEvent.AddSegment(entryId, sections[2])))
+        val added = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.segments
+        assertEquals(listOf(180u, 300u, 240u), added?.map { it.plannedSecs })
+        assertEquals(
+            true,
+            bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.canAddSection,
+        )
+
+        bridge.update(Event.Session(SessionEvent.RemoveSegment(entryId, sections[1])))
+        val removed = bridge.view().buildingSetlist?.entries?.firstOrNull()?.record?.segments
+        assertEquals(listOf(sections[0], sections[2]), removed?.map { it.sectionId })
+        assertEquals(listOf(180u, 540u), removed?.map { it.plannedSecs })
+    }
+
     @Test
     fun theBuilderAndTheFinishSheetCarryTheChoiceWordsFromTheCore() {
         val bridge = LiveBridge()

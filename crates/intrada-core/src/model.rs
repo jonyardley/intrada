@@ -787,6 +787,8 @@ pub struct SetlistEntryView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EntryRecordView {
     pub segments: Vec<SegmentView>,
+    /// Whether another section's share fits the planned time (#2398).
+    pub can_add_section: bool,
     pub focus: Option<FocusView>,
     /// Read from the typed intention ("A1 at 84"); `None` once it is the focus.
     pub suggested_focus: Option<FocusView>,

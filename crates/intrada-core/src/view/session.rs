@@ -281,6 +281,7 @@ fn entry_record_view(entry: &SetlistEntry, labels: &PlayLabels) -> EntryRecordVi
                 can_take_minute: session::can_step_segment(&entry.segments, index, -1),
             })
             .collect(),
+        can_add_section: session::can_add_segment(&entry.segments, entry.planned_duration_secs),
         focus: entry.focus.as_ref().map(|f| labels.focus(f)),
         suggested_focus,
         intention_met: entry.intention_met.or(read),

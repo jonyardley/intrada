@@ -158,13 +158,7 @@ pub(crate) fn rebalance(
         }
         return Ok(());
     };
-    let refuse = || LibraryError::Validation {
-        field: "segments".to_string(),
-        message: format!(
-            "Those minutes don't fit in this item's {} min",
-            planned / 60
-        ),
-    };
+    let refuse = || doesnt_fit(planned);
     let min = validation::MIN_PLANNED_DURATION_SECS;
     if segments
         .iter()
@@ -211,6 +205,16 @@ pub(crate) fn rebalance(
     Ok(())
 }
 
+fn doesnt_fit(planned: u32) -> LibraryError {
+    LibraryError::Validation {
+        field: "segments".to_string(),
+        message: format!(
+            "Those minutes don't fit in this item's {} min",
+            planned / 60
+        ),
+    }
+}
+
 pub(crate) fn step_segment(
     segments: &mut [Segment],
     index: usize,
@@ -238,6 +242,60 @@ pub(crate) fn step_segment(
     segments[index].planned_secs = u32::try_from(taker).map_err(|_| refuse())?;
     segments[donor].planned_secs = u32::try_from(giver).map_err(|_| refuse())?;
     Ok(())
+}
+
+/// The new section's share is the planned minutes over the new count, at
+/// least one, taken from the largest segment so the others keep their tuning
+/// (#2398).
+pub(crate) fn add_segment(
+    segments: &mut Vec<Segment>,
+    section_id: String,
+    planned: Option<u32>,
+) -> Result<(), LibraryError> {
+    segments.push(Segment {
+        section_id,
+        planned_secs: 0,
+    });
+    let Some(planned) = planned else {
+        return Ok(());
+    };
+    let count = u32::try_from(segments.len()).unwrap_or(u32::MAX);
+    let Some((added, rest)) = segments.split_last_mut() else {
+        return Ok(());
+    };
+    // Reversed because `max_by_key` keeps the last of equals: the earliest
+    // gives on a tie.
+    let Some(largest) = rest.iter_mut().rev().max_by_key(|s| s.planned_secs) else {
+        added.planned_secs = planned;
+        return Ok(());
+    };
+    let share = (planned / 60 / count).max(1) * 60;
+    largest.planned_secs = largest
+        .planned_secs
+        .checked_sub(share)
+        .filter(|secs| *secs >= validation::MIN_PLANNED_DURATION_SECS)
+        .ok_or_else(|| doesnt_fit(planned))?;
+    added.planned_secs = share;
+    Ok(())
+}
+
+pub(crate) fn can_add_segment(segments: &[Segment], planned: Option<u32>) -> bool {
+    add_segment(&mut segments.to_vec(), String::new(), planned).is_ok()
+}
+
+pub(crate) fn remove_segment(segments: &mut Vec<Segment>, index: usize) {
+    if index >= segments.len() {
+        return;
+    }
+    let secs = segments.remove(index).planned_secs;
+    let to = if index < segments.len() {
+        Some(index)
+    } else {
+        index.checked_sub(1)
+    };
+    if let Some(segment) = to.and_then(|i| segments.get_mut(i)) {
+        segment.planned_secs = segment.planned_secs.saturating_add(secs);
+    }
 }
 
 pub(crate) fn can_step_segment(segments: &[Segment], index: usize, minutes: i8) -> bool {

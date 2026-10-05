@@ -741,6 +741,20 @@ pub enum SessionEvent {
         section_id: String,
         minutes: i8,
     },
+
+    // === Keeping tuned minutes (#2398), appended ===
+    /// Adds the section last, with an even share of the planned time taken
+    /// from the largest segment. Refused when that would leave it under a
+    /// minute.
+    AddSegment {
+        entry_id: String,
+        section_id: String,
+    },
+    /// Its minutes go to the next segment, or the one before for the last.
+    RemoveSegment {
+        entry_id: String,
+        section_id: String,
+    },
 }
 
 mod active;
@@ -950,6 +964,16 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             section_id,
             minutes,
         } => building::step_segment(model, entry_id, section_id, minutes),
+
+        SessionEvent::AddSegment {
+            entry_id,
+            section_id,
+        } => building::add_segment(model, entry_id, section_id),
+
+        SessionEvent::RemoveSegment {
+            entry_id,
+            section_id,
+        } => building::remove_segment(model, entry_id, section_id),
 
         // ── Entry Updates (Active or Summary) ──────────────────────
         // Accepted in both phases so the mid-session reflection sheet can record
