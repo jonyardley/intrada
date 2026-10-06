@@ -1,0 +1,16 @@
+[package]
+name = "intrada-store"
+version = "0.1.0"
+edition = "2021"
+publish = false
+rust-version.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+intrada-core = { path = "../intrada-core" }
+# SQLite compiled in, so both phones run the same SQLite and the JSON
+# functions the migrations use are always there (#2421).
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

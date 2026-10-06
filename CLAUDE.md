@@ -23,7 +23,7 @@ score how it went. Pillars: **Plan** (library), **Practice** (the built session)
 reads GitHub. There is no status file, deliberately.
 
 Crates: `intrada-core` (pure Crux core, no I/O), `intrada-ffi` (UniFFI bridge generating the
-Swift and Kotlin bindings). `ios/` (iOS 17+, GRDB), `android/` (API 28+). Rust 2021, MSRV 1.90.
+Swift and Kotlin bindings), `intrada-store` (the on-device SQLite store, Android now, iOS at #2432). `ios/` (iOS 17+, GRDB), `android/` (API 28+). Rust 2021, MSRV 1.90.
 
 ## Commands
 
@@ -70,7 +70,7 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → 
    business rules, validation, domain decisions or domain state in Swift or Kotlin (UI
    interaction state only): if you are tempted, it belongs in `intrada-core` as an `Event`
    or `Command`. Crash recovery: UserDefaults or SharedPreferences (`AppEffect`); local
-   data: GRDB or `androidx.sqlite` (`PersistenceOperation`).
+   data: GRDB or the shared `intrada-store` (`PersistenceOperation`).
 3. **Typed bindings, no hand-written FFI.** `Event` / `Effect` / `ViewModel` cross the
    bridge as generated bincode. Never hand-edit `ios/generated/` or `android/generated/`; fix
    the Rust type and regenerate both.

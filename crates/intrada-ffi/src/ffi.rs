@@ -80,7 +80,7 @@ thread_local! {
     static PANIC_LOCATION: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
-fn install_panic_hook() {
+pub(crate) fn install_panic_hook() {
     static INSTALL: Once = Once::new();
     INSTALL.call_once(|| {
         let previous = panic::take_hook();
@@ -94,7 +94,7 @@ fn install_panic_hook() {
     });
 }
 
-fn with_panic_location<R>(work: impl FnOnce() -> R) -> R {
+pub(crate) fn with_panic_location<R>(work: impl FnOnce() -> R) -> R {
     panic::catch_unwind(AssertUnwindSafe(work)).unwrap_or_else(|payload| {
         let message = payload
             .downcast_ref::<&str>()

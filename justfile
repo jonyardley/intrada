@@ -15,11 +15,11 @@ check-fast:
 # revisit if doc tests ever exist.
 [doc("Run the Rust tests with nextest, as CI's test job does")]
 test:
-    cargo nextest run --workspace
+    cargo nextest run --workspace --features intrada-ffi/store
 
 [doc("Run clippy with warnings as errors, as CI's clippy job does")]
 lint:
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --workspace --all-targets --features intrada-ffi/store -- -D warnings
 
 [doc("Format the Rust code")]
 fmt:
@@ -39,14 +39,14 @@ msrv:
     set -euo pipefail
     version=$(grep -oE 'package.rust-version = "[^"]+"' Cargo.toml | cut -d'"' -f2)
     rustup toolchain install "$version" --profile minimal
-    cargo +"$version" check --workspace --all-targets
+    cargo +"$version" check --workspace --all-targets --features intrada-ffi/store
 
 # Coverage report via nextest: same as CI's `coverage` job (minus the
 # Codecov upload, which needs a CI-only token).
 # Local green must mean CI green: keep these flags in lockstep with ci.yml.
 [doc("Write a Rust coverage report to codecov.json, as CI's coverage job does")]
 coverage:
-    cargo llvm-cov nextest --workspace --codecov --output-path codecov.json
+    cargo llvm-cov nextest --workspace --features intrada-ffi/store --codecov --output-path codecov.json
 
 # Spell check + unused deps + workflow lint + markdown links + the Sentry
 # release name contract (what CI's Security & hygiene job runs), plus the
@@ -1047,9 +1047,10 @@ android-package profile="debug":
         || { echo "✗ NDK $ndk is not installed; run: sdkmanager \"ndk;$ndk\"" >&2; exit 1; }
     rm -rf android/generated/jniLibs android/generated/host android/generated/kotlin/com/intrada/ffi
     # x86_64 serves emulators on x86_64 hosts, CI included; devices and Apple silicon use arm64-v8a.
-    cargo ndk -t arm64-v8a -t x86_64 -o android/generated/jniLibs build -p intrada-ffi --lib --features uniffi $rel
+    # `store` is the shared database, Android only until the iPhone switch (#2432).
+    cargo ndk -t arm64-v8a -t x86_64 -o android/generated/jniLibs build -p intrada-ffi --lib --features uniffi,store $rel
     # The host build serves JVM unit tests, which load the bridge without an emulator.
-    cargo build -p intrada-ffi --lib --features uniffi $rel
+    cargo build -p intrada-ffi --lib --features uniffi,store $rel
     mkdir -p android/generated/host
     case "$(uname -s)" in Darwin) ext=dylib ;; *) ext=so ;; esac
     cp "target/$dir/libintrada_ffi.$ext" android/generated/host/
