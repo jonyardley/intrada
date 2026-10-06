@@ -621,6 +621,13 @@ final class LibraryBridgeTests: XCTestCase {
             photoId: nil, variationLabels: []))))
     let existingId = try XCTUnwrap(try bridge.rendered().items.first?.id)
 
+    let exercises: [ScaffoldEntry] = [
+      .existing(id: existingId),
+      .new(
+        CreateItem(
+          title: "Enclosures", kind: .exercise, composer: nil, key: nil,
+          tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
+    ]
     _ = try bridge.update(
       .item(
         .addPieceInFull(
@@ -629,13 +636,7 @@ final class LibraryBridgeTests: XCTestCase {
             key: Key(letter: .g, accidental: .natural, mode: .minor), tempo: nil, notes: nil,
             tags: [], photoId: nil, variationLabels: []),
           chart: "| Cm7 | F7 | Bbmaj7 |",
-          exercises: [
-            .existing(id: existingId),
-            .new(
-              CreateItem(
-                title: "Enclosures", kind: .exercise, composer: nil, key: nil,
-                tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
-          ])))
+          exercises: exercises)))
 
     let after = try bridge.rendered()
     XCTAssertNil(after.error, "the one-pass create surfaces no error")
