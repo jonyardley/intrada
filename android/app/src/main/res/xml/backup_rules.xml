@@ -3,5 +3,6 @@
 <full-backup-content>
     <include domain="database" path="intrada.sqlite" />
     <include domain="database" path="intrada.sqlite-journal" />
+    <include domain="database" path="intrada.sqlite-wal" />
     <include domain="sharedpref" path="intrada.xml" />
 </full-backup-content>

@@ -16,11 +16,13 @@ import org.xmlpull.v1.XmlPullParser
 class BackupRulesTest {
     private val app = RuntimeEnvironment.getApplication()
 
-    // The rollback journal comes too, so a write cut off by the backup's shutdown rolls back.
+    // The journal and the WAL come too, so a write cut off by the backup's shutdown is never half
+    // restored, whichever journal mode the store uses.
     private val notebook =
         setOf(
             "database" to StoreHolder.DATABASE,
             "database" to "${StoreHolder.DATABASE}-journal",
+            "database" to "${StoreHolder.DATABASE}-wal",
             "sharedpref" to "${Settings.PREFERENCES}.xml",
         )
 

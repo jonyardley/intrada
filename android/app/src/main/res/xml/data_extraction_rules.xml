@@ -4,11 +4,13 @@
     <cloud-backup>
         <include domain="database" path="intrada.sqlite" />
         <include domain="database" path="intrada.sqlite-journal" />
+        <include domain="database" path="intrada.sqlite-wal" />
         <include domain="sharedpref" path="intrada.xml" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="intrada.sqlite" />
         <include domain="database" path="intrada.sqlite-journal" />
+        <include domain="database" path="intrada.sqlite-wal" />
         <include domain="sharedpref" path="intrada.xml" />
     </device-transfer>
 </data-extraction-rules>
