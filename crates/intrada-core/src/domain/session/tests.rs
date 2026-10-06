@@ -2049,6 +2049,50 @@ fn test_update_session_notes() {
 }
 
 #[test]
+fn entry_and_session_notes_are_trimmed_by_one_rule() {
+    for (typed, stored) in [
+        ("  Needs more practice\n", Some("Needs more practice")),
+        ("Steady at 84", Some("Steady at 84")),
+        ("   \n", None),
+        ("", None),
+    ] {
+        let mut model = model_with_summary();
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        let entry_id = s.entries[0].id.clone();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryNotes {
+                entry_id,
+                notes: Some(typed.to_string()),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionNotes {
+                notes: Some(typed.to_string()),
+            }),
+        );
+
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(
+            s.entries[0].notes.as_deref(),
+            stored,
+            "entry, typed {typed:?}"
+        );
+        assert_eq!(
+            s.session_notes.as_deref(),
+            stored,
+            "session, typed {typed:?}"
+        );
+    }
+}
+
+#[test]
 fn test_update_session_notes_rejected_outside_summary() {
     let (mut model, _start) = model_with_active_session(2);
 
@@ -7403,6 +7447,52 @@ fn a_resumed_sheet_still_stops_the_item_clock_at_the_stamp() {
     );
 
     assert_eq!(item_seconds_at_stop(&model), 30);
+}
+
+fn elapsed_at_stop(model: &Model) -> u64 {
+    let view = Intrada.view(model).active_session.expect("in Active");
+    view.reflection.expect("the sheet is open").elapsed_secs
+}
+
+#[test]
+fn the_sheet_counts_every_play_of_the_item() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchPlay {
+            entry_id,
+            section_id: None,
+            key: None,
+            variation_ids: vec!["v-d".to_string()],
+            now: start + chrono::Duration::seconds(40),
+            reading: TempoReading::silent(),
+        }),
+    );
+
+    prepare(&mut model, start + chrono::Duration::seconds(100));
+
+    assert_eq!(elapsed_at_stop(&model), 100);
+}
+
+#[test]
+fn a_resumed_sheet_keeps_the_item_time() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let SessionStatus::Active(saved) = model.session_status.clone() else {
+        panic!("Expected Active state");
+    };
+    let mut model = model_with_library();
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::RecoverSession {
+            session: *saved,
+            now: start + chrono::Duration::hours(3),
+        }),
+    );
+
+    assert_eq!(elapsed_at_stop(&model), 30);
 }
 
 #[test]

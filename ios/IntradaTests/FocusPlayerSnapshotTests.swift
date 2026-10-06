@@ -25,7 +25,7 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         intentionMet: nil, ways: []),
       reading: TempoReading(bpm: 72, clickSounding: false, click: nil),
       stoppedAt: SessionClock.nowRFC3339(start.addingTimeInterval(42)),
-      tempos: [.preview("entry-1-p1", tempo: 72)])
+      tempos: [.preview("entry-1-p1", tempo: 72)], elapsedSecs: 42)
     assertSnapshot(
       of: host(
         FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),

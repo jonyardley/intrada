@@ -61,7 +61,7 @@ pub const MAX_INSTRUMENT: usize = 100;
 // and storage (#883). Runs before validate_*, so "   " fails "required" just
 // like "" rather than persisting as stored whitespace.
 
-fn trimmed_nonempty(value: Option<String>) -> Option<String> {
+pub(crate) fn trimmed_nonempty(value: Option<String>) -> Option<String> {
     value
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())

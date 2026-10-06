@@ -1539,6 +1539,22 @@ fn a_draft_drops_a_span_its_edited_note_no_longer_offers() {
 }
 
 #[test]
+fn a_padded_draft_note_is_kept_trimmed_with_its_points() {
+    let note = "rushed in bar 12";
+    let m = sheet_open_on(
+        "  rushed in bar 12\n",
+        ReflectionAnswers {
+            note_points: vec![span_of(note, "bar 12")],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    let draft = &active(&m).reflection.as_ref().expect("draft").answers;
+    assert_eq!(draft.note, note);
+    assert_eq!(draft.note_points, [span_of(note, "bar 12")]);
+}
+
+#[test]
 fn a_draft_naming_an_obstacle_twice_is_refused() {
     let m = sheet_open_on(
         "fine",
@@ -3159,6 +3175,56 @@ fn no_key_row_when_the_only_key_kept_is_the_written_one() {
 }
 
 // ── The sheet's one submit carries every answer (#2230) ──
+
+#[test]
+fn a_blank_submitted_note_leaves_the_note_already_there() {
+    let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+    let entry_id = entry_id(&m, 0);
+    send(
+        &mut m,
+        SessionEvent::UpdateEntryNotes {
+            entry_id,
+            notes: Some("left hand first".to_string()),
+        },
+    );
+
+    send(
+        &mut m,
+        SessionEvent::SubmitReflection {
+            next_item_started_at: t(300),
+            answers: ReflectionAnswers {
+                note: "  \n".to_string(),
+                ..ReflectionAnswers::default()
+            },
+        },
+    );
+
+    assert_eq!(entries(&m)[0].notes.as_deref(), Some("left hand first"));
+}
+
+#[test]
+fn a_submitted_note_is_stored_trimmed_and_blank_is_no_note() {
+    for (typed, stored) in [
+        ("  rushed in bar 12\n", Some("rushed in bar 12")),
+        (" \n ", None),
+    ] {
+        let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+
+        send(
+            &mut m,
+            SessionEvent::SubmitReflection {
+                next_item_started_at: t(300),
+                answers: ReflectionAnswers {
+                    note: typed.to_string(),
+                    ..ReflectionAnswers::default()
+                },
+            },
+        );
+
+        assert_eq!(m.last_error, None);
+        assert_eq!(entries(&m)[0].notes.as_deref(), stored, "typed {typed:?}");
+    }
+}
 
 #[test]
 fn one_submit_writes_the_way_the_point_the_felt_word_the_obstacle_and_the_aim() {
