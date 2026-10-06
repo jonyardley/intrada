@@ -57,3 +57,14 @@ fun ScreenScaffold(
         Box(Modifier.fillMaxWidth().weight(1f).clipToBounds(), content = content)
     }
 }
+
+@Composable
+internal fun MissingItem(title: String, message: String, modifier: Modifier = Modifier) {
+    ScreenScaffold(title, modifier) {
+        BasicText(
+            message,
+            Modifier.padding(IntradaSpacing.card),
+            style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
+        )
+    }
+}

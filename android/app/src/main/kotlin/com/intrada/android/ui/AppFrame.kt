@@ -42,12 +42,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.intrada.android.core.Store
+import com.intrada.shared.ItemKind
 
 @Composable
 fun AppFrame(store: Store, modifier: Modifier = Modifier) {
@@ -71,9 +74,13 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
                 LibraryRoute(
                     store,
                     onAdd = { navController.navigate(ADD_ROUTE) },
-                    onOpen = { id -> navController.navigate("$EDIT_ROUTE/$id") },
+                    onOpen = { item ->
+                        val route = if (item.itemType == ItemKind.PIECE) PIECE_ROUTE else EDIT_ROUTE
+                        navController.navigate("$route/${item.id}")
+                    },
                 )
             }
+            pieceRoutes(store, navController)
             composable(ADD_ROUTE) { LibraryAddRoute(store, onDone = { navController.closeForm() }) }
             composable("$EDIT_ROUTE/{id}") { backStack ->
                 LibraryEditRoute(
@@ -92,6 +99,55 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
 
 private const val ADD_ROUTE = "library/add"
 private const val EDIT_ROUTE = "library/edit"
+private const val PIECE_ROUTE = "library/piece"
+
+private fun NavGraphBuilder.pieceRoutes(store: Store, navController: NavHostController) {
+    composable("$PIECE_ROUTE/{id}") { backStack ->
+        val id = backStack.arguments?.getString("id").orEmpty()
+        PieceRoute(
+            store,
+            id,
+            PieceNavigation(
+                onEdit = { navController.navigate("$EDIT_ROUTE/$id") },
+                onSection = { sectionId ->
+                    navController.navigate(
+                        "$PIECE_ROUTE/$id/section" + sectionId?.let { "?sectionId=$it" }.orEmpty()
+                    )
+                },
+                onAddExercises = { navController.navigate("$PIECE_ROUTE/$id/exercises") },
+                onChooseSections = { navController.navigate("$PIECE_ROUTE/$id/links/$it") },
+                onOpenExercise = { navController.navigate("$EDIT_ROUTE/$it") },
+                onClosed = { navController.closeForm() },
+            ),
+        )
+    }
+    composable(
+        "$PIECE_ROUTE/{id}/section?sectionId={sectionId}",
+        arguments = listOf(navArgument("sectionId") { nullable = true }),
+    ) { backStack ->
+        SectionRoute(
+            store,
+            backStack.arguments?.getString("id").orEmpty(),
+            backStack.arguments?.getString("sectionId"),
+            onDone = { navController.closeForm() },
+        )
+    }
+    composable("$PIECE_ROUTE/{id}/links/{exerciseId}") { backStack ->
+        LinkSectionsRoute(
+            store,
+            backStack.arguments?.getString("id").orEmpty(),
+            backStack.arguments?.getString("exerciseId").orEmpty(),
+            onDone = { navController.closeForm() },
+        )
+    }
+    composable("$PIECE_ROUTE/{id}/exercises") { backStack ->
+        ExercisePickerRoute(
+            store,
+            backStack.arguments?.getString("id").orEmpty(),
+            onDone = { navController.closeForm() },
+        )
+    }
+}
 
 private fun NavHostController.closeForm() {
     if (previousBackStackEntry != null) popBackStack()
