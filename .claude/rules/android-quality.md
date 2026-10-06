@@ -20,9 +20,10 @@ bars, read in Kotlin and Compose.
 - **One way across the bridge.** Screens read the `ViewModel` through `Store`;
   only `LiveBridge` touches bincode or the UniFFI handle. Effects run off the
   main thread and post their results back on `Main`.
-- **Persistence is raw SQL on `androidx.sqlite`, not Room**: Room wants entity
-  classes, and the shell must not model the domain. Singletons and the
-  crash-recovery blob go to `SharedPreferences` as the core's bincode bytes.
+- **Persistence is the shared Rust store** (`crates/intrada-store`, #2421),
+  reached through the bridge's `StoreFfi`: Kotlin passes the operation's
+  bytes and resolves the core with the answer's, never reading a row. Singletons and the
+  crash-recovery blob go to `SharedPreferences` as Base64 of the core's bincode bytes.
   Each key's version comes from the core's `*BlobVersion()` export, as on iOS,
   never a number spelled in Kotlin (#1345, #2026).
 

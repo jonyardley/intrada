@@ -68,8 +68,8 @@ contract, shown below.
 | Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` building `arm64-v8a` and `x86_64` (the second for emulators on x86_64 hosts, CI included) plus UniFFI bindgen's Kotlin target at uniffi 0.29.4, JNA at runtime | The same bridge calls either side, the picker function included. |
 | Types | Swift `SharedTypes` | Kotlin package `com.intrada.shared` via `codegen --lang kotlin`, the bridge in `com.intrada.ffi`, both generated into `android/generated/` | Never hand-edited, on either shell. |
 | Store | `@Observable @MainActor Store` | A Kotlin `Store` class exposing `StateFlow<ViewModel>`, effects dispatched on `Dispatchers.IO`, hopping back to `Main` | Same update, process, resolve loop. |
-| Persistence | GRDB raw SQL, positional columns | `androidx.sqlite` with the bundled driver, raw SQL, the same schema and migration list | Not Room: Room wants entity classes, and the shell must stay a dumb pipe. |
-| Singletons and crash blob | `UserDefaults` holding bincode bytes | `SharedPreferences` holding the same bincode bytes | Same key-bump rule when the blob shape changes (#1345). |
+| Persistence | GRDB raw SQL, positional columns | The shared Rust store, `crates/intrada-store`, called through the bridge | One schema, one migration list and one set of row converters for both phones (see The shared store). iOS moves onto it in #2432. |
+| Singletons and crash blob | `UserDefaults` holding bincode bytes | `SharedPreferences` holding the same bincode bytes as Base64 text | Same keys, and the same key-bump rule when the blob shape changes (#1345). |
 | Metronome | `AVAudioEngine` host-time click grid | `AudioTrack` streaming with clicks written at sample positions | Sample-accurate, not timer-driven. Hardest piece; the emulator cannot judge it. Oboe via the NDK only if a real device measures unacceptable latency. |
 | Page OCR | Apple Vision behind `Recognition` | ML Kit on-device text recognition behind the same `Recognition` effect | ML Kit returns blocks; the shell splits them into `RecognisedLine`s with geometry. The core still decides field assignment. |
 | Page suggestions | `PageSuggester` on FoundationModels | Open: no on-device model is assumed. Android ships OCR without the suggestion pass until one is chosen (Open questions). | The capture screen must read well with the fields left for the musician to fill. |
@@ -80,6 +80,40 @@ contract, shown below.
 | Screens | Thirteen SwiftUI screens plus the sheets and form scaffolds | Compose screens, one per iOS screen, same `ViewModel` projections | Navigation via Navigation Compose. |
 | Tests | Swift Testing, snapshot, XCUITest | `kotlin.test`, Roborazzi snapshots on the JVM (no emulator needed), Compose UI tests on an emulator | |
 | CI | macOS runners | Ubuntu runners for build, unit and Roborazzi; one emulator job for UI tests | Both shells gate every core change. |
+
+## The shared store
+
+Decided on 6 October 2026 (#2421): the notebook's database lives in one
+Rust crate both phones call, rather than a Kotlin copy of the iPhone's
+GRDB store.
+
+- **`crates/intrada-store`** opens SQLite through rusqlite with SQLite
+  compiled in, answers a `PersistenceOperation` with a
+  `PersistenceOutput`, and returns beside it the stored values it could
+  not read, for the phone to report. The core does not depend on it and
+  still does no I/O.
+- **The migrations** are the iPhone's 20, ported once with the same ids
+  and recorded in GRDB's own `grdb_migrations` table, so a database the
+  iPhone app wrote carries on from where it is. Each runs in its own
+  transaction, as GRDB runs them. `user_version` and migration libraries
+  were rejected: neither reads what GRDB has already recorded.
+- **The row converters** port `ItemCodec`, `SessionCodec` and
+  `StoredCodec`, including keeping a stored value the core cannot read
+  rather than overwriting it with none (#1117, #2097, #2106).
+- **The bridge** exposes one `StoreFfi` object, opened at a path the
+  phone passes in, whose `handle` takes the operation's bincode and
+  returns the output's bincode with the unreadable values. The phone
+  calls it off the main thread, one request at a time.
+- **Android only for now.** The object sits behind `intrada-ffi`'s
+  `store` feature, which only `just android-package` turns on, so the
+  iPhone build does not carry a second SQLite while GRDB is linked. The
+  iPhone switch is #2432.
+- **Settings and the crash blob** stay out of the store: Android keeps
+  them in `SharedPreferences` as Base64 of the bincode bytes, under the
+  iPhone's keys built from the core's `*_blob_version()`, and clears
+  retired crash blobs as iOS does.
+- **A database that will not open** falls back to an in-memory store and
+  a degraded flag, as on iOS; #2428 shows the banner.
 
 ## Working on a Mac with no Android device
 
@@ -105,8 +139,8 @@ twice. One instance is already known: the field assignment that follows
 - **Phase A, bridge and boot.** `just android-gen`, the Kotlin `Store`, a
   read-only Library list rendering from the real `ViewModel`. Proves the
   toolchain end to end.
-- **Phase B, persistence.** SQLite via `androidx.sqlite`, singletons, the
-  crash blob; Library add and edit.
+- **Phase B, persistence.** The shared store, singletons, the crash blob;
+  Library add and edit (#2421, #2428).
 - **Phase C, practice.** Session builder, player, session clock, the
   metronome. Have the device in hand by this phase.
 - **Phase D, capture and the rest.** Camera, OCR, analytics, profile,
