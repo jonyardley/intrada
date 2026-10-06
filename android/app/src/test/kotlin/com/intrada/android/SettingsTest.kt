@@ -36,6 +36,9 @@ class SettingsTest {
     private val prefs =
         RuntimeEnvironment.getApplication()
             .getSharedPreferences(Settings.PREFERENCES, Context.MODE_PRIVATE)
+    private val practice =
+        RuntimeEnvironment.getApplication()
+            .getSharedPreferences(Settings.PRACTICE_PREFERENCES, Context.MODE_PRIVATE)
 
     // The bytes the core pins for the crash-recovery blob, which is what iOS writes: read from the
     // pin itself, so a re-pin cannot leave this test checking an old shape (#1345).
@@ -43,11 +46,11 @@ class SettingsTest {
     fun theBlobIosIsPinnedToWriteResumesThroughTheSlot() = runTest {
         val (version, bytes) = pinnedSessionBlob()
         assertEquals(sessionBlobVersion(), version)
-        val settings = Settings(prefs)
+        val settings = Settings(prefs, practice)
         settings.sessionInProgress.write(bytes)
         assertNotEquals(
             String(bytes, Charsets.ISO_8859_1),
-            prefs.getString(settings.sessionInProgress.key, null),
+            practice.getString(settings.sessionInProgress.key, null),
         )
         assertArrayEquals(bytes, settings.sessionInProgress.read())
 
@@ -60,7 +63,7 @@ class SettingsTest {
 
     @Test
     fun aPracticeAnOlderBuildSavedIsClearedAtLaunch() = runTest {
-        val settings = Settings(prefs)
+        val settings = Settings(prefs, practice)
         val retired = settings.retiredSessionsInProgress.last()
         retired.write(byteArrayOf(1, 2, 3))
         val store = store(settings)
@@ -74,21 +77,31 @@ class SettingsTest {
     @Test
     fun aSortAndAWelcomeChosenOnceAreBackAtTheNextLaunch() = runTest {
         val title = LibrarySort(SortField.TITLE, SortDirection.ASCENDING)
-        val first = store(Settings(prefs))
+        val first = store(Settings(prefs, practice))
         assertNotEquals(title, first.viewModel.value?.activeSort)
         first.send(Event.SetSort(title))
         first.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
-        assertNotNull(Settings(prefs).firstRun.read())
+        assertNotNull(Settings(prefs, practice).firstRun.read())
 
-        val next = store(Settings(prefs))
+        val next = store(Settings(prefs, practice))
         next.restoreSettings()
 
         assertEquals(title, next.viewModel.value?.activeSort)
     }
 
     @Test
+    fun aPracticeInProgressStaysOutOfTheBackedUpFile() {
+        val settings = Settings(prefs, practice)
+        settings.sessionInProgress.write(byteArrayOf(1, 2, 3))
+        settings.retiredSessionsInProgress.last().write(byteArrayOf(4))
+        settings.librarySort.write(byteArrayOf(5))
+
+        assertEquals(setOf(settings.librarySort.key), prefs.all.keys)
+    }
+
+    @Test
     fun aPracticeIsKeptUntilTheCoreClearsIt() = runTest {
-        val settings = Settings(prefs)
+        val settings = Settings(prefs, practice)
         val bytes = pinnedSessionBlob().second
         val session = ActiveSession.bincodeDeserialize(bytes)
         assertTrue(settings.keep(AppEffect.SaveSessionInProgress(session)))

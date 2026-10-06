@@ -41,7 +41,11 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
             viewModelScope,
             log = log,
             settings =
-                Settings(app.getSharedPreferences(Settings.PREFERENCES, Context.MODE_PRIVATE), log),
+                Settings(
+                    app.getSharedPreferences(Settings.PREFERENCES, Context.MODE_PRIVATE),
+                    app.getSharedPreferences(Settings.PRACTICE_PREFERENCES, Context.MODE_PRIVATE),
+                    log,
+                ),
             degraded = opened.degraded,
         )
     }

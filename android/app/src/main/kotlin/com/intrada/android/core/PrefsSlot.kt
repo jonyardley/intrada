@@ -48,10 +48,17 @@ class PrefsSlot(
     }
 }
 
-/** The singletons and the crash-recovery blob, under the iPhone's keys (#2421). */
-class Settings(prefs: SharedPreferences, private val log: (String) -> Unit = {}) {
+/**
+ * The singletons and the crash-recovery blob, under the iPhone's keys (#2421). The practice in
+ * progress has its own file, which the backup leaves out so a reinstall never resumes it (#2433).
+ */
+class Settings(
+    prefs: SharedPreferences,
+    practice: SharedPreferences,
+    private val log: (String) -> Unit = {},
+) {
     val librarySort = PrefsSlot("intrada.library-sort.v${librarySortBlobVersion()}", prefs, log)
-    val sessionInProgress = PrefsSlot(sessionKey(sessionBlobVersion()), prefs, log)
+    val sessionInProgress = PrefsSlot(sessionKey(sessionBlobVersion()), practice, log)
     val profile = PrefsSlot("intrada.profile.v${profileBlobVersion()}", prefs, log)
     // Its own blob, never fields on the profile, so no profile is lost to a failed decode (#1915).
     val practiceDefaults = PrefsSlot("intrada.practice-defaults.v2", prefs, log)
@@ -59,7 +66,7 @@ class Settings(prefs: SharedPreferences, private val log: (String) -> Unit = {})
 
     /** Practices saved by older builds, whose shape this one cannot read (#2246). */
     val retiredSessionsInProgress: List<PrefsSlot> =
-        (1u until sessionBlobVersion()).map { PrefsSlot(sessionKey(it), prefs, log) }
+        (1u until sessionBlobVersion()).map { PrefsSlot(sessionKey(it), practice, log) }
 
     /** Writes a save effect's blob; false for an effect that is not one. */
     fun keep(effect: AppEffect): Boolean {
@@ -109,6 +116,7 @@ class Settings(prefs: SharedPreferences, private val log: (String) -> Unit = {})
 
     companion object {
         const val PREFERENCES = "intrada"
+        const val PRACTICE_PREFERENCES = "intrada.practice"
 
         fun sessionKey(version: UInt) = "intrada.session-in-progress.v$version"
     }
