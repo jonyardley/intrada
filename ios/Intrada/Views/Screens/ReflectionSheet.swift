@@ -101,7 +101,7 @@ struct ReflectionSheet: View {
 
   @State private var marks: [String: Int]
   @State private var note: String
-  /// The trimmed note last handed to `onDraft`, so a pause with no new text writes nothing.
+  /// The note last handed to `onDraft`, so a pause with no new text writes nothing.
   @State private var draftedNote: String
   /// One per row the core gave, so a play with no row has no tempo to send.
   @State private var tempos: [String: TrackedTempo]
