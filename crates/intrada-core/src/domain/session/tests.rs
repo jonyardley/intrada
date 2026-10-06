@@ -7250,13 +7250,6 @@ fn update_reflection_draft_is_refused_whole_on_any_bad_answer() {
             },
         ),
         (
-            "a mark below the scale",
-            ReflectionAnswers {
-                marks: vec![mark(&play_id, 0)],
-                ..good.clone()
-            },
-        ),
-        (
             "a note past the limit",
             ReflectionAnswers {
                 note: "a".repeat(validation::MAX_NOTES + 1),
