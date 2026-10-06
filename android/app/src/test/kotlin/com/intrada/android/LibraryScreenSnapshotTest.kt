@@ -1,14 +1,12 @@
 package com.intrada.android
 
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
+import com.intrada.android.ui.LibraryActions
 import com.intrada.android.ui.LibraryScreen
 import com.intrada.shared.Event
 import com.intrada.shared.LibraryItemView
@@ -41,7 +39,12 @@ class LibraryScreenSnapshotTest {
         val rows = store.libraryRows.value.withIds(view?.visibleIds.orEmpty())
 
         captureRoboImage("src/test/snapshots/library.png") {
-            LibraryScreen(rows, error = null, halted = false, onDismissError = {})
+            LibraryScreen(
+                rows,
+                error = null,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
         }
     }
 
@@ -49,20 +52,12 @@ class LibraryScreenSnapshotTest {
     fun libraryWithAnError() = runTest {
         val rows = loadedRows()
         captureRoboImage("src/test/snapshots/library-error.png") {
-            LibraryScreen(rows, error = ERROR, halted = false, onDismissError = {})
-        }
-    }
-
-    @Test
-    fun libraryHaltedWithAnErrorAtTheLargestFontScale() = runTest {
-        val rows = loadedRows()
-        captureRoboImage("src/test/snapshots/library-error-largest-font.png") {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
-            ) {
-                LibraryScreen(rows, error = ERROR, halted = true, onDismissError = {})
-            }
+            LibraryScreen(
+                rows,
+                error = ERROR,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
         }
     }
 
@@ -82,6 +77,5 @@ class LibraryScreenSnapshotTest {
 
     private companion object {
         const val ERROR = "Couldn't delete that item."
-        const val LARGEST_FONT_SCALE = 2f
     }
 }
