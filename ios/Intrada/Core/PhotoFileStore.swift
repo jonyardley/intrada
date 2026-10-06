@@ -1,13 +1,13 @@
 import UIKit
 
 /// Where an item's photo bytes live. The core holds only the id (spec decision
-/// 1: a blob in GRDB fattens every row read on a table already loaded whole).
+/// 1: a blob in the database fattens every row read on a table already loaded whole).
 /// Nothing here deletes: removing a photo tombstones the id and leaves the
 /// bytes (spec decision 2). Reaping is #1442.
 enum PhotoFileStore {
   enum Failure: Error, Equatable {
     case couldNotEncode
-    /// An id hydrated from GRDB never passes the core's validator again, and
+    /// An id read back from the database never passes the core's validator again, and
     /// it becomes a path component here.
     case notAPhotoId
   }

@@ -24,8 +24,7 @@ facet_typegen = ["intrada-core/facet_typegen", "crux_core/facet_typegen"]
 uniffi = ["dep:uniffi"]
 # The Kotlin bridge generator, built from the same pinned uniffi as the bridge.
 bindgen = ["uniffi", "uniffi/cli"]
-# The shared store (#2421): Android only until the iPhone switch (#2432),
-# so the iPhone build carries no second SQLite while GRDB is linked.
+# The shared store both phones build in (#2421, #2432).
 store = ["dep:intrada-store"]
 # The typegen binary.
 codegen = ["dep:anyhow", "dep:clap", "dep:pretty_env_logger", "facet_typegen"]

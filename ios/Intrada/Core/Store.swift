@@ -67,9 +67,9 @@ final class Store {
       self.store = store
     } else {
       do {
-        self.store = try LibraryStore.inMemory()
+        self.store = try SharedItemStore.inMemory()
       } catch {
-        report(error, "in-memory LibraryStore")
+        report(error, "in-memory store")
         self.store = nil
       }
     }
@@ -323,18 +323,7 @@ private struct DiskJob: @unchecked Sendable {
   func run() -> Outcome {
     guard let store else { return Outcome(output: .failed, error: nil) }
     do {
-      switch operation {
-      case .loadItems: return Outcome(output: .items(try store.loadItems()), error: nil)
-      case .saveItem(let item): try store.save(item)
-      case .saveItems(let items): try store.save(items)
-      case .deleteItem(let id, let deletedAt): try store.delete(id: id, deletedAt: deletedAt)
-      case .loadSessions: return Outcome(output: .sessions(try store.loadSessions()), error: nil)
-      case .saveSession(let session): try store.saveSession(session)
-      case .loadVariations:
-        return Outcome(output: .variations(try store.loadVariations()), error: nil)
-      case .saveVariations(let variations): try store.save(variations)
-      }
-      return Outcome(output: .ack, error: nil)
+      return Outcome(output: try store.handle(operation), error: nil)
     } catch {
       return Outcome(output: .failed, error: error)
     }

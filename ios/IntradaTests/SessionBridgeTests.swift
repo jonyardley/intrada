@@ -170,7 +170,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(try bridge.rendered().practiceDefaults.sessionLengthMins, 25)
   }
 
-  /// Answers the session write the way GRDB does, so the core commits the
+  /// Answers the session write the way the store does, so the core commits the
   /// practice, clears the recovery copy and closes the summary (#974).
   private func acknowledgeSave(_ bridge: RowsBridge, _ requests: [Request]) throws {
     let write = try XCTUnwrap(

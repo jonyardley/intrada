@@ -17,10 +17,10 @@ struct IntradaApp: App {
     return Store(store: opened, degraded: opened == nil)
   }
 
-  private static func openOnDiskStore() -> LibraryStore? {
+  private static func openOnDiskStore() -> SharedItemStore? {
     do {
-      if UITestFlags.emptyStore { return try LibraryStore.inMemory() }
-      return try LibraryStore.onDisk()
+      if UITestFlags.emptyStore { return try SharedItemStore.inMemory() }
+      return try SharedItemStore.onDisk()
     } catch {
       report(error, "store-open")
       return nil

@@ -3,7 +3,8 @@ paths:
   - "crates/intrada-core/src/domain/session/**"
   - "crates/intrada-ffi/**"
   - "ios/generated/**"
-  - "ios/Intrada/Core/LibraryStore.swift"
+  - "crates/intrada-store/**"
+  - "ios/Intrada/Core/SharedItemStore.swift"
   - "android/generated/**"
   - "android/app/src/main/kotlin/com/intrada/android/core/CoreBridge.kt"
 ---
@@ -48,5 +49,6 @@ The hazards, by file:
   `active_session_blob_wire_is_pinned` fails on purpose: bump
   `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it
   (#1116). Never only re-pin.
-- **`LibraryStore.swift`.** Append-only on the device, per
+- **`crates/intrada-store`.** Testers' notebooks open in it, and its
+  migrations are recorded in GRDB's `grdb_migrations` table: append-only, per
   `.claude/rules/offline-first.md`.

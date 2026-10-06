@@ -103,7 +103,7 @@ in the [README](../README.md#prerequisites) — read that before your first
 
 A plain launch (`just ios` then Cmd+R on the default **Intrada** scheme, or any
 build with no launch args) runs **local-first**: the Library hydrates from the
-on-device GRDB store, so items you add survive restarts.
+on-device shared store, so items you add survive restarts.
 
 The 6 sample pieces are **opt-in** via the `--seed-sample-data` launch arg. In
 Xcode, pick the **Intrada (Seeded)** scheme from the scheme dropdown (defined in
@@ -592,7 +592,7 @@ that were genuinely arguable when it was written.
 |Bump a dependency with no API change|1|Dep bump|
 |New "Recently practiced" view following existing list patterns|2|Established patterns|
 |Refactor `intrada-core/src/domain/session.rs` (no FFI change)|2|Single file, non-trivial|
-|Tweak a column default in a `LibraryStore.swift` migration|2|Sensitivity override from Tier 1|
+|Tweak a column default in a `crates/intrada-store` migration|2|Sensitivity override from Tier 1|
 |Add `notes` field to a piece (touches FFI + DB)|3|Override: FFI + schema|
 |Change what the crash-recovery blob stores|3|Blob graph + FFI, core first|
 |Migrate persistence layer|3|Architectural|

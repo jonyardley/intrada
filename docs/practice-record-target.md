@@ -108,7 +108,7 @@ The library lives in its own database tables. A finished session is one `session
 
 | Thing | Core type | Stored where | What changes it |
 | --- | --- | --- | --- |
-| Piece or exercise | `Item` | GRDB `item`; key column holds the one key value | v0.16: `linked_exercise_ids` and `variants` move out; gains its list of chosen keys |
+| Piece or exercise | `Item` | store `item`; key column holds the one key value | v0.16: `linked_exercise_ids` and `variants` move out; gains its list of chosen keys |
 | Sections | new type (#2245) | new `section` table, per-row `updated_at` and `deleted_at` | Migration, v0.16 |
 | Keys | fixed key value (#2106) | no table: on the play, the item's list, the written key, a chart's key | v0.16, inside #2246 |
 | Variations | Variation replaces `Variant` (#1771) | replaces `variant`; per-row `updated_at` and `deleted_at` | Migration, v0.16; steps move across |
@@ -129,7 +129,7 @@ The library lives in its own database tables. A finished session is one `session
 | App left and returned to | new event from the shell | shell only reports it | Bridge shape, v0.17 |
 | On-device reader | new effect beside `RecognitionOperation` | shell runs it where on-device AI exists | Bridge shape, v0.18 |
 | Library sort | sort type (#2089) | UserDefaults `intrada.library-sort` | Core only, v0.16: versioned key and wire pin |
-| Coach-era records | none; nothing reads them | nine GRDB tables | Dropped in a small release of their own, not v0.16 |
+| Coach-era records | none; nothing reads them | nine store tables | Dropped in a small release of their own, not v0.16 |
 
 The nine coach-era tables are `block_record`, `wander_record`, `user_drill`, `journal_item`, `built_session`, `play_through`, `reflection`, `feel_entry` and `unmonitored_play`.
 

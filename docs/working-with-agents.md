@@ -140,7 +140,7 @@ with judgement in it runs below Opus.
 
 Match the **model** to how silently wrong the work can go. The silent-failure
 surfaces here are the FFI bridge (positional bincode: wrong is a no-op, not a
-crash, #846), local GRDB migrations (the device is the only copy of the user's
+crash, #846), local store migrations (the device is the only copy of the user's
 data), the `ActiveSession` crash-recovery blob (#1223, #1244, #1256) and auth.
 Everything else degrades gracefully because failure is visible: a wrong layout
 is caught on the simulator, a wrong test fails in CI.

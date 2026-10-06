@@ -2,7 +2,8 @@
 paths:
   - "crates/intrada-core/src/**"
   - "ios/Intrada/Core/**"
-  - "ios/IntradaTests/LibraryStore*.swift"
+  - "crates/intrada-store/**"
+  - "ios/IntradaTests/SharedItemStore*.swift"
 ---
 
 # Offline-first invariants
@@ -27,18 +28,18 @@ being offline.
 6. **A single write path.** There is one local-first path, not two branches to
    keep in sync.
 7. **No account gate on core functionality.** Only sync may require auth.
-8. **Relational data in GRDB; only small singletons in UserDefaults** (the
+8. **Relational data in the shared store (`crates/intrada-store`); only small singletons in UserDefaults** (the
    library sort, the profile, the practice defaults, the first-run flag, the crash-recovery
    blob),
    written through an `AppEffect`. Each blob must take a versioned key and a
    Rust wire pin, so a shape change fails a test instead of silently failing to
    decode (#1952).
 
-## Local data migrations (GRDB, `LibraryStore`)
+## Local data migrations (`crates/intrada-store/src/migrations.rs`)
 
 A destructive or buggy migration that ships is unrecoverable data loss.
 
-- **Append-only, forward-only, ordered.** Add a new `registerMigration("vN_…")`;
+- **Append-only, forward-only, ordered.** Append a new `("vN_…", …)` to `MIGRATIONS`;
   never edit or delete a shipped one. Users skip versions, so the chain must
   run cleanly from any past version.
 - **Additive by default.** Nullable columns and new tables are safe. Drop,

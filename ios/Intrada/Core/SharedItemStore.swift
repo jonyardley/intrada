@@ -2,15 +2,20 @@ import Foundation
 import IntradaCoreFFI
 import SharedTypes
 
+/// Persistence the Store resolves against: a protocol so tests can inject a failing fake (#816).
+protocol ItemStore: Sendable {
+  func handle(_ operation: PersistenceOperation) throws -> PersistenceOutput
+}
+
 /// The notebook's database: the Rust store both phones share (#2432). It
 /// opens the `intrada.sqlite` GRDB wrote, carrying on from GRDB's record of
 /// the migrations already run.
-final class SharedItemStore: Sendable {
+final class SharedItemStore: ItemStore {
   static let decodeContext = "store decode"
 
-  private let store: StoreFfi
+  private let store: StoreFfiProtocol
 
-  private init(_ store: StoreFfi) {
+  init(_ store: StoreFfiProtocol) {
     self.store = store
   }
 
