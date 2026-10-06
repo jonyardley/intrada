@@ -1111,7 +1111,7 @@ final class SessionBridgeTests: XCTestCase {
 
     let view = try bridge.rendered()
     XCTAssertNil(view.error)
-    let pooled = try XCTUnwrap(view.analytics?.pooledVariations)
+    let pooled: [PooledMarkView] = try XCTUnwrap(view.analytics?.pooledVariations)
     XCTAssertEqual(pooled.map(\.label), ["Dotted rhythms"])
     XCTAssertEqual(pooled.first?.caption, "Solid on 1 of 2 items")
     XCTAssertEqual(pooled.first?.solid, 1)
