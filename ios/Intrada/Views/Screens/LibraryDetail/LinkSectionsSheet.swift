@@ -73,6 +73,10 @@ struct LinkSectionsSheet: View {
   }
 
   private func save() {
+    if wholePiece == exercise.wholePiece && sectionIds == Swift.Set(exercise.sections.map(\.id)) {
+      dismiss()
+      return
+    }
     formError = nil
     let change = LinkChange.set(
       exerciseId: exercise.id, wholePiece: wholePiece, sectionIds: Array(sectionIds))

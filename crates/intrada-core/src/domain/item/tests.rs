@@ -2570,7 +2570,7 @@ fn typed_tempo_round_trips_on_the_ffi_bincode_wire() {
         },
     });
 }
-// ── UpdateSections ──
+// ── The whole-list section write ──
 
 fn row(id: Option<&str>, name: &str, bars: BarsInput) -> SectionEdit {
     SectionEdit {
@@ -4417,6 +4417,19 @@ fn a_link_change_on_an_exercise_as_host_is_refused() {
 fn section_and_link_changes_round_trip_on_ffi_bincode_wire() {
     for change in [
         SectionChange::Save(row(Some("s-1"), "A1", typed("1 to 16"))),
+        SectionChange::Save(SectionEdit {
+            kind: SectionKind::TroubleSpot,
+            target_bpm: "72".to_string(),
+            ..row(
+                None,
+                "",
+                BarsInput::Picked {
+                    first: 12,
+                    last: 14,
+                },
+            )
+        }),
+        SectionChange::Save(row(None, "B", BarsInput::Blank)),
         SectionChange::Remove {
             section_id: "s-1".to_string(),
         },

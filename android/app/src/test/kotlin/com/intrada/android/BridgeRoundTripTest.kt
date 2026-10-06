@@ -319,8 +319,8 @@ class BridgeRoundTripTest {
         assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
     }
 
-    // Section links cross on a second decoder: a skewed LinkTarget, LinkChange or link view shows
-    // only here (#846, #2248).
+    // Section links cross on a second decoder: a skewed LinkTarget, LinkChange.Set or link view
+    // shows only here (#846, #2248).
     @Test
     fun anExerciseLinkedToSectionsOfTwoPiecesDecodes() {
         val bridge = LiveBridge()
