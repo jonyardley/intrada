@@ -49,19 +49,13 @@ struct FocusPlayerScreen: View {
       if let limits = store.viewModel?.limits {
         ReflectionSheet(
           itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
-          tempoTarget: target.tempoTargetBpm, startingTempoBpm: target.startingTempoBpm,
-          currentClick: target.sheetClick, plays: target.plays,
+          tempoTarget: target.tempoTargetBpm, tempoRows: target.tempos, plays: target.plays,
           limits: limits, finish: target.finish,
           variations: target.variations, plannedLabel: target.plannedLabel,
           aim: target.aim, refusal: reflectionRefusal, seed: target.seed,
-          onSave: { result in handleReflection(target, result) },
+          onSave: { answers in handleReflection(answers) },
           onSkip: { handleSkipRating(target) },
-          onDraft: { result in
-            store.send(
-              .session(
-                .updateReflectionDraft(
-                  answers: ReflectionHandoff.draft(result, plays: target.plays))))
-          }
+          onDraft: { answers in store.send(.session(.updateReflectionDraft(answers: answers))) }
         )
         .presentationDetents([.medium, .large])
         .interactiveDismissDisabled()
@@ -530,16 +524,14 @@ struct FocusPlayerScreen: View {
     let title: String
     let elapsedDisplay: String
     let tempoTargetBpm: UInt16?
-    /// The click at the stamp, kept in the draft so a resume still seeds the
-    /// unstamped rows from it with `sheetClick`; `NextItem` sends it again (#1761, #2137).
+    /// The click at the stamp, kept in the draft; Skip sends it again with `NextItem` (#2137).
     let reading: TempoReading
-    var startingTempoBpm: Int { Int(reading.bpm) }
-    let sheetClick: ClickState
+    let tempos: [ReflectionTempoView]
     /// What was played, oldest first, one row per variation (#1739). The last
     /// is the play still open at the moment the item ended, which `NextItem`
     /// then closes.
     let plays: [ReflectionPlay]
-    let seed: ReflectionResult
+    let seed: ReflectionAnswers
     let finish: FinishSheetView?
     /// The focus the aim is asked against, or the musician's own words for it.
     let aim: String?
@@ -559,9 +551,7 @@ struct FocusPlayerScreen: View {
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(seconds),
       tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
-      sheetClick: ReflectionHandoff.sheetClick(draft.reading, active: active),
-      plays: ReflectionPlay.rows(entry.plays),
-      seed: ReflectionHandoff.seed(draft.answers),
+      tempos: draft.tempos, plays: ReflectionPlay.rows(entry.plays), seed: draft.answers,
       finish: active.record.finish,
       aim: entry.record.focus?.label ?? active.currentItemIntention,
       variations: active.currentVariations, plannedLabel: entry.plannedLabel)
@@ -585,15 +575,12 @@ struct FocusPlayerScreen: View {
     store.send(.session(.prepareReflection(now: SessionClock.nowRFC3339(), reading: reading)))
   }
 
-  // `now` is ignored while the draft is open: the core closes the entry at
-  // the draft's own instant (#2137). A fresh nextItemStartedAt, or the
-  // sheet's dwell reads as practice on the item after (#1758).
-  private func handleReflection(_ target: ReflectionTarget, _ result: ReflectionResult) {
-    let now = SessionClock.nowRFC3339()
-    let plan = ReflectionHandoff.plan(
-      entryId: target.id, now: now, nextItemStartedAt: now,
-      reading: target.reading, plays: target.plays, result: result)
-    if !ReflectionHandoff.run(plan, send: store.sendAccepted) { refuse() }
+  // A fresh nextItemStartedAt, so the sheet's dwell is not practice on the next item (#1758).
+  private func handleReflection(_ answers: ReflectionAnswers) {
+    let accepted = store.sendAccepted(
+      .session(
+        .submitReflection(nextItemStartedAt: SessionClock.nowRFC3339(), answers: answers)))
+    if !accepted { refuse() }
   }
 
   private func handleSkipRating(_ target: ReflectionTarget) {
