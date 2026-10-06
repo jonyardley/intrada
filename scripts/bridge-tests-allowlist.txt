@@ -25,7 +25,6 @@ LastPractisedView
 LibraryData
 LibrarySort
 LimitsView
-LinkedExerciseView
 ListQuery
 NeglectedItem
 PhotoRecognitionStatus
