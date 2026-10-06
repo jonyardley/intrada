@@ -330,7 +330,7 @@ private struct FirstPieceStep: View {
             ) { adding = .scan }
             HairlineDivider()
             FirstPieceRow(
-              systemImage: "music.note", title: "Type a piece",
+              systemImage: "music.note", title: "Add a piece by hand",
               line: "Fill in the title and composer yourself",
               identifier: "firstRun.typePiece"
             ) { adding = .piece }

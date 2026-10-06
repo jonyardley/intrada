@@ -47,7 +47,7 @@ final class FirstRunUITests: XCTestCase {
     let app = launchFresh()
     app.control("firstRun.setUpProfile", spoken: "Set up profile", timeout: contendedTimeout).tap()
     app.control("firstRun.skipProfile", spoken: "Skip").tap()
-    app.control("firstRun.typePiece", spoken: "Type a piece").tap()
+    app.control("firstRun.typePiece", spoken: "Add a piece by hand").tap()
     let title = app.element("itemForm.title")
     XCTAssertTrue(title.waitForExistence(timeout: 5), "the add form")
     title.tap()
