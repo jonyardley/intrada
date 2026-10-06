@@ -7390,6 +7390,236 @@ fn next_item_with_a_draft_still_takes_the_events_reading() {
     );
 }
 
+// ── The sheet's one submit (#2230) ─────────────────────────────────
+
+fn submit(model: &mut Model, at: DateTime<Utc>, answers: ReflectionAnswers) {
+    update(
+        model,
+        Event::Session(SessionEvent::SubmitReflection {
+            next_item_started_at: at,
+            answers,
+        }),
+    );
+}
+
+fn current_index(model: &Model) -> usize {
+    let SessionStatus::Active(ref active) = model.session_status else {
+        panic!("Expected Active state");
+    };
+    active.current_index
+}
+
+#[test]
+fn submit_reflection_closes_the_item_with_every_answer() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(500),
+        answers_for(&play_id),
+    );
+
+    assert_eq!(current_index(&model), 1);
+    assert!(draft(&model).is_none());
+    assert!(model.last_error.is_none());
+    let finished = &session_entries(&model)[0];
+    assert_eq!(finished.status, EntryStatus::Completed);
+    assert_eq!(finished.duration_secs, 30, "closed at the draft's instant");
+    assert_eq!(finished.notes.as_deref(), Some("left hand late in bar 12"));
+    assert_eq!(finished.plays[0].score, Some(7));
+    assert_eq!(
+        finished.plays[0].achieved_tempo,
+        Some(seven_eight_on_group_starts().metre.crotchet_bpm(96))
+    );
+}
+
+#[test]
+fn a_refused_note_leaves_the_entry_current() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let errors_before = model.error_seq;
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(500),
+        ReflectionAnswers {
+            note: "x".repeat(crate::validation::MAX_NOTES + 1),
+            ..answers_for(&play_id)
+        },
+    );
+
+    assert_eq!(current_index(&model), 0);
+    assert!(draft(&model).is_some(), "the sheet stays open");
+    assert_eq!(model.error_seq, errors_before + 1);
+    assert!(
+        model
+            .last_error
+            .as_deref()
+            .is_some_and(|e| e.contains("Notes must not exceed")),
+        "the note's own refusal, not a generic one"
+    );
+    let entry = &session_entries(&model)[0];
+    assert_ne!(entry.status, EntryStatus::Completed);
+    assert!(entry.notes.is_none() && entry.plays[0].score.is_none());
+}
+
+#[test]
+fn a_bad_answer_is_refused_before_the_item_closes() {
+    let (mut model, start) = model_with_active_session(2);
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let errors_before = model.error_seq;
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(500),
+        answers_for("not-a-play"),
+    );
+
+    assert_eq!(current_index(&model), 0);
+    assert_eq!(model.error_seq, errors_before + 1);
+    assert!(session_entries(&model)[0].notes.is_none());
+}
+
+#[test]
+fn submit_reflection_without_an_open_sheet_is_refused() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    let errors_before = model.error_seq;
+
+    submit(&mut model, start, answers_for(&play_id));
+
+    assert_eq!(current_index(&model), 0);
+    assert_eq!(model.error_seq, errors_before + 1);
+}
+
+#[test]
+fn a_mark_of_zero_is_left_unmarked() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+    let errors_before = model.error_seq;
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(500),
+        ReflectionAnswers {
+            marks: vec![DraftMark {
+                play_id: play_id.clone(),
+                score: 0,
+            }],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    assert_eq!(model.error_seq, errors_before);
+    assert_eq!(current_index(&model), 1);
+    assert!(session_entries(&model)[0].plays[0].score.is_none());
+}
+
+#[test]
+fn submit_reflection_on_the_last_item_still_writes_the_answers() {
+    let (mut model, start) = model_with_active_session(1);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(500),
+        answers_for(&play_id),
+    );
+
+    let finished = &summary_of(&model).entries[0];
+    assert_eq!(finished.plays[0].score, Some(7));
+    assert_eq!(finished.notes.as_deref(), Some("left hand late in bar 12"));
+    assert!(model.last_error.is_none());
+}
+
+#[test]
+fn a_mark_on_a_play_about_to_be_dropped_is_refused() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchPlay {
+            entry_id,
+            section_id: None,
+            key: None,
+            variation_ids: vec!["v-d".to_string()],
+            now: start + chrono::Duration::seconds(2),
+            reading: TempoReading::silent(),
+        }),
+    );
+    let stray = only_entry(&model).plays[1].id.clone();
+    prepare(&mut model, start + chrono::Duration::seconds(3));
+    let errors_before = model.error_seq;
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(3),
+        ReflectionAnswers {
+            marks: vec![DraftMark {
+                play_id: stray,
+                score: 6,
+            }],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    assert_eq!(model.error_seq, errors_before + 1);
+    assert!(draft(&model).is_some(), "the entry is still current");
+}
+
+#[test]
+fn a_way_changed_on_a_play_about_to_be_dropped_is_let_go() {
+    let (mut model, start) = model_with_variations();
+    let entry_id = only_entry(&model).id.clone();
+    let stray = only_entry(&model).plays[0].id.clone();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SwitchPlay {
+            entry_id,
+            section_id: None,
+            key: None,
+            variation_ids: vec!["v-d".to_string()],
+            now: start + chrono::Duration::seconds(2),
+            reading: TempoReading::silent(),
+        }),
+    );
+    prepare(&mut model, start + chrono::Duration::seconds(300));
+    let errors_before = model.error_seq;
+
+    submit(
+        &mut model,
+        start + chrono::Duration::seconds(300),
+        ReflectionAnswers {
+            ways: vec![DraftWay {
+                play_id: stray,
+                section_id: None,
+                key: None,
+                variation_ids: vec!["v-c".to_string()],
+            }],
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    assert_eq!(
+        model.error_seq, errors_before,
+        "a closed entry raises nothing"
+    );
+    assert_eq!(only_entry(&model).plays.len(), 1);
+}
+
+#[test]
+fn submit_reflection_round_trips_on_ffi_bincode_wire() {
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::SubmitReflection {
+        next_item_started_at: Utc::now(),
+        answers: answers_for("e1-play"),
+    }));
+}
+
 fn summary_of(model: &Model) -> &SummarySession {
     let SessionStatus::Summary(ref summary) = model.session_status else {
         panic!("Expected Summary state");

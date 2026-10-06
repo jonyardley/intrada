@@ -1034,6 +1034,19 @@ pub struct ReflectionView {
     /// Measured against `current_item_started_at`, it stays the stamped seconds
     /// across a resume (#2297).
     pub stopped_at: String,
+    /// One per markable play, in play order (#2230).
+    pub tempos: Vec<ReflectionTempoView>,
+}
+
+/// A sheet row's tempo as it opens, counted in `click`'s unit (#2230).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ReflectionTempoView {
+    pub play_id: String,
+    pub tempo: u16,
+    pub click: ClickState,
+    pub band: TempoBand,
+    pub set_by_hand: bool,
 }
 
 /// A unit in the builder queue: a block (a piece with its related exercises) or
