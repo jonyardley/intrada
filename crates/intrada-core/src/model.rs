@@ -628,7 +628,10 @@ pub(crate) const SOLID_MIN: u8 = 8;
 /// `None` when it holds none (#2366).
 pub(crate) fn solid_caption(latest: impl Iterator<Item = Option<u8>>) -> Option<String> {
     let (solid, total) = latest.fold((0, 0), |(solid, total), mark| {
-        (solid + usize::from(mark.is_some_and(|m| m >= SOLID_MIN)), total + 1)
+        (
+            solid + usize::from(mark.is_some_and(|m| m >= SOLID_MIN)),
+            total + 1,
+        )
     });
     (total > 0).then(|| format!("{solid} of {total} solid"))
 }
