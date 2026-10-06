@@ -30,6 +30,16 @@ struct AnalyticsScreen: View {
             VariationCoverageSection(rows: variationCoverage)
               .fadeUp(2)
           }
+          if !analytics.pooledVariations.isEmpty {
+            PooledMarksSection(
+              title: "Variations across the library", rows: analytics.pooledVariations
+            )
+            .fadeUp(2)
+          }
+          if !analytics.pooledKeys.isEmpty {
+            PooledMarksSection(title: "Keys across the library", rows: analytics.pooledKeys)
+              .fadeUp(2)
+          }
           consistencySection(analytics)
             .fadeUp(3)
           if !analytics.scoreChanges.isEmpty {

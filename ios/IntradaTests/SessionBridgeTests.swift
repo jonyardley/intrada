@@ -1062,4 +1062,59 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(
       try bridge.rendered().analytics?.climbing, "Climbing steadily across 1 item.")
   }
+
+  /// One variation marked on two items pools on Progress (#2250), a view
+  /// that crosses the wire inside `AnalyticsView`, so a stub cannot catch a drop (#846).
+  func testRealBridgeProgressPoolsAVariationAcrossItems() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    func addExercise(_ title: String) throws -> String {
+      _ = try bridge.update(
+        .item(
+          .add(
+            CreateItem(
+              title: title, kind: .exercise, composer: nil, key: nil,
+              tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
+      return try XCTUnwrap(try bridge.rendered().items.first { $0.title == title }?.id)
+    }
+    let scales = try addExercise("Major Scales")
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: scales, variationIds: [], newLabels: ["Dotted rhythms"])))
+    let dotted = try XCTUnwrap(
+      try bridge.rendered().items.first { $0.id == scales }?.variations.first?.id)
+    let arpeggios = try addExercise("Arpeggios")
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: arpeggios, variationIds: [dotted], newLabels: [])))
+
+    func play(_ itemId: String, day: String, score: UInt8) throws {
+      _ = try bridge.update(.session(.startBuilding))
+      _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+      let entryId = try XCTUnwrap(try bridge.rendered().buildingSetlist?.entries.first?.id)
+      _ = try bridge.update(.session(.startSession(now: "\(day)T09:00:00Z")))
+      _ = try bridge.update(
+        .session(
+          .switchPlay(
+            entryId: entryId, sectionId: nil, key: nil, variationIds: [dotted],
+            now: "\(day)T09:00:00Z", reading: .silent)))
+      _ = try bridge.update(
+        .session(
+          .nextItem(
+            now: "\(day)T09:05:00Z", nextItemStartedAt: "\(day)T09:05:00Z", reading: .silent)))
+      let playId = try XCTUnwrap(try bridge.rendered().summary?.entries.first?.plays.last?.id)
+      _ = try bridge.update(
+        .session(.updateEntryScore(entryId: entryId, playId: playId, score: score)))
+      try acknowledgeSave(
+        bridge, try bridge.update(.session(.saveSession(now: "\(day)T09:06:00Z"))))
+    }
+    try play(scales, day: "2026-09-04", score: 9)
+    try play(arpeggios, day: "2026-09-05", score: 5)
+
+    let view = try bridge.rendered()
+    XCTAssertNil(view.error)
+    let pooled = try XCTUnwrap(view.analytics?.pooledVariations)
+    XCTAssertEqual(pooled.map(\.label), ["Dotted rhythms"])
+    XCTAssertEqual(pooled.first?.caption, "Solid on 1 of 2 items")
+    XCTAssertEqual(pooled.first?.solid, 1)
+    XCTAssertEqual(pooled.first?.total, 2)
+  }
 }

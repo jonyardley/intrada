@@ -2,7 +2,7 @@
 //! (rather than reading the clock) so they're deterministic under test.
 
 use std::cmp::Reverse;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc, Weekday};
 use serde::{Deserialize, Serialize};
@@ -67,6 +67,18 @@ pub struct VariationCoverageView {
     pub total: usize,
 }
 
+/// One variation or key across every item that has a mark on it: a count of
+/// solid items, never a mean, since a mean of different material says nothing
+/// (#1739, #2250).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PooledMarkView {
+    pub label: String,
+    pub solid: usize,
+    pub total: usize,
+    pub caption: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AnalyticsView {
@@ -85,6 +97,8 @@ pub struct AnalyticsView {
     pub mastery_change: Option<String>,
     /// `Climbing steadily across 3 items.`; `None` unless a mark rose (#2399).
     pub climbing: Option<String>,
+    pub pooled_variations: Vec<PooledMarkView>,
+    pub pooled_keys: Vec<PooledMarkView>,
 }
 
 /// Aggregated stats for the current and previous ISO weeks (Monday–Sunday).
@@ -205,7 +219,51 @@ pub(crate) fn analytics_from_changes(
         top_mover: top_mover(changes),
         mastery_change: mastery_change(changes),
         climbing: climbing(changes),
+        pooled_variations: compute_pooled_variations(item_views),
+        pooled_keys: compute_pooled_keys(item_views),
     }
+}
+
+fn compute_pooled_variations(item_views: &[LibraryItemView]) -> Vec<PooledMarkView> {
+    pool_marks(item_views.iter().flat_map(|i| {
+        i.variations
+            .iter()
+            .map(|v| (v.id.as_str(), v.label.as_str(), v.latest_score))
+    }))
+}
+
+/// Grouped by label, so E flat major on a scale and on a piece pool together.
+fn compute_pooled_keys(item_views: &[LibraryItemView]) -> Vec<PooledMarkView> {
+    pool_marks(item_views.iter().flat_map(|i| {
+        i.keys
+            .iter()
+            .map(|k| (k.label.as_str(), k.label.as_str(), k.latest_score))
+    }))
+}
+
+/// One item is not a pool, so a row needs marks on two or more.
+fn pool_marks<'a>(
+    marks: impl Iterator<Item = (&'a str, &'a str, Option<u8>)>,
+) -> Vec<PooledMarkView> {
+    let mut pools: BTreeMap<&str, (&str, usize, usize)> = BTreeMap::new();
+    for (group, label, mark) in marks {
+        let Some(mark) = mark else { continue };
+        let pool = pools.entry(group).or_insert((label, 0, 0));
+        pool.1 += usize::from(mark >= crate::model::SOLID_MIN);
+        pool.2 += 1;
+    }
+    let mut rows: Vec<PooledMarkView> = pools
+        .into_values()
+        .filter(|&(_, _, total)| total >= 2)
+        .map(|(label, solid, total)| PooledMarkView {
+            label: label.to_string(),
+            solid,
+            total,
+            caption: format!("Solid on {solid} of {total} items"),
+        })
+        .collect();
+    rows.sort_by(|a, b| b.total.cmp(&a.total).then_with(|| a.label.cmp(&b.label)));
+    rows
 }
 
 fn coverage_marks(i: &LibraryItemView) -> impl Iterator<Item = Option<u8>> + '_ {
@@ -953,6 +1011,12 @@ mod tests {
             top_mover: Some(change("a", Some(3), 5)),
             mastery_change: Some("+0.7 this week".to_string()),
             climbing: Some("Climbing steadily across 2 items.".to_string()),
+            pooled_keys: vec![PooledMarkView {
+                label: "E\u{266D} major".to_string(),
+                solid: 1,
+                total: 2,
+                caption: "Solid on 1 of 2 items".to_string(),
+            }],
             ..AnalyticsView::default()
         });
     }
@@ -2040,6 +2104,132 @@ mod tests {
             title: "Scales".to_string(),
             solid: 2,
             total: 3,
+        });
+    }
+
+    // ── Pooled marks (#2250) ─────────────────────────────────────────
+
+    fn item_with_variation(id: &str, kind: ItemKind, mark: Option<u8>) -> LibraryItemView {
+        let mut view = LibraryItemView::fixture(id, id, kind);
+        let variation = crate::model::VariationView::fixture("v-dotted", "Dotted rhythms");
+        view.variations = vec![match mark {
+            Some(m) => variation.scored(m),
+            None => variation,
+        }];
+        view
+    }
+
+    fn item_with_key(id: &str, kind: ItemKind, key: &str, mark: u8) -> LibraryItemView {
+        let mut view = LibraryItemView::fixture(id, id, kind);
+        let key = crate::domain::key::Key::parse(key).expect("a key");
+        view.keys = vec![crate::model::ItemKeyView {
+            key,
+            label: key.label(),
+            latest_score: Some(mark),
+            caption: crate::model::saved_mark_caption(Some(mark)),
+        }];
+        view
+    }
+
+    #[test]
+    fn a_variation_pools_its_marks_across_items() {
+        let rows = compute_pooled_variations(&[
+            item_with_variation("Scales", ItemKind::Exercise, Some(9)),
+            item_with_variation("Arpeggios", ItemKind::Exercise, Some(5)),
+        ]);
+        assert_eq!(
+            rows,
+            [PooledMarkView {
+                label: "Dotted rhythms".to_string(),
+                solid: 1,
+                total: 2,
+                caption: "Solid on 1 of 2 items".to_string(),
+            }]
+        );
+    }
+
+    #[test]
+    fn an_unmarked_item_is_not_counted_in_the_pool() {
+        let rows = compute_pooled_variations(&[
+            item_with_variation("Scales", ItemKind::Exercise, Some(9)),
+            item_with_variation("Arpeggios", ItemKind::Exercise, Some(8)),
+            item_with_variation("Cold", ItemKind::Exercise, None),
+        ]);
+        assert_eq!(rows[0].total, 2);
+        assert_eq!(rows[0].caption, "Solid on 2 of 2 items");
+    }
+
+    #[test]
+    fn a_variation_marked_on_one_item_is_not_a_pool() {
+        let rows = compute_pooled_variations(&[
+            item_with_variation("Scales", ItemKind::Exercise, Some(9)),
+            item_with_variation("Cold", ItemKind::Exercise, None),
+        ]);
+        assert!(rows.is_empty());
+    }
+
+    #[test]
+    fn keys_pool_by_label_across_a_piece_and_an_exercise() {
+        let rows = compute_pooled_keys(&[
+            item_with_key("Sonata", ItemKind::Piece, "Eb major", 9),
+            item_with_key("Scales", ItemKind::Exercise, "Eb major", 6),
+            item_with_key("Etude", ItemKind::Piece, "G major", 9),
+        ]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0].label,
+            crate::domain::key::Key::parse("Eb major")
+                .expect("a key")
+                .label()
+        );
+        assert_eq!(rows[0].caption, "Solid on 1 of 2 items");
+    }
+
+    #[test]
+    fn pools_lead_with_the_widest() {
+        let mut items = vec![
+            item_with_variation("A", ItemKind::Exercise, Some(9)),
+            item_with_variation("B", ItemKind::Exercise, Some(9)),
+        ];
+        for (id, mark) in [("C", 9), ("D", 9), ("E", 4)] {
+            let mut view = LibraryItemView::fixture(id, id, ItemKind::Exercise);
+            view.variations =
+                vec![crate::model::VariationView::fixture("v-slow", "Slow").scored(mark)];
+            items.push(view);
+        }
+        let rows = compute_pooled_variations(&items);
+        assert_eq!(
+            rows.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
+            ["Slow", "Dotted rhythms"]
+        );
+    }
+
+    #[test]
+    fn compute_analytics_carries_the_pooled_rows() {
+        let views = [
+            item_with_variation("Scales", ItemKind::Exercise, Some(9)),
+            item_with_variation("Arpeggios", ItemKind::Exercise, Some(5)),
+            item_with_key("Sonata", ItemKind::Piece, "Eb major", 9),
+            item_with_key("Shells", ItemKind::Exercise, "Eb major", 9),
+        ];
+        let analytics = compute_analytics(
+            &[],
+            &[],
+            &HashMap::new(),
+            &views,
+            clock(NaiveDate::from_ymd_opt(2026, 2, 18).unwrap()),
+        );
+        assert_eq!(analytics.pooled_variations.len(), 1);
+        assert_eq!(analytics.pooled_keys[0].caption, "Solid on 2 of 2 items");
+    }
+
+    #[test]
+    fn pooled_mark_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(PooledMarkView {
+            label: "Dotted rhythms".to_string(),
+            solid: 2,
+            total: 5,
+            caption: "Solid on 2 of 5 items".to_string(),
         });
     }
 

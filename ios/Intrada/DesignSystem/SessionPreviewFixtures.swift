@@ -97,7 +97,17 @@
           itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
           currentScore: 3, delta: 1, isNew: false),
         masteryChange: "+1.0 this week",
-        climbing: "Climbing steadily across 2 items.")
+        climbing: "Climbing steadily across 2 items.",
+        pooledVariations: [
+          PooledMarkView(
+            label: "Dotted rhythms", solid: 2, total: 5, caption: "Solid on 2 of 5 items"),
+          PooledMarkView(
+            label: "Hands separately", solid: 1, total: 3, caption: "Solid on 1 of 3 items"),
+        ],
+        pooledKeys: [
+          PooledMarkView(
+            label: "E\u{266D} major", solid: 1, total: 2, caption: "Solid on 1 of 2 items")
+        ])
     }
   }
 
