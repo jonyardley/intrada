@@ -107,8 +107,9 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
   query/mutation operations (an `Operation` whose `Output` is the typed result
   — same shape as `AppEffect`). The core decides *what* to read/write and runs
   **LWW reconciliation**; that logic lives in core so it's shareable to Android.
-- **Shell side:** **GRDB owns the real SQLite tables** and fulfils the
-  persistence effect off the main actor, returning serialized rows. UserDefaults,
+- **Shell side:** the shell hands each persistence operation to the shared
+  Rust store (`crates/intrada-store`, #2432), which owns the SQLite tables, off
+  the main actor, and passes the answer back to the core. UserDefaults,
   written through an `AppEffect`, holds **only** small singletons (the library
   sort, the profile, `session-in-progress` crash-recovery), never relational
   data. Each must take a versioned key and a Rust wire pin.
@@ -245,6 +246,8 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
 - 2026-05-31 — Persistence is a custom `Effect`/`Command`, not a Capability
   (Capability API removed in Crux 0.17).
 - 2026-05-31 — SQLite owned by the Swift shell (GRDB); reconciliation in core.
+- 2026-10-06: SQLite moves from the Swift shell (GRDB) to the shared Rust
+  store both phones call, opening the same file in place (#2421, #2432).
 - 2026-05-31 — Mitigate UniFFI #2818 in the build recipe (non-MainActor /
   `nonisolated` post-process).
 - 2026-06-01 — **Offline-first is the product model**, not just an
