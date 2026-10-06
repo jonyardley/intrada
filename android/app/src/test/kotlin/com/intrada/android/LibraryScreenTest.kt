@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.ItemStore
 import com.intrada.android.core.LiveBridge
@@ -67,6 +68,22 @@ class LibraryScreenTest {
             spoken.toSet(),
         )
         compose.onNodeWithTag("banner.error").assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingARowOpensThatItemAndPlusOpensTheAddForm() = runTest {
+        val store = store(InMemoryItemStore(Fixtures.library))
+        store.send(Event.StartApp)
+        store.settle()
+        val opened = mutableListOf<String>()
+        var adds = 0
+        compose.setContent { LibraryRoute(store, onAdd = { adds += 1 }, onOpen = { opened += it }) }
+
+        compose.onAllNodesWithTag("library.row")[0].performClick()
+        compose.onNodeWithTag("library.add").performClick()
+
+        assertEquals(listOf(store.viewModel.value?.visibleIds?.first()), opened)
+        assertEquals(1, adds)
     }
 
     private fun show(store: Store) {

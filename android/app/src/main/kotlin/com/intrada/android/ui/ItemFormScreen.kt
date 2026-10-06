@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -74,11 +75,6 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     val variations = mutableStateListOf<VariationRow>()
     var formError by mutableStateOf<String?>(null)
 
-    fun chooseKind(next: ItemKind) {
-        kind = next
-        if (next != ItemKind.EXERCISE) variations.clear()
-    }
-
     fun addEvent(): Event =
         Event.Item(
             ItemEvent.Add(
@@ -89,7 +85,8 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     tempo = TempoInput(marking, bpm),
                     notes = notes,
                     tags = tags.toList(),
-                    variationLabels = variations.map { it.label },
+                    variationLabels =
+                        if (kind == ItemKind.EXERCISE) variations.map { it.label } else emptyList(),
                 )
             )
         )
@@ -142,13 +139,17 @@ private const val SAVE_FAILED = "Couldn't save. Try again."
 @Composable
 fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val form = remember { ItemFormState() }
+    var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
         ItemFormMode.ADD,
         onCancel = onDone,
         onConfirm = {
-            form.formError = store.sendFromForm(form.addEvent())
-            if (form.formError == null) onDone()
+            if (!closing) {
+                form.formError = store.sendFromForm(form.addEvent())
+                closing = form.formError == null
+                if (closing) onDone()
+            }
         },
         modifier = modifier,
     )
@@ -169,13 +170,17 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
         return
     }
     val form = remember(id) { ItemFormState.of(item) }
+    var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
         ItemFormMode.EDIT,
         onCancel = onDone,
         onConfirm = {
-            form.formError = store.sendFromForm(form.editEvent(id))
-            if (form.formError == null) onDone()
+            if (!closing) {
+                form.formError = store.sendFromForm(form.editEvent(id))
+                closing = form.formError == null
+                if (closing) onDone()
+            }
         },
         modifier = modifier,
     )
@@ -218,7 +223,7 @@ private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
         modifier.padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
-        KindSegment(form.kind, form::chooseKind)
+        KindSegment(form.kind, { form.kind = it })
         Column(Modifier.cardSurface()) {
             FormField(
                 "Title",
@@ -283,7 +288,7 @@ private fun TextAction(
 ) {
     Box(
         modifier
-            .heightIn(min = 48.dp)
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .testTag(tag)
             .padding(horizontal = IntradaSpacing.controlGap),

@@ -132,6 +132,25 @@ class ItemFormScreenTest {
         assertEquals("Scales in thirds", store.libraryRows.value.single().title)
     }
 
+    @Test
+    fun switchingAnExerciseToAPieceAndBackKeepsItsVariations() = runTest {
+        val store = startedStore()
+        store.send(Event.Item(ItemEvent.Add(Fixtures.scales)))
+        store.settle()
+        val id = store.libraryRows.value.single().id
+        compose.setContent { LibraryEditRoute(store, id, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.kind.piece").performClick()
+        compose.onNodeWithTag("itemForm.kind.exercise").performClick()
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+
+        assertEquals(
+            listOf("Slow", "Swung"),
+            store.libraryRows.value.single().variations.map { it.label },
+        )
+    }
+
     private suspend fun TestScope.startedStore(): Store {
         val store =
             Store(

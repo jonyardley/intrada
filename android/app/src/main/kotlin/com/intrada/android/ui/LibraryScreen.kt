@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
@@ -98,18 +99,15 @@ fun LibraryScreen(
 @Composable
 private fun AddButton(onAdd: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier
-            .size(48.dp)
-            .clickable(onClickLabel = null, role = Role.Button, onClick = onAdd)
-            .clearAndSetSemantics {
-                contentDescription = "Add to your library"
-                role = Role.Button
-                onClick {
-                    onAdd()
-                    true
-                }
+        modifier.size(48.dp).clickable(role = Role.Button, onClick = onAdd).clearAndSetSemantics {
+            contentDescription = "Add item"
+            testTag = "library.add"
+            role = Role.Button
+            onClick {
+                onAdd()
+                true
             }
-            .testTag("library.add"),
+        },
         contentAlignment = Alignment.Center,
     ) {
         BasicText("+", style = IntradaFont.title.copy(color = IntradaColor.accent))

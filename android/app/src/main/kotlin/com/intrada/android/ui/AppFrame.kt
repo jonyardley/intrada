@@ -74,14 +74,12 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
                     onOpen = { id -> navController.navigate("$EDIT_ROUTE/$id") },
                 )
             }
-            composable(ADD_ROUTE) {
-                LibraryAddRoute(store, onDone = { navController.popBackStack() })
-            }
+            composable(ADD_ROUTE) { LibraryAddRoute(store, onDone = { navController.closeForm() }) }
             composable("$EDIT_ROUTE/{id}") { backStack ->
                 LibraryEditRoute(
                     store,
                     backStack.arguments?.getString("id").orEmpty(),
-                    onDone = { navController.popBackStack() },
+                    onDone = { navController.closeForm() },
                 )
             }
             composable(AppTab.PRACTICE.route) { EmptyTab(AppTab.PRACTICE) }
@@ -94,6 +92,10 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
 
 private const val ADD_ROUTE = "library/add"
 private const val EDIT_ROUTE = "library/edit"
+
+private fun NavHostController.closeForm() {
+    if (previousBackStackEntry != null) popBackStack()
+}
 
 private fun NavHostController.select(tab: AppTab) {
     navigate(tab.route) {
