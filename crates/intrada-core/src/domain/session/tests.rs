@@ -7167,6 +7167,25 @@ fn update_reflection_draft_replaces_the_answers_and_saves() {
 }
 
 #[test]
+fn a_draft_mark_of_zero_is_kept_as_unmarked() {
+    let (mut model, start) = model_with_active_session(2);
+    let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());
+    prepare(&mut model, start + chrono::Duration::seconds(30));
+
+    write_draft(
+        &mut model,
+        ReflectionAnswers {
+            marks: vec![DraftMark { play_id, score: 0 }],
+            note: "kept".to_string(),
+            ..ReflectionAnswers::default()
+        },
+    );
+
+    let saved = &draft(&model).expect("the sheet is open").answers;
+    assert_eq!((saved.marks.len(), saved.note.as_str()), (0, "kept"));
+}
+
+#[test]
 fn update_reflection_draft_without_an_open_sheet_is_refused() {
     let (mut model, _) = model_with_active_session(2);
     let play_id = first_play_id(&model, &session_entries(&model)[0].id.clone());

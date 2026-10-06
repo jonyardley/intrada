@@ -297,6 +297,7 @@ pub(super) fn update_reflection_draft(
     };
     let entry = active.current_entry();
     let sections = super::finish::named_sections(model, &entry.item_id);
+    answers.marks.retain(|mark| mark.score != 0);
     keep_offered_points(&mut answers, &sections);
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.item_id, way.key);
@@ -343,7 +344,7 @@ pub(super) fn submit_reflection(
     };
     let entry = active.current_entry();
     let entry_id = entry.id.clone();
-    // The sheet's selector reads 0 as no mark.
+    // The sheet's selector reads 0 as no mark, here and in the draft.
     answers.marks.retain(|mark| mark.score != 0);
     // Checked whole before the entry closes: once it has moved on, a refusal
     // would leave the sheet nothing to retry (#1945).
