@@ -65,6 +65,7 @@ jobs:
               - 'rust-toolchain.toml'
               - 'crates/intrada-core/**'
               - 'crates/intrada-ffi/**'
+              - 'crates/intrada-store/**'
               - 'ios/**'
               - 'scripts/ios-run-sim.sh'
               - 'justfile'
@@ -400,7 +401,7 @@ jobs:
       - name: swift format check
         run: just ios-fmt-check
       - name: Clippy (iOS device target)
-        run: cargo clippy -p intrada-ffi --target aarch64-apple-ios -- -D warnings
+        run: cargo clippy -p intrada-ffi --target aarch64-apple-ios --features store -- -D warnings
       - name: Regenerate Swift bindings (facet typegen + cargo-swift)
         run: just ios-gen
       # `_ios-test-without-building` reports its counts from the newest
