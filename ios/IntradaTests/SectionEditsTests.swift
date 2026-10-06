@@ -12,7 +12,8 @@ struct SectionEditsTests {
   ) -> SectionView {
     SectionView(
       id: id, name: name, kind: kind, targetBpm: bpm, firstBar: first, lastBar: last,
-      label: name, barsCaption: nil)
+      label: name, barsCaption: nil, latestScore: nil, scoreHistory: [],
+      caption: "Not yet played", isWeakest: false)
   }
 
   @Test("a section keeps its name, bars, kind and tempo when sent back")

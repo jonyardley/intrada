@@ -18,8 +18,11 @@ struct EntrySegmentsCard: View {
   let tickDrill: (DrillOfferView) -> Void
 
   private var unplanned: [SectionView] {
-    sections.filter { section in !segments.contains { $0.sectionId == section.id } }
+    let open = sections.filter { section in !segments.contains { $0.sectionId == section.id } }
+    return open.filter(\.isWeakest) + open.filter { !$0.isWeakest }
   }
+
+  private var weakest: SectionView? { sections.first(where: \.isWeakest) }
 
   private var offersAdd: Bool { canAddSection && !unplanned.isEmpty }
 
@@ -37,9 +40,15 @@ struct EntrySegmentsCard: View {
         }
       }
       if segments.isEmpty {
-        Text("Whole piece")
-          .font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
-          .padding(.vertical, IntradaSpacing.controlGap)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Whole piece")
+            .font(IntradaFont.body).foregroundStyle(IntradaColor.ink)
+          if let weakest {
+            Text("Weakest section · \(weakest.label) · \(weakest.caption)")
+              .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
+          }
+        }
+        .padding(.vertical, IntradaSpacing.controlGap)
       }
       ForEach(Array(segments.enumerated()), id: \.element.sectionId) { index, segment in
         segmentRow(segment)
@@ -54,7 +63,9 @@ struct EntrySegmentsCard: View {
       if offersAdd {
         Menu {
           ForEach(unplanned, id: \.id) { section in
-            Button(section.label) { add(section.id) }
+            Button(section.isWeakest ? "\(section.label) · Weakest" : section.label) {
+              add(section.id)
+            }
           }
         } label: {
           Label("Add a section", systemImage: "plus")
@@ -70,12 +81,16 @@ struct EntrySegmentsCard: View {
   }
 
   private func segmentRow(_ segment: SegmentView) -> some View {
-    let caption = sections.first { $0.id == segment.sectionId }?.barsCaption
+    let section = sections.first { $0.id == segment.sectionId }
+    let caption = section?.barsCaption
     return HStack(spacing: IntradaSpacing.cardCompact) {
       VStack(alignment: .leading, spacing: 2) {
         Text(segment.label).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
         if let caption {
           Text(caption).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
+        }
+        if section?.isWeakest == true {
+          Text("Weakest").font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
         }
       }
       Spacer(minLength: IntradaSpacing.controlGap)

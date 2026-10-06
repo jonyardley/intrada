@@ -19,10 +19,14 @@
 
   extension SectionView {
     static var previewClairSections: [SectionView] {
-      [("sec-a1", "A1", 1, 14), ("sec-b", "B", 15, 26), ("sec-a2", "A2", 27, 42)].map {
+      [
+        ("sec-a1", "A1", 1, 14, 8), ("sec-b", "B", 15, 26, 5), ("sec-a2", "A2", 27, 42, nil),
+      ].map { (id: String, name: String, first: Int, last: Int, mark: UInt8?) in
         SectionView(
-          id: $0.0, name: $0.1, kind: .form, targetBpm: nil, firstBar: UInt16($0.2),
-          lastBar: UInt16($0.3), label: $0.1, barsCaption: "Bars \($0.2) to \($0.3)")
+          id: id, name: name, kind: .form, targetBpm: nil, firstBar: UInt16(first),
+          lastBar: UInt16(last), label: name, barsCaption: "Bars \(first) to \(last)",
+          latestScore: mark, scoreHistory: [],
+          caption: mark.map { "\($0) of 10" } ?? "Not yet played", isWeakest: id == "sec-b")
       }
     }
   }
@@ -240,15 +244,16 @@
           SuggestedItem(
             itemId: "ex-1", itemTitle: "Guide tones", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "Not marked with this piece", weakestSection: nil),
           SuggestedItem(
             itemId: "ex-2", itemTitle: "Shell voicings", itemType: .exercise,
             latestScore: 4,
-            reason: "Marked 4 of 10 last time"),
+            reason: "Marked 4 of 10 last time", weakestSection: nil),
           SuggestedItem(
             itemId: "piece-1", itemTitle: "Like Someone in Love", itemType: .piece,
             latestScore: 6,
-            reason: "Marked 6 of 10 last time"),
+            reason: "Marked 6 of 10 last time",
+            weakestSection: "Weakest section · Bridge"),
         ],
         estimatedMinutes: 15)
     }
@@ -262,11 +267,11 @@
           SuggestedItem(
             itemId: "ex-3", itemTitle: "Contrary-motion scales", itemType: .exercise,
             latestScore: nil,
-            reason: "Not marked with this piece"),
+            reason: "Not marked with this piece", weakestSection: nil),
           SuggestedItem(
             itemId: "piece-2", itemTitle: "Prelude in C", itemType: .piece,
             latestScore: nil,
-            reason: "Not marked yet"),
+            reason: "Not marked yet", weakestSection: nil),
         ],
         estimatedMinutes: 10)
     }
@@ -282,11 +287,11 @@
           SuggestedItem(
             itemId: "ex-4", itemTitle: "Two-five-one in G minor", itemType: .exercise,
             latestScore: 7,
-            reason: "Marked 7 of 10 last time"),
+            reason: "Marked 7 of 10 last time", weakestSection: nil),
           SuggestedItem(
             itemId: "piece-3", itemTitle: "Autumn Leaves", itemType: .piece,
             latestScore: 5,
-            reason: "Marked 5 of 10 last time"),
+            reason: "Marked 5 of 10 last time", weakestSection: nil),
         ],
         estimatedMinutes: 10)
     }
@@ -824,7 +829,8 @@
       func part(_ id: String, _ label: String) -> SectionView {
         SectionView(
           id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
-          label: label, barsCaption: nil)
+          label: label, barsCaption: nil, latestScore: nil, scoreHistory: [],
+          caption: "Not yet played", isWeakest: false)
       }
       var finish = preview(asksIntention: false)
       finish.noteOffers = []

@@ -584,6 +584,14 @@ pub struct SectionView {
     /// "Bars 1 to 16", shown beside a named section; `None` when the label
     /// already is the bars, or there are none.
     pub bars_caption: Option<String>,
+    /// The marks of the plays on this section with no variations, any key:
+    /// the piece's own rule, narrowed to the section (#2250).
+    pub latest_score: Option<u8>,
+    pub score_history: Vec<ScoreHistoryEntry>,
+    pub caption: String,
+    /// The one section the builder and Up next point to: the lowest latest
+    /// mark, once two or more are marked and they differ (#2250).
+    pub is_weakest: bool,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -1531,6 +1539,29 @@ mod tests {
             label: key.label(),
             latest_score: None,
             caption: "Not yet played".to_string(),
+        });
+    }
+
+    /// A section's marks cross the wire inside `LibraryItemView` (#2250).
+    #[test]
+    fn section_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(SectionView {
+            id: "sec-1".to_string(),
+            name: "A".to_string(),
+            kind: crate::domain::section::SectionKind::Form,
+            target_bpm: Some(84),
+            first_bar: Some(1),
+            last_bar: Some(16),
+            label: "A".to_string(),
+            bars_caption: Some("Bars 1 to 16".to_string()),
+            latest_score: Some(4),
+            score_history: vec![ScoreHistoryEntry {
+                session_date: "2026-10-01T00:00:00+00:00".to_string(),
+                score: 4,
+                session_id: "s1".to_string(),
+            }],
+            caption: "4 of 10".to_string(),
+            is_weakest: true,
         });
     }
 

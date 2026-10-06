@@ -199,6 +199,12 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                     current_entry,
                     draft,
                     item,
+                    cached
+                        .library
+                        .iter()
+                        .find(|i| i.id == item.id)
+                        .map(|i| i.sections.clone())
+                        .unwrap_or_default(),
                     !current_variations.is_empty(),
                     &labels,
                 );

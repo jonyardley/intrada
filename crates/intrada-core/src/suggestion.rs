@@ -55,6 +55,9 @@ pub struct SuggestedItem {
     /// piece's context, or the piece's own latest mark.
     pub latest_score: Option<u8>,
     pub reason: String,
+    /// "Weakest section · Bars 12 to 14" on the piece's row, read from the
+    /// section the piece screen marks weakest (#2250); `None` on exercises.
+    pub weakest_section: Option<String>,
 }
 
 /// Today's plan: the blocks the Practice hero offers, filled to the
@@ -164,6 +167,7 @@ fn block_for(
             item_type: ItemKind::Exercise,
             latest_score: ex.mark,
             reason: mark_clause(ex.mark),
+            weakest_section: None,
         })
         .collect();
 
@@ -174,6 +178,11 @@ fn block_for(
         item_type: ItemKind::Piece,
         latest_score: latest_mark(anchor),
         reason: piece_mark_clause(latest_mark(anchor)),
+        weakest_section: anchor
+            .sections
+            .iter()
+            .find(|s| s.is_weakest)
+            .map(|s| format!("Weakest section · {}", s.label)),
     });
 
     let estimated_minutes = round_to_five(
@@ -841,6 +850,7 @@ mod tests {
                     item_type: ItemKind::Exercise,
                     latest_score: None,
                     reason: "Not marked yet".to_string(),
+                    weakest_section: None,
                 })
                 .collect(),
             estimated_minutes: minutes,

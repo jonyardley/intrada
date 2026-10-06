@@ -154,7 +154,7 @@ private struct SectionTitleStack: View {
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
-      if section.barsCaption != nil || section.kind == .troubleSpot {
+      if section.barsCaption != nil || section.kind == .troubleSpot || section.isWeakest {
         HStack(spacing: IntradaSpacing.controlGap) {
           if let bars = section.barsCaption {
             Text(bars)
@@ -163,6 +163,9 @@ private struct SectionTitleStack: View {
           }
           if section.kind == .troubleSpot {
             TagChip(SectionText.trickySpot)
+          }
+          if section.isWeakest {
+            TagChip(SectionText.weakest)
           }
         }
       }
@@ -176,6 +179,7 @@ private struct SectionRow: View {
 
   var body: some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
+      ScoreRing(score: section.latestScore.map(Int.init), size: 32)
       SectionTitleStack(section: section)
       if let bpm = section.targetBpm {
         Text("♩ \(bpm)")
@@ -199,13 +203,17 @@ private struct SectionRow: View {
 
 enum SectionText {
   static let trickySpot = "Tricky spot"
+  static let weakest = "Weakest"
 
-  /// "A1, bars 1 to 14" or "Bars 19 to 20, tricky spot, 54 beats per minute".
+  /// "A1, bars 1 to 14, 8 of 10" or "Bars 19 to 20, tricky spot, 54 beats per
+  /// minute, 4 of 10, weakest".
   static func spoken(_ section: SectionView) -> String {
     var parts = [section.label]
     if let bars = section.barsCaption { parts.append(bars.lowercased()) }
     if section.kind == .troubleSpot { parts.append(trickySpot.lowercased()) }
     if let bpm = section.targetBpm { parts.append("\(bpm) beats per minute") }
+    parts.append(section.caption)
+    if section.isWeakest { parts.append(weakest.lowercased()) }
     return parts.joined(separator: ", ")
   }
 }
