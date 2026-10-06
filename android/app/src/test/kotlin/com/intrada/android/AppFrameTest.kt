@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -12,6 +13,7 @@ import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
 import com.intrada.android.ui.AppTab
+import com.intrada.shared.Event
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -76,20 +78,32 @@ class AppFrameTest {
         assertTrue(compose.activity.isFinishing)
     }
 
+    @Test
+    fun aPieceOpensItsPageAndAnExerciseOpensTheForm() = runTest {
+        show(InMemoryItemStore(Fixtures.library))
+
+        compose
+            .onNodeWithContentDescription("Piece, Clair de Lune", substring = true)
+            .performClick()
+        compose.onNodeWithTag("piece.edit").assertIsDisplayed()
+
+        pressBack()
+        compose
+            .onNodeWithContentDescription("Exercise, Hanon No. 1", substring = true)
+            .performClick()
+        compose.onNodeWithTag("itemForm.confirm").assertIsDisplayed()
+    }
+
     private fun pressBack() {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
     }
 
-    private fun TestScope.show() {
+    private suspend fun TestScope.show(items: InMemoryItemStore = InMemoryItemStore()) {
         val store =
-            Store(
-                LiveBridge(),
-                InMemoryItemStore(),
-                this,
-                StandardTestDispatcher(testScheduler),
-                log = {},
-            )
+            Store(LiveBridge(), items, this, StandardTestDispatcher(testScheduler), log = {})
+        store.send(Event.StartApp)
+        store.settle()
         compose.setContent { AppFrame(store) }
     }
 }

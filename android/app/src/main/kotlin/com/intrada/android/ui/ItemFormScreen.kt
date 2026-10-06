@@ -1,7 +1,5 @@
 package com.intrada.android.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,11 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,10 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -125,11 +117,8 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
 // A refusal comes back for the form to show inline and leaves the core, so the app banner does not
 // repeat it; nothing closes until the core accepts (#1595).
 fun Store.sendFromForm(event: Event): String? {
-    val before = viewModel.value?.errorSeq
-    send(event)
-    val after = viewModel.value
-    val accepted = before != null && after != null && !halted.value && after.errorSeq == before
-    val error = after?.error ?: if (accepted) null else SAVE_FAILED
+    val accepted = sendAccepted(event)
+    val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED
     if (error != null) send(Event.ClearError)
     return error
 }
@@ -160,13 +149,7 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
     val rows by store.libraryRows.collectAsState()
     val item = rows.firstOrNull { it.id == id }
     if (item == null) {
-        ScreenScaffold("Edit", modifier) {
-            BasicText(
-                "This item is no longer in your library.",
-                Modifier.padding(IntradaSpacing.card),
-                style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
-            )
-        }
+        MissingItem("Edit", NO_LONGER_THERE, modifier)
         return
     }
     val form = remember(id) { ItemFormState.of(item) }
@@ -279,71 +262,19 @@ private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TextAction(
-    text: String,
-    tag: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    emphasised: Boolean = false,
-) {
-    Box(
-        modifier
-            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .clickable(role = Role.Button, onClick = onClick)
-            .testTag(tag)
-            .padding(horizontal = IntradaSpacing.controlGap),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(
-            text,
-            style =
-                (if (emphasised) IntradaFont.button else IntradaFont.label).copy(
-                    color = IntradaColor.accent
-                ),
-        )
-    }
-}
-
-@Composable
 private fun KindSegment(
     selection: ItemKind,
     onSelect: (ItemKind) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val track = RoundedCornerShape(IntradaRadius.control)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
-        Row(
-            Modifier.fillMaxWidth()
-                .background(IntradaColor.surfaceSunken, track)
-                .padding(IntradaSpacing.controlGap / 2)
-        ) {
-            ItemKind.entries.forEach { kind ->
-                val chosen = kind == selection
-                Box(
-                    Modifier.weight(1f)
-                        .heightIn(min = 48.dp)
-                        .background(
-                            if (chosen) IntradaColor.cardFill else IntradaColor.surfaceSunken,
-                            track,
-                        )
-                        .clickable(role = Role.Tab) { onSelect(kind) }
-                        .semantics {
-                            role = Role.Tab
-                            selected = chosen
-                        }
-                        .testTag("itemForm.kind.${kind.name.lowercase()}"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BasicText(
-                        kind.label,
-                        style =
-                            IntradaFont.segment.copy(
-                                color = if (chosen) IntradaColor.ink else IntradaColor.inkSecondary
-                            ),
-                    )
-                }
-            }
-        }
+        SegmentedPills(
+            ItemKind.entries,
+            selection,
+            onSelect,
+            label = { it.label },
+            tag = { "itemForm.kind.${it.name.lowercase()}" },
+        )
         BasicText(
             selection.caption,
             Modifier.fillMaxWidth(),
@@ -364,7 +295,7 @@ private val ItemKind.caption: String
         }
 
 @Composable
-private fun FormField(
+internal fun FormField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -373,6 +304,7 @@ private fun FormField(
     placeholder: String = "",
     keyboard: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
+    note: String? = null,
 ) {
     Column(
         modifier
@@ -404,6 +336,9 @@ private fun FormField(
                 }
             },
         )
+        if (note != null) {
+            BasicText(note, style = IntradaFont.small.copy(color = IntradaColor.inkSecondary))
+        }
     }
 }
 

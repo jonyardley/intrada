@@ -38,13 +38,14 @@ import com.intrada.android.ui.components.bar
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
 import com.intrada.shared.Event
+import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 
 @Composable
 fun LibraryRoute(
     store: Store,
     onAdd: () -> Unit,
-    onOpen: (String) -> Unit,
+    onOpen: (LibraryItemView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel by store.viewModel.collectAsState()
@@ -86,7 +87,12 @@ fun LibraryScreen(
                     items(rows, key = { it.id }) {
                         LibraryItemCard(
                             it,
-                            Modifier.clickable(onClickLabel = "edit") { actions.onOpen(it.id) }
+                            Modifier.clickable(
+                                    onClickLabel =
+                                        if (it.itemType == ItemKind.PIECE) "open" else "edit"
+                                ) {
+                                    actions.onOpen(it)
+                                }
                                 .testTag("library.row"),
                         )
                     }

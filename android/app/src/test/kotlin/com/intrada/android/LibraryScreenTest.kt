@@ -77,7 +77,9 @@ class LibraryScreenTest {
         store.settle()
         val opened = mutableListOf<String>()
         var adds = 0
-        compose.setContent { LibraryRoute(store, onAdd = { adds += 1 }, onOpen = { opened += it }) }
+        compose.setContent {
+            LibraryRoute(store, onAdd = { adds += 1 }, onOpen = { opened += it.id })
+        }
 
         compose.onAllNodesWithTag("library.row")[0].performClick()
         compose.onNodeWithTag("library.add").performClick()
