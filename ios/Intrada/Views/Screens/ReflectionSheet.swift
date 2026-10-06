@@ -101,7 +101,7 @@ struct ReflectionSheet: View {
 
   @State private var marks: [String: Int]
   @State private var note: String
-  /// The trimmed note last handed to `onDraft`, so a pause with no new text writes nothing.
+  /// The note last handed to `onDraft`, so a pause with no new text writes nothing.
   @State private var draftedNote: String
   /// One per row the core gave, so a play with no row has no tempo to send.
   @State private var tempos: [String: TrackedTempo]
@@ -283,7 +283,7 @@ struct ReflectionSheet: View {
       marks: plays.compactMap { play in
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
       },
-      note: note.trimmingCharacters(in: .whitespacesAndNewlines),
+      note: note,
       tempos: TrackedTempo.handSet(tempoRows, tracked: tempos),
       felt: felt, gotInTheWay: obstacles, notePoints: notePoints,
       intentionMet: intentionMet, ways: ways)
@@ -316,7 +316,7 @@ struct ReflectionSheet: View {
   }
 
   private func draftNoteIfChanged() {
-    if note.trimmingCharacters(in: .whitespacesAndNewlines) != draftedNote { draft() }
+    if note != draftedNote { draft() }
   }
 
   private var playRows: some View {

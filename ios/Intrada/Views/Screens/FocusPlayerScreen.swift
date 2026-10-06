@@ -544,12 +544,9 @@ struct FocusPlayerScreen: View {
       active.entries.indices.contains(Int(active.currentPosition))
     else { return nil }
     let entry = active.entries[Int(active.currentPosition)]
-    // The stamped plays tile the item, and recovery backdates its start by
-    // their sum, so this reads the same before and after a resume (#2137).
-    let seconds = entry.plays.reduce(0) { $0 + Int($1.seconds) }
     return ReflectionTarget(
       id: entry.id, title: active.currentItemTitle,
-      elapsedDisplay: SessionClock.clockDisplay(seconds),
+      elapsedDisplay: SessionClock.clockDisplay(Int(clamping: draft.elapsedSecs)),
       tempoTargetBpm: active.currentItemTempoBpm, reading: draft.reading,
       tempos: draft.tempos, plays: ReflectionPlay.rows(entry.plays), seed: draft.answers,
       finish: active.record.finish,
