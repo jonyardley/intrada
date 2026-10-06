@@ -23,7 +23,7 @@ score how it went. Pillars: **Plan** (library), **Practice** (the built session)
 reads GitHub. There is no status file, deliberately.
 
 Crates: `intrada-core` (pure Crux core, no I/O), `intrada-ffi` (UniFFI bridge generating the
-Swift and Kotlin bindings). `ios/` (iOS 17+, GRDB), `android/` (API 28+). Rust 2021, MSRV 1.90.
+Swift and Kotlin bindings), `intrada-store` (the on-device SQLite store, Android now, iOS at #2432). `ios/` (iOS 17+, GRDB), `android/` (API 28+). Rust 2021, MSRV 1.90.
 
 ## Commands
 
