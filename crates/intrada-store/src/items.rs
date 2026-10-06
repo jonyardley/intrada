@@ -1,5 +1,5 @@
 // ── Items ────────────────────────────────────────────────────────────
-// The iPhone's LibraryStore item operations and ItemCodec, ported (#2421).
+// HACK(#2432): keep in step with LibraryStore.swift until the iPhone switch.
 
 use std::collections::HashMap;
 

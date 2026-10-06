@@ -1,6 +1,5 @@
 // ── Sessions and variations ──────────────────────────────────────────
-// The iPhone's session and variation operations and SessionCodec, ported
-// (#2421). The core reads and writes a session's columns (#2234).
+// HACK(#2432): keep in step with LibraryStore.swift until the iPhone switch.
 
 use intrada_core::domain::Variation;
 use intrada_core::stored_session::{session_from_stored, session_to_stored, StoredSession};

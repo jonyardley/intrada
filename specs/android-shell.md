@@ -105,7 +105,7 @@ GRDB store.
   returns the output's bincode with the unreadable values. The phone
   calls it off the main thread, one request at a time.
 - **Android only for now.** The object sits behind `intrada-ffi`'s
-  `store` feature, which only `just android-package` turns on, so the
+  `store` feature, which the iPhone build never turns on, so the
   iPhone build does not carry a second SQLite while GRDB is linked. The
   iPhone switch is #2432.
 - **Settings and the crash blob** stay out of the store: Android keeps

@@ -1,6 +1,5 @@
 // ── Shared codec ─────────────────────────────────────────────────────
-// Ported from the iPhone's StoredCodec.swift and ItemCodec.swift, so a row
-// either phone wrote reads the same on the other.
+// HACK(#2432): keep in step with StoredCodec.swift and ItemCodec.swift until the iPhone switch.
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use intrada_core::domain::chart::{

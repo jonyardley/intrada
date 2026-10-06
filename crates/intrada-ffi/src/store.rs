@@ -29,7 +29,6 @@ pub struct StoreFFI {
 
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 impl StoreFFI {
-    /// Opens or creates the database at `path` and migrates it.
     #[cfg_attr(feature = "uniffi", uniffi::constructor)]
     pub fn open(path: String) -> Result<Self, CoreError> {
         install_panic_hook();

@@ -1,8 +1,6 @@
 // ── Migrations ───────────────────────────────────────────────────────
-// The iPhone's LibraryMigrations.swift, ported once with the same ids and
-// recorded in GRDB's own table, so a database the iPhone app wrote carries on
-// from where it is (#2421). Append-only, forward-only, ordered: never edit or
-// delete a shipped one (.claude/rules/offline-first.md).
+// GRDB's own table, so a database the iPhone app wrote carries on (#2421).
+// Append-only: never edit or delete a shipped one (.claude/rules/offline-first.md).
 
 use std::collections::HashSet;
 
@@ -295,8 +293,7 @@ pub(crate) fn latest() -> &'static str {
     MIGRATIONS[MIGRATIONS.len() - 1].0
 }
 
-/// Runs every migration not yet recorded, in order, up to and including
-/// `target`, each in its own transaction as GRDB runs them.
+/// Up to and including `target`.
 pub(crate) fn migrate(
     conn: &mut Connection,
     target: &str,

@@ -77,6 +77,7 @@ jobs:
               - 'rust-toolchain.toml'
               - 'crates/intrada-core/**'
               - 'crates/intrada-ffi/**'
+              - 'crates/intrada-store/**'
               - 'android/**'
               - 'ios/Intrada/DesignSystem/Theme.swift'
               - 'justfile'

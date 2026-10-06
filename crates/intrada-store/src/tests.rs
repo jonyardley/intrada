@@ -224,6 +224,24 @@ fn every_earlier_version_reaches_the_current_one_with_its_rows() {
     }
 }
 
+// The iPhone keeps adding migrations until it switches over (#2432); one added
+// there and not here would leave Android's schema behind with every gate green.
+#[test]
+fn the_migrations_match_the_iphones_in_order() {
+    let swift = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../ios/Intrada/Core/LibraryMigrations.swift"
+    ))
+    .expect("reads the iPhone's migrations");
+    let iphone: Vec<&str> = swift
+        .split("registerMigration(\"")
+        .skip(1)
+        .filter_map(|rest| rest.split('"').next())
+        .collect();
+    let here: Vec<&str> = MIGRATIONS.iter().map(|(id, _)| *id).collect();
+    assert_eq!(here, iphone);
+}
+
 #[test]
 fn a_recorded_migration_is_not_run_again() {
     let mut conn = Connection::open_in_memory().expect("opens");
