@@ -789,6 +789,9 @@ pub struct SetlistEntryView {
     pub planned_duration_display: Option<String>,
     /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
+    /// False for a block's piece: removing it alone would dissolve the block,
+    /// so the block's own remove offers that instead.
+    pub removable: bool,
     /// What the builder planned (#2246): at most one section, any variations.
     pub planned_section_ids: Vec<String>,
     pub planned_variation_ids: Vec<String>,
@@ -1083,6 +1086,10 @@ pub struct SetlistBlockView {
     pub related_count: usize,
     pub duration_display: String,
     pub entries: Vec<SetlistEntryView>,
+    /// The anchor piece and its related exercises, in order; `None` and empty
+    /// for a standalone item.
+    pub piece: Option<SetlistEntryView>,
+    pub related: Vec<SetlistEntryView>,
     /// Items in the session outside this block, which it cannot take (#2075).
     pub taken_elsewhere: Vec<String>,
 }

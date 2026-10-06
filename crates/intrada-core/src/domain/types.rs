@@ -422,6 +422,25 @@ mod tests {
             group_id: "g1".to_string(),
             item_id: "ex-D".to_string(),
         });
+        use crate::domain::session::BuilderRowRef;
+        assert_round_trips(SessionEvent::MoveRow {
+            moved: BuilderRowRef::Header {
+                group_id: "g1".to_string(),
+            },
+            before: Some(BuilderRowRef::AddRelated {
+                group_id: "g2".to_string(),
+            }),
+            after: Some(BuilderRowRef::Entry {
+                entry_id: "e1".to_string(),
+            }),
+        });
+        assert_round_trips(SessionEvent::MoveRow {
+            moved: BuilderRowRef::Entry {
+                entry_id: "e1".to_string(),
+            },
+            before: None,
+            after: None,
+        });
     }
 
     #[test]

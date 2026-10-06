@@ -1114,6 +1114,243 @@ fn move_related_refuses_what_is_not_a_related_exercise_move() {
     }
 }
 
+// ── A drag in the builder's list (#2231) ──
+
+/// A row named by item: an entry's row, or the header or add row of the block
+/// anchored on that piece.
+#[derive(Clone, Copy)]
+enum Row {
+    E(&'static str),
+    H(&'static str),
+    A(&'static str),
+}
+
+fn row_ref(model: &Model, row: Row) -> BuilderRowRef {
+    let group_id = |piece| group_of(model, piece).unwrap_or_else(|| "no-group".to_string());
+    match row {
+        Row::E(item_id) => BuilderRowRef::Entry {
+            entry_id: entry_id_of(model, item_id),
+        },
+        Row::H(piece) => BuilderRowRef::Header {
+            group_id: group_id(piece),
+        },
+        Row::A(piece) => BuilderRowRef::AddRelated {
+            group_id: group_id(piece),
+        },
+    }
+}
+
+/// The dragged row, then the rows it lands before and after.
+type Drop = (Row, Option<Row>, Option<Row>);
+
+fn move_row(model: &mut Model, (moved, before, after): Drop) {
+    let event = SessionEvent::MoveRow {
+        moved: row_ref(model, moved),
+        before: before.map(|r| row_ref(model, r)),
+        after: after.map(|r| row_ref(model, r)),
+    };
+    update(model, Event::Session(event));
+}
+
+/// Rows as the builder lists them: H(P) A B A(P) D H(R) C A(R) Q.
+#[test]
+fn a_dropped_row_moves_what_the_musician_dragged() {
+    use Row::*;
+    let cases: &[(Drop, [&str; 7], &str)] = &[
+        (
+            (E("ex-D"), Some(H("piece-P")), None),
+            [
+                "ex-D", "ex-A", "ex-B", "piece-P", "ex-C", "piece-R", "piece-Q",
+            ],
+            "a standalone item to the top",
+        ),
+        (
+            (E("piece-Q"), Some(E("ex-C")), Some(H("piece-R"))),
+            [
+                "ex-A", "ex-B", "piece-P", "ex-D", "piece-Q", "ex-C", "piece-R",
+            ],
+            "dragged up into a block, it lands before that block",
+        ),
+        (
+            (E("ex-D"), Some(E("ex-C")), Some(H("piece-R"))),
+            [
+                "ex-A", "ex-B", "piece-P", "ex-C", "piece-R", "ex-D", "piece-Q",
+            ],
+            "dragged down into a block, it lands after that block",
+        ),
+        (
+            (H("piece-P"), None, Some(E("piece-Q"))),
+            [
+                "ex-D", "ex-C", "piece-R", "piece-Q", "ex-A", "ex-B", "piece-P",
+            ],
+            "a block by its header to the end",
+        ),
+        (
+            (H("piece-R"), Some(H("piece-P")), None),
+            [
+                "ex-C", "piece-R", "ex-A", "ex-B", "piece-P", "ex-D", "piece-Q",
+            ],
+            "a block by its header to the top",
+        ),
+        (
+            (E("ex-B"), Some(E("ex-A")), Some(H("piece-P"))),
+            [
+                "ex-B", "ex-A", "piece-P", "ex-D", "ex-C", "piece-R", "piece-Q",
+            ],
+            "a related exercise up within its block",
+        ),
+        (
+            (E("ex-A"), Some(A("piece-P")), Some(E("ex-B"))),
+            [
+                "ex-B", "ex-A", "piece-P", "ex-D", "ex-C", "piece-R", "piece-Q",
+            ],
+            "a related exercise down within its block",
+        ),
+    ];
+    for (drop, expected, why) in cases {
+        let mut m = four_unit_model();
+        move_unit(&mut m, "ex-nowhere", 0);
+        assert!(m.last_error.is_some(), "a refused move first");
+        move_row(&mut m, *drop);
+        assert!(m.last_error.is_none(), "{why}: {:?}", m.last_error);
+        assert_eq!(ids(&m), expected, "{why}");
+        assert!(groups_contiguous(building_entries(&m)));
+    }
+}
+
+#[test]
+fn a_drop_that_changes_nothing_moves_nothing() {
+    use Row::*;
+    let cases: &[(Drop, &str)] = &[
+        (
+            (H("piece-P"), Some(A("piece-P")), Some(E("ex-B"))),
+            "a header dropped among its own exercises",
+        ),
+        (
+            (H("piece-P"), Some(E("ex-A")), None),
+            "a header dropped at its own place",
+        ),
+        (
+            (H("piece-P"), Some(E("ex-D")), Some(A("piece-P"))),
+            "a header dropped just below its own block",
+        ),
+        (
+            (E("ex-A"), Some(H("piece-P")), None),
+            "a related exercise dropped above its block",
+        ),
+        (
+            (E("ex-A"), Some(A("piece-R")), Some(E("ex-C"))),
+            "a related exercise dropped in another block",
+        ),
+        (
+            (E("ex-A"), Some(E("ex-B")), Some(H("piece-P"))),
+            "a related exercise dropped where it was",
+        ),
+        (
+            (E("ex-D"), Some(H("piece-R")), Some(A("piece-P"))),
+            "a standalone item dropped where it was",
+        ),
+        (
+            (E("piece-Q"), None, Some(H("piece-R"))),
+            "dragged up onto the end of a collapsed block",
+        ),
+        (
+            (A("piece-P"), Some(H("piece-P")), None),
+            "the add row does not move",
+        ),
+    ];
+    for (drop, why) in cases {
+        let mut m = four_unit_model();
+        let order = ids(&m);
+        move_unit(&mut m, "ex-nowhere", 0);
+        move_row(&mut m, *drop);
+        assert!(m.last_error.is_none(), "{why}: {:?}", m.last_error);
+        assert_eq!(ids(&m), order, "{why}");
+    }
+}
+
+#[test]
+fn a_drop_naming_a_row_not_in_the_list_is_refused() {
+    let cases: &[(BuilderRowRef, &str)] = &[
+        (
+            BuilderRowRef::Entry {
+                entry_id: "e-nowhere".to_string(),
+            },
+            "Entry 'e-nowhere' not found in setlist",
+        ),
+        (
+            BuilderRowRef::Header {
+                group_id: "g-nowhere".to_string(),
+            },
+            "Block 'g-nowhere' not found in setlist",
+        ),
+    ];
+    for (unknown, message) in cases {
+        let mut m = four_unit_model();
+        let order = ids(&m);
+        let moved = row_ref(&m, Row::E("ex-D"));
+        for (moved, after) in [(unknown.clone(), None), (moved, Some(unknown.clone()))] {
+            m.last_error = None;
+            update(
+                &mut m,
+                Event::Session(SessionEvent::MoveRow {
+                    moved,
+                    before: None,
+                    after,
+                }),
+            );
+            assert_eq!(m.last_error.as_deref(), Some(*message));
+            assert_eq!(ids(&m), order);
+        }
+    }
+}
+
+#[test]
+fn a_block_names_its_piece_and_related_exercises() {
+    let m = four_unit_model();
+    let b = Intrada.view(&m).building_setlist.unwrap();
+    let items = |entries: &[crate::model::SetlistEntryView]| -> Vec<String> {
+        entries.iter().map(|e| e.item_id.clone()).collect()
+    };
+    assert_eq!(
+        b.blocks[0].piece.as_ref().map(|e| e.item_id.as_str()),
+        Some("piece-P")
+    );
+    assert_eq!(items(&b.blocks[0].related), ["ex-A", "ex-B"]);
+    assert_eq!(
+        b.blocks[1].piece, None,
+        "a standalone exercise is not a piece"
+    );
+    assert!(b.blocks[1].related.is_empty());
+    assert_eq!(
+        b.blocks[3].piece, None,
+        "a standalone piece anchors no block"
+    );
+}
+
+#[test]
+fn only_a_grouped_piece_cannot_be_removed_on_its_own() {
+    let m = four_unit_model();
+    let b = Intrada.view(&m).building_setlist.unwrap();
+    let removable: Vec<(&str, bool)> = b
+        .entries
+        .iter()
+        .map(|e| (e.item_id.as_str(), e.removable))
+        .collect();
+    assert_eq!(
+        removable,
+        [
+            ("ex-A", true),
+            ("ex-B", true),
+            ("piece-P", false),
+            ("ex-D", true),
+            ("ex-C", true),
+            ("piece-R", false),
+            ("piece-Q", true),
+        ]
+    );
+}
+
 #[test]
 fn moves_outside_building_are_refused() {
     let mut m = linked_model();

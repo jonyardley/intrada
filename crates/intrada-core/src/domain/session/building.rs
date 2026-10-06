@@ -914,3 +914,136 @@ pub(super) fn cancel_building(model: &mut Model) -> Command<Effect, Event> {
     }
     crux_core::render::render()
 }
+
+pub(super) fn move_row(
+    model: &mut Model,
+    moved: &BuilderRowRef,
+    before: Option<&BuilderRowRef>,
+    after: Option<&BuilderRowRef>,
+) -> Command<Effect, Event> {
+    let SessionStatus::Building(ref building) = model.session_status else {
+        model.raise_error("Not in building state".to_string());
+        return crux_core::render::render();
+    };
+    match dropped_move(&building.entries, moved, before, after) {
+        Err(message) => {
+            model.raise_error(message);
+            crux_core::render::render()
+        }
+        Ok(None) => {
+            model.last_error = None;
+            crux_core::render::render()
+        }
+        Ok(Some(DroppedMove::Unit { entry_id, to })) => move_unit(model, &entry_id, to),
+        Ok(Some(DroppedMove::Related { entry_id, to })) => move_related(model, &entry_id, to),
+    }
+}
+
+enum DroppedMove {
+    Unit { entry_id: String, to: usize },
+    Related { entry_id: String, to: usize },
+}
+
+/// Where a row sits: its unit's index, and for a related exercise its index
+/// among the block's related exercises.
+struct RowPlace {
+    unit: usize,
+    starts_unit: bool,
+    related_index: Option<usize>,
+}
+
+fn place_row(units: &[Vec<SetlistEntry>], row: &BuilderRowRef) -> Result<RowPlace, String> {
+    match row {
+        BuilderRowRef::Entry { entry_id } => {
+            let (unit, entry) = units
+                .iter()
+                .enumerate()
+                .find_map(|(u, entries)| entries.iter().find(|e| &e.id == entry_id).map(|e| (u, e)))
+                .ok_or_else(|| format!("Entry '{entry_id}' not found in setlist"))?;
+            let related = entry.group_id.is_some() && entry.item_type == ItemKind::Exercise;
+            Ok(RowPlace {
+                unit,
+                starts_unit: !related,
+                related_index: related.then(|| {
+                    units[unit]
+                        .iter()
+                        .filter(|e| e.item_type == ItemKind::Exercise)
+                        .position(|e| &e.id == entry_id)
+                        .unwrap_or_default()
+                }),
+            })
+        }
+        BuilderRowRef::Header { group_id } | BuilderRowRef::AddRelated { group_id } => {
+            let unit = units
+                .iter()
+                .position(|u| u.first().and_then(|e| e.group_id.as_ref()) == Some(group_id))
+                .ok_or_else(|| format!("Block '{group_id}' not found in setlist"))?;
+            Ok(RowPlace {
+                unit,
+                starts_unit: matches!(row, BuilderRowRef::Header { .. }),
+                related_index: None,
+            })
+        }
+    }
+}
+
+/// The move a drop asks for (#1957), or `None` when it changes nothing.
+fn dropped_move(
+    entries: &[SetlistEntry],
+    moved: &BuilderRowRef,
+    before: Option<&BuilderRowRef>,
+    after: Option<&BuilderRowRef>,
+) -> Result<Option<DroppedMove>, String> {
+    let units = into_units(entries.to_vec());
+    let place = |row| place_row(&units, row);
+    let from = place(moved)?;
+    let before = before.map(place).transpose()?;
+    let after = after.map(place).transpose()?;
+    if matches!(moved, BuilderRowRef::AddRelated { .. }) {
+        return Ok(None);
+    }
+
+    if let Some(local) = from.related_index {
+        // A drop outside the block's own related run snaps home: turning it
+        // into a move within the block would reorder rows nobody touched.
+        let to = match after {
+            Some(a) if a.unit == from.unit && a.starts_unit => 0,
+            Some(RowPlace {
+                unit,
+                related_index: Some(j),
+                ..
+            }) if unit == from.unit => {
+                if j < local {
+                    j + 1
+                } else {
+                    j
+                }
+            }
+            _ => return Ok(None),
+        };
+        let entry_id = units[from.unit]
+            .iter()
+            .filter(|e| e.item_type == ItemKind::Exercise)
+            .nth(local)
+            .map(|e| e.id.clone())
+            .unwrap_or_default();
+        return Ok((to != local).then_some(DroppedMove::Related { entry_id, to }));
+    }
+
+    let current = from.unit;
+    if before.as_ref().is_some_and(|b| b.unit == current) {
+        return Ok(None);
+    }
+    // Units other than the moved one at or above the drop.
+    let mut to = after.map_or(0, |a| match a.unit.cmp(&current) {
+        std::cmp::Ordering::Less => a.unit + 1,
+        _ => a.unit,
+    });
+    // Dragged up into a block's rows, the musician means before that block,
+    // or swapping with the block above needs a drop exactly on its header.
+    if before.is_some_and(|b| !b.starts_unit && b.unit < current) {
+        to = to.saturating_sub(1);
+    }
+    let entry_id = units[current][0].id.clone();
+    Ok((to != current).then_some(DroppedMove::Unit { entry_id, to }))
+}

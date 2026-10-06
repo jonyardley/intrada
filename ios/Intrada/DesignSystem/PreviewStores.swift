@@ -287,10 +287,10 @@
             blocks: [
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewPiece], takenElsewhere: []),
+                entries: [.previewPiece], piece: nil, related: [], takenElsewhere: []),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewExercise], takenElsewhere: []),
+                entries: [.previewExercise], piece: nil, related: [], takenElsewhere: []),
             ],
             totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: 30,
             lengthSummary: "30 min today", entryVariations: [], lastTimes: [], focusChoices: [],
@@ -357,10 +357,11 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
-                durationDisplay: "12 min", entries: block, takenElsewhere: ["ex-c"]),
+                durationDisplay: "12 min", entries: block, piece: block.last,
+                related: Array(block.dropLast()), takenElsewhere: ["ex-c"]),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise], takenElsewhere: []),
+                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: 30,
             lengthSummary: "12 of 30 min planned", entryVariations: [], lastTimes: [],
@@ -384,10 +385,11 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
-                durationDisplay: "12 min", entries: block, takenElsewhere: ["ex-c"]),
+                durationDisplay: "12 min", entries: block, piece: block.last,
+                related: Array(block.dropLast()), takenElsewhere: ["ex-c"]),
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise], takenElsewhere: []),
+                entries: [.previewStandaloneExercise], piece: nil, related: [], takenElsewhere: []),
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
@@ -407,7 +409,8 @@
             blocks: [
               SetlistBlockView(
                 groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 1,
-                durationDisplay: "12 min", entries: block, takenElsewhere: [])
+                durationDisplay: "12 min", entries: block, piece: block.last,
+                related: Array(block.dropLast()), takenElsewhere: [])
             ],
             totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min", lengthMins: nil,
             lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
@@ -430,7 +433,8 @@
             blocks: entries.map {
               SetlistBlockView(
                 groupId: nil, pieceTitle: nil, relatedCount: 0,
-                durationDisplay: $0.plannedDurationDisplay ?? "", entries: [$0],
+                durationDisplay: $0.plannedDurationDisplay ?? "", entries: [$0], piece: nil,
+                related: [],
                 takenElsewhere: [])
             },
             totalDurationDisplay: "22m 0s", totalDurationSummary: "22 min", lengthMins: 30,

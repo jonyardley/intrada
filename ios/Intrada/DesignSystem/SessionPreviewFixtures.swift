@@ -152,7 +152,8 @@
     }
     static var previewGroupedPiece: SetlistEntryView {
       building(
-        id: "g-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 2, group: "g1")
+        id: "g-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 2, group: "g1",
+        removable: false)
     }
     static var previewStandaloneExercise: SetlistEntryView {
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
@@ -204,14 +205,14 @@
 
     private static func building(
       id: String, item: String, title: String, type: ItemKind, position: UInt64,
-      group: String? = nil
+      group: String? = nil, removable: Bool = true
     ) -> SetlistEntryView {
       SetlistEntryView(
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         // Escaped rather than the glyph: check-dashes.sh reads changed lines,
         // and an em dash is what the builder row has always shown here.
         durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group,
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group, removable: removable,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: [], scoreSummary: nil, record: .empty, plannedKey: nil)
     }
@@ -408,6 +409,7 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: status, notes: notes,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
+        removable: true,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
         scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
@@ -430,7 +432,8 @@
     }
 
     private static func previewEntry(
-      _ position: UInt64, _ title: String, _ type: ItemKind, groupId: String? = nil
+      _ position: UInt64, _ title: String, _ type: ItemKind, groupId: String? = nil,
+      removable: Bool = true
     )
       -> SetlistEntryView
     {
@@ -438,7 +441,8 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: groupId, plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil,
+        groupId: groupId, removable: removable, plannedSectionIds: [], plannedVariationIds: [],
+        plannedLabel: nil,
         plannedRepTarget: nil,
         plays: [
           PlayView(
@@ -553,7 +557,7 @@
         itemTitle: LibraryItemView.previewExerciseWithVariations.title,
         itemType: .exercise, position: 0, durationDisplay: "10 min", status: .notAttempted,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, plannedSectionIds: [], plannedVariationIds: ["variation-c"],
+        groupId: nil, removable: true, plannedSectionIds: [], plannedVariationIds: ["variation-c"],
         plannedLabel: "C", plannedRepTarget: 10,
         plays: [
           PlayView(
@@ -580,7 +584,7 @@
           previewEntry(0, "Warm-up Scales", .exercise),
           previewEntry(1, "Etude No. 3", .exercise),
           previewEntry(2, "Hanon No. 1", .exercise, groupId: "g1"),
-          previewEntry(3, "Moonlight Sonata", .piece, groupId: "g1"),
+          previewEntry(3, "Moonlight Sonata", .piece, groupId: "g1", removable: false),
           previewEntry(4, "Czerny Op. 299", .exercise),
         ],
         currentRepTarget: 10, currentRepCount: 7, currentRepTargetReached: false,
@@ -661,7 +665,7 @@
       return SetlistEntryView(
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: notes, intention: intention,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil,
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: nil, removable: true,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: plays,
         scoreSummary: plays.isEmpty ? nil : score, record: .empty, plannedKey: nil)
@@ -741,7 +745,7 @@
         id: "entry-variations", itemId: "exercise-2", itemTitle: "Major Scales",
         itemType: .exercise, position: 0, durationDisplay: "12m 40s", status: .completed,
         notes: nil, intention: "Even tone through the turn", plannedDurationSecs: nil,
-        plannedDurationDisplay: nil, groupId: nil, plannedSectionIds: [],
+        plannedDurationDisplay: nil, groupId: nil, removable: true, plannedSectionIds: [],
         plannedVariationIds: ["v-C major"], plannedLabel: "C major", plannedRepTarget: 10,
         plays: plays, scoreSummary: 8, record: .empty, plannedKey: nil)
     }
@@ -757,7 +761,8 @@
         id: "entry-one-variation", itemId: "exercise-3", itemTitle: "Arpeggios",
         itemType: .exercise, position: 0, durationDisplay: "6m 0s", status: .completed,
         notes: nil, intention: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil,
-        groupId: nil, plannedSectionIds: [], plannedVariationIds: ["v-E\u{266d} major"],
+        groupId: nil, removable: true, plannedSectionIds: [],
+        plannedVariationIds: ["v-E\u{266d} major"],
         plannedLabel: "E\u{266d} major", plannedRepTarget: nil,
         plays: plays, scoreSummary: nil, record: .empty, plannedKey: nil)
     }
