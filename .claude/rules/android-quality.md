@@ -26,7 +26,8 @@ bars, read in Kotlin and Compose.
   bytes and resolves the core with the answer's, never reading a row. Singletons and the
   crash-recovery blob go to `SharedPreferences` as Base64 of the core's bincode bytes.
   Each key's version comes from the core's `*BlobVersion()` export, as on iOS,
-  never a number spelled in Kotlin (#1345, #2026).
+  never a number spelled in Kotlin (#1345, #2026). The one exception, shared
+  with iOS, is practice defaults' `v2`, which has no export yet (#2432).
 
 ## Kotlin
 

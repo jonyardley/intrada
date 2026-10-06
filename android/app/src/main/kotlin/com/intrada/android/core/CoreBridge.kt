@@ -2,6 +2,7 @@ package com.intrada.android.core
 
 import com.intrada.ffi.CoreException
 import com.intrada.ffi.CoreFfi
+import com.intrada.ffi.InternalException
 import com.intrada.ffi.StoreFfi
 import com.intrada.shared.Event
 import com.intrada.shared.PersistenceOperation
@@ -51,16 +52,22 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
 
     companion object {
         /**
-         * A file that will not open falls back to memory, so the app still runs; `degraded` says
-         * nothing will be kept, as on iOS.
+         * A file that will not open, or a migration that panics on it, falls back to memory so the
+         * app still launches; `degraded` says nothing will be kept.
          */
         fun open(path: String, log: (String) -> Unit): Opened =
             try {
                 Opened(SharedItemStore(StoreFfi.open(path), log), degraded = false)
             } catch (e: CoreException) {
-                log("store did not open, keeping nothing: $e")
-                Opened(SharedItemStore(StoreFfi.inMemory(), log), degraded = true)
+                inMemory("store did not open, keeping nothing: $e", log)
+            } catch (e: InternalException) {
+                inMemory("store panicked opening, keeping nothing: $e", log)
             }
+
+        private fun inMemory(reason: String, log: (String) -> Unit): Opened {
+            log(reason)
+            return Opened(SharedItemStore(StoreFfi.inMemory(), log), degraded = true)
+        }
     }
 
     class Opened(val store: SharedItemStore, val degraded: Boolean)

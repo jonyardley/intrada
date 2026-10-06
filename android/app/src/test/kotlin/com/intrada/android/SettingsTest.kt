@@ -6,8 +6,14 @@ import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Settings
 import com.intrada.android.core.Store
 import com.intrada.ffi.sessionBlobVersion
+import com.intrada.shared.ActiveSession
+import com.intrada.shared.AppEffect
 import com.intrada.shared.Event
+import com.intrada.shared.FirstRunEvent
+import com.intrada.shared.LibrarySort
 import com.intrada.shared.SessionEvent
+import com.intrada.shared.SortDirection
+import com.intrada.shared.SortField
 import java.io.File
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -17,6 +23,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -61,7 +68,38 @@ class SettingsTest {
         store.loadRecoverableSession()
 
         assertNull(retired.read())
-        assertNull(store.recoverableSession.value)
+        assertNotNull(store.viewModel.value?.notice)
+    }
+
+    @Test
+    fun aSortAndAWelcomeChosenOnceAreBackAtTheNextLaunch() = runTest {
+        val title = LibrarySort(SortField.TITLE, SortDirection.ASCENDING)
+        val first = store(Settings(prefs))
+        assertNotEquals(title, first.viewModel.value?.activeSort)
+        first.send(Event.SetSort(title))
+        first.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
+        assertNotNull(Settings(prefs).firstRun.read())
+
+        val next = store(Settings(prefs))
+        next.restoreSettings()
+
+        assertEquals(title, next.viewModel.value?.activeSort)
+    }
+
+    @Test
+    fun aPracticeIsKeptUntilTheCoreClearsIt() = runTest {
+        val settings = Settings(prefs)
+        val bytes = pinnedSessionBlob().second
+        val session = ActiveSession.bincodeDeserialize(bytes)
+        assertTrue(settings.keep(AppEffect.SaveSessionInProgress(session)))
+        assertArrayEquals(bytes, settings.sessionInProgress.read())
+        val store = store(settings)
+
+        // The core drops an empty practice rather than resume it, which is a clear the shell obeys.
+        val empty = session.copy(entries = emptyList())
+        store.send(Event.Session(SessionEvent.RecoverSession(empty, "2026-09-03T09:10:00Z")))
+
+        assertNull(settings.sessionInProgress.read())
     }
 
     private fun TestScope.store(settings: Settings) =

@@ -31,7 +31,7 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
 
     private fun kept(): Store {
         val app = getApplication<Application>()
-        val log: (String) -> Unit = { Log.i("intrada", it) }
+        val log: (String) -> Unit = { Log.w("intrada", it) }
         val file = app.getDatabasePath(DATABASE)
         file.parentFile?.mkdirs()
         val opened = SharedItemStore.open(file.path, log)

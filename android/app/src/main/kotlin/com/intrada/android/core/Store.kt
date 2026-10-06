@@ -115,14 +115,14 @@ class Store(
                 settings?.sessionInProgress?.clear()
                 _recoverableSession.value = null
             }
-            else ->
-                if (settings?.keep(effect) != true) {
+            else -> {
+                val saved = settings ?: return
+                if (!saved.keep(effect))
                     log("${effect::class.simpleName} is not handled on Android yet")
-                }
+            }
         }
     }
 
-    /** The saved sort, profile, practice defaults and welcome, sent to the core at launch. */
     fun restoreSettings() {
         settings?.restored()?.forEach(::send)
     }
