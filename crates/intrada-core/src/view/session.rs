@@ -7,16 +7,16 @@ use crate::domain::item::{Item, ItemKind};
 use crate::domain::key::Key;
 use crate::domain::practice_defaults::PracticeDefaults;
 use crate::domain::session::{
-    self as session, ActiveSession, EntryStatus, IntentionFocus, NotePoint, Play, PlayWay,
-    PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
+    self as session, ActiveSession, ClickState, EntryStatus, IntentionFocus, NotePoint, Play,
+    PlayWay, PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
 };
 use crate::domain::variation::Variation;
 use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
     FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
     LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionView, SegmentClockView, SegmentView, SetlistBlockView,
-    SetlistEntryView, SummaryView, VariationView,
+    PracticeSessionView, ReflectionTempoView, ReflectionView, SegmentClockView, SegmentView,
+    SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -229,6 +229,41 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
         score: play.score,
         is_markable: crate::domain::session::play_would_survive_drop(entry, play),
     }
+}
+
+/// Set by hand, else the stamp, else the reading, clamped to the row's band.
+fn reflection_tempos(
+    entry: &SetlistEntry,
+    draft: &ReflectionDraft,
+    sheet_click: ClickState,
+) -> Vec<ReflectionTempoView> {
+    entry
+        .plays
+        .iter()
+        .filter(|play| session::play_would_survive_drop(entry, play))
+        .map(|play| {
+            let click = play
+                .click_pattern
+                .clone()
+                .unwrap_or_else(|| sheet_click.clone());
+            let band = click.metre.click_tempo_band();
+            let hand_set = draft.answers.tempos.iter().find(|t| t.play_id == play.id);
+            let seed = hand_set.map(|t| t.tempo).unwrap_or_else(|| {
+                play.achieved_tempo
+                    .map_or(draft.reading.bpm, |crotchets| {
+                        click.metre.displayed_bpm(crotchets)
+                    })
+                    .clamp(band.min, band.max)
+            });
+            ReflectionTempoView {
+                play_id: play.id.clone(),
+                tempo: seed,
+                click,
+                band,
+                set_by_hand: hand_set.is_some(),
+            }
+        })
+        .collect()
 }
 
 fn target_reached(play: &Play) -> Option<bool> {
@@ -706,6 +741,16 @@ pub fn build_active_session_view(
             answers: draft.answers.clone(),
             reading: draft.reading.clone(),
             stopped_at: draft.now.to_rfc3339(),
+            // An untouched click sat on the item's own bar, so an unstamped
+            // row in a quaver bar counts in quavers (#2304).
+            tempos: reflection_tempos(
+                current,
+                draft,
+                draft.reading.clone().click.unwrap_or_else(|| ClickState {
+                    sounding: defaults.click.sounding(&click_seed_metre),
+                    metre: click_seed_metre.clone(),
+                }),
+            ),
         }),
         click_seed_bpm,
         click_seed_sounds_target,
@@ -2824,13 +2869,141 @@ mod tests {
             &PracticeDefaults::default(),
         );
 
+        let reflection = view.reflection.expect("the sheet is open");
         assert_eq!(
-            view.reflection,
-            Some(ReflectionView {
-                answers,
-                reading,
-                stopped_at: now.to_rfc3339(),
-            })
+            (
+                reflection.answers,
+                reflection.reading,
+                reflection.stopped_at
+            ),
+            (answers, reading, now.to_rfc3339())
         );
+    }
+
+    // ── the sheet's tempo rows (#2230) ─────────────────────────────────
+
+    fn sheet_tempos(
+        plays: Vec<Play>,
+        reading: crate::domain::session::TempoReading,
+        hand_set: Vec<crate::domain::session::DraftTempo>,
+    ) -> Vec<ReflectionTempoView> {
+        use crate::domain::session::{ReflectionAnswers, ReflectionDraft};
+        let mut active = session_on(plays);
+        active.reflection = Some(ReflectionDraft {
+            now: Utc::now(),
+            reading,
+            answers: ReflectionAnswers {
+                tempos: hand_set,
+                ..ReflectionAnswers::default()
+            },
+        });
+        build_active_session_view(
+            &active,
+            &HashMap::new(),
+            &PlayLabels::new(),
+            &[],
+            &PracticeDefaults::default(),
+        )
+        .reflection
+        .expect("the sheet is open")
+        .tempos
+    }
+
+    fn reading(bpm: u16, click: Option<ClickState>) -> crate::domain::session::TempoReading {
+        crate::domain::session::TempoReading {
+            bpm,
+            click_sounding: true,
+            click,
+        }
+    }
+
+    fn quavers() -> ClickState {
+        ClickState {
+            metre: Metre {
+                beats: 6,
+                unit: 8,
+                groups: Some(vec![3, 3]),
+            },
+            sounding: 0b001001,
+        }
+    }
+
+    #[test]
+    fn a_stamped_row_opens_on_its_stamp_in_its_own_unit() {
+        let stamped = Play {
+            achieved_tempo: Some(84),
+            click_pattern: Some(quavers()),
+            ..play_on("p1", "c", 250)
+        };
+
+        let rows = sheet_tempos(vec![stamped], reading(60, None), vec![]);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].tempo, quavers().metre.displayed_bpm(84));
+        assert_eq!(rows[0].click, quavers());
+        assert_eq!(rows[0].band, quavers().metre.click_tempo_band());
+        assert!(!rows[0].set_by_hand);
+    }
+
+    #[test]
+    fn an_unstamped_row_opens_on_the_reading_clamped_to_its_band() {
+        let rows = sheet_tempos(
+            vec![play_on("p1", "c", 250)],
+            reading(500, Some(quavers())),
+            vec![],
+        );
+
+        assert_eq!(rows[0].click, quavers(), "counts in the reading's bar");
+        assert_eq!(rows[0].tempo, quavers().metre.click_tempo_band().max);
+    }
+
+    #[test]
+    fn an_unstamped_row_without_a_click_counts_in_the_items_bar() {
+        let rows = sheet_tempos(vec![play_on("p1", "c", 250)], reading(72, None), vec![]);
+
+        assert_eq!(rows[0].tempo, 72);
+        assert_eq!(rows[0].click.metre, Metre::default());
+    }
+
+    #[test]
+    fn the_sheets_tempo_rows_round_trip_on_ffi_bincode_wire() {
+        let stamped = Play {
+            achieved_tempo: Some(84),
+            click_pattern: Some(quavers()),
+            ..play_on("p1", "c", 250)
+        };
+        crate::domain::types::assert_round_trips(sheet_tempos(
+            vec![stamped],
+            reading(60, None),
+            vec![],
+        ));
+    }
+
+    #[test]
+    fn a_stray_play_about_to_be_dropped_has_no_row() {
+        let rows = sheet_tempos(
+            vec![play_on("p1", "c", 2), play_on("p2", "d", 250)],
+            reading(72, None),
+            vec![],
+        );
+
+        let ids: Vec<&str> = rows.iter().map(|r| r.play_id.as_str()).collect();
+        assert_eq!(ids, ["p2"]);
+    }
+
+    #[test]
+    fn a_row_set_by_hand_reopens_on_that_number() {
+        let rows = sheet_tempos(
+            vec![play_on("p1", "c", 250)],
+            reading(72, None),
+            vec![crate::domain::session::DraftTempo {
+                play_id: "p1".to_string(),
+                tempo: 100,
+                click: None,
+            }],
+        );
+
+        assert_eq!(rows[0].tempo, 100);
+        assert!(rows[0].set_by_hand);
     }
 }

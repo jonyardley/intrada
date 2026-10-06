@@ -346,8 +346,8 @@ pub struct ReflectionDraft {
     pub answers: ReflectionAnswers,
 }
 
-/// What the sheet holds before Next. The shell still sends these around
-/// `NextItem` itself, so a skipped sheet writes none of them.
+/// What the sheet holds before Next. `SubmitReflection` writes them, so a
+/// skipped sheet writes none of them.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ReflectionAnswers {
@@ -796,6 +796,13 @@ pub enum SessionEvent {
         key: Option<Key>,
         variation_ids: Vec<String>,
     },
+    /// The item-complete sheet's Next (#2230): closes the entry at the open
+    /// draft's instant and reading, then writes the answers. Any refused
+    /// answer refuses the whole submit and leaves the entry current.
+    SubmitReflection {
+        next_item_started_at: DateTime<Utc>,
+        answers: ReflectionAnswers,
+    },
 }
 
 mod active;
@@ -957,6 +964,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::UpdateReflectionDraft { answers } => {
             active::update_reflection_draft(model, answers)
         }
+
+        SessionEvent::SubmitReflection {
+            next_item_started_at,
+            answers,
+        } => active::submit_reflection(model, next_item_started_at, answers),
 
         SessionEvent::SetSegments { entry_id, segments } => {
             building::set_segments(model, entry_id, segments)

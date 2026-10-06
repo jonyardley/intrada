@@ -3157,3 +3157,41 @@ fn no_key_row_when_the_only_key_kept_is_the_written_one() {
     let view = building_view(&m);
     assert!(view.entry_keys.iter().all(|k| k.entry_id != id));
 }
+
+// ── The sheet's one submit carries every answer (#2230) ──
+
+#[test]
+fn one_submit_writes_the_way_the_point_the_felt_word_the_obstacle_and_the_aim() {
+    let mut m = finish_a_with((FocusKind::Evenness, None), TempoReading::silent());
+    let play_id = entries(&m)[0].plays[0].id.clone();
+    let note = "rushed in bar 12";
+
+    send(
+        &mut m,
+        SessionEvent::SubmitReflection {
+            next_item_started_at: t(300),
+            answers: ReflectionAnswers {
+                note: note.to_string(),
+                note_points: vec![span_of(note, "bar 12")],
+                felt: Some(Felt::Strained),
+                got_in_the_way: vec![Obstacle::Memory],
+                intention_met: Some(IntentionMet::Partly),
+                ways: vec![DraftWay {
+                    play_id,
+                    section_id: None,
+                    key: None,
+                    variation_ids: Vec::new(),
+                }],
+                ..ReflectionAnswers::default()
+            },
+        },
+    );
+
+    let entry = &entries(&m)[0];
+    assert_eq!(m.last_error, None);
+    assert_eq!(entry.plays[0].section_id, None, "the way changed by hand");
+    assert_eq!(entry.note_points.len(), 1, "read from the note as stored");
+    assert_eq!(entry.felt, Some(Felt::Strained));
+    assert_eq!(entry.got_in_the_way, [Obstacle::Memory]);
+    assert_eq!(entry.intention_met, Some(IntentionMet::Partly));
+}

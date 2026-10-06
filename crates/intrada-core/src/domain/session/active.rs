@@ -297,6 +297,7 @@ pub(super) fn update_reflection_draft(
     };
     let entry = active.current_entry();
     let sections = super::finish::named_sections(model, &entry.item_id);
+    answers.marks.retain(|mark| mark.score != 0);
     keep_offered_points(&mut answers, &sections);
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.item_id, way.key);
@@ -324,6 +325,126 @@ pub(super) fn update_reflection_draft(
         draft.answers = answers;
     }
     persist_active(active)
+}
+
+const REFLECTION_REFUSED: &str = "Couldn't save the reflection.";
+
+pub(super) fn submit_reflection(
+    model: &mut Model,
+    next_item_started_at: DateTime<Utc>,
+    mut answers: ReflectionAnswers,
+) -> Command<Effect, Event> {
+    let SessionStatus::Active(ref active) = model.session_status else {
+        model.raise_error("Not in active state".to_string());
+        return crux_core::render::render();
+    };
+    let Some(draft) = active.reflection.clone() else {
+        model.raise_error(REFLECTION_REFUSED);
+        return crux_core::render::render();
+    };
+    let entry = active.current_entry();
+    let entry_id = entry.id.clone();
+    // The sheet's selector reads 0 as no mark, here and in the draft.
+    answers.marks.retain(|mark| mark.score != 0);
+    // Checked whole before the entry closes: once it has moved on, a refusal
+    // would leave the sheet nothing to retry (#1945).
+    if let Err(e) = validation::validate_entry_notes(&Some(answers.note.clone())) {
+        model.raise_error(e.to_string());
+        return crux_core::render::render();
+    }
+    let markable = |play_id: &str| {
+        entry
+            .play(play_id)
+            .is_some_and(|play| play_would_survive_drop(entry, play))
+    };
+    // A stray play offers Change but is dropped as the entry closes, so its
+    // way has nothing left to land on.
+    answers.ways.retain(|way| markable(&way.play_id));
+    let valid = draft_answers_valid(entry, &answers)
+        && draft_ways_valid(entry, &answers.ways, model)
+        && obstacles_distinct(&answers.got_in_the_way)
+        && answers.marks.iter().all(|m| markable(&m.play_id))
+        && answers.tempos.iter().all(|t| markable(&t.play_id));
+    if !valid {
+        model.raise_error(REFLECTION_REFUSED);
+        return crux_core::render::render();
+    }
+
+    let mut commands = Vec::new();
+    if !answers.note.is_empty() {
+        commands.push(super::summary::update_entry_notes(
+            model,
+            entry_id.clone(),
+            Some(answers.note),
+        ));
+    }
+    commands.push(next_item(
+        model,
+        draft.now,
+        next_item_started_at,
+        draft.reading,
+    ));
+    for mark in answers.marks {
+        commands.push(super::summary::update_entry_score(
+            model,
+            entry_id.clone(),
+            mark.play_id,
+            Some(mark.score),
+        ));
+    }
+    for way in answers.ways {
+        let play_way = PlayWay {
+            section_id: way.section_id,
+            key: way.key,
+            variation_ids: way.variation_ids,
+        };
+        commands.push(super::summary::update_play_way(
+            model,
+            entry_id.clone(),
+            way.play_id,
+            play_way,
+        ));
+    }
+    for row in answers.tempos {
+        commands.push(super::summary::update_entry_tempo(
+            model,
+            entry_id.clone(),
+            row.play_id,
+            Some(row.tempo),
+            true,
+            row.click,
+        ));
+    }
+    // After the note, so a kept point is read from the note as stored.
+    for span in answers.note_points {
+        commands.push(super::finish::confirm_note_point(
+            model,
+            entry_id.clone(),
+            span,
+        ));
+    }
+    if answers.felt.is_some() {
+        commands.push(super::finish::set_felt(
+            model,
+            entry_id.clone(),
+            answers.felt,
+        ));
+    }
+    for obstacle in answers.got_in_the_way {
+        commands.push(super::finish::toggle_obstacle(
+            model,
+            entry_id.clone(),
+            obstacle,
+        ));
+    }
+    if answers.intention_met.is_some() {
+        commands.push(super::finish::answer_intention(
+            model,
+            entry_id,
+            answers.intention_met,
+        ));
+    }
+    Command::all(commands)
 }
 
 /// A note edit moves its points: a span no longer offered is dropped, since
