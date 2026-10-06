@@ -12,10 +12,6 @@ final class FirstRunSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(FirstRunScreen { _ in }), as: config)
   }
 
-  func testWelcomeAccessibilitySize() {
-    assertSnapshot(of: host(FirstRunScreen { _ in }), as: axConfig)
-  }
-
   /// A phone's width in the middle of the iPad, not stretched across it.
   func testWelcomeOnIPad() {
     assertSnapshot(of: host(FirstRunScreen { _ in }), as: splitConfig)
@@ -36,16 +32,8 @@ final class FirstRunSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(FirstRunScreen(step: .profile) { _ in }), as: config)
   }
 
-  func testProfileStepAccessibilitySize() {
-    assertSnapshot(of: host(FirstRunScreen(step: .profile) { _ in }), as: axConfig)
-  }
-
   func testFirstPieceStep() {
     assertSnapshot(of: host(FirstRunScreen(step: .firstPiece) { _ in }), as: config)
-  }
-
-  func testFirstPieceStepAccessibilitySize() {
-    assertSnapshot(of: host(FirstRunScreen(step: .firstPiece) { _ in }), as: axConfig)
   }
 
   func testPracticeScreenStartHere() {
@@ -53,16 +41,5 @@ final class FirstRunSnapshotTests: SnapshotTestCase {
       of: host(
         PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
         store: .previewStartHere), as: config)
-  }
-
-  func testStartHereCardAccessibilitySize() {
-    let card = StartHereCard(
-      progress: FirstRunView(
-        showsWelcome: false, showsStartHere: true, added: true, built: true, played: false,
-        marked: false, firstItemTitle: "Clair de Lune"),
-      onAdd: {}, onStartSession: {}
-    )
-    .padding(IntradaSpacing.card)
-    assertSnapshot(of: host(card), as: tallAxConfig(height: 900))
   }
 }

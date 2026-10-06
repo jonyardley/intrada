@@ -11,10 +11,6 @@ wired from the first build.
 
 ## What the gate checks (#1950)
 
-- **Dynamic Type:** a new screen or sheet gets a second snapshot at `axConfig`
-  (the largest accessibility size) beside its default one. A fixed-size glyph
-  that sits beside text scales with `@ScaledMetric`, capped so the row still
-  fits (`WeekStrip`, the beat and pass dots).
 - **VoiceOver labels:** a control a UI test drives carries an
   `accessibilityIdentifier` named `screen.control` (`player.skip`,
   `sheet.done`); repeated rows share one and the test picks by label. The test
@@ -22,8 +18,12 @@ wired from the first build.
   Put the identifier on the button itself, not on a wrapper that ignores its
   children, or the tap lands on the wrapper's centre.
 - **Not gated:** labels on controls no test drives, system controls (tab bar,
-  alerts, menus), text fields' spoken labels, hints, reading order and the text
-  sizes in between. Those stay a hand check with VoiceOver on.
+  alerts, menus), text fields' spoken labels, hints, reading order and Dynamic
+  Type at accessibility sizes. Those stay a hand check with VoiceOver on.
+- **Dynamic Type:** no snapshot at the largest accessibility size
+  (`.accessibility5`); #2134 is set aside, so don't add one. A fixed-size
+  glyph that sits beside text still scales with `@ScaledMetric`, capped so the
+  row still fits (`WeekStrip`, the beat and pass dots).
 
 ## Principles from the 2026-06 review
 

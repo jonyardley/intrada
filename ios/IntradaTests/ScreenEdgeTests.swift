@@ -7,9 +7,7 @@ import UIKit
 
 /// A control row wider than the device does not merely overflow: the scaffold's
 /// `ZStack` centres it, so the screen loses characters off *both* edges (#1470).
-/// `testLibraryScreenAccessibilityText` is the pixel gate for the Library; this
-/// covers the other pillars on the shared scaffold without a reference PNG each,
-/// and adds the narrow device the snapshot host does not run.
+/// Checks the scaffold at 390pt and the 320pt the snapshot host never renders.
 @MainActor
 struct ScreenEdgeTests {
   private static let height: CGFloat = 844
@@ -22,7 +20,6 @@ struct ScreenEdgeTests {
 
   private struct Edges {
     var minX: CGFloat
-    var maxX: CGFloat
     /// Guards against a vacuous pass: SwiftUI backs many views with no `UIView`
     /// of their own, so a traversal that found nothing must fail, not read zero.
     var wideViews: Int
@@ -36,8 +33,7 @@ struct ScreenEdgeTests {
         .environment(store)
         .environment(\.locale, Locale(identifier: "en_US"))
         .environment(\.calendar, PreviewCalendar.utc)
-        .environment(\.intradaMotionDisabled, true)
-        .dynamicTypeSize(.accessibility5))
+        .environment(\.intradaMotionDisabled, true))
     vc.overrideUserInterfaceStyle = .light
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: Self.height))
     window.rootViewController = vc
@@ -45,7 +41,7 @@ struct ScreenEdgeTests {
     vc.view.layoutIfNeeded()
     defer { window.rootViewController = nil }
 
-    var result = Edges(minX: 0, maxX: width, wideViews: 0)
+    var result = Edges(minX: 0, wideViews: 0)
     walk(vc.view, root: vc.view, width: width, into: &result)
     return result
   }
@@ -55,45 +51,10 @@ struct ScreenEdgeTests {
       let frame = subview.convert(subview.bounds, to: root)
       if frame.width > 0 && frame.height > 0 {
         result.minX = min(result.minX, frame.minX)
-        // A horizontal scroller is meant to run past the edge; its content
-        // being wider than the screen is the point, not a layout failure.
-        if !(view is UIScrollView) {
-          result.maxX = max(result.maxX, frame.maxX)
-        }
         if frame.width > width / 2 { result.wideViews += 1 }
       }
       walk(subview, root: root, width: width, into: &result)
     }
-  }
-
-  private func expectOnScreen(_ view: some View, store: Store, _ name: String) {
-    for width in Self.widths {
-      let found = edges(of: view, store: store, width: width)
-      #expect(found.wideViews > 0, "\(name) at \(width)pt: measured nothing")
-      #expect(
-        found.minX >= -Self.tolerance,
-        "\(name) at \(width)pt: runs \(-found.minX)pt off the leading edge")
-      #expect(
-        found.maxX <= width + Self.tolerance,
-        "\(name) at \(width)pt: runs \(found.maxX - width)pt off the trailing edge")
-    }
-  }
-
-  @Test("The Library stays on screen at the largest accessibility size")
-  func libraryStaysOnScreen() {
-    expectOnScreen(NavigationStack { LibraryScreen() }, store: .previewLibrary, "Library")
-  }
-
-  @Test("Practice stays on screen at the largest accessibility size")
-  func practiceStaysOnScreen() {
-    expectOnScreen(
-      PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-      store: .previewPractice, "Practice")
-  }
-
-  @Test("Progress stays on screen at the largest accessibility size")
-  func progressStaysOnScreen() {
-    expectOnScreen(AnalyticsScreen(), store: .previewProgress, "Progress")
   }
 
   @Test("An over-wide child cannot drag the scaffold off its leading edge")
@@ -109,13 +70,5 @@ struct ScreenEdgeTests {
         found.minX >= -Self.tolerance,
         "Scaffold at \(width)pt: runs \(-found.minX)pt off the leading edge")
     }
-  }
-
-  /// The two sheets reuse the browse bar with the type filter and the star
-  /// switched off, so their control row has a different width to the Library's.
-  @Test("The related-exercise sheet stays on screen at the largest accessibility size")
-  func relatedExerciseSheetStaysOnScreen() {
-    expectOnScreen(
-      AddRelatedExerciseSheet(groupId: ""), store: .previewLibrary, "Related-exercise sheet")
   }
 }

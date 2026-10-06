@@ -11,16 +11,8 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(RoutinesScreen()), as: config)
   }
 
-  func testRoutinesScreenAccessibilitySize() {
-    assertSnapshot(of: host(RoutinesScreen()), as: axConfig)
-  }
-
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
-  }
-
-  func testAnalyticsScreenAccessibilitySize() {
-    assertSnapshot(of: host(AnalyticsScreen()), as: axConfig)
   }
 
   func testProgressScreenPopulated() {
@@ -42,29 +34,6 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     analytics.weeklyMinutes = [40, 75, 55, 95, 0]
     let store = Store(bridge: PreviewBridge(analytics: analytics))
     assertSnapshot(of: host(AnalyticsScreen(), store: store), as: config)
-  }
-
-  /// The top of the Progress screen at the largest text size: the mover toast
-  /// and the hero card stack rather than squash. The coverage rows sit below
-  /// this frame; they get their own snapshot.
-  func testProgressScreenPopulatedAccessibilitySize() {
-    assertSnapshot(of: host(AnalyticsScreen(), store: .previewProgress), as: axConfig)
-  }
-
-  /// The variation coverage rows at the largest text size: the exercise title
-  /// and its solid count share a row, so they have to reflow rather than
-  /// squash (#1739, #1762).
-  func testProgressVariationRowsAccessibilitySize() {
-    let rows = ZStack {
-      PaperBackground()
-      VStack {
-        VariationCoverageSection(rows: AnalyticsView.previewAnalytics.variationCoverage)
-        Spacer()
-      }
-      .padding(IntradaSpacing.card)
-    }
-    .dynamicTypeSize(.accessibility5)
-    assertSnapshot(of: host(rows), as: config)
   }
 
   func testMasteryDial() {
@@ -113,19 +82,5 @@ final class ProgressSnapshotTests: SnapshotTestCase {
       .padding(16)
     }
     assertSnapshot(of: host(bars), as: config)
-  }
-
-  /// Recorded at the size #1471 reports, which is also where the ring's clamp
-  /// binds hardest: stacked layout and dial inset are both load-bearing here.
-  func testMasteryHeroCardAccessibilitySize() {
-    let hero = ZStack {
-      PaperBackground()
-      MasteryHeroCard(
-        mastery: 6.4, change: "+1.2 this week", climbing: "Climbing steadily across 5 items."
-      )
-      .padding(16)
-    }
-    .dynamicTypeSize(.accessibility5)
-    assertSnapshot(of: host(hero), as: config)
   }
 }

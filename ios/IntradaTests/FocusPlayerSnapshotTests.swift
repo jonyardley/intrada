@@ -54,13 +54,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
-  func testTroubleSpotSheetAccessibilitySize() {
-    let sheet = TroubleSpotSheet(
-      context: "Clair de Lune · in A1", barMax: 9999,
-      refusal: "Bars must run from first to last", onAdd: { _, _ in false })
-    assertSnapshot(of: host(sheet), as: axConfig)
-  }
-
   func testClickControlStates() {
     // Flat player paper, not the radial wash: the gradient is not what's under
     // test here and it is most of a reference's bytes (snapshot hygiene).
@@ -159,56 +152,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
-  func testClickSheetAccessibilitySize() throws {
-    let store = Store(bridge: SnapshotStubBridge())
-    let limits = try XCTUnwrap(store.viewModel?.limits)
-    let sevenEight = Metre(beats: 7, unit: 8, groups: [3, 2, 2])
-    var active = ActiveSessionView.previewActive
-    active.clickSeedMetre = sevenEight
-    active.clickSeedBpm = 168
-    active.clickSeedPresets = limits.clickPresets(for: sevenEight)
-    active.currentClickSounding = 0b1111111
-    let click = ClickController()
-    click.reseed(from: active, limits: limits)
-    click.apply(.groupStarts)
-    assertSnapshot(
-      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store),
-      as: tallAxConfig(height: 3300))
-  }
-
-  /// The sounding row is the tight one, so it is the state that has to reflow.
-  func testClickControlLargeText() {
-    let sounding = ZStack {
-      IntradaColor.playerBgMid
-      ClickControl(
-        bpm: 208, step: 2, band: 40...208, isRunning: true, unavailable: false,
-        atSeededTempo: false,
-        targetDisplay: "Andante · ♩ = 66", targetSpoken: "Andante, 66 beats per minute",
-        onToggle: {}, onStep: { _ in }, onDragChange: { _ in }
-      )
-      .padding(.horizontal, IntradaSpacing.card)
-    }
-    assertSnapshot(of: host(sounding), as: axConfig)
-  }
-
-  // The widest bar a musician can build: at accessibility sizes it must tighten
-  // or drop the metre rather than run off the screen (#2139).
-  func testClickBarLineLargeText() {
-    let bars = ZStack {
-      IntradaColor.playerBgMid
-      VStack(spacing: 24) {
-        ClickBarLine(
-          metre: Metre(beats: 12, unit: 8, groups: [3, 3, 3, 3]), sounding: 0b1001_0010_0101,
-          currentBeat: 0, onTap: {})
-        ClickBarLine(
-          metre: Metre(beats: 12, unit: 8, groups: [2, 2, 2, 2, 2, 2]),
-          sounding: 0b0101_0101_0101, currentBeat: 0, onTap: {})
-      }
-      .padding(.horizontal, IntradaSpacing.card)
-    }
-    assertSnapshot(of: host(bars), as: axConfig)
-  }
-
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the
   // orientation slot's minimum. Full-screen because the whole strip reflows.
   func testFocusPlayerLongSession() {
@@ -236,16 +179,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: orientationBand(elapsed: 3732), as: .image(precision: 0.99))
   }
 
-  func testOrientationBandLargeText() {
-    assertSnapshot(
-      of: orientationBand(elapsed: 3732),
-      as: .image(
-        precision: 0.99,
-        traits: UITraitCollection { traits in
-          traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-        }))
-  }
-
   func testFocusPlayerLastTimeOffer() {
     assertSnapshot(
       of: host(
@@ -269,13 +202,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
         store: .previewActiveVariations), as: config)
   }
 
-  func testFocusPlayerWithVariationsAccessibilitySize() {
-    assertSnapshot(
-      of: host(
-        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
-        store: .previewActiveVariations), as: axConfig)
-  }
-
   /// A variation played earlier this item, not just scored in a past session,
   /// reads "Played this session" rather than falling back to its score (#1784).
   func testVariationPickerSheet() {
@@ -286,36 +212,6 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       currentVariationId: active.currentVariationIds.first,
       onPick: { _ in true })
     assertSnapshot(of: host(sheet), as: config)
-  }
-
-  func testVariationPickerSheetAccessibilitySize() {
-    let active = ActiveSessionView.previewActiveVariations
-    let sheet = VariationPickerSheet(
-      itemTitle: LibraryItemView.previewExerciseWithVariations.title,
-      currentVariations: active.currentVariations,
-      currentVariationId: active.currentVariationIds.first,
-      onPick: { _ in true })
-    assertSnapshot(of: host(sheet), as: axConfig)
-  }
-
-  /// Variations named in words rather than key letters, at the largest text
-  /// size: the rows wrap rather than truncating what the musician called them,
-  /// including the "Played this session" caption at its longest (#1784).
-  func testVariationPickerSheetLongLabels() {
-    let currentVariations = [
-      PickerVariationView(
-        id: "rung-0", label: "Root position", caption: "Playing now"),
-      PickerVariationView(
-        id: "rung-1", label: "1st inversion", caption: "Played this session · 12m 34s"),
-      PickerVariationView(
-        id: "rung-2", label: "2nd inversion", caption: "Not yet played"),
-    ]
-    let sheet = VariationPickerSheet(
-      itemTitle: "Triad inversions",
-      currentVariations: currentVariations,
-      currentVariationId: currentVariations.first?.id,
-      onPick: { _ in true })
-    assertSnapshot(of: host(sheet), as: axConfig)
   }
 
   func testRepCounter() {

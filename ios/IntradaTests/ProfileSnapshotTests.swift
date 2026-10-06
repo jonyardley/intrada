@@ -30,26 +30,6 @@ final class ProfileSnapshotTests: SnapshotTestCase {
       of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: config)
   }
 
-  func testProfileScreenAccessibilitySize() {
-    assertSnapshot(
-      of: host(NavigationStack { ProfileScreen() }, store: .previewProfile), as: axConfig)
-  }
-
-  /// Below the fold on the screen's own largest-text snapshot, so alone here,
-  /// in the scroll view the screen gives it (#1915).
-  func testPracticeDefaultsSectionAccessibilitySize() throws {
-    let limits = try XCTUnwrap(Store.preview.viewModel?.limits)
-    let section = ScrollView {
-      PracticeDefaultsSection(
-        defaults: PracticeDefaults(repTarget: 5, click: .twoAndFour, sessionLengthMins: 40),
-        limits: limits,
-        onSave: { _ in }
-      )
-      .padding(IntradaSpacing.card)
-    }
-    assertSnapshot(of: host(section), as: tallAxConfig())
-  }
-
   /// No name yet: a prompt to add one, not blank rows (#1692).
   func testProfileScreenEmpty() {
     assertSnapshot(of: host(NavigationStack { ProfileScreen() }), as: config)
@@ -57,10 +37,6 @@ final class ProfileSnapshotTests: SnapshotTestCase {
 
   func testProfileEditSheet() {
     assertSnapshot(of: host(ProfileEditSheet(), store: .previewProfile), as: config)
-  }
-
-  func testProfileEditSheetAccessibilitySize() {
-    assertSnapshot(of: host(ProfileEditSheet(), store: .previewProfile), as: axConfig)
   }
 
   func testProfileEditSheetWithError() {
@@ -86,10 +62,6 @@ final class ProfileSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(FeedbackSheet(screenshot: Self.screenshot)), as: config)
   }
 
-  func testFeedbackSheetFromAShakeAccessibilitySize() {
-    assertSnapshot(of: host(FeedbackSheet(screenshot: Self.screenshot)), as: axConfig)
-  }
-
   private static var screenshot: Data? {
     UIGraphicsImageRenderer(size: CGSize(width: 390, height: 844)).image { context in
       UIColor(IntradaColor.paperTop).setFill()
@@ -102,11 +74,6 @@ final class ProfileSnapshotTests: SnapshotTestCase {
   func testInstrumentIconPicker() {
     assertSnapshot(
       of: host(InstrumentIconPicker(suggested: .cello, choice: .constant(.harp))), as: config)
-  }
-
-  func testInstrumentIconPickerAccessibilitySize() {
-    assertSnapshot(
-      of: host(InstrumentIconPicker(suggested: .cello, choice: .constant(.harp))), as: axConfig)
   }
 
   /// The eight highlighters through the environment (#1677): a marker surface

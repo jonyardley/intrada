@@ -42,10 +42,10 @@ is_large() {
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenPriorities | \
       testPracticeScreenQuietDay | testPracticeScreenSuggestionDismissed | \
       testPracticeScreenSuggestionDismissedPriorities | testPracticeScreenGreeting | \
-      testUpNextHeroNeverMarked | testUpNextHeroFilledPlanAccessibilitySize | \
+      testUpNextHeroNeverMarked | \
       testUpNextHeroCoral | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | testFocusPlayerLongSession | \
-      testFocusPlayerWithVariations | testFocusPlayerWithVariationsAccessibilitySize | \
+      testFocusPlayerWithVariations | \
       testFocusPlayerHoldsTheItemTimerWhileTheSheetIsOpen | \
       testFocusPlayerSectionTimeUp | testFocusPlayerAwayOffer | testFocusPlayerLastTimeOffer | \
       testPracticeSessionDetailAccessibilitySize | \

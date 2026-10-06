@@ -17,11 +17,10 @@ struct SessionBuilderScreen: View {
   @State private var configuringEntry: EntrySettingsTarget?
   @State private var addingExerciseTarget: AddExerciseTarget?
 
-  /// The `start` arguments seed the Edit-mode row controls and collapsed blocks
-  /// for snapshot tests (they can't drive the toggles interactively).
-  init(startInEditMode: Bool = false, startCollapsedGroups: Swift.Set<String> = []) {
+  /// `startInEditMode` seeds the Edit-mode row controls for snapshot tests
+  /// (they can't drive the toggle interactively).
+  init(startInEditMode: Bool = false) {
     _editMode = State(initialValue: startInEditMode ? .active : .inactive)
-    _collapsedGroups = State(initialValue: startCollapsedGroups)
   }
 
   private struct EntrySettingsTarget: Identifiable {

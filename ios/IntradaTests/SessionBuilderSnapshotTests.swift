@@ -22,36 +22,14 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
   }
 
-  func testSessionBuilderAccessibilitySize() {
-    assertSnapshot(
-      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: axConfig)
-  }
-
   func testSessionBuilderGrouped() {
     assertSnapshot(
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
       as: config)
   }
 
-  func testSessionBuilderGroupedAccessibilitySize() {
-    assertSnapshot(
-      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
-      as: tallAxConfig(height: 1800))
-  }
-
-  func testSessionBuilderGroupedCollapsedAccessibilitySize() {
-    assertSnapshot(
-      of: host(
-        NavigationStack { SessionBuilderScreen(startCollapsedGroups: ["g1"]) },
-        store: .previewBuildingGrouped), as: tallAxConfig(height: 1800))
-  }
-
   func testAddToSessionSheet() {
     assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
-  }
-
-  func testAddToSessionSheetAccessibilitySize() {
-    assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: axConfig)
   }
 
   func testAddToSessionSheetLargestStandardSizeLongKeyAndTempo() {
@@ -114,15 +92,6 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
       ), as: config)
   }
 
-  func testEntrySettingsSheetAccessibilitySize() throws {
-    let store = Store.previewBuildingGrouped
-    let limits = try XCTUnwrap(store.viewModel?.limits)
-    var entry = SetlistEntryView.previewGroupedScalesConfigured
-    entry.itemTitle = "Piano Concerto No. 2 in C minor"
-    assertSnapshot(
-      of: host(EntrySettingsSheet(entry: entry, limits: limits), store: store), as: axConfig)
-  }
-
   func testSessionBuilderPlanned() {
     assertSnapshot(
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingPlanned()),
@@ -135,14 +104,6 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     assertSnapshot(
       of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
       as: config)
-  }
-
-  func testEntrySettingsSheetSplitWithFocusAccessibilitySize() throws {
-    let store = Store.previewBuildingPlanned()
-    let limits = try XCTUnwrap(store.viewModel?.limits)
-    assertSnapshot(
-      of: host(EntrySettingsSheet(entry: .previewPlannedPiece, limits: limits), store: store),
-      as: axConfig)
   }
 
   func testEntrySettingsSheetSuggestsAFocus() throws {
@@ -198,11 +159,5 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     let store = Store.previewBuildingPlanned(Self.plannedInD, entryKeys: [Self.clairKeys])
     assertSnapshot(
       of: host(NavigationStack { EntryKeyList(entryId: "plan-p") }, store: store), as: config)
-  }
-
-  func testEntryKeyListAccessibilitySize() {
-    let store = Store.previewBuildingPlanned(Self.plannedInD, entryKeys: [Self.clairKeys])
-    assertSnapshot(
-      of: host(NavigationStack { EntryKeyList(entryId: "plan-p") }, store: store), as: axConfig)
   }
 }

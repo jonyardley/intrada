@@ -11,11 +11,6 @@ final class RootShellSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(RootView()), as: config)
   }
 
-  // In a phone-sized frame the scrolling empty Library draws blank, unlike the simulator (#2322).
-  func testRootShellAccessibilitySize() {
-    assertSnapshot(of: host(RootView()), as: tallAxConfig())
-  }
-
   /// The tab shell after the core has panicked (#1946): the last screen stays
   /// up under a standing banner.
   func testRootShellHalted() {

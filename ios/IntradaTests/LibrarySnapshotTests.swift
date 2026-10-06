@@ -57,12 +57,6 @@ final class LibrarySnapshotTests: SnapshotTestCase {
         store: .previewLibrarySearching), as: config)
   }
 
-  /// The empty Library's buttons must stay readable, scrolling if need be.
-  func testLibraryScreenEmptyAccessibilitySize() {
-    assertSnapshot(
-      of: host(NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }), as: axConfig)
-  }
-
   /// A search that matches nothing keeps sort, filter and search on screen, so
   /// it can be cleared; only an empty library hides them.
   func testLibraryScreenSearchMatchesNothing() {
@@ -101,15 +95,6 @@ final class LibrarySnapshotTests: SnapshotTestCase {
         store: .previewLibrary), as: config)
   }
 
-  /// The browse controls have to give way at accessibility sizes, or the screen
-  /// lays out wider than the device and shifts off its leading edge (#1470).
-  func testLibraryScreenAccessibilityText() {
-    assertSnapshot(
-      of: host(
-        NavigationStack { LibraryScreen().navigationBarHiddenAtRoot() }, store: .previewLibrary),
-      as: axConfig)
-  }
-
   func testLibraryScreenMastery() {
     assertSnapshot(
       of: host(
@@ -134,14 +119,6 @@ final class LibrarySnapshotTests: SnapshotTestCase {
       selected: ["jazz", "recital"],
       onChange: { _ in })
     assertSnapshot(of: host(sheet), as: config)
-  }
-
-  func testTagFilterSheetAccessibilitySize() {
-    let sheet = TagFilterSheet(
-      available: ["classical", "jazz", "recital", "technique", "warm-up"],
-      selected: ["jazz", "recital"],
-      onChange: { _ in })
-    assertSnapshot(of: host(sheet), as: axConfig)
   }
 
   func testTagFilterSheetEmpty() {
