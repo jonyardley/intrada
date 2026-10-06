@@ -7,11 +7,10 @@ protocol ItemStore: Sendable {
   func handle(_ operation: PersistenceOperation) throws -> PersistenceOutput
 }
 
-/// The notebook's database: the Rust store both phones share (#2432). It
-/// opens the `intrada.sqlite` GRDB wrote, carrying on from GRDB's record of
-/// the migrations already run.
+/// Opens the `intrada.sqlite` GRDB wrote, from GRDB's record of the migrations run (#2432).
 final class SharedItemStore: ItemStore {
-  static let decodeContext = "store decode"
+  // Sentry groups reports by this, so it keeps the GRDB store's name.
+  static let decodeContext = "LibraryStore decode"
 
   private let store: StoreFfiProtocol
 

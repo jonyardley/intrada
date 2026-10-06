@@ -464,7 +464,7 @@ mod tests {
     #[test]
     fn save_item_and_variation_ops_round_trip_on_ffi_bincode_wire() {
         // Keys, variation ids, a tombstoned section and links ride SaveItem and
-        // SaveItems to the GRDB store (#846 class).
+        // SaveItems to the store (#846 class).
         use crate::persistence::PersistenceOperation;
         use chrono::TimeZone;
         let at = chrono::Utc.timestamp_opt(1_700_000_000, 0).unwrap();

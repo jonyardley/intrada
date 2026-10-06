@@ -1,6 +1,7 @@
 //! Seeds are the shapes the iPhone's GRDB store wrote, copied from its
-//! `LibraryStoreMigrationTests` and `LibraryStoreTests`, never written to match
-//! this port (#1256).
+//! `LibraryStoreMigrationTests` and `LibraryStoreTests` (the Swift files the
+//! headers below name were deleted in #2432), never written to match this port
+//! (#1256).
 
 use chrono::{DateTime, Utc};
 use intrada_core::domain::chart::{
