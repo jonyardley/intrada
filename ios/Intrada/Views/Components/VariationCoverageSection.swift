@@ -3,8 +3,6 @@ import SwiftUI
 
 /// One card per exercise, saying how many of its variations are solid (#1762).
 struct VariationCoverageSection: View {
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
   let rows: [VariationCoverageView]
 
   var body: some View {
@@ -14,39 +12,14 @@ struct VariationCoverageSection: View {
       SectionHeader(title: "Variations", trailing: "\(solid) of \(total) solid")
       VStack(spacing: IntradaSpacing.cardCompact) {
         ForEach(rows, id: \.itemId) { row in
-          VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-            if dynamicTypeSize.isAccessibilitySize {
-              title(row)
-              count(row)
-            } else {
-              HStack(alignment: .firstTextBaseline, spacing: IntradaSpacing.cardCompact) {
-                title(row)
-                  .frame(maxWidth: .infinity, alignment: .leading)
-                count(row)
-              }
-            }
-            SegmentedProgress(
-              count: Int(row.total), filled: Int(row.solid),
-              label: "\(row.solid) of \(row.total) solid")
-          }
-          .padding(IntradaSpacing.cardCompact)
-          .cardSurface(cornerRadius: IntradaRadius.card)
-          .accessibilityElement(children: .combine)
-          .accessibilityLabel("\(row.title), \(row.solid) of \(row.total) variations solid")
+          SolidCountRow(
+            title: row.title,
+            trailing: "\(row.solid) of \(row.total) solid",
+            solid: Int(row.solid),
+            total: Int(row.total),
+            accessibilityLabel: "\(row.title), \(row.solid) of \(row.total) variations solid")
         }
       }
     }
-  }
-
-  private func title(_ row: VariationCoverageView) -> some View {
-    Text(row.title)
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.ink)
-  }
-
-  private func count(_ row: VariationCoverageView) -> some View {
-    Text("\(row.solid) of \(row.total) solid")
-      .font(IntradaFont.secondary)
-      .foregroundStyle(IntradaColor.inkSecondary)
   }
 }
