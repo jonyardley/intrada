@@ -786,3 +786,85 @@ fn a_time_is_stored_as_the_bridge_writes_it() {
         bridged.as_str().map(str::to_string)
     );
 }
+
+// ── A database the iPhone app wrote (SharedStoreFixtureTests.swift) ──
+
+#[test]
+fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
+    let fixture_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/iphone-v20.sqlite"
+    );
+    let path = std::env::temp_dir().join(format!("intrada-iphone-{}.sqlite", std::process::id()));
+    std::fs::copy(fixture_path, &path).expect("copies the fixture");
+    let mut store = Store::open(&path).expect("opens");
+
+    let first = store.handle(&PersistenceOperation::LoadItems);
+    assert_eq!(first.unreadable, Vec::<String>::new());
+    let mut exercise = bare("e1", ItemKind::Exercise);
+    exercise.title = "Scales in thirds".into();
+    exercise.created_at = at("2026-08-01T09:00:00Z");
+    exercise.updated_at = at("2026-08-01T09:00:00Z");
+    assert_eq!(
+        first.output,
+        PersistenceOutput::Items(vec![fixture(), exercise]),
+        "the deleted piece stays hidden"
+    );
+    assert_eq!(
+        store.raw("SELECT deleted_at FROM item WHERE id = 'gone'"),
+        Some("2026-09-05T08:00:00Z".into())
+    );
+
+    assert_eq!(
+        store.variations(),
+        vec![
+            Variation {
+                id: "00000000000000000000000001".into(),
+                label: "Hands separately".into(),
+                updated_at: at("2026-09-01T10:00:00Z"),
+                deleted_at: None,
+            },
+            Variation {
+                id: "00000000000000000000000002".into(),
+                label: "Dotted rhythms".into(),
+                updated_at: at("2026-09-01T10:00:00Z"),
+                deleted_at: Some(at("2026-09-04T10:00:00Z")),
+            },
+        ]
+    );
+
+    let session = store.sessions().pop().expect("a session");
+    assert_eq!(
+        (
+            session.id.as_str(),
+            session.session_notes.as_deref(),
+            session.total_duration_secs,
+            session.session_score,
+            session.capture_version
+        ),
+        ("sess-1", Some("good day"), 600, Some(7), Some(1))
+    );
+    let play = &session.entries[0].plays[0];
+    assert_eq!(
+        (
+            play.section_id.as_deref(),
+            play.key,
+            play.score,
+            play.achieved_tempo
+        ),
+        (
+            Some("s1"),
+            Some(key(Letter::E, Accidental::Flat, Some(Modality::Major))),
+            Some(8),
+            Some(60)
+        )
+    );
+
+    let mut renamed = fixture();
+    renamed.title = "Nocturne, renamed".into();
+    store.save(&renamed);
+    drop(store);
+    let mut reopened = Store::open(&path).expect("opens again");
+    assert_eq!(reopened.item("p1"), renamed);
+    let _ = std::fs::remove_file(&path);
+}
