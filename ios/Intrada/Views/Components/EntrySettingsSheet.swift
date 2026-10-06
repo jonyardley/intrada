@@ -79,10 +79,7 @@ struct EntrySettingsSheet: View {
           }
           repsSection
           durationSection
-          // A grouped piece is the block's anchor: removing it dissolves the
-          // whole block (core §7.4), so that call stays with the header menu's
-          // explicit "Just the piece" / "Remove block" wording.
-          if !(entry.itemType == .piece && entry.groupId != nil) {
+          if live.removable {
             removeButton
           }
         }
