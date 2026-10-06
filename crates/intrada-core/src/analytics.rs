@@ -2,7 +2,7 @@
 //! (rather than reading the clock) so they're deterministic under test.
 
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc, Weekday};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,9 @@ use crate::staleness;
 /// Rows on the Progress screen's Variations section; past this a large
 /// library takes the screen over (#1762).
 const VARIATION_COVERAGE_LIMIT: usize = 5;
+
+/// Rows in each of the Progress screen's pooled sections, for the same reason.
+const POOLED_MARKS_LIMIT: usize = 5;
 
 const CONSISTENCY_WEEKS: usize = 5;
 
@@ -225,44 +228,64 @@ pub(crate) fn analytics_from_changes(
 }
 
 fn compute_pooled_variations(item_views: &[LibraryItemView]) -> Vec<PooledMarkView> {
-    pool_marks(item_views.iter().flat_map(|i| {
-        i.variations
-            .iter()
-            .map(|v| (v.id.as_str(), v.label.as_str(), v.latest_score))
-    }))
+    pool_marks(
+        item_views.iter().flat_map(|i| {
+            i.variations
+                .iter()
+                .map(|v| (v.id.as_str(), v.label.as_str(), v.latest_score))
+        }),
+        |a, b| a == b,
+    )
 }
 
-/// Grouped by label, so E flat major on a scale and on a piece pool together.
+/// Grouped by pitch and mode, so E flat major and D sharp major pool together.
 fn compute_pooled_keys(item_views: &[LibraryItemView]) -> Vec<PooledMarkView> {
-    pool_marks(item_views.iter().flat_map(|i| {
-        i.keys
-            .iter()
-            .map(|k| (k.label.as_str(), k.label.as_str(), k.latest_score))
-    }))
+    pool_marks(
+        item_views.iter().flat_map(|i| {
+            i.keys
+                .iter()
+                .map(|k| (k.key, k.label.as_str(), k.latest_score))
+        }),
+        crate::domain::key::Key::same_key,
+    )
 }
 
 /// One item is not a pool, so a row needs marks on two or more.
-fn pool_marks<'a>(
-    marks: impl Iterator<Item = (&'a str, &'a str, Option<u8>)>,
+fn pool_marks<'a, G>(
+    marks: impl Iterator<Item = (G, &'a str, Option<u8>)>,
+    same: impl Fn(&G, &G) -> bool,
 ) -> Vec<PooledMarkView> {
-    let mut pools: BTreeMap<&str, (&str, usize, usize)> = BTreeMap::new();
+    let mut pools: Vec<(G, &str, usize, usize)> = Vec::new();
     for (group, label, mark) in marks {
         let Some(mark) = mark else { continue };
-        let pool = pools.entry(group).or_insert((label, 0, 0));
-        pool.1 += usize::from(mark >= crate::model::SOLID_MIN);
-        pool.2 += 1;
+        let index = match pools.iter().position(|p| same(&p.0, &group)) {
+            Some(index) => index,
+            None => {
+                pools.push((group, label, 0, 0));
+                pools.len() - 1
+            }
+        };
+        let pool = &mut pools[index];
+        pool.2 += usize::from(mark >= crate::model::SOLID_MIN);
+        pool.3 += 1;
     }
     let mut rows: Vec<PooledMarkView> = pools
-        .into_values()
-        .filter(|&(_, _, total)| total >= 2)
-        .map(|(label, solid, total)| PooledMarkView {
+        .into_iter()
+        .filter(|&(_, _, _, total)| total >= 2)
+        .map(|(_, label, solid, total)| PooledMarkView {
             label: label.to_string(),
             solid,
             total,
             caption: format!("Solid on {solid} of {total} items"),
         })
         .collect();
-    rows.sort_by(|a, b| b.total.cmp(&a.total).then_with(|| a.label.cmp(&b.label)));
+    rows.sort_by(|a, b| {
+        b.total
+            .cmp(&a.total)
+            .then_with(|| a.label.to_lowercase().cmp(&b.label.to_lowercase()))
+            .then_with(|| a.label.cmp(&b.label))
+    });
+    rows.truncate(POOLED_MARKS_LIMIT);
     rows
 }
 
@@ -2169,7 +2192,7 @@ mod tests {
     }
 
     #[test]
-    fn keys_pool_by_label_across_a_piece_and_an_exercise() {
+    fn keys_pool_across_a_piece_and_an_exercise() {
         let rows = compute_pooled_keys(&[
             item_with_key("Sonata", ItemKind::Piece, "Eb major", 9),
             item_with_key("Scales", ItemKind::Exercise, "Eb major", 6),
@@ -2201,6 +2224,44 @@ mod tests {
         assert_eq!(
             rows.iter().map(|r| r.label.as_str()).collect::<Vec<_>>(),
             ["Slow", "Dotted rhythms"]
+        );
+    }
+
+    #[test]
+    fn enharmonic_keys_pool_into_one_row() {
+        let rows = compute_pooled_keys(&[
+            item_with_key("Sonata", ItemKind::Piece, "Eb major", 9),
+            item_with_key("Scales", ItemKind::Exercise, "D# major", 6),
+        ]);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].total, 2);
+        assert_eq!(
+            rows[0].label,
+            crate::domain::key::Key::parse("Eb major")
+                .expect("a key")
+                .label()
+        );
+    }
+
+    #[test]
+    fn pools_stop_at_five_rows_keeping_the_widest() {
+        let mut items = Vec::new();
+        for (n, width) in [7, 6, 5, 4, 3, 2, 2].into_iter().enumerate() {
+            for i in 0..width {
+                let id = format!("item-{n}-{i}");
+                let mut view = LibraryItemView::fixture(&id, &id, ItemKind::Exercise);
+                view.variations = vec![crate::model::VariationView::fixture(
+                    &format!("v-{n}"),
+                    &format!("Variation {n}"),
+                )
+                .scored(9)];
+                items.push(view);
+            }
+        }
+        let rows = compute_pooled_variations(&items);
+        assert_eq!(
+            rows.iter().map(|r| r.total).collect::<Vec<_>>(),
+            [7, 6, 5, 4, 3]
         );
     }
 
