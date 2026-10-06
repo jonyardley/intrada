@@ -18,7 +18,8 @@ bars, read in Kotlin and Compose.
   `intrada-core` (#2223) rather than port it: a rule ported is a rule that
   drifts.
 - **One way across the bridge.** Screens read the `ViewModel` through `Store`;
-  only `LiveBridge` touches bincode or the UniFFI handle. Effects run off the
+  only `LiveBridge`, `SharedItemStore` and the
+  settings slots touch bincode or a UniFFI handle. Effects run off the
   main thread and post their results back on `Main`.
 - **Persistence is the shared Rust store** (`crates/intrada-store`, #2421),
   reached through the bridge's `StoreFfi`: Kotlin passes the operation's

@@ -1,7 +1,10 @@
 package com.intrada.android.core
 
+import com.intrada.ffi.CoreException
 import com.intrada.ffi.CoreFfi
+import com.intrada.ffi.StoreFfi
 import com.intrada.shared.Event
+import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
@@ -32,4 +35,33 @@ class LiveBridge : CoreBridge {
         Requests.bincodeDeserialize(core.resolve(id, output.bincodeSerialize())).value
 
     override fun view(): ViewModel = ViewModel.bincodeDeserialize(core.view())
+}
+
+/**
+ * The shared Rust store (#2421): the operation's bytes in, the output's bytes out, so the shell
+ * never reads a row. Calls arrive one at a time off the main thread.
+ */
+class SharedItemStore(private val store: StoreFfi, private val log: (String) -> Unit) : ItemStore {
+    override fun run(operation: PersistenceOperation): PersistenceOutput {
+        val answer = store.handle(operation.bincodeSerialize())
+        answer.unreadable.forEach { log("store could not read: $it") }
+        answer.error?.let { log("persistence failed: $it") }
+        return PersistenceOutput.bincodeDeserialize(answer.output)
+    }
+
+    companion object {
+        /**
+         * A file that will not open falls back to memory, so the app still runs; `degraded` says
+         * nothing will be kept, as on iOS.
+         */
+        fun open(path: String, log: (String) -> Unit): Opened =
+            try {
+                Opened(SharedItemStore(StoreFfi.open(path), log), degraded = false)
+            } catch (e: CoreException) {
+                log("store did not open, keeping nothing: $e")
+                Opened(SharedItemStore(StoreFfi.inMemory(), log), degraded = true)
+            }
+    }
+
+    class Opened(val store: SharedItemStore, val degraded: Boolean)
 }

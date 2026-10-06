@@ -11,7 +11,7 @@ interface ItemStore {
     fun run(operation: PersistenceOperation): PersistenceOutput
 }
 
-// Phase A stand-in: SQLite replaces it in Phase B (specs/android-shell.md).
+// Seed mode and tests: the app keeps its notebook in SharedItemStore (#2421).
 class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
     private val items = LinkedHashMap<String, Item>().apply { items.forEach { put(it.id, it) } }
     private val sessions = LinkedHashMap<String, PracticeSession>()
