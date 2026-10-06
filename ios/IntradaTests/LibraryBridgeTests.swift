@@ -1173,6 +1173,52 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(rows.map { $0.sections.map(\.label) }, [[], ["A1"]], "A2 left the set")
   }
 
+  /// One section or link change at a time crosses the bridge, and the core
+  /// builds the lists (#2447).
+  func testRealBridgeTakesOneSectionAndLinkChangeAtATime() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let nocturne = try add(bridge, "Nocturne", .piece)
+    let thirds = try add(bridge, "Thirds", .exercise)
+    let scales = try add(bridge, "Scales", .exercise)
+    func section(_ change: SectionChange) throws -> [SectionView] {
+      _ = try bridge.update(.item(.changeSection(id: nocturne, change: change)))
+      let rendered = try bridge.rendered()
+      XCTAssertNil(rendered.error)
+      return try XCTUnwrap(rendered.items.first { $0.id == nocturne }?.sections)
+    }
+    func link(_ change: LinkChange) throws -> [LinkedExerciseView] {
+      _ = try bridge.update(.item(.changePieceLink(pieceId: nocturne, change: change)))
+      let rendered = try bridge.rendered()
+      XCTAssertNil(rendered.error)
+      return try XCTUnwrap(rendered.items.first { $0.id == nocturne }?.linkedExercises)
+    }
+
+    _ = try section(
+      .save(SectionEdit(id: nil, name: "A", bars: .typed("1 to 8"), kind: .form, targetBpm: "")))
+    let added = try section(
+      .save(SectionEdit(id: nil, name: "B", bars: .blank, kind: .form, targetBpm: "")))
+    XCTAssertEqual(added.map(\.name), ["A", "B"])
+    let (a, b) = (added[0].id, added[1].id)
+    let renamed = try section(
+      .save(SectionEdit(id: b, name: "B section", bars: .blank, kind: .form, targetBpm: "72")))
+    XCTAssertEqual(renamed.map(\.name), ["A", "B section"])
+    XCTAssertEqual(renamed.map(\.targetBpm), [nil, 72])
+    XCTAssertEqual(try section(.arrange(sectionIds: [b, a])).map(\.id), [b, a])
+
+    _ = try link(.set(exerciseId: thirds, wholePiece: true, sectionIds: []))
+    let ticked = try link(.set(exerciseId: scales, wholePiece: false, sectionIds: [a, b]))
+    XCTAssertEqual(ticked.map(\.id), [thirds, scales])
+    XCTAssertEqual(ticked[1].sections.map(\.id), [b, a], "score order, not tick order")
+    XCTAssertEqual(try link(.move(exerciseId: scales, to: 0)).map(\.id), [scales, thirds])
+    XCTAssertEqual(try link(.unlink(exerciseId: thirds)).map(\.id), [scales])
+
+    let removed = try section(.remove(sectionId: a))
+    XCTAssertEqual(removed.map(\.id), [b])
+    let card = try XCTUnwrap(try bridge.rendered().items.first { $0.id == nocturne })
+    XCTAssertEqual(card.linkedExercises.first?.sections.map(\.id), [b], "A took its link")
+  }
+
   /// A drill linked to A2 is offered once A2 is planned, never brought along, and the
   /// key picker offers the written key then the piece's own (#2249).
   func testRealBridgeTheBuilderOffersAPlannedSectionsDrillAndThePiecesKeys() throws {
