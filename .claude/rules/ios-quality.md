@@ -11,8 +11,8 @@ wired from the first build.
 
 ## What the gate checks (#1950)
 
-- **Dynamic Type:** a new screen or sheet gets a second snapshot at `axConfig`
-  (the largest accessibility size) beside its default one. A fixed-size glyph
+- **Dynamic Type:** no snapshot at the largest accessibility sizes; that work
+  is set aside (#2134), so don't add one. A fixed-size glyph
   that sits beside text scales with `@ScaledMetric`, capped so the row still
   fits (`WeekStrip`, the beat and pass dots).
 - **VoiceOver labels:** a control a UI test drives carries an

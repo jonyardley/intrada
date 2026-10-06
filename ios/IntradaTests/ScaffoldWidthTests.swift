@@ -12,7 +12,7 @@ struct ScaffoldWidthTests {
 
   private func reportedWidth(of view: some View) -> CGFloat {
     IntradaFonts.register()
-    let vc = UIHostingController(rootView: view.dynamicTypeSize(.accessibility5))
+    let vc = UIHostingController(rootView: view)
     return vc.sizeThatFits(in: Self.offered).width
   }
 

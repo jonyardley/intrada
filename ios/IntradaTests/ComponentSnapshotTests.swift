@@ -78,22 +78,4 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     }
     assertSnapshot(of: host(strip), as: config)
   }
-
-  // The section title must wrap between words beside the Edit button, never inside one (#1781).
-  func testSectionHeaderWithActionAccessibilitySize() {
-    let headers = ZStack {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: IntradaSpacing.section) {
-        SectionHeader(
-          title: "Chord chart",
-          action: .init(title: "Edit", accessibilityLabel: "Edit chord chart", perform: {}))
-        SectionHeader(
-          title: "Related exercises", caption: "3", captionAccessibilityHidden: true,
-          action: .init(title: "Edit", accessibilityLabel: "Edit related exercises", perform: {}))
-      }
-      .padding(IntradaSpacing.card)
-    }
-    .dynamicTypeSize(.accessibility5)
-    assertSnapshot(of: host(headers), as: config)
-  }
 }

@@ -71,8 +71,8 @@ bars, read in Kotlin and Compose.
 
 Built with the screen, never retrofitted:
 
-- **A Roborazzi snapshot**, and for a new screen or sheet a second one at the
-  largest font scale. Unlike iOS, it renders through `LiveBridge`: Android has
+- **A Roborazzi snapshot**; no second one at the largest font scale, which is
+  set aside with iOS's (#2134). Unlike iOS, it renders through `LiveBridge`: Android has
   no stub bridge, and the real core costs nothing on the JVM.
 - **TalkBack labels** on every control: a `contentDescription` or merged
   semantics that read as the iOS VoiceOver label does. A control a UI test

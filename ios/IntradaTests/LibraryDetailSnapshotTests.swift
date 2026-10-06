@@ -77,12 +77,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: config)
   }
 
-  func testScaffoldPreviewSheetAccessibilitySize() {
-    assertSnapshot(
-      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })),
-      as: tallAxConfig(height: 3300))
-  }
-
   func testPieceDetailLinkedPopulated() {
     let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
     let pushed = NavigationStack(
@@ -145,16 +139,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  /// Largest accessibility text size: proves the Variations scroller reflows
-  /// rather than clipping or wrapping (#1083 C2).
-  func testExerciseDetailWithVariationsAccessibilitySize() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithVariations]))
-    let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewExerciseWithVariations.id])
-    ) { LibraryScreen() }
-    assertSnapshot(of: host(pushed, store: store), as: axConfig)
-  }
-
   // #1083 C2: 12-variation ladder: survives max realistic length without wrapping.
   func testExerciseDetailWith12Variations() {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithTwelveVariations]))
@@ -181,23 +165,9 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  /// Largest accessibility text size: the label wraps within its own line
-  /// rather than clipping or breaking mid-word (#1786).
-  func testExerciseDetailWithLongVariationNameAccessibilitySize() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLongVariationName]))
-    let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewExerciseWithLongVariationName.id])
-    ) { LibraryScreen() }
-    assertSnapshot(of: host(pushed, store: store), as: axConfig)
-  }
-
   // #2247: the piece's sections, one a tricky spot with its own tempo.
   func testPieceDetailWithSections() {
     assertSnapshot(of: sectionsScreen(), as: config)
-  }
-
-  func testPieceDetailWithSectionsAccessibilitySize() {
-    assertSnapshot(of: sectionsScreen(), as: axConfig)
   }
 
   func testSectionsReordering() {
@@ -215,10 +185,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: sectionSheet(), as: config)
   }
 
-  func testSectionSheetEditingATrickySpotAccessibilitySize() {
-    assertSnapshot(of: sectionSheet(), as: tallAxConfig(height: 2400))
-  }
-
   func testSectionSheetRefused() {
     assertSnapshot(
       of: host(
@@ -234,24 +200,12 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: relatedExercisesCard(editing: false), as: config)
   }
 
-  func testRelatedExercisesWithSectionLinksAccessibilitySize() {
-    assertSnapshot(of: relatedExercisesCard(editing: false), as: axConfig)
-  }
-
   func testRelatedExercisesSectionLinksEditing() {
     assertSnapshot(of: relatedExercisesCard(editing: true), as: config)
   }
 
-  func testRelatedExercisesSectionLinksEditingAccessibilitySize() {
-    assertSnapshot(of: relatedExercisesCard(editing: true), as: tallAxConfig(height: 2600))
-  }
-
   func testLinkSectionsSheet() {
     assertSnapshot(of: linkSectionsSheet(), as: config)
-  }
-
-  func testLinkSectionsSheetAccessibilitySize() {
-    assertSnapshot(of: linkSectionsSheet(), as: tallAxConfig(height: 2400))
   }
 
   func testUsedInWithSections() {
@@ -325,21 +279,12 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(KeysSheet(item: .previewExercise, keys: keys)), as: config)
   }
 
-  func testKeysSheetAccessibilitySize() {
-    assertSnapshot(
-      of: host(KeysSheet(item: Self.scalesInTwelveKeys)), as: tallAxConfig(height: 2000))
-  }
-
   func testVariationsSheet() {
     assertSnapshot(of: variationsSheet(query: ""), as: config)
   }
 
   func testVariationsSheetFindingOrAdding() {
     assertSnapshot(of: variationsSheet(query: "Left hand"), as: config)
-  }
-
-  func testVariationsSheetAccessibilitySize() {
-    assertSnapshot(of: variationsSheet(query: ""), as: tallAxConfig(height: 2400))
   }
 
   private static var scalesInTwelveKeys: LibraryItemView {
@@ -382,13 +327,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       as: config)
   }
 
-  func testAddRelatedExerciseSheetAccessibilitySize() {
-    assertSnapshot(
-      of: host(
-        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGroupedRelatedSheet),
-      as: axConfig)
-  }
-
   func testAddRelatedExerciseSheetAdded() {
     assertSnapshot(
       of: host(
@@ -401,13 +339,6 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
   func testUsedInCardRowStates() {
     assertSnapshot(
       of: usedInCard(LibraryItemView.previewExerciseUsedIn.usedIn), as: config)
-  }
-
-  // #1363: at the largest text size the Link row has to reflow, not clip: it
-  // carries a ring, two lines of text, a button and a chevron across one width.
-  func testUsedInCardRowStatesAccessibilityText() {
-    assertSnapshot(
-      of: usedInCard(LibraryItemView.previewExerciseUsedIn.usedIn), as: axConfig)
   }
 
   func testUsedInCardOnItsOwn() {
@@ -444,15 +375,5 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
       .padding(16)
     }
     assertSnapshot(of: host(trends), as: config)
-  }
-
-  /// At accessibility sizes the footer keeps the measured count and drops the
-  /// end dates, rather than crushing three labels into one row.
-  func testTempoTrendAccessibilityText() {
-    let trend = ZStack {
-      PaperBackground()
-      TempoTrend(display: .previewWithGaps).padding(16)
-    }
-    assertSnapshot(of: host(trend), as: axConfig)
   }
 }

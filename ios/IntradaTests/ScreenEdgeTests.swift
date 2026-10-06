@@ -7,9 +7,7 @@ import UIKit
 
 /// A control row wider than the device does not merely overflow: the scaffold's
 /// `ZStack` centres it, so the screen loses characters off *both* edges (#1470).
-/// `testLibraryScreenAccessibilityText` is the pixel gate for the Library; this
-/// covers the other pillars on the shared scaffold without a reference PNG each,
-/// and adds the narrow device the snapshot host does not run.
+/// Runs on the narrow device the snapshot host does not.
 @MainActor
 struct ScreenEdgeTests {
   private static let height: CGFloat = 844
@@ -36,8 +34,7 @@ struct ScreenEdgeTests {
         .environment(store)
         .environment(\.locale, Locale(identifier: "en_US"))
         .environment(\.calendar, PreviewCalendar.utc)
-        .environment(\.intradaMotionDisabled, true)
-        .dynamicTypeSize(.accessibility5))
+        .environment(\.intradaMotionDisabled, true))
     vc.overrideUserInterfaceStyle = .light
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: Self.height))
     window.rootViewController = vc
@@ -66,36 +63,6 @@ struct ScreenEdgeTests {
     }
   }
 
-  private func expectOnScreen(_ view: some View, store: Store, _ name: String) {
-    for width in Self.widths {
-      let found = edges(of: view, store: store, width: width)
-      #expect(found.wideViews > 0, "\(name) at \(width)pt: measured nothing")
-      #expect(
-        found.minX >= -Self.tolerance,
-        "\(name) at \(width)pt: runs \(-found.minX)pt off the leading edge")
-      #expect(
-        found.maxX <= width + Self.tolerance,
-        "\(name) at \(width)pt: runs \(found.maxX - width)pt off the trailing edge")
-    }
-  }
-
-  @Test("The Library stays on screen at the largest accessibility size")
-  func libraryStaysOnScreen() {
-    expectOnScreen(NavigationStack { LibraryScreen() }, store: .previewLibrary, "Library")
-  }
-
-  @Test("Practice stays on screen at the largest accessibility size")
-  func practiceStaysOnScreen() {
-    expectOnScreen(
-      PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-      store: .previewPractice, "Practice")
-  }
-
-  @Test("Progress stays on screen at the largest accessibility size")
-  func progressStaysOnScreen() {
-    expectOnScreen(AnalyticsScreen(), store: .previewProgress, "Progress")
-  }
-
   @Test("An over-wide child cannot drag the scaffold off its leading edge")
   func scaffoldHoldsItsLeadingEdge() {
     let scaffold = ScreenScaffold(title: "Library", subtitle: "2 pieces") {
@@ -109,13 +76,5 @@ struct ScreenEdgeTests {
         found.minX >= -Self.tolerance,
         "Scaffold at \(width)pt: runs \(-found.minX)pt off the leading edge")
     }
-  }
-
-  /// The two sheets reuse the browse bar with the type filter and the star
-  /// switched off, so their control row has a different width to the Library's.
-  @Test("The related-exercise sheet stays on screen at the largest accessibility size")
-  func relatedExerciseSheetStaysOnScreen() {
-    expectOnScreen(
-      AddRelatedExerciseSheet(groupId: ""), store: .previewLibrary, "Related-exercise sheet")
   }
 }

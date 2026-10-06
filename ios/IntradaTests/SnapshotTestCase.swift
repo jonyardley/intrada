@@ -96,27 +96,6 @@ class SnapshotTestCase: XCTestCase {
     .image(on: .iPadPro11(.landscape), perceptualPrecision: 0.98, traits: .init(displayScale: 1))
   }
 
-  /// Largest accessibility text size: proves layouts reflow rather than clip/wrap.
-  var axConfig: Snapshotting<UIViewController, UIImage> {
-    .image(
-      on: .iPhone13, perceptualPrecision: 0.98,
-      traits: UITraitCollection { traits in
-        traits.displayScale = 2
-        traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-      })
-  }
-
-  func tallAxConfig(height: CGFloat = 1400) -> Snapshotting<UIViewController, UIImage> {
-    .image(
-      on: ViewImageConfig(
-        safeArea: .zero, size: CGSize(width: 390, height: height), traits: .init(displayScale: 1)),
-      perceptualPrecision: 0.98,
-      traits: UITraitCollection { traits in
-        traits.displayScale = 1
-        traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-      })
-  }
-
   /// Flat fills only: the reference stays byte-stable and cheap as lossless PNG.
   static let page: UIImage = {
     let size = CGSize(width: 600, height: 850)

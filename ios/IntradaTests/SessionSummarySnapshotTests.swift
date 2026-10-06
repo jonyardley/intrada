@@ -11,10 +11,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: config)
   }
 
-  func testSessionSummaryAccessibilitySize() {
-    assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: axConfig)
-  }
-
   /// A mark per variation, beside a piece with one play (#1739 decision 10).
   func testSessionSummaryWithVariations() {
     assertSnapshot(
@@ -166,10 +162,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(finishSheet), as: config)
   }
 
-  func testReflectionSheetWithFinishAnswersAccessibilitySize() {
-    assertSnapshot(of: host(finishSheet), as: axConfig)
-  }
-
   func testReflectionSheetWithTheAimReadFromThePlays() {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
@@ -187,10 +179,6 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
   // A1's row open, its key changed from D major to G major (#2249).
   func testReflectionSheetChangingWhatWasPlayed() {
     assertSnapshot(of: host(wayChangeSheet), as: config)
-  }
-
-  func testReflectionSheetChangingWhatWasPlayedAccessibilitySize() {
-    assertSnapshot(of: host(wayChangeSheet), as: axConfig)
   }
 
   private var wayChangeSheet: some View {

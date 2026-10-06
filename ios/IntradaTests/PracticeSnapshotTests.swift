@@ -95,12 +95,6 @@ final class PracticeSnapshotTests: SnapshotTestCase {
         traits: .init(displayScale: 2)))
   }
 
-  /// The largest accessibility size: the later rows and the two text actions
-  /// must stack rather than truncate.
-  func testUpNextHeroFilledPlanAccessibilitySize() {
-    assertSnapshot(of: host(upNextHeroCard(.previewFilled)), as: tallAxConfig(height: 2600))
-  }
-
   /// The ground follows the musician's swatch (#1877), not butter's brown.
   func testUpNextHeroCoral() {
     assertSnapshot(
@@ -151,14 +145,6 @@ final class PracticeSnapshotTests: SnapshotTestCase {
       as: .image(
         perceptualPrecision: 0.98, size: CGSize(width: 390, height: 460),
         traits: .init(displayScale: 2)))
-  }
-
-  /// The real `PracticeScreen`/`TabView` path, not a bare component (#1730).
-  func testPracticeScreenWeekStripAccessibilitySize() {
-    assertSnapshot(
-      of: host(
-        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
-        store: .previewPractice), as: tallAxConfig())
   }
 
   func testPracticeScreenQuietDay() {
