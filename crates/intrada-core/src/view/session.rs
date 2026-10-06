@@ -286,6 +286,7 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .planned_duration_secs
             .map(|secs| format_planned_duration(u64::from(secs))),
         group_id: entry.group_id.clone(),
+        removable: !(entry.item_type == ItemKind::Piece && entry.group_id.is_some()),
         planned_section_ids: entry.planned_section_ids(),
         planned_variation_ids: entry.planned_variation_ids.clone(),
         planned_label: labels.plan(entry),
@@ -637,6 +638,8 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
                 related_count: usize::from(grouped && !is_piece),
                 duration_display: String::new(),
                 entries: vec![entry.clone()],
+                piece: None,
+                related: Vec::new(),
                 taken_elsewhere: Vec::new(),
             });
         }
@@ -653,6 +656,17 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
             "—".to_string()
         };
         if block.group_id.is_some() {
+            block.piece = block
+                .entries
+                .iter()
+                .find(|e| e.item_type == ItemKind::Piece)
+                .cloned();
+            block.related = block
+                .entries
+                .iter()
+                .filter(|e| e.item_type != ItemKind::Piece)
+                .cloned()
+                .collect();
             block.taken_elsewhere = entries
                 .iter()
                 .filter(|e| e.group_id != block.group_id)

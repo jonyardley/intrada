@@ -346,6 +346,15 @@ pub struct ReflectionDraft {
     pub answers: ReflectionAnswers,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum BuilderRowRef {
+    Entry { entry_id: String },
+    Header { group_id: String },
+    AddRelated { group_id: String },
+}
+
 /// What the sheet holds before Next. `SubmitReflection` writes them, so a
 /// skipped sheet writes none of them.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -548,6 +557,14 @@ pub enum SessionEvent {
     MoveRelated {
         entry_id: String,
         new_position: usize,
+    },
+    /// A row dropped in the builder's list, between `after` and `before` as the
+    /// list shows them once it is lifted out (#2231). A drop that changes
+    /// nothing is not an error.
+    MoveRow {
+        moved: BuilderRowRef,
+        before: Option<BuilderRowRef>,
+        after: Option<BuilderRowRef>,
     },
     /// Drop a block's related exercises, keeping the piece (becomes standalone).
     KeepOnlyPiece {
@@ -894,6 +911,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             new_position,
         } => building::move_related(model, &entry_id, new_position),
+
+        SessionEvent::MoveRow {
+            moved,
+            before,
+            after,
+        } => building::move_row(model, &moved, before.as_ref(), after.as_ref()),
 
         SessionEvent::KeepOnlyPiece { group_id } => building::keep_only_piece(model, group_id),
 

@@ -50,7 +50,6 @@ ScaffoldSpecView
 ScoreChange
 ScoreHistoryEntry
 SessionsData
-SetlistBlockView
 SortDirection
 SortField
 SuggestedFields
