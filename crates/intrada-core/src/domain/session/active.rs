@@ -451,7 +451,7 @@ pub(super) fn submit_reflection(
 
 fn tidy_answers_note(answers: &mut ReflectionAnswers) {
     answers.note =
-        validation::tidy_note(Some(std::mem::take(&mut answers.note))).unwrap_or_default();
+        validation::trimmed_nonempty(Some(std::mem::take(&mut answers.note))).unwrap_or_default();
 }
 
 /// A note edit moves its points: a span no longer offered is dropped, since

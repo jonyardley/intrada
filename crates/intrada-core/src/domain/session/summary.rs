@@ -136,7 +136,7 @@ pub(super) fn update_entry_notes(
     entry_id: String,
     notes: Option<String>,
 ) -> Command<Effect, Event> {
-    let notes = validation::tidy_note(notes);
+    let notes = validation::trimmed_nonempty(notes);
     if let Err(e) = validation::validate_entry_notes(&notes) {
         model.raise_error(e.to_string());
         return crux_core::render::render();
@@ -168,7 +168,7 @@ pub(super) fn update_session_notes(
         return crux_core::render::render();
     };
 
-    let notes = validation::tidy_note(notes);
+    let notes = validation::trimmed_nonempty(notes);
     if let Err(e) = validation::validate_session_notes(&notes) {
         model.raise_error(e.to_string());
         return crux_core::render::render();

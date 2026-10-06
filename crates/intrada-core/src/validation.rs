@@ -61,7 +61,7 @@ pub const MAX_INSTRUMENT: usize = 100;
 // and storage (#883). Runs before validate_*, so "   " fails "required" just
 // like "" rather than persisting as stored whitespace.
 
-fn trimmed_nonempty(value: Option<String>) -> Option<String> {
+pub(crate) fn trimmed_nonempty(value: Option<String>) -> Option<String> {
     value
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
@@ -185,12 +185,6 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<Option<Option<Tempo>>,
         validate_tags(tags)?;
     }
     input.tempo.as_ref().map(parse_tempo).transpose()
-}
-
-/// Entry, session and reflection notes alike: trimmed, and blank is no note.
-pub fn tidy_note(notes: Option<String>) -> Option<String> {
-    let trimmed = notes?.trim().to_string();
-    (!trimmed.is_empty()).then_some(trimmed)
 }
 
 pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError> {
