@@ -6,6 +6,7 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
+import com.intrada.android.ui.LibraryActions
 import com.intrada.android.ui.LibraryScreen
 import com.intrada.shared.Event
 import com.intrada.shared.LibraryItemView
@@ -38,7 +39,12 @@ class LibraryScreenSnapshotTest {
         val rows = store.libraryRows.value.withIds(view?.visibleIds.orEmpty())
 
         captureRoboImage("src/test/snapshots/library.png") {
-            LibraryScreen(rows, error = null, halted = false, onDismissError = {})
+            LibraryScreen(
+                rows,
+                error = null,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
         }
     }
 
@@ -46,7 +52,12 @@ class LibraryScreenSnapshotTest {
     fun libraryWithAnError() = runTest {
         val rows = loadedRows()
         captureRoboImage("src/test/snapshots/library-error.png") {
-            LibraryScreen(rows, error = ERROR, halted = false, onDismissError = {})
+            LibraryScreen(
+                rows,
+                error = ERROR,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
         }
     }
 

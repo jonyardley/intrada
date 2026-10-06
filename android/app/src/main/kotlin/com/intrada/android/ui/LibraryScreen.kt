@@ -1,6 +1,7 @@
 package com.intrada.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,10 +22,14 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import com.intrada.android.core.Store
 import com.intrada.android.core.withIds
@@ -34,7 +40,12 @@ import com.intrada.shared.Event
 import com.intrada.shared.LibraryItemView
 
 @Composable
-fun LibraryRoute(store: Store, modifier: Modifier = Modifier) {
+fun LibraryRoute(
+    store: Store,
+    onAdd: () -> Unit,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel by store.viewModel.collectAsState()
     val rows by store.libraryRows.collectAsState()
     val halted by store.halted.collectAsState()
@@ -42,7 +53,7 @@ fun LibraryRoute(store: Store, modifier: Modifier = Modifier) {
         rows.withIds(viewModel?.visibleIds.orEmpty()),
         error = viewModel?.error,
         halted = halted,
-        onDismissError = { store.send(Event.ClearError) },
+        LibraryActions(onDismissError = { store.send(Event.ClearError) }, onAdd, onOpen),
         modifier = modifier,
     )
 }
@@ -52,13 +63,14 @@ fun LibraryScreen(
     rows: List<LibraryItemView>,
     error: String?,
     halted: Boolean,
-    onDismissError: () -> Unit,
+    actions: LibraryActions,
     modifier: Modifier = Modifier,
 ) {
-    ScreenScaffold("Library", modifier) {
+    ScreenScaffold("Library", modifier, actions = { AddButton(actions.onAdd) }) {
         Column(Modifier.fillMaxSize()) {
             if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-            if (error != null) GlobalBanner(error, tag = "banner.error", onDismiss = onDismissError)
+            if (error != null)
+                GlobalBanner(error, tag = "banner.error", onDismiss = actions.onDismissError)
             if (rows.isEmpty()) {
                 BasicText(
                     "Pieces and exercises will live here.",
@@ -71,11 +83,36 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
                 ) {
                     items(rows, key = { it.id }) {
-                        LibraryItemCard(it, Modifier.testTag("library.row"))
+                        LibraryItemCard(
+                            it,
+                            Modifier.clickable(onClickLabel = "edit") { actions.onOpen(it.id) }
+                                .testTag("library.row"),
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AddButton(onAdd: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(48.dp)
+            .clickable(onClickLabel = null, role = Role.Button, onClick = onAdd)
+            .clearAndSetSemantics {
+                contentDescription = "Add to your library"
+                role = Role.Button
+                onClick {
+                    onAdd()
+                    true
+                }
+            }
+            .testTag("library.add"),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText("+", style = IntradaFont.title.copy(color = IntradaColor.accent))
     }
 }
 

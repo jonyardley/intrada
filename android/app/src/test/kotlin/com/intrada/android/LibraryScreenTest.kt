@@ -70,7 +70,7 @@ class LibraryScreenTest {
     }
 
     private fun show(store: Store) {
-        compose.setContent { LibraryRoute(store) }
+        compose.setContent { LibraryRoute(store, onAdd = {}, onOpen = {}) }
     }
 
     private fun TestScope.store(items: ItemStore) =

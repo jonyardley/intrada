@@ -53,22 +53,47 @@ import com.intrada.android.core.Store
 fun AppFrame(store: Store, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
-    val current =
-        AppTab.entries.firstOrNull { it.route == entry?.destination?.route } ?: AppTab.LIBRARY
+    val route = entry?.destination?.route
+    val tab = AppTab.entries.firstOrNull { it.route == route }
+    val onTab = route == null || tab != null
     Column(modifier.fillMaxSize()) {
         NavHost(
             navController,
             startDestination = AppTab.LIBRARY.route,
-            modifier = Modifier.weight(1f).consumeWindowInsets(WindowInsets.navigationBars),
+            modifier =
+                Modifier.weight(1f)
+                    .then(
+                        if (onTab) Modifier.consumeWindowInsets(WindowInsets.navigationBars)
+                        else Modifier
+                    ),
         ) {
-            composable(AppTab.LIBRARY.route) { LibraryRoute(store) }
+            composable(AppTab.LIBRARY.route) {
+                LibraryRoute(
+                    store,
+                    onAdd = { navController.navigate(ADD_ROUTE) },
+                    onOpen = { id -> navController.navigate("$EDIT_ROUTE/$id") },
+                )
+            }
+            composable(ADD_ROUTE) {
+                LibraryAddRoute(store, onDone = { navController.popBackStack() })
+            }
+            composable("$EDIT_ROUTE/{id}") { backStack ->
+                LibraryEditRoute(
+                    store,
+                    backStack.arguments?.getString("id").orEmpty(),
+                    onDone = { navController.popBackStack() },
+                )
+            }
             composable(AppTab.PRACTICE.route) { EmptyTab(AppTab.PRACTICE) }
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
             composable(AppTab.PROGRESS.route) { EmptyTab(AppTab.PROGRESS) }
         }
-        TabBar(current, onSelect = { navController.select(it) })
+        if (onTab) TabBar(tab ?: AppTab.LIBRARY, onSelect = { navController.select(it) })
     }
 }
+
+private const val ADD_ROUTE = "library/add"
+private const val EDIT_ROUTE = "library/edit"
 
 private fun NavHostController.select(tab: AppTab) {
     navigate(tab.route) {

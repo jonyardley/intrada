@@ -2,6 +2,7 @@ package com.intrada.android
 
 import com.intrada.android.core.ItemStore
 import com.intrada.shared.Accidental
+import com.intrada.shared.CreateItem
 import com.intrada.shared.ExerciseLink
 import com.intrada.shared.Item
 import com.intrada.shared.ItemKind
@@ -57,6 +58,14 @@ object Fixtures {
                 kind = ItemKind.EXERCISE,
                 composer = null,
             ),
+        )
+
+    val scales =
+        CreateItem(
+            title = "Scales in thirds",
+            kind = ItemKind.EXERCISE,
+            tags = listOf("warm-up"),
+            variationLabels = listOf("Slow", "Swung"),
         )
 
     object FailingItemStore : ItemStore {
