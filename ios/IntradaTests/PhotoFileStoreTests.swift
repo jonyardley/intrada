@@ -36,7 +36,7 @@ struct PhotoFileStoreTests {
     #expect(PhotoFileStore.image(for: Ulid.generate()) == nil)
   }
 
-  /// The id becomes a path component, and GRDB rows skip the core's validator.
+  /// The id becomes a path component, and stored rows skip the core's validator.
   @Test func refusesAnIdThatIsNotAUlid() {
     #expect(throws: PhotoFileStore.Failure.notAPhotoId) {
       try PhotoFileStore.url(for: "../../../etc/passwd")

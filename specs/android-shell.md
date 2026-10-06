@@ -50,8 +50,8 @@ What the core already gives both shells:
 ## How the iOS shell works today, for reference
 
 The Swift store is `@Observable @MainActor`, with effect handlers running
-off the main actor and hopping back to post results. Persistence is GRDB
-raw SQL with positional columns; singletons and the crash-recovery session
+off the main actor and hopping back to post results. Persistence is the
+shared store (#2432); singletons and the crash-recovery session
 blob (`ActiveSession`) live in `UserDefaults` as bincode bytes. The
 metronome is an `AVAudioEngine` host-time click grid. Page OCR runs behind
 the `Recognition` effect via Apple Vision, returning `RecognisedLine`s with
@@ -68,7 +68,7 @@ contract, shown below.
 | Packaging | `cargo swift package` plus UniFFI Swift | `cargo ndk` building `arm64-v8a` and `x86_64` (the second for emulators on x86_64 hosts, CI included) plus UniFFI bindgen's Kotlin target at uniffi 0.29.4, JNA at runtime | The same bridge calls either side, the picker function included. |
 | Types | Swift `SharedTypes` | Kotlin package `com.intrada.shared` via `codegen --lang kotlin`, the bridge in `com.intrada.ffi`, both generated into `android/generated/` | Never hand-edited, on either shell. |
 | Store | `@Observable @MainActor Store` | A Kotlin `Store` class exposing `StateFlow<ViewModel>`, effects dispatched on `Dispatchers.IO`, hopping back to `Main` | Same update, process, resolve loop. |
-| Persistence | GRDB raw SQL, positional columns | The shared Rust store, `crates/intrada-store`, called through the bridge | One schema, one migration list and one set of row converters for both phones (see The shared store). iOS moves onto it in #2432. |
+| Persistence | The shared Rust store, `crates/intrada-store`, called through the bridge (#2432) | The same store | One schema, one migration list and one set of row converters for both phones (see The shared store). |
 | Singletons and crash blob | `UserDefaults` holding bincode bytes | `SharedPreferences` holding the same bincode bytes as Base64 text | Same keys, and the same key-bump rule when the blob shape changes (#1345). |
 | Metronome | `AVAudioEngine` host-time click grid | `AudioTrack` streaming with clicks written at sample positions | Sample-accurate, not timer-driven. Hardest piece; the emulator cannot judge it. Oboe via the NDK only if a real device measures unacceptable latency. |
 | Page OCR | Apple Vision behind `Recognition` | ML Kit on-device text recognition behind the same `Recognition` effect | ML Kit returns blocks; the shell splits them into `RecognisedLine`s with geometry. The core still decides field assignment. |
@@ -104,10 +104,10 @@ GRDB store.
   phone passes in, whose `handle` takes the operation's bincode and
   returns the output's bincode with the unreadable values. The phone
   calls it off the main thread, one request at a time.
-- **Android only for now.** The object sits behind `intrada-ffi`'s
-  `store` feature, which the iPhone build never turns on, so the
-  iPhone build does not carry a second SQLite while GRDB is linked. The
-  iPhone switch is #2432.
+- **Both phones.** The object sits behind `intrada-ffi`'s `store`
+  feature, which both builds turn on. The iPhone moved onto it in #2432,
+  opening the `intrada.sqlite` GRDB wrote in place; GRDB is gone, and a
+  database the last GRDB build wrote is kept as a test fixture.
 - **Settings and the crash blob** stay out of the store: Android keeps
   them in `SharedPreferences` as Base64 of the bincode bytes, under the
   iPhone's keys built from the core's `*_blob_version()`, and clears

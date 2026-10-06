@@ -736,12 +736,5 @@ private struct TestError: Error {}
 
 /// An `ItemStore` that always throws — drives the failure path (#816).
 private struct FailingStore: ItemStore {
-  func loadItems() throws -> [Item] { throw TestError() }
-  func save(_ item: Item) throws { throw TestError() }
-  func save(_ items: [Item]) throws { throw TestError() }
-  func delete(id: String, deletedAt: String) throws { throw TestError() }
-  func loadSessions() throws -> [PracticeSession] { throw TestError() }
-  func saveSession(_ session: PracticeSession) throws { throw TestError() }
-  func loadVariations() throws -> [Variation] { throw TestError() }
-  func save(_ variations: [Variation]) throws { throw TestError() }
+  func handle(_ operation: PersistenceOperation) throws -> PersistenceOutput { throw TestError() }
 }

@@ -1,6 +1,6 @@
 //! The legacy and unknown-value rows are shapes shipped builds wrote, copied
 //! from the iOS store tests that pinned them (`LegacyEntryPlaysTests`,
-//! `LibraryStoreTests`), never written to match this decoder (#1256). The bad
+//! `LibraryStoreTests`, deleted in #2432), never written to match this decoder (#1256). The bad
 //! times, the clamps and the unknown play modality are new cases.
 
 use super::*;

@@ -36,9 +36,6 @@ packages:
   SnapshotTesting:
     url: https://github.com/pointfreeco/swift-snapshot-testing
     exactVersion: "1.19.2"
-  GRDB:
-    url: https://github.com/groue/GRDB.swift
-    exactVersion: "7.11.0"
 
 targets:
   Intrada:
@@ -83,8 +80,6 @@ targets:
         product: Sentry
       - package: Sentry
         product: SentrySwiftUI
-      - package: GRDB
-        product: GRDB
     scheme:
       testTargets:
         - IntradaTests

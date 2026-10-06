@@ -72,7 +72,7 @@ Sweep: `simplicity.*`, `activity.*`, and the `hotspots_*` and `churn` lists.
 **Data integrity.** Can the musician's record be lost or corrupted without
 anyone being told?
 
-1. Where does a failed write go quiet: the offline path, the bridge, the GRDB
+1. Where does a failed write go quiet: the offline path, the bridge, the store
    migrations, the crash-recovery blob?
 2. Does every migration replay on a database from each earlier release?
 3. Do the timestamps and the last-write-wins merge agree between shell and

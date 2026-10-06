@@ -31,7 +31,7 @@ struct SentryReleaseTests {
 
   @Test("this build can name itself")
   func namesTheRunningBundle() throws {
-    let bundle = Bundle(for: LibraryStore.self)
+    let bundle = Bundle(for: SharedItemStore.self)
     let identifier = try #require(bundle.bundleIdentifier)
     let name = try #require(SentryRelease.name(for: bundle))
     #expect(name.hasPrefix("\(identifier)@"))

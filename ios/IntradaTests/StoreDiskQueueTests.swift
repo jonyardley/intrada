@@ -98,23 +98,10 @@ private final class ThreadRecordingStore: ItemStore, @unchecked Sendable {
 
   private func record() { lock.withLock { recorded.append(Thread.isMainThread) } }
 
-  func loadItems() throws -> [Item] {
+  func handle(_ operation: PersistenceOperation) throws -> PersistenceOutput {
     record()
-    return []
+    return .ack
   }
-  func save(_ item: Item) throws { record() }
-  func save(_ items: [Item]) throws { record() }
-  func delete(id: String, deletedAt: String) throws { record() }
-  func loadSessions() throws -> [PracticeSession] {
-    record()
-    return []
-  }
-  func saveSession(_ session: PracticeSession) throws { record() }
-  func loadVariations() throws -> [Variation] {
-    record()
-    return []
-  }
-  func save(_ variations: [Variation]) throws { record() }
 }
 
 /// A save slow enough that a load not made to wait would overtake it.
@@ -125,24 +112,20 @@ private final class SlowSaveStore: ItemStore, @unchecked Sendable {
 
   private func record(_ call: String) { lock.withLock { recorded.append(call) } }
 
-  func loadItems() throws -> [Item] {
-    record("load")
-    return []
+  func handle(_ operation: PersistenceOperation) throws -> PersistenceOutput {
+    switch operation {
+    case .loadItems:
+      record("load")
+      return .items([])
+    case .saveItem:
+      Thread.sleep(forTimeInterval: 0.05)
+      record("save")
+    case .loadSessions:
+      record("sessions")
+      return .sessions([])
+    default:
+      record("other")
+    }
+    return .ack
   }
-  func save(_ item: Item) throws {
-    Thread.sleep(forTimeInterval: 0.05)
-    record("save")
-  }
-  func save(_ items: [Item]) throws { record("save") }
-  func delete(id: String, deletedAt: String) throws { record("delete") }
-  func loadSessions() throws -> [PracticeSession] {
-    record("sessions")
-    return []
-  }
-  func saveSession(_ session: PracticeSession) throws { record("saveSession") }
-  func loadVariations() throws -> [Variation] {
-    record("variations")
-    return []
-  }
-  func save(_ variations: [Variation]) throws { record("saveVariations") }
 }

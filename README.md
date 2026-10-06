@@ -14,7 +14,7 @@ The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQ
 │  Store: Event in,    │ ←─────────────────── │  (Crux, no I/O)  │
 │  ViewModel out        │    Effects           └──────────────────┘
 └──────────────────────┘                               │
-                                                       │ GRDB (on-device)
+                                                       │ intrada-store
                                                        ▼
                                                 ┌──────────────┐
                                                 │  SQLite      │
@@ -22,11 +22,11 @@ The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQ
                                                 └──────────────┘
 ```
 
-Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all business logic with zero side effects. Events go in, effects come out. The native SwiftUI shell is a dumb pipe: it sends `Event`s, fulfils persistence effects via GRDB, and renders the `ViewModel`. No domain logic lives in Swift.
+Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all business logic with zero side effects. Events go in, effects come out. The native SwiftUI shell is a dumb pipe: it sends `Event`s, fulfils persistence effects through the shared Rust store (`intrada-store`), and renders the `ViewModel`. No domain logic lives in Swift.
 
 - **Shell**: SwiftUI (iOS 17.0+), bindings generated via UniFFI + facet typegen
 - **Core**: Crux 0.20 (Rust), zero I/O
-- **Database**: on-device GRDB/SQLite, local-first
+- **Database**: on-device SQLite through `intrada-store`, shared by both phones, local-first
 
 ## Prerequisites
 
@@ -94,7 +94,7 @@ specs/                # Design specs for major features
 
 ## Data storage
 
-- **On-device (GRDB/SQLite)**: local-first source of truth for items and sessions — the app works fully offline. `updated_at` + soft-delete tombstones on every table.
+- **On-device (SQLite, `intrada-store`)**: local-first source of truth for items and sessions, so the app works fully offline. `updated_at` + soft-delete tombstones on every table.
 - **iOS UserDefaults**: crash-recovery of an in-progress session, and the persisted library sort order.
 - **IDs**: client-minted ULIDs.
 

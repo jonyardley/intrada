@@ -977,7 +977,7 @@ ios-package profile="debug" slices="all":
         all) where="--platforms ios" ;;
         *) echo "✗ slices must be sim or all, not '{{slices}}'" >&2; exit 1 ;;
     esac
-    cargo swift package --name IntradaCoreFFI $where --lib-type static --features uniffi $rel --accept-all
+    cargo swift package --name IntradaCoreFFI $where --lib-type static --features uniffi,store $rel --accept-all
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
@@ -1016,7 +1016,7 @@ _ios-sync slices="sim":
 
 [private]
 _ios-src-hash:
-    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1
+    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-store/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml crates/intrada-store/Cargo.toml Cargo.lock -type f -exec shasum {} \; | shasum | cut -d' ' -f1
 
 # ── Android ──
 
