@@ -1070,6 +1070,8 @@ pub struct ReflectionView {
     pub stopped_at: String,
     /// One per markable play, in play order (#2230).
     pub tempos: Vec<ReflectionTempoView>,
+    /// The item's plays summed, so a resume cannot skew it (#2352).
+    pub elapsed_secs: u64,
 }
 
 /// A sheet row's tempo as it opens, counted in `click`'s unit (#2230).

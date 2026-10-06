@@ -756,6 +756,7 @@ pub fn build_active_session_view(
             answers: draft.answers.clone(),
             reading: draft.reading.clone(),
             stopped_at: draft.now.to_rfc3339(),
+            elapsed_secs: session::item_seconds(current),
             // An untouched click sat on the item's own bar, so an unstamped
             // row in a quaver bar counts in quavers (#2304).
             tempos: reflection_tempos(

@@ -298,6 +298,7 @@ pub(super) fn update_reflection_draft(
     let entry = active.current_entry();
     let sections = super::finish::named_sections(model, &entry.item_id);
     answers.marks.retain(|mark| mark.score != 0);
+    tidy_answers_note(&mut answers);
     keep_offered_points(&mut answers, &sections);
     for way in &mut answers.ways {
         way.key = written_key_as_none(model, &entry.item_id, way.key);
@@ -346,6 +347,7 @@ pub(super) fn submit_reflection(
     let entry_id = entry.id.clone();
     // The sheet's selector reads 0 as no mark, here and in the draft.
     answers.marks.retain(|mark| mark.score != 0);
+    tidy_answers_note(&mut answers);
     // Checked whole before the entry closes: once it has moved on, a refusal
     // would leave the sheet nothing to retry (#1945).
     if let Err(e) = validation::validate_entry_notes(&Some(answers.note.clone())) {
@@ -445,6 +447,11 @@ pub(super) fn submit_reflection(
         ));
     }
     Command::all(commands)
+}
+
+fn tidy_answers_note(answers: &mut ReflectionAnswers) {
+    answers.note =
+        validation::tidy_note(Some(std::mem::take(&mut answers.note))).unwrap_or_default();
 }
 
 /// A note edit moves its points: a span no longer offered is dropped, since

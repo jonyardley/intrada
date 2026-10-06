@@ -234,6 +234,7 @@ class BridgeRoundTripTest {
             "2026-09-27T09:05:00+00:00",
             bridge.view().activeSession?.reflection?.stoppedAt,
         )
+        assertEquals(300uL, bridge.view().activeSession?.reflection?.elapsedSecs)
     }
 
     // A play names a key and two variations on Kotlin's own encoder, and the new library-wide

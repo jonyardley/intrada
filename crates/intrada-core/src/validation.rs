@@ -187,6 +187,12 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<Option<Option<Tempo>>,
     input.tempo.as_ref().map(parse_tempo).transpose()
 }
 
+/// Entry, session and reflection notes alike: trimmed, and blank is no note.
+pub fn tidy_note(notes: Option<String>) -> Option<String> {
+    let trimmed = notes?.trim().to_string();
+    (!trimmed.is_empty()).then_some(trimmed)
+}
+
 pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError> {
     if let Some(ref n) = notes {
         if exceeds_chars(n, MAX_NOTES) {
