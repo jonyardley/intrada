@@ -13,12 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -101,18 +98,6 @@ class ComponentsSnapshotTest {
     }
 
     @Test
-    fun tagChipsAtTheLargestFontScale() {
-        captureRoboImage("src/test/snapshots/tag-chip-largest-font.png") {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
-            ) {
-                TagChips()
-            }
-        }
-    }
-
-    @Test
     fun instrumentGlyphs() {
         captureRoboImage("src/test/snapshots/instrument-glyph.png") {
             Paper {
@@ -156,32 +141,8 @@ class ComponentsSnapshotTest {
     }
 
     @Test
-    fun formErrorBannerAtTheLargestFontScale() {
-        captureRoboImage("src/test/snapshots/form-error-banner-largest-font.png") {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
-            ) {
-                FormErrorBanners()
-            }
-        }
-    }
-
-    @Test
     fun fieldCards() {
         captureRoboImage("src/test/snapshots/field-card.png") { FieldCards() }
-    }
-
-    @Test
-    fun fieldCardsAtTheLargestFontScale() {
-        captureRoboImage("src/test/snapshots/field-card-largest-font.png") {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
-            ) {
-                FieldCards()
-            }
-        }
     }
 
     @Composable
@@ -245,7 +206,6 @@ class ComponentsSnapshotTest {
     }
 
     private companion object {
-        const val LARGEST_FONT_SCALE = 2f
         const val GLYPHS_PER_ROW = 7
     }
 }

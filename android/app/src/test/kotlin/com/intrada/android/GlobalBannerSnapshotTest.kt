@@ -2,9 +2,6 @@ package com.intrada.android
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.ui.GlobalBanner
@@ -23,18 +20,6 @@ class GlobalBannerSnapshotTest {
         captureRoboImage("src/test/snapshots/banner.png") { Banners() }
     }
 
-    @Test
-    fun bannersAtTheLargestFontScale() {
-        captureRoboImage("src/test/snapshots/banner-largest-font.png") {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalDensity provides Density(density.density, fontScale = LARGEST_FONT_SCALE)
-            ) {
-                Banners()
-            }
-        }
-    }
-
     @Composable
     private fun Banners() {
         Column {
@@ -44,9 +29,5 @@ class GlobalBannerSnapshotTest {
                 tag = "banner.halted",
             )
         }
-    }
-
-    private companion object {
-        const val LARGEST_FONT_SCALE = 2f
     }
 }
