@@ -697,11 +697,13 @@ struct SessionBuilderScreen: View {
     guard let from = source.first,
       let drop = BuilderRow.drop(in: rows, from: from, to: destination)
     else { return }
-    send(drop)
+    // A drop home changes nothing, so it plays no tick (#1413).
+    let order = setlist?.entries.map(\.id)
+    store.send(drop, onSuccess: .selection) { $0.buildingSetlist?.entries.map(\.id) != order }
   }
 
-  private func send(_ move: Event) {
-    store.send(move, onSuccess: .selection)
+  private func send(_ event: Event) {
+    store.send(event, onSuccess: .selection)
   }
 
   private func cancel() {

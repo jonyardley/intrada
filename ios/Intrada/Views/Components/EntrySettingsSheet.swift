@@ -79,7 +79,7 @@ struct EntrySettingsSheet: View {
           }
           repsSection
           durationSection
-          if entry.removable {
+          if live.removable {
             removeButton
           }
         }
