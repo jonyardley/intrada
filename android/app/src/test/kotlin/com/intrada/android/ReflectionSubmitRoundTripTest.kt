@@ -84,7 +84,7 @@ class ReflectionSubmitRoundTripTest {
     }
 
     @Test
-    fun aRowSetByHandReopensOnThatNumber() {
+    fun aRowSetByHandCarriesThatNumber() {
         val bridge = LiveBridge()
         val playId =
             sheetOpen(bridge, TempoReading(120.toUShort(), clickSounding = true, click = sixEight))
@@ -102,6 +102,27 @@ class ReflectionSubmitRoundTripTest {
         assertTrue(row?.setByHand ?: false)
     }
 
+    @Test
+    fun aHandSetRowSubmitsInItsClicksUnit() {
+        val bridge = LiveBridge()
+        val playId =
+            sheetOpen(bridge, TempoReading(120.toUShort(), clickSounding = true, click = sixEight))
+
+        bridge.update(
+            Event.Session(
+                SessionEvent.SubmitReflection(
+                    "2026-10-06T10:05:30Z",
+                    answers(DraftTempo(playId, 150.toUShort(), sixEight), note = ""),
+                )
+            )
+        )
+
+        val play = bridge.view().summary?.entries?.firstOrNull()?.plays?.lastOrNull()
+        assertEquals(75.toUShort(), play?.achievedTempo)
+        assertEquals(sixEight, play?.clickPattern)
+        assertEquals(150.toUShort(), play?.tempoDisplay)
+    }
+
     private fun sheetOpen(bridge: LiveBridge, reading: TempoReading): String {
         val load =
             bridge.update(Event.StartApp).single {
@@ -115,7 +136,10 @@ class ReflectionSubmitRoundTripTest {
         bridge.update(
             Event.Session(SessionEvent.PrepareReflection("2026-10-06T10:05:00Z", reading))
         )
-        return bridge.view().activeSession?.entries?.firstOrNull()?.plays?.lastOrNull()?.id.orEmpty()
+        return checkNotNull(
+                bridge.view().activeSession?.entries?.firstOrNull()?.plays?.lastOrNull()
+            )
+            .id
     }
 
     private fun answers(tempo: DraftTempo, note: String) =
