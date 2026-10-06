@@ -27,11 +27,10 @@ struct MoveRowBridgeTests {
     let bridge = RowsBridge()
     let entries = try building(bridge, titles: ["Clair de lune", "Gymnopédie No. 1"])
     let (first, second) = (entries[0], entries[1])
+    let moved: BuilderRowRef = .entry(entryId: first.id)
 
     _ = try bridge.update(
-      .session(
-        .moveRow(
-          moved: .entry(entryId: first.id), before: nil, after: .entry(entryId: second.id))))
+      .session(.moveRow(moved: moved, before: nil, after: .entry(entryId: second.id))))
 
     let order = try bridge.rendered().buildingSetlist?.entries.map(\.id)
     #expect(order == [second.id, first.id])
