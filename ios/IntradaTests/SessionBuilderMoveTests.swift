@@ -3,7 +3,8 @@ import Testing
 
 @testable import Intrada
 
-/// Which move a drop in the session builder's list asks the core for (#1957).
+/// What a drop in the session builder's list tells the core (#1957, #2231):
+/// the rule for what it means is the core's.
 /// Rows: 0 Clair de Lune alone, 1 the block's header, 2 Scales, 3 Broken
 /// arpeggios, 4 "Add a related exercise", 5 Sight-reading alone.
 @MainActor
@@ -34,42 +35,39 @@ struct SessionBuilderMoveTests {
     #expect(rows.map(\.id) == ["setlist-1", "header-g1", "g-a", "g-b", "add-g1", "g-s"])
   }
 
-  @Test(
-    "a drop becomes the move the core is sent",
-    arguments: [
-      (5, 0, SessionBuilderScreen.BuilderMove.unit(entryId: "g-s", to: 0)),
-      (5, 3, .unit(entryId: "g-s", to: 1)),
-      (1, 6, .unit(entryId: "g-a", to: 2)),
-      (0, 2, .unit(entryId: "setlist-1", to: 1)),
-      (3, 2, .related(entryId: "g-b", to: 0)),
-      (2, 4, .related(entryId: "g-a", to: 1)),
-    ])
-  func aDropBecomesAMove(from: Int, destination: Int, expected: SessionBuilderScreen.BuilderMove) {
-    #expect(Row.move(in: rows, from: from, to: destination) == expected)
+  /// A row by id; the generated row type is not `Sendable`, so a test argument
+  /// cannot carry it.
+  enum R: Sendable {
+    case e(String)
+    case h(String)
+    case a(String)
+
+    var ref: BuilderRowRef {
+      switch self {
+      case .e(let id): .entry(entryId: id)
+      case .h(let id): .header(groupId: id)
+      case .a(let id): .addRelated(groupId: id)
+      }
+    }
   }
 
   @Test(
-    "a drop that changes nothing sends nothing",
+    "a drop names the dragged row and the rows it lands between",
     arguments: [
-      (1, 3, "a header dropped among its own exercises stays put"),
-      (1, 1, "a header dropped at its own place stays put"),
-      (2, 0, "a related exercise dropped outside its block snaps home"),
-      (2, 2, "a related exercise dropped where it was"),
-      (0, 0, "a standalone dropped where it was"),
-      (4, 0, "the add row does not move"),
-      (9, 0, "a row that is not there"),
-    ])
-  func aDropThatChangesNothing(from: Int, destination: Int, why: String) {
-    #expect(Row.move(in: rows, from: from, to: destination) == nil, "\(why)")
+      (5, 0, R.e("g-s"), R.e("setlist-1"), nil),
+      (5, 3, .e("g-s"), .e("g-b"), .e("g-a")),
+      (1, 6, .h("g1"), nil, .e("g-s")),
+      (0, 2, .e("setlist-1"), .e("g-a"), .h("g1")),
+      (2, 5, .e("g-a"), .e("g-s"), .a("g1")),
+    ] as [(Int, Int, R, R?, R?)])
+  func aDropNamesItsNeighbours(from: Int, destination: Int, moved: R, before: R?, after: R?) {
+    #expect(
+      Row.drop(in: rows, from: from, to: destination)
+        == .session(.moveRow(moved: moved.ref, before: before?.ref, after: after?.ref)))
   }
 
-  @Test("each move names the event it sends")
-  func eachMoveNamesItsEvent() {
-    #expect(
-      SessionBuilderScreen.BuilderMove.unit(entryId: "g-s", to: 1).event
-        == .session(.moveUnit(entryId: "g-s", newPosition: 1)))
-    #expect(
-      SessionBuilderScreen.BuilderMove.related(entryId: "g-b", to: 0).event
-        == .session(.moveRelated(entryId: "g-b", newPosition: 0)))
+  @Test("a drop from a row that is not there sends nothing")
+  func aDropFromNowhere() {
+    #expect(Row.drop(in: rows, from: 9, to: 0) == nil)
   }
 }

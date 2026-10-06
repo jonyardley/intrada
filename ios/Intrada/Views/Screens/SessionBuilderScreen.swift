@@ -75,14 +75,6 @@ struct SessionBuilderScreen: View {
       }
     }
 
-    func belongs(to block: SetlistBlockView) -> Bool {
-      switch self {
-      case .nested(let b, _, _, _), .addRelated(let b):
-        b.groupId != nil && b.groupId == block.groupId
-      case .standalone, .header: false
-      }
-    }
-
     static func rows(
       for blocks: [SetlistBlockView], collapsed collapsedGroups: Swift.Set<String>,
       isEditing: Bool
@@ -94,7 +86,7 @@ struct SessionBuilderScreen: View {
           continue
         }
         let collapsed = collapsedGroups.contains(groupId)
-        let related = block.entries.filter { $0.itemType == .exercise }
+        let related = block.related
         let childRows = collapsed ? 0 : related.count + (isEditing ? 0 : 1)
         result.append(
           .header(block, collapsed: collapsed, position: childRows > 0 ? .top : .single))
@@ -110,63 +102,26 @@ struct SessionBuilderScreen: View {
       return result
     }
 
-    /// The move a List drop asks the core for (#1957), or nil when it changes
-    /// nothing.
-    static func move(in rows: [BuilderRow], from: Int, to destination: Int) -> BuilderMove? {
+    var ref: BuilderRowRef {
+      switch self {
+      case .standalone(_, let entry), .nested(_, let entry, _, _): .entry(entryId: entry.id)
+      case .header(let block, _, _): .header(groupId: block.groupId ?? "")
+      case .addRelated(let block): .addRelated(groupId: block.groupId ?? "")
+      }
+    }
+
+    /// A List drop as the core reads it: the dragged row and its neighbours
+    /// once it is lifted out (#2231).
+    static func drop(in rows: [BuilderRow], from: Int, to destination: Int) -> Event? {
       guard rows.indices.contains(from) else { return nil }
       var remaining = rows
       let moved = remaining.remove(at: from)
-      let slot = (from < destination ? destination - 1 : destination)
-        .clamped(to: 0...remaining.count)
-
-      switch moved {
-      case .standalone(let block, _), .header(let block, _, _):
-        // Dropping back among the unit's own remaining rows means "stay put".
-        if slot < remaining.count, remaining[slot].belongs(to: block) { return nil }
-        var target = remaining[..<slot].filter(\.startsUnit).count
-        // A drop INSIDE a foreign unit's span counts that unit's header as
-        // passed; when dragging upward the intent is "before that unit", so
-        // step back one, or swapping with the block above needs a
-        // pixel-precise drop on its header row.
-        if destination <= from, slot < remaining.count, !remaining[slot].startsUnit {
-          target = max(0, target - 1)
-        }
-        let currentUnit = rows[..<from].filter(\.startsUnit).count
-        guard target != currentUnit, let entryId = block.entries.first?.id else { return nil }
-        return .unit(entryId: entryId, to: target)
-      case .nested(let block, let entry, let localIndex, _):
-        // A drop outside the source block's own nested run is a no-op (the row
-        // snaps home): silently converting it into a within-block move would
-        // reorder siblings the user never touched.
-        let nestedIndices = remaining.indices.filter { index in
-          if case .nested(let b, _, _, _) = remaining[index] {
-            return b.groupId == block.groupId
-          }
-          return false
-        }
-        guard let first = nestedIndices.first, let last = nestedIndices.last,
-          (first...(last + 1)).contains(slot)
-        else { return nil }
-        let target = slot - first
-        guard target != localIndex else { return nil }
-        return .related(entryId: entry.id, to: target)
-      case .addRelated:
-        return nil
-      }
-    }
-  }
-
-  enum BuilderMove: Equatable {
-    case unit(entryId: String, to: Int)
-    case related(entryId: String, to: Int)
-
-    var event: Event {
-      switch self {
-      case .unit(let entryId, let to):
-        .session(.moveUnit(entryId: entryId, newPosition: UInt64(to)))
-      case .related(let entryId, let to):
-        .session(.moveRelated(entryId: entryId, newPosition: UInt64(to)))
-      }
+      let slot = min(from < destination ? destination - 1 : destination, remaining.count)
+      return .session(
+        .moveRow(
+          moved: moved.ref,
+          before: slot < remaining.count ? remaining[slot].ref : nil,
+          after: slot > 0 ? remaining[slot - 1].ref : nil))
     }
   }
 
@@ -446,7 +401,7 @@ struct SessionBuilderScreen: View {
             Text(subtitle).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
           }
-          if let piece = pieceEntry(block) { planLine(piece) }
+          if let piece = block.piece { planLine(piece) }
         }
         Spacer(minLength: IntradaSpacing.controlGap)
       }
@@ -454,10 +409,10 @@ struct SessionBuilderScreen: View {
       .accessibilityAddTraits(.isButton)
       .accessibilityLabel(
         "\(block.pieceTitle ?? "Related exercises"), \(relatedLabel(block))"
-          + (pieceEntry(block).map(spokenPlan) ?? "")
+          + (block.piece.map(spokenPlan) ?? "")
       )
-      .lastTimeAction(pieceEntry(block).flatMap(lastTime)) {
-        if let piece = pieceEntry(block) { applyLastTime(piece) }
+      .lastTimeAction(block.piece.flatMap(lastTime)) {
+        if let piece = block.piece { applyLastTime(piece) }
       }
       .accessibilityHint(collapsed ? "Expands the block" : "Collapses the block")
       .accessibilityAction(named: "Move up") { moveUnit(block, by: -1) }
@@ -577,10 +532,6 @@ struct SessionBuilderScreen: View {
     setlist?.lastTimes.first { $0.entryId == entry.id }
   }
 
-  private func pieceEntry(_ block: SetlistBlockView) -> SetlistEntryView? {
-    block.entries.first { $0.itemType == .piece }
-  }
-
   private func applyLastTime(_ entry: SetlistEntryView) {
     store.send(.session(.applyLastTime(entryId: entry.id)), onSuccess: .impact)
   }
@@ -596,7 +547,7 @@ struct SessionBuilderScreen: View {
 
   private func blockMenu(_ block: SetlistBlockView, groupId: String) -> some View {
     Menu {
-      if let piece = block.entries.first(where: { $0.itemType == .piece }) {
+      if let piece = block.piece {
         Button("Piece settings") {
           configuringEntry = EntrySettingsTarget(id: piece.id, entry: piece)
         }
@@ -726,7 +677,7 @@ struct SessionBuilderScreen: View {
     _ entry: SetlistEntryView, toLocal destLocal: Int, in block: SetlistBlockView
   ) {
     guard destLocal >= 0, destLocal < block.relatedCount else { return }
-    send(.related(entryId: entry.id, to: destLocal))
+    send(.session(.moveRelated(entryId: entry.id, newPosition: UInt64(destLocal))))
   }
 
   /// VoiceOver path for unit reorder (the pointer path is the List's native
@@ -739,28 +690,22 @@ struct SessionBuilderScreen: View {
       blocks.indices.contains(from + delta),
       let entryId = block.entries.first?.id
     else { return }
-    send(.unit(entryId: entryId, to: from + delta))
+    send(.session(.moveUnit(entryId: entryId, newPosition: UInt64(from + delta))))
   }
 
   private func moveRows(from source: IndexSet, to destination: Int) {
     guard let from = source.first,
-      let move = BuilderRow.move(in: rows, from: from, to: destination)
+      let drop = BuilderRow.drop(in: rows, from: from, to: destination)
     else { return }
-    send(move)
+    send(drop)
   }
 
-  private func send(_ move: BuilderMove) {
-    store.send(move.event, onSuccess: .selection)
+  private func send(_ move: Event) {
+    store.send(move, onSuccess: .selection)
   }
 
   private func cancel() {
     if entries.isEmpty { dismiss() } else { confirmingCancel = true }
-  }
-}
-
-extension Comparable {
-  fileprivate func clamped(to range: ClosedRange<Self>) -> Self {
-    min(max(self, range.lowerBound), range.upperBound)
   }
 }
 
