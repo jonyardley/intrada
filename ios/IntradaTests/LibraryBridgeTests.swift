@@ -1209,7 +1209,7 @@ final class LibraryBridgeTests: XCTestCase {
     _ = try link(.set(exerciseId: thirds, wholePiece: true, sectionIds: []))
     let ticked = try link(.set(exerciseId: scales, wholePiece: false, sectionIds: [a, b]))
     XCTAssertEqual(ticked.map(\.id), [thirds, scales])
-    XCTAssertEqual(ticked[1].sections.map(\.id), [b, a], "score order, not tick order")
+    XCTAssertEqual(ticked[1].sections.map(\.id), [b, a])
     XCTAssertEqual(try link(.move(exerciseId: scales, to: 0)).map(\.id), [scales, thirds])
     XCTAssertEqual(try link(.unlink(exerciseId: thirds)).map(\.id), [scales])
 

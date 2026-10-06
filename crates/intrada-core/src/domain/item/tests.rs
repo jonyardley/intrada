@@ -4506,3 +4506,33 @@ fn section_and_link_changes_round_trip_on_ffi_bincode_wire() {
         ));
     }
 }
+
+#[test]
+fn a_deleted_exercise_never_blocks_a_link_change_on_its_piece() {
+    let mut model = model_with_three_drills();
+    let _ = send_cmd(
+        &mut model,
+        ItemEvent::Delete {
+            id: "ex-2".to_string(),
+        },
+    );
+    assert_eq!(card(&model), ["ex-1", "ex-3"]);
+
+    let mut cmd = change_link(
+        &mut model,
+        LinkChange::Move {
+            exercise_id: "ex-3".to_string(),
+            to: 0,
+        },
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(card(&model), ["ex-3", "ex-1"]);
+    let left_behind = item(&model, "piece-1")
+        .exercise_links
+        .iter()
+        .find(|l| l.exercise_id == "ex-2")
+        .expect("the deleted drill's row");
+    assert!(left_behind.deleted_at.is_some());
+}

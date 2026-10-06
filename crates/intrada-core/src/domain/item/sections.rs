@@ -84,12 +84,9 @@ pub(crate) fn change_section(
             };
             match &draft.id {
                 None => drafts.push(draft),
-                Some(section_id) => {
+                Some(_) => {
                     let Some(at) = drafts.iter().position(|d| d.id == draft.id) else {
-                        let error = LibraryError::NotFound {
-                            id: section_id.clone(),
-                        };
-                        return refuse(model, &error);
+                        return refuse(model, &section_gone());
                     };
                     drafts[at] = draft;
                 }
@@ -105,7 +102,7 @@ pub(crate) fn change_section(
                     .iter()
                     .position(|d| d.id.as_deref() == Some(section_id.as_str()))
                 else {
-                    return refuse(model, &LibraryError::NotFound { id: section_id });
+                    return refuse(model, &section_gone());
                 };
                 arranged.push(drafts.remove(at));
             }
@@ -113,4 +110,11 @@ pub(crate) fn change_section(
         }
     }
     write_sections(model, id, drafts)
+}
+
+fn section_gone() -> LibraryError {
+    LibraryError::Validation {
+        field: "sections".to_string(),
+        message: "That section is no longer on this piece".to_string(),
+    }
 }

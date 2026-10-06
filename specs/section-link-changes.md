@@ -65,8 +65,9 @@ not per drag step, and Android follows it; a move event would have no sender.
 
 ### Links
 
-The piece's card lists each linked exercise once, in the order of its first
-live link. A change works on that card order.
+The piece's card lists each linked exercise still in the library once, in
+the order of its first live link. A change works on that card order, so a
+deleted exercise's leftover link rows are dropped rather than refusing it.
 
 - **Set** replaces one exercise's links in place on the card: the whole piece
   first when ticked, then its sections in score order, whatever order they

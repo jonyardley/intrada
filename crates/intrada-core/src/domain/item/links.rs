@@ -341,8 +341,8 @@ pub(super) fn choose_exercise_pieces(
     set_exercise_links(model, exercise_id, targets)
 }
 
-/// Works on the card: each linked exercise once, in the order of its first
-/// live link, with all its links kept together under it.
+/// Works on the card: each linked exercise still in the library once, in the
+/// order of its first live link, with all its links kept together under it.
 pub(super) fn change_piece_link(
     model: &mut Model,
     piece_id: String,
@@ -352,8 +352,20 @@ pub(super) fn change_piece_link(
         model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
         return crux_core::render::render();
     };
+    // A deleted exercise leaves its link rows behind; the card the musician
+    // sees skips them, so the rebuilt set drops them too.
+    let in_library = |id: &str| {
+        model
+            .items
+            .iter()
+            .any(|i| i.id == id && i.kind == ItemKind::Exercise)
+    };
     let mut card: Vec<(String, Vec<Option<String>>)> = Vec::new();
-    for link in piece.live_links() {
+    for link in piece
+        .live_links()
+        .into_iter()
+        .filter(|l| in_library(&l.exercise_id))
+    {
         match card.iter_mut().find(|(id, _)| id == &link.exercise_id) {
             Some((_, rows)) => rows.push(link.section_id.clone()),
             None => card.push((link.exercise_id.clone(), vec![link.section_id.clone()])),
