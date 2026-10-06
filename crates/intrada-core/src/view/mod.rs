@@ -253,15 +253,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         ),
         practice_defaults: model.practice_defaults,
         first_run: build_first_run_view(model),
-        variations: model
-            .variations
-            .iter()
-            .filter(|v| v.deleted_at.is_none())
-            .map(|v| crate::model::VariationOptionView {
-                id: v.id.clone(),
-                label: v.label.clone(),
-            })
-            .collect(),
+        variations: cached.variation_options.clone(),
     }
 }
 
@@ -377,9 +369,39 @@ fn drill_offers(
 #[cfg(test)]
 mod tests {
     use super::photo_recognition_view;
+    use crate::app::{Event, Intrada};
+    use crate::model::Model;
+    use crux_core::App;
+
     use crate::domain::types::Tempo;
     use crate::model::PhotoRecognition;
     use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};
+
+    #[test]
+    fn a_variation_says_which_items_use_it() {
+        let mut model = Model::default();
+        let _ = Intrada.update(Event::LoadSampleData, &mut model);
+        let ids: Vec<String> = model.variations.iter().map(|v| v.id.clone()).collect();
+        for item in model.items.iter_mut() {
+            item.variation_ids.clear();
+        }
+        model.items[0].variation_ids = vec![ids[0].clone(), ids[1].clone()];
+        model.items[1].variation_ids = vec![ids[1].clone()];
+        let first_title = model.items[0].title.clone();
+
+        let usage = |id: &str| {
+            Intrada
+                .rendered(&model)
+                .variations
+                .iter()
+                .find(|v| v.id == id)
+                .and_then(|v| v.usage.clone())
+        };
+
+        assert_eq!(usage(&ids[0]), Some(format!("On {first_title}")));
+        assert_eq!(usage(&ids[1]).as_deref(), Some("On 2 items"));
+        assert_eq!(usage(&ids[2]), None);
+    }
 
     fn text(value: &str) -> Option<TextDraftField> {
         Some(TextDraftField {

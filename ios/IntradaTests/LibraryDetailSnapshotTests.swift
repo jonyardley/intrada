@@ -297,6 +297,7 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
         key: key, label: KeyHelper.display(key) ?? "", latestScore: score,
         caption: score.map { "\($0) of 10" } ?? "Not yet played")
     }
+    item.keysCaption = "3 of 12 solid"
     return item
   }
 
@@ -310,12 +311,14 @@ final class LibraryDetailSnapshotTests: SnapshotTestCase {
         id: "v5", label: "Left hand alone, eyes closed", latestScore: nil, scoreHistory: [],
         caption: "Not yet played"),
     ]
+    item.variationsCaption = "1 of 2 solid"
     let library = [
-      VariationOptionView(id: "v1", label: "Hands separately"),
-      VariationOptionView(id: "v2", label: "Dotted rhythms"),
-      VariationOptionView(id: "v3", label: "Back to front"),
-      VariationOptionView(id: "v4", label: "Left hand leaps only"),
-      VariationOptionView(id: "v5", label: "Left hand alone, eyes closed"),
+      VariationOptionView(id: "v1", label: "Hands separately", usage: "On 3 items"),
+      VariationOptionView(id: "v2", label: "Dotted rhythms", usage: nil),
+      VariationOptionView(id: "v3", label: "Back to front", usage: nil),
+      VariationOptionView(id: "v4", label: "Left hand leaps only", usage: "On 2 items"),
+      VariationOptionView(
+        id: "v5", label: "Left hand alone, eyes closed", usage: "On \(item.title)"),
     ]
     return host(VariationsSheet(item: item, query: query, previewLibrary: library))
   }

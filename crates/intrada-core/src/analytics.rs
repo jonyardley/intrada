@@ -208,10 +208,6 @@ pub(crate) fn analytics_from_changes(
     }
 }
 
-/// A key or variation counts towards coverage once its latest mark reaches
-/// this, of 10 (#1762).
-const COVERAGE_SOLID_MIN: u8 = 8;
-
 fn coverage_marks(i: &LibraryItemView) -> impl Iterator<Item = Option<u8>> + '_ {
     i.keys
         .iter()
@@ -245,7 +241,7 @@ pub fn compute_variation_coverage(
             item_id: i.id.clone(),
             title: i.title.clone(),
             solid: coverage_marks(i)
-                .filter(|m| m.is_some_and(|m| m >= COVERAGE_SOLID_MIN))
+                .filter(|m| m.is_some_and(|m| m >= crate::model::SOLID_MIN))
                 .count(),
             total: coverage_marks(i).count(),
         })

@@ -113,6 +113,8 @@ pub(super) fn build_library_item_views(
             .get(item.id.as_str())
             .map_or(&[][..], Vec::as_slice);
 
+        let variations = build_variation_views(item, &model.variations, plays);
+        let keys = build_key_views(item, plays);
         items.push(LibraryItemView {
             id: item.id.clone(),
             item_type: item.kind.clone(),
@@ -140,9 +142,13 @@ pub(super) fn build_library_item_views(
             scaffold_preview,
             chord_chart: item.chord_chart.clone(),
             metre: item.metre.clone(),
-            variations: build_variation_views(item, &model.variations, plays),
+            keys_caption: crate::model::solid_caption(keys.iter().map(|k| k.latest_score)),
+            variations_caption: crate::model::solid_caption(
+                variations.iter().map(|v| v.latest_score),
+            ),
+            variations,
             photo_id: item.photo_id.clone(),
-            keys: build_key_views(item, plays),
+            keys,
             key_selection: item
                 .key
                 .as_ref()

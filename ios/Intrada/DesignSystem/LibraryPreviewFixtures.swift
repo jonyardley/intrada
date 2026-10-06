@@ -98,6 +98,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
@@ -159,6 +160,7 @@
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
@@ -172,6 +174,7 @@
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: nil, sections: [])
     }
 
@@ -186,6 +189,7 @@
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
@@ -215,6 +219,7 @@
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 10, modality: .minor, spelling: "G"), sections: [])
     }
 
@@ -270,6 +275,7 @@
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 7, modality: .major, spelling: "Db"), sections: [])
     }
 
@@ -305,6 +311,7 @@
             sections: []),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
@@ -353,6 +360,7 @@
             offersLink: false, wholePiece: false, sections: []),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 0, modality: .major, spelling: "C"), sections: [])
     }
 
@@ -375,6 +383,7 @@
             id: "variation-bb", label: "B♭", latestScore: nil, scoreHistory: [],
             caption: "Not yet played"),
         ], photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: "1 of 3 solid",
         keySelection: nil, sections: [])
     }
 
@@ -399,6 +408,7 @@
             latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
             caption: solid ? "9 of 10" : (current ? "6 of 10" : "Not yet played"))
         }, photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: "4 of 12 solid",
         keySelection: nil, sections: [])
     }
 
@@ -417,6 +427,7 @@
             id: "rung-\(index)", label: label, latestScore: nil,
             scoreHistory: [], caption: "Not yet played")
         }, photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: "0 of 3 solid",
         keySelection: nil, sections: [])
     }
 
@@ -437,6 +448,7 @@
             latestScore: index == 0 ? 8 : nil, scoreHistory: [],
             caption: index == 0 ? "8 of 10" : "Not yet played")
         }, photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: "1 of 3 solid",
         keySelection: nil, sections: [])
     }
 
@@ -450,6 +462,7 @@
         practice: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variations: [], photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: KeyWheelSelection(ring: 2, modality: .major, spelling: "D"), sections: []
       )
     }
@@ -497,6 +510,7 @@
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
+        keysCaption: nil, variationsCaption: nil,
         keySelection: keySelection, sections: [])
     }
 

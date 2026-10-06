@@ -7,9 +7,9 @@ import Testing
 struct VariationChoiceTests {
   private static var library: [VariationOptionView] {
     [
-      VariationOptionView(id: "v1", label: "Hands separately"),
-      VariationOptionView(id: "v2", label: "Dotted rhythms"),
-      VariationOptionView(id: "v3", label: "Left hand alone, eyes closed"),
+      VariationOptionView(id: "v1", label: "Hands separately", usage: nil),
+      VariationOptionView(id: "v2", label: "Dotted rhythms", usage: nil),
+      VariationOptionView(id: "v3", label: "Left hand alone, eyes closed", usage: nil),
     ]
   }
 
