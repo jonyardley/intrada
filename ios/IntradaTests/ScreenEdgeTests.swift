@@ -7,7 +7,7 @@ import UIKit
 
 /// A control row wider than the device does not merely overflow: the scaffold's
 /// `ZStack` centres it, so the screen loses characters off *both* edges (#1470).
-/// Runs on the narrow device the snapshot host does not.
+/// Checks the scaffold at 390pt and the 320pt the snapshot host never renders.
 @MainActor
 struct ScreenEdgeTests {
   private static let height: CGFloat = 844
@@ -20,7 +20,6 @@ struct ScreenEdgeTests {
 
   private struct Edges {
     var minX: CGFloat
-    var maxX: CGFloat
     /// Guards against a vacuous pass: SwiftUI backs many views with no `UIView`
     /// of their own, so a traversal that found nothing must fail, not read zero.
     var wideViews: Int
@@ -42,7 +41,7 @@ struct ScreenEdgeTests {
     vc.view.layoutIfNeeded()
     defer { window.rootViewController = nil }
 
-    var result = Edges(minX: 0, maxX: width, wideViews: 0)
+    var result = Edges(minX: 0, wideViews: 0)
     walk(vc.view, root: vc.view, width: width, into: &result)
     return result
   }
@@ -52,11 +51,6 @@ struct ScreenEdgeTests {
       let frame = subview.convert(subview.bounds, to: root)
       if frame.width > 0 && frame.height > 0 {
         result.minX = min(result.minX, frame.minX)
-        // A horizontal scroller is meant to run past the edge; its content
-        // being wider than the screen is the point, not a layout failure.
-        if !(view is UIScrollView) {
-          result.maxX = max(result.maxX, frame.maxX)
-        }
         if frame.width > width / 2 { result.wideViews += 1 }
       }
       walk(subview, root: root, width: width, into: &result)

@@ -212,10 +212,8 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
 - **Sentry** crash reporting from the first build.
 - **Accessibility** per screen, VoiceOver labels and Dynamic Type, built as
   each screen lands and gated since #1950:
-  - **Dynamic Type:** every screen and sheet with a snapshot has one more at the
-    largest accessibility text size (`axConfig`), so any change to the layout at
-    that size fails the snapshot job until the reference is re-recorded and
-    looked at.
+  - **Dynamic Type:** no snapshot at the largest accessibility size; that work
+    is set aside (#2134).
   - **VoiceOver labels:** every button an XCUITest drives is found by its
     `accessibilityIdentifier` (`screen.control`, such as `builder.addItems`) and
     has its spoken label asserted (`control(_:spoken:)` in `SpokenLabel.swift`),
