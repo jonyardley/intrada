@@ -94,7 +94,7 @@ specs/                # Design specs for major features
 
 ## Data storage
 
-- **On-device (SQLite, `intrada-store`)**: local-first source of truth for items and sessions — the app works fully offline. `updated_at` + soft-delete tombstones on every table.
+- **On-device (SQLite, `intrada-store`)**: local-first source of truth for items and sessions, so the app works fully offline. `updated_at` + soft-delete tombstones on every table.
 - **iOS UserDefaults**: crash-recovery of an in-progress session, and the persisted library sort order.
 - **IDs**: client-minted ULIDs.
 
