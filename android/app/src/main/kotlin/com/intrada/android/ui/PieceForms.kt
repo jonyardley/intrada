@@ -25,7 +25,6 @@ class SectionFormState(val existing: SectionView?) {
         SectionChange.Save(SectionEdit(existing?.id, name, BarsInput.Typed(bars), kind, bpm))
 }
 
-// What the Bars field opens with: "19 to 20", "12", or empty.
 private val SectionView.barsText: String
     get() {
         val first = firstBar ?: return ""

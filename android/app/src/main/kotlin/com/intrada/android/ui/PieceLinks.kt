@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ internal fun RelatedExercisesCard(
     actions: PieceActions,
 ) {
     val linked = item.linkedExercises
+    SideEffect { if (linked.isEmpty()) state.editingLinks = false }
     val editing = state.editingLinks && linked.isNotEmpty()
     Column(Modifier.fillMaxWidth().cardSurface()) {
         SectionHeader(

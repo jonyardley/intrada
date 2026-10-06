@@ -33,14 +33,20 @@ fun LinkSectionsRoute(
     modifier: Modifier = Modifier,
 ) {
     val rows by store.libraryRows.collectAsState()
-    val piece = rows.firstOrNull { it.id == pieceId }
-    val exercise = piece?.linkedExercises?.firstOrNull { it.id == exerciseId }
-    if (piece == null || exercise == null) {
-        MissingItem("Sections", NO_LONGER_THERE, modifier)
-        return
-    }
-    val state = remember(pieceId, exerciseId) { LinkSectionsState(exercise) }
     var closing by remember { mutableStateOf(false) }
+    val found =
+        rows
+            .firstOrNull { it.id == pieceId }
+            ?.let { piece ->
+                piece.linkedExercises.firstOrNull { it.id == exerciseId }?.let { piece to it }
+            }
+    val (piece, exercise) =
+        rememberLastFound(found, closing)
+            ?: run {
+                MissingItem("Sections", NO_LONGER_THERE, modifier)
+                return
+            }
+    val state = remember(pieceId, exerciseId) { LinkSectionsState(exercise) }
     LinkSectionsScreen(
         piece,
         state,

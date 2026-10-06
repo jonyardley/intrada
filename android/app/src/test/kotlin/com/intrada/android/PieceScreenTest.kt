@@ -1,10 +1,19 @@
 package com.intrada.android
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
@@ -13,13 +22,20 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.ExercisePickerRoute
+import com.intrada.android.ui.ItemFormState
 import com.intrada.android.ui.LinkSectionsRoute
+import com.intrada.android.ui.NO_LONGER_THERE
+import com.intrada.android.ui.PieceActions
 import com.intrada.android.ui.PieceNavigation
 import com.intrada.android.ui.PieceRoute
+import com.intrada.android.ui.PieceScreen
+import com.intrada.android.ui.PieceScreenState
 import com.intrada.android.ui.SectionRoute
+import com.intrada.android.ui.sendAccepted
 import com.intrada.shared.BarsInput
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
+import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.SectionChange
 import com.intrada.shared.SectionEdit
@@ -132,7 +148,8 @@ class PieceScreenTest {
         var done = false
         compose.setContent { ExercisePickerRoute(store, PIECE, onDone = { done = true }) }
 
-        compose.onNodeWithContentDescription("Hanon No. 1").performClick()
+        compose.onNodeWithContentDescription("Hanon No. 1").assertIsOff().performClick()
+        compose.onNodeWithContentDescription("Hanon No. 1").assertIsOn()
         compose.onNodeWithTag("exercisePicker.done").performClick()
         store.settle()
 
@@ -194,6 +211,100 @@ class PieceScreenTest {
         assertTrue(store.libraryRows.value.none { it.id == PIECE })
     }
 
+    @Test
+    fun aRefusedReorderStaysInReorderWithTheCoresReason() = runTest {
+        val store = startedStore()
+        store.addSections("A", "B", "C")
+        val b = store.piece().sections[1].id
+        compose.setContent { PieceRoute(store, PIECE, navigation()) }
+
+        compose.onNodeWithTag("sections.header").performClick()
+        store.send(Event.Item(ItemEvent.ChangeSection(PIECE, SectionChange.Remove(b))))
+        store.settle()
+        compose.onNodeWithTag("sections.header").performClick()
+        store.settle()
+
+        compose.onNodeWithContentDescription("Done reordering sections").assertExists()
+        compose.onNodeWithTag("banner.error").assertExists()
+        assertEquals(listOf("A", "C"), store.piece().sections.map { it.name })
+    }
+
+    @Test
+    fun aRefusedDeleteLeavesThePageOpen() = runTest {
+        val store = startedStore()
+        val stale = store.piece()
+        store.send(Event.Item(ItemEvent.Delete(PIECE)))
+        store.settle()
+        var closed = false
+        compose.setContent {
+            val viewModel by store.viewModel.collectAsState()
+            PieceScreen(
+                stale,
+                remember { PieceScreenState() },
+                PieceActions(
+                    navigation(onClosed = { closed = true }),
+                    send = { store.sendAccepted(it) },
+                    onDismissError = {},
+                ),
+                error = viewModel?.error,
+            )
+        }
+
+        compose.onNodeWithTag("piece.delete").performScrollTo().performClick()
+        compose.onNodeWithTag("piece.delete.confirm").performClick()
+        store.settle()
+
+        assertFalse(closed)
+        compose.onNodeWithTag("banner.error").assertExists()
+    }
+
+    @Test
+    fun aPieceTurnedIntoAnExerciseIsNoLongerOnThePiecePage() = runTest {
+        val store = startedStore()
+        compose.setContent { PieceRoute(store, PIECE, navigation()) }
+        compose.onNodeWithTag("piece.delete").assertExists()
+
+        store.send(
+            ItemFormState.of(store.piece()).apply { kind = ItemKind.EXERCISE }.editEvent(PIECE)
+        )
+        store.settle()
+
+        assertEquals(ItemKind.EXERCISE, store.piece().itemType)
+        compose.onNodeWithText(NO_LONGER_THERE).assertExists()
+        compose.onNodeWithTag("piece.delete").assertDoesNotExist()
+    }
+
+    @Test
+    fun sectionsAndLinksSurviveAReload() = runTest {
+        val disk = InMemoryItemStore(Fixtures.library)
+        val store = startedStore(disk)
+        var step by mutableIntStateOf(0)
+        compose.setContent {
+            key(step) {
+                when (step) {
+                    0,
+                    1 -> SectionRoute(store, PIECE, null, onDone = { step += 1 })
+                    else -> ExercisePickerRoute(store, PIECE, onDone = { step += 1 })
+                }
+            }
+        }
+
+        listOf("Exposition", "Coda").forEach { name ->
+            compose.onNodeWithTag("sectionSheet.name").performTextInput(name)
+            compose.onNodeWithTag("sectionSheet.save").performClick()
+            store.settle()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithContentDescription("Hanon No. 1").performClick()
+        compose.onNodeWithTag("exercisePicker.done").performClick()
+        store.settle()
+        assertEquals(3, step)
+
+        val reloaded = startedStore(disk)
+        assertEquals(listOf("Exposition", "Coda"), reloaded.piece().sections.map { it.name })
+        assertEquals(listOf(HANON), reloaded.piece().linkedExercises.map { it.id })
+    }
+
     private fun navigation(onClosed: () -> Unit = {}) =
         PieceNavigation(
             onEdit = {},
@@ -227,11 +338,13 @@ class PieceScreenTest {
         settle()
     }
 
-    private suspend fun TestScope.startedStore(): Store {
+    private suspend fun TestScope.startedStore(
+        disk: InMemoryItemStore = InMemoryItemStore(Fixtures.library)
+    ): Store {
         val store =
             Store(
                 LiveBridge(),
-                InMemoryItemStore(Fixtures.library),
+                disk,
                 this,
                 StandardTestDispatcher(testScheduler),
                 log = {},

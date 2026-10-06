@@ -69,17 +69,31 @@ fun PieceRoute(
     val rows by store.libraryRows.collectAsState()
     val viewModel by store.viewModel.collectAsState()
     val halted by store.halted.collectAsState()
-    val item = rows.firstOrNull { it.id == id }
+    var closing by remember { mutableStateOf(false) }
+    val found = rows.firstOrNull { it.id == id && it.itemType == ItemKind.PIECE }
+    val item = rememberLastFound(found, closing)
     if (item == null) {
         MissingItem("Piece", NO_LONGER_THERE, modifier)
         return
     }
     val state = remember(id) { PieceScreenState() }
+    val closingNavigation =
+        PieceNavigation(
+            navigation.onEdit,
+            navigation.onSection,
+            navigation.onAddExercises,
+            navigation.onChooseSections,
+            navigation.onOpenExercise,
+            onClosed = {
+                closing = true
+                navigation.onClosed()
+            },
+        )
     PieceScreen(
         item,
         state,
         PieceActions(
-            navigation,
+            closingNavigation,
             send = { store.sendAccepted(it) },
             onDismissError = { store.send(Event.ClearError) },
         ),
@@ -90,6 +104,17 @@ fun PieceRoute(
 }
 
 internal const val NO_LONGER_THERE = "This item is no longer in your library."
+
+private class LastFound<T : Any> {
+    var value: T? = null
+}
+
+@Composable
+internal fun <T : Any> rememberLastFound(found: T?, closing: Boolean): T? {
+    val last = remember { LastFound<T>() }
+    if (found != null) last.value = found
+    return if (closing) last.value else found
+}
 
 @Composable
 fun PieceScreen(

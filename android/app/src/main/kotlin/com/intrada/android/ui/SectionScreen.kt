@@ -36,14 +36,15 @@ fun SectionRoute(
     modifier: Modifier = Modifier,
 ) {
     val rows by store.libraryRows.collectAsState()
-    val item = rows.firstOrNull { it.id == pieceId }
-    val existing = item?.sections?.firstOrNull { it.id == sectionId }
-    if (item == null || (sectionId != null && existing == null)) {
+    var closing by remember { mutableStateOf(false) }
+    val piece = rows.firstOrNull { it.id == pieceId }
+    val existing = piece?.sections?.firstOrNull { it.id == sectionId }
+    val item = rememberLastFound(piece?.takeIf { sectionId == null || existing != null }, closing)
+    if (item == null) {
         MissingItem("Section", NO_LONGER_THERE, modifier)
         return
     }
     val form = remember(pieceId, sectionId) { SectionFormState(existing) }
-    var closing by remember { mutableStateOf(false) }
     fun send(change: SectionChange) {
         if (closing) return
         form.formError = store.sendFromForm(Event.Item(ItemEvent.ChangeSection(pieceId, change)))

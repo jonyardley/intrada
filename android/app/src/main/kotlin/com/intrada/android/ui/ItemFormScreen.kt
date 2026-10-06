@@ -149,13 +149,7 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
     val rows by store.libraryRows.collectAsState()
     val item = rows.firstOrNull { it.id == id }
     if (item == null) {
-        ScreenScaffold("Edit", modifier) {
-            BasicText(
-                "This item is no longer in your library.",
-                Modifier.padding(IntradaSpacing.card),
-                style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
-            )
-        }
+        MissingItem("Edit", NO_LONGER_THERE, modifier)
         return
     }
     val form = remember(id) { ItemFormState.of(item) }

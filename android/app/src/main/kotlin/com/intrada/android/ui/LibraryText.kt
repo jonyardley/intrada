@@ -4,7 +4,7 @@ import com.intrada.shared.LibraryItemView
 import com.intrada.shared.LinkedExerciseView
 import com.intrada.shared.LinkedSectionView
 
-// ── Formatting the core's values for display, as `LibraryItemView+Display.swift` does on iOS ──
+// ── Display formatting ──
 
 internal fun tempoDisplay(marking: String?, bpm: UShort?): String? =
     listOfNotNull(marking?.takeIf { it.isNotEmpty() }, bpm?.let { "♩ = $it" })

@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -227,7 +229,7 @@ internal fun TickRow(
             .clearAndSetSemantics {
                 contentDescription = caption?.let { "$label, $it" } ?: label
                 role = Role.Checkbox
-                selected = chosen
+                toggleableState = ToggleableState(chosen)
                 testTag = tag
                 onClick {
                     onToggle()
