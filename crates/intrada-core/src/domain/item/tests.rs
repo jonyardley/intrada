@@ -4021,3 +4021,477 @@ fn picker_events_round_trip_on_ffi_bincode_wire() {
         },
     ));
 }
+
+// ── One section or link change at a time (#2447) ──
+
+use crate::domain::link::LinkChange;
+use crate::domain::section::SectionChange;
+
+fn change_section(model: &mut Model, change: SectionChange) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::ChangeSection {
+            id: "piece-1".to_string(),
+            change,
+        },
+    )
+}
+
+fn change_link(model: &mut Model, change: LinkChange) -> Command<Effect, Event> {
+    send_cmd(
+        model,
+        ItemEvent::ChangePieceLink {
+            piece_id: "piece-1".to_string(),
+            change,
+        },
+    )
+}
+
+fn live_names(model: &Model) -> Vec<String> {
+    live_sections(model).into_iter().map(|s| s.name).collect()
+}
+
+/// A piece with sections A, B and C, saved through the whole-list write.
+fn model_with_abc() -> Model {
+    let mut model = model_with_piece_and_exercise();
+    let _ = update_sections(
+        &mut model,
+        "piece-1",
+        ["A", "B", "C"]
+            .into_iter()
+            .map(|n| row(None, n, BarsInput::Blank))
+            .collect(),
+    );
+    model
+}
+
+fn set_links(exercise: &str, whole_piece: bool, sections: &[&str]) -> LinkChange {
+    LinkChange::Set {
+        exercise_id: exercise.to_string(),
+        whole_piece,
+        section_ids: sections.iter().map(|s| s.to_string()).collect(),
+    }
+}
+
+fn card(model: &Model) -> Vec<String> {
+    view_of(model, "piece-1")
+        .linked_exercises
+        .into_iter()
+        .map(|e| e.id)
+        .collect()
+}
+
+/// The nocturne with three drills, each linked to the whole piece, in order.
+fn model_with_three_drills() -> Model {
+    let mut model = linking_model();
+    let mut scales = make_exercise("ex-3");
+    scales.title = "Scales".to_string();
+    model.items.extend([scales]);
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", None),
+            existing("ex-2", None),
+            existing("ex-3", None),
+        ],
+    );
+    model
+}
+
+#[test]
+fn saving_a_new_section_adds_it_after_the_last() {
+    let mut model = model_with_abc();
+
+    let mut cmd = change_section(
+        &mut model,
+        SectionChange::Save(row(None, "Coda", typed("40 to 48"))),
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(live_names(&model), ["A", "B", "C", "Coda"]);
+    assert_eq!(live_sections(&model)[3].bars, bars(40, 48));
+}
+
+#[test]
+fn saving_a_section_with_its_id_changes_it_in_place() {
+    let mut model = model_with_abc();
+    let b = section_id(&model, "B");
+
+    let _ = change_section(
+        &mut model,
+        SectionChange::Save(SectionEdit {
+            kind: SectionKind::TroubleSpot,
+            target_bpm: "60".to_string(),
+            ..row(Some(&b), "B section", typed("9 to 16"))
+        }),
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert_eq!(live_names(&model), ["A", "B section", "C"]);
+    let saved = &live_sections(&model)[1];
+    assert_eq!(saved.id, b);
+    assert_eq!(saved.bars, bars(9, 16));
+    assert_eq!(saved.kind, SectionKind::TroubleSpot);
+    assert_eq!(saved.target_bpm, Some(60));
+}
+
+#[test]
+fn saving_leaves_the_other_sections_as_stored() {
+    let mut model = model_with_abc();
+    let a = section_id(&model, "A");
+    let c = section_id(&model, "C");
+    let piece = model.items.iter_mut().find(|i| i.id == "piece-1").unwrap();
+    let stored = piece.sections.iter_mut().find(|s| s.id == c).unwrap();
+    stored.bars = bars(17, 24);
+    stored.target_bpm = Some(72);
+    stored.name = "C".repeat(crate::validation::MAX_SECTION_NAME + 1);
+
+    let _ = change_section(
+        &mut model,
+        SectionChange::Save(row(Some(&a), "A1", BarsInput::Blank)),
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    let kept = live_sections(&model).into_iter().find(|s| s.id == c).unwrap();
+    assert_eq!(kept.bars, bars(17, 24));
+    assert_eq!(kept.target_bpm, Some(72));
+    assert_eq!(live_sections(&model)[0].name, "A1");
+}
+
+#[test]
+fn saving_a_section_that_is_gone_is_refused() {
+    let mut model = model_with_abc();
+    let b = section_id(&model, "B");
+    let _ = change_section(&mut model, SectionChange::Remove { section_id: b.clone() });
+
+    for id in [b.as_str(), "s-stranger"] {
+        let mut cmd = change_section(
+            &mut model,
+            SectionChange::Save(row(Some(id), "B again", BarsInput::Blank)),
+        );
+
+        assert!(model.last_error.is_some(), "{id} accepted");
+        assert!(!persists_anything(&mut cmd));
+        assert_eq!(live_names(&model), ["A", "C"]);
+    }
+}
+
+#[test]
+fn a_bad_section_is_refused_and_marks_the_sections_field() {
+    let mut model = model_with_abc();
+
+    let mut cmd = change_section(
+        &mut model,
+        SectionChange::Save(row(None, "D", typed("16-1"))),
+    );
+
+    assert!(model.last_error.is_some());
+    assert_eq!(
+        model.last_error_target,
+        Some(FormErrorTarget::Piece {
+            field: FormErrorField::Sections
+        })
+    );
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(live_names(&model), ["A", "B", "C"]);
+}
+
+#[test]
+fn removing_a_section_takes_its_drill_link_but_not_the_drill() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![existing("ex-1", None), existing("ex-2", Some("s-a2"))],
+    );
+
+    let mut cmd = change_section(
+        &mut model,
+        SectionChange::Remove {
+            section_id: "s-a2".to_string(),
+        },
+    );
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(live_names(&model), ["A1"]);
+    assert_eq!(live_pairs(&model, "piece-1"), vec![pair("ex-1", None)]);
+    assert!(model.items.iter().any(|i| i.id == "ex-2"));
+}
+
+#[test]
+fn removing_a_section_that_is_already_gone_changes_nothing() {
+    let mut model = model_with_abc();
+
+    let mut cmd = change_section(
+        &mut model,
+        SectionChange::Remove {
+            section_id: "s-stranger".to_string(),
+        },
+    );
+
+    assert!(model.last_error.is_none());
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(live_names(&model), ["A", "B", "C"]);
+}
+
+#[test]
+fn arranging_saves_the_new_order_and_removes_any_left_out() {
+    let mut model = model_with_abc();
+    let (a, b, c) = (
+        section_id(&model, "A"),
+        section_id(&model, "B"),
+        section_id(&model, "C"),
+    );
+
+    let mut cmd = change_section(
+        &mut model,
+        SectionChange::Arrange {
+            section_ids: vec![c, a],
+        },
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(live_names(&model), ["C", "A"]);
+    let removed = piece_sections(&model).into_iter().find(|s| s.id == b).unwrap();
+    assert!(removed.deleted_at.is_some());
+}
+
+#[test]
+fn arranging_a_list_that_is_not_this_items_is_refused_whole() {
+    let mut model = model_with_abc();
+    let a = section_id(&model, "A");
+
+    for ids in [
+        vec![a.clone(), "s-from-another-piece".to_string()],
+        vec![a.clone(), a.clone()],
+    ] {
+        let mut cmd = change_section(&mut model, SectionChange::Arrange { section_ids: ids });
+
+        assert!(model.last_error.is_some());
+        assert!(!persists_anything(&mut cmd));
+        assert_eq!(live_names(&model), ["A", "B", "C"]);
+    }
+}
+
+#[test]
+fn ticking_sections_saves_them_in_score_order_whatever_the_tick_order() {
+    let mut model = linking_model();
+
+    let mut cmd = change_link(&mut model, set_links("ex-1", false, &["s-a2", "s-a1"]));
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-1", Some("s-a1")), pair("ex-1", Some("s-a2"))]
+    );
+}
+
+#[test]
+fn setting_an_exercise_keeps_its_place_on_the_card() {
+    let mut model = model_with_three_drills();
+
+    let _ = change_link(&mut model, set_links("ex-1", true, &["s-a2"]));
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert_eq!(card(&model), ["ex-1", "ex-2", "ex-3"]);
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![
+            pair("ex-1", None),
+            pair("ex-1", Some("s-a2")),
+            pair("ex-2", None),
+            pair("ex-3", None),
+        ]
+    );
+}
+
+#[test]
+fn setting_an_exercise_not_on_the_card_adds_it_last() {
+    let mut model = linking_model();
+    let _ = set_piece_links(&mut model, "piece-1", vec![existing("ex-1", None)]);
+
+    let _ = change_link(&mut model, set_links("ex-2", false, &["s-a1"]));
+
+    assert_eq!(card(&model), ["ex-1", "ex-2"]);
+}
+
+#[test]
+fn unticking_everything_takes_the_exercise_off_the_piece() {
+    let mut model = model_with_three_drills();
+
+    let mut cmd = change_link(&mut model, set_links("ex-2", false, &[]));
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(card(&model), ["ex-1", "ex-3"]);
+    assert!(model.items.iter().any(|i| i.id == "ex-2"));
+}
+
+#[test]
+fn ticking_a_removed_section_is_refused_and_changes_nothing() {
+    let mut model = model_with_three_drills();
+
+    let mut cmd = change_link(&mut model, set_links("ex-1", true, &["s-b"]));
+
+    assert!(model.last_error.is_some());
+    assert!(!persists_anything(&mut cmd));
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![pair("ex-1", None), pair("ex-2", None), pair("ex-3", None)]
+    );
+}
+
+#[test]
+fn moving_the_last_exercise_to_the_top_shifts_the_rest_down() {
+    let mut model = model_with_three_drills();
+
+    let mut cmd = change_link(
+        &mut model,
+        LinkChange::Move {
+            exercise_id: "ex-3".to_string(),
+            to: 0,
+        },
+    );
+
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(card(&model), ["ex-3", "ex-1", "ex-2"]);
+}
+
+#[test]
+fn moving_an_exercise_past_the_end_puts_it_last() {
+    let mut model = model_with_three_drills();
+
+    let _ = change_link(
+        &mut model,
+        LinkChange::Move {
+            exercise_id: "ex-1".to_string(),
+            to: 9,
+        },
+    );
+
+    assert_eq!(card(&model), ["ex-2", "ex-3", "ex-1"]);
+}
+
+#[test]
+fn moving_an_exercise_keeps_all_its_links_together() {
+    let mut model = linking_model();
+    let _ = set_piece_links(
+        &mut model,
+        "piece-1",
+        vec![
+            existing("ex-1", None),
+            existing("ex-2", Some("s-a1")),
+            existing("ex-1", Some("s-a2")),
+        ],
+    );
+
+    let _ = change_link(
+        &mut model,
+        LinkChange::Move {
+            exercise_id: "ex-2".to_string(),
+            to: 0,
+        },
+    );
+
+    assert_eq!(
+        live_pairs(&model, "piece-1"),
+        vec![
+            pair("ex-2", Some("s-a1")),
+            pair("ex-1", None),
+            pair("ex-1", Some("s-a2")),
+        ]
+    );
+}
+
+#[test]
+fn unlinking_takes_one_exercise_off_and_keeps_the_rest_in_order() {
+    let mut model = model_with_three_drills();
+
+    let mut cmd = change_link(
+        &mut model,
+        LinkChange::Unlink {
+            exercise_id: "ex-2".to_string(),
+        },
+    );
+
+    assert!(emits_save(&mut cmd, "piece-1"));
+    assert_eq!(card(&model), ["ex-1", "ex-3"]);
+}
+
+#[test]
+fn moving_or_unlinking_an_exercise_not_on_the_card_changes_nothing() {
+    for change in [
+        LinkChange::Move {
+            exercise_id: "ex-stranger".to_string(),
+            to: 0,
+        },
+        LinkChange::Unlink {
+            exercise_id: "ex-stranger".to_string(),
+        },
+    ] {
+        let mut model = model_with_three_drills();
+
+        let mut cmd = change_link(&mut model, change);
+
+        assert!(model.last_error.is_none());
+        assert!(!persists_anything(&mut cmd));
+        assert_eq!(card(&model), ["ex-1", "ex-2", "ex-3"]);
+    }
+}
+
+#[test]
+fn a_link_change_on_an_exercise_as_host_is_refused() {
+    let mut model = linking_model();
+
+    let mut cmd = send_cmd(
+        &mut model,
+        ItemEvent::ChangePieceLink {
+            piece_id: "ex-1".to_string(),
+            change: set_links("ex-2", true, &[]),
+        },
+    );
+
+    assert!(model.last_error.is_some());
+    assert!(!persists_anything(&mut cmd));
+}
+
+#[test]
+fn section_and_link_changes_round_trip_on_ffi_bincode_wire() {
+    for change in [
+        SectionChange::Save(row(Some("s-1"), "A1", typed("1 to 16"))),
+        SectionChange::Remove {
+            section_id: "s-1".to_string(),
+        },
+        SectionChange::Arrange {
+            section_ids: vec!["s-2".to_string(), "s-1".to_string()],
+        },
+    ] {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::ChangeSection {
+                id: "piece-1".to_string(),
+                change,
+            },
+        ));
+    }
+    for change in [
+        set_links("ex-1", true, &["s-1"]),
+        LinkChange::Move {
+            exercise_id: "ex-1".to_string(),
+            to: 2,
+        },
+        LinkChange::Unlink {
+            exercise_id: "ex-1".to_string(),
+        },
+    ] {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::ChangePieceLink {
+                piece_id: "piece-1".to_string(),
+                change,
+            },
+        ));
+    }
+}

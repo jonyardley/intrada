@@ -34,6 +34,27 @@ pub struct LinkTarget {
     pub section_id: Option<String>,
 }
 
+/// One change to a piece's exercise card (#2447); the core builds the whole set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum LinkChange {
+    /// What the exercise prepares on this piece, in place on the card;
+    /// nothing ticked takes it off.
+    Set {
+        exercise_id: String,
+        whole_piece: bool,
+        section_ids: Vec<String>,
+    },
+    Move {
+        exercise_id: String,
+        to: usize,
+    },
+    Unlink {
+        exercise_id: String,
+    },
+}
+
 /// A link a write asks for. `position: None` keeps a claimed row where it is
 /// and appends a new one after the piece's last.
 pub(crate) struct WantedLink {

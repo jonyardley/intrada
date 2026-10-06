@@ -1,14 +1,18 @@
 use super::*;
+use crate::domain::section::SectionDraft;
 
 pub(crate) fn update_sections(
     model: &mut Model,
     id: String,
     edits: Vec<SectionEdit>,
 ) -> Command<Effect, Event> {
-    let drafts = match validation::validate_section_edits(edits) {
-        Ok(drafts) => drafts,
-        Err(e) => return refuse(model, &e),
-    };
+    match validation::validate_section_edits(edits) {
+        Ok(drafts) => write_sections(model, id, drafts),
+        Err(e) => refuse(model, &e),
+    }
+}
+
+fn write_sections(model: &mut Model, id: String, drafts: Vec<SectionDraft>) -> Command<Effect, Event> {
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
         model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
@@ -49,4 +53,60 @@ pub(crate) fn update_sections(
     item.updated_at = now;
     let item = item.clone();
     persist_item(model, item)
+}
+
+/// Builds the whole list from the stored rows; only the incoming row is
+/// validated, so a limit tightened since cannot refuse an unrelated change.
+pub(crate) fn change_section(
+    model: &mut Model,
+    id: String,
+    change: SectionChange,
+) -> Command<Effect, Event> {
+    let Some(item) = model.items.iter().find(|i| i.id == id) else {
+        model.raise_error(LibraryError::NotFound { id }.to_string());
+        return crux_core::render::render();
+    };
+    let mut drafts: Vec<SectionDraft> = item
+        .live_sections()
+        .into_iter()
+        .map(SectionDraft::from)
+        .collect();
+
+    match change {
+        SectionChange::Save(edit) => {
+            let draft = match validation::validate_section_edits(vec![edit]) {
+                Ok(mut rows) => rows.remove(0),
+                Err(e) => return refuse(model, &e),
+            };
+            match &draft.id {
+                None => drafts.push(draft),
+                Some(section_id) => {
+                    let Some(at) = drafts.iter().position(|d| d.id == draft.id) else {
+                        let error = LibraryError::NotFound {
+                            id: section_id.clone(),
+                        };
+                        return refuse(model, &error);
+                    };
+                    drafts[at] = draft;
+                }
+            }
+        }
+        SectionChange::Remove { section_id } => {
+            drafts.retain(|d| d.id.as_deref() != Some(section_id.as_str()));
+        }
+        SectionChange::Arrange { section_ids } => {
+            let mut arranged = Vec::with_capacity(section_ids.len());
+            for section_id in section_ids {
+                let Some(at) = drafts
+                    .iter()
+                    .position(|d| d.id.as_deref() == Some(section_id.as_str()))
+                else {
+                    return refuse(model, &LibraryError::NotFound { id: section_id });
+                };
+                arranged.push(drafts.remove(at));
+            }
+            drafts = arranged;
+        }
+    }
+    write_sections(model, id, drafts)
 }

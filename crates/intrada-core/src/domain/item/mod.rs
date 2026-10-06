@@ -5,9 +5,11 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::key::Key;
-pub use super::link::{ExerciseLink, LinkEdit, LinkTarget};
+pub use super::link::{ExerciseLink, LinkChange, LinkEdit, LinkTarget};
 use super::metre::Metre;
-pub use super::section::{BarRange, BarsInput, ItemSection, SectionEdit, SectionKind};
+pub use super::section::{
+    BarRange, BarsInput, ItemSection, SectionChange, SectionEdit, SectionKind,
+};
 use super::types::{CreateItem, Tempo, UpdateItem};
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
@@ -203,6 +205,16 @@ pub enum ItemEvent {
         variation_ids: Vec<String>,
         new_labels: Vec<String>,
     },
+    /// One section saved, removed or the list arranged (#2447). Appended last.
+    ChangeSection {
+        id: String,
+        change: SectionChange,
+    },
+    /// One exercise's links set, moved or removed on the piece's card (#2447).
+    ChangePieceLink {
+        piece_id: String,
+        change: LinkChange,
+    },
 }
 
 /// Acts on the library's own variation rows, not on any one item's set.
@@ -368,6 +380,10 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             exercise_id,
             piece_ids,
         } => links::choose_exercise_pieces(model, exercise_id, piece_ids),
+        ItemEvent::ChangeSection { id, change } => sections::change_section(model, id, change),
+        ItemEvent::ChangePieceLink { piece_id, change } => {
+            links::change_piece_link(model, piece_id, change)
+        }
     }
 }
 

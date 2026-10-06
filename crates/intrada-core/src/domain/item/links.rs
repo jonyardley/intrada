@@ -340,3 +340,81 @@ pub(super) fn choose_exercise_pieces(
         .collect();
     set_exercise_links(model, exercise_id, targets)
 }
+
+/// Works on the card: each linked exercise once, in the order of its first
+/// live link, with all its links kept together under it.
+pub(super) fn change_piece_link(
+    model: &mut Model,
+    piece_id: String,
+    change: LinkChange,
+) -> Command<Effect, Event> {
+    let Some(piece) = model.items.iter().find(|i| i.id == piece_id) else {
+        model.raise_error(LibraryError::NotFound { id: piece_id }.to_string());
+        return crux_core::render::render();
+    };
+    let mut card: Vec<(String, Vec<Option<String>>)> = Vec::new();
+    for link in piece.live_links() {
+        match card.iter_mut().find(|(id, _)| id == &link.exercise_id) {
+            Some((_, rows)) => rows.push(link.section_id.clone()),
+            None => card.push((link.exercise_id.clone(), vec![link.section_id.clone()])),
+        }
+    }
+    let score_order: Vec<String> = piece
+        .live_sections()
+        .into_iter()
+        .map(|s| s.id.clone())
+        .collect();
+    let place = |card: &[(String, Vec<Option<String>>)], exercise_id: &str| {
+        card.iter().position(|(id, _)| id == exercise_id)
+    };
+
+    match change {
+        LinkChange::Set {
+            exercise_id,
+            whole_piece,
+            mut section_ids,
+        } => {
+            section_ids.sort_by_key(|id| {
+                score_order
+                    .iter()
+                    .position(|s| s == id)
+                    .unwrap_or(usize::MAX)
+            });
+            let rows: Vec<Option<String>> = whole_piece
+                .then_some(None)
+                .into_iter()
+                .chain(section_ids.into_iter().map(Some))
+                .collect();
+            match (place(&card, &exercise_id), rows.is_empty()) {
+                (Some(at), true) => {
+                    card.remove(at);
+                }
+                (Some(at), false) => card[at].1 = rows,
+                (None, false) => card.push((exercise_id, rows)),
+                (None, true) => {}
+            }
+        }
+        LinkChange::Move { exercise_id, to } => {
+            if let Some(from) = place(&card, &exercise_id) {
+                let moved = card.remove(from);
+                card.insert(to.min(card.len()), moved);
+            }
+        }
+        LinkChange::Unlink { exercise_id } => {
+            if let Some(at) = place(&card, &exercise_id) {
+                card.remove(at);
+            }
+        }
+    }
+
+    let links = card
+        .into_iter()
+        .flat_map(|(id, rows)| {
+            rows.into_iter().map(move |section_id| LinkEdit {
+                exercise: ScaffoldEntry::Existing { id: id.clone() },
+                section_id,
+            })
+        })
+        .collect();
+    set_piece_links(model, piece_id, links)
+}

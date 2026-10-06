@@ -60,6 +60,22 @@ pub enum BarsInput {
     Typed(String),
 }
 
+/// One change to an item's sections (#2447); the core builds the whole list.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SectionChange {
+    /// No id is a new section, placed last; an id replaces that section in place.
+    Save(SectionEdit),
+    Remove {
+        section_id: String,
+    },
+    /// The live sections in their new order; any left out are removed.
+    Arrange {
+        section_ids: Vec<String>,
+    },
+}
+
 /// A `SectionEdit` that passed validation.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct SectionDraft {
@@ -85,6 +101,30 @@ impl BarRange {
         } else {
             format!("bars {} to {}", self.first, self.last)
         }
+    }
+}
+
+impl From<&ItemSection> for SectionDraft {
+    fn from(s: &ItemSection) -> Self {
+        Self {
+            id: Some(s.id.clone()),
+            name: s.name.clone(),
+            bars: s.bars,
+            kind: s.kind,
+            target_bpm: s.target_bpm,
+        }
+    }
+}
+
+impl super::item::Item {
+    pub(crate) fn live_sections(&self) -> Vec<&ItemSection> {
+        let mut live: Vec<&ItemSection> = self
+            .sections
+            .iter()
+            .filter(|s| s.deleted_at.is_none())
+            .collect();
+        live.sort_by_key(|s| s.position);
+        live
     }
 }
 
