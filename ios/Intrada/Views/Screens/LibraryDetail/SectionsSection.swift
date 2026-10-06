@@ -123,9 +123,9 @@ struct SectionsSection: View {
   }
 
   // Removals and the new order land as one write, and the list stays in
-  // reorder until the core accepts it, so a refusal loses nothing. Only rows
-  // this item still holds go out: a list carried over from another item would
-  // replace that item's sections (iPad keeps the pane's identity).
+  // reorder until the core accepts it, so a refusal loses nothing. A list
+  // carried over from another item is dropped quietly rather than shown as a
+  // refusal (iPad keeps the pane's identity).
   private func finishReordering() {
     guard let rows = reordering else { return }
     let current = Swift.Set(item.sections.map(\.id))
@@ -136,7 +136,7 @@ struct SectionsSection: View {
     let unchanged = rows.map(\.id) == item.sections.map(\.id)
     if unchanged
       || store.sendAccepted(
-        .item(.updateSections(id: item.id, sections: rows.map(SectionEdits.edit(from:)))))
+        .item(.changeSection(id: item.id, change: .arrange(sectionIds: rows.map(\.id)))))
     {
       if !unchanged { Haptic.impact.play() }
       reordering = nil

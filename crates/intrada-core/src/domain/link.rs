@@ -19,9 +19,8 @@ pub struct ExerciseLink {
 
 /// One row of the piece's chosen set: an exercise, existing or written now,
 /// and what it is linked to.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct LinkEdit {
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct LinkEdit {
     pub exercise: ScaffoldEntry,
     pub section_id: Option<String>,
 }

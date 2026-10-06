@@ -146,7 +146,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
 }
 
 /// `ItemEvent::Add` is the only event that honours
-/// `CreateItem.variation_labels` (#1783): `SetPieceLinks` and
+/// `CreateItem.variation_labels` (#1783): `ChoosePieceExercises` and
 /// `AddPieceInFull` create items too, and silently dropping a caller's labels
 /// there would be the #846 shape, a field that validates but never lands.
 /// Both reject instead.
@@ -564,7 +564,7 @@ pub(crate) fn validate_bar_range(first: u16, last: u16) -> Result<BarRange, Libr
     Ok(BarRange { first, last })
 }
 
-/// Every row of an `UpdateSections`, refused whole on the first bad one.
+/// Every row of a section list, refused whole on the first bad one.
 pub(crate) fn validate_section_edits(
     edits: Vec<SectionEdit>,
 ) -> Result<Vec<SectionDraft>, LibraryError> {

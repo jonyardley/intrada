@@ -3,14 +3,10 @@ import Testing
 
 @testable import Intrada
 
-/// The sections sheet and reordering send the piece's whole set; these check the
-/// set they read back off the view keeps every row not asked to change (#2232).
+/// What a link is for, and the link fixtures held to what the core projects
+/// from the same links (#2232).
 @MainActor
 struct ExerciseLinkSetsTests {
-  private func edit(_ exercise: String, _ section: String?) -> LinkEdit {
-    LinkEdit(exercise: .existing(id: exercise), sectionId: section)
-  }
-
   @Test(arguments: [
     (true, [String](), nil as String?),
     (false, ["A2"], "For A2"),
@@ -24,28 +20,6 @@ struct ExerciseLinkSetsTests {
     #expect(sectionLinkCaption(wholePiece: wholePiece, sections: sections) == expected)
   }
 
-  @Test func choosingSectionsForOneExerciseKeepsTheOthersInPlace() {
-    let piece = LibraryItemView.previewPieceWithSectionLinks
-    let links = piece.pieceLinks(
-      setting: "exercise-thirds", wholePiece: true, sectionIds: ["s1", "s3"])
-    #expect(
-      links == [
-        edit("exercise-octaves", nil), edit("exercise-octaves", "s4"),
-        edit("exercise-thirds", nil), edit("exercise-thirds", "s1"),
-        edit("exercise-thirds", "s3"),
-      ])
-  }
-
-  @Test func reorderingKeepsEachExercisesSectionsAndDropsTheOnesLeftOut() {
-    let piece = LibraryItemView.previewPieceWithSectionLinks
-    #expect(
-      piece.pieceLinks(order: ["exercise-thirds", "exercise-octaves"]) == [
-        edit("exercise-thirds", "s3"), edit("exercise-octaves", nil),
-        edit("exercise-octaves", "s4"),
-      ])
-    #expect(piece.pieceLinks(order: ["exercise-octaves"]).count == 2)
-  }
-
   /// The Used in fixture holds to what the core projects from the same links.
   @Test func theUsedInSectionsFixtureMatchesTheCore() throws {
     let bridge = RowsBridge()
@@ -56,13 +30,7 @@ struct ExerciseLinkSetsTests {
     for row in fixture.usedIn {
       let piece = try #require(row.piece)
       let pieceId = try add(bridge, piece.title, .piece)
-      _ = try bridge.update(
-        .item(
-          .updateSections(
-            id: pieceId,
-            sections: row.sections.map {
-              SectionEdit(id: nil, name: $0.label, bars: .blank, kind: .form, targetBpm: "")
-            })))
+      try bridge.addSections(named: row.sections.map(\.label), to: pieceId)
       let ids = try #require(try bridge.rendered().items.first { $0.id == pieceId }?.sections)
         .map(\.id)
       if row.wholePiece { targets.append(LinkTarget(pieceId: pieceId, sectionId: nil)) }
@@ -101,21 +69,18 @@ struct ExerciseLinkSetsTests {
             title: fixture.title, kind: .piece, composer: nil, key: nil, tempo: nil,
             notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let pieceId = try #require(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: pieceId,
-          sections: fixture.sections.map { section in
-            let bars = section.firstBar.flatMap { first in
-              section.lastBar.map { BarsInput.picked(first: first, last: $0) }
-            }
-            return SectionEdit(
-              id: nil, name: section.name, bars: bars ?? .blank, kind: section.kind,
-              targetBpm: section.targetBpm.map(String.init) ?? "")
-          })))
+    try bridge.addSections(
+      fixture.sections.map { section in
+        let bars = section.firstBar.flatMap { first in
+          section.lastBar.map { BarsInput.picked(first: first, last: $0) }
+        }
+        return SectionEdit(
+          id: nil, name: section.name, bars: bars ?? .blank, kind: section.kind,
+          targetBpm: section.targetBpm.map(String.init) ?? "")
+      }, to: pieceId)
     let sections = try #require(try bridge.rendered().items.first { $0.id == pieceId }?.sections)
     let idByLabel = Dictionary(uniqueKeysWithValues: sections.map { ($0.label, $0.id) })
-    var links: [LinkEdit] = []
+    var changes: [LinkChange] = []
     for exercise in fixture.linkedExercises {
       _ = try bridge.update(
         .item(
@@ -124,11 +89,15 @@ struct ExerciseLinkSetsTests {
               title: exercise.title, kind: .exercise, composer: nil, key: nil, tempo: nil,
               notes: nil, tags: [], photoId: nil, variationLabels: []))))
       let id = try #require(try bridge.rendered().items.first { $0.title == exercise.title }?.id)
-      if exercise.wholePiece { links.append(edit(id, nil)) }
-      for section in exercise.sections { links.append(edit(id, idByLabel[section.label])) }
+      changes.append(
+        .set(
+          exerciseId: id, wholePiece: exercise.wholePiece,
+          sectionIds: exercise.sections.compactMap { idByLabel[$0.label] }))
     }
 
-    _ = try bridge.update(.item(.setPieceLinks(pieceId: pieceId, links: links)))
+    for change in changes {
+      _ = try bridge.update(.item(.changePieceLink(pieceId: pieceId, change: change)))
+    }
 
     let card = try #require(try bridge.rendered().items.first { $0.id == pieceId }?.linkedExercises)
     #expect(card.map(\.sectionsCaption) == fixture.linkedExercises.map(\.sectionsCaption))

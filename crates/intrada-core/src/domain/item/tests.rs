@@ -1090,12 +1090,10 @@ fn a_written_exercise_creates_it_already_linked_and_persists_one_batch() {
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![new_exercise_input("Shell voicings")],
         },
     );
 
@@ -1127,12 +1125,10 @@ fn a_written_exercise_forces_the_kind_to_exercise() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(input),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![input],
         },
     );
 
@@ -1155,12 +1151,10 @@ fn a_written_exercise_rejects_a_non_piece_host() {
 
     let mut cmd = send_cmd(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "ex-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![new_exercise_input("Shell voicings")],
         },
     );
 
@@ -1178,12 +1172,10 @@ fn a_written_exercise_missing_piece_surfaces_not_found() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "nope".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(new_exercise_input("Shell voicings")),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![new_exercise_input("Shell voicings")],
         },
     );
 
@@ -1198,12 +1190,10 @@ fn a_written_exercise_rejects_a_blank_title() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(new_exercise_input("   ")),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![new_exercise_input("   ")],
         },
     );
 
@@ -1225,12 +1215,10 @@ fn a_written_exercise_rejects_inline_variations_rather_than_dropping_them() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(input),
-                section_id: None,
-            }],
+            exercise_ids: vec![],
+            written: vec![input],
         },
     );
 
@@ -2436,14 +2424,12 @@ fn a_written_exercise_refuses_a_bpm_it_cannot_read_and_links_nothing() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(CreateItem {
-                    tempo: typed_bpm("12a"),
-                    ..new_exercise_input("Guide tones")
-                }),
-                section_id: None,
+            exercise_ids: vec![],
+            written: vec![CreateItem {
+                tempo: typed_bpm("12a"),
+                ..new_exercise_input("Guide tones")
             }],
         },
     );
@@ -2462,14 +2448,12 @@ fn a_written_exercise_reads_the_typed_bpm_onto_the_exercise() {
 
     send(
         &mut model,
-        ItemEvent::SetPieceLinks {
+        ItemEvent::ChoosePieceExercises {
             piece_id: "piece-1".to_string(),
-            links: vec![LinkEdit {
-                exercise: ScaffoldEntry::New(CreateItem {
-                    tempo: typed_bpm("80"),
-                    ..new_exercise_input("Guide tones")
-                }),
-                section_id: None,
+            exercise_ids: vec![],
+            written: vec![CreateItem {
+                tempo: typed_bpm("80"),
+                ..new_exercise_input("Guide tones")
             }],
         },
     );
@@ -2586,7 +2570,7 @@ fn typed_tempo_round_trips_on_the_ffi_bincode_wire() {
         },
     });
 }
-// ── UpdateSections ──
+// ── The whole-list section write ──
 
 fn row(id: Option<&str>, name: &str, bars: BarsInput) -> SectionEdit {
     SectionEdit {
@@ -2607,13 +2591,7 @@ fn update_sections(
     id: &str,
     sections: Vec<SectionEdit>,
 ) -> Command<Effect, Event> {
-    send_cmd(
-        model,
-        ItemEvent::UpdateSections {
-            id: id.to_string(),
-            sections,
-        },
-    )
+    super::sections::update_sections(model, id.to_string(), sections)
 }
 
 fn piece_sections(model: &Model) -> Vec<ItemSection> {
@@ -3111,26 +3089,7 @@ fn the_view_hides_tombstones_orders_by_position_and_labels_by_bars() {
 }
 
 #[test]
-fn update_sections_and_an_item_with_sections_round_trip_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::UpdateSections {
-        id: "piece-1".to_string(),
-        sections: vec![
-            row(Some("s-1"), "A1", typed("1\u{2013}16")),
-            SectionEdit {
-                kind: SectionKind::TroubleSpot,
-                target_bpm: "72".to_string(),
-                ..row(
-                    None,
-                    "",
-                    BarsInput::Picked {
-                        first: 12,
-                        last: 14,
-                    },
-                )
-            },
-            row(None, "B", BarsInput::Blank),
-        ],
-    }));
+fn an_item_with_sections_round_trips_on_ffi_bincode_wire() {
     let mut model = model_with_piece_and_exercise();
     let _ = update_sections(
         &mut model,
@@ -3214,13 +3173,7 @@ fn set_piece_links(
     piece_id: &str,
     links: Vec<LinkEdit>,
 ) -> Command<Effect, Event> {
-    send_cmd(
-        model,
-        ItemEvent::SetPieceLinks {
-            piece_id: piece_id.to_string(),
-            links,
-        },
-    )
+    super::links::set_piece_links(model, piece_id.to_string(), links)
 }
 
 fn set_exercise_links(
@@ -3605,16 +3558,6 @@ fn a_link_to_a_removed_section_is_hidden_from_both_screens() {
 
 #[test]
 fn link_events_and_an_item_with_links_round_trip_on_ffi_bincode_wire() {
-    crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetPieceLinks {
-        piece_id: "piece-1".to_string(),
-        links: vec![
-            existing("ex-1", None),
-            LinkEdit {
-                exercise: ScaffoldEntry::New(draft("Thirds")),
-                section_id: Some("s-a2".to_string()),
-            },
-        ],
-    }));
     crate::domain::types::assert_round_trips(crate::app::Event::Item(
         ItemEvent::SetExerciseLinks {
             exercise_id: "ex-1".to_string(),
@@ -4474,6 +4417,19 @@ fn a_link_change_on_an_exercise_as_host_is_refused() {
 fn section_and_link_changes_round_trip_on_ffi_bincode_wire() {
     for change in [
         SectionChange::Save(row(Some("s-1"), "A1", typed("1 to 16"))),
+        SectionChange::Save(SectionEdit {
+            kind: SectionKind::TroubleSpot,
+            target_bpm: "72".to_string(),
+            ..row(
+                None,
+                "",
+                BarsInput::Picked {
+                    first: 12,
+                    last: 14,
+                },
+            )
+        }),
+        SectionChange::Save(row(None, "B", BarsInput::Blank)),
         SectionChange::Remove {
             section_id: "s-1".to_string(),
         },

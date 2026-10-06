@@ -20,13 +20,10 @@ struct BuilderRulesBridgeTests {
             title: "Nocturne", kind: .piece, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Dotted"]))))
     let item = try #require(try bridge.rendered().items.first)
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: item.id,
-          sections: [("A", "72"), ("B", ""), ("C", "")].map {
-            SectionEdit(id: nil, name: $0.0, bars: .blank, kind: .form, targetBpm: $0.1)
-          })))
+    try bridge.addSections(
+      [("A", "72"), ("B", ""), ("C", "")].map {
+        SectionEdit(id: nil, name: $0.0, bars: .blank, kind: .form, targetBpm: $0.1)
+      }, to: item.id)
     let sections = try #require(try bridge.rendered().items.first?.sections).map(\.id)
     let variationId = try #require(try bridge.rendered().items.first?.variations.first?.id)
 

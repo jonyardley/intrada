@@ -119,17 +119,17 @@ struct SectionSheet: View {
   private func save() {
     let edit = SectionEdit(
       id: existing?.id, name: name, bars: .typed(bars), kind: kind, targetBpm: bpm)
-    send(SectionEdits.saving(edit, into: item.sections))
+    send(.save(edit))
   }
 
   private func remove(_ section: SectionView) {
     Haptic.warning.play()
-    send(SectionEdits.removing(section.id, from: item.sections))
+    send(.remove(sectionId: section.id))
   }
 
-  private func send(_ sections: [SectionEdit]) {
+  private func send(_ change: SectionChange) {
     formError = nil
-    let error = store.sendFromSheet(.item(.updateSections(id: item.id, sections: sections)))
+    let error = store.sendFromSheet(.item(.changeSection(id: item.id, change: change)))
     withAnimation { formError = error }
     if error == nil { dismiss() }
   }

@@ -19,13 +19,7 @@ struct SessionBuilderPlanTests {
             title: "Clair de Lune", kind: .piece, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Dotted"]))))
     let itemId = try #require(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: itemId,
-          sections: ["A1", "B", "A2"].map {
-            SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "")
-          })))
+    try bridge.addSections(named: ["A1", "B", "A2"], to: itemId)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
     let building = try #require(try bridge.rendered().buildingSetlist)
@@ -113,11 +107,12 @@ struct SessionBuilderPlanTests {
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let exerciseId = try #require(
       try bridge.rendered().items.first { $0.title == "Left hand arpeggios" }?.id)
-    let a2 = try segments(bridge)[2].sectionId
+    let a2 = try #require(try segments(bridge)[2].sectionId)
     _ = try bridge.update(
       .item(
-        .setPieceLinks(
-          pieceId: pieceId, links: [LinkEdit(exercise: .existing(id: exerciseId), sectionId: a2)])))
+        .changePieceLink(
+          pieceId: pieceId,
+          change: .set(exerciseId: exerciseId, wholePiece: false, sectionIds: [a2]))))
     let offer = try #require(try bridge.rendered().buildingSetlist?.drillOffers.first)
     #expect(offer.addedEntryId == nil)
 

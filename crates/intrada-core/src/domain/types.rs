@@ -67,7 +67,7 @@ pub struct CreateItem {
     /// Variations chosen while creating the item, as labels: a live library
     /// row with the label is reused, any other is minted (#2246). Only
     /// `ItemEvent::Add` honours this: a `CreateItem` reaching
-    /// `SetPieceLinks` or `AddPieceInFull` never carries any (#1436's
+    /// `ChoosePieceExercises` or `AddPieceInFull` never carries any (#1436's
     /// `photo_id` sets the precedent for a shared field meaning one thing by
     /// event).
     #[serde(default)]

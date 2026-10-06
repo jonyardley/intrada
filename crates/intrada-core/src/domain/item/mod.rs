@@ -5,7 +5,8 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::key::Key;
-pub use super::link::{ExerciseLink, LinkChange, LinkEdit, LinkTarget};
+pub(crate) use super::link::LinkEdit;
+pub use super::link::{ExerciseLink, LinkChange, LinkTarget};
 use super::metre::Metre;
 pub use super::section::{
     BarRange, BarsInput, ItemSection, SectionChange, SectionEdit, SectionKind,
@@ -148,13 +149,6 @@ pub enum ItemEvent {
         chart: Option<String>,
         exercises: Vec<ScaffoldEntry>,
     },
-    /// The item screen's whole section list in one write (#2245): rows claim
-    /// a section by id, a row with no id is new, a live section left out is
-    /// tombstoned. Refused whole on the first invalid row. Appended last.
-    UpdateSections {
-        id: String,
-        sections: Vec<SectionEdit>,
-    },
     /// The item's whole variation set, in order (#2246): `variation_ids` name
     /// library rows, and each of `new_labels` reuses a live row with that
     /// label or mints one, appended after them. Removing one from an item
@@ -168,13 +162,6 @@ pub enum ItemEvent {
     UpdateKeys {
         id: String,
         keys: Vec<Key>,
-    },
-    /// The piece's whole set of exercise links in card order, in one write
-    /// (#2248, #2232): a new exercise is created and linked, a live link the
-    /// set leaves out is tombstoned. Refused whole on the first invalid row.
-    SetPieceLinks {
-        piece_id: String,
-        links: Vec<LinkEdit>,
     },
     /// The exercise's whole set of links across pieces, every changed piece
     /// saved in one batch. Refused whole on the first invalid row.
@@ -205,7 +192,7 @@ pub enum ItemEvent {
         variation_ids: Vec<String>,
         new_labels: Vec<String>,
     },
-    /// One section saved, removed or the list arranged (#2447). Appended last.
+    /// One section saved, removed or the list arranged (#2447).
     ChangeSection {
         id: String,
         change: SectionChange,
@@ -358,14 +345,8 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             new_labels,
         } => variations::update_item_variations(model, id, variation_ids, new_labels),
         ItemEvent::UpdateKeys { id, keys } => variations::update_keys(model, id, keys),
-        ItemEvent::UpdateSections { id, sections } => {
-            sections::update_sections(model, id, sections)
-        }
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             links::commit_scaffold(model, piece_id, kinds)
-        }
-        ItemEvent::SetPieceLinks { piece_id, links } => {
-            links::set_piece_links(model, piece_id, links)
         }
         ItemEvent::SetExerciseLinks {
             exercise_id,
