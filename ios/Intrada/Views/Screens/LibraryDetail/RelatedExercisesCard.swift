@@ -190,19 +190,21 @@ struct RelatedExercisesCard: View {
   }
 
   private func moveExercise(at index: Int, by delta: Int) {
-    var ids = item.linkedExercises.map(\.id)
     let dest = index + delta
-    guard dest >= 0, dest < ids.count else { return }
-    ids.swapAt(index, dest)
+    guard item.linkedExercises.indices.contains(index), dest >= 0,
+      dest < item.linkedExercises.count
+    else { return }
     store.send(
-      .item(.setPieceLinks(pieceId: item.id, links: item.pieceLinks(order: ids))),
+      .item(
+        .changePieceLink(
+          pieceId: item.id,
+          change: .move(exerciseId: item.linkedExercises[index].id, to: UInt64(dest)))),
       onSuccess: .selection)
   }
 
   private func removeExercise(id: String) {
-    let kept = item.linkedExercises.map(\.id).filter { $0 != id }
     store.send(
-      .item(.setPieceLinks(pieceId: item.id, links: item.pieceLinks(order: kept))),
+      .item(.changePieceLink(pieceId: item.id, change: .unlink(exerciseId: id))),
       onSuccess: .impact)
   }
 }

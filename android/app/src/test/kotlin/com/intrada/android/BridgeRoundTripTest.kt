@@ -17,20 +17,21 @@ import com.intrada.shared.Felt
 import com.intrada.shared.FocusKind
 import com.intrada.shared.FocusTargetView
 import com.intrada.shared.IntentionFocus
+import com.intrada.shared.Item
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.ItemSection
 import com.intrada.shared.Key
 import com.intrada.shared.Letter
 import com.intrada.shared.LibraryItemView
-import com.intrada.shared.LinkEdit
+import com.intrada.shared.LinkChange
 import com.intrada.shared.LinkTarget
 import com.intrada.shared.LinkedSectionView
 import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.Request
-import com.intrada.shared.ScaffoldEntry
+import com.intrada.shared.SectionChange
 import com.intrada.shared.SectionEdit
 import com.intrada.shared.SectionKind
 import com.intrada.shared.Segment
@@ -143,35 +144,26 @@ class BridgeRoundTripTest {
                 .id
 
         val saved =
-            bridge
-                .update(
-                    Event.Item(
-                        ItemEvent.UpdateSections(
-                            id,
-                            listOf(
-                                SectionEdit(
-                                    null,
-                                    "A1",
-                                    BarsInput.Typed("1-16"),
-                                    SectionKind.FORM,
-                                    "",
-                                ),
-                                SectionEdit(
-                                    null,
-                                    "",
-                                    BarsInput.Picked(12.toUShort(), 14.toUShort()),
-                                    SectionKind.TROUBLESPOT,
-                                    "72",
-                                ),
-                            ),
-                        )
-                    )
-                )
-                .mapNotNull {
-                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
-                        ?.value
-                }
-                .single()
+            addSections(
+                bridge,
+                id,
+                listOf(
+                    SectionEdit(
+                        null,
+                        "A1",
+                        BarsInput.Typed("1-16"),
+                        SectionKind.FORM,
+                        "",
+                    ),
+                    SectionEdit(
+                        null,
+                        "",
+                        BarsInput.Picked(12.toUShort(), 14.toUShort()),
+                        SectionKind.TROUBLESPOT,
+                        "72",
+                    ),
+                ),
+            )
 
         val sections: List<ItemSection> = saved.sections
         assertEquals(
@@ -327,7 +319,7 @@ class BridgeRoundTripTest {
         assertEquals(saved.map { it.label }, bridge.view().variations.map { it.label })
     }
 
-    // Section links cross on a second decoder: a skewed LinkTarget, LinkEdit or link view shows
+    // Section links cross on a second decoder: a skewed LinkTarget, LinkChange or link view shows
     // only here (#846, #2248).
     @Test
     fun anExerciseLinkedToSectionsOfTwoPiecesDecodes() {
@@ -362,12 +354,9 @@ class BridgeRoundTripTest {
             libraryChanged(
                 bridge.update(
                     Event.Item(
-                        ItemEvent.SetPieceLinks(
+                        ItemEvent.ChangePieceLink(
                             nocturne,
-                            listOf(
-                                LinkEdit(ScaffoldEntry.Existing(thirds), null),
-                                LinkEdit(ScaffoldEntry.Existing(thirds), a2),
-                            ),
+                            LinkChange.Set(thirds, true, listOf(a2)),
                         )
                     )
                 )
@@ -464,22 +453,13 @@ class BridgeRoundTripTest {
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
         val sections =
-            bridge
-                .update(
-                    Event.Item(
-                        ItemEvent.UpdateSections(
-                            nocturne,
-                            listOf("A", "B").map {
-                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                            },
-                        )
-                    )
+            addSections(
+                    bridge,
+                    nocturne,
+                    listOf("A", "B").map {
+                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                    },
                 )
-                .mapNotNull {
-                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
-                        ?.value
-                }
-                .single()
                 .sections
                 .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
@@ -523,22 +503,13 @@ class BridgeRoundTripTest {
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE, listOf("Dotted"))
         val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
         val sections =
-            bridge
-                .update(
-                    Event.Item(
-                        ItemEvent.UpdateSections(
-                            nocturne,
-                            listOf("A", "B").map {
-                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                            },
-                        )
-                    )
+            addSections(
+                    bridge,
+                    nocturne,
+                    listOf("A", "B").map {
+                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                    },
                 )
-                .mapNotNull {
-                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
-                        ?.value
-                }
-                .single()
                 .sections
                 .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
@@ -576,22 +547,13 @@ class BridgeRoundTripTest {
         bridge.update(Event.StartApp)
         val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
         val sections =
-            bridge
-                .update(
-                    Event.Item(
-                        ItemEvent.UpdateSections(
-                            nocturne,
-                            listOf("A", "B", "C").map {
-                                SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                            },
-                        )
-                    )
+            addSections(
+                    bridge,
+                    nocturne,
+                    listOf("A", "B", "C").map {
+                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
+                    },
                 )
-                .mapNotNull {
-                    ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)
-                        ?.value
-                }
-                .single()
                 .sections
                 .map { it.id }
         bridge.update(Event.Session(SessionEvent.StartBuilding))
@@ -677,22 +639,30 @@ class BridgeRoundTripTest {
             .id
 
     private fun addSection(bridge: LiveBridge, piece: String, name: String): String =
-        bridge
-            .update(
-                Event.Item(
-                    ItemEvent.UpdateSections(
-                        piece,
-                        listOf(SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")),
-                    )
-                )
+        addSections(
+                bridge,
+                piece,
+                listOf(SectionEdit(null, name, BarsInput.Blank, SectionKind.FORM, "")),
             )
-            .mapNotNull {
-                ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value
-            }
-            .single()
             .sections
             .single()
             .id
+
+    // Each edit saved as a new section, one change at a time (#2447); the last save holds them
+    // all.
+    private fun addSections(bridge: LiveBridge, piece: String, edits: List<SectionEdit>): Item =
+        edits
+            .map { edit ->
+                bridge
+                    .update(Event.Item(ItemEvent.ChangeSection(piece, SectionChange.Save(edit))))
+                    .mapNotNull {
+                        ((it.effect as? Effect.Persistence)?.value
+                                as? PersistenceOperation.SaveItem)
+                            ?.value
+                    }
+                    .single()
+            }
+            .last()
 
     private fun libraryChanged(requests: List<Request>): List<LibraryItemView> =
         requests

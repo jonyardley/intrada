@@ -33,13 +33,7 @@ final class PracticeRecordBridgeTests: XCTestCase {
             title: "Nocturne", kind: .piece, composer: nil, key: nil,
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try XCTUnwrap(try bridge.rendered().items.first?.id)
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: itemId,
-          sections: ["A", "B"].map {
-            SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "")
-          })))
+    try bridge.addSections(named: ["A", "B"], to: itemId)
     let sections = try XCTUnwrap(try bridge.rendered().items.first?.sections)
     let (a, b) = (try XCTUnwrap(sections.first?.id), try XCTUnwrap(sections.last?.id))
 

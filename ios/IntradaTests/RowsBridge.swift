@@ -60,22 +60,31 @@ struct Rendered {
 }
 
 extension RowsBridge {
-  /// A whole-piece link added to the piece's set as it stands (#2248).
-  func link(exercise: String, to piece: String) throws {
-    try setLinks(of: piece) { $0 + [LinkEdit(exercise: .existing(id: exercise), sectionId: nil)] }
-  }
-
-  func unlink(exercise: String, from piece: String) throws {
-    try setLinks(of: piece) { links in
-      links.filter {
-        guard case .existing(let id) = $0.exercise else { return true }
-        return id != exercise
-      }
+  /// Each edit saved as a new section after the last, one change at a time (#2447).
+  func addSections(_ edits: [SectionEdit], to item: String) throws {
+    for edit in edits {
+      _ = try update(.item(.changeSection(id: item, change: .save(edit))))
     }
   }
 
-  private func setLinks(of piece: String, _ change: ([LinkEdit]) -> [LinkEdit]) throws {
-    let current = items.first { $0.id == piece }?.linkedExercises.flatMap(\.linkEdits) ?? []
-    _ = try update(.item(.setPieceLinks(pieceId: piece, links: change(current))))
+  func addSections(named names: [String], to item: String) throws {
+    try addSections(
+      names.map { SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "") },
+      to: item)
+  }
+
+  /// A whole-piece link, keeping the sections the exercise already has (#2248).
+  func link(exercise: String, to piece: String) throws {
+    let card = items.first { $0.id == piece }?.linkedExercises
+    let sections = card?.first { $0.id == exercise }?.sections.map(\.id) ?? []
+    _ = try update(
+      .item(
+        .changePieceLink(
+          pieceId: piece,
+          change: .set(exerciseId: exercise, wholePiece: true, sectionIds: sections))))
+  }
+
+  func unlink(exercise: String, from piece: String) throws {
+    _ = try update(.item(.changePieceLink(pieceId: piece, change: .unlink(exerciseId: exercise))))
   }
 }

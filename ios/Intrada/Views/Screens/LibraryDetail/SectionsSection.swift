@@ -136,7 +136,7 @@ struct SectionsSection: View {
     let unchanged = rows.map(\.id) == item.sections.map(\.id)
     if unchanged
       || store.sendAccepted(
-        .item(.updateSections(id: item.id, sections: rows.map(SectionEdits.edit(from:)))))
+        .item(.changeSection(id: item.id, change: .arrange(sectionIds: rows.map(\.id)))))
     {
       if !unchanged { Haptic.impact.play() }
       reordering = nil

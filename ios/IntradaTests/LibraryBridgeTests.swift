@@ -175,9 +175,9 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertFalse(offered.contains { $0.id == swungId })
   }
 
-  /// `UpdateSections`, the new `Item` field and `SectionView` cross the real
+  /// A saved section, the new `Item` field and `SectionView` cross the real
   /// bincode bridge (#846, #2245).
-  func testRealBridgeUpdateSectionsLabelsTypedAndPickedBars() throws {
+  func testRealBridgeSavedSectionsLabelTypedAndPickedBars() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
     _ = try bridge.update(
@@ -190,15 +190,16 @@ final class LibraryBridgeTests: XCTestCase {
     let typed = BarsInput.typed("1\u{2013}16")
     let spot = SectionKind.troubleSpot
 
+    try bridge.addSections(
+      [SectionEdit(id: nil, name: "A1", bars: typed, kind: .form, targetBpm: "")], to: item.id)
     let requests = try bridge.update(
       .item(
-        .updateSections(
+        .changeSection(
           id: item.id,
-          sections: [
-            SectionEdit(id: nil, name: "A1", bars: typed, kind: .form, targetBpm: ""),
+          change: .save(
             SectionEdit(
-              id: nil, name: "", bars: .picked(first: 12, last: 14), kind: spot, targetBpm: "72"),
-          ])))
+              id: nil, name: "", bars: .picked(first: 12, last: 14), kind: spot, targetBpm: "72")
+          ))))
 
     let saved: [ItemSection] = requests.compactMap { request -> Item? in
       guard case .persistence(.saveItem(let item)) = request.effect else { return nil }
@@ -227,22 +228,14 @@ final class LibraryBridgeTests: XCTestCase {
             tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let item = try XCTUnwrap(try bridge.rendered().items.first)
 
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: item.id,
-          sections: [
-            SectionEdit(id: nil, name: "A", bars: .typed("1-8"), kind: .form, targetBpm: "")
-          ])))
+    try bridge.addSections(
+      [SectionEdit(id: nil, name: "A", bars: .typed("1-8"), kind: .form, targetBpm: "")],
+      to: item.id)
     let before = try bridge.rendered().items.first?.sections
 
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: item.id,
-          sections: [
-            SectionEdit(id: nil, name: "B", bars: .typed("16-1"), kind: .form, targetBpm: "")
-          ])))
+    try bridge.addSections(
+      [SectionEdit(id: nil, name: "B", bars: .typed("16-1"), kind: .form, targetBpm: "")],
+      to: item.id)
 
     let view = try bridge.rendered()
     XCTAssertNotNil(view.error)
@@ -1061,13 +1054,7 @@ final class LibraryBridgeTests: XCTestCase {
   private func sectionIds(
     _ bridge: RowsBridge, on piece: String, _ names: [String]
   ) throws -> [String: String] {
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: piece,
-          sections: names.map {
-            SectionEdit(id: nil, name: $0, bars: .blank, kind: .form, targetBpm: "")
-          })))
+    try bridge.addSections(named: names, to: piece)
     let views = try XCTUnwrap(try bridge.rendered().items.first { $0.id == piece }?.sections)
     return Dictionary(uniqueKeysWithValues: views.map { ($0.name, $0.id) })
   }
@@ -1154,16 +1141,13 @@ final class LibraryBridgeTests: XCTestCase {
       "the exercise shows both links")
     XCTAssertTrue(usedIn.allSatisfy { $0.linked && !$0.wholePiece })
 
-    let links: [LinkEdit] = [
-      LinkEdit(exercise: .existing(id: thirds), sectionId: nil),
-      LinkEdit(
-        exercise: .new(
-          CreateItem(
-            title: "Broken octaves", kind: .exercise, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: [])),
-        sectionId: a1),
-    ]
-    _ = try bridge.update(.item(.setPieceLinks(pieceId: nocturne, links: links)))
+    let octaves = try add(bridge, "Broken octaves", .exercise)
+    for change: LinkChange in [
+      .set(exerciseId: thirds, wholePiece: true, sectionIds: []),
+      .set(exerciseId: octaves, wholePiece: false, sectionIds: [a1]),
+    ] {
+      _ = try bridge.update(.item(.changePieceLink(pieceId: nocturne, change: change)))
+    }
 
     let after = try bridge.rendered()
     XCTAssertNil(after.error)

@@ -73,15 +73,10 @@ struct LinkSectionsSheet: View {
   }
 
   private func save() {
-    let ordered = piece.sections.map(\.id).filter(sectionIds.contains)
-    let unchanged = wholePiece == exercise.wholePiece && ordered == exercise.sections.map(\.id)
-    if unchanged {
-      dismiss()
-      return
-    }
     formError = nil
-    let links = piece.pieceLinks(setting: exercise.id, wholePiece: wholePiece, sectionIds: ordered)
-    let error = store.sendFromSheet(.item(.setPieceLinks(pieceId: piece.id, links: links)))
+    let change = LinkChange.set(
+      exerciseId: exercise.id, wholePiece: wholePiece, sectionIds: Array(sectionIds))
+    let error = store.sendFromSheet(.item(.changePieceLink(pieceId: piece.id, change: change)))
     withAnimation { formError = error }
     if error == nil { dismiss() }
   }

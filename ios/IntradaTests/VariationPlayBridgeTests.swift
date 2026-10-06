@@ -324,14 +324,7 @@ final class VariationPlayBridgeTests: XCTestCase {
     let ids = Dictionary(
       uniqueKeysWithValues: try bridge.rendered().items.map { ($0.title, $0.id) })
     let pieceId = try XCTUnwrap(ids["Rondo"])
-    _ = try bridge.update(
-      .item(
-        .updateSections(
-          id: pieceId,
-          sections: [
-            SectionEdit(id: nil, name: "A", bars: .blank, kind: .form, targetBpm: ""),
-            SectionEdit(id: nil, name: "B", bars: .blank, kind: .form, targetBpm: ""),
-          ])))
+    try bridge.addSections(named: ["A", "B"], to: pieceId)
     let sectionIds = try XCTUnwrap(
       try bridge.rendered().items.first { $0.id == pieceId }?.sections.map(\.id))
 
