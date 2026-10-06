@@ -671,13 +671,39 @@
   extension ReflectionPlay {
     static func preview(
       _ id: String, _ label: String?, _ duration: String, _ repCount: UInt8? = nil,
-      _ repTarget: UInt8? = nil, isMarkable: Bool = true, tempoDisplay: UInt16? = nil,
-      clickPattern: ClickState? = nil
+      _ repTarget: UInt8? = nil, isMarkable: Bool = true
     ) -> ReflectionPlay {
       ReflectionPlay(
         id: id, variationLabel: label, durationDisplay: duration, repCount: repCount,
-        repTarget: repTarget, isMarkable: isMarkable, tempoDisplay: tempoDisplay,
-        clickPattern: clickPattern)
+        repTarget: repTarget, isMarkable: isMarkable)
+    }
+  }
+
+  extension ReflectionTempoView {
+    /// Unstamped crotchets at the click's default unless given a stamp.
+    static func preview(
+      _ playId: String, tempo: UInt16? = nil,
+      click: ClickState = ClickState(metre: Metre(beats: 4, unit: 4, groups: nil), sounding: 0b1111)
+    ) -> ReflectionTempoView {
+      let limits = LimitsView.preview
+      let range = limits.clickBand(unit: click.metre.unit)
+      let band = TempoBand(
+        unit: click.metre.unit, min: UInt16(range.lowerBound), max: UInt16(range.upperBound))
+      return ReflectionTempoView(
+        playId: playId, tempo: tempo ?? limits.clickTempoDefault, click: click, band: band,
+        setByHand: false)
+    }
+  }
+
+  extension ReflectionAnswers {
+    static func preview(
+      marks: [DraftMark] = [], note: String = "", tempos: [DraftTempo] = [], felt: Felt? = nil,
+      gotInTheWay: [Obstacle] = [], notePoints: [NoteSpan] = [],
+      intentionMet: IntentionMet? = nil, ways: [DraftWay] = []
+    ) -> ReflectionAnswers {
+      ReflectionAnswers(
+        marks: marks, note: note, tempos: tempos, felt: felt, gotInTheWay: gotInTheWay,
+        notePoints: notePoints, intentionMet: intentionMet, ways: ways)
     }
   }
 

@@ -28,6 +28,10 @@ extension LimitsView {
   }
 }
 
+extension TempoBand {
+  var range: ClosedRange<Int> { Int(min)...Int(max) }
+}
+
 extension ClickPreset {
   var title: String {
     switch self {

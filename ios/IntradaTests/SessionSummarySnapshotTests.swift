@@ -40,6 +40,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
+        tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -52,6 +53,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
+        tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
         onSave: { _ in }, onSkip: {})
@@ -64,6 +66,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        tempoRows: [.preview("p1"), .preview("p2"), .preview("p3")],
         plays: [
           .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "3:20", 10, 10),
@@ -80,6 +83,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major Scales", elapsedDisplay: "4:12", tempoTarget: nil,
+        tempoRows: [.preview("p1")],
         plays: [
           .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "0:02", isMarkable: false),
@@ -95,6 +99,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
+        tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "7:00")],
         limits: .preview,
         refusal: "Notes must not exceed 5000 characters",
@@ -108,6 +113,7 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        tempoRows: [.preview("p1"), .preview("p2")],
         plays: [
           .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "3:20", 10, 10),
@@ -126,10 +132,12 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        tempoRows: [
+          .preview("p1", tempo: 168, click: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p2"),
+        ],
         plays: [
-          .preview(
-            "p1", "C major", "4:10", 8, 10,
-            tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "3:20", 10, 10),
         ],
         limits: .preview,
@@ -144,10 +152,12 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+        tempoRows: [
+          .preview("p1", tempo: 168, click: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p2"),
+        ],
         plays: [
-          .preview(
-            "p1", "C major", "4:10", 8, 10,
-            tempoDisplay: 168, clickPattern: ClickState(metre: sevenEight, sounding: 0b0101001)),
+          .preview("p1", "C major", "4:10", 8, 10),
           .preview("p2", "G major", "3:20", 10, 10),
         ],
         limits: .preview,
@@ -167,10 +177,10 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        tempoRows: [.preview("p1"), .preview("p2")],
         plays: [.preview("p1", "A1", "4:10"), .preview("p2", "B", "4:00")],
         limits: .preview, finish: .preview(asksIntention: false, read: .yes), aim: "A1 at 84",
-        seed: ReflectionResult(
-          marks: [:], note: "A1: left hand rushed in bar 12, got it at 84", tempos: []),
+        seed: ReflectionAnswers.preview(note: "A1: left hand rushed in bar 12, got it at 84"),
         onSave: { _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -189,14 +199,14 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        tempoRows: [.preview("p1"), .preview("p2")],
         plays: [a1, b], limits: .preview, finish: .previewWayChoices,
         variations: [
           PickerVariationView(id: "v-hs", label: "Hands separately", caption: ""),
           PickerVariationView(id: "v-dot", label: "Dotted rhythms", caption: ""),
         ],
         plannedLabel: "A1 · D major",
-        seed: ReflectionResult(
-          marks: [:], note: "", tempos: [],
+        seed: ReflectionAnswers.preview(
           ways: [DraftWay(playId: "p1", sectionId: "sec-a1", key: g, variationIds: [])]),
         onSave: { _ in }, onSkip: {}, changingPlayId: "p1")
     }
@@ -207,12 +217,13 @@ final class SessionSummarySnapshotTests: SnapshotTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Clair de Lune", elapsedDisplay: "12:00", tempoTarget: nil,
+        tempoRows: [.preview("p1")],
         plays: [.preview("p1", nil, "12:00")],
         limits: .preview, finish: .preview(asksIntention: true), aim: "A1 from memory",
-        seed: ReflectionResult(
-          marks: [:], note: "A1: left hand rushed in bar 12, got it at 84", tempos: [],
-          felt: .strained, obstacles: [.rhythm, .tension],
-          notePoints: [NoteSpan(start: 38, end: 40)], intentionMet: .partly),
+        seed: ReflectionAnswers.preview(
+          note: "A1: left hand rushed in bar 12, got it at 84", felt: .strained,
+          gotInTheWay: [.rhythm, .tension], notePoints: [NoteSpan(start: 38, end: 40)],
+          intentionMet: .partly),
         onSave: { _ in }, onSkip: {})
     }
   }

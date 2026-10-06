@@ -21,6 +21,22 @@ struct TrackedTempo {
     bpm = min(band.upperBound, max(band.lowerBound, next))
     userSet = true
   }
+
+  /// A tempo set by hand before a resume reopens as set by hand (#2137).
+  init(row: ReflectionTempoView) {
+    self.init(startingBpm: Int(row.tempo), band: row.band.range)
+    if row.setByHand { set(Int(row.tempo)) }
+  }
+
+  /// Only the rows the musician moved, each with its own bar (#1420, #2304).
+  static func handSet(_ rows: [ReflectionTempoView], tracked: [String: TrackedTempo])
+    -> [DraftTempo]
+  {
+    rows.compactMap { row in
+      guard let tempo = tracked[row.playId], tempo.userSet else { return nil }
+      return DraftTempo(playId: row.playId, tempo: UInt16(tempo.bpm), click: row.click)
+    }
+  }
 }
 
 /// One row of the sheet: a stretch of the item spent on one variation, already
@@ -35,9 +51,6 @@ struct ReflectionPlay: Identifiable, Equatable {
   let repTarget: UInt8?
   /// Whether the core predicts this play survives the terminal drop (#1758).
   let isMarkable: Bool
-  /// The stamp in its own unit, and the metre it counted in; both `nil` unstamped (#1761).
-  let tempoDisplay: UInt16?
-  let clickPattern: ClickState?
 
   var title: String { variationLabel ?? "No variation" }
 
@@ -53,35 +66,9 @@ struct ReflectionPlay: Identifiable, Equatable {
       ReflectionPlay(
         id: play.id, variationLabel: play.label,
         durationDisplay: SessionClock.clockDisplay(Int(play.seconds)),
-        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable,
-        tempoDisplay: play.tempoDisplay, clickPattern: play.clickPattern)
+        repCount: play.repCount, repTarget: play.repTarget, isMarkable: play.isMarkable)
     }
   }
-}
-
-/// One row's own tempo write, since each row can be stamped in a different metre or not at all (#1761).
-struct ReflectionRowTempo {
-  let playId: String
-  let tempo: UInt16
-  /// Moved the stepper, rather than accepting the pre-fill.
-  let userSet: Bool
-  let click: ClickState?
-}
-
-/// What the sheet collected. `tempos` holds one entry per play, sent whether or
-/// not it was touched; the core ignores the ones nobody moved (#1420, #1761).
-struct ReflectionResult {
-  /// Play id to mark, holding only the rows the musician actually marked.
-  let marks: [String: UInt8]
-  let note: String
-  let tempos: [ReflectionRowTempo]
-  var felt: Felt?
-  var obstacles: [Obstacle] = []
-  /// Points the musician kept, as spans into the note as drafted.
-  var notePoints: [NoteSpan] = []
-  var intentionMet: IntentionMet?
-  /// Only the rows whose way was changed by hand (#2249).
-  var ways: [DraftWay] = []
 }
 
 struct ReflectionSheet: View {
@@ -91,10 +78,8 @@ struct ReflectionSheet: View {
   let elapsedDisplay: String?
   /// The item's own declared tempo marking (the practice target), if any.
   let tempoTarget: UInt16?
-  /// The bar an unstamped row counts in, reads `♪` for and sends as its `click`, so the
-  /// range shown and the scale saved cannot disagree (#1499, #1761, #2304).
-  let currentClick: ClickState?
-  private var tempoUnit: UInt8 { currentClick?.metre.unit ?? 4 }
+  /// The core's row per markable play: its opening number, bar and band (#2230).
+  let tempoRows: [ReflectionTempoView]
   /// What was played, in order. One row is the sheet that shipped before
   /// plays existed; several give each variation its own mark (#1739
   /// decision 10).
@@ -108,17 +93,17 @@ struct ReflectionSheet: View {
   let aim: String?
   /// Shown here because the player's banner sits under the sheet (#2009).
   let refusal: String?
-  let onSave: (ReflectionResult) -> Void
+  let onSave: (ReflectionAnswers) -> Void
   let onSkip: () -> Void
   /// The answers so far, for the crash-recovery copy (#2137): a mark or tempo at
   /// once, the note after a pause in typing or on leaving the app.
-  let onDraft: (ReflectionResult) -> Void
+  let onDraft: (ReflectionAnswers) -> Void
 
   @State private var marks: [String: Int]
   @State private var note: String
   /// The trimmed note last handed to `onDraft`, so a pause with no new text writes nothing.
   @State private var draftedNote: String
-  /// One per play, seeded from its stamp or the current click (#1761 rule 6).
+  /// One per row the core gave, so a play with no row has no tempo to send.
   @State private var tempos: [String: TrackedTempo]
   @State private var felt: Felt?
   @State private var obstacles: [Obstacle]
@@ -130,8 +115,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String?, tempoTarget: UInt16?,
-    startingTempoBpm: Int? = nil,
-    currentClick: ClickState? = nil,
+    tempoRows: [ReflectionTempoView] = [],
     plays: [ReflectionPlay],
     limits: LimitsView,
     finish: FinishSheetView? = nil,
@@ -139,16 +123,16 @@ struct ReflectionSheet: View {
     plannedLabel: String? = nil,
     aim: String? = nil,
     refusal: String? = nil,
-    seed: ReflectionResult? = nil,
-    onSave: @escaping (ReflectionResult) -> Void,
+    seed: ReflectionAnswers? = nil,
+    onSave: @escaping (ReflectionAnswers) -> Void,
     onSkip: @escaping () -> Void,
-    onDraft: @escaping (ReflectionResult) -> Void = { _ in },
+    onDraft: @escaping (ReflectionAnswers) -> Void = { _ in },
     changingPlayId: String? = nil
   ) {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
-    self.currentClick = currentClick
+    self.tempoRows = tempoRows
     self.plays = plays
     self.limits = limits
     self.finish = finish
@@ -159,29 +143,21 @@ struct ReflectionSheet: View {
     self.onSave = onSave
     self.onSkip = onSkip
     self.onDraft = onDraft
-    _marks = State(initialValue: (seed?.marks ?? [:]).mapValues(Int.init))
+    _marks = State(
+      initialValue: Dictionary(
+        (seed?.marks ?? []).map { ($0.playId, Int($0.score)) },
+        uniquingKeysWith: { first, _ in first }))
     _note = State(initialValue: seed?.note ?? "")
     _draftedNote = State(initialValue: seed?.note ?? "")
-    var tempos = Dictionary(
-      plays.filter(\.isMarkable).map { play in
-        (
-          play.id,
-          TrackedTempo(
-            startingBpm: play.tempoDisplay.map(Int.init) ?? startingTempoBpm
-              ?? Int(limits.clickTempoDefault),
-            band: limits.clickBand(
-              unit: play.clickPattern?.metre.unit ?? currentClick?.metre.unit ?? 4))
-        )
-      }, uniquingKeysWith: { first, _ in first })
-    for row in seed?.tempos ?? [] where row.userSet {
-      tempos[row.playId]?.set(Int(row.tempo))
-    }
-    _tempos = State(initialValue: tempos)
+    _tempos = State(
+      initialValue: Dictionary(
+        tempoRows.map { ($0.playId, TrackedTempo(row: $0)) },
+        uniquingKeysWith: { first, _ in first }))
     _felt = State(initialValue: seed?.felt)
-    _obstacles = State(initialValue: seed?.obstacles ?? [])
+    _obstacles = State(initialValue: seed?.gotInTheWay ?? [])
     _notePoints = State(initialValue: seed?.notePoints ?? [])
     _intentionMet = State(initialValue: seed?.intentionMet)
-    _detailOpen = State(initialValue: seed?.felt != nil || !(seed?.obstacles.isEmpty ?? true))
+    _detailOpen = State(initialValue: seed?.felt != nil || !(seed?.gotInTheWay.isEmpty ?? true))
     _ways = State(initialValue: seed?.ways ?? [])
     _changingPlayId = State(initialValue: changingPlayId)
   }
@@ -229,15 +205,17 @@ struct ReflectionSheet: View {
           .accessibilityIdentifier("reflection.mark")
           .padding(.top, IntradaSpacing.controlGap)
 
-          SectionTitle(singlePlayTempoHeading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, IntradaSpacing.card)
-          TempoStepper(
-            value: tempoBinding(for: only.id), unit: stepperUnit(for: only),
-            step: limits.clickStep, band: limits.clickBand(unit: stepperUnit(for: only))
-          )
-          .accessibilityIdentifier("reflection.tempo")
-          .padding(.top, IntradaSpacing.controlGap)
+          if let row = tempoRow(for: only.id) {
+            SectionTitle(singlePlayTempoHeading)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.top, IntradaSpacing.card)
+            TempoStepper(
+              value: tempoBinding(for: only.id), unit: row.click.metre.unit,
+              step: limits.clickStep, band: row.band.range
+            )
+            .accessibilityIdentifier("reflection.tempo")
+            .padding(.top, IntradaSpacing.controlGap)
+          }
         }
 
         sectionTitle("Reflection · optional").padding(.top, IntradaSpacing.card)
@@ -273,7 +251,7 @@ struct ReflectionSheet: View {
         }
 
         BrandBarButton {
-          onSave(result)
+          onSave(answers)
         } label: {
           Text("Save & continue")
           Image(systemName: "arrow.right")
@@ -300,18 +278,15 @@ struct ReflectionSheet: View {
     }
   }
 
-  private var result: ReflectionResult {
-    ReflectionResult(
-      marks: marks.compactMapValues { $0 == 0 ? nil : UInt8($0) },
+  private var answers: ReflectionAnswers {
+    ReflectionAnswers(
+      marks: plays.compactMap { play in
+        marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
+      },
       note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-      tempos: plays.compactMap { play in
-        tempos[play.id].map { tracked in
-          ReflectionRowTempo(
-            playId: play.id, tempo: UInt16(tracked.bpm), userSet: tracked.userSet,
-            click: play.clickPattern ?? currentClick)
-        }
-      }, felt: felt, obstacles: obstacles, notePoints: notePoints, intentionMet: intentionMet,
-      ways: ways)
+      tempos: TrackedTempo.handSet(tempoRows, tracked: tempos),
+      felt: felt, gotInTheWay: obstacles, notePoints: notePoints,
+      intentionMet: intentionMet, ways: ways)
   }
 
   private func toggleNotePoint(_ span: NoteSpan) {
@@ -335,7 +310,7 @@ struct ReflectionSheet: View {
   }
 
   private func draft() {
-    let current = result
+    let current = answers
     draftedNote = current.note
     onDraft(current)
   }
@@ -366,12 +341,14 @@ struct ReflectionSheet: View {
               setMark(next, for: play.id)
             }
             .accessibilityIdentifier("reflection.mark")
-            TempoStepper(
-              value: tempoBinding(for: play.id), unit: stepperUnit(for: play),
-              step: limits.clickStep, band: limits.clickBand(unit: stepperUnit(for: play)),
-              accessibilityLabel: "Tempo for \(rowTitle(play))"
-            )
-            .accessibilityIdentifier("reflection.tempo")
+            if let row = tempoRow(for: play.id) {
+              TempoStepper(
+                value: tempoBinding(for: play.id), unit: row.click.metre.unit,
+                step: limits.clickStep, band: row.band.range,
+                accessibilityLabel: "Tempo for \(rowTitle(play))"
+              )
+              .accessibilityIdentifier("reflection.tempo")
+            }
           }
         }
         .padding(.vertical, IntradaSpacing.cardCompact)
@@ -444,8 +421,8 @@ struct ReflectionSheet: View {
     draft()
   }
 
-  private func stepperUnit(for play: ReflectionPlay) -> UInt8 {
-    play.clickPattern?.metre.unit ?? tempoUnit
+  private func tempoRow(for playId: String) -> ReflectionTempoView? {
+    tempoRows.first { $0.playId == playId }
   }
 
   // TempoStepper only writes on an explicit tap or accessibility adjustment,
@@ -470,6 +447,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Clair de Lune", elapsedDisplay: "7:00", tempoTarget: 66,
+          tempoRows: [.preview("p1")],
           plays: [ReflectionPlay.preview("p1", nil, "7:00", nil, nil)], limits: .preview,
           onSave: { _ in }, onSkip: {}
         )
@@ -482,6 +460,7 @@ struct ReflectionSheet: View {
       .sheet(isPresented: .constant(true)) {
         ReflectionSheet(
           itemTitle: "Major Scales", elapsedDisplay: "12:40", tempoTarget: nil,
+          tempoRows: [.preview("p1"), .preview("p2"), .preview("p3")],
           plays: [
             ReflectionPlay.preview("p1", "C major", "4:10", 8, 10),
             ReflectionPlay.preview("p2", "G major", "3:20", 10, 10),
