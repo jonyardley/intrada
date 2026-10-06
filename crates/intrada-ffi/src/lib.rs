@@ -4,6 +4,8 @@ pub use intrada_core::*;
 
 pub mod ffi;
 pub use ffi::{CoreError, CoreFFI};
+#[cfg(feature = "store")]
+pub mod store;
 
 // Pin + assert: a uniffi version skew vs cargo-swift's bindgen becomes a compile
 // error here, not a runtime mismatch in the iOS build.

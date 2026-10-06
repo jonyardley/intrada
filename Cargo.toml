@@ -5,6 +5,7 @@
 members = [
   "crates/intrada-core",
   "crates/intrada-ffi",
+  "crates/intrada-store",
 ]
 resolver = "2"
 # MSRV floor, set by crux_core 0.20's own rust-version. The dev/CI toolchain is

@@ -224,6 +224,7 @@ jobs:
         run: >
           cargo llvm-cov nextest
           --workspace
+          --features intrada-ffi/store
           --profile ci
           --codecov
           --output-path codecov.json
@@ -266,7 +267,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       # `+toolchain` beats rust-toolchain.toml, which would otherwise pull the
       # current pin straight back in.
-      - run: cargo +${{ steps.floor.outputs.version }} check --workspace --all-targets
+      - run: cargo +${{ steps.floor.outputs.version }} check --workspace --all-targets --features intrada-ffi/store
 
   clippy:
     name: Clippy
@@ -298,7 +299,7 @@ jobs:
         shell: bash
         run: |
           set +o pipefail
-          cargo clippy --workspace --all-targets \
+          cargo clippy --workspace --all-targets --features intrada-ffi/store \
             --message-format=json -- -D warnings 2>&1 \
             | clippy-sarif | tee clippy-native.sarif | sarif-fmt
           exit "${PIPESTATUS[0]}"
