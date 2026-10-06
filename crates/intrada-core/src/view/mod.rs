@@ -260,8 +260,22 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             .map(|v| crate::model::VariationOptionView {
                 id: v.id.clone(),
                 label: v.label.clone(),
+                usage: variation_usage(model, &v.id),
             })
             .collect(),
+    }
+}
+
+/// Which items use a variation, this one included (#2366).
+fn variation_usage(model: &Model, variation_id: &str) -> Option<String> {
+    let mut users = model
+        .items
+        .iter()
+        .filter(|i| i.variation_ids.iter().any(|id| id == variation_id));
+    let first = users.next()?;
+    match users.count() {
+        0 => Some(format!("On {}", first.title)),
+        more => Some(format!("On {} items", more + 1)),
     }
 }
 
@@ -377,6 +391,35 @@ fn drill_offers(
 #[cfg(test)]
 mod tests {
     use super::photo_recognition_view;
+    use crate::app::{Event, Intrada};
+    use crate::model::Model;
+    use crux_core::App;
+
+    #[test]
+    fn a_variation_says_which_items_use_it() {
+        let mut model = Model::default();
+        let _ = Intrada.update(Event::LoadSampleData, &mut model);
+        let ids: Vec<String> = model.variations.iter().map(|v| v.id.clone()).collect();
+        for item in model.items.iter_mut() {
+            item.variation_ids.clear();
+        }
+        model.items[0].variation_ids = vec![ids[0].clone(), ids[1].clone()];
+        model.items[1].variation_ids = vec![ids[1].clone()];
+        let first_title = model.items[0].title.clone();
+
+        let usage = |id: &str| {
+            Intrada
+                .rendered(&model)
+                .variations
+                .iter()
+                .find(|v| v.id == id)
+                .and_then(|v| v.usage.clone())
+        };
+
+        assert_eq!(usage(&ids[0]), Some(format!("On {first_title}")));
+        assert_eq!(usage(&ids[1]).as_deref(), Some("On 2 items"));
+        assert_eq!(usage(&ids[2]), None);
+    }
     use crate::domain::types::Tempo;
     use crate::model::PhotoRecognition;
     use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};

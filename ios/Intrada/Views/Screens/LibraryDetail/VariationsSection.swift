@@ -12,7 +12,8 @@ struct VariationsSection: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.card) {
       if !item.keys.isEmpty {
         VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-          SectionHeader(title: "Keys", action: choose("keys", onChooseKeys))
+          SectionHeader(
+            title: "Keys", caption: item.keysCaption, action: choose("keys", onChooseKeys))
           ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: IntradaSpacing.card) {
               ForEach(Array(item.keys.enumerated()), id: \.offset) { _, key in
@@ -26,7 +27,7 @@ struct VariationsSection: View {
       }
       VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
         SectionHeader(
-          title: "Variations",
+          title: "Variations", caption: item.variationsCaption,
           action: item.variations.isEmpty ? nil : choose("variations", onChooseVariations))
         if item.variations.isEmpty {
           AddRowButton(

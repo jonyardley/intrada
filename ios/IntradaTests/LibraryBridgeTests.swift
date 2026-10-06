@@ -78,6 +78,8 @@ final class LibraryBridgeTests: XCTestCase {
     let views: [ItemKeyView] = item.keys
     XCTAssertEqual(views.map(\.key), keys, "(err=\(view.error ?? "nil"))")
     XCTAssertEqual(item.keys.map(\.label), ["E\u{266D} major", "C\u{266F} minor"])
+    XCTAssertEqual(item.keysCaption, "0 of 2 solid", "neither key is played yet (#2366)")
+    XCTAssertNil(item.variationsCaption, "no variations, no count")
   }
 
   /// Moved from `VariationManagementUITests` (#1825): a variation taken off
@@ -103,6 +105,10 @@ final class LibraryBridgeTests: XCTestCase {
       view.items.first { $0.id == item.id }?.variations.map(\.label), ["Slow", "Staccato"],
       "Swung is gone, the others keep their order")
     XCTAssertTrue(view.variations.contains { $0.label == "Swung" }, "and still offered")
+    XCTAssertEqual(
+      view.items.first { $0.id == item.id }?.variationsCaption, "0 of 2 solid", "(#2366)")
+    XCTAssertNil(view.variations.first { $0.label == "Swung" }?.usage, "no item uses it now")
+    XCTAssertEqual(view.variations.first { $0.label == "Slow" }?.usage, "On Major Scales")
   }
 
   /// The library's variations load through the bincode wire on every launch

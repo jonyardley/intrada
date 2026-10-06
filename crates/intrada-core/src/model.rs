@@ -559,6 +559,10 @@ pub struct LibraryItemView {
     pub photo_id: Option<String>,
     /// The keys chosen for practice, in order, with their practice state.
     pub keys: Vec<ItemKeyView>,
+    /// "3 of 12 solid" beside the Keys heading; `None` with no keys (#2366).
+    pub keys_caption: Option<String>,
+    /// The same count beside the Variations heading.
+    pub variations_caption: Option<String>,
     /// The wedge the key picker lights for the stored key (#2074).
     pub key_selection: Option<crate::domain::key::KeyWheelSelection>,
     /// Live sections only, in score order (#2245).
@@ -611,6 +615,22 @@ pub struct ItemKeyView {
 pub struct VariationOptionView {
     pub id: String,
     pub label: String,
+    /// "On Clair de lune" for one item, "On 2 items" for more, `None` when
+    /// no item uses it, so a rename shows how far it reaches (#2366).
+    pub usage: Option<String>,
+}
+
+/// A key or variation counts as solid once its latest mark reaches this, of
+/// 10 (#1762).
+pub(crate) const SOLID_MIN: u8 = 8;
+
+/// "3 of 12 solid" over the latest marks of an item's keys or variations;
+/// `None` when it holds none (#2366).
+pub(crate) fn solid_caption(latest: impl Iterator<Item = Option<u8>>) -> Option<String> {
+    let (solid, total) = latest.fold((0, 0), |(solid, total), mark| {
+        (solid + usize::from(mark.is_some_and(|m| m >= SOLID_MIN)), total + 1)
+    });
+    (total > 0).then(|| format!("{solid} of {total} solid"))
 }
 
 /// The saved mark in the musician's words: the one wording the Library row and
@@ -1148,6 +1168,8 @@ impl LibraryItemView {
             sections: vec![],
             photo_id: None,
             keys: Vec::new(),
+            keys_caption: None,
+            variations_caption: None,
             key_selection: None,
         }
     }
@@ -1210,6 +1232,25 @@ impl ItemPracticeSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Solid counts (#2366) ──
+
+    #[test]
+    fn solid_caption_counts_latest_marks_of_eight_or_more() {
+        let cases: [(&[Option<u8>], Option<&str>); 4] = [
+            (&[], None),
+            (&[None, Some(7)], Some("0 of 2 solid")),
+            (&[Some(8), Some(10), Some(7), None], Some("2 of 4 solid")),
+            (&[Some(9)], Some("1 of 1 solid")),
+        ];
+        for (marks, expected) in cases {
+            assert_eq!(
+                solid_caption(marks.iter().copied()).as_deref(),
+                expected,
+                "{marks:?}"
+            );
+        }
+    }
 
     // ── Score trend (#2233) ──
 

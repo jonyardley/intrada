@@ -86,7 +86,9 @@ struct VariationsSheet: View {
     return VStack(spacing: 0) {
       ForEach(Array(matches.enumerated()), id: \.element.id) { index, variation in
         if index > 0 { HairlineDivider() }
-        row(variation.label, chosen: choice.isChosen(variation.id)) { choice.toggle(variation.id) }
+        row(variation.label, caption: variation.usage, chosen: choice.isChosen(variation.id)) {
+          choice.toggle(variation.id)
+        }
       }
       if let addable {
         if !matches.isEmpty { HairlineDivider() }
@@ -115,18 +117,24 @@ struct VariationsSheet: View {
       }
       ForEach(Array(library.enumerated()), id: \.element.id) { index, variation in
         if index > 0 || !choice.newLabels.isEmpty { HairlineDivider() }
-        row(variation.label, chosen: choice.isChosen(variation.id)) { choice.toggle(variation.id) }
-          .contextMenu {
-            Button("Rename") { startRenaming(variation) }
-          }
-          .accessibilityAction(named: "Rename") { startRenaming(variation) }
+        row(variation.label, caption: variation.usage, chosen: choice.isChosen(variation.id)) {
+          choice.toggle(variation.id)
+        }
+        .contextMenu {
+          Button("Rename") { startRenaming(variation) }
+        }
+        .accessibilityAction(named: "Rename") { startRenaming(variation) }
       }
     }
     .cardSurface()
   }
 
-  private func row(_ label: String, chosen: Bool, toggle: @escaping () -> Void) -> some View {
-    TickRow(label: label, chosen: chosen, identifier: "variationsSheet.row", toggle: toggle)
+  private func row(
+    _ label: String, caption: String? = nil, chosen: Bool, toggle: @escaping () -> Void
+  ) -> some View {
+    TickRow(
+      label: label, caption: caption, chosen: chosen, identifier: "variationsSheet.row",
+      toggle: toggle)
   }
 
   private var renamingShown: Binding<Bool> {

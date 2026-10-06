@@ -564,6 +564,8 @@ mod tests {
         );
         assert_eq!(scales.variations.len(), 1);
         assert_eq!(scales.variations[0].latest_score, Some(6));
+        assert_eq!(scales.keys_caption.as_deref(), Some("1 of 5 solid"));
+        assert_eq!(scales.variations_caption.as_deref(), Some("0 of 1 solid"));
         assert_eq!(vm.variations.len(), 4, "the built-ins seed the library");
     }
 
