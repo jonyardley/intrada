@@ -930,10 +930,9 @@ pub(super) fn move_row(
             model.raise_error(message);
             crux_core::render::render()
         }
-        Ok(None) => {
-            model.last_error = None;
-            crux_core::render::render()
-        }
+        // A drop home sends nothing on screen, so it leaves a save failure's
+        // banner standing.
+        Ok(None) => crux_core::render::render(),
         Ok(Some(DroppedMove::Unit { entry_id, to })) => move_unit(model, &entry_id, to),
         Ok(Some(DroppedMove::Related { entry_id, to })) => move_related(model, &entry_id, to),
     }
@@ -960,17 +959,18 @@ fn place_row(units: &[Vec<SetlistEntry>], row: &BuilderRowRef) -> Result<RowPlac
                 .enumerate()
                 .find_map(|(u, entries)| entries.iter().find(|e| &e.id == entry_id).map(|e| (u, e)))
                 .ok_or_else(|| format!("Entry '{entry_id}' not found in setlist"))?;
-            let related = entry.group_id.is_some() && entry.item_type == ItemKind::Exercise;
+            let related_index = if entry.group_id.is_some() {
+                units[unit]
+                    .iter()
+                    .filter(|e| e.item_type == ItemKind::Exercise)
+                    .position(|e| &e.id == entry_id)
+            } else {
+                None
+            };
             Ok(RowPlace {
                 unit,
-                starts_unit: !related,
-                related_index: related.then(|| {
-                    units[unit]
-                        .iter()
-                        .filter(|e| e.item_type == ItemKind::Exercise)
-                        .position(|e| &e.id == entry_id)
-                        .unwrap_or_default()
-                }),
+                starts_unit: related_index.is_none(),
+                related_index,
             })
         }
         BuilderRowRef::Header { group_id } | BuilderRowRef::AddRelated { group_id } => {
@@ -1021,19 +1021,14 @@ fn dropped_move(
             }
             _ => return Ok(None),
         };
-        let entry_id = units[from.unit]
-            .iter()
-            .filter(|e| e.item_type == ItemKind::Exercise)
-            .nth(local)
-            .map(|e| e.id.clone())
-            .unwrap_or_default();
+        let BuilderRowRef::Entry { entry_id } = moved else {
+            return Ok(None);
+        };
+        let entry_id = entry_id.clone();
         return Ok((to != local).then_some(DroppedMove::Related { entry_id, to }));
     }
 
     let current = from.unit;
-    if before.as_ref().is_some_and(|b| b.unit == current) {
-        return Ok(None);
-    }
     // Units other than the moved one at or above the drop.
     let mut to = after.map_or(0, |a| match a.unit.cmp(&current) {
         std::cmp::Ordering::Less => a.unit + 1,

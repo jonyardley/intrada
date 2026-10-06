@@ -1251,11 +1251,11 @@ fn a_drop_that_changes_nothing_moves_nothing() {
             "a standalone item dropped where it was",
         ),
         (
-            (E("piece-Q"), None, Some(H("piece-R"))),
-            "dragged up onto the end of a collapsed block",
+            (E("ex-B"), Some(A("piece-P")), Some(E("ex-A"))),
+            "the second related exercise dropped where it was",
         ),
         (
-            (A("piece-P"), Some(H("piece-P")), None),
+            (A("piece-P"), None, Some(E("piece-Q"))),
             "the add row does not move",
         ),
     ];
@@ -1263,8 +1263,9 @@ fn a_drop_that_changes_nothing_moves_nothing() {
         let mut m = four_unit_model();
         let order = ids(&m);
         move_unit(&mut m, "ex-nowhere", 0);
+        let banner = m.last_error.clone();
         move_row(&mut m, *drop);
-        assert!(m.last_error.is_none(), "{why}: {:?}", m.last_error);
+        assert_eq!(m.last_error, banner, "{why}: the banner stays");
         assert_eq!(ids(&m), order, "{why}");
     }
 }
@@ -1371,6 +1372,18 @@ fn moves_outside_building_are_refused() {
         }),
     );
     assert_eq!(m.last_error.as_deref(), Some("Not in building state"));
+    m.last_error = None;
+    update(
+        &mut m,
+        Event::Session(SessionEvent::MoveRow {
+            moved: BuilderRowRef::Entry {
+                entry_id: "e".to_string(),
+            },
+            before: None,
+            after: None,
+        }),
+    );
+    assert_eq!(m.last_error.as_deref(), Some("Not in building state"));
 }
 
 #[test]
@@ -1382,6 +1395,17 @@ fn drag_moves_round_trip_on_ffi_bincode_wire() {
     crate::domain::types::assert_round_trips(Event::Session(SessionEvent::MoveRelated {
         entry_id: "e2".to_string(),
         new_position: 1,
+    }));
+    crate::domain::types::assert_round_trips(Event::Session(SessionEvent::MoveRow {
+        moved: BuilderRowRef::Header {
+            group_id: "g1".to_string(),
+        },
+        before: Some(BuilderRowRef::AddRelated {
+            group_id: "g2".to_string(),
+        }),
+        after: Some(BuilderRowRef::Entry {
+            entry_id: "e1".to_string(),
+        }),
     }));
 }
 

@@ -346,7 +346,6 @@ pub struct ReflectionDraft {
     pub answers: ReflectionAnswers,
 }
 
-/// A row of the builder's list: an entry, or a block's header or add row.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
