@@ -153,7 +153,7 @@ pub(super) fn build_library_item_views(
                 .key
                 .as_ref()
                 .and_then(crate::domain::key::wheel_selection),
-            sections: build_section_views(item),
+            sections: build_section_views(item, plays),
         });
     }
 
@@ -447,7 +447,9 @@ pub(crate) fn build_scored_plays(
         }
     }
     for plays in index.values_mut() {
-        plays.sort_by_key(|p| std::cmp::Reverse(p.session.started_at));
+        // Play start too, so a section replayed in one session reads its
+        // later mark (#2250).
+        plays.sort_by_key(|p| std::cmp::Reverse((p.session.started_at, p.play.started_at)));
     }
     index
 }
@@ -556,8 +558,11 @@ fn link_summary(
     (whole_piece, sections)
 }
 
+/// The item's live sections in score order, each with the marks of the plays
+/// on it with no variations, any key (#2250).
 pub(crate) fn build_section_views(
     item: &crate::domain::item::Item,
+    plays: &[ScoredPlay],
 ) -> Vec<crate::model::SectionView> {
     let mut live: Vec<_> = item
         .sections
@@ -565,18 +570,46 @@ pub(crate) fn build_section_views(
         .filter(|s| s.deleted_at.is_none())
         .collect();
     live.sort_by_key(|s| s.position);
-    live.into_iter()
-        .map(|s| crate::model::SectionView {
-            id: s.id.clone(),
-            name: s.name.clone(),
-            kind: s.kind,
-            target_bpm: s.target_bpm,
-            first_bar: s.bars.map(|b| b.first),
-            last_bar: s.bars.map(|b| b.last),
-            label: s.label(),
-            bars_caption: s.bars.filter(|_| !s.name.is_empty()).map(|b| b.caption()),
+    let mut views: Vec<_> = live
+        .into_iter()
+        .map(|s| {
+            let score_history = history(plays, |p| {
+                p.section_id.as_deref() == Some(s.id.as_str()) && p.variation_ids.is_empty()
+            });
+            let latest_score = score_history.first().map(|e| e.score);
+            crate::model::SectionView {
+                id: s.id.clone(),
+                name: s.name.clone(),
+                kind: s.kind,
+                target_bpm: s.target_bpm,
+                first_bar: s.bars.map(|b| b.first),
+                last_bar: s.bars.map(|b| b.last),
+                label: s.label(),
+                bars_caption: s.bars.filter(|_| !s.name.is_empty()).map(|b| b.caption()),
+                latest_score,
+                score_history,
+                caption: crate::model::saved_mark_caption(latest_score),
+                is_weakest: false,
+            }
         })
-        .collect()
+        .collect();
+    if let Some(index) = weakest_section(&views) {
+        views[index].is_weakest = true;
+    }
+    views
+}
+
+/// The marked section with the lowest latest mark, once two or more are
+/// marked; a tie goes to the earlier section, and none when all tie (#2250).
+fn weakest_section(views: &[crate::model::SectionView]) -> Option<usize> {
+    let marked: Vec<(usize, u8)> = views
+        .iter()
+        .enumerate()
+        .filter_map(|(i, v)| Some((i, v.latest_score?)))
+        .collect();
+    let lowest = marked.iter().min_by_key(|&&(i, mark)| (mark, i))?;
+    let highest = marked.iter().map(|&(_, mark)| mark).max()?;
+    (highest > lowest.1).then_some(lowest.0)
 }
 
 /// Accents folded onto their base letter, then case removed, so "Étude" files

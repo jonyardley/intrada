@@ -2690,6 +2690,233 @@ mod tests {
         assert_eq!(marks(&model), vec![Some(9), Some(3), None]);
     }
 
+    // ── Section marks (#2250) ──
+
+    fn sectioned_piece(names: &[&str]) -> Item {
+        let mut piece = ctx_item("p1", "Nocturne", ItemKind::Piece, None);
+        piece.sections = names
+            .iter()
+            .enumerate()
+            .map(|(position, name)| crate::domain::section::ItemSection {
+                id: format!("sec-{position}"),
+                name: name.to_string(),
+                bars: None,
+                kind: crate::domain::section::SectionKind::Form,
+                target_bpm: None,
+                position,
+                updated_at: chrono::Utc::now(),
+                deleted_at: None,
+            })
+            .collect();
+        piece
+    }
+
+    /// One entry on the piece holding a scored play per `(section, variation,
+    /// score)`; `None` is the whole piece, plain.
+    fn sectioned_session(id: &str, plays: &[(Option<&str>, Option<&str>, u8)]) -> PracticeSession {
+        let mut entry = ctx_entry("p1", "Nocturne", ItemKind::Piece, None, None);
+        entry.plays = plays
+            .iter()
+            .enumerate()
+            .map(|(minute, &(section, variation, score))| Play {
+                started_at: chrono::Utc::now() + chrono::Duration::minutes(minute as i64),
+                section_id: section.map(String::from),
+                variation_ids: variation.map(String::from).into_iter().collect(),
+                seconds: 120,
+                score: Some(score),
+                ..Play::fixture()
+            })
+            .collect();
+        ctx_session(id, chrono::Utc::now(), vec![entry])
+    }
+
+    fn section_marks(view: &LibraryItemView) -> Vec<(Option<u8>, bool)> {
+        view.sections
+            .iter()
+            .map(|s| (s.latest_score, s.is_weakest))
+            .collect()
+    }
+
+    #[test]
+    fn a_piece_strong_in_sections_but_weak_right_through_shows_both() {
+        let app = Intrada;
+        let mut piece = sectioned_piece(&["A", "B"]);
+        let library = give_variations(&mut piece, &["Hands separately"]);
+        let mut model = Model {
+            items: vec![piece].into(),
+            variations: library.into(),
+            sessions: vec![sectioned_session(
+                "s1",
+                &[
+                    (Some("sec-0"), None, 9),
+                    (Some("sec-1"), None, 8),
+                    (None, None, 3),
+                    (None, Some("v0"), 10),
+                    (Some("sec-0"), Some("v0"), 2),
+                ],
+            )]
+            .into(),
+            ..Default::default()
+        };
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
+        let vm = app.rendered(&model);
+        let view = &vm.items[0];
+        assert_eq!(
+            view.practice.as_ref().and_then(|p| p.latest_score),
+            Some(3),
+            "the piece's own mark is the plain run-through alone"
+        );
+        assert_eq!(section_marks(view), [(Some(9), false), (Some(8), true)]);
+        assert_eq!(view.sections[0].caption, "9 of 10");
+        assert_eq!(
+            view.variations[0].score_history.len(),
+            2,
+            "both hands separately plays feed the variation"
+        );
+    }
+
+    #[test]
+    fn a_hands_separately_run_through_leaves_the_pieces_mark_alone() {
+        let app = Intrada;
+        let mut piece = sectioned_piece(&["A"]);
+        let library = give_variations(&mut piece, &["Hands separately"]);
+        let mut model = Model {
+            items: vec![piece].into(),
+            variations: library.into(),
+            sessions: vec![sectioned_session("s1", &[(None, Some("v0"), 10)])].into(),
+            ..Default::default()
+        };
+        model.practice_summaries = build_practice_summaries(&model.sessions).into();
+        let vm = app.rendered(&model);
+        assert_eq!(vm.items[0].practice.as_ref().unwrap().latest_score, None);
+        assert_eq!(vm.items[0].sections[0].latest_score, None);
+        assert_eq!(vm.items[0].sections[0].caption, "Not yet played");
+    }
+
+    #[test]
+    fn a_section_replayed_in_one_session_reads_its_later_mark() {
+        let app = Intrada;
+        let model = Model {
+            items: vec![sectioned_piece(&["A", "B"])].into(),
+            sessions: vec![sectioned_session(
+                "s1",
+                &[
+                    (Some("sec-0"), None, 3),
+                    (Some("sec-1"), None, 5),
+                    (Some("sec-0"), None, 7),
+                ],
+            )]
+            .into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            section_marks(&app.rendered(&model).items[0]),
+            [(Some(7), false), (Some(5), true)]
+        );
+    }
+
+    #[test]
+    fn a_variation_on_a_section_leaves_the_sections_mark_alone() {
+        let app = Intrada;
+        let mut piece = sectioned_piece(&["A"]);
+        let library = give_variations(&mut piece, &["Hands separately"]);
+        let model = Model {
+            items: vec![piece].into(),
+            variations: library.into(),
+            sessions: vec![sectioned_session(
+                "s1",
+                &[(Some("sec-0"), None, 9), (Some("sec-0"), Some("v0"), 2)],
+            )]
+            .into(),
+            ..Default::default()
+        };
+        let view = &app.rendered(&model).items[0];
+        assert_eq!(view.sections[0].latest_score, Some(9));
+        assert_eq!(view.variations[0].latest_score, Some(2));
+    }
+
+    #[test]
+    fn the_weakest_section_needs_two_differing_marks() {
+        let app = Intrada;
+        let rendered = |plays: &[(Option<&str>, Option<&str>, u8)]| {
+            let model = Model {
+                items: vec![sectioned_piece(&["A", "B", "C"])].into(),
+                sessions: vec![sectioned_session("s1", plays)].into(),
+                ..Default::default()
+            };
+            section_marks(&app.rendered(&model).items[0])
+        };
+        assert_eq!(
+            rendered(&[(Some("sec-1"), None, 4)]),
+            [(None, false), (Some(4), false), (None, false)],
+            "one marked section is not the weakest of anything"
+        );
+        assert_eq!(
+            rendered(&[(Some("sec-0"), None, 6), (Some("sec-2"), None, 6)]),
+            [(Some(6), false), (None, false), (Some(6), false)],
+            "all tied, none is weakest"
+        );
+        assert_eq!(
+            rendered(&[
+                (Some("sec-0"), None, 7),
+                (Some("sec-1"), None, 4),
+                (Some("sec-2"), None, 4),
+            ]),
+            [(Some(7), false), (Some(4), true), (Some(4), false)],
+            "a tie at the bottom goes to the earlier section"
+        );
+    }
+
+    #[test]
+    fn up_next_names_the_section_the_piece_screen_marks_weakest() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut piece = sectioned_piece(&["A", "B"]);
+        piece.exercise_links = vec![crate::domain::link::ExerciseLink {
+            id: "l1".to_string(),
+            exercise_id: "ex1".to_string(),
+            section_id: None,
+            position: 0,
+            updated_at: now,
+            deleted_at: None,
+        }];
+        let model = Model {
+            items: vec![piece, ctx_item("ex1", "Scales", ItemKind::Exercise, None)].into(),
+            sessions: vec![sectioned_session(
+                "s1",
+                &[(Some("sec-0"), None, 8), (Some("sec-1"), None, 5)],
+            )]
+            .into(),
+            ..Default::default()
+        };
+        let vm = app.rendered(&model);
+        let weakest = vm
+            .items
+            .iter()
+            .find(|i| i.id == "p1")
+            .unwrap()
+            .sections
+            .iter()
+            .min_by_key(|s| s.latest_score)
+            .unwrap();
+        assert!(weakest.is_weakest);
+        let plan = crate::view::library::derive_up_next(&model, now).expect("a plan");
+        let piece_row = plan.blocks[0]
+            .items
+            .iter()
+            .find(|i| i.item_id == "p1")
+            .unwrap();
+        assert_eq!(
+            piece_row.weakest_section.as_deref(),
+            Some(format!("Weakest section · {}", weakest.label).as_str())
+        );
+        assert!(plan.blocks[0]
+            .items
+            .iter()
+            .filter(|i| i.item_id != "p1")
+            .all(|i| i.weakest_section.is_none()));
+    }
+
     /// A deleted variation leaves every item's list but keeps its row, so the
     /// plays on it still say what they were (#2246).
     #[test]

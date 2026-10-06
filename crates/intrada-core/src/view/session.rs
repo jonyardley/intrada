@@ -15,8 +15,8 @@ use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
     FeltChoiceView, FinishRowView, FinishSheetView, FocusView, ItemPracticeSummary, KeyChoiceView,
     LastTimeView, NotePointView, ObstacleChoiceView, PickerVariationView, PlayView,
-    PracticeSessionView, ReflectionTempoView, ReflectionView, SegmentClockView, SegmentView,
-    SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
+    PracticeSessionView, ReflectionTempoView, ReflectionView, SectionView, SegmentClockView,
+    SegmentView, SetlistBlockView, SetlistEntryView, SummaryView, VariationView,
 };
 
 /// Format seconds into a human-readable duration string.
@@ -424,6 +424,7 @@ pub fn fill_finish_choices(
     entry: &SetlistEntry,
     draft: &ReflectionDraft,
     item: &Item,
+    sections: Vec<SectionView>,
     has_variations: bool,
     labels: &PlayLabels,
 ) {
@@ -452,7 +453,7 @@ pub fn fill_finish_choices(
         .collect();
     let recorded: Vec<Key> = ways.iter().filter_map(|w| w.key).collect();
     let keys = key_choices(item, &recorded);
-    finish.sections = crate::view::library::build_section_views(item);
+    finish.sections = sections;
     let can_change = !finish.sections.is_empty() || keys.len() > 1 || has_variations;
     let plain = if finish.sections.is_empty() {
         "No variation"

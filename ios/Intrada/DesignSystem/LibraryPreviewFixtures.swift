@@ -104,20 +104,25 @@
 
     /// Clair de lune split as the #2364 mocks draw it, with one tricky spot (#2247).
     static var previewPieceWithSections: LibraryItemView {
-      func part(_ id: String, _ name: String, _ first: UInt16, _ last: UInt16) -> SectionView {
+      func part(
+        _ id: String, _ name: String, _ first: UInt16, _ last: UInt16, _ mark: UInt8? = nil
+      ) -> SectionView {
         SectionView(
           id: id, name: name, kind: .form, targetBpm: nil, firstBar: first, lastBar: last,
-          label: name, barsCaption: "Bars \(first) to \(last)")
+          label: name, barsCaption: "Bars \(first) to \(last)", latestScore: mark,
+          scoreHistory: [], caption: mark.map { "\($0) of 10" } ?? "Not yet played",
+          isWeakest: false)
       }
       var item = previewPiece
       item.id = "piece-sections"
       item.linkedExercises = []
       item.sections = [
-        part("s1", "A1", 1, 14), part("s2", "B", 15, 26),
+        part("s1", "A1", 1, 14, 8), part("s2", "B", 15, 26, 6),
         SectionView(
           id: "s3", name: "", kind: .troubleSpot, targetBpm: 54, firstBar: 19, lastBar: 20,
-          label: "Bars 19 to 20", barsCaption: nil),
-        part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72),
+          label: "Bars 19 to 20", barsCaption: nil, latestScore: 4, scoreHistory: [],
+          caption: "4 of 10", isWeakest: true),
+        part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72, 7),
       ]
       return item
     }

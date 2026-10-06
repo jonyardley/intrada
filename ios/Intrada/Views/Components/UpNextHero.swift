@@ -181,6 +181,12 @@ struct UpNextHero: View {
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
           .fixedSize(horizontal: false, vertical: true)
+        if let weakest = item.weakestSection {
+          Text(weakest)
+            .font(IntradaFont.secondary)
+            .foregroundStyle(IntradaColor.onAccent.opacity(IntradaOpacity.secondary))
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
       Spacer(minLength: 0)
     }
@@ -273,6 +279,7 @@ struct UpNextHero: View {
     var parts = [item.itemTitle]
     parts.append(item.itemType.label)
     parts.append(spoken(item.reason))
+    if let weakest = item.weakestSection { parts.append(weakest) }
     return parts.joined(separator: ", ")
   }
 
