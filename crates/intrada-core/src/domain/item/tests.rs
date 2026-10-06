@@ -4154,7 +4154,10 @@ fn saving_leaves_the_other_sections_as_stored() {
     );
 
     assert!(model.last_error.is_none(), "{:?}", model.last_error);
-    let kept = live_sections(&model).into_iter().find(|s| s.id == c).unwrap();
+    let kept = live_sections(&model)
+        .into_iter()
+        .find(|s| s.id == c)
+        .unwrap();
     assert_eq!(kept.bars, bars(17, 24));
     assert_eq!(kept.target_bpm, Some(72));
     assert_eq!(live_sections(&model)[0].name, "A1");
@@ -4164,7 +4167,12 @@ fn saving_leaves_the_other_sections_as_stored() {
 fn saving_a_section_that_is_gone_is_refused() {
     let mut model = model_with_abc();
     let b = section_id(&model, "B");
-    let _ = change_section(&mut model, SectionChange::Remove { section_id: b.clone() });
+    let _ = change_section(
+        &mut model,
+        SectionChange::Remove {
+            section_id: b.clone(),
+        },
+    );
 
     for id in [b.as_str(), "s-stranger"] {
         let mut cmd = change_section(
@@ -4255,7 +4263,10 @@ fn arranging_saves_the_new_order_and_removes_any_left_out() {
     assert!(model.last_error.is_none(), "{:?}", model.last_error);
     assert!(emits_save(&mut cmd, "piece-1"));
     assert_eq!(live_names(&model), ["C", "A"]);
-    let removed = piece_sections(&model).into_iter().find(|s| s.id == b).unwrap();
+    let removed = piece_sections(&model)
+        .into_iter()
+        .find(|s| s.id == b)
+        .unwrap();
     assert!(removed.deleted_at.is_some());
 }
 

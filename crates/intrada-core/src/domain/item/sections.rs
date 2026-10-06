@@ -12,7 +12,11 @@ pub(crate) fn update_sections(
     }
 }
 
-fn write_sections(model: &mut Model, id: String, drafts: Vec<SectionDraft>) -> Command<Effect, Event> {
+fn write_sections(
+    model: &mut Model,
+    id: String,
+    drafts: Vec<SectionDraft>,
+) -> Command<Effect, Event> {
     let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
         model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
