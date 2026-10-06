@@ -283,7 +283,7 @@ struct ReflectionSheet: View {
       marks: plays.compactMap { play in
         marks[play.id].map { DraftMark(playId: play.id, score: UInt8(clamping: $0)) }
       },
-      note: note.trimmingCharacters(in: .whitespacesAndNewlines),
+      note: note,
       tempos: TrackedTempo.handSet(tempoRows, tracked: tempos),
       felt: felt, gotInTheWay: obstacles, notePoints: notePoints,
       intentionMet: intentionMet, ways: ways)
@@ -316,7 +316,7 @@ struct ReflectionSheet: View {
   }
 
   private func draftNoteIfChanged() {
-    if note.trimmingCharacters(in: .whitespacesAndNewlines) != draftedNote { draft() }
+    if note != draftedNote { draft() }
   }
 
   private var playRows: some View {

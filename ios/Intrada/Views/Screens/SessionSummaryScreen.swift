@@ -183,9 +183,8 @@ struct SessionSummaryScreen: View {
       // Only while still in Summary, and only for a real change, or teardown
       // fires a core error on an identical round-trip.
       guard summary != nil else { return }
-      let trimmed = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-      let next = trimmed.isEmpty ? nil : trimmed
-      guard next != entry.notes else { return }
+      let next = value ?? ""
+      guard next != entry.notes ?? "" else { return }
       // A refusal (over-long note) surfaces on RootView's banner; the field
       // must not keep showing text the core rejected.
       if !store.sendAccepted(.session(.updateEntryNotes(entryId: entry.id, notes: next))) {
@@ -290,9 +289,8 @@ struct SessionSummaryScreen: View {
       // identical round-trip on the seeded value and a "not in summary" core
       // error if the field settles during teardown.
       guard summary != nil else { return }
-      let trimmed = value.isEmpty ? nil : value
-      guard trimmed != summary?.notes else { return }
-      store.send(.session(.updateSessionNotes(notes: trimmed)))
+      guard value != summary?.notes ?? "" else { return }
+      store.send(.session(.updateSessionNotes(notes: value)))
     }
   }
 
