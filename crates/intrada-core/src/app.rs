@@ -1233,6 +1233,10 @@ mod tests {
     fn perf_model(pieces: usize, sessions: usize) -> Model {
         let now = chrono::Utc::now();
         let mut model = Model::default();
+        // Every item on every built-in, so the sheet's usage pass is timed (#2366).
+        let built_ins = crate::domain::variation::seed_if_empty(&[], now).unwrap_or_default();
+        let all_variations: Vec<String> = built_ins.iter().map(|v| v.id.clone()).collect();
+        model.variations = built_ins.into();
         for i in 0..pieces {
             model.items.push(Item {
                 id: format!("p{i:05}"),
@@ -1260,7 +1264,7 @@ mod tests {
                     .collect(),
                 priority: false,
                 chord_chart: None,
-                variation_ids: vec![],
+                variation_ids: all_variations.clone(),
                 keys: vec![],
                 sections: vec![],
                 photo_id: None,
@@ -1282,7 +1286,7 @@ mod tests {
                 exercise_links: vec![],
                 priority: false,
                 chord_chart: None,
-                variation_ids: vec![],
+                variation_ids: all_variations.clone(),
                 keys: vec![],
                 sections: vec![],
                 photo_id: None,

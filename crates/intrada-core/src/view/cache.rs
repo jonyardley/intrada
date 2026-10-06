@@ -2,7 +2,7 @@ use crate::analytics::{
     analytics_from_changes, compute_score_changes, AnalyticsView, LastPractisedView, LocalClock,
 };
 use crate::domain::types::{LibrarySort, SortDirection, SortField};
-use crate::model::{LibraryItemView, Model, PracticeSessionView};
+use crate::model::{LibraryItemView, Model, PracticeSessionView, VariationOptionView};
 use crate::practice_weeks::PracticeWeekView;
 use crate::suggestion::SuggestedSession;
 use crate::view::library::{
@@ -53,6 +53,8 @@ pub(crate) struct Projections {
     pub(crate) practice_weeks: Vec<PracticeWeekView>,
     pub(crate) analytics: Option<AnalyticsView>,
     pub(crate) last_practised: Option<LastPractisedView>,
+    /// The live library variations, each saying which items use it (#2366).
+    pub(crate) variation_options: Vec<VariationOptionView>,
 }
 
 impl Projections {
@@ -177,7 +179,36 @@ pub(crate) fn build(model: &Model, clock: LocalClock) -> Projections {
         practice_weeks,
         analytics,
         last_practised,
+        variation_options: variation_options(model),
     }
+}
+
+/// One pass over the items, so a large library costs one scan, not one per
+/// variation (#2366).
+fn variation_options(model: &Model) -> Vec<VariationOptionView> {
+    let mut users: std::collections::HashMap<&str, (usize, &str)> =
+        std::collections::HashMap::new();
+    for item in &model.items {
+        for id in &item.variation_ids {
+            users
+                .entry(id.as_str())
+                .or_insert((0, item.title.as_str()))
+                .0 += 1;
+        }
+    }
+    model
+        .variations
+        .iter()
+        .filter(|v| v.deleted_at.is_none())
+        .map(|v| VariationOptionView {
+            id: v.id.clone(),
+            label: v.label.clone(),
+            usage: users.get(v.id.as_str()).map(|&(count, first)| match count {
+                1 => format!("On {first}"),
+                n => format!("On {n} items"),
+            }),
+        })
+        .collect()
 }
 
 fn vocabulary<S: AsRef<str>>(values: impl IntoIterator<Item = S>) -> Vec<String> {

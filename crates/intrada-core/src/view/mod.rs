@@ -253,29 +253,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         ),
         practice_defaults: model.practice_defaults,
         first_run: build_first_run_view(model),
-        variations: model
-            .variations
-            .iter()
-            .filter(|v| v.deleted_at.is_none())
-            .map(|v| crate::model::VariationOptionView {
-                id: v.id.clone(),
-                label: v.label.clone(),
-                usage: variation_usage(model, &v.id),
-            })
-            .collect(),
-    }
-}
-
-/// Which items use a variation, this one included (#2366).
-fn variation_usage(model: &Model, variation_id: &str) -> Option<String> {
-    let mut users = model
-        .items
-        .iter()
-        .filter(|i| i.variation_ids.iter().any(|id| id == variation_id));
-    let first = users.next()?;
-    match users.count() {
-        0 => Some(format!("On {}", first.title)),
-        more => Some(format!("On {} items", more + 1)),
+        variations: cached.variation_options.clone(),
     }
 }
 
@@ -395,6 +373,10 @@ mod tests {
     use crate::model::Model;
     use crux_core::App;
 
+    use crate::domain::types::Tempo;
+    use crate::model::PhotoRecognition;
+    use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};
+
     #[test]
     fn a_variation_says_which_items_use_it() {
         let mut model = Model::default();
@@ -420,9 +402,6 @@ mod tests {
         assert_eq!(usage(&ids[1]).as_deref(), Some("On 2 items"));
         assert_eq!(usage(&ids[2]), None);
     }
-    use crate::domain::types::Tempo;
-    use crate::model::PhotoRecognition;
-    use crate::recognition::{DraftSource, PhotoDraft, TempoDraftField, TextDraftField};
 
     fn text(value: &str) -> Option<TextDraftField> {
         Some(TextDraftField {

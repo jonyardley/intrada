@@ -34,6 +34,7 @@ struct PreviewFixtureParityTests {
     let keySelection: KeyWheelSelection?
     let tempoBpm: UInt16?
     let rows: [VariationRow]
+    let keysCaption: String?
     let variationsCaption: String?
   }
 
@@ -272,7 +273,7 @@ struct PreviewFixtureParityTests {
       rows: item.variations.map {
         VariationRow(label: $0.label, latestScore: $0.latestScore, caption: $0.caption)
       },
-      variationsCaption: item.variationsCaption)
+      keysCaption: item.keysCaption, variationsCaption: item.variationsCaption)
   }
 
   private func picker(_ row: PickerVariationView) -> PickerRow {
