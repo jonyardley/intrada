@@ -1,5 +1,4 @@
 // ── Shared codec ─────────────────────────────────────────────────────
-// HACK(#2432): keep in step with StoredCodec.swift and ItemCodec.swift until the iPhone switch.
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use intrada_core::domain::chart::{

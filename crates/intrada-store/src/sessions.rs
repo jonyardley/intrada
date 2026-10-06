@@ -1,5 +1,4 @@
 // ── Sessions and variations ──────────────────────────────────────────
-// HACK(#2432): keep in step with LibraryStore.swift until the iPhone switch.
 
 use intrada_core::domain::Variation;
 use intrada_core::stored_session::{session_from_stored, session_to_stored, StoredSession};

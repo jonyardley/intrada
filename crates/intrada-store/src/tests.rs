@@ -1,4 +1,4 @@
-//! Seeds are the shapes the iPhone's GRDB store wrote, copied from
+//! Seeds are the shapes the iPhone's GRDB store wrote, copied from its
 //! `LibraryStoreMigrationTests` and `LibraryStoreTests`, never written to match
 //! this port (#1256).
 
@@ -8,13 +8,15 @@ use intrada_core::domain::chart::{
 };
 use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
+use intrada_core::domain::session::{Play, RepAction, RepEvent};
 use intrada_core::domain::{Metre, Variation};
 use intrada_core::{
-    Accidental, Item, ItemKind, Key, Letter, Modality, PersistenceOperation, PersistenceOutput,
-    PracticeSession, Tempo,
+    Accidental, CompletionStatus, EntryStatus, Item, ItemKind, Key, Letter, Modality,
+    PersistenceOperation, PersistenceOutput, PracticeSession, SetlistEntry, Tempo,
 };
 use rusqlite::Connection;
 
+use crate::codec;
 use crate::migrations::{self, MIGRATIONS};
 use crate::Store;
 
@@ -78,6 +80,23 @@ impl Store {
     fn raw(&self, sql: &str) -> Option<String> {
         self.conn
             .query_row(sql, [], |row| row.get(0))
+            .expect("reads")
+    }
+
+    fn save_session(&mut self, session: &PracticeSession) {
+        assert_eq!(
+            self.ok(&PersistenceOperation::SaveSession(session.clone())),
+            PersistenceOutput::Ack
+        );
+    }
+
+    fn columns(&self, table: &str) -> Vec<String> {
+        self.conn
+            .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
+            .expect("prepares")
+            .query_map([], |row| row.get(0))
+            .expect("queries")
+            .collect::<rusqlite::Result<_>>()
             .expect("reads")
     }
 }
@@ -193,6 +212,101 @@ fn bare(id: &str, kind: ItemKind) -> Item {
     }
 }
 
+/// `LibraryStoreTests.item`.
+fn etude(id: &str, kind: ItemKind) -> Item {
+    Item {
+        title: "Etude".into(),
+        composer: Some("Chopin".into()),
+        key: Some(key(Letter::C, Accidental::Natural, Some(Modality::Major))),
+        tempo: Some(Tempo {
+            marking: Some("Allegro".into()),
+            bpm: Some(132),
+        }),
+        notes: Some("evenness".into()),
+        tags: vec!["scale".into(), "warmup".into()],
+        priority: true,
+        ..bare(id, kind)
+    }
+}
+
+/// `LibraryItemFixture.record`.
+fn record(id: &str, title: &str) -> Item {
+    Item {
+        title: title.into(),
+        ..bare(id, ItemKind::Piece)
+    }
+}
+
+fn tap(action: RepAction, time: &str) -> RepEvent {
+    RepEvent {
+        action,
+        at: at(time),
+        tempo: None,
+        click_sounding: None,
+    }
+}
+
+/// `LibraryStoreTests.entry`.
+fn entry(id: &str) -> SetlistEntry {
+    SetlistEntry {
+        id: id.into(),
+        item_id: format!("item-{id}"),
+        item_title: "Etude".into(),
+        item_type: ItemKind::Exercise,
+        position: 0,
+        duration_secs: 300,
+        status: EntryStatus::Completed,
+        notes: Some("good".into()),
+        intention: Some("evenness".into()),
+        planned_duration_secs: Some(300),
+        group_id: None,
+        planned_variation_ids: vec![],
+        planned_rep_target: Some(5),
+        plays: vec![Play {
+            id: format!("{id}-p1"),
+            section_id: None,
+            key: None,
+            variation_ids: vec![],
+            started_at: at(EARLY),
+            seconds: 300,
+            rep_target: Some(5),
+            rep_count: Some(5),
+            rep_history: Some(vec![
+                tap(RepAction::Success, "2026-01-01T00:01:00Z"),
+                tap(RepAction::Missed, "2026-01-01T00:02:00Z"),
+                tap(RepAction::Success, "2026-01-01T00:03:30Z"),
+            ]),
+            tempo_changes: vec![],
+            achieved_tempo: Some(120),
+            click_pattern: None,
+            score: Some(4),
+            away: vec![],
+        }],
+        segments: vec![],
+        focus: None,
+        intention_met: None,
+        felt: None,
+        got_in_the_way: vec![],
+        note_points: vec![],
+        planned_key: None,
+    }
+}
+
+/// `LibraryStoreTests.session`.
+fn session(id: &str, completed_at: &str) -> PracticeSession {
+    PracticeSession {
+        id: id.into(),
+        entries: vec![entry("a"), entry("b")],
+        session_notes: Some("solid".into()),
+        started_at: at(EARLY),
+        completed_at: at(completed_at),
+        total_duration_secs: 600,
+        completion_status: CompletionStatus::Completed,
+        session_score: None,
+        capture_version: None,
+    }
+}
+
 // ── Migrations ──
 
 #[test]
@@ -224,22 +338,35 @@ fn every_earlier_version_reaches_the_current_one_with_its_rows() {
     }
 }
 
-// The iPhone keeps adding migrations until it switches over (#2432); one added
-// there and not here would leave Android's schema behind with every gate green.
+// Phones in testers' hands have these recorded in `grdb_migrations` by the
+// GRDB store this replaced (#2432): one renamed or reordered runs again over
+// their notebook.
 #[test]
-fn the_migrations_match_the_iphones_in_order() {
-    let swift = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../ios/Intrada/Core/LibraryMigrations.swift"
-    ))
-    .expect("reads the iPhone's migrations");
-    let iphone: Vec<&str> = swift
-        .split("registerMigration(\"")
-        .skip(1)
-        .filter_map(|rest| rest.split('"').next())
-        .collect();
+fn the_shipped_migrations_keep_their_ids_and_order() {
+    let shipped = [
+        "v1_item",
+        "v2_add_modality",
+        "v3_session",
+        "v4_session_score",
+        "v5_rescale_entry_scores",
+        "v6_item_linked_exercises",
+        "v7_session_reflections",
+        "v8_item_chord_chart",
+        "v9_variant",
+        "v10_coach_records",
+        "v11_built_session",
+        "v12_block_origin",
+        "v13_wander_item",
+        "v14_unmonitored_play",
+        "v15_reflection_steer",
+        "v16_item_photo",
+        "v17_item_metre",
+        "v18_section",
+        "v19_keys_and_variations",
+        "v20_exercise_link",
+    ];
     let here: Vec<&str> = MIGRATIONS.iter().map(|(id, _)| *id).collect();
-    assert_eq!(here, iphone);
+    assert_eq!(here[..shipped.len()], shipped);
 }
 
 #[test]
@@ -434,9 +561,32 @@ fn v19_keeps_every_key_chart_and_session() {
         "a key the core cannot read stays until one is picked"
     );
 
+    for (table, column) in [
+        ("variation", "label"),
+        ("item", "variation_ids"),
+        ("item", "keys"),
+        ("session", "capture_version"),
+    ] {
+        assert!(
+            store.columns(table).contains(&column.to_string()),
+            "{table}.{column}"
+        );
+    }
+
     let session = store.sessions().pop().expect("a session");
     assert_eq!(session.capture_version, None);
-    assert_eq!(session.entries[0].plays[0].score, Some(7));
+    let entry = &session.entries[0];
+    assert_eq!(entry.planned_variation_ids, Vec::<String>::new());
+    let play = &entry.plays[0];
+    assert_eq!(play.score, Some(7));
+    assert_eq!(play.variation_ids, Vec::<String>::new());
+    let taps = play.rep_history.clone().expect("taps");
+    assert_eq!(
+        taps.iter().map(|t| t.action).collect::<Vec<_>>(),
+        vec![RepAction::Success]
+    );
+    assert_eq!(taps[0].tempo, None);
+    assert_eq!(play.tempo_changes, vec![]);
 }
 
 #[test]
@@ -805,7 +955,7 @@ fn a_time_is_stored_as_the_bridge_writes_it() {
     );
 }
 
-// ── A database the iPhone app wrote (SharedStoreFixtureTests.swift) ──
+// ── A database the last GRDB build wrote, kept as written (#2432) ──
 
 #[test]
 fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
@@ -885,4 +1035,669 @@ fn a_database_the_iphone_wrote_opens_with_every_row_intact() {
     let mut reopened = Store::open(&path).expect("opens again");
     assert_eq!(reopened.item("p1"), renamed);
     let _ = std::fs::remove_file(&path);
+}
+
+// ── Whole rows from older schemas (LibraryStoreMigrationTests.swift) ──
+
+#[test]
+fn an_item_from_each_older_schema_loads_whole() {
+    let mut store = upgraded(
+        "v1_item",
+        "INSERT INTO item
+           (id, title, kind, composer, key, tempo_marking, tempo_bpm, notes, tags,
+            created_at, updated_at, priority, deleted_at)
+         VALUES ('p1', 'Legacy Etude', 'piece', 'Bach', 'C', 'Allegro', 120, 'phrasing',
+                 '[\"scale\"]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)",
+    );
+    assert_eq!(
+        store.items(),
+        vec![Item {
+            composer: Some("Bach".into()),
+            key: Some(key(Letter::C, Accidental::Natural, None)),
+            tempo: Some(Tempo {
+                marking: Some("Allegro".into()),
+                bpm: Some(120),
+            }),
+            notes: Some("phrasing".into()),
+            tags: vec!["scale".into()],
+            ..record("p1", "Legacy Etude")
+        }]
+    );
+
+    let mut store = upgraded(
+        "v5_rescale_entry_scores",
+        "INSERT INTO item
+           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+            created_at, updated_at, priority, deleted_at)
+         VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)",
+    );
+    assert!(store
+        .columns("item")
+        .contains(&"linked_exercise_ids".to_string()));
+    assert_eq!(store.items(), vec![record("p1", "Legacy Piece")]);
+
+    let mut store = upgraded(
+        "v7_session_reflections",
+        "INSERT INTO item
+           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+            linked_exercise_ids, created_at, updated_at, priority, deleted_at)
+         VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                 '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)",
+    );
+    assert!(store.columns("item").contains(&"chord_chart".to_string()));
+    assert_eq!(store.items(), vec![record("p1", "Legacy Piece")]);
+
+    let mut store = upgraded(
+        "v8_item_chord_chart",
+        "INSERT INTO item
+           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+            linked_exercise_ids, created_at, updated_at, priority, deleted_at, chord_chart)
+         VALUES ('e1', 'Legacy Exercise', 'exercise', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                 '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)",
+    );
+    let variant = store.columns("variant");
+    for expected in [
+        "id",
+        "item_id",
+        "label",
+        "position",
+        "updated_at",
+        "deleted_at",
+    ] {
+        assert!(variant.contains(&expected.to_string()), "{variant:?}");
+    }
+    assert_eq!(
+        store.items(),
+        vec![Item {
+            title: "Legacy Exercise".into(),
+            ..bare("e1", ItemKind::Exercise)
+        }]
+    );
+
+    let mut store = upgraded(
+        "v15_reflection_steer",
+        "INSERT INTO item
+           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+            linked_exercise_ids, created_at, updated_at, priority, deleted_at, chord_chart)
+         VALUES ('p1', 'Legacy Piece', 'piece', 'Chopin', 'E', NULL, NULL, NULL, NULL, '[]',
+                 '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)",
+    );
+    assert!(store.columns("item").contains(&"photo_id".to_string()));
+    assert_eq!(
+        store.items(),
+        vec![Item {
+            composer: Some("Chopin".into()),
+            key: Some(key(Letter::E, Accidental::Natural, None)),
+            ..record("p1", "Legacy Piece")
+        }]
+    );
+}
+
+#[test]
+fn an_item_written_at_v17_loads_whole_with_no_sections() {
+    let mut store = upgraded(
+        "v17_item_metre",
+        "INSERT INTO item
+           (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+            linked_exercise_ids, created_at, updated_at, priority, chord_chart, photo_id, metre,
+            deleted_at)
+         VALUES ('p1', 'Waltz', 'piece', 'Chopin', 'A', 'minor', 'Lento', 60, 'slow', '[\"rubato\"]',
+                 '[\"e1\"]', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z', 1, NULL, NULL,
+                 '{\"beats\":3,\"unit\":4}', NULL);
+         INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+         VALUES ('e1', 'Scales', 'exercise', '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+         INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
+         VALUES ('v1', 'e1', 'C', 0, '2026-01-01T00:00:00Z', NULL)",
+    );
+    let section = store.columns("section");
+    for expected in [
+        "id",
+        "item_id",
+        "name",
+        "bar_first",
+        "bar_last",
+        "kind",
+        "target_bpm",
+        "position",
+        "updated_at",
+        "deleted_at",
+    ] {
+        assert!(section.contains(&expected.to_string()), "{section:?}");
+    }
+    assert_eq!(
+        store.item("p1"),
+        Item {
+            composer: Some("Chopin".into()),
+            key: Some(key(Letter::A, Accidental::Natural, Some(Modality::Minor))),
+            tempo: Some(Tempo {
+                marking: Some("Lento".into()),
+                bpm: Some(60),
+            }),
+            notes: Some("slow".into()),
+            tags: vec!["rubato".into()],
+            exercise_links: vec![ExerciseLink {
+                id: "link|p1|e1".into(),
+                exercise_id: "e1".into(),
+                section_id: None,
+                position: 0,
+                updated_at: at("2026-01-02T00:00:00Z"),
+                deleted_at: None,
+            }],
+            updated_at: at("2026-01-02T00:00:00Z"),
+            priority: true,
+            metre: Some(Metre {
+                beats: 3,
+                unit: 4,
+                groups: None,
+            }),
+            ..record("p1", "Waltz")
+        }
+    );
+    let exercise = store.item("e1");
+    assert_eq!(
+        (exercise.variation_ids, exercise.sections),
+        (vec![], vec![])
+    );
+}
+
+#[test]
+fn a_v3_session_gains_an_empty_session_score() {
+    let mut store = upgraded(
+        "v3_session",
+        &v3_session(
+            "s1",
+            r#"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":60,"status":"completed","score":3}]"#,
+        ),
+    );
+    assert!(entries_of(&store, "s1").to_string().contains("\"score\":6"));
+    assert_eq!(
+        store.raw("SELECT typeof(session_score) FROM session WHERE id = 's1'"),
+        Some("null".into())
+    );
+    assert_eq!(store.sessions()[0].session_score, None);
+}
+
+#[test]
+fn a_v6_session_keeps_its_notes_and_score() {
+    let mut store = upgraded(
+        "v6_item_linked_exercises",
+        "INSERT INTO session
+           (id, started_at, completed_at, total_duration_secs, completion_status,
+            session_notes, session_intention, entries, updated_at, deleted_at, session_score)
+         VALUES ('s-pre', '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', 60, 'completed',
+                 'old note', NULL, '[]', '2026-01-01T00:00:00Z', NULL, 7)",
+    );
+    let session = store.sessions().pop().expect("a session");
+    assert_eq!(
+        (session.session_notes.as_deref(), session.session_score),
+        (Some("old note"), Some(7))
+    );
+}
+
+#[test]
+fn the_retired_session_columns_and_their_text_survive_a_save() {
+    let mut store = upgraded(
+        migrations::latest(),
+        "INSERT INTO session
+           (id, started_at, completed_at, total_duration_secs, completion_status,
+            session_notes, session_intention, entries, updated_at, deleted_at,
+            reflection_improved, reflection_still_rough, reflection_next_target)
+         VALUES ('s-old', '2026-05-01T10:00:00Z', '2026-05-01T10:30:00Z', 1800, 'completed',
+                 'old note', 'even RH at 96', '[]', '2026-05-01T10:30:00Z', NULL,
+                 'thumb-unders even', 'bars 12-14 rush', 'bars 12-14 at 80')",
+    );
+    let retired = [
+        ("session_intention", "even RH at 96"),
+        ("reflection_improved", "thumb-unders even"),
+        ("reflection_still_rough", "bars 12-14 rush"),
+        ("reflection_next_target", "bars 12-14 at 80"),
+    ];
+    let columns = store.columns("session");
+    for (column, _) in retired {
+        assert!(columns.contains(&column.to_string()), "{columns:?}");
+    }
+
+    let mut reloaded = store.sessions().pop().expect("a session");
+    reloaded.session_notes = Some("edited".into());
+    store.save_session(&reloaded);
+
+    assert_eq!(
+        store.raw("SELECT session_notes FROM session WHERE id = 's-old'"),
+        Some("edited".into())
+    );
+    for (column, text) in retired {
+        assert_eq!(
+            store.raw(&format!("SELECT {column} FROM session WHERE id = 's-old'")),
+            Some(text.into()),
+            "{column}"
+        );
+    }
+}
+
+// ── More round trips (LibraryStoreTests.swift, LibraryStoreMigrationTests.swift) ──
+
+#[test]
+fn an_exercise_with_no_tempo_or_tags_reads_back_as_written() {
+    let mut store = Store::in_memory().expect("opens");
+    let exercise = Item {
+        tempo: None,
+        tags: vec![],
+        ..etude("e1", ItemKind::Exercise)
+    };
+    store.save(&exercise);
+    assert_eq!(store.items(), vec![exercise]);
+    assert_eq!(
+        store.raw("SELECT kind FROM item WHERE id = 'e1'"),
+        Some("exercise".into())
+    );
+}
+
+#[test]
+fn a_key_with_no_mode_reads_back_with_no_modality_stored() {
+    let mut store = Store::in_memory().expect("opens");
+    let item = Item {
+        key: Some(key(Letter::F, Accidental::Sharp, None)),
+        ..etude("p1", ItemKind::Piece)
+    };
+    store.save(&item);
+    assert_eq!(store.items(), vec![item]);
+    assert_eq!(
+        store.raw("SELECT typeof(modality) FROM item WHERE id = 'p1'"),
+        Some("null".into())
+    );
+}
+
+#[test]
+fn variations_and_keys_read_back_in_the_order_written() {
+    let mut store = Store::in_memory().expect("opens");
+    let exercise = Item {
+        variation_ids: vec!["v-b".into(), "v-a".into()],
+        keys: vec![
+            key(Letter::E, Accidental::Flat, Some(Modality::Major)),
+            key(Letter::C, Accidental::Sharp, Some(Modality::Minor)),
+            key(Letter::G, Accidental::Natural, None),
+        ],
+        ..etude("e1", ItemKind::Exercise)
+    };
+    store.save(&exercise);
+    assert_eq!(store.items(), vec![exercise]);
+}
+
+#[test]
+fn saving_no_tags_over_readable_ones_clears_them() {
+    let mut store = Store::in_memory().expect("opens");
+    let mut item = etude("i1", ItemKind::Piece);
+    store.save(&item);
+    item.tags = vec![];
+    store.save(&item);
+    assert_eq!(
+        store.raw("SELECT tags FROM item WHERE id = 'i1'"),
+        Some("[]".into())
+    );
+}
+
+#[test]
+fn removing_a_photo_clears_it() {
+    let mut store = Store::in_memory().expect("opens");
+    let with_photo = Item {
+        composer: Some("Chopin".into()),
+        photo_id: Some("01ARZ3NDEKTSV4RRFFQ69G5FAV".into()),
+        ..record("p1", "Nocturne")
+    };
+    store.save(&with_photo);
+    assert_eq!(store.item("p1").photo_id, with_photo.photo_id);
+    store.save(&Item {
+        photo_id: None,
+        updated_at: at("2026-01-01T00:01:00Z"),
+        ..with_photo
+    });
+    assert_eq!(store.item("p1").photo_id, None);
+}
+
+#[test]
+fn an_ended_early_session_with_no_entries_reads_back_as_written() {
+    let mut store = Store::in_memory().expect("opens");
+    let ended = PracticeSession {
+        entries: vec![],
+        completion_status: CompletionStatus::EndedEarly,
+        session_notes: None,
+        ..session("s2", "2026-01-01T00:10:00Z")
+    };
+    store.save_session(&ended);
+    assert_eq!(store.sessions(), vec![ended]);
+}
+
+#[test]
+fn sessions_load_newest_first() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save_session(&session("old", "2026-01-01T00:00:00Z"));
+    store.save_session(&session("new", "2026-02-01T00:00:00Z"));
+    let ids: Vec<String> = store.sessions().into_iter().map(|s| s.id).collect();
+    assert_eq!(ids, vec!["new", "old"]);
+}
+
+#[test]
+fn sections_and_a_tombstone_update_by_id_on_a_second_save() {
+    let mut store = Store::in_memory().expect("opens");
+    let section = |id: &str, name: &str, bars: Option<(u16, u16)>, position: usize| ItemSection {
+        id: id.into(),
+        name: name.into(),
+        bars: bars.map(|(first, last)| BarRange { first, last }),
+        kind: SectionKind::Form,
+        target_bpm: None,
+        position,
+        updated_at: at("2026-10-03T09:00:00Z"),
+        deleted_at: None,
+    };
+    let mut item = Item {
+        sections: vec![
+            section("s1", "A1", Some((1, 16)), 0),
+            ItemSection {
+                updated_at: at("2026-10-03T09:05:00Z"),
+                deleted_at: Some(at("2026-10-03T09:05:00Z")),
+                ..section("s2", "Gone", None, 1)
+            },
+            ItemSection {
+                kind: SectionKind::TroubleSpot,
+                target_bpm: Some(72),
+                ..section("s3", "", Some((12, 14)), 2)
+            },
+        ],
+        ..record("p1", "Rondo")
+    };
+    store.save(&item);
+    assert_eq!(store.item("p1").sections, item.sections);
+
+    item.sections[0].name = "A".into();
+    item.sections[2].bars = Some(BarRange {
+        first: 12,
+        last: 13,
+    });
+    store.save(&item);
+    assert_eq!(store.item("p1").sections, item.sections);
+    assert_eq!(
+        store.raw("SELECT CAST(count(*) AS TEXT) FROM section"),
+        Some("3".into())
+    );
+}
+
+#[test]
+fn links_and_a_tombstone_update_by_id_and_load_by_position() {
+    let mut store = Store::in_memory().expect("opens");
+    let mut item = Item {
+        exercise_links: vec![
+            ExerciseLink {
+                id: "l1".into(),
+                exercise_id: "e1".into(),
+                section_id: None,
+                position: 0,
+                updated_at: at("2026-10-04T09:00:00Z"),
+                deleted_at: None,
+            },
+            ExerciseLink {
+                id: "l2".into(),
+                exercise_id: "e2".into(),
+                section_id: Some("s2".into()),
+                position: 1,
+                updated_at: at("2026-10-04T09:05:00Z"),
+                deleted_at: Some(at("2026-10-04T09:05:00Z")),
+            },
+        ],
+        ..record("p1", "Nocturne")
+    };
+    store.save(&item);
+    assert_eq!(store.item("p1").exercise_links, item.exercise_links);
+
+    item.exercise_links[0].position = 2;
+    item.exercise_links[0].section_id = Some("s1".into());
+    item.exercise_links[0].updated_at = at("2026-10-04T10:00:00Z");
+    item.exercise_links[1].exercise_id = "e3".into();
+    item.exercise_links[1].deleted_at = None;
+    item.exercise_links[1].updated_at = at("2026-10-04T10:05:00Z");
+    store.save(&item);
+    let reversed: Vec<ExerciseLink> = item.exercise_links.iter().rev().cloned().collect();
+    assert_eq!(store.item("p1").exercise_links, reversed);
+    assert_eq!(
+        store.raw("SELECT linked_exercise_ids FROM item WHERE id = 'p1'"),
+        Some("[]".into())
+    );
+}
+
+// ── More values the core cannot read (#2005, #2097, #2106, #2234) ──
+
+#[test]
+fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
+    let mut store = upgraded(
+        "v17_item_metre",
+        "INSERT INTO item
+           (id, title, kind, tags, linked_exercise_ids, created_at, updated_at, priority)
+         VALUES ('i1', 'X', 'piece', 'not json', '[1, 2]',
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0)",
+    );
+    let raw = |store: &Store, column: &str| {
+        store.raw(&format!("SELECT {column} FROM item WHERE id = 'i1'"))
+    };
+    let mut loaded = store.item("i1");
+    loaded.title = "Renamed".into();
+    store.save(&loaded);
+    assert_eq!(raw(&store, "tags"), Some("not json".into()));
+    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
+
+    loaded.tags = vec!["scales".into()];
+    loaded.exercise_links = vec![ExerciseLink {
+        id: "l1".into(),
+        exercise_id: "e1".into(),
+        section_id: None,
+        position: 0,
+        updated_at: at("2026-10-04T09:00:00Z"),
+        deleted_at: None,
+    }];
+    store.save(&loaded);
+    assert_eq!(raw(&store, "tags"), Some(r#"["scales"]"#.into()));
+    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
+}
+
+#[test]
+fn a_real_chart_and_metre_replace_unreadable_ones() {
+    let mut store = upgraded(
+        "v17_item_metre",
+        r#"INSERT INTO item
+           (id, title, kind, tags, linked_exercise_ids, created_at, updated_at, priority,
+            chord_chart, metre)
+         VALUES ('i1', 'X', 'piece', '[]', '[]',
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0,
+                 '{"key":"C","sections":"torn"}', '{"beats":900,"unit":4}')"#,
+    );
+    let mut loaded = store.item("i1");
+    let chart = ChordChart {
+        key: Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor))),
+        sections: vec![],
+    };
+    let metre = Metre {
+        beats: 3,
+        unit: 4,
+        groups: None,
+    };
+    loaded.chord_chart = Some(chart.clone());
+    loaded.metre = Some(metre.clone());
+    store.save(&loaded);
+
+    let stored_chart = store.raw("SELECT chord_chart FROM item WHERE id = 'i1'");
+    let stored_metre = store.raw("SELECT metre FROM item WHERE id = 'i1'");
+    let mut unreadable = vec![];
+    assert_eq!(
+        codec::decode_chord_chart(stored_chart.as_deref(), "i1", &mut unreadable),
+        Some(chart)
+    );
+    assert_eq!(
+        codec::decode_metre(stored_metre.as_deref(), "i1", &mut unreadable),
+        Some(metre)
+    );
+    assert_eq!(unreadable, Vec::<String>::new());
+}
+
+#[test]
+fn picking_keys_replaces_a_list_and_a_chart_key_the_core_cannot_read() {
+    let mut store = upgraded(
+        "v19_keys_and_variations",
+        r#"INSERT INTO item
+           (id, title, kind, tags, linked_exercise_ids, created_at, updated_at, priority,
+            chord_chart, keys)
+         VALUES ('i1', 'X', 'piece', '[]', '[]',
+                 '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0,
+                 '{"key":"H","modality":"dorian","sections":[]}',
+                 '[{"key":"Eb","modality":"major"},{"key":"H","modality":"dorian"}]')"#,
+    );
+    let mut loaded = store.item("i1");
+    let keys = vec![key(Letter::C, Accidental::Natural, Some(Modality::Major))];
+    let g_minor = key(Letter::G, Accidental::Natural, Some(Modality::Minor));
+    loaded.keys = keys.clone();
+    loaded.chord_chart.as_mut().expect("a chart").key = Some(g_minor);
+    store.save(&loaded);
+
+    let stored_keys = store.raw("SELECT keys FROM item WHERE id = 'i1'");
+    let stored_chart = store.raw("SELECT chord_chart FROM item WHERE id = 'i1'");
+    let mut unreadable = vec![];
+    assert_eq!(
+        codec::decode_keys(stored_keys.as_deref(), "i1", &mut unreadable),
+        keys
+    );
+    assert_eq!(
+        codec::decode_chord_chart(stored_chart.as_deref(), "i1", &mut unreadable)
+            .and_then(|c| c.key),
+        Some(g_minor)
+    );
+}
+
+#[test]
+fn a_refused_session_is_skipped_and_a_replaced_status_is_named() {
+    let mut store = upgraded(
+        migrations::latest(),
+        "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+           completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
+         VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+           '2026-09-01T10:10:00Z',NULL),
+           ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,NULL,
+           '[]','2026-09-01T10:10:00Z',NULL)",
+    );
+    let answer = store.handle(&PersistenceOperation::LoadSessions);
+    let PersistenceOutput::Sessions(sessions) = answer.output else {
+        panic!("sessions")
+    };
+    assert_eq!(
+        sessions.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+        vec!["good"]
+    );
+    assert!(
+        answer.unreadable.iter().any(|u| u.contains("refused-2234")),
+        "{:?}",
+        answer.unreadable
+    );
+    assert!(
+        answer
+            .unreadable
+            .contains(&r#"unknown CompletionStatus on decode: "replaced-2234""#.to_string()),
+        "{:?}",
+        answer.unreadable
+    );
+}
+
+// ── Stored strings (StoredStringsTests.swift) ──
+
+#[test]
+fn item_kinds_and_modalities_keep_their_stored_text() {
+    let mut unreadable = vec![];
+    for (kind, text) in [(ItemKind::Piece, "piece"), (ItemKind::Exercise, "exercise")] {
+        assert_eq!(codec::item_kind_text(&kind), text);
+        assert_eq!(codec::item_kind(text, &mut unreadable), kind);
+    }
+    for (mode, text) in [(Modality::Major, "major"), (Modality::Minor, "minor")] {
+        let c = key(Letter::C, Accidental::Natural, Some(mode));
+        assert_eq!(codec::stored_key(&c).modality.as_deref(), Some(text));
+        assert_eq!(codec::key(Some("C"), Some(text), &mut unreadable), Some(c));
+    }
+    assert_eq!(unreadable, Vec::<String>::new());
+}
+
+#[test]
+fn chord_qualities_keep_their_stored_text() {
+    let qualities = [
+        (ChordQuality::Maj7, "maj7"),
+        (ChordQuality::Dom7, "dom7"),
+        (ChordQuality::Min7, "min7"),
+        (ChordQuality::Min7b5, "min7b5"),
+        (ChordQuality::Dim7, "dim7"),
+        (ChordQuality::MinMaj7, "minMaj7"),
+        (ChordQuality::Six, "six"),
+        (ChordQuality::Min6, "min6"),
+        (ChordQuality::Alt, "alt"),
+        (ChordQuality::Sus4, "sus4"),
+        (ChordQuality::Sus2, "sus2"),
+        (ChordQuality::Aug, "aug"),
+        (ChordQuality::Dom7Sharp5, "dom7Sharp5"),
+        (ChordQuality::Other, "other"),
+    ];
+    let chart = ChordChart {
+        key: None,
+        sections: vec![ChartSection {
+            label: None,
+            bars: vec![Bar {
+                chords: qualities
+                    .iter()
+                    .map(|(quality, text)| ChartChord {
+                        symbol: ChordSymbol {
+                            root: 0,
+                            quality: *quality,
+                            extensions: vec![],
+                            bass: None,
+                            raw: (*text).into(),
+                        },
+                    })
+                    .collect(),
+            }],
+        }],
+    };
+    let json = codec::encode_chord_chart(Some(&chart), None)
+        .expect("encodes")
+        .expect("a chart");
+    let stored: serde_json::Value = serde_json::from_str(&json).expect("json");
+    let written: Vec<&str> = stored["sections"][0]["bars"][0]["chords"]
+        .as_array()
+        .expect("chords")
+        .iter()
+        .map(|c| c["symbol"]["quality"].as_str().expect("text"))
+        .collect();
+    assert_eq!(
+        written,
+        qualities.iter().map(|(_, text)| *text).collect::<Vec<_>>()
+    );
+    let mut unreadable = vec![];
+    assert_eq!(
+        codec::decode_chord_chart(Some(&json), "p1", &mut unreadable),
+        Some(chart)
+    );
+    assert_eq!(unreadable, Vec::<String>::new());
+}
+
+#[test]
+fn near_miss_text_is_refused_as_a_kind_and_as_a_modality() {
+    for raw in ["", "Piece", "ended-early", "notAttempted", " major"] {
+        let mut unreadable = vec![];
+        assert_eq!(codec::item_kind(raw, &mut unreadable), ItemKind::Piece);
+        assert_eq!(
+            unreadable,
+            vec![format!("unknown ItemKind on decode: \"{raw}\"")]
+        );
+
+        let mut unreadable = vec![];
+        assert_eq!(
+            codec::key(Some("C"), Some(raw), &mut unreadable),
+            Some(key(Letter::C, Accidental::Natural, None))
+        );
+        assert_eq!(
+            unreadable,
+            vec![format!("unknown Modality on decode: \"{raw}\"")]
+        );
+    }
 }
