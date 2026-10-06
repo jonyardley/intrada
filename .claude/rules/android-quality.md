@@ -18,14 +18,16 @@ bars, read in Kotlin and Compose.
   `intrada-core` (#2223) rather than port it: a rule ported is a rule that
   drifts.
 - **One way across the bridge.** Screens read the `ViewModel` through `Store`;
-  only `LiveBridge` touches bincode or the UniFFI handle. Effects run off the
+  only `LiveBridge`, `SharedItemStore` and the
+  settings slots touch bincode or a UniFFI handle. Effects run off the
   main thread and post their results back on `Main`.
 - **Persistence is the shared Rust store** (`crates/intrada-store`, #2421),
   reached through the bridge's `StoreFfi`: Kotlin passes the operation's
   bytes and resolves the core with the answer's, never reading a row. Singletons and the
   crash-recovery blob go to `SharedPreferences` as Base64 of the core's bincode bytes.
   Each key's version comes from the core's `*BlobVersion()` export, as on iOS,
-  never a number spelled in Kotlin (#1345, #2026).
+  never a number spelled in Kotlin (#1345, #2026). The one exception, shared
+  with iOS, is practice defaults' `v2`, which has no export yet (#2432).
 
 ## Kotlin
 

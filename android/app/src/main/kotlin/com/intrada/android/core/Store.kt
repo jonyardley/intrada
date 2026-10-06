@@ -2,6 +2,7 @@ package com.intrada.android.core
 
 import android.util.Log
 import com.intrada.ffi.InternalException
+import com.intrada.shared.ActiveSession
 import com.intrada.shared.AppEffect
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
@@ -10,6 +11,7 @@ import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
+import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +33,9 @@ class Store(
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val log: (String) -> Unit = { Log.i("intrada", it) },
+    private val settings: Settings? = null,
+    /** The database did not open, so nothing is kept; the shell warns (#2428). */
+    val degraded: Boolean = false,
 ) {
     private val _viewModel = MutableStateFlow<ViewModel?>(null)
     val viewModel: StateFlow<ViewModel?> = _viewModel.asStateFlow()
@@ -47,6 +52,10 @@ class Store(
     private var consecutiveBridgeFailures = 0
 
     private var diskTail: Job? = null
+
+    // A practice found at launch; Phase C offers to resume it (#962).
+    private val _recoverableSession = MutableStateFlow<ActiveSession?>(null)
+    val recoverableSession: StateFlow<ActiveSession?> = _recoverableSession.asStateFlow()
 
     init {
         _viewModel.value = bridged { bridge.view() }
@@ -102,8 +111,37 @@ class Store(
     private fun handleAppEffect(effect: AppEffect) {
         when (effect) {
             is AppEffect.LibraryChanged -> _libraryRows.value = effect.value
-            else -> log("${effect::class.simpleName} is not handled on Android yet")
+            AppEffect.ClearSessionInProgress -> {
+                settings?.sessionInProgress?.clear()
+                _recoverableSession.value = null
+            }
+            else -> {
+                val saved = settings ?: return
+                if (!saved.keep(effect))
+                    log("${effect::class.simpleName} is not handled on Android yet")
+            }
         }
+    }
+
+    fun restoreSettings() {
+        settings?.restored()?.forEach(::send)
+    }
+
+    fun pendingSessionInProgress(): ActiveSession? = settings?.pendingSessionInProgress()
+
+    /**
+     * A practice saved by an older build has a shape this one cannot read, so it is never half
+     * restored: its key goes and the core says so (#2246).
+     */
+    fun loadRecoverableSession() {
+        val saved = settings ?: return
+        if (_viewModel.value?.offersRecovery != true) return
+        val retired = saved.retiredSessionsInProgress.filter { it.read() != null }
+        if (retired.isNotEmpty()) {
+            retired.forEach { it.clear() }
+            send(Event.Session(SessionEvent.RetiredSessionFound))
+        }
+        _recoverableSession.value = pendingSessionInProgress()
     }
 
     // UniFFI raises a Rust panic as InternalException; CoreException and a failed decode are not.
