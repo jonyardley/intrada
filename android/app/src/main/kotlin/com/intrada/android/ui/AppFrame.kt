@@ -89,7 +89,10 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
                     onDone = { navController.closeForm() },
                 )
             }
-            composable(AppTab.PRACTICE.route) { EmptyTab(AppTab.PRACTICE) }
+            composable(AppTab.PRACTICE.route) {
+                PracticeRoute(store, onBuild = { navController.navigate(BUILD_ROUTE) })
+            }
+            builderRoutes(store, navController)
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
             composable(AppTab.PROGRESS.route) { EmptyTab(AppTab.PROGRESS) }
         }
@@ -100,6 +103,40 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
 private const val ADD_ROUTE = "library/add"
 private const val EDIT_ROUTE = "library/edit"
 private const val PIECE_ROUTE = "library/piece"
+private const val BUILD_ROUTE = "practice/build"
+
+private fun NavGraphBuilder.builderRoutes(store: Store, navController: NavHostController) {
+    composable(BUILD_ROUTE) {
+        BuilderRoute(
+            store,
+            BuilderNavigation(
+                onAddItems = { navController.navigate("$BUILD_ROUTE/add") },
+                onAddExercise = { groupId ->
+                    navController.navigate("$BUILD_ROUTE/related/$groupId")
+                },
+                onEntry = { entryId -> navController.navigate("$BUILD_ROUTE/entry/$entryId") },
+                onClosed = { navController.popBackStack(BUILD_ROUTE, inclusive = true) },
+            ),
+        )
+    }
+    composable("$BUILD_ROUTE/add") {
+        AddToSessionRoute(store, onDone = { navController.closeForm() })
+    }
+    composable("$BUILD_ROUTE/related/{groupId}") { backStack ->
+        AddRelatedRoute(
+            store,
+            backStack.arguments?.getString("groupId").orEmpty(),
+            onDone = { navController.closeForm() },
+        )
+    }
+    composable("$BUILD_ROUTE/entry/{entryId}") { backStack ->
+        EntrySettingsRoute(
+            store,
+            backStack.arguments?.getString("entryId").orEmpty(),
+            onDone = { navController.closeForm() },
+        )
+    }
+}
 
 private fun NavGraphBuilder.pieceRoutes(store: Store, navController: NavHostController) {
     composable("$PIECE_ROUTE/{id}") { backStack ->
