@@ -22,8 +22,8 @@ pub use domain::session::{
     SetlistEntry,
 };
 pub use domain::types::{
-    CreateItem, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection, SortField, Tempo,
-    TempoInput, UpdateItem,
+    CreateItem, KeyEdit, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection,
+    SortField, Tempo, TempoInput, UpdateItem,
 };
 pub use error::LibraryError;
 pub use model::{

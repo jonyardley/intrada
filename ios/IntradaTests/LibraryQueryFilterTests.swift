@@ -56,7 +56,7 @@ struct LibraryQueryFilterTests {
         .update(
           id: hanon.id,
           input: UpdateItem(
-            title: hanon.title, kind: hanon.itemType, composer: nil, key: nil,
+            title: hanon.title, kind: hanon.itemType, composer: nil, key: .keep,
             tempo: nil, notes: nil, tags: nil, priority: true))))
 
     _ = try bridge.update(

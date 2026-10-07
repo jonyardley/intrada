@@ -330,7 +330,7 @@ struct LibraryDetailScreen: View {
         .update(
           id: item.id,
           input: UpdateItem(
-            title: item.title, kind: item.itemType, composer: nil, key: nil,
+            title: item.title, kind: item.itemType, composer: nil, key: .keep,
             tempo: nil, notes: nil, tags: nil, priority: !item.priority))))
   }
 

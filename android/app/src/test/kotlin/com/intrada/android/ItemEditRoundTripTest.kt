@@ -8,9 +8,11 @@ import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
+import com.intrada.shared.KeyEdit
 import com.intrada.shared.Letter
 import com.intrada.shared.Modality
 import com.intrada.shared.PersistenceOperation
+import com.intrada.shared.Request
 import com.intrada.shared.UpdateItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -48,7 +50,7 @@ class ItemEditRoundTripTest {
                 Event.Item(
                     ItemEvent.Edit(
                         item.id,
-                        UpdateItem(title = "Scales in thirds", key = dMinor),
+                        UpdateItem(title = "Scales in thirds", key = KeyEdit.Set(dMinor)),
                         listOf(item.variationIds.last()),
                         listOf("Staccato"),
                     )
@@ -74,5 +76,45 @@ class ItemEditRoundTripTest {
         assertEquals(dMinor, saved.key)
         assertEquals(listOf("Staccato"), minted.map { it.label })
         assertEquals(listOf(item.variationIds.last(), minted.single().id), saved.variationIds)
+    }
+
+    // Kotlin's binding flattens a nested optional, so Keep and Clear need the enum (#2461).
+    @Test
+    fun anEditKeepsOrClearsTheKey() {
+        val bridge = LiveBridge()
+        val dMinor = Key(Letter.D, Accidental.NATURAL, Modality.MINOR)
+        val item =
+            savedItems(
+                    bridge.update(
+                        Event.Item(
+                            ItemEvent.Add(
+                                CreateItem(
+                                    title = "Scales",
+                                    kind = ItemKind.PIECE,
+                                    key = dMinor,
+                                    tags = emptyList(),
+                                    variationLabels = emptyList(),
+                                )
+                            )
+                        )
+                    )
+                )
+                .single()
+        fun edit(key: KeyEdit) =
+            savedItems(
+                    bridge.update(
+                        Event.Item(
+                            ItemEvent.Edit(item.id, UpdateItem(key = key), emptyList(), emptyList())
+                        )
+                    )
+                )
+                .single()
+
+        assertEquals(dMinor, edit(KeyEdit.Keep).key)
+        assertEquals(null, edit(KeyEdit.Clear).key)
+    }
+
+    private fun savedItems(effects: List<Request>) = effects.mapNotNull {
+        ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value
     }
 }

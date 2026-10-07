@@ -36,7 +36,7 @@ final class LibraryBridgeTests: XCTestCase {
         .update(
           id: id,
           input: UpdateItem(
-            title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .some(nil),
+            title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .clear,
             tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
             tags: nil, priority: nil))))
 
@@ -339,7 +339,7 @@ final class LibraryBridgeTests: XCTestCase {
         .edit(
           id: item.id,
           input: UpdateItem(
-            title: "Scales in thirds", kind: nil, composer: nil, key: .some(dMinor),
+            title: "Scales in thirds", kind: nil, composer: nil, key: .set(key: dMinor),
             tempo: nil, notes: nil, tags: nil, priority: nil),
           variationIds: [swung.id], newLabels: ["Staccato"])))
 
@@ -776,7 +776,7 @@ final class LibraryBridgeTests: XCTestCase {
           id: item.id,
           input: UpdateItem(
             title: item.title, kind: item.itemType,
-            composer: nil, key: nil, tempo: nil, notes: nil,
+            composer: nil, key: .keep, tempo: nil, notes: nil,
             tags: nil, priority: on)))
     }
 
@@ -868,7 +868,7 @@ final class LibraryBridgeTests: XCTestCase {
         .update(
           id: id,
           input: UpdateItem(
-            title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: nil,
+            title: "Nocturne Op. 9", kind: nil, composer: .some(nil), key: .keep,
             tempo: nil, notes: nil, tags: nil, priority: nil))))
 
     let view = try bridge.rendered()
@@ -947,7 +947,7 @@ final class LibraryBridgeTests: XCTestCase {
           input: UpdateItem(
             title: "Nocturne in E-flat (revised)", kind: .piece,
             composer: .some("Chopin (ed. Cortot)"),
-            key: .some(Key(letter: .d, accidental: .natural, mode: nil)),
+            key: .set(key: Key(letter: .d, accidental: .natural, mode: nil)),
             tempo: TempoInput(marking: nil, bpm: nil), notes: .some(nil),
             tags: ["romantic", "edited"], priority: true))))
 

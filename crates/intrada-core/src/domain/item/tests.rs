@@ -1,7 +1,7 @@
 use super::*;
 use crate::app::Intrada;
 use crate::domain::key::Key;
-use crate::domain::types::TempoInput;
+use crate::domain::types::{KeyEdit, TempoInput};
 use crate::model::{FormErrorField, FormErrorTarget, Model};
 use crux_core::App;
 use crux_core::Command;
@@ -874,7 +874,9 @@ fn an_edit_clears_every_variation_and_sets_the_key_in_one_save() {
         &mut model,
         "ex-1",
         UpdateItem {
-            key: Some(Some(key("D minor"))),
+            key: KeyEdit::Set {
+                key: key("D minor"),
+            },
             ..Default::default()
         },
         &[],
@@ -1014,7 +1016,9 @@ fn the_edit_event_round_trips_on_the_ffi_bincode_wire() {
             title: Some("Scales".to_string()),
             kind: Some(ItemKind::Exercise),
             composer: Some(None),
-            key: Some(Some(key("Eb major"))),
+            key: KeyEdit::Set {
+                key: key("Eb major"),
+            },
             tempo: Some(TempoInput::default()),
             notes: Some(Some("slowly".to_string())),
             tags: Some(vec!["warm-up".to_string()]),
@@ -1035,7 +1039,7 @@ fn add_creates_the_item_with_its_variations() {
         &mut model,
         ItemEvent::Add(CreateItem {
             title: "Nocturne".to_string(),
-            kind: ItemKind::Piece,
+            kind: ItemKind::Exercise,
             composer: Some("Chopin".to_string()),
             key: Some(key("Eb major")),
             tempo: None,
@@ -1052,6 +1056,107 @@ fn add_creates_the_item_with_its_variations() {
     assert_eq!(added.variation_ids.len(), 2);
     assert_eq!(added.variation_ids[0], "v-hs");
     assert_eq!(model.variations.len(), 3, "Slow minted");
+}
+
+#[test]
+fn add_keeps_only_the_rows_a_musician_typed_on_an_exercise() {
+    let cases: Vec<(ItemKind, Vec<&str>, Vec<&str>)> = vec![
+        (ItemKind::Exercise, vec!["", "  ", "Slow"], vec!["Slow"]),
+        (ItemKind::Exercise, vec!["  Slow  ", "\t"], vec!["Slow"]),
+        (ItemKind::Exercise, vec!["", ""], vec![]),
+        (ItemKind::Piece, vec!["Slow", "Hands separately"], vec![]),
+        (ItemKind::Piece, vec![""], vec![]),
+    ];
+    for (kind, typed, expected) in cases {
+        let mut model = model_with_variation_library();
+
+        send(
+            &mut model,
+            ItemEvent::Add(CreateItem {
+                title: "Nocturne".to_string(),
+                kind: kind.clone(),
+                composer: None,
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                photo_id: None,
+                variation_labels: typed.iter().map(|l| l.to_string()).collect(),
+            }),
+        );
+
+        assert!(model.last_error.is_none(), "{kind:?} {typed:?}");
+        let added = model.items.iter().find(|i| i.title == "Nocturne").unwrap();
+        let labels: Vec<&str> = added
+            .variation_ids
+            .iter()
+            .map(|id| {
+                model
+                    .variations
+                    .iter()
+                    .find(|v| &v.id == id)
+                    .unwrap()
+                    .label
+                    .as_str()
+            })
+            .collect();
+        assert_eq!(labels, expected, "{kind:?} {typed:?}");
+    }
+}
+
+#[test]
+fn an_edit_leaves_out_typed_rows_left_blank() {
+    let cases: Vec<(Vec<&str>, usize)> = vec![
+        (vec!["", "   "], 0),
+        (vec!["", "Slow", " "], 1),
+        (vec!["  Slow "], 1),
+    ];
+    for (typed, minted) in cases {
+        let mut model = model_with_variation_library();
+
+        let mut cmd = edit(&mut model, "ex-1", renamed("Scales"), &["v-hs"], &typed);
+
+        assert!(model.last_error.is_none(), "{typed:?}");
+        let (_, saved_minted) = saved_writes(&mut cmd);
+        assert_eq!(saved_minted.len(), minted, "{typed:?}");
+        assert!(saved_minted.iter().all(|v| v.label == "Slow"), "{typed:?}");
+        assert_eq!(
+            item_variations(&model, "ex-1").len(),
+            1 + minted,
+            "{typed:?}"
+        );
+    }
+}
+
+#[test]
+fn an_edit_keeps_sets_and_clears_the_key() {
+    let mut model = model_with_variation_library();
+    let send_key = |m: &mut Model, edit_key: KeyEdit| {
+        let _ = edit(
+            m,
+            "ex-1",
+            UpdateItem {
+                key: edit_key,
+                ..Default::default()
+            },
+            &[],
+            &[],
+        );
+    };
+
+    send_key(
+        &mut model,
+        KeyEdit::Set {
+            key: key("D minor"),
+        },
+    );
+    assert_eq!(item(&model, "ex-1").key, Some(key("D minor")));
+
+    send_key(&mut model, KeyEdit::Keep);
+    assert_eq!(item(&model, "ex-1").key, Some(key("D minor")));
+
+    send_key(&mut model, KeyEdit::Clear);
+    assert_eq!(item(&model, "ex-1").key, None);
 }
 
 // ── Bridge round-trip for the write events (#846) ──
@@ -2045,7 +2150,7 @@ fn update_marks_the_field_it_refused() {
                 title: Some("Scale".to_string()),
                 kind: Some(ItemKind::Exercise),
                 composer: Some(Some("x".repeat(201))),
-                key: None,
+                key: KeyEdit::Keep,
                 tempo: None,
                 notes: None,
                 tags: Some(vec![]),

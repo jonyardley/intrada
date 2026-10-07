@@ -18,8 +18,10 @@ struct BuilderRulesBridgeTests {
         .add(
           CreateItem(
             title: "Nocturne", kind: .piece, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Dotted"]))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let item = try #require(try bridge.rendered().items.first)
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: item.id, variationIds: [], newLabels: ["Dotted"])))
     try bridge.addSections(
       [("A", "72"), ("B", ""), ("C", "")].map {
         SectionEdit(id: nil, name: $0.0, bars: .blank, kind: .form, targetBpm: $0.1)

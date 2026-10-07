@@ -57,7 +57,7 @@ struct ItemFormVariationsTests {
       Issue.record("expected one edit event")
       return
     }
-    #expect(input.key == .some(d))
+    #expect(input.key == .set(key: d))
     #expect(ids == ["variation-c", "variation-f", "variation-bb"])
   }
 

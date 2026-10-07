@@ -41,6 +41,7 @@ import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
+import com.intrada.shared.KeyEdit
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.TempoInput
 import com.intrada.shared.UpdateItem
@@ -91,6 +92,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     title = title,
                     kind = kind,
                     composer = composer,
+                    key = KeyEdit.Keep,
                     tempo = TempoInput(marking, bpm),
                     notes = notes,
                     tags = tags.toList(),

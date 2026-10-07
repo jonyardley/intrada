@@ -102,6 +102,12 @@ pub(crate) fn exceeds_chars(value: &str, max: usize) -> bool {
     value.chars().count() > max
 }
 
+/// Takes the title as typed, untrimmed.
+#[must_use]
+pub fn item_form_can_save(title: &str) -> bool {
+    !title.trim().is_empty()
+}
+
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || exceeds_chars(title, MAX_TITLE) {
         return Err(LibraryError::Validation {
@@ -872,6 +878,22 @@ mod tests {
             Ok(None),
             "blank marking + no bpm drops the tempo"
         );
+    }
+
+    #[test]
+    fn the_form_saves_once_a_title_is_typed() {
+        let cases: &[(&str, bool)] = &[
+            ("", false),
+            (" ", false),
+            ("   \t", false),
+            ("\n", false),
+            ("Clair de Lune", true),
+            ("  Hanon  ", true),
+            ("1", true),
+        ];
+        for (title, expected) in cases {
+            assert_eq!(item_form_can_save(title), *expected, "{title:?}");
+        }
     }
 
     #[test]

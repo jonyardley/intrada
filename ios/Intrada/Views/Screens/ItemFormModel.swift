@@ -246,7 +246,7 @@ final class ItemFormModel {
       title: title,
       kind: kind,
       composer: .some(emptyToNil(composer)),
-      key: .some(key),
+      key: key.map { .set(key: $0) } ?? .clear,
       tempo: typedTempo(),
       notes: .some(emptyToNil(notes)),
       tags: tags,

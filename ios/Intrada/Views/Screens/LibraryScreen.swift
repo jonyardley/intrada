@@ -144,7 +144,7 @@ struct LibraryScreen: View {
   private func togglePriority(_ item: LibraryItemView) -> UpdateItem {
     UpdateItem(
       title: item.title, kind: item.itemType,
-      composer: nil, key: nil, tempo: nil, notes: nil,
+      composer: nil, key: .keep, tempo: nil, notes: nil,
       tags: nil, priority: !item.priority)
   }
 
