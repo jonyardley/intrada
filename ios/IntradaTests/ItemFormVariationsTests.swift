@@ -61,8 +61,6 @@ struct ItemFormVariationsTests {
     #expect(ids == ["variation-c", "variation-f", "variation-bb"])
   }
 
-  /// The form sends every row as typed; the core trims them and leaves out
-  /// the blank ones (#2461).
   @Test func theCoreKeepsTheTypedRowsTrimmed() throws {
     #expect(try added(as: .exercise, typing: ["  C ", "", "   ", "G"]) == ["C", "G"])
   }
@@ -82,7 +80,7 @@ struct ItemFormVariationsTests {
     return try #require(try bridge.rendered().items.first).variations.map(\.label)
   }
 
-  @Test func clearingEveryRowSendsTheEmptySet() {
+  @Test func clearingEveryRowSendsNoSavedRows() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
     form.variations = rows(["", " "])
 

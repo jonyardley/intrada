@@ -55,7 +55,8 @@ would put a domain rule in a shell twice.
 - `intrada-ffi`: `item_form_can_save` export.
 - Core PR, to keep both builds green: every shell `UpdateItem` moves to
   `KeyEdit` with its behaviour unchanged.
-- Screens PR: `ItemFormModel.swift` drops `canSubmit` and `typedLabels`;
+- Screens PR: `ItemFormModel.swift` asks the core for Save and keeps
+  `typedLabels` only to split new rows from saved ones;
   `ItemFormScreen.kt` drops the exercise-only mirror and reads Save from the
   core. A title of only a newline then disables Save on the iPhone, where it
   used to enable it and be refused.

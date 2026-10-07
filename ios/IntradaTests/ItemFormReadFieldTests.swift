@@ -1,4 +1,3 @@
-import IntradaCoreFFI
 import SharedTypes
 import Testing
 
@@ -99,12 +98,12 @@ struct ItemFormReadFieldTests {
   /// feature is built around. Pressing Add is what writes.
   @Test func fillingTheFormDoesNotSubmitIt() {
     let form = ItemFormModel(kind: .piece)
-    #expect(!itemFormCanSave(title: form.title))
+    #expect(!form.canSave)
 
     form.fill(from: .readPage)
 
     #expect(
-      itemFormCanSave(title: form.title), "it is now submittable, but only the user can submit it")
+      form.canSave, "it is now submittable, but only the user can submit it")
     #expect(form.createInput().title == "Autumn Leaves")
   }
 }

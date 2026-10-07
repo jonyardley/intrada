@@ -199,6 +199,8 @@ final class ItemFormModel {
     return field
   }
 
+  var canSave: Bool { itemFormCanSave(title: title) }
+
   /// A saved row keeps its library variation; a typed one is a label the core
   /// reuses or mints (#2246), and drops when blank (#2461).
   private var typedLabels: [String] {

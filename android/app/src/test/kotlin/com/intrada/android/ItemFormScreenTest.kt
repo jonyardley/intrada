@@ -53,7 +53,6 @@ class ItemFormScreenTest {
         assertEquals(ItemKind.PIECE, added.itemType)
     }
 
-    // The core answers whether Save is enabled, as it does on the iPhone (#2461).
     @Test
     fun saveWaitsForATitle() = runTest {
         val store = startedStore()
