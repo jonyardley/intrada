@@ -153,10 +153,6 @@ private fun pointOn(radius: Dp, ring: Int): Pair<Dp, Dp> {
         (WHEEL / 2 + radius * sin(radians).toFloat())
 }
 
-/**
- * The two-ring circle of fifths, major outside and minor inside, C at the top. [selection] is what
- * the core says the form's key lights; a tap reports its spoke and ring.
- */
 @Composable
 private fun KeyWheel(selection: WheelSelection?, onTap: (Int, WheelMode) -> Unit) {
     fun chosen(ring: Int, mode: WheelMode) =

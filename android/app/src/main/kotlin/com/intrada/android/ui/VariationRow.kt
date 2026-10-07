@@ -56,7 +56,6 @@ internal fun SnapshotStateList<VariationRow>.move(from: Int, to: Int) {
 
 private const val LIFT_ELEVATION = 8f
 
-/** An exercise's variations: long-press the grip to drag, removed with a warning if marked. */
 @Composable
 internal fun VariationRowsCard(
     rows: SnapshotStateList<VariationRow>,
@@ -146,7 +145,7 @@ private fun VariationRowView(
                                     .takeIf { index < rows.lastIndex },
                             )
                     }
-                    .testTag("itemForm.variation.reorder"),
+                    .testTag("variationRow.reorder"),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -161,7 +160,7 @@ private fun VariationRowView(
             }
             BasicText(
                 row.label,
-                Modifier.weight(1f).testTag("itemForm.variation.label"),
+                Modifier.weight(1f).testTag("variationRow.label"),
                 style = IntradaFont.body.copy(color = IntradaColor.ink),
             )
             IconAction(

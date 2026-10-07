@@ -126,7 +126,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                 )
             }
 
-        // Rotation and process death keep half-typed input; the key crosses as the core's bytes.
+        // Key is not Bundle-able, so it crosses as the core's bincode.
         val Saver: Saver<ItemFormState, Any> =
             mapSaver(
                 save = { form ->
@@ -141,6 +141,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                         "tags" to ArrayList(form.tags),
                         "variantIds" to ArrayList(form.variations.map { it.variantId }),
                         "labels" to ArrayList(form.variations.map { it.label }),
+                        "rowIds" to ArrayList(form.variations.map { it.id }),
                         "marks" to form.variations.map { it.hasMarks }.toBooleanArray(),
                         "error" to form.formError,
                     )
@@ -161,10 +162,15 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                 notes = text("notes")
                 tags.addAll(strings("tags").filterIsInstance<String>())
                 val ids = strings("variantIds").map { it as? String }
+                val rowIds = strings("rowIds").map { it as? String }
                 val marks = saved["marks"] as? BooleanArray ?: BooleanArray(0)
                 strings("labels").filterIsInstance<String>().forEachIndexed { index, label ->
+                    val variantId = ids.getOrNull(index)
+                    val hasMarks = marks.getOrElse(index) { false }
+                    val rowId = rowIds.getOrNull(index)
                     variations.add(
-                        VariationRow(ids.getOrNull(index), label, marks.getOrElse(index) { false })
+                        if (rowId != null) VariationRow(variantId, label, hasMarks, rowId)
+                        else VariationRow(variantId, label, hasMarks)
                     )
                 }
                 formError = saved["error"] as? String

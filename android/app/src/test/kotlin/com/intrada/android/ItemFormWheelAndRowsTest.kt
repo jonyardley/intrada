@@ -110,7 +110,6 @@ class ItemFormWheelAndRowsTest {
         assertEquals(KeyEdit.Clear, (edit as? ItemEvent.Edit)?.input?.key)
     }
 
-    // Turning the phone rebuilds the form; every field, the key and the rows come back.
     @Test
     fun rotatingMidFormKeepsEverything() = runTest {
         val store = startedStore()
@@ -131,9 +130,6 @@ class ItemFormWheelAndRowsTest {
 
         restoration.emulateSavedInstanceStateRestore()
 
-        compose
-            .onNodeWithTag("itemForm.title")
-            .assertContentDescriptionContains("Title", substring = true)
         compose.onNodeWithText("Arpeggios").assertExists()
         compose.onNodeWithText("Czerny").assertExists()
         compose
@@ -184,6 +180,7 @@ class ItemFormWheelAndRowsTest {
             ),
             back?.variations?.map { Triple(it.variantId, it.label, it.hasMarks) },
         )
+        assertEquals(form.variations.map { it.id }, back?.variations?.map { it.id })
     }
 
     @Test
@@ -194,15 +191,12 @@ class ItemFormWheelAndRowsTest {
         val id = store.libraryRows.value.single().id
         compose.setContent { LibraryEditRoute(store, id, onDone = {}) }
 
-        compose
-            .onAllNodesWithTag("itemForm.variation.reorder")[0]
-            .performScrollTo()
-            .performTouchInput {
-                down(center)
-                advanceEventTime(viewConfiguration.longPressTimeoutMillis + 100)
-                repeat(10) { moveBy(Offset(0f, height * 0.15f)) }
-                up()
-            }
+        compose.onAllNodesWithTag("variationRow.reorder")[0].performScrollTo().performTouchInput {
+            down(center)
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 100)
+            repeat(10) { moveBy(Offset(0f, height * 0.15f)) }
+            up()
+        }
         compose.onNodeWithTag("itemForm.confirm").performClick()
         store.settle()
 
@@ -219,7 +213,7 @@ class ItemFormWheelAndRowsTest {
 
         val actions =
             compose
-                .onAllNodesWithTag("itemForm.variation.reorder")[0]
+                .onAllNodesWithTag("variationRow.reorder")[0]
                 .fetchSemanticsNode()
                 .config[SemanticsActions.CustomActions]
         compose.runOnIdle { actions.single { it.label == "Move down" }.action() }

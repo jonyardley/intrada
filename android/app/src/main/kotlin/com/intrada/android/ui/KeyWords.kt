@@ -12,7 +12,7 @@ import com.intrada.ffi.keyWheelSelection
 import com.intrada.shared.Key
 import com.novi.serde.DeserializationError
 
-// The circle of fifths, its tap rule and its wording all come from the core (#2106, #2226).
+// The circle of fifths and its tap rule come from the core (#2106, #2226).
 private val wedges: List<WheelWedge> by lazy { keyWheel() }
 
 internal fun wheelWedge(ring: Int, mode: WheelMode): WheelWedge? = wedges.firstOrNull {
