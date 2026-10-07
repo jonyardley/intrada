@@ -25,11 +25,13 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -59,10 +61,14 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
     val route = entry?.destination?.route
     val tab = AppTab.entries.firstOrNull { it.route == route }
     val onTab = route == null || tab != null
+    val viewModel by store.viewModel.collectAsState()
+    val live = viewModel?.activeSession != null || viewModel?.summary != null
     Box(modifier.fillMaxSize()) {
-        Tabs(store, navController, onTab, tab)
-        // Over everything while a session or its summary is live; the core ends it, not back.
-        PlayerHost(store)
+        // Composed under a live session so the builder route sees Building end and closes (#2459).
+        Box(if (live) Modifier.clearAndSetSemantics {} else Modifier) {
+            Tabs(store, navController, onTab, tab)
+        }
+        PlayerHost(store, Modifier.pointerInput(Unit) {})
     }
 }
 

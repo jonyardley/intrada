@@ -37,10 +37,7 @@ object SessionClock {
     }
 }
 
-/**
- * The wall clock, redrawn once a second. Tests pass a fixed [held] instant so the screen is
- * deterministic.
- */
+/** Tests pass a fixed [held] instant so the screen is deterministic. */
 @Composable
 fun rememberTicking(held: Instant?): Instant {
     var now by remember { mutableStateOf(held ?: Instant.now()) }

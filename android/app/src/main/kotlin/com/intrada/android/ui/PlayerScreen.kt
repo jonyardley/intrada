@@ -69,7 +69,13 @@ fun PlayerHost(store: Store, modifier: Modifier = Modifier) {
             LifecycleEventEffect(Lifecycle.Event.ON_START) {
                 store.send(Event.Session(SessionEvent.CameBack(SessionClock.now())))
             }
-            PlayerScreen(PlayerModel(active, limits, alerts), send, modifier)
+            PlayerScreen(
+                PlayerModel(active, limits, alerts) {
+                    ScreenAlerts(store.viewModel.value?.error, store.halted.value)
+                },
+                send,
+                modifier,
+            )
         }
         summary != null -> SummaryScreen(SummaryModel(summary, limits, alerts), send, modifier)
     }
@@ -90,6 +96,8 @@ class PlayerModel(
     val alerts: ScreenAlerts = ScreenAlerts(),
     /** A fixed instant for tests; the app passes none and the clocks tick. */
     val held: Instant? = null,
+    /** The alerts as they stand after a send, which [alerts] cannot see until recomposition. */
+    val alertsNow: () -> ScreenAlerts = { alerts },
 )
 
 class SummaryModel(
@@ -106,12 +114,13 @@ internal val ActiveSessionView.reading: TempoReading
 fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifier = Modifier) {
     val active = model.active
     val reflection = active.reflection
+    var keptAway by remember { mutableStateOf<String?>(null) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { keptAway = null }
     if (reflection != null) {
         ReflectionRoute(model, reflection, send, modifier)
         return
     }
     var options by remember { mutableStateOf(false) }
-    var keptAway by remember { mutableStateOf<String?>(null) }
     BackHandler { options = true }
     val density = LocalDensity.current
     Column(

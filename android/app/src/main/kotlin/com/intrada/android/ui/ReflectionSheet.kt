@@ -116,7 +116,13 @@ internal fun ReflectionRoute(
 ) {
     val active = model.active
     val entry = active.entries.getOrNull(active.currentPosition.toInt())
-    val alerts = model.alerts
+    var refusal by remember(entry?.id) { mutableStateOf<String?>(null) }
+    // Cleared from the core so it does not also wait on the banner behind the sheet (#2009).
+    val refuse = {
+        val now = model.alertsNow()
+        refusal = if (now.halted) Store.HALTED_MESSAGE else now.error ?: "Couldn't save. Try again."
+        send(Event.ClearError)
+    }
     ReflectionSheet(
         ReflectionModel(
             itemTitle = active.currentItemTitle,
@@ -129,14 +135,20 @@ internal fun ReflectionRoute(
         remember(entry?.id) { ReflectionState(reflection.answers, reflection.tempos) },
         ReflectionActions(
             onDraft = { send(Event.Session(SessionEvent.UpdateReflectionDraft(it))) },
-            onSave = { send(Event.Session(SessionEvent.SubmitReflection(SessionClock.now(), it))) },
+            onSave = {
+                if (!send(Event.Session(SessionEvent.SubmitReflection(SessionClock.now(), it)))) {
+                    refuse()
+                }
+            },
             onSkip = {
                 val now = SessionClock.now()
-                send(Event.Session(SessionEvent.NextItem(now, now, reflection.reading)))
+                if (!send(Event.Session(SessionEvent.NextItem(now, now, reflection.reading)))) {
+                    refuse()
+                }
             },
         ),
         modifier,
-        refusal = if (alerts.halted) Store.HALTED_MESSAGE else alerts.error,
+        refusal = refusal,
     )
 }
 
@@ -350,11 +362,15 @@ private fun PlayMarks(
                 "Tempo for $title",
                 "reflection.tempo",
                 onStep = { direction ->
-                    state.tempos[play.id] = (bpm + direction * model.tempoStep) to true
+                    state.tempos[play.id] =
+                        (bpm + direction * model.tempoStep).coerceIn(
+                            row.band.min.toInt(),
+                            row.band.max.toInt(),
+                        ) to true
                     draft()
                 },
-                canDecrease = bpm - model.tempoStep >= row.band.min.toInt(),
-                canIncrease = bpm + model.tempoStep <= row.band.max.toInt(),
+                canDecrease = bpm > row.band.min.toInt(),
+                canIncrease = bpm < row.band.max.toInt(),
             )
         }
     }

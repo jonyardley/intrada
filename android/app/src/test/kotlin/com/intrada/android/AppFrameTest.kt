@@ -3,6 +3,7 @@ package com.intrada.android
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -14,6 +15,7 @@ import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
 import com.intrada.android.ui.AppTab
 import com.intrada.shared.Event
+import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -92,6 +94,20 @@ class AppFrameTest {
             .onNodeWithContentDescription("Exercise, Hanon No. 1", substring = true)
             .performClick()
         compose.onNodeWithTag("itemForm.confirm").assertIsDisplayed()
+    }
+
+    @Test
+    fun startingTheBuiltSessionOpensThePlayerOverTheTabs() = runTest {
+        val store = openedStore()
+        compose.setContent { AppFrame(store) }
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
+        compose.onNodeWithTag("practice.build").performClick()
+        store.send(Event.Session(SessionEvent.AddToSetlist(BuilderFixtures.SATIE)))
+
+        compose.onNodeWithTag("builder.start").performClick()
+
+        compose.onNodeWithTag("player.title").assertTextEquals("Gymnopédie No. 1")
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).assertDoesNotExist()
     }
 
     private fun pressBack() {

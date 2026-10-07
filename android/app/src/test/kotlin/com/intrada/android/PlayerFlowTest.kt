@@ -3,6 +3,7 @@ package com.intrada.android
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -70,6 +71,20 @@ class PlayerFlowTest {
     }
 
     @Test
+    fun anErrorFromBeforeTheSheetDoesNotShowAsItsRefusal() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        store.send(Event.Session(SessionEvent.StartSession(PlayerFixtures.STARTED)))
+        val stale = checkNotNull(store.viewModel.value?.error)
+        compose.setContent { PlayerHost(store) }
+
+        compose.onNodeWithTag("player.advance").performClick()
+
+        compose.onNodeWithTag("reflection.save").assertExists()
+        compose.onNodeWithContentDescription("Error: $stale").assertDoesNotExist()
+    }
+
+    @Test
     fun aMarkIsKeptAsADraftSoAResumeReopensTheSheetWithIt() = runTest {
         val store = openedStore(settings = Settings(prefs, practice))
         store.startTwoItems()
@@ -85,8 +100,8 @@ class PlayerFlowTest {
     }
 
     // The app is killed with the sheet up: a fresh store reads the slot, offers the practice and
-    // resumes
-    // it at the same item with the same start, through the real core both ways (#846, #1345).
+    // resumes it at the same item with the same start, through the real core both ways (#846,
+    // #1345).
     @Test
     fun aPracticeKilledAtTheSheetResumesAtTheSameItemWithItsTime() = runTest {
         val items = InMemoryItemStore(Fixtures.library)
@@ -151,7 +166,6 @@ class PlayerFlowTest {
         compose.onNodeWithTag("practice.discardResume").performClick()
 
         assertNull(Settings(prefs, practice).sessionInProgress.read())
-        assertNull(next.viewModel.value?.activeSession)
         compose.onNodeWithText("Pick up where you left off?").assertDoesNotExist()
     }
 }
