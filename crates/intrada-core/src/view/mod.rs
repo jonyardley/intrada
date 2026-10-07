@@ -49,7 +49,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         })
         .collect();
 
-    // Counted after the filter so the subtitle describes the visible set.
+    // Counted after the filter so the header line describes the visible set.
     let visible_pieces = visible
         .iter()
         .filter(|i| i.item_type == ItemKind::Piece)
@@ -225,8 +225,6 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
     ViewModel {
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
-        visible_pieces,
-        visible_exercises,
         library_count_line: library_count_line(
             visible_pieces,
             visible_exercises,

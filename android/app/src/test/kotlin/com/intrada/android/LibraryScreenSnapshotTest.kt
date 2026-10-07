@@ -25,6 +25,33 @@ import org.robolectric.annotation.GraphicsMode
 class LibraryScreenSnapshotTest {
     @Test
     fun library() = runTest {
+        val (rows, countLine) = loaded()
+        captureRoboImage("src/test/snapshots/library.png") {
+            LibraryScreen(
+                rows,
+                countLine = countLine,
+                error = null,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
+        }
+    }
+
+    @Test
+    fun libraryWithAnError() = runTest {
+        val (rows, countLine) = loaded()
+        captureRoboImage("src/test/snapshots/library-error.png") {
+            LibraryScreen(
+                rows,
+                countLine = countLine,
+                error = ERROR,
+                halted = false,
+                actions = LibraryActions({}, {}, {}),
+            )
+        }
+    }
+
+    private suspend fun TestScope.loaded(): Pair<List<LibraryItemView>, String?> {
         val store =
             Store(
                 LiveBridge(),
@@ -36,43 +63,7 @@ class LibraryScreenSnapshotTest {
         store.send(Event.StartApp)
         store.settle()
         val view = store.viewModel.value
-        val rows = store.libraryRows.value.withIds(view?.visibleIds.orEmpty())
-
-        captureRoboImage("src/test/snapshots/library.png") {
-            LibraryScreen(
-                rows,
-                error = null,
-                halted = false,
-                actions = LibraryActions({}, {}, {}),
-            )
-        }
-    }
-
-    @Test
-    fun libraryWithAnError() = runTest {
-        val rows = loadedRows()
-        captureRoboImage("src/test/snapshots/library-error.png") {
-            LibraryScreen(
-                rows,
-                error = ERROR,
-                halted = false,
-                actions = LibraryActions({}, {}, {}),
-            )
-        }
-    }
-
-    private suspend fun TestScope.loadedRows(): List<LibraryItemView> {
-        val store =
-            Store(
-                LiveBridge(),
-                InMemoryItemStore(Fixtures.library),
-                this,
-                StandardTestDispatcher(testScheduler),
-                log = {},
-            )
-        store.send(Event.StartApp)
-        store.settle()
-        return store.libraryRows.value.withIds(store.viewModel.value?.visibleIds.orEmpty())
+        return store.libraryRows.value.withIds(view?.visibleIds.orEmpty()) to view?.libraryCountLine
     }
 
     private companion object {

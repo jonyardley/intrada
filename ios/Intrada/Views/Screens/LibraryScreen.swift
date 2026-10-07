@@ -32,7 +32,7 @@ struct LibraryScreen: View {
 
   var body: some View {
     ScreenScaffold(
-      title: "Library", subtitle: subtitle,
+      title: "Library", subtitle: store.viewModel?.libraryCountLine,
       trailing: .init(label: "Add item", identifier: "library.add", action: { add() })
     ) {
       VStack(spacing: 0) {
@@ -171,22 +171,6 @@ struct LibraryScreen: View {
     case .pieces: return "No pieces yet."
     case .exercises: return "No exercises yet."
     }
-  }
-
-  private var subtitle: String? {
-    guard let vm = store.viewModel else { return nil }
-    let parts = [
-      count(Int(vm.visiblePieces), "piece"), count(Int(vm.visibleExercises), "exercise"),
-    ]
-    .compactMap { $0 }
-    if parts.isEmpty {
-      return (vm.activeQuery == nil) ? "No items yet" : "No matches"
-    }
-    return parts.joined(separator: " · ")
-  }
-
-  private func count(_ n: Int, _ noun: String) -> String? {
-    n == 0 ? nil : "\(n) \(noun)\(n == 1 ? "" : "s")"
   }
 }
 
