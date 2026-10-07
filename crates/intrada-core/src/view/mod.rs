@@ -8,7 +8,7 @@ use crate::model::{
     LimitsView, Model, PhotoRecognitionView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
-use crate::view::library::matches_query;
+use crate::view::library::{library_count_line, matches_query};
 use crate::view::session::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, picker_variations,
 };
@@ -49,7 +49,7 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         })
         .collect();
 
-    // Counted after the filter so the subtitle describes the visible set.
+    // Counted after the filter so the header line describes the visible set.
     let visible_pieces = visible
         .iter()
         .filter(|i| i.item_type == ItemKind::Piece)
@@ -225,8 +225,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
     ViewModel {
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
-        visible_pieces,
-        visible_exercises,
+        library_count_line: library_count_line(
+            visible_pieces,
+            visible_exercises,
+            model.active_query.is_some(),
+        ),
         available_tags: cached.available_tags.clone(),
         available_composers: cached.available_composers.clone(),
         active_session,

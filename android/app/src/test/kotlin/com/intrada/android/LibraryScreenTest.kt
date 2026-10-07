@@ -4,6 +4,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -68,6 +70,19 @@ class LibraryScreenTest {
             spoken.toSet(),
         )
         compose.onNodeWithTag("banner.error").assertDoesNotExist()
+    }
+
+    @Test
+    fun theHeaderShowsTheCoresCountLine() = runTest {
+        val store = store(InMemoryItemStore(Fixtures.library))
+        store.send(Event.StartApp)
+        store.settle()
+        show(store)
+
+        compose
+            .onNodeWithTag("screen.subtitle", useUnmergedTree = true)
+            .assertTextEquals("2 pieces · 1 exercise")
+        compose.onNode(isHeading()).assertContentDescriptionEquals("Library, 2 pieces, 1 exercise")
     }
 
     @Test

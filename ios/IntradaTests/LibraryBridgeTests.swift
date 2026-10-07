@@ -26,6 +26,8 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(
       afterAdd.items.count, 1,
       "add should land: count=\(afterAdd.items.count) err=\(afterAdd.error ?? "nil")")
+    XCTAssertEqual(
+      afterAdd.libraryCountLine, "1 piece", "the header line, worded in the core (#2454)")
     let id = try XCTUnwrap(afterAdd.items.first?.id)
 
     // Mirrors ItemFormModel.updateInput(): every PATCH field set, type flipped.
@@ -43,6 +45,7 @@ final class LibraryBridgeTests: XCTestCase {
       afterEdit.items.first?.title, "Renamed",
       "edited title should apply (err=\(afterEdit.error ?? "nil"))")
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
+    XCTAssertEqual(afterEdit.libraryCountLine, "1 exercise")
   }
 
   func testRealBridgeWeekStripCrossesTheWireWithToday() throws {
