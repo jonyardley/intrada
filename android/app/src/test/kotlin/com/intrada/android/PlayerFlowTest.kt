@@ -1,6 +1,10 @@
 package com.intrada.android
 
 import android.content.Context
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -12,7 +16,10 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.Settings
 import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.android.ui.PlayerHost
+import com.intrada.android.ui.PlayerModel
+import com.intrada.android.ui.PlayerScreen
 import com.intrada.android.ui.PracticeRoute
+import com.intrada.android.ui.ScreenAlerts
 import com.intrada.android.ui.SessionClock
 import com.intrada.shared.Event
 import com.intrada.shared.SessionEvent
@@ -82,6 +89,28 @@ class PlayerFlowTest {
 
         compose.onNodeWithTag("reflection.save").assertExists()
         compose.onNodeWithContentDescription("Error: $stale").assertDoesNotExist()
+    }
+
+    @Test
+    fun aRefusedSaveIsShownOnTheSheetAndAnnounced() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        store.send(
+            Event.Session(
+                SessionEvent.PrepareReflection("2026-10-07T09:04:10Z", PlayerFixtures.silent)
+            )
+        )
+        val limits = checkNotNull(store.viewModel.value?.limits)
+        val model = PlayerModel(store.active(), limits, alertsNow = { ScreenAlerts("Nope") })
+        compose.setContent { PlayerScreen(model, send = { false }) }
+
+        compose.onNodeWithTag("reflection.save").performScrollTo().performClick()
+
+        compose
+            .onNodeWithContentDescription("Error: Nope")
+            .assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+            )
     }
 
     @Test

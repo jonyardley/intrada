@@ -4,11 +4,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
@@ -108,6 +111,28 @@ class AppFrameTest {
 
         compose.onNodeWithTag("player.title").assertTextEquals("Gymnopédie No. 1")
         compose.onNodeWithTag(AppTab.PRACTICE.tag).assertDoesNotExist()
+    }
+
+    @Test
+    fun aTapWhereATabSitsUnderThePlayerLeavesTheTabsAlone() = runTest {
+        val store = openedStore()
+        compose.setContent { AppFrame(store) }
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
+        val library = compose.onNodeWithTag(AppTab.LIBRARY.tag).fetchSemanticsNode().boundsInRoot
+        compose.onNodeWithTag("practice.build").performClick()
+        store.send(Event.Session(SessionEvent.AddToSetlist(BuilderFixtures.SATIE)))
+        compose.onNodeWithTag("builder.start").performClick()
+
+        compose.onRoot().performTouchInput { click(library.center) }
+
+        compose.onNodeWithTag("player.title").assertIsDisplayed()
+        store.send(
+            Event.Session(
+                SessionEvent.EndSessionEarly(PlayerFixtures.STARTED, PlayerFixtures.silent)
+            )
+        )
+        store.send(Event.Session(SessionEvent.DiscardSession))
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).assertIsSelected()
     }
 
     private fun pressBack() {

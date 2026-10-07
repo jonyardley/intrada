@@ -25,6 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.Lifecycle
@@ -62,7 +65,16 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
     /** Only a tempo the musician moved is sent (#1420); one set before a resume stays set. */
     val tempos =
         mutableStateMapOf<String, Pair<Int, Boolean>>().apply {
-            putAll(rows.associate { it.playId to (it.tempo.toInt() to it.setByHand) })
+            putAll(
+                rows.associate { row ->
+                    val tempo =
+                        row.tempo
+                            .toInt()
+                            .coerceAtLeast(row.band.min.toInt())
+                            .coerceAtMost(row.band.max.toInt())
+                    row.playId to (tempo to row.setByHand)
+                }
+            )
         }
     var felt by mutableStateOf(seed.felt)
     var obstacles by mutableStateOf(seed.gotInTheWay)
@@ -117,7 +129,8 @@ internal fun ReflectionRoute(
     val active = model.active
     val entry = active.entries.getOrNull(active.currentPosition.toInt())
     var refusal by remember(entry?.id) { mutableStateOf<String?>(null) }
-    // Cleared from the core so it does not also wait on the banner behind the sheet (#2009).
+    // Cleared from the core, or it would show again on the player or summary once the sheet closes
+    // (#2009).
     val refuse = {
         val now = model.alertsNow()
         refusal = if (now.halted) Store.HALTED_MESSAGE else now.error ?: "Couldn't save. Try again."
@@ -203,7 +216,14 @@ fun ReflectionSheet(
             singleLine = false,
         )
         model.finish?.let { DetailSection(it, state, draft) }
-        refusal?.let { FormErrorBanner(it, Modifier.padding(top = IntradaSpacing.card)) }
+        refusal?.let {
+            FormErrorBanner(
+                it,
+                Modifier.padding(top = IntradaSpacing.card).semantics {
+                    liveRegion = LiveRegionMode.Polite
+                },
+            )
+        }
         InkButton(
             "Save & continue",
             "reflection.save",
