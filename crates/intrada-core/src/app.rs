@@ -3875,7 +3875,7 @@ mod tests {
             .into(),
             ..Model::default()
         };
-        let update = |m: &mut Model, key: Option<Option<Key>>| {
+        let update = |m: &mut Model, key: crate::domain::types::KeyEdit| {
             let _ = app.update(
                 Event::Item(ItemEvent::Update {
                     id: "p1".to_string(),
@@ -3888,13 +3888,18 @@ mod tests {
             );
         };
 
-        update(&mut model, Some(Key::parse("F# minor")));
+        update(
+            &mut model,
+            crate::domain::types::KeyEdit::Set {
+                key: Key::parse("F# minor").expect("parses"),
+            },
+        );
         assert_eq!(model.items[0].key, Key::parse("F# minor"));
 
-        update(&mut model, None);
+        update(&mut model, crate::domain::types::KeyEdit::Keep);
         assert_eq!(model.items[0].key, Key::parse("F# minor"), "skip leaves it");
 
-        update(&mut model, Some(None));
+        update(&mut model, crate::domain::types::KeyEdit::Clear);
         assert_eq!(model.items[0].key, None, "clear");
     }
 

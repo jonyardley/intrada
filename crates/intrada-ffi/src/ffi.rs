@@ -436,6 +436,12 @@ pub fn key_label(key: Vec<u8>) -> Result<String, CoreError> {
     Ok(decode_key(&key)?.label())
 }
 
+/// Whether the add and edit form enables Save, judged on the title as typed.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn item_form_can_save(title: String) -> bool {
+    intrada_core::validation::item_form_can_save(&title)
+}
+
 // ── Filling the form from a read ──
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]

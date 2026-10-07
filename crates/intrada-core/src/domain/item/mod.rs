@@ -11,7 +11,7 @@ use super::metre::Metre;
 pub use super::section::{
     BarRange, BarsInput, ItemSection, SectionChange, SectionEdit, SectionKind,
 };
-use super::types::{CreateItem, Tempo, UpdateItem};
+use super::types::{CreateItem, KeyEdit, Tempo, UpdateItem};
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
 use crate::model::{FormErrorField, FormErrorTarget, Model};

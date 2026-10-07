@@ -508,7 +508,10 @@ class BridgeRoundTripTest {
     fun minuteStepsVariationsAndFocusTargetsCrossTheBridge() {
         val bridge = LiveBridge()
         bridge.update(Event.StartApp)
-        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE, listOf("Dotted"))
+        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
+        bridge.update(
+            Event.Item(ItemEvent.UpdateItemVariations(nocturne, emptyList(), listOf("Dotted")))
+        )
         val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
         val sections =
             addSections(
@@ -625,7 +628,6 @@ class BridgeRoundTripTest {
         bridge: LiveBridge,
         title: String,
         kind: ItemKind,
-        variationLabels: List<String> = emptyList(),
     ): String =
         bridge
             .update(
@@ -635,7 +637,7 @@ class BridgeRoundTripTest {
                             title = title,
                             kind = kind,
                             tags = emptyList(),
-                            variationLabels = variationLabels,
+                            variationLabels = emptyList(),
                         )
                     )
                 )

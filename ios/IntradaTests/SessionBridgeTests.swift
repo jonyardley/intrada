@@ -453,7 +453,7 @@ final class SessionBridgeTests: XCTestCase {
           .update(
             id: item.id,
             input: UpdateItem(
-              title: item.title, kind: item.itemType, composer: nil, key: nil,
+              title: item.title, kind: item.itemType, composer: nil, key: .keep,
               tempo: nil, notes: nil, tags: nil, priority: true))))
     }
     XCTAssertTrue(try bridge.rendered().showsPriorities, "starred with nothing under way")

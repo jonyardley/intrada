@@ -1,7 +1,11 @@
 use super::*;
 
 pub(super) fn add(model: &mut Model, input: CreateItem) -> Command<Effect, Event> {
-    let input = validation::normalize_create_item(input);
+    let mut input = validation::normalize_create_item(input);
+    // The form keeps its rows while the kind flips; only an exercise shows them (#2461).
+    if input.kind != ItemKind::Exercise {
+        input.variation_labels.clear();
+    }
     let tempo = match validation::validate_create_item(&input) {
         Ok(tempo) => tempo,
         Err(e) => return refuse(model, &e),

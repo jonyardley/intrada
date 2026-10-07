@@ -85,8 +85,10 @@ fn apply_fields(item: &mut Item, input: UpdateItem, tempo: Option<Option<Tempo>>
     if let Some(composer) = input.composer {
         item.composer = composer;
     }
-    if let Some(key) = input.key {
-        item.key = key;
+    match input.key {
+        KeyEdit::Keep => {}
+        KeyEdit::Clear => item.key = None,
+        KeyEdit::Set { key } => item.key = Some(key),
     }
     if let Some(tempo) = tempo {
         item.tempo = tempo;

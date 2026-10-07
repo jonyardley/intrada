@@ -17,8 +17,10 @@ struct SessionBuilderPlanTests {
         .add(
           CreateItem(
             title: "Clair de Lune", kind: .piece, composer: nil, key: nil,
-            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: ["Dotted"]))))
+            tempo: nil, notes: nil, tags: [], photoId: nil, variationLabels: []))))
     let itemId = try #require(try bridge.rendered().items.first?.id)
+    _ = try bridge.update(
+      .item(.updateItemVariations(id: itemId, variationIds: [], newLabels: ["Dotted"])))
     try bridge.addSections(named: ["A1", "B", "A2"], to: itemId)
     _ = try bridge.update(.session(.startBuilding))
     _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))

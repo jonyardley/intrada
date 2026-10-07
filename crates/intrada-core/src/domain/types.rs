@@ -74,16 +74,31 @@ pub struct CreateItem {
     pub variation_labels: Vec<String>,
 }
 
+/// The key on an edit. Three variants rather than `Option<Option<Key>>`,
+/// which the Kotlin binding collapses so Android could not clear a key (#2461).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum KeyEdit {
+    #[default]
+    Keep,
+    Clear,
+    Set {
+        key: Key,
+    },
+}
+
 /// PATCH-style update. `Option<Option<T>>` fields are three-state:
-/// `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set. `tempo` is
-/// two-state: `None` = skip, and a `TempoInput` with both parts blank clears.
+/// `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set; an empty
+/// composer or notes also clears once normalised. `tempo` is two-state:
+/// `None` = skip, and a `TempoInput` with both parts blank clears.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
     pub title: Option<String>,
     pub kind: Option<ItemKind>,
     pub composer: Option<Option<String>>,
-    pub key: Option<Option<Key>>,
+    pub key: KeyEdit,
     pub tempo: Option<TempoInput>,
     pub notes: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
@@ -272,7 +287,7 @@ mod tests {
             title: Some("Renamed".to_string()),
             kind: Some(ItemKind::Exercise),
             composer: Some(Some("Bach".to_string())),
-            key: Some(None),
+            key: KeyEdit::Clear,
             tempo: Some(TempoInput {
                 marking: Some("Allegro".to_string()),
                 bpm: Some("120".to_string()),
@@ -303,7 +318,7 @@ mod tests {
                 title: Some("Renamed".to_string()),
                 kind: Some(ItemKind::Exercise),
                 composer: Some(Some("Bach".to_string())),
-                key: Some(None),
+                key: KeyEdit::Set { key: Key::C_MAJOR },
                 tempo: Some(TempoInput::default()),
                 notes: Some(Some("phrasing".to_string())),
                 tags: Some(vec!["etude".to_string()]),
