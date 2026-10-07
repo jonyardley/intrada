@@ -53,7 +53,7 @@ class Store(
 
     private var diskTail: Job? = null
 
-    // A practice found at launch; Phase C offers to resume it (#962).
+    // A practice found at launch, which the Practice tab offers to resume (#962).
     private val _recoverableSession = MutableStateFlow<ActiveSession?>(null)
     val recoverableSession: StateFlow<ActiveSession?> = _recoverableSession.asStateFlow()
 
@@ -77,7 +77,13 @@ class Store(
     private fun process(requests: List<Request>) {
         for (request in requests) {
             when (val effect = request.effect) {
-                is Effect.Render -> bridged { bridge.view() }?.let { _viewModel.value = it }
+                is Effect.Render ->
+                    bridged { bridge.view() }
+                        ?.let { view ->
+                            _viewModel.value = view
+                            // A practice running again supersedes the one offered at launch.
+                            if (view.activeSession != null) _recoverableSession.value = null
+                        }
                 is Effect.App -> handleAppEffect(effect.value)
                 is Effect.Persistence -> enqueueDiskJob(effect.value, request.id)
                 is Effect.Recognition -> {
@@ -144,6 +150,15 @@ class Store(
         _recoverableSession.value = pendingSessionInProgress()
     }
 
+    /**
+     * The core is idle before a resume, and its own clear needs a running session, so a discard
+     * here only empties the slot (#962).
+     */
+    fun discardSessionInProgress() {
+        settings?.sessionInProgress?.clear()
+        _recoverableSession.value = null
+    }
+
     // UniFFI raises a Rust panic as InternalException; CoreException and a failed decode are not.
     private fun <T> bridged(work: () -> T): T? {
         if (_halted.value) return null
@@ -167,6 +182,11 @@ class Store(
         const val HALTED_MESSAGE =
             "The app has stopped responding · close and reopen it to carry on."
     }
+}
+
+fun Store.resumeRecoverableSession(now: String) {
+    val session = recoverableSession.value ?: return
+    send(Event.Session(SessionEvent.RecoverSession(session, now)))
 }
 
 /** The rows the Library filter leaves showing, in the core's order (#1998). */

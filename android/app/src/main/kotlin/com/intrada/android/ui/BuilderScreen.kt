@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -24,17 +23,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.intrada.android.core.Store
+import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
@@ -48,8 +44,19 @@ import com.intrada.shared.SetlistBlockView
 
 @Composable
 fun PracticeRoute(store: Store, onBuild: () -> Unit, modifier: Modifier = Modifier) {
+    val recoverable by store.recoverableSession.collectAsState()
     ScreenScaffold("Practice", modifier) {
-        Column(Modifier.fillMaxSize().padding(IntradaSpacing.card)) {
+        Column(
+            Modifier.fillMaxSize().padding(IntradaSpacing.card),
+            verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
+        ) {
+            recoverable?.let { session ->
+                RecoveryCard(
+                    session,
+                    onResume = { store.resumeRecoverableSession(SessionClock.now()) },
+                    onDiscard = store::discardSessionInProgress,
+                )
+            }
             AddRow(
                 "Build a session",
                 "Build a session",
@@ -164,7 +171,7 @@ fun BuilderScreen(
         Column(Modifier.fillMaxSize()) {
             AlertBanners(ScreenAlerts(model.error, model.halted, actions.onDismissError))
             BuilderBody(model, state, actions, editing)
-            if (setlist.entries.isNotEmpty()) StartBar(setlist)
+            if (setlist.entries.isNotEmpty()) StartBar(setlist, actions)
         }
     }
     state.menuFor?.let { BlockMenu(it, state, actions) }
@@ -249,30 +256,19 @@ private fun LengthCard(setlist: BuildingSetlistView, limits: LimitsView, actions
     }
 }
 
-// Start hands over to the player, C2 of specs/android-shell.md (#2422); until then it waits.
 @Composable
-private fun StartBar(setlist: BuildingSetlistView) {
+private fun StartBar(setlist: BuildingSetlistView, actions: BuilderActions) {
     Column(Modifier.fillMaxWidth().background(IntradaColor.paperTop)) {
         HairlineDivider()
-        Box(
-            Modifier.fillMaxWidth()
-                .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact)
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(IntradaRadius.control))
-                .background(IntradaColor.surfaceSunken)
-                .clearAndSetSemantics {
-                    contentDescription = "Start session, not on Android yet"
-                    testTag = "builder.start"
-                    role = Role.Button
-                    disabled()
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            BasicText(
-                startTitle(setlist),
-                style = IntradaFont.button.copy(color = IntradaColor.inkSecondary),
-            )
-        }
+        InkButton(
+            startTitle(setlist),
+            "builder.start",
+            { actions.send(Event.Session(SessionEvent.StartSession(SessionClock.now()))) },
+            Modifier.padding(
+                horizontal = IntradaSpacing.card,
+                vertical = IntradaSpacing.cardCompact,
+            ),
+        )
     }
 }
 
