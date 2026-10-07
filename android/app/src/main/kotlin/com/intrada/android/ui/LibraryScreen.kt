@@ -53,6 +53,7 @@ fun LibraryRoute(
     val halted by store.halted.collectAsState()
     LibraryScreen(
         rows.withIds(viewModel?.visibleIds.orEmpty()),
+        countLine = viewModel?.libraryCountLine,
         error = viewModel?.error,
         halted = halted,
         LibraryActions(onDismissError = { store.send(Event.ClearError) }, onAdd, onOpen),
@@ -63,12 +64,18 @@ fun LibraryRoute(
 @Composable
 fun LibraryScreen(
     rows: List<LibraryItemView>,
+    countLine: String?,
     error: String?,
     halted: Boolean,
     actions: LibraryActions,
     modifier: Modifier = Modifier,
 ) {
-    ScreenScaffold("Library", modifier, actions = { AddButton(actions.onAdd) }) {
+    ScreenScaffold(
+        "Library",
+        modifier,
+        subtitle = countLine,
+        actions = { AddButton(actions.onAdd) },
+    ) {
         Column(Modifier.fillMaxSize()) {
             if (halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
             if (error != null)

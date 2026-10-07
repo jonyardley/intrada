@@ -273,10 +273,6 @@ pub struct ViewModel {
     pub active_query: Option<ListQuery>,
     /// Active sort, mirrored so the shell's menu reads one source of truth.
     pub active_sort: LibrarySort,
-    /// Counts of the visible (filtered) set so the subtitle describes what's
-    /// actually on screen and reacts to the filter + search.
-    pub visible_pieces: usize,
-    pub visible_exercises: usize,
     /// The Library header's line, "2 pieces · 1 exercise", worded for the
     /// visible set so both phones show the same text (#2454).
     pub library_count_line: String,

@@ -1,6 +1,7 @@
 package com.intrada.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.dp
 fun ScreenScaffold(
     title: String,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -41,11 +45,26 @@ fun ScreenScaffold(
                 .padding(top = IntradaSpacing.controlGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BasicText(
-                title,
-                Modifier.weight(1f).semantics { heading() },
-                style = IntradaFont.pageTitle.copy(color = IntradaColor.ink),
-            )
+            Column(
+                Modifier.weight(1f).semantics(mergeDescendants = true) {
+                    heading()
+                    contentDescription =
+                        subtitle?.let { "$title, ${it.replace(" · ", ", ")}" } ?: title
+                },
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                BasicText(
+                    title,
+                    style = IntradaFont.pageTitle.copy(color = IntradaColor.ink),
+                )
+                if (subtitle != null) {
+                    BasicText(
+                        subtitle,
+                        Modifier.testTag("screen.subtitle"),
+                        style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
+                    )
+                }
+            }
             actions()
         }
         Box(

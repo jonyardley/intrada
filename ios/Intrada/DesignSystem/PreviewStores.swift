@@ -64,6 +64,16 @@
       self.firstRun = firstRun
     }
 
+    private func previewCountLine(_ visible: [LibraryItemView], filtered: Bool) -> String {
+      let parts = [ItemKind.piece, .exercise].compactMap { kind -> String? in
+        let n = visible.filter { $0.itemType == kind }.count
+        let noun = kind == .piece ? "piece" : "exercise"
+        return n == 0 ? nil : "\(n) \(noun)\(n == 1 ? "" : "s")"
+      }
+      if parts.isEmpty { return filtered ? "No matches" : "No items yet" }
+      return parts.joined(separator: " · ")
+    }
+
     func update(_ event: Event) throws -> [Request] { [] }
     func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
     func resolve(_ id: UInt32, recognitionOutput: RecognitionOutput) throws -> [Request] { [] }
@@ -82,8 +92,9 @@
         }
       }
       viewModel.visibleIds = visible.map(\.id)
-      viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
-      viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
+      // A stub bridge holds no items in the core, so the fixture words the
+      // line the way the core does; the bridge tests pin the real one (#2454).
+      viewModel.libraryCountLine = previewCountLine(visible, filtered: activeQuery != nil)
       // Derived from the whole library, never `visible`, so a fixture with a
       // filter on still reports what the core would report (#981).
       viewModel.showsPriorities =
