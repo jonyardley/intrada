@@ -34,7 +34,7 @@ struct SectionSheet: View {
     let section: SectionView? =
       if case .existing(let section) = target { section } else { nil }
     _name = State(initialValue: section?.name ?? "")
-    _bars = State(initialValue: section.map(SectionEdits.barsText(of:)) ?? "")
+    _bars = State(initialValue: section?.barsFieldText ?? "")
     _kind = State(initialValue: section?.kind ?? .form)
     _bpm = State(initialValue: section?.targetBpm.map(String.init) ?? "")
     _formError = State(initialValue: previewError)

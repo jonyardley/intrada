@@ -3,23 +3,9 @@ import Testing
 
 @testable import Intrada
 
-/// What a link is for, and the link fixtures held to what the core projects
-/// from the same links (#2232).
+/// The link fixtures held to what the core projects from the same links (#2232).
 @MainActor
 struct ExerciseLinkSetsTests {
-  @Test(arguments: [
-    (true, [String](), nil as String?),
-    (false, ["A2"], "For A2"),
-    (false, ["bars 19 to 20"], "For bars 19 to 20"),
-    (false, ["bar 12"], "For bar 12"),
-    (true, ["A2"], "For the whole piece and A2"),
-    (false, ["A1", "B", "Coda"], "For A1, B and Coda"),
-  ])
-  func theCaptionNamesWhatTheLinkIsFor(wholePiece: Bool, labels: [String], expected: String?) {
-    let sections = labels.map { LinkedSectionView(id: $0, label: $0, labelInText: $0) }
-    #expect(sectionLinkCaption(wholePiece: wholePiece, sections: sections) == expected)
-  }
-
   /// The Used in fixture holds to what the core projects from the same links.
   @Test func theUsedInSectionsFixtureMatchesTheCore() throws {
     let bridge = RowsBridge()
@@ -40,10 +26,6 @@ struct ExerciseLinkSetsTests {
     _ = try bridge.update(.item(.setExerciseLinks(exerciseId: exercise, targets: targets)))
 
     let usedIn = try #require(try bridge.rendered().items.first { $0.id == exercise }?.usedIn)
-    let byTitle = { (rows: [ExerciseUsageView]) in
-      rows.sorted { ($0.piece?.title ?? "") < ($1.piece?.title ?? "") }.map(\.sectionsCaption)
-    }
-    #expect(byTitle(usedIn) == byTitle(fixture.usedIn))
     let captions = { (rows: [ExerciseUsageView]) in
       rows.sorted { ($0.piece?.title ?? "") < ($1.piece?.title ?? "") }.map(\.linkCaption)
     }
@@ -104,7 +86,6 @@ struct ExerciseLinkSetsTests {
     }
 
     let card = try #require(try bridge.rendered().items.first { $0.id == pieceId }?.linkedExercises)
-    #expect(card.map(\.sectionsCaption) == fixture.linkedExercises.map(\.sectionsCaption))
     #expect(card.map(\.linkCaption) == fixture.linkedExercises.map(\.linkCaption))
     #expect(card.map(\.wholePiece) == fixture.linkedExercises.map(\.wholePiece))
   }

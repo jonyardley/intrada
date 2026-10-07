@@ -15,7 +15,7 @@ import com.intrada.shared.SectionView
 
 class SectionFormState(val existing: SectionView?) {
     var name by mutableStateOf(existing?.name.orEmpty())
-    var bars by mutableStateOf(existing?.barsText.orEmpty())
+    var bars by mutableStateOf(existing?.barsFieldText.orEmpty())
     var kind by mutableStateOf(existing?.kind ?: SectionKind.FORM)
     var bpm by mutableStateOf(existing?.targetBpm?.toString().orEmpty())
     var formError by mutableStateOf<String?>(null)
@@ -24,13 +24,6 @@ class SectionFormState(val existing: SectionView?) {
     fun saveChange(): SectionChange =
         SectionChange.Save(SectionEdit(existing?.id, name, BarsInput.Typed(bars), kind, bpm))
 }
-
-private val SectionView.barsText: String
-    get() {
-        val first = firstBar ?: return ""
-        val last = lastBar
-        return if (last == null || last == first) "$first" else "$first to $last"
-    }
 
 class LinkSectionsState(val exercise: LinkedExerciseView) {
     var wholePiece by mutableStateOf(exercise.wholePiece)

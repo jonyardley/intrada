@@ -223,8 +223,8 @@ private struct LinkedExerciseTitle: View {
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
-      if let sections = exercise.sectionsCaption {
-        Text(sections)
+      if let caption = exercise.linkCaption {
+        Text(caption)
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -260,7 +260,7 @@ private struct LinkedExerciseRow: View {
   private var accessibilityLabel: String {
     var parts = ["Exercise", exercise.title]
     if let meta = exercise.metaSpoken { parts.append(meta) }
-    if let sections = exercise.sectionsCaption { parts.append(sections) }
+    if let caption = exercise.linkCaption { parts.append(caption) }
     if let score = exercise.pieceContextScore {
       parts.append("Mark \(score) of \(scoreRange.upperBound) on this piece")
     } else {
