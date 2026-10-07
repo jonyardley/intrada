@@ -34,7 +34,11 @@ class ItemFormSnapshotTest {
     @Test
     fun addRefused() = runTest {
         val store = startedStore()
-        val form = ItemFormState()
+        val form =
+            ItemFormState().apply {
+                title = "Arpeggios"
+                bpm = "999"
+            }
         form.formError = store.sendFromForm(form.addEvent())
         captureRoboImage("src/test/snapshots/item-form-add-refused.png") {
             ItemFormScreen(form, ItemFormMode.ADD, onCancel = {}, onConfirm = {})

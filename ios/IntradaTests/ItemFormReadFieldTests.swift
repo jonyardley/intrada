@@ -98,11 +98,12 @@ struct ItemFormReadFieldTests {
   /// feature is built around. Pressing Add is what writes.
   @Test func fillingTheFormDoesNotSubmitIt() {
     let form = ItemFormModel(kind: .piece)
-    #expect(!form.canSubmit)
+    #expect(!form.canSave)
 
     form.fill(from: .readPage)
 
-    #expect(form.canSubmit, "it is now submittable, but only the user can submit it")
+    #expect(
+      form.canSave, "it is now submittable, but only the user can submit it")
     #expect(form.createInput().title == "Autumn Leaves")
   }
 }

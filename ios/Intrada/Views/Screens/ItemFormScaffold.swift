@@ -134,7 +134,7 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(confirmLabel, action: confirm)
-            .disabled(!form.canSubmit)
+            .disabled(!form.canSave)
             .accessibilityIdentifier("itemForm.confirm")
         }
       }
