@@ -44,6 +44,10 @@ struct ExerciseLinkSetsTests {
       rows.sorted { ($0.piece?.title ?? "") < ($1.piece?.title ?? "") }.map(\.sectionsCaption)
     }
     #expect(byTitle(usedIn) == byTitle(fixture.usedIn))
+    let captions = { (rows: [ExerciseUsageView]) in
+      rows.sorted { ($0.piece?.title ?? "") < ($1.piece?.title ?? "") }.map(\.linkCaption)
+    }
+    #expect(captions(usedIn) == captions(fixture.usedIn))
   }
 
   private func add(_ bridge: RowsBridge, _ title: String, _ kind: ItemKind) throws -> String {
@@ -101,6 +105,7 @@ struct ExerciseLinkSetsTests {
 
     let card = try #require(try bridge.rendered().items.first { $0.id == pieceId }?.linkedExercises)
     #expect(card.map(\.sectionsCaption) == fixture.linkedExercises.map(\.sectionsCaption))
+    #expect(card.map(\.linkCaption) == fixture.linkedExercises.map(\.linkCaption))
     #expect(card.map(\.wholePiece) == fixture.linkedExercises.map(\.wholePiece))
   }
 }

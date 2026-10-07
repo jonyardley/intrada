@@ -45,7 +45,7 @@ pub(super) fn build_library_item_views(
                                 })
                                 .and_then(|r| r.latest_score)
                         });
-                    let (whole_piece, sections) = link_summary(item, &ex.id);
+                    let (whole_piece, sections, link_caption) = link_summary(item, &ex.id);
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -57,6 +57,7 @@ pub(super) fn build_library_item_views(
                         piece_context_score,
                         whole_piece,
                         sections,
+                        link_caption,
                     })
                 })
                 .collect()
@@ -372,12 +373,12 @@ pub(crate) fn build_exercise_usage(
         let piece_removed = piece.as_ref().is_some_and(|(_, removed)| *removed);
         let piece_in_library = piece.is_some() && !piece_removed;
         let offers_link = piece_in_library && !record.linked;
-        let (whole_piece, sections) = match (&piece, record.linked) {
+        let (whole_piece, sections, link_caption) = match (&piece, record.linked) {
             (Some((p, false)), true) => item_index
                 .get(p.id.as_str())
                 .map(|live| link_summary(live, &exercise_id))
                 .unwrap_or_default(),
-            _ => (false, Vec::new()),
+            _ => (false, Vec::new(), None),
         };
         by_exercise
             .entry(exercise_id)
@@ -393,6 +394,7 @@ pub(crate) fn build_exercise_usage(
                 offers_link,
                 whole_piece,
                 sections,
+                link_caption,
             });
     }
 
@@ -525,11 +527,11 @@ pub(crate) fn build_key_views(
 }
 
 /// How `exercise_id` is linked to `piece`: as a whole, and to which live
-/// sections, in score order (#2248).
+/// sections, in score order (#2248), and the caption that names them.
 fn link_summary(
     piece: &crate::domain::item::Item,
     exercise_id: &str,
-) -> (bool, Vec<crate::model::LinkedSectionView>) {
+) -> (bool, Vec<crate::model::LinkedSectionView>, Option<String>) {
     let links: Vec<_> = piece
         .live_links()
         .into_iter()
@@ -547,7 +549,7 @@ fn link_summary(
         })
         .collect();
     sections.sort_by_key(|s| s.position);
-    let sections = sections
+    let sections: Vec<_> = sections
         .into_iter()
         .map(|s| crate::model::LinkedSectionView {
             id: s.id.clone(),
@@ -555,7 +557,27 @@ fn link_summary(
             label_in_text: s.label_in_text(),
         })
         .collect();
-    (whole_piece, sections)
+    let caption = link_caption(whole_piece, &sections);
+    (whole_piece, sections, caption)
+}
+
+/// "For A2 and Coda", or "For the whole piece and bars 19 to 20"; `None` for a
+/// whole-piece link alone, which is how every link read before sections.
+fn link_caption(whole_piece: bool, sections: &[crate::model::LinkedSectionView]) -> Option<String> {
+    if sections.is_empty() {
+        return None;
+    }
+    let mut parts: Vec<&str> = whole_piece
+        .then_some("the whole piece")
+        .into_iter()
+        .collect();
+    parts.extend(sections.iter().map(|s| s.label_in_text.as_str()));
+    let (last, rest) = parts.split_last()?;
+    Some(if rest.is_empty() {
+        format!("For {last}")
+    } else {
+        format!("For {} and {last}", rest.join(", "))
+    })
 }
 
 /// The item's live sections in score order, each with the marks of the plays
@@ -586,6 +608,7 @@ pub(crate) fn build_section_views(
                 last_bar: s.bars.map(|b| b.last),
                 label: s.label(),
                 bars_caption: s.bars.filter(|_| !s.name.is_empty()).map(|b| b.caption()),
+                bars_field_text: s.bars.map(|b| b.field_text()).unwrap_or_default(),
                 latest_score,
                 score_history,
                 caption: crate::model::saved_mark_caption(latest_score),

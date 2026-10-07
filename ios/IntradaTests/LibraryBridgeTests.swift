@@ -216,6 +216,7 @@ final class LibraryBridgeTests: XCTestCase {
     let views: [SectionView] = after.sections
     XCTAssertEqual(views.map(\.label), ["A1", "Bars 12 to 14"])
     XCTAssertEqual(views.map(\.barsCaption), ["Bars 1 to 16", nil])
+    XCTAssertEqual(views.map(\.barsFieldText), ["1 to 16", "12 to 14"])
     XCTAssertEqual(views.last?.kind, spot)
   }
 
@@ -1102,7 +1103,11 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(sections.map(\.id), ["s-spot"], "the tombstone stays hidden")
     XCTAssertEqual(sections.map(\.label), ["Bars 19 to 20"])
     XCTAssertEqual(sections.map(\.labelInText), ["bars 19 to 20"])
+    XCTAssertEqual(card.linkCaption, "For the whole piece and bars 19 to 20")
     XCTAssertEqual(rows.first { $0.id == "e1" }?.usedIn.map(\.linked), [true])
+    XCTAssertEqual(
+      rows.first { $0.id == "e1" }?.usedIn.map(\.linkCaption),
+      ["For the whole piece and bars 19 to 20"])
   }
 
   /// Links made in the core, and both views of them, cross the bridge (#846).

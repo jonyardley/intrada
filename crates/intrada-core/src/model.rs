@@ -432,6 +432,8 @@ pub struct LinkedExerciseView {
     pub whole_piece: bool,
     /// The live sections it is linked to, in score order.
     pub sections: Vec<LinkedSectionView>,
+    /// "For the whole piece and A2"; `None` for a whole-piece link alone (#2456).
+    pub link_caption: Option<String>,
 }
 
 /// A section an exercise is linked to, as the link rows name it.
@@ -515,6 +517,7 @@ pub struct ExerciseUsageView {
     pub whole_piece: bool,
     /// The live sections of the piece it is linked to, in score order.
     pub sections: Vec<LinkedSectionView>,
+    pub link_caption: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -583,6 +586,8 @@ pub struct SectionView {
     /// "Bars 1 to 16", shown beside a named section; `None` when the label
     /// already is the bars, or there are none.
     pub bars_caption: Option<String>,
+    /// What the bars field opens with: "19 to 20", "12", or empty (#2456).
+    pub bars_field_text: String,
     /// The marks of the plays on this section with no variations, any key:
     /// the piece's own rule, narrowed to the section (#2250).
     pub latest_score: Option<u8>,
@@ -1221,6 +1226,7 @@ impl LinkedExerciseView {
             piece_context_score: None,
             whole_piece: true,
             sections: Vec::new(),
+            link_caption: None,
         }
     }
 }
@@ -1505,6 +1511,7 @@ mod tests {
                 label: "A2".to_string(),
                 label_in_text: "A2".to_string(),
             }],
+            link_caption: Some("For A2".to_string()),
         });
     }
 
@@ -1562,6 +1569,7 @@ mod tests {
             last_bar: Some(16),
             label: "A".to_string(),
             bars_caption: Some("Bars 1 to 16".to_string()),
+            bars_field_text: "1 to 16".to_string(),
             latest_score: Some(4),
             score_history: vec![ScoreHistoryEntry {
                 session_date: "2026-10-01T00:00:00+00:00".to_string(),
@@ -1592,6 +1600,7 @@ mod tests {
                 label: "Bars 12 to 14".to_string(),
                 label_in_text: "bars 12 to 14".to_string(),
             }],
+            link_caption: Some("For the whole piece and bars 12 to 14".to_string()),
         });
     }
 

@@ -102,6 +102,15 @@ impl BarRange {
             format!("bars {} to {}", self.first, self.last)
         }
     }
+
+    /// What the bars field opens with: the parser has to read it back.
+    pub fn field_text(&self) -> String {
+        if self.first == self.last {
+            self.first.to_string()
+        } else {
+            format!("{} to {}", self.first, self.last)
+        }
+    }
 }
 
 impl From<&ItemSection> for SectionDraft {
