@@ -55,7 +55,7 @@ import com.intrada.android.core.Store
 import com.intrada.shared.ItemKind
 
 @Composable
-fun AppFrame(store: Store, modifier: Modifier = Modifier) {
+fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController? = null) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
@@ -68,7 +68,7 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
         Box(if (live) Modifier.clearAndSetSemantics {} else Modifier) {
             Tabs(store, navController, onTab, tab)
         }
-        PlayerHost(store, Modifier.pointerInput(Unit) {})
+        PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
     }
 }
 

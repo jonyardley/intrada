@@ -1,9 +1,19 @@
 package com.intrada.android
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.Settings
+import com.intrada.android.ui.ClickRow
+import com.intrada.android.ui.ClickRowState
+import com.intrada.android.ui.ClickStatus
+import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.PlayerModel
 import com.intrada.android.ui.PlayerScreen
 import com.intrada.android.ui.RecoveryCard
@@ -37,6 +47,30 @@ class PlayerSnapshotTest {
         val view = store.viewModel.value ?: error("no view")
         captureRoboImage("src/test/snapshots/player.png") {
             PlayerScreen(PlayerModel(store.active(), view.limits, held = held), send = { true })
+        }
+    }
+
+    @Test
+    fun clickRow() {
+        fun row(status: ClickStatus, bpm: Int = 66, seeded: Boolean = true, unit: UByte = 4u) =
+            ClickRowState(
+                bpm,
+                unit,
+                status,
+                seeded,
+                "Andante · ♩ = 66",
+                "Andante, 66 beats per minute",
+            )
+        captureRoboImage("src/test/snapshots/player-click.png") {
+            Column(
+                Modifier.background(IntradaColor.paperTop).padding(IntradaSpacing.card),
+                verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
+            ) {
+                ClickRow(row(ClickStatus.STOPPED), {}, {}, step = 2)
+                ClickRow(row(ClickStatus.RUNNING, bpm = 72, seeded = false), {}, {}, step = 2)
+                ClickRow(row(ClickStatus.RUNNING, bpm = 168, unit = 8u), {}, {}, step = 2)
+                ClickRow(row(ClickStatus.UNAVAILABLE), {}, {}, step = 2)
+            }
         }
     }
 

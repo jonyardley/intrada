@@ -10,18 +10,25 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.intrada.android.core.ClickEngine
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Settings
 import com.intrada.android.core.SharedItemStore
 import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
+import com.intrada.android.ui.ClickController
 import com.intrada.shared.Event
 import java.util.TimeZone
 
 class StoreHolder(application: Application) : AndroidViewModel(application) {
     private var created: Store? = null
     var started = false
+
+    /** Kept here so turning the phone neither silences the click nor loses its tempo. */
+    val click = ClickController { ClickEngine(application) }
+
+    override fun onCleared() = click.release()
 
     // Seed mode keeps nothing, so the sample set never lands in the musician's notebook.
     fun store(seed: Boolean): Store =
@@ -76,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 store.loadRecoverableSession()
             }
         }
-        setContent { AppFrame(store) }
+        setContent { AppFrame(store, click = holder.click) }
     }
 
     companion object {
