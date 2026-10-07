@@ -59,7 +59,16 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier) {
     val route = entry?.destination?.route
     val tab = AppTab.entries.firstOrNull { it.route == route }
     val onTab = route == null || tab != null
-    Column(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize()) {
+        Tabs(store, navController, onTab, tab)
+        // Over everything while a session or its summary is live; the core ends it, not back.
+        PlayerHost(store)
+    }
+}
+
+@Composable
+private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean, tab: AppTab?) {
+    Column(Modifier.fillMaxSize()) {
         NavHost(
             navController,
             startDestination = AppTab.LIBRARY.route,
