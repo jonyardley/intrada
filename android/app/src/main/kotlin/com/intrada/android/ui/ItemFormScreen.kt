@@ -20,6 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.mapSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,12 +45,11 @@ import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
+import com.intrada.shared.Key
 import com.intrada.shared.KeyEdit
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.TempoInput
 import com.intrada.shared.UpdateItem
-
-class VariationRow(val variantId: String?, val label: String)
 
 enum class ItemFormMode(val confirmLabel: String) {
     ADD("Add"),
@@ -62,6 +64,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     var kind by mutableStateOf(kind)
     var title by mutableStateOf("")
     var composer by mutableStateOf("")
+    var key by mutableStateOf<Key?>(null)
     var marking by mutableStateOf("")
     var bpm by mutableStateOf("")
     var notes by mutableStateOf("")
@@ -79,6 +82,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     title = title,
                     kind = kind,
                     composer = composer,
+                    key = key,
                     tempo = TempoInput(marking, bpm),
                     notes = notes,
                     tags = tags.toList(),
@@ -95,7 +99,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     title = title,
                     kind = kind,
                     composer = composer,
-                    key = KeyEdit.Keep,
+                    key = key?.let { KeyEdit.Set(it) } ?: KeyEdit.Clear,
                     tempo = TempoInput(marking, bpm),
                     notes = notes,
                     tags = tags.toList(),
@@ -110,12 +114,62 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
             ItemFormState(item.itemType).apply {
                 title = item.title
                 composer = item.subtitle
+                key = item.key
                 marking = item.tempoMarking.orEmpty()
                 bpm = item.tempoBpm?.toString().orEmpty()
                 notes = item.notes.orEmpty()
                 tags.addAll(item.tags)
-                variations.addAll(item.variations.map { VariationRow(it.id, it.label) })
+                variations.addAll(
+                    item.variations.map {
+                        VariationRow(it.id, it.label, hasMarks = it.scoreHistory.isNotEmpty())
+                    }
+                )
             }
+
+        // Rotation and process death keep half-typed input; the key crosses as the core's bytes.
+        val Saver: Saver<ItemFormState, Any> =
+            mapSaver(
+                save = { form ->
+                    mapOf(
+                        "kind" to form.kind.name,
+                        "title" to form.title,
+                        "composer" to form.composer,
+                        "key" to form.key?.bincodeSerialize(),
+                        "marking" to form.marking,
+                        "bpm" to form.bpm,
+                        "notes" to form.notes,
+                        "tags" to ArrayList(form.tags),
+                        "variantIds" to ArrayList(form.variations.map { it.variantId }),
+                        "labels" to ArrayList(form.variations.map { it.label }),
+                        "marks" to form.variations.map { it.hasMarks }.toBooleanArray(),
+                        "error" to form.formError,
+                    )
+                },
+                restore = ::restored,
+            )
+
+        private fun restored(saved: Map<String, Any?>): ItemFormState? {
+            val kind = ItemKind.entries.firstOrNull { it.name == saved["kind"] } ?: return null
+            fun text(name: String) = (saved[name] as? String).orEmpty()
+            fun strings(name: String) = (saved[name] as? List<*>).orEmpty()
+            return ItemFormState(kind).apply {
+                title = text("title")
+                composer = text("composer")
+                key = (saved["key"] as? ByteArray)?.let(Key::bincodeDeserialize)
+                marking = text("marking")
+                bpm = text("bpm")
+                notes = text("notes")
+                tags.addAll(strings("tags").filterIsInstance<String>())
+                val ids = strings("variantIds").map { it as? String }
+                val marks = saved["marks"] as? BooleanArray ?: BooleanArray(0)
+                strings("labels").filterIsInstance<String>().forEachIndexed { index, label ->
+                    variations.add(
+                        VariationRow(ids.getOrNull(index), label, marks.getOrElse(index) { false })
+                    )
+                }
+                formError = saved["error"] as? String
+            }
+        }
     }
 }
 
@@ -132,7 +186,7 @@ private const val SAVE_FAILED = "Couldn't save. Try again."
 
 @Composable
 fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
-    val form = remember { ItemFormState() }
+    val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState() }
     var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
@@ -157,7 +211,7 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
         MissingItem("Edit", NO_LONGER_THERE, modifier)
         return
     }
-    val form = remember(id) { ItemFormState.of(item) }
+    val form = rememberSaveable(id, saver = ItemFormState.Saver) { ItemFormState.of(item) }
     var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
@@ -228,15 +282,10 @@ private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
             )
             HairlineDivider()
             FormField("Composer", form.composer, { form.composer = it }, "itemForm.composer")
+            HairlineDivider()
+            KeyPicker(form.key, { form.key = it })
         }
-        if (form.kind == ItemKind.EXERCISE) {
-            ChipListCard(
-                ChipListLabels("Variations", "Add a variation", "itemForm.variation"),
-                form.variations.map { it.label },
-                onRemove = { form.variations.removeAt(it) },
-                onAdd = { form.variations.add(VariationRow(null, it)) },
-            )
-        }
+        if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
         Column(Modifier.cardSurface()) {
             FormField(
                 "Tempo marking",
@@ -363,8 +412,6 @@ private fun ChipListCard(
     modifier: Modifier = Modifier,
 ) {
     val tag = labels.tag
-    val addLabel = labels.addLabel
-    var typed by remember { mutableStateOf("") }
     Column(modifier.cardSurface()) {
         FieldLabel(
             labels.label,
@@ -381,23 +428,34 @@ private fun ChipListCard(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.Bottom) {
-            Box(Modifier.weight(1f)) {
-                FormField("", typed, { typed = it }, "$tag.input", placeholder = addLabel)
-            }
-            TextAction(
-                "Add",
-                "$tag.add",
-                onClick = {
-                    if (typed.isNotBlank()) {
-                        onAdd(typed)
-                        typed = ""
-                    }
-                },
-                Modifier.padding(end = IntradaSpacing.controlGap).semantics {
-                    contentDescription = addLabel
-                },
-            )
+        AddInputRow(labels.addLabel, labels.tag, onAdd)
+    }
+}
+
+@Composable
+internal fun AddInputRow(
+    addLabel: String,
+    tag: String,
+    onAdd: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var typed by rememberSaveable { mutableStateOf("") }
+    Row(modifier, verticalAlignment = Alignment.Bottom) {
+        Box(Modifier.weight(1f)) {
+            FormField("", typed, { typed = it }, "$tag.input", placeholder = addLabel)
         }
+        TextAction(
+            "Add",
+            "$tag.add",
+            onClick = {
+                if (typed.isNotBlank()) {
+                    onAdd(typed)
+                    typed = ""
+                }
+            },
+            Modifier.padding(end = IntradaSpacing.controlGap).semantics {
+                contentDescription = addLabel
+            },
+        )
     }
 }

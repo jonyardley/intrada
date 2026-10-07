@@ -33,7 +33,7 @@ import com.intrada.shared.SessionEvent
 
 private const val LIFT_ELEVATION = 8f
 
-private class DragState {
+internal class DragState {
     var row by mutableStateOf<String?>(null)
     var offset by mutableFloatStateOf(0f)
     val heights = mutableStateMapOf<String, Int>()

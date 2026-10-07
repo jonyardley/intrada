@@ -1,16 +1,28 @@
 package com.intrada.android
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
+import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.ItemFormMode
 import com.intrada.android.ui.ItemFormScreen
 import com.intrada.android.ui.ItemFormState
+import com.intrada.android.ui.KeyPicker
+import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.sendFromForm
+import com.intrada.shared.Accidental
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
+import com.intrada.shared.Key
+import com.intrada.shared.Letter
+import com.intrada.shared.Modality
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -53,6 +65,21 @@ class ItemFormSnapshotTest {
         val form = ItemFormState.of(store.libraryRows.value.single())
         captureRoboImage("src/test/snapshots/item-form-edit-exercise.png") {
             ItemFormScreen(form, ItemFormMode.EDIT, onCancel = {}, onConfirm = {})
+        }
+    }
+
+    @Test
+    fun keyWheelOpen() {
+        captureRoboImage("src/test/snapshots/item-form-key-wheel.png") {
+            Column(Modifier.background(IntradaColor.paperTop).padding(IntradaSpacing.card)) {
+                Column(Modifier.cardSurface()) {
+                    KeyPicker(
+                        Key(Letter.G, Accidental.FLAT, Modality.MAJOR),
+                        onKey = {},
+                        initiallyExpanded = true,
+                    )
+                }
+            }
         }
     }
 
