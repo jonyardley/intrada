@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.intrada.android.core.InMemoryItemStore
@@ -110,10 +111,10 @@ class ItemFormScreenTest {
         var done = false
         compose.setContent { LibraryEditRoute(store, id, onDone = { done = true }) }
 
-        compose.onAllNodesWithTag("itemForm.variation.chip").fetchSemanticsNodes().let {
+        compose.onAllNodesWithTag("itemForm.variation.remove").fetchSemanticsNodes().let {
             assertEquals(2, it.size)
         }
-        compose.onAllNodesWithTag("itemForm.variation.chip")[0].performClick()
+        compose.onAllNodesWithTag("itemForm.variation.remove")[0].performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.variation.input").performTextInput("Staccato")
         compose.onNodeWithTag("itemForm.variation.add").performClick()
         compose.onNodeWithTag("itemForm.title").performTextClearance()
