@@ -25,6 +25,7 @@
         SectionView(
           id: id, name: name, kind: .form, targetBpm: nil, firstBar: UInt16(first),
           lastBar: UInt16(last), label: name, barsCaption: "Bars \(first) to \(last)",
+          barsFieldText: "\(first) to \(last)",
           latestScore: mark, scoreHistory: [],
           caption: mark.map { "\($0) of 10" } ?? "Not yet played", isWeakest: id == "sec-b")
       }
@@ -844,7 +845,7 @@
       func part(_ id: String, _ label: String) -> SectionView {
         SectionView(
           id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
-          label: label, barsCaption: nil, latestScore: nil, scoreHistory: [],
+          label: label, barsCaption: nil, barsFieldText: "", latestScore: nil, scoreHistory: [],
           caption: "Not yet played", isWeakest: false)
       }
       var finish = preview(asksIntention: false)

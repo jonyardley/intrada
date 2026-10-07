@@ -10,7 +10,7 @@ struct SectionEditsTests {
   ) -> SectionView {
     SectionView(
       id: id, name: "", kind: .form, targetBpm: nil, firstBar: first, lastBar: last,
-      label: "", barsCaption: nil, latestScore: nil, scoreHistory: [],
+      label: "", barsCaption: nil, barsFieldText: "", latestScore: nil, scoreHistory: [],
       caption: "Not yet played", isWeakest: false)
   }
 

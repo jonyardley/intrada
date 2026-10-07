@@ -3734,6 +3734,64 @@ fn a_linked_section_reads_in_sentence_case() {
     }
 }
 
+// ── Section and link wording both shells read (#2456) ──
+
+#[test]
+fn a_sections_bars_field_opens_with_text_the_parser_reads_back() {
+    for (bars, expected) in [
+        (Some((12, 12)), "12"),
+        (Some((19, 20)), "19 to 20"),
+        (None, ""),
+    ] {
+        let mut model = linking_model();
+        let mut spot = section("s-x", "", 3);
+        spot.bars = bars.map(|(first, last)| BarRange { first, last });
+        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+            p.sections.push(spot.clone());
+        }
+
+        let view = view_of(&model, "piece-1");
+        let field = view
+            .sections
+            .iter()
+            .find(|s| s.id == "s-x")
+            .map(|s| s.bars_field_text.clone());
+        assert_eq!(field.as_deref(), Some(expected), "{bars:?}");
+        assert_eq!(
+            crate::validation::parse_bar_range(field.as_deref().unwrap_or_default()).ok(),
+            Some(spot.bars),
+            "{expected:?} reads back as the bars it came from"
+        );
+    }
+}
+
+#[test]
+fn an_exercises_link_caption_names_what_it_is_linked_to() {
+    for (links, expected) in [
+        (vec![None], None),
+        (vec![None, Some("s-a2")], Some("For the whole piece and A2")),
+        (vec![Some("s-a1"), Some("s-a2")], Some("For A1 and A2")),
+        (vec![Some("s-a2")], Some("For A2")),
+        (
+            vec![None, Some("s-a1"), Some("s-a2")],
+            Some("For the whole piece, A1 and A2"),
+        ),
+    ] {
+        let mut model = linking_model();
+        let edits = links.iter().map(|s| existing("ex-1", *s)).collect();
+        let _ = set_piece_links(&mut model, "piece-1", edits);
+
+        let card = &view_of(&model, "piece-1").linked_exercises[0];
+        assert_eq!(card.link_caption.as_deref(), expected, "{links:?}");
+        let used_in = &view_of(&model, "ex-1").used_in[0];
+        assert_eq!(
+            used_in.link_caption.as_deref(),
+            expected,
+            "the exercise's side reads the same"
+        );
+    }
+}
+
 // ── The link pickers send only what was ticked (#2379) ──
 
 fn choose_piece_exercises(

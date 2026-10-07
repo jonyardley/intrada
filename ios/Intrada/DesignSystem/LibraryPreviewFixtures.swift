@@ -69,7 +69,7 @@
       LinkedExerciseView(
         id: id, title: title, key: key, keyLabel: key.flatMap(KeyHelper.display),
         tempoMarking: tempoMarking, tempoBpm: tempoBpm, practice: nil, pieceContextScore: nil,
-        wholePiece: true, sections: [])
+        wholePiece: true, sections: [], linkCaption: nil)
     }
   }
 
@@ -88,13 +88,14 @@
             key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
             tempoMarking: nil,
             tempoBpm: 108,
-            practice: nil, pieceContextScore: 7, wholePiece: true, sections: []),
+            practice: nil, pieceContextScore: 7, wholePiece: true, sections: [],
+            linkCaption: nil),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
             tempoMarking: nil,
             tempoBpm: nil, practice: nil,
-            pieceContextScore: nil, wholePiece: true, sections: []),
+            pieceContextScore: nil, wholePiece: true, sections: [], linkCaption: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
@@ -109,7 +110,9 @@
       ) -> SectionView {
         SectionView(
           id: id, name: name, kind: .form, targetBpm: nil, firstBar: first, lastBar: last,
-          label: name, barsCaption: "Bars \(first) to \(last)", latestScore: mark,
+          label: name, barsCaption: "Bars \(first) to \(last)",
+          barsFieldText: "\(first) to \(last)",
+          latestScore: mark,
           scoreHistory: [], caption: mark.map { "\($0) of 10" } ?? "Not yet played",
           isWeakest: false)
       }
@@ -120,7 +123,8 @@
         part("s1", "A1", 1, 14, 8), part("s2", "B", 15, 26, 6),
         SectionView(
           id: "s3", name: "", kind: .troubleSpot, targetBpm: 54, firstBar: 19, lastBar: 20,
-          label: "Bars 19 to 20", barsCaption: nil, latestScore: 4, scoreHistory: [],
+          label: "Bars 19 to 20", barsCaption: nil, barsFieldText: "19 to 20", latestScore: 4,
+          scoreHistory: [],
           caption: "4 of 10", isWeakest: true),
         part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72, 7),
       ]
@@ -134,6 +138,7 @@
       item.id = "piece-section-links"
       var octaves = LinkedExerciseView.fixture(id: "exercise-octaves", title: "Broken octaves")
       octaves.sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
+      octaves.linkCaption = "For the whole piece and A2"
       var thirds = LinkedExerciseView.fixture(
         id: "exercise-thirds", title: "Thirds in D\u{266D}",
         key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60)
@@ -141,6 +146,7 @@
       thirds.sections = [
         LinkedSectionView(id: "s3", label: "Bars 19 to 20", labelInText: "bars 19 to 20")
       ]
+      thirds.linkCaption = "For bars 19 to 20"
       item.linkedExercises = [octaves, thirds]
       return item
     }
@@ -152,6 +158,8 @@
       item.usedIn[0].wholePiece = false
       item.usedIn[0].sections = [LinkedSectionView(id: "s4", label: "A2", labelInText: "A2")]
       item.usedIn[1].sections = [LinkedSectionView(id: "s9", label: "Coda", labelInText: "Coda")]
+      item.usedIn[0].linkCaption = "For A2"
+      item.usedIn[1].linkCaption = "For the whole piece and Coda"
       return item
     }
 
@@ -263,7 +271,7 @@
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
               tempoTrend: .fixture([100, 104, 108]),
               lastPracticedAt: "2026-06-28T09:00:00Z"),
-            pieceContextScore: 5, wholePiece: true, sections: []),
+            pieceContextScore: 5, wholePiece: true, sections: [], linkCaption: nil),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
@@ -272,11 +280,12 @@
             practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
               lastPracticedAt: "2026-06-25T09:00:00Z"),
-            pieceContextScore: 6, wholePiece: true, sections: []),
+            pieceContextScore: 6, wholePiece: true, sections: [], linkCaption: nil),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, keyLabel: nil,
             tempoMarking: nil, tempoBpm: nil,
-            practice: nil, pieceContextScore: nil, wholePiece: true, sections: []),
+            practice: nil, pieceContextScore: nil, wholePiece: true, sections: [],
+            linkCaption: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
         variations: [], photoId: nil, keys: [],
@@ -308,12 +317,12 @@
             piece: PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: []),
+            sections: [], linkCaption: nil),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: []),
+            sections: [], linkCaption: nil),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
@@ -343,26 +352,26 @@
               id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
             linked: true, latestScore: 7, sessionCount: 3,
             lastPracticedAt: "2026-06-24T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: false, wholePiece: true, sections: []),
+            offersLink: false, wholePiece: true, sections: [], linkCaption: nil),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-2", title: "Blue Bossa", subtitle: "Kenny Dorham"),
             linked: false, latestScore: 5, sessionCount: 2,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false, pieceInLibrary: true,
-            offersLink: true, wholePiece: false, sections: []),
+            offersLink: true, wholePiece: false, sections: [], linkCaption: nil),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-3", title: "Autumn Leaves", subtitle: "Kosma"),
             linked: true, latestScore: nil, sessionCount: 0, lastPracticedAt: nil,
             pieceRemoved: false, pieceInLibrary: true, offersLink: false, wholePiece: true,
-            sections: []),
+            sections: [], linkCaption: nil),
           ExerciseUsageView(
             piece: PieceRefView(id: "piece-gone", title: "Solar", subtitle: nil),
             linked: false, latestScore: 4, sessionCount: 2,
             lastPracticedAt: "2026-06-20T09:00:00Z", pieceRemoved: true, pieceInLibrary: false,
-            offersLink: false, wholePiece: false, sections: []),
+            offersLink: false, wholePiece: false, sections: [], linkCaption: nil),
           ExerciseUsageView(
             piece: nil, linked: false, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-21T09:00:00Z", pieceRemoved: false, pieceInLibrary: false,
-            offersLink: false, wholePiece: false, sections: []),
+            offersLink: false, wholePiece: false, sections: [], linkCaption: nil),
         ], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
         photoId: nil, keys: [],
         keysCaption: nil, variationsCaption: nil,
