@@ -20,7 +20,7 @@ struct ItemFormVariationsTests {
 
   @Test func aLoadedRowKeepsItsIdAndATypedRowIsALabel() {
     let form = ItemFormModel(item: .previewExerciseWithVariations)
-    form.variations.append(VariationRow(label: " Swung "))
+    form.variations.append(VariationRow(label: "Swung"))
 
     let sent = set(form.editEvent(id: "exercise-2"))
 
@@ -61,20 +61,25 @@ struct ItemFormVariationsTests {
     #expect(ids == ["variation-c", "variation-f", "variation-bb"])
   }
 
-  @Test func aRowNeverFilledIsLeftOutAndLabelsAreTrimmed() {
-    let form = ItemFormModel(kind: .exercise)
-    form.variations = rows(["  C ", "", "   ", "G"])
-
-    #expect(form.createInput().variationLabels == ["C", "G"])
+  /// The form sends every row as typed; the core trims them and leaves out
+  /// the blank ones (#2461).
+  @Test func theCoreKeepsTheTypedRowsTrimmed() throws {
+    #expect(try added(as: .exercise, typing: ["  C ", "", "   ", "G"]) == ["C", "G"])
   }
 
-  @Test func aPieceSendsNoRows() {
+  @Test func theCoreKeepsNoRowsOnAPiece() throws {
+    #expect(try added(as: .piece, typing: ["C"]) == [])
+  }
+
+  private func added(as kind: ItemKind, typing typed: [String]) throws -> [String] {
     let form = ItemFormModel(kind: .exercise)
-    form.variations = rows(["C"])
-
-    form.kind = .piece
-
-    #expect(form.createInput().variationLabels.isEmpty)
+    form.title = "Scales"
+    form.variations = rows(typed)
+    form.kind = kind
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    _ = try bridge.update(.item(.add(form.createInput())))
+    return try #require(try bridge.rendered().items.first).variations.map(\.label)
   }
 
   @Test func clearingEveryRowSendsTheEmptySet() {
@@ -84,7 +89,6 @@ struct ItemFormVariationsTests {
     let sent = set(form.editEvent(id: "exercise-2"))
 
     #expect(sent?.ids == [])
-    #expect(sent?.labels == [])
   }
 
   @Test func aDroppedRowLandsBeforeTheTarget() {

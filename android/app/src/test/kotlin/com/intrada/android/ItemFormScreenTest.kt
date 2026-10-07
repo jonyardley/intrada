@@ -1,6 +1,8 @@
 package com.intrada.android
 
 import androidx.compose.ui.test.assertContentDescriptionContains
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -51,19 +53,34 @@ class ItemFormScreenTest {
         assertEquals(ItemKind.PIECE, added.itemType)
     }
 
+    // The core answers whether Save is enabled, as it does on the iPhone (#2461).
+    @Test
+    fun saveWaitsForATitle() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.confirm").assertIsNotEnabled()
+        compose.onNodeWithTag("itemForm.title").performTextInput("   ")
+        compose.onNodeWithTag("itemForm.confirm").assertIsNotEnabled()
+        compose.onNodeWithTag("itemForm.title").performTextInput("Arpeggios")
+        compose.onNodeWithTag("itemForm.confirm").assertIsEnabled()
+    }
+
     @Test
     fun aRefusedAddStaysOpenWithTheCoresMessageInline() = runTest {
         val store = startedStore()
         var done = false
         compose.setContent { LibraryAddRoute(store, onDone = { done = true }) }
 
+        compose.onNodeWithTag("itemForm.title").performTextInput("Arpeggios")
+        compose.onNodeWithTag("itemForm.bpm").performTextInput("999")
         compose.onNodeWithTag("itemForm.confirm").performClick()
         store.settle()
 
         assertFalse(done)
         compose
             .onNodeWithTag("itemForm.error")
-            .assertContentDescriptionContains(TITLE_REFUSAL, substring = true)
+            .assertContentDescriptionContains(BPM_REFUSAL, substring = true)
         assertNull(store.viewModel.value?.error)
         assertTrue(store.libraryRows.value.isEmpty())
     }
@@ -122,13 +139,16 @@ class ItemFormScreenTest {
         compose.setContent { LibraryEditRoute(store, id, onDone = { done = true }) }
 
         compose.onNodeWithTag("itemForm.title").performTextClearance()
+        compose.onNodeWithTag("itemForm.title").performTextInput("Renamed")
+        compose.onNodeWithTag("itemForm.bpm").performTextClearance()
+        compose.onNodeWithTag("itemForm.bpm").performTextInput("999")
         compose.onNodeWithTag("itemForm.confirm").performClick()
         store.settle()
 
         assertFalse(done)
         compose
             .onNodeWithTag("itemForm.error")
-            .assertContentDescriptionContains(TITLE_REFUSAL, substring = true)
+            .assertContentDescriptionContains(BPM_REFUSAL, substring = true)
         assertEquals("Scales in thirds", store.libraryRows.value.single().title)
     }
 
@@ -166,6 +186,6 @@ class ItemFormScreenTest {
     }
 
     private companion object {
-        const val TITLE_REFUSAL = "Title must be between 1 and"
+        const val BPM_REFUSAL = "BPM must be a whole number between"
     }
 }

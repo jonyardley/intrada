@@ -199,19 +199,10 @@ final class ItemFormModel {
     return field
   }
 
-  var canSubmit: Bool {
-    !title.trimmingCharacters(in: .whitespaces).isEmpty
-  }
-
-  /// A row added and left blank is not a label, so it is left out rather than
-  /// refused. A saved row keeps its library variation; a typed one is a label
-  /// the core reuses or mints (#2246).
+  /// A saved row keeps its library variation; a typed one is a label the core
+  /// reuses or mints (#2246), and drops when blank (#2461).
   private var typedLabels: [String] {
-    variations.compactMap { row in
-      guard row.variantId == nil else { return nil }
-      let label = row.label.trimmingCharacters(in: .whitespacesAndNewlines)
-      return label.isEmpty ? nil : label
-    }
+    variations.filter { $0.variantId == nil }.map(\.label)
   }
 
   func editEvent(id: String) -> ItemEvent {
@@ -230,7 +221,7 @@ final class ItemFormModel {
       notes: emptyToNil(notes),
       tags: tags,
       photoId: photoId,
-      variationLabels: kind == .exercise ? typedLabels : [])
+      variationLabels: typedLabels)
   }
 
   var hasStagedExtras: Bool {

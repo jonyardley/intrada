@@ -37,6 +37,7 @@ import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.TagChip
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
+import com.intrada.ffi.itemFormCanSave
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
@@ -68,6 +69,9 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     val variations = mutableStateListOf<VariationRow>()
     var formError by mutableStateOf<String?>(null)
 
+    val canSave: Boolean
+        get() = itemFormCanSave(title)
+
     fun addEvent(): Event =
         Event.Item(
             ItemEvent.Add(
@@ -78,8 +82,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     tempo = TempoInput(marking, bpm),
                     notes = notes,
                     tags = tags.toList(),
-                    variationLabels =
-                        if (kind == ItemKind.EXERCISE) variations.map { it.label } else emptyList(),
+                    variationLabels = variations.map { it.label },
                 )
             )
         )
@@ -184,7 +187,13 @@ fun ItemFormScreen(
         modifier,
         actions = {
             TextAction("Cancel", "itemForm.cancel", onCancel)
-            TextAction(mode.confirmLabel, "itemForm.confirm", onConfirm, emphasised = true)
+            TextAction(
+                mode.confirmLabel,
+                "itemForm.confirm",
+                onConfirm,
+                emphasised = true,
+                enabled = form.canSave,
+            )
         },
     ) {
         Column(Modifier.fillMaxSize()) {

@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -134,7 +135,7 @@ struct ItemFormScaffold<Header: View, Sections: View>: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button(confirmLabel, action: confirm)
-            .disabled(!form.canSubmit)
+            .disabled(!itemFormCanSave(title: form.title))
             .accessibilityIdentifier("itemForm.confirm")
         }
       }
