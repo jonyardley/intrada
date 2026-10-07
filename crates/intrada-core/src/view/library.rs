@@ -758,6 +758,25 @@ impl Scope<'_> {
     }
 }
 
+// ── Count line (#2454) ──
+
+pub(super) fn library_count_line(pieces: usize, exercises: usize, filtered: bool) -> String {
+    let count = |n: usize, noun: &str| match n {
+        0 => None,
+        1 => Some(format!("1 {noun}")),
+        n => Some(format!("{n} {noun}s")),
+    };
+    let parts: Vec<String> = [count(pieces, "piece"), count(exercises, "exercise")]
+        .into_iter()
+        .flatten()
+        .collect();
+    match (parts.is_empty(), filtered) {
+        (false, _) => parts.join(" · "),
+        (true, false) => "No items yet".to_string(),
+        (true, true) => "No matches".to_string(),
+    }
+}
+
 // ── Picker candidates (#1653) ──
 
 /// The subset of `LibraryItemView` the picker sheet's sort and search read,
@@ -836,6 +855,30 @@ pub fn sort_and_filter_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Count line (#2454) ──
+
+    #[test]
+    fn count_line_names_each_kind_present_in_the_visible_set() {
+        let cases = [
+            (0, 0, false, "No items yet"),
+            (0, 0, true, "No matches"),
+            (1, 0, false, "1 piece"),
+            (2, 0, true, "2 pieces"),
+            (0, 1, false, "1 exercise"),
+            (0, 3, false, "3 exercises"),
+            (1, 1, false, "1 piece · 1 exercise"),
+            (2, 1, true, "2 pieces · 1 exercise"),
+            (12, 5, false, "12 pieces · 5 exercises"),
+        ];
+        for (pieces, exercises, filtered, expected) in cases {
+            assert_eq!(
+                library_count_line(pieces, exercises, filtered),
+                expected,
+                "{pieces} pieces, {exercises} exercises, filtered {filtered}"
+            );
+        }
+    }
 
     // ── Practice summaries ──
 

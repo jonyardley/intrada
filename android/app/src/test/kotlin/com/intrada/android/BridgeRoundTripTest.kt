@@ -73,6 +73,7 @@ class BridgeRoundTripTest {
         assertEquals(listOf("recital"), satie.tags)
         assertEquals(2uL, view.visiblePieces)
         assertEquals(1uL, view.visibleExercises)
+        assertEquals("2 pieces · 1 exercise", view.libraryCountLine)
     }
 
     @Test

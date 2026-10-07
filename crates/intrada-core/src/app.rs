@@ -3460,6 +3460,7 @@ mod tests {
         let vm = app.rendered(&model);
         assert_eq!(vm.visible_pieces, 2);
         assert_eq!(vm.visible_exercises, 1);
+        assert_eq!(vm.library_count_line, "2 pieces · 1 exercise");
 
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
@@ -3472,6 +3473,7 @@ mod tests {
         assert_eq!(visible(&vm).len(), 1);
         assert_eq!(vm.visible_pieces, 0);
         assert_eq!(vm.visible_exercises, 1);
+        assert_eq!(vm.library_count_line, "1 exercise");
 
         model.active_query = Some(ListQuery {
             item_type: None,
@@ -3483,6 +3485,21 @@ mod tests {
         let vm = app.rendered(&model);
         assert_eq!(vm.visible_pieces, 1);
         assert_eq!(vm.visible_exercises, 0);
+        assert_eq!(vm.library_count_line, "1 piece");
+
+        model.active_query = Some(ListQuery {
+            item_type: None,
+            key: None,
+            tags: vec![],
+            text: Some("zzz".to_string()),
+            priority_only: false,
+        });
+        assert_eq!(app.rendered(&model).library_count_line, "No matches");
+
+        assert_eq!(
+            app.rendered(&Model::default()).library_count_line,
+            "No items yet"
+        );
     }
 
     #[test]

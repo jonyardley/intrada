@@ -277,6 +277,9 @@ pub struct ViewModel {
     /// actually on screen and reacts to the filter + search.
     pub visible_pieces: usize,
     pub visible_exercises: usize,
+    /// The Library header's line, "2 pieces · 1 exercise", worded for the
+    /// visible set so both phones show the same text (#2454).
+    pub library_count_line: String,
     /// Distinct tags across the whole library (case-folded dedupe, sorted) —
     /// the vocabulary for the filter sheet and the add/edit autocomplete.
     pub available_tags: Vec<String>,
