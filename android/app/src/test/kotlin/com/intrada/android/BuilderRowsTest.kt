@@ -71,8 +71,8 @@ class BuilderRowsTest {
     @Test
     fun aDropNamesTheNeighboursOnceTheRowIsLiftedOut() = runTest {
         val rows = BuilderRow.rows(buildingStore().setlist().blocks, emptySet(), editing = false)
-        val header = rows.first() as BuilderRow.Header
-        val satie = rows.last() as BuilderRow.Standalone
+        val header = rows.first() as? BuilderRow.Header ?: error("first row is not a header")
+        val satie = rows.last() as? BuilderRow.Standalone ?: error("last row is not standalone")
 
         val drop = BuilderRow.drop(rows, 0, rows.size)
 

@@ -48,23 +48,39 @@ import com.intrada.shared.SetlistBlockView
 
 @Composable
 fun PracticeRoute(store: Store, onBuild: () -> Unit, modifier: Modifier = Modifier) {
-    val viewModel by store.viewModel.collectAsState()
-    val building = viewModel?.buildingSetlist != null
     ScreenScaffold("Practice", modifier) {
         Column(Modifier.fillMaxSize().padding(IntradaSpacing.card)) {
             AddRow(
-                if (building) "Carry on building" else "Build a session",
-                if (building) "Carry on building the session" else "Build a session",
+                "Build a session",
+                "Build a session",
                 "practice.build",
-                {
-                    if (building || store.sendAccepted(Event.Session(SessionEvent.StartBuilding)))
-                        onBuild()
-                },
+                { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
                 Modifier.cardSurface(),
                 hint = "Pick pieces and exercises from the library",
             )
         }
     }
+}
+
+// ── Banners ──
+
+class ScreenAlerts(
+    val error: String? = null,
+    val halted: Boolean = false,
+    val onDismissError: () -> Unit = {},
+)
+
+@Composable
+fun storeAlerts(store: Store): ScreenAlerts {
+    val viewModel by store.viewModel.collectAsState()
+    val halted by store.halted.collectAsState()
+    return ScreenAlerts(viewModel?.error, halted) { store.send(Event.ClearError) }
+}
+
+@Composable
+fun AlertBanners(alerts: ScreenAlerts) {
+    if (alerts.halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
+    alerts.error?.let { GlobalBanner(it, tag = "banner.error", onDismiss = alerts.onDismissError) }
 }
 
 // ── Builder ──
@@ -104,7 +120,7 @@ fun BuilderRoute(store: Store, navigation: BuilderNavigation, modifier: Modifier
     val setlist = viewModel?.buildingSetlist
     val limits = viewModel?.limits
     if (setlist == null || limits == null) {
-        // Cancel or Start moves the core out of Building, and that is what closes the screen.
+        // Cancel moves the core out of Building, and that is what closes the screen.
         SideEffect { navigation.onClosed() }
         return
     }
@@ -129,7 +145,7 @@ fun BuilderScreen(
         else state.confirmingCancel = true
     }
     BackHandler(onBack = { cancel() })
-    if (setlist.blocks.isEmpty() && state.editing) state.editing = false
+    val editing = state.editing && setlist.blocks.isNotEmpty()
     ScreenScaffold(
         "Build session",
         modifier,
@@ -137,20 +153,17 @@ fun BuilderScreen(
             TextAction("Cancel", "builder.cancel", { cancel() })
             if (setlist.blocks.isNotEmpty()) {
                 TextAction(
-                    if (state.editing) "Done" else "Edit",
+                    if (editing) "Done" else "Edit",
                     "builder.edit",
-                    { state.editing = !state.editing },
-                    emphasised = state.editing,
+                    { state.editing = !editing },
+                    emphasised = editing,
                 )
             }
         },
     ) {
         Column(Modifier.fillMaxSize()) {
-            if (model.halted) GlobalBanner(Store.HALTED_MESSAGE, tag = "banner.halted")
-            model.error?.let {
-                GlobalBanner(it, tag = "banner.error", onDismiss = actions.onDismissError)
-            }
-            BuilderBody(model, state, actions)
+            AlertBanners(ScreenAlerts(model.error, model.halted, actions.onDismissError))
+            BuilderBody(model, state, actions, editing)
             if (setlist.entries.isNotEmpty()) StartBar(setlist)
         }
     }
@@ -163,6 +176,7 @@ private fun ColumnScope.BuilderBody(
     model: BuilderModel,
     state: BuilderScreenState,
     actions: BuilderActions,
+    editing: Boolean,
 ) {
     val setlist = model.setlist
     Column(
@@ -173,11 +187,11 @@ private fun ColumnScope.BuilderBody(
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
     ) {
         BasicText(
-            if (state.editing) "Editing" else summary(setlist),
+            if (editing) "Editing" else summary(setlist),
             Modifier.testTag("builder.summary"),
             style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
         )
-        if (!state.editing) LengthCard(setlist, model.limits, actions)
+        if (!editing) LengthCard(setlist, model.limits, actions)
         if (setlist.blocks.isEmpty()) {
             BasicText(
                 "Add pieces and exercises to build the session.",
@@ -185,7 +199,7 @@ private fun ColumnScope.BuilderBody(
                 style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
             )
         } else {
-            if (setlist.blocks.any { it.groupId != null } && !state.editing) {
+            if (setlist.blocks.any { it.groupId != null } && !editing) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     TextAction(
                         "Ungroup all",
@@ -194,7 +208,7 @@ private fun ColumnScope.BuilderBody(
                     )
                 }
             }
-            BuilderList(setlist, state, actions)
+            BuilderList(setlist, state, actions, editing)
         }
         AddRow(
             "Add piece or exercise",

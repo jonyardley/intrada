@@ -1,12 +1,14 @@
 package com.intrada.android
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.intrada.android.core.Store
 import com.intrada.android.ui.AddToSessionRoute
 import com.intrada.android.ui.BuilderNavigation
@@ -102,6 +104,18 @@ class BuilderScreenTest {
     }
 
     @Test
+    fun anAimTheCoreRefusesShowsItsErrorOnTheSettingsScreen() = runTest {
+        val store = buildingStore()
+        val satie = store.setlist().entries.single { it.itemId == BuilderFixtures.SATIE }
+        compose.setContent { EntrySettingsRoute(store, satie.id, onDone = {}) }
+
+        compose.onNodeWithTag("entrySettings.aim").performTextInput("a".repeat(TOO_LONG_AIM))
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("banner.error").assertIsDisplayed()
+    }
+
+    @Test
     fun movingSatieUpInEditModePutsItFirst() = runTest {
         val store = buildingStore()
         compose.setContent { BuilderRoute(store, navigation()) }
@@ -145,6 +159,10 @@ class BuilderScreenTest {
 
     private fun navigation(onClosed: () -> Unit = {}) =
         BuilderNavigation(onAddItems = {}, onAddExercise = {}, onEntry = {}, onClosed = onClosed)
+
+    private companion object {
+        const val TOO_LONG_AIM = 501
+    }
 
     private fun Store.repTarget(entryId: String) =
         setlist().entries.single { it.id == entryId }.plannedRepTarget

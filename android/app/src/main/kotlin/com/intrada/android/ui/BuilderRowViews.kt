@@ -49,10 +49,11 @@ internal fun BuilderList(
     setlist: BuildingSetlistView,
     state: BuilderScreenState,
     actions: BuilderActions,
+    editing: Boolean,
 ) {
-    val rows = BuilderRow.rows(setlist.blocks, state.collapsed, state.editing)
+    val rows = BuilderRow.rows(setlist.blocks, state.collapsed, editing)
     val drag = remember { DragState() }
-    val context = RowContext(setlist, state, actions)
+    val context = RowContext(setlist, state, actions, editing)
     Column {
         rows.forEachIndexed { index, row ->
             val lifted = row.id == drag.row
@@ -64,7 +65,7 @@ internal fun BuilderList(
                         shadowElevation = if (lifted) LIFT_ELEVATION.dp.toPx() else 0f
                     }
                     .then(
-                        if (state.editing || row is BuilderRow.AddRelated) Modifier
+                        if (editing || row is BuilderRow.AddRelated) Modifier
                         else Modifier.liftable(row, rows, drag, actions)
                     )
                     .padding(
@@ -113,6 +114,8 @@ private fun Modifier.liftable(
 private fun StandaloneRow(row: BuilderRow.Standalone, context: RowContext) {
     val entry = row.entry
     val index = context.unitIndex(row.block)
+    val canUp = index > 0
+    val canDown = index < context.setlist.blocks.lastIndex
     val settings = { context.actions.navigation.onEntry(entry.id) }
     SegmentRow(SegmentPosition.SINGLE) {
         RowLeading(context.editing, "Remove ${entry.itemTitle}") { context.removeUnit(row.block) }
@@ -126,15 +129,17 @@ private fun StandaloneRow(row: BuilderRow.Standalone, context: RowContext) {
                 entry,
                 "builder.row",
                 tap = ("settings" to settings).takeIf { !context.editing },
-                move = { context.moveUnit(row.block, -1) } to { context.moveUnit(row.block, 1) },
+                move =
+                    MoveActions(
+                        up = { context.moveUnit(row.block, -1) }.takeIf { canUp },
+                        down = { context.moveUnit(row.block, 1) }.takeIf { canDown },
+                    ),
             ),
             context,
             Modifier.weight(1f),
         )
         if (context.editing) {
-            MoveButtons(entry.itemTitle, index > 0, index < context.setlist.blocks.lastIndex) {
-                context.moveUnit(row.block, it)
-            }
+            MoveButtons(entry.itemTitle, canUp, canDown) { context.moveUnit(row.block, it) }
         } else {
             IconAction(
                 R.drawable.ic_close,
@@ -153,6 +158,8 @@ private fun HeaderRow(row: BuilderRow.Header, context: RowContext) {
     val state = context.state
     val title = block.pieceTitle ?: "Related exercises"
     val index = context.unitIndex(block)
+    val canUp = index > 0
+    val canDown = index < context.setlist.blocks.lastIndex
     val toggle = {
         state.collapsed =
             if (row.collapsed) state.collapsed - row.groupId else state.collapsed + row.groupId
@@ -169,19 +176,21 @@ private fun HeaderRow(row: BuilderRow.Header, context: RowContext) {
                 block.piece,
                 "builder.header",
                 tap = (if (row.collapsed) "expand" else "collapse") to toggle,
-                move = { context.moveUnit(block, -1) } to { context.moveUnit(block, 1) },
+                move =
+                    MoveActions(
+                        up = { context.moveUnit(block, -1) }.takeIf { canUp },
+                        down = { context.moveUnit(block, 1) }.takeIf { canDown },
+                    ),
             ),
             context,
             Modifier.weight(1f),
         )
         if (context.editing) {
-            MoveButtons(title, index > 0, index < context.setlist.blocks.lastIndex) {
-                context.moveUnit(block, it)
-            }
+            MoveButtons(title, canUp, canDown) { context.moveUnit(block, it) }
         } else {
             IconAction(
                 R.drawable.ic_ellipsis,
-                "Block actions",
+                "Actions for $title",
                 { state.menuFor = block },
                 Modifier.testTag("builder.blockMenu"),
             )
@@ -202,6 +211,8 @@ private fun NestedRow(row: BuilderRow.Nested, context: RowContext) {
     val entry = row.entry
     val settings = { context.actions.navigation.onEntry(entry.id) }
     val move = { to: Int -> context.moveRelated(entry, row.block, to) }
+    val canUp = row.localIndex > 0
+    val canDown = row.localIndex < row.block.related.lastIndex
     Column(Modifier.fillMaxWidth()) {
         HairlineDivider(Modifier.padding(start = IntradaSpacing.card))
         SegmentRow(row.position) {
@@ -219,16 +230,17 @@ private fun NestedRow(row: BuilderRow.Nested, context: RowContext) {
                     entry,
                     "builder.row",
                     tap = ("settings" to settings).takeIf { !context.editing },
-                    move = { move(row.localIndex - 1) } to { move(row.localIndex + 1) },
+                    move =
+                        MoveActions(
+                            up = { move(row.localIndex - 1) }.takeIf { canUp },
+                            down = { move(row.localIndex + 1) }.takeIf { canDown },
+                        ),
                 ),
                 context,
                 Modifier.weight(1f),
             )
             if (context.editing) {
-                val last = row.block.related.lastIndex
-                MoveButtons(entry.itemTitle, row.localIndex > 0, row.localIndex < last) {
-                    move(row.localIndex + it)
-                }
+                MoveButtons(entry.itemTitle, canUp, canDown) { move(row.localIndex + it) }
             }
         }
     }

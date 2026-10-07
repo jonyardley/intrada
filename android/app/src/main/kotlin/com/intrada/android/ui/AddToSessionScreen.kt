@@ -2,7 +2,9 @@ package com.intrada.android.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
@@ -50,6 +52,7 @@ fun AddToSessionRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Mod
             )
         },
         modifier = modifier,
+        alerts = storeAlerts(store),
     )
 }
 
@@ -79,6 +82,7 @@ fun AddRelatedRoute(
             )
         },
         modifier = modifier,
+        alerts = storeAlerts(store),
     )
 }
 
@@ -89,6 +93,7 @@ fun LibraryPickerScreen(
     added: Set<String>,
     actions: PickerActions,
     modifier: Modifier = Modifier,
+    alerts: ScreenAlerts = ScreenAlerts(),
 ) {
     val tag = copy.tag
     ScreenScaffold(
@@ -96,37 +101,52 @@ fun LibraryPickerScreen(
         modifier,
         actions = { TextAction("Done", "$tag.done", actions.onDone, emphasised = true) },
     ) {
-        Column(
-            Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(IntradaSpacing.card),
-            verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
-        ) {
-            if (items.isEmpty()) {
+        Column(Modifier.fillMaxSize()) {
+            AlertBanners(alerts)
+            PickerList(copy, items, added, actions)
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.PickerList(
+    copy: PickerCopy,
+    items: List<LibraryItemView>,
+    added: Set<String>,
+    actions: PickerActions,
+) {
+    val tag = copy.tag
+    Column(
+        Modifier.weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(IntradaSpacing.card),
+        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
+    ) {
+        if (items.isEmpty()) {
+            BasicText(
+                copy.empty,
+                style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
+            )
+        } else {
+            copy.note?.let {
                 BasicText(
-                    copy.empty,
-                    style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
+                    it,
+                    style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
                 )
-            } else {
-                copy.note?.let {
-                    BasicText(
-                        it,
-                        style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
+            }
+            Column(Modifier.cardSurface()) {
+                items.forEachIndexed { index, item ->
+                    if (index > 0) HairlineDivider()
+                    TickRow(
+                        item.title,
+                        listOf(item.itemType.label, item.subtitle)
+                            .filter { it.isNotEmpty() }
+                            .joinToString(" · "),
+                        chosen = item.id in added,
+                        tag = "$tag.row",
+                        onToggle = { actions.onToggle(item) },
                     )
-                }
-                Column(Modifier.cardSurface()) {
-                    items.forEachIndexed { index, item ->
-                        if (index > 0) HairlineDivider()
-                        TickRow(
-                            item.title,
-                            listOf(item.itemType.label, item.subtitle)
-                                .filter { it.isNotEmpty() }
-                                .joinToString(" · "),
-                            chosen = item.id in added,
-                            tag = "$tag.row",
-                            onToggle = { actions.onToggle(item) },
-                        )
-                    }
                 }
             }
         }

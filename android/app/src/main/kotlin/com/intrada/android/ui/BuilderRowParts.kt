@@ -49,10 +49,8 @@ internal class RowContext(
     val setlist: BuildingSetlistView,
     val state: BuilderScreenState,
     val actions: BuilderActions,
+    val editing: Boolean,
 ) {
-    val editing: Boolean
-        get() = state.editing
-
     fun send(event: SessionEvent) = actions.send(Event.Session(event))
 
     fun unitIndex(block: SetlistBlockView): Int =
@@ -83,8 +81,10 @@ internal class RowSpec(
     val plan: SetlistEntryView?,
     val tag: String,
     val tap: Pair<String, () -> Unit>?,
-    val move: Pair<() -> Unit, () -> Unit>,
+    val move: MoveActions,
 )
+
+internal class MoveActions(val up: (() -> Unit)?, val down: (() -> Unit)?)
 
 internal class RowCopy(
     val title: String,
@@ -199,8 +199,8 @@ private fun Modifier.rowSemantics(spec: RowSpec, context: RowContext): Modifier 
         }
         customActions =
             listOfNotNull(
-                action("Move up", spec.move.first),
-                action("Move down", spec.move.second),
+                spec.move.up?.let { action("Move up", it) },
+                spec.move.down?.let { action("Move down", it) },
                 offer?.let { last ->
                     action(last.label) { context.send(SessionEvent.ApplyLastTime(last.entryId)) }
                 },
@@ -237,15 +237,19 @@ private fun PlanLine(entry: SetlistEntryView, context: RowContext) {
             }
         }
         if (offer != null) {
-            BasicText(
-                "+ ${offer.label}",
-                Modifier.padding(top = 2.dp)
+            Box(
+                Modifier.heightIn(min = 48.dp)
                     .clickable(role = Role.Button) {
                         context.send(SessionEvent.ApplyLastTime(entry.id))
                     }
                     .testTag("builder.lastTime"),
-                style = IntradaFont.secondary.copy(color = IntradaColor.accent),
-            )
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                BasicText(
+                    "+ ${offer.label}",
+                    style = IntradaFont.secondary.copy(color = IntradaColor.accent),
+                )
+            }
         }
     }
 }

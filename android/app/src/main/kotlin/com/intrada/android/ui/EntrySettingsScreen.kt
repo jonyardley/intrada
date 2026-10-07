@@ -2,6 +2,7 @@ package com.intrada.android.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,6 +55,7 @@ fun EntrySettingsRoute(
         send = { store.sendAccepted(Event.Session(it)) },
         onDone = onDone,
         modifier = modifier,
+        alerts = storeAlerts(store),
     )
 }
 
@@ -65,44 +67,60 @@ fun EntrySettingsScreen(
     send: (SessionEvent) -> Boolean,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    alerts: ScreenAlerts = ScreenAlerts(),
 ) {
-    val plannable = setlist.entryVariations.firstOrNull { it.entryId == entry.id }
     ScreenScaffold(
         entry.itemTitle,
         modifier,
         actions = { TextAction("Done", "entrySettings.done", onDone, emphasised = true) },
     ) {
-        Column(
-            Modifier.fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(IntradaSpacing.card),
-            verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
-        ) {
-            AimCard(entry, send)
-            setlist.lastTimes
-                .firstOrNull { it.entryId == entry.id }
-                ?.let { offer ->
-                    AddRow(
-                        offer.label,
-                        "Plan it as last time, ${offer.label}",
-                        "entrySettings.lastTime",
-                        { send(SessionEvent.ApplyLastTime(entry.id)) },
-                        Modifier.cardSurface(),
-                    )
-                }
-            val sections = plannable?.sections.orEmpty()
-            if (sections.isNotEmpty()) SectionsCard(entry, sections, send)
-            val variations = plannable?.variations.orEmpty()
-            if (variations.isNotEmpty()) VariationCard(entry, variations, send)
-            RepsCard(entry, limits, send)
-            DurationCard(entry, limits, send)
-            if (entry.removable) {
-                DeleteButton(
-                    "Remove from this session",
-                    "entrySettings.remove",
-                    { if (send(SessionEvent.RemoveFromSetlist(entry.id))) onDone() },
+        Column(Modifier.fillMaxSize()) {
+            AlertBanners(alerts)
+            EntrySettingsBody(entry, setlist, limits, send, onDone)
+        }
+    }
+}
+
+@Composable
+private fun ColumnScope.EntrySettingsBody(
+    entry: SetlistEntryView,
+    setlist: BuildingSetlistView,
+    limits: LimitsView,
+    send: (SessionEvent) -> Boolean,
+    onDone: () -> Unit,
+) {
+    val plannable = setlist.entryVariations.firstOrNull { it.entryId == entry.id }
+    Column(
+        Modifier.weight(1f)
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(IntradaSpacing.card),
+        verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
+    ) {
+        AimCard(entry, send)
+        setlist.lastTimes
+            .firstOrNull { it.entryId == entry.id }
+            ?.let { offer ->
+                AddRow(
+                    offer.label,
+                    "Plan it as last time, ${offer.label}",
+                    "entrySettings.lastTime",
+                    { send(SessionEvent.ApplyLastTime(entry.id)) },
+                    Modifier.cardSurface(),
                 )
             }
+        val sections = plannable?.sections.orEmpty()
+        if (sections.isNotEmpty()) SectionsCard(entry, sections, send)
+        val variations = plannable?.variations.orEmpty()
+        if (variations.isNotEmpty()) VariationCard(entry, variations, send)
+        RepsCard(entry, limits, send)
+        DurationCard(entry, limits, send)
+        if (entry.removable) {
+            DeleteButton(
+                "Remove from this session",
+                "entrySettings.remove",
+                { if (send(SessionEvent.RemoveFromSetlist(entry.id))) onDone() },
+            )
         }
     }
 }
@@ -187,7 +205,7 @@ private fun SectionsCard(
             )
         }
         segments.forEach { segment ->
-            SegmentRow(
+            PlannedSectionRow(
                 entry,
                 segment,
                 sections,
@@ -210,7 +228,7 @@ private fun SectionsCard(
 }
 
 @Composable
-private fun SegmentRow(
+private fun PlannedSectionRow(
     entry: SetlistEntryView,
     segment: SegmentView,
     sections: List<SectionView>,
