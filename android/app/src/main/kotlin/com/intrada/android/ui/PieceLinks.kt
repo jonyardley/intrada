@@ -171,7 +171,7 @@ private fun LinkedExerciseEditRow(
 private fun LinkedExerciseTitle(exercise: LinkedExerciseView, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         BasicText(exercise.title, style = IntradaFont.cardTitle.copy(color = IntradaColor.ink))
-        listOfNotNull(exercise.metaLine, exercise.sectionsCaption).forEach {
+        listOfNotNull(exercise.metaLine, exercise.linkCaption).forEach {
             BasicText(it, style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary))
         }
     }

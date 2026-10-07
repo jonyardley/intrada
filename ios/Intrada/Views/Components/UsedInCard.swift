@@ -149,8 +149,8 @@ struct UsedInRow: View {
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
           .fixedSize(horizontal: false, vertical: true)
-        if let sections = usage.sectionsCaption {
-          Text(sections)
+        if let caption = usage.linkCaption {
+          Text(caption)
             .font(IntradaFont.secondary)
             .foregroundStyle(IntradaColor.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

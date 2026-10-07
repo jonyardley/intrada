@@ -371,6 +371,7 @@ class BridgeRoundTripTest {
             usedIn.flatMap { row -> row.sections.map { it.label } }.toSet(),
         )
         assertEquals(listOf("A2"), sections.map { it.labelInText })
+        assertEquals("For the whole piece and A2", card.linkCaption)
     }
 
     // Links loaded from the store cross into the core on Kotlin's encoder, a tombstone among them
@@ -399,7 +400,14 @@ class BridgeRoundTripTest {
         assertEquals("the tombstone stays hidden", listOf("s-spot"), card.sections.map { it.id })
         assertEquals(listOf("Bars 19 to 20"), card.sections.map { it.label })
         assertEquals(listOf("bars 19 to 20"), card.sections.map { it.labelInText })
-        assertTrue(rows.single { it.id == hanon }.usedIn.single().linked)
+        assertEquals("For the whole piece and bars 19 to 20", card.linkCaption)
+        assertEquals(
+            listOf("", "19 to 20"),
+            rows.single { it.id == piece.id }.sections.map { it.barsFieldText },
+        )
+        val usedIn = rows.single { it.id == hanon }.usedIn.single()
+        assertTrue(usedIn.linked)
+        assertEquals("For the whole piece and bars 19 to 20", usedIn.linkCaption)
     }
 
     // A live whole-piece link, a tombstoned one to A1 and a live one to a bars-only spot.
