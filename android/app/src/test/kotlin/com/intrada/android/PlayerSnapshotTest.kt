@@ -53,7 +53,14 @@ class PlayerSnapshotTest {
     @Test
     fun clickRow() {
         fun row(status: ClickStatus, bpm: Int = 66, seeded: Boolean = true, unit: UByte = 4u) =
-            ClickRowState(bpm, unit, status, seeded, "Andante · ♩ = 66", "Andante, 66 bpm")
+            ClickRowState(
+                bpm,
+                unit,
+                status,
+                seeded,
+                "Andante · ♩ = 66",
+                "Andante, 66 beats per minute",
+            )
         captureRoboImage("src/test/snapshots/player-click.png") {
             Column(
                 Modifier.background(IntradaColor.paperTop).padding(IntradaSpacing.card),

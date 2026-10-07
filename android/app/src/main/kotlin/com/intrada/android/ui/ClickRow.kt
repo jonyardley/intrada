@@ -42,14 +42,13 @@ import com.intrada.shared.ActiveSessionView
 @Composable
 internal fun rememberClick(model: PlayerModel): ClickController {
     val context = LocalContext.current
-    val click = remember { ClickController(model.clickOutput ?: { ClickEngine(context) }) }
+    val click = model.click ?: remember { ClickController { ClickEngine(context) } }
     DisposableEffect(model.active.currentPosition) {
-        click.reseed(model.active, model.limits)
+        click.follow(model.active, model.limits)
         onDispose {}
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { click.enteredBackground() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { click.enteredForeground() }
-    DisposableEffect(click) { onDispose { click.stop() } }
     return click
 }
 

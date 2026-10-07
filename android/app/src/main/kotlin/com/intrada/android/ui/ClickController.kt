@@ -43,6 +43,7 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     private var configured = false
     private var limits: LimitsView? = null
     private var output: ClickOutput? = null
+    private var position: ULong? = null
     private val main = Handler(Looper.getMainLooper())
     private val backgroundStop = Runnable { stop() }
 
@@ -53,7 +54,6 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     val step: Int
         get() = limits?.clickTempoStep?.toInt() ?: 0
 
-    /** Nil until the click starts: the core reads `Some` as a bar the musician chose (#1499). */
     val status: ClickStatus
         get() =
             when {
@@ -62,6 +62,10 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
                 else -> ClickStatus.STOPPED
             }
 
+    /**
+     * The bar is null until the click starts: the core reads one as a bar the musician chose
+     * (#1499).
+     */
     val reading: TempoReading
         get() =
             TempoReading(
@@ -70,8 +74,24 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
                 if (configured) ClickState(metre, sounding) else null,
             )
 
+    /**
+     * Reseeds only when the item changes, so a screen rebuilt by turning the phone keeps the click
+     * sounding at the musician's tempo.
+     */
+    fun follow(active: ActiveSessionView, limits: LimitsView) {
+        if (active.currentPosition == position) return
+        position = active.currentPosition
+        reseed(active, limits)
+    }
+
+    /** The session ended: the next one starts from its own first item. */
+    fun release() {
+        stop()
+        position = null
+    }
+
     /** Silences the click: its tempo belonged to the item that just finished (#2225). */
-    fun reseed(active: ActiveSessionView, limits: LimitsView) {
+    private fun reseed(active: ActiveSessionView, limits: LimitsView) {
         stop()
         unavailable = false
         this.limits = limits
@@ -120,10 +140,12 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
         if (started) configured = true
     }
 
-    // The core's band in the bar's own unit, looked up as iOS's `ClickLimits` does (#2225).
+    // Counted in the bar's own unit: a 6/8 piece at quaver = 240 is inside the quaver band (#1499).
     private fun clamped(value: Int): Int {
-        val band = limits?.clickTempoBands?.firstOrNull { it.unit == metre.unit } ?: return value
-        return value.coerceIn(band.min.toInt(), band.max.toInt())
+        val limits = limits ?: return value
+        val band = limits.clickTempoBands.firstOrNull { it.unit == metre.unit }
+        return band?.let { value.coerceIn(it.min.toInt(), it.max.toInt()) }
+            ?: limits.clickTempoDefault.toInt()
     }
 
     private companion object {
@@ -142,7 +164,7 @@ class ClickRowState(
     val unit: UByte,
     val status: ClickStatus,
     val atSeededTempo: Boolean,
-    /** The item's declared tempo; nil when the row names the click instead (#1942). */
+    /** The item's declared tempo; null when the row names the click instead (#1942). */
     val target: String?,
     val targetSpoken: String?,
 ) {

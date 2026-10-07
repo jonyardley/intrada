@@ -3,12 +3,14 @@ package com.intrada.android
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.intrada.android.core.ClickOutput
+import com.intrada.android.ui.ClickController
 import com.intrada.android.ui.PlayerModel
 import com.intrada.android.ui.PlayerScreen
 import com.intrada.shared.Event
@@ -62,7 +64,7 @@ class ClickFlowTest {
         val store = openedStore()
         store.startTwoItems()
         val limits = checkNotNull(store.viewModel.value?.limits)
-        val model = PlayerModel(store.active(), limits, clickOutput = { fake })
+        val model = PlayerModel(store.active(), limits, click = ClickController { fake })
         compose.setContent {
             PlayerScreen(
                 model,
@@ -90,6 +92,35 @@ class ClickFlowTest {
         assertEquals(70 + step, last.bpm.toInt())
         assertTrue(last.clickSounding)
         assertNotNull(last.click)
+    }
+
+    // Turning the phone rebuilds the screen; the click must keep sounding at the stepped tempo.
+    @Test
+    fun aRebuiltScreenKeepsTheClickAndItsTempo() = runTest {
+        val fake = FakeClick()
+        val store = openedStore()
+        store.startTwoItems()
+        val limits = checkNotNull(store.viewModel.value?.limits)
+        val model = PlayerModel(store.active(), limits, click = ClickController { fake })
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent {
+            PlayerScreen(
+                model,
+                send = {
+                    sent += it
+                    true
+                },
+            )
+        }
+        compose.onNodeWithTag("click.toggle").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Faster").performClick()
+
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithTag("player.advance").performClick()
+
+        compose.onNodeWithContentDescription("Stop the metronome").assertExists()
+        assertEquals(fake.started.last(), readings.last().bpm.toInt())
+        assertTrue(readings.last().clickSounding)
     }
 
     @Test

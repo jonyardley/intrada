@@ -70,7 +70,8 @@ class ClickEngine(context: Context) : ClickOutput {
                 manager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
         val track = if (granted) openTrack() else null
         if (grid == null || track == null) {
-            if (granted) manager.abandonAudioFocusRequest(focus)
+            // Also lets go of the focus a pulse this call replaced.
+            manager?.abandonAudioFocusRequest(focus)
             return false
         }
         track.play()
@@ -147,15 +148,16 @@ class ClickEngine(context: Context) : ClickOutput {
         private var released = false
 
         override fun run() {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             val chunk = FloatArray(CHUNK_FRAMES)
             var frame = 0L
             try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
                 while (running) {
                     chunk.fill(0f)
                     grid.render(chunk, frame, click)
                     val written = track.write(chunk, 0, chunk.size, AudioTrack.WRITE_BLOCKING)
-                    if (written < 0) {
+                    // Zero while running would spin at audio priority, so it counts as a death.
+                    if (written <= 0) {
                         if (running) onDied(this)
                         return
                     }

@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.intrada.android.core.ClickOutput
 import com.intrada.android.core.Store
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
@@ -54,13 +53,17 @@ import java.time.Instant
 // ── The player, its reflection and the summary, over the tabs while a session is live ──
 
 @Composable
-fun PlayerHost(store: Store, modifier: Modifier = Modifier) {
+fun PlayerHost(store: Store, modifier: Modifier = Modifier, click: ClickController? = null) {
     val viewModel by store.viewModel.collectAsState()
     val alerts = storeAlerts(store)
     val limits = viewModel?.limits ?: return
     val active = viewModel?.activeSession
     val summary = viewModel?.summary
     val send = store::sendAccepted
+    DisposableEffect(active == null) {
+        if (active == null) click?.release()
+        onDispose {}
+    }
     when {
         active != null -> {
             KeepScreenOn()
@@ -71,7 +74,7 @@ fun PlayerHost(store: Store, modifier: Modifier = Modifier) {
                 store.send(Event.Session(SessionEvent.CameBack(SessionClock.now())))
             }
             PlayerScreen(
-                PlayerModel(active, limits, alerts) {
+                PlayerModel(active, limits, alerts, click = click) {
                     ScreenAlerts(store.viewModel.value?.error, store.halted.value)
                 },
                 send,
@@ -97,8 +100,8 @@ class PlayerModel(
     val alerts: ScreenAlerts = ScreenAlerts(),
     /** A fixed instant for tests; the app passes none and the clocks tick. */
     val held: Instant? = null,
-    /** A stand-in for the audio in tests; the app passes none and the click sounds. */
-    val clickOutput: (() -> ClickOutput)? = null,
+    /** Held outside the screen so turning the phone keeps it sounding; tests pass their own. */
+    val click: ClickController? = null,
     /** The alerts as they stand after a send, which [alerts] cannot see until recomposition. */
     val alertsNow: () -> ScreenAlerts = { alerts },
 )
@@ -152,9 +155,9 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
                 )
             }
         PlayerBody(active, now, click, send)
-        Transport(active, click.reading, send)
+        Transport(active, click, send)
     }
-    if (options) OptionsDialog(click.reading, send, onDismiss = { options = false })
+    if (options) OptionsDialog(click, send, onDismiss = { options = false })
 }
 
 @Composable
@@ -175,7 +178,6 @@ private fun ColumnScope.PlayerBody(
     ) {
         Spacer(Modifier.heightIn(min = IntradaSpacing.card))
         CentreInfo(active)
-        PlayerClick(active, click, changed)
         SessionClock.parse(active.currentItemStartedAt)?.let { itemStart ->
             TimerRing(
                 SessionClock.secondsBetween(itemStart, now),
@@ -183,6 +185,7 @@ private fun ColumnScope.PlayerBody(
                 Modifier.padding(top = IntradaSpacing.section),
             )
         }
+        PlayerClick(active, click, changed)
         RepCounter(
             RepState(
                 count = active.currentRepCount?.toInt() ?: 0,
@@ -272,7 +275,7 @@ private fun AwayOffer(label: String, onLeaveOut: () -> Unit, onKeep: () -> Unit)
 }
 
 @Composable
-private fun Transport(active: ActiveSessionView, reading: TempoReading, send: (Event) -> Boolean) {
+private fun Transport(active: ActiveSessionView, click: ClickController, send: (Event) -> Boolean) {
     Column(
         Modifier.fillMaxWidth().padding(bottom = IntradaSpacing.card),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -282,7 +285,11 @@ private fun Transport(active: ActiveSessionView, reading: TempoReading, send: (E
         InkButton(
             if (last) "Finish session" else "Next item",
             "player.advance",
-            { send(Event.Session(SessionEvent.PrepareReflection(SessionClock.now(), reading))) },
+            {
+                send(
+                    Event.Session(SessionEvent.PrepareReflection(SessionClock.now(), click.reading))
+                )
+            },
         )
         TextAction(
             "Skip this item",
@@ -302,7 +309,7 @@ private fun Transport(active: ActiveSessionView, reading: TempoReading, send: (E
 
 @Composable
 private fun OptionsDialog(
-    reading: TempoReading,
+    click: ClickController,
     send: (Event) -> Boolean,
     onDismiss: () -> Unit,
 ) {
@@ -315,7 +322,7 @@ private fun OptionsDialog(
             HairlineDivider()
             OptionRow("End session early", "player.options.end", danger = true) {
                 onDismiss()
-                send(Event.Session(SessionEvent.EndSessionEarly(SessionClock.now(), reading)))
+                send(Event.Session(SessionEvent.EndSessionEarly(SessionClock.now(), click.reading)))
             }
             HairlineDivider()
             OptionRow("Keep practising", "player.options.cancel", onClick = onDismiss)

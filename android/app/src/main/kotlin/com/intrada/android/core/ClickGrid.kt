@@ -44,7 +44,7 @@ private constructor(
     }
 
     companion object {
-        /** Nil for a tempo the grid cannot hold, so a zero or negative bpm never reaches audio. */
+        /** Null for a tempo the grid cannot hold, so a zero or negative bpm never reaches audio. */
         fun of(
             sampleRate: Int,
             bpm: Int,
