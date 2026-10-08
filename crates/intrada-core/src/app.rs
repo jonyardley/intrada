@@ -758,6 +758,7 @@ mod tests {
         assert_eq!(piece_view.subtitle, "Beethoven");
         assert_eq!(piece_view.tempo_marking, Some("Allegro".to_string()));
         assert_eq!(piece_view.tempo_bpm, Some(132));
+        assert_eq!(piece_view.tempo_line.as_deref(), Some("Allegro · ♩ = 132"));
         assert_eq!(piece_view.tags, vec!["classical".to_string()]);
 
         // bpm-only item: marking and bpm pass through independently.
@@ -769,6 +770,7 @@ mod tests {
         let nocturne_view = vm.items.iter().find(|i| i.id == "p3").unwrap();
         assert_eq!(nocturne_view.tempo_marking, Some("Largo".to_string()));
         assert_eq!(nocturne_view.tempo_bpm, None);
+        assert_eq!(nocturne_view.tempo_line.as_deref(), Some("Largo"));
 
         // Check exercise — no tempo at all.
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
@@ -777,6 +779,7 @@ mod tests {
         assert_eq!(ex_view.subtitle, "");
         assert_eq!(ex_view.tempo_marking, None);
         assert_eq!(ex_view.tempo_bpm, None);
+        assert_eq!(ex_view.tempo_line, None);
     }
 
     #[test]
@@ -4147,6 +4150,10 @@ mod tests {
             Some("Allegro")
         );
         assert_eq!(piece_view.linked_exercises[0].tempo_bpm, Some(80));
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo_line_spoken.as_deref(),
+            Some("Allegro, 80 beats per minute")
+        );
         assert_eq!(piece_view.linked_exercises[1].key_label, None);
         assert_eq!(piece_view.linked_exercises[1].tempo_bpm, None);
         assert!(piece_view.used_in.is_empty(), "pieces carry no usage rows");

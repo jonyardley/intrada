@@ -268,6 +268,12 @@ final class LibraryBridgeTests: XCTestCase {
   }
 
   /// A stub bridge cannot see a skewed `TempoInput` decode (#846, #2224).
+  func testClickTempoWordsComeFromTheCore() {
+    let words = clickTempoWords(bpm: 168, unit: 8)
+    XCTAssertEqual(words.text, "♪ = 168")
+    XCTAssertEqual(words.spoken, "168 quaver beats per minute")
+  }
+
   func testRealBridgeReadsTheTypedBpm() throws {
     let bridge = RowsBridge()
     _ = try bridge.update(.startApp)
@@ -287,6 +293,7 @@ final class LibraryBridgeTests: XCTestCase {
     }
     XCTAssertEqual(saved.map(\.tempo), [Tempo(marking: nil, bpm: 92)])
     XCTAssertNil(try bridge.rendered().error)
+    XCTAssertEqual(try bridge.rendered().items.first?.tempoLine, "♩ = 92")
 
     _ = try add("Etude", "12a")
     let refused = try bridge.rendered()

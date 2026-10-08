@@ -1,5 +1,6 @@
 use crate::domain::item::ItemKind;
 use crate::domain::session::PracticeSession;
+use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::model::{
     ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model, ScaffoldPreviewView,
@@ -46,6 +47,8 @@ pub(super) fn build_library_item_views(
                                 .and_then(|r| r.latest_score)
                         });
                     let (whole_piece, sections, link_caption) = link_summary(item, &ex.id);
+                    let (tempo_line, tempo_line_spoken) =
+                        TempoWords::split(tempo_words::tempo_line(ex.tempo.as_ref()));
                     Some(LinkedExerciseView {
                         id: ex.id.clone(),
                         title: ex.title.clone(),
@@ -53,6 +56,8 @@ pub(super) fn build_library_item_views(
                         key_label: ex.key.as_ref().map(crate::domain::key::Key::label),
                         tempo_marking: ex.tempo.as_ref().and_then(|t| t.marking.clone()),
                         tempo_bpm: ex.tempo.as_ref().and_then(|t| t.bpm),
+                        tempo_line,
+                        tempo_line_spoken,
                         practice: model.practice_summaries.get(&ex.id).cloned(),
                         piece_context_score,
                         whole_piece,
@@ -116,6 +121,8 @@ pub(super) fn build_library_item_views(
 
         let variations = build_variation_views(item, &model.variations, plays);
         let keys = build_key_views(item, plays);
+        let (tempo_line, tempo_line_spoken) =
+            TempoWords::split(tempo_words::tempo_line(item.tempo.as_ref()));
         items.push(LibraryItemView {
             id: item.id.clone(),
             item_type: item.kind.clone(),
@@ -125,6 +132,8 @@ pub(super) fn build_library_item_views(
             key_label: item.key.as_ref().map(crate::domain::key::Key::label),
             tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
             tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
+            tempo_line,
+            tempo_line_spoken,
             notes: item.notes.clone(),
             // Reserved scaffold markers never reach the UI or the tag
             // vocabulary (`available_tags` derives from these view tags).

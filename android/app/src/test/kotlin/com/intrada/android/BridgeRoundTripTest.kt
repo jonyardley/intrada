@@ -2,6 +2,7 @@ package com.intrada.android
 
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.withIds
+import com.intrada.ffi.clickTempoWords
 import com.intrada.shared.Accidental
 import com.intrada.shared.AppEffect
 import com.intrada.shared.BarRange
@@ -70,6 +71,8 @@ class BridgeRoundTripTest {
         assertEquals("D major", satie.keyLabel)
         assertEquals("Lent", satie.tempoMarking)
         assertEquals(70.toUShort(), satie.tempoBpm)
+        assertEquals("Lent · ♩ = 70", satie.tempoLine)
+        assertEquals("Lent, 70 beats per minute", satie.tempoLineSpoken)
         assertEquals(listOf("recital"), satie.tags)
         assertEquals("2 pieces · 1 exercise", view.libraryCountLine)
     }
@@ -170,6 +173,13 @@ class BridgeRoundTripTest {
             sections.map { it.bars },
         )
         assertEquals(72.toUShort(), sections.last().targetBpm)
+    }
+
+    @Test
+    fun theClicksTempoWordsComeFromTheCore() {
+        val words = clickTempoWords(168u, 8u)
+        assertEquals("♪ = 168", words.text)
+        assertEquals("168 quaver beats per minute", words.spoken)
     }
 
     // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after

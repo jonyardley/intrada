@@ -421,6 +421,9 @@ pub struct LinkedExerciseView {
     pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
+    /// "Lent · ♩ = 70", and its spoken form.
+    pub tempo_line: Option<String>,
+    pub tempo_line_spoken: Option<String>,
     pub practice: Option<ItemPracticeSummary>,
     /// This exercise's latest score *on the piece it's linked from* (#1087 B2),
     /// derived from the shared session block — distinct from `practice`, which
@@ -532,6 +535,9 @@ pub struct LibraryItemView {
     pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
+    /// "Lent · ♩ = 70", and its spoken form.
+    pub tempo_line: Option<String>,
+    pub tempo_line_spoken: Option<String>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
     pub created_at: String,
@@ -1039,6 +1045,8 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
+    pub current_item_tempo_line: Option<String>,
+    pub current_item_tempo_line_spoken: Option<String>,
     /// The beats the click starts on for this item: the musician's default,
     /// fitted to the item's metre or 4/4 (`specs/practice-defaults.md`).
     pub current_click_sounding: u16,
@@ -1190,6 +1198,8 @@ impl LibraryItemView {
             key_label: None,
             tempo_marking: None,
             tempo_bpm: None,
+            tempo_line: None,
+            tempo_line_spoken: None,
             notes: None,
             tags: Vec::new(),
             created_at: String::new(),
@@ -1222,6 +1232,8 @@ impl LinkedExerciseView {
             key_label: None,
             tempo_marking: None,
             tempo_bpm: None,
+            tempo_line: None,
+            tempo_line_spoken: None,
             practice: None,
             piece_context_score: None,
             whole_piece: true,
@@ -1592,6 +1604,8 @@ mod tests {
             key_label: Some("C minor".to_string()),
             tempo_marking: Some("Allegro".to_string()),
             tempo_bpm: Some(132),
+            tempo_line: Some("Allegro · ♩ = 132".to_string()),
+            tempo_line_spoken: Some("Allegro, 132 beats per minute".to_string()),
             practice: None,
             piece_context_score: Some(7),
             whole_piece: true,

@@ -9,6 +9,7 @@ pub mod practice_defaults;
 pub mod profile;
 pub mod section;
 pub mod session;
+pub mod tempo_words;
 pub mod types;
 pub mod variation;
 
