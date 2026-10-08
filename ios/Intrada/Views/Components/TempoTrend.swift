@@ -236,7 +236,7 @@ struct TempoTrend: View {
   }
 
   /// Spelled out, because VoiceOver reads neither the ♩ glyph nor the middle
-  /// dot (the same reason `TempoFormatting.spoken` exists).
+  /// dot.
   private var accessibilityLabel: String {
     guard display.hasTrend, let first = measured.first, let latest = measured.last else {
       guard let only = measured.first else { return "Measured tempo" }

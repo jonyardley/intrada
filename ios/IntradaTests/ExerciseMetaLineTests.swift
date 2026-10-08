@@ -25,17 +25,15 @@ struct ExerciseMetaLineTests {
       name: "key only", exercise: .fixture(key: Key(letter: .d, accidental: .flat, mode: .major)),
       line: "D♭ major", spoken: "D♭ major"),
     LinkedCase(
-      name: "tempo only", exercise: .fixture(tempoBpm: 108),
+      name: "tempo only",
+      exercise: .fixture(tempoLine: "♩ = 108", tempoLineSpoken: "108 beats per minute"),
       line: "♩ = 108", spoken: "108 beats per minute"),
     LinkedCase(name: "neither", exercise: .fixture(), line: nil, spoken: nil),
     LinkedCase(
-      name: "marking plus bpm", exercise: .fixture(tempoMarking: "Allegro", tempoBpm: 132),
-      line: "Allegro · ♩ = 132", spoken: "Allegro, 132 beats per minute"),
-    LinkedCase(
       name: "key with marking plus bpm",
       exercise: .fixture(
-        key: Key(letter: .c, accidental: .natural, mode: .minor), tempoMarking: "Allegro",
-        tempoBpm: 132),
+        key: Key(letter: .c, accidental: .natural, mode: .minor),
+        tempoLine: "Allegro · ♩ = 132", tempoLineSpoken: "Allegro, 132 beats per minute"),
       line: "C minor · Allegro · ♩ = 132", spoken: "C minor, Allegro, 132 beats per minute"),
   ]
 

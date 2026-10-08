@@ -108,7 +108,7 @@ struct LibraryItemCard: View {
   }
 
   private var metaLine: String? {
-    let parts = [item.keyDisplay, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
+    let parts = [item.keyDisplay, item.tempoLine].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
@@ -127,7 +127,7 @@ struct LibraryItemCard: View {
     if item.variations.count > 1 { parts.append("\(item.variations.count) variations") }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
-    if let tempo = item.tempoSpoken { parts.append(tempo) }
+    if let tempo = item.tempoLineSpoken { parts.append(tempo) }
     if metaLine == nil, item.subtitle.isEmpty, showsMissingDetailsPrompt {
       parts.append(missingDetailsPrompt)
     }

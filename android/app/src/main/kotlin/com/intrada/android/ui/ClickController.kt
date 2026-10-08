@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.intrada.android.core.ClickOutput
+import com.intrada.ffi.TempoWords
+import com.intrada.ffi.clickTempoWords
 import com.intrada.shared.ActiveSessionView
 import com.intrada.shared.ClickState
 import com.intrada.shared.LimitsView
@@ -178,11 +180,14 @@ class ClickRowState(
     private val showsBpm: Boolean
         get() = isRunning || !atSeededTempo
 
+    private val words: TempoWords
+        get() = clickTempoWords(bpm.toUShort(), unit)
+
     val readout: String
         get() =
             when {
                 unavailable -> "Metronome unavailable"
-                showsBpm -> tempoReadout(bpm, unit)
+                showsBpm -> words.text
                 else -> target ?: "Metronome"
             }
 
@@ -190,7 +195,7 @@ class ClickRowState(
         get() =
             when {
                 unavailable -> "unavailable"
-                showsBpm -> tempoReadoutSpoken(bpm, unit)
-                else -> targetSpoken ?: tempoReadoutSpoken(bpm, unit)
+                showsBpm -> words.spoken
+                else -> targetSpoken ?: words.spoken
             }
 }

@@ -212,7 +212,7 @@ private fun NotesCard(notes: String) {
 @Composable
 private fun DetailRows(item: LibraryItemView) {
     val rows =
-        listOfNotNull(item.keyLabel?.let { "Key" to it }, tempoDisplay(item)?.let { "Tempo" to it })
+        listOfNotNull(item.keyLabel?.let { "Key" to it }, item.tempoLine?.let { "Tempo" to it })
     if (rows.isEmpty()) return
     Column(Modifier.fillMaxWidth().cardSurface()) {
         rows.forEachIndexed { index, (label, value) ->

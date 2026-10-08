@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -15,7 +16,7 @@ struct TempoStepper: View {
       TempoStepButton(systemImage: "minus", label: "Slower") {
         value = stepped(by: -step)
       }
-      Text(TempoUnit.readout(value, unit: unit))
+      Text(words.text)
         .font(IntradaFont.scoreNumeral(24))
         .monospacedDigit()
         .foregroundStyle(IntradaColor.ink)
@@ -26,7 +27,7 @@ struct TempoStepper: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
-    .accessibilityValue(TempoUnit.spoken(value, unit: unit))
+    .accessibilityValue(words.spoken)
     .accessibilityAdjustableAction { direction in
       switch direction {
       case .increment: value = stepped(by: step)
@@ -35,6 +36,8 @@ struct TempoStepper: View {
       }
     }
   }
+
+  private var words: TempoWords { clickTempoWords(bpm: UInt16(clamping: value), unit: unit) }
 
   private func stepped(by delta: Int) -> Int {
     min(band.upperBound, max(band.lowerBound, value + delta))

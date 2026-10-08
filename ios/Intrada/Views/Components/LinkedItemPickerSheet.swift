@@ -343,7 +343,7 @@ struct LinkedItemPickerSheet: View {
   private func metaLine(_ item: LibraryItemView) -> String? {
     let parts =
       kind == .piece
-      ? [item.subtitle] : [item.keyDisplay, item.tempoDisplay].compactMap { $0 }
+      ? [item.subtitle] : [item.keyDisplay, item.tempoLine].compactMap { $0 }
     let kept = parts.filter { !$0.isEmpty }
     return kept.isEmpty ? nil : kept.joined(separator: " · ")
   }

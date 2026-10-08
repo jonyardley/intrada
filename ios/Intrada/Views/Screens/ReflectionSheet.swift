@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -410,7 +411,7 @@ struct ReflectionSheet: View {
   }
 
   private var singlePlayTempoHeading: String {
-    tempoTarget.flatMap { TempoFormatting.display(marking: nil, bpm: $0) }
+    tempoTarget.map { clickTempoWords(bpm: $0, unit: 4).text }
       .map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 
