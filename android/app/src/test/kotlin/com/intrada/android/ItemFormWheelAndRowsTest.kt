@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.core.os.BundleCompat
@@ -30,6 +31,7 @@ import com.intrada.android.ui.LibraryEditRoute
 import com.intrada.android.ui.VariationRow
 import com.intrada.android.ui.VariationRowsCard
 import com.intrada.shared.Accidental
+import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
@@ -147,6 +149,20 @@ class ItemFormWheelAndRowsTest {
         store.settle()
 
         assertNull(store.libraryRows.value.single().key)
+    }
+
+    // The form sends an emptied composer or notes as a blank, which the core clears (#2417).
+    @Test
+    fun anEditClearsTheComposerAndNotes() = runTest {
+        val store = editing(Fixtures.scales.copy(composer = "Czerny", notes = "Slowly"))
+        compose.onNodeWithTag("itemForm.composer").performTextClearance()
+        compose.onNodeWithTag("itemForm.notes").performScrollTo().performTextClearance()
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+
+        val row = store.libraryRows.value.single()
+        assertEquals("", row.subtitle)
+        assertNull(row.notes)
     }
 
     @Test
@@ -300,9 +316,12 @@ class ItemFormWheelAndRowsTest {
         assertFalse(compose.onAllNodesWithText("Its marks go with it.").fetchSemanticsNodes().any())
     }
 
-    private suspend fun TestScope.editing(key: Key): Store {
+    private suspend fun TestScope.editing(key: Key): Store =
+        editing(Fixtures.scales.copy(key = key))
+
+    private suspend fun TestScope.editing(item: CreateItem): Store {
         val store = startedStore()
-        store.send(Event.Item(ItemEvent.Add(Fixtures.scales.copy(key = key))))
+        store.send(Event.Item(ItemEvent.Add(item)))
         store.settle()
         val id = store.libraryRows.value.single().id
         compose.setContent { LibraryEditRoute(store, id, onDone = {}) }
