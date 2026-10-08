@@ -15,12 +15,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -32,6 +34,8 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import com.intrada.android.R
 import com.intrada.android.ui.components.FieldCard
 import com.intrada.ffi.clickTempoWords
@@ -47,8 +51,16 @@ import com.intrada.shared.Metre
 internal fun ClickSheet(click: ClickController, limits: LimitsView, onClose: () -> Unit) {
     Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties =
+            DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
+        // The page is always paper, so the status bar's icons stay dark over it.
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.let {
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = true
+            }
+        }
         ClickSheetPage(click, limits, onClose)
     }
 }
@@ -162,7 +174,7 @@ private fun SoundsOnSection(click: ClickController) {
             selection = click.bar.matchingPreset,
             onSelect = { it?.let(click.bar::apply) },
             label = { it?.title.orEmpty() },
-            tag = { "clickSheet.pattern.${it?.name?.lowercase()}" },
+            tag = { "clickSheet.pattern.${it?.tag}" },
         )
         BeatGrid(click)
     }

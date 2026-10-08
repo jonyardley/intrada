@@ -66,7 +66,10 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     val band: IntRange
         get() = limits?.clickBand(metre.unit) ?: bpm..bpm
 
-    /** False for an output with no audio clock to read, which a test's fake has none of. */
+    /**
+     * An output with no audio clock reports no beat. A fake answering true would keep the per-frame
+     * loop running, and Compose tests would never go idle.
+     */
     val tracksBeat: Boolean
         get() = isRunning && output?.tracksBeat == true
 

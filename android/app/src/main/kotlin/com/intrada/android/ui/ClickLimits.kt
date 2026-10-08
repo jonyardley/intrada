@@ -36,6 +36,15 @@ internal val ClickPreset.title: String
             ClickPreset.BACKBEAT -> "2 and 4"
         }
 
+internal val ClickPreset.tag: String
+    get() =
+        when (this) {
+            ClickPreset.EVERYBEAT -> "everyBeat"
+            ClickPreset.GROUPSTARTS -> "groupStarts"
+            ClickPreset.DOWNBEAT -> "downbeat"
+            ClickPreset.BACKBEAT -> "backbeat"
+        }
+
 internal val Metre.label: String
     get() = "$beats/$unit"
 

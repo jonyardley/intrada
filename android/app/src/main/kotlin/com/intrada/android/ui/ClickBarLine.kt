@@ -81,7 +81,8 @@ internal fun ClickBarLine(
             )
             BeatDots(metre, sounding, currentBeat, roomy)
             if (roomy) {
-                Box(Modifier.width(1.dp).height(16.dp).background(IntradaColor.divider))
+                val height = DIVIDER * LocalDensity.current.fontScale
+                Box(Modifier.width(1.dp).height(height).background(IntradaColor.divider))
             }
             Image(
                 painterResource(R.drawable.ic_sliders),
@@ -151,3 +152,4 @@ private const val ROOMY_BEATS = 8
 private val DOT = 10.dp
 private val DOT_MAX = 14.dp
 private val RING_GAP = 3.dp
+private val DIVIDER = 16.dp

@@ -4,7 +4,10 @@ import android.animation.ValueAnimator
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -204,10 +208,10 @@ private fun ClickToggle(state: ClickRowState, actions: ClickActions) {
         tint,
         dragging,
         Modifier.heightIn(min = 48.dp)
+            .tempoDrag({ TempoDrag(anchor, latest.step, latest.band, latest.onDrag) }) { drag = it }
             .scale(if (dragging) DRAG_SCALE else 1f)
             .clip(CircleShape)
             .background(fill)
-            .tempoDrag({ TempoDrag(anchor, latest.step, latest.band, latest.onDrag) }) { drag = it }
             .clickable(role = Role.Button, onClick = actions.onToggle)
             .toggleSemantics(state, actions)
             .padding(horizontal = IntradaSpacing.cardCompact),
@@ -251,27 +255,28 @@ private fun ToggleReadout(
     }
 }
 
-/** [begin] and [show] are read once, so they must read current state rather than capture it. */
+/**
+ * [begin] and [show] are read once, so they must read current state rather than capture it. Travel
+ * runs from the finger-down point, as iOS's translation does, so the touch slop is not lost.
+ */
 private fun Modifier.tempoDrag(begin: () -> TempoDrag, show: (TempoDrag?) -> Unit) =
     pointerInput(Unit) {
-        var drag: TempoDrag? = null
-        var travel = 0f
-        val finish = {
-            drag?.ended()
-            drag = null
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val travel = { change: PointerInputChange ->
+                (change.position.y - down.position.y).toDp()
+            }
+            val crossed =
+                awaitVerticalTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+                    ?: return@awaitEachGesture
+            val drag = begin().also(show)
+            drag.moved(travel(crossed).value)
+            verticalDrag(crossed.id) { change ->
+                change.consume()
+                drag.moved(travel(change).value)
+            }
+            drag.ended()
             show(null)
-        }
-        detectVerticalDragGestures(
-            onDragStart = {
-                travel = 0f
-                drag = begin().also(show)
-            },
-            onDragEnd = finish,
-            onDragCancel = finish,
-        ) { change, amount ->
-            change.consume()
-            travel += amount
-            drag?.moved(travel.toDp().value)
         }
     }
 

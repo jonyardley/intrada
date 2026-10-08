@@ -92,6 +92,7 @@ class ClickEngine(context: Context) : ClickOutput {
         if (grid == null || track == null) {
             // Also lets go of the focus a pulse this call replaced.
             manager?.abandonAudioFocusRequest(focus)
+            unlisten()
             return false
         }
         track.play()
@@ -108,10 +109,7 @@ class ClickEngine(context: Context) : ClickOutput {
         val wasSounding = pulse != null
         halt()
         if (wasSounding) audio?.abandonAudioFocusRequest(focus)
-        if (listening) {
-            context.unregisterReceiver(noisy)
-            listening = false
-        }
+        unlisten()
     }
 
     override fun currentBeat(): Int? = pulse?.currentBeat()
@@ -128,6 +126,12 @@ class ClickEngine(context: Context) : ClickOutput {
             context.registerReceiver(noisy, filter)
         }
         listening = true
+    }
+
+    private fun unlisten() {
+        if (!listening) return
+        context.unregisterReceiver(noisy)
+        listening = false
     }
 
     private fun halt() {

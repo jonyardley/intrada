@@ -154,6 +154,35 @@ class ClickControllerTest {
         assertEquals(click.band.last, output.started.last())
     }
 
+    @Test
+    fun aBarChosenWhileStoppedIsReportedAsChosen() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        click.follow(store.active(), checkNotNull(store.viewModel.value?.limits))
+
+        click.bar.choose(sixEight)
+
+        assertFalse(click.isRunning)
+        assertEquals(sixEight, click.reading.click?.metre)
+    }
+
+    @Test
+    fun aCrotchetBarCapsAQuaverTempoAtItsBand() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        val limits = checkNotNull(store.viewModel.value?.limits)
+        click.follow(store.active(), limits)
+        val crotchetMax =
+            checkNotNull(limits.clickTempoBands.firstOrNull { it.unit == 4u.toUByte() }).max
+        click.bar.choose(sixEight)
+        click.dragTo(click.band.last)
+        assertTrue(click.bpm > crotchetMax.toInt())
+
+        click.bar.choose(Metre(4u, 4u))
+
+        assertEquals(crotchetMax.toInt(), click.bpm)
+    }
+
     private val sixEight = Metre(6u, 8u, listOf(3u, 3u))
 
     private suspend fun kotlinx.coroutines.test.TestScope.startOnFirstItem() {
