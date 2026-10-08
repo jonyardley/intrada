@@ -65,10 +65,8 @@ internal fun PlayerClick(
             click.metre.unit,
             click.status,
             click.isAtSeededTempo,
-            if (target) tempoDisplay(active.currentItemTempoMarking, active.currentItemTempoBpm)
-            else null,
-            if (target) tempoSpoken(active.currentItemTempoMarking, active.currentItemTempoBpm)
-            else null,
+            if (target) active.currentItemTempoLine else null,
+            if (target) active.currentItemTempoLineSpoken else null,
         ),
         onToggle = {
             click.toggle()

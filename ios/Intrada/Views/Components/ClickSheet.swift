@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -48,7 +49,7 @@ struct ClickSheet: View {
 
   private var tempoNote: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-      Text(TempoUnit.readout(bpm, unit: click.metre.unit))
+      Text(clickTempoWords(bpm: UInt16(clamping: bpm), unit: click.metre.unit).text)
         .font(IntradaFont.scoreNumeral(24))
         .monospacedDigit()
         .foregroundStyle(IntradaColor.ink)

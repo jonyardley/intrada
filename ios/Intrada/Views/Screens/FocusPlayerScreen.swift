@@ -363,8 +363,8 @@ struct FocusPlayerScreen: View {
       isRunning: click.isRunning,
       unavailable: click.unavailable,
       atSeededTempo: click.isAtSeededTempo,
-      targetDisplay: declared ? active.currentItemTempoDisplay : nil,
-      targetSpoken: declared ? active.currentItemTempoSpoken : nil,
+      targetDisplay: declared ? active.currentItemTempoLine : nil,
+      targetSpoken: declared ? active.currentItemTempoLineSpoken : nil,
       onToggle: {
         click.toggle()
         recordTempoChange()

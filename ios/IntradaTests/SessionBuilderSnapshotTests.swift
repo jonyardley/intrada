@@ -38,6 +38,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     item.keyLabel = "C\u{266F} minor"
     item.tempoMarking = "Allegro ma non troppo e molto espressivo"
     item.tempoBpm = 132
+    item.tempoLine = "Allegro ma non troppo e molto espressivo · ♩ = 132"
     let store = Store(
       bridge: PreviewBridge(
         items: [item, .previewExercise],

@@ -47,7 +47,6 @@ struct ClickControlTests {
   /// A marking with no number is not a tempo the click can play, so the player
   /// hands it `nil` rather than a row that reads "Andante" and sounds 96.
   @Test func aMarkingWithNoBpmIsNotATargetTheClickCanSpeakFor() {
-    #expect(TempoFormatting.display(marking: "Andante", bpm: nil) == "Andante")
     #expect(withoutTarget().readout == "Metronome")
     #expect(withoutTarget().spokenValue == "96 beats per minute")
   }

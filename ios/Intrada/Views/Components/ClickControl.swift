@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SharedTypes
 import SwiftUI
 
@@ -200,7 +201,7 @@ struct ClickControl: View {
 
   var readout: String {
     if unavailable { return "Metronome unavailable" }
-    if showsBpmNumeral { return TempoUnit.readout(displayedBpm, unit: unit) }
+    if showsBpmNumeral { return words.text }
     return targetDisplay ?? "Metronome"
   }
 
@@ -219,9 +220,11 @@ struct ClickControl: View {
   // VoiceOver never hears the ♩ glyph, so the bpm is spelled out.
   var spokenValue: String {
     if unavailable { return "unavailable" }
-    if showsBpmNumeral { return TempoUnit.spoken(displayedBpm, unit: unit) }
-    return targetSpoken ?? TempoUnit.spoken(displayedBpm, unit: unit)
+    if showsBpmNumeral { return words.spoken }
+    return targetSpoken ?? words.spoken
   }
+
+  private var words: TempoWords { clickTempoWords(bpm: UInt16(clamping: displayedBpm), unit: unit) }
 }
 
 #if DEBUG

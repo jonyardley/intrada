@@ -69,27 +69,6 @@ struct DateDisplay {
   }
 }
 
-/// Shell-side presentation formatting shared by any screen with a structured
-/// `tempoMarking` / `tempoBpm` pair (the core's call, not iOS's — see
-/// `LibraryItemView`/`ActiveSessionView`), so the card, detail, and
-/// focus-player screens all agree on "Allegro · ♩ = 132".
-enum TempoFormatting {
-  /// Visual tempo: "Allegro · ♩ = 132". ♩ is U+2669 (no SF Symbol equivalent).
-  static func display(marking: String?, bpm: UInt16?) -> String? {
-    let parts = [marking, bpm.map { "♩ = \($0)" }].compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
-  }
-
-  /// Spoken tempo for VoiceOver — spells the BPM out instead of the ♩ glyph.
-  static func spoken(marking: String?, bpm: UInt16?) -> String? {
-    let parts = [
-      marking.flatMap { $0.isEmpty ? nil : $0 }, bpm.map { "\($0) beats per minute" },
-    ]
-    .compactMap { $0 }
-    return parts.isEmpty ? nil : parts.joined(separator: ", ")
-  }
-}
-
 extension ExerciseUsageView {
   var rowTitle: String { piece?.title ?? "On its own" }
 
@@ -141,37 +120,18 @@ extension ExerciseUsageView {
 
 extension LibraryItemView {
   var keyDisplay: String? { keyLabel }
-
-  var tempoDisplay: String? { TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm) }
-
-  var tempoSpoken: String? { TempoFormatting.spoken(marking: tempoMarking, bpm: tempoBpm) }
 }
 
 extension LinkedExerciseView {
   var keyDisplay: String? { keyLabel }
 
   var metaLine: String? {
-    let parts = [keyDisplay, TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm)]
-      .compactMap { $0 }
+    let parts = [keyDisplay, tempoLine].compactMap { $0 }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
   var metaSpoken: String? {
-    let parts = [keyDisplay, TempoFormatting.spoken(marking: tempoMarking, bpm: tempoBpm)]
-      .compactMap { $0 }
+    let parts = [keyDisplay, tempoLineSpoken].compactMap { $0 }
     return parts.isEmpty ? nil : parts.joined(separator: ", ")
-  }
-}
-
-extension ActiveSessionView {
-  /// The current item's own declared tempo (the practice target) — distinct
-  /// from `achievedTempo` on a `SetlistEntryView`, which is logged after the
-  /// fact. "Allegro · ♩ = 132".
-  var currentItemTempoDisplay: String? {
-    TempoFormatting.display(marking: currentItemTempoMarking, bpm: currentItemTempoBpm)
-  }
-
-  var currentItemTempoSpoken: String? {
-    TempoFormatting.spoken(marking: currentItemTempoMarking, bpm: currentItemTempoBpm)
   }
 }
