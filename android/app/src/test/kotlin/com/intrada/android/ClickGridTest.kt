@@ -78,6 +78,16 @@ class ClickGridTest {
     }
 
     @Test
+    fun theBeatHeardWrapsWithTheBarAfterTheLeadIn() {
+        val grid = grid(60, beats = 3, leadIn = 1_200)
+        assertNull(grid.beatAt(1_199))
+        assertEquals(
+            listOf(0, 0, 1, 2, 0),
+            listOf(1_200L, 49_199L, 49_200L, 97_200L, 145_200L).map(grid::beatAt),
+        )
+    }
+
+    @Test
     fun aTempoTheGridCannotHoldIsRefused() {
         assertNull(ClickGrid.of(rate, 0, 4, 0b1111))
         assertNull(ClickGrid.of(0, 60, 4, 0b1111))

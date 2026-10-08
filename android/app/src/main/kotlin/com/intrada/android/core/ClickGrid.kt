@@ -25,6 +25,12 @@ private constructor(
     fun sounds(index: Long): Boolean =
         beats <= 0 || sounding and (1 shl (index % beats).toInt()) != 0
 
+    /** The beat of the bar sounding at [frame], or null inside the lead-in. */
+    fun beatAt(frame: Long): Int? {
+        if (beats <= 0 || frame < leadInFrames) return null
+        return (floor((frame - leadInFrames) / framesPerBeat).toLong() % beats).toInt()
+    }
+
     /** Adds every sounding click overlapping `[start, start + out.size)` into [out]. */
     fun render(out: FloatArray, start: Long, click: FloatArray) {
         val end = start + out.size

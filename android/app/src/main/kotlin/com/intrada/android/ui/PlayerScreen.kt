@@ -154,7 +154,7 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
                     onKeep = { keptAway = offer.label },
                 )
             }
-        PlayerBody(active, now, click, send)
+        PlayerBody(active, model.limits, now, click, send)
         Transport(active, click, send)
     }
     if (options) OptionsDialog(click, send, onDismiss = { options = false })
@@ -163,6 +163,7 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
 @Composable
 private fun ColumnScope.PlayerBody(
     active: ActiveSessionView,
+    limits: LimitsView,
     now: Instant,
     click: ClickController,
     send: (Event) -> Boolean,
@@ -185,7 +186,7 @@ private fun ColumnScope.PlayerBody(
                 Modifier.padding(top = IntradaSpacing.section),
             )
         }
-        PlayerClick(active, click, changed)
+        PlayerClick(active, limits, click, changed)
         RepCounter(
             RepState(
                 count = active.currentRepCount?.toInt() ?: 0,

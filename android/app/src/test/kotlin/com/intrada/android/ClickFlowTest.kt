@@ -14,6 +14,7 @@ import com.intrada.android.ui.ClickController
 import com.intrada.android.ui.PlayerModel
 import com.intrada.android.ui.PlayerScreen
 import com.intrada.shared.Event
+import com.intrada.shared.Metre
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoReading
 import kotlinx.coroutines.test.TestScope
@@ -170,5 +171,22 @@ class ClickFlowTest {
         fake.onPulseDied?.invoke()
 
         compose.onNodeWithContentDescription("Start the metronome").assertExists()
+    }
+
+    @Test
+    fun aBarAndPatternChosenInTheSheetReachTheReflection() = runTest {
+        showPlayer(FakeClick())
+
+        compose.onNodeWithTag("click.toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("click.bar").performScrollTo().performClick()
+        compose.onNodeWithTag("clickSheet.metre.6-8").performClick()
+        compose.onNodeWithTag("clickSheet.pattern.groupstarts").performClick()
+        compose.onNodeWithTag("clickSheet.beat.4").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Done").performClick()
+        compose.onNodeWithTag("player.advance").performClick()
+
+        val chosen = readings.last().click
+        assertEquals(Metre(6u, 8u, listOf(3u, 3u)), chosen?.metre)
+        assertEquals(0b000001, chosen?.sounding?.toInt())
     }
 }

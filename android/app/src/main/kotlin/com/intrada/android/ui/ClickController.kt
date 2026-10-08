@@ -28,9 +28,6 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     var bpm by mutableIntStateOf(0)
         private set
 
-    var metre by mutableStateOf(Metre(4u, 4u))
-        private set
-
     /** Set only when the audio refused to start; a pulse another app took is not a fault. */
     var unavailable by mutableStateOf(false)
         private set
@@ -39,7 +36,14 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     var soundsTarget by mutableStateOf(false)
         private set
 
-    private var sounding: UShort = 0b1111u
+    // A new unit keeps the tempo's number where the band allows: the pulse heard does not change
+    // because the beat was renamed.
+    val bar = ClickBar {
+        bpm = limits?.clampClickTempo(bpm, metre.unit) ?: bpm
+        configured = true
+        if (isRunning) start()
+    }
+
     private var seeded = 0
     private var seededUnit: UByte = 4u
     private var configured = false
@@ -49,12 +53,22 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
     private val main = Handler(Looper.getMainLooper())
     private val backgroundStop = Runnable { stop() }
 
+    val metre: Metre
+        get() = bar.metre
+
     /** A bar change to another beat unit re-reads the same number as a different tempo (#1942). */
     val isAtSeededTempo: Boolean
         get() = bpm == seeded && metre.unit == seededUnit
 
     val step: Int
         get() = limits?.clickTempoStep?.toInt() ?: 0
+
+    val band: IntRange
+        get() = limits?.clickBand(metre.unit) ?: bpm..bpm
+
+    /** False for an output with no audio clock to read, which a test's fake has none of. */
+    val tracksBeat: Boolean
+        get() = isRunning && output?.tracksBeat == true
 
     val status: ClickStatus
         get() =
@@ -73,7 +87,7 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
             TempoReading(
                 bpm.toUShort(),
                 isRunning,
-                if (configured) ClickState(metre, sounding) else null,
+                if (configured) ClickState(metre, bar.sounding) else null,
             )
 
     /**
@@ -97,23 +111,27 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
         stop()
         unavailable = false
         this.limits = limits
-        metre = active.clickSeedMetre
+        bar.reseed(active, limits)
         seeded = active.clickSeedBpm.toInt()
         seededUnit = metre.unit
         soundsTarget = active.clickSeedSoundsTarget
         bpm = seeded
-        sounding = active.currentClickSounding
         configured = false
     }
 
     fun toggle() = if (isRunning) stop() else start()
 
-    fun step(by: Int) {
-        val stepped = clamped(bpm + by)
-        if (stepped == bpm) return
-        bpm = stepped
+    fun step(by: Int) = dragTo(bpm + by)
+
+    /** The drag's absolute counterpart to [step] (#1823). */
+    fun dragTo(value: Int) {
+        val next = limits?.clampClickTempo(value, metre.unit) ?: value
+        if (next == bpm) return
+        bpm = next
         if (isRunning) start()
     }
+
+    fun currentBeat(): Int? = if (isRunning) output?.currentBeat() else null
 
     fun stop() {
         main.removeCallbacks(backgroundStop)
@@ -136,18 +154,10 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
                     it.onPulseDied = { isRunning = false }
                     output = it
                 }
-        val started = out.start(bpm, metre.beats.toInt(), sounding.toInt())
+        val started = out.start(bpm, metre.beats.toInt(), bar.sounding.toInt())
         isRunning = started
         unavailable = !started
         if (started) configured = true
-    }
-
-    // Counted in the bar's own unit: a 6/8 piece at quaver = 240 is inside the quaver band (#1499).
-    private fun clamped(value: Int): Int {
-        val limits = limits ?: return value
-        val band = limits.clickTempoBands.firstOrNull { it.unit == metre.unit }
-        return band?.let { value.coerceIn(it.min.toInt(), it.max.toInt()) }
-            ?: limits.clickTempoDefault.toInt()
     }
 
     private companion object {
@@ -161,7 +171,7 @@ enum class ClickStatus {
     UNAVAILABLE,
 }
 
-class ClickRowState(
+data class ClickRowState(
     val bpm: Int,
     val unit: UByte,
     val status: ClickStatus,
