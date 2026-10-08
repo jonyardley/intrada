@@ -217,7 +217,6 @@ struct ClickControl: View {
     return isRunning ? marker : .clear
   }
 
-  // VoiceOver never hears the ♩ glyph, so the bpm is spelled out.
   var spokenValue: String {
     if unavailable { return "unavailable" }
     if showsBpmNumeral { return words.spoken }

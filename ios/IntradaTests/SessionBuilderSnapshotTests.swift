@@ -39,6 +39,7 @@ final class SessionBuilderSnapshotTests: SnapshotTestCase {
     item.tempoMarking = "Allegro ma non troppo e molto espressivo"
     item.tempoBpm = 132
     item.tempoLine = "Allegro ma non troppo e molto espressivo · ♩ = 132"
+    item.tempoLineSpoken = "Allegro ma non troppo e molto espressivo, 132 beats per minute"
     let store = Store(
       bridge: PreviewBridge(
         items: [item, .previewExercise],
