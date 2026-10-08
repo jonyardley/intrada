@@ -118,6 +118,7 @@ class ItemFormWheelAndRowsTest {
         val store = startedStore()
         compose.setContent { LibraryAddRoute(store, onDone = {}) }
 
+        compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
         compose.onNodeWithTag("itemForm.key").performClick()
         val spoke = compose.onNodeWithTag("itemForm.key.minor.6").performScrollTo()
         listOf("E flat minor", "D sharp minor").forEach {
@@ -126,6 +127,13 @@ class ItemFormWheelAndRowsTest {
                 .onNodeWithTag("itemForm.key")
                 .assertContentDescriptionContains(it, substring = true)
         }
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+
+        assertEquals(
+            Key(Letter.D, Accidental.SHARP, Modality.MINOR),
+            store.libraryRows.value.single().key,
+        )
     }
 
     @Test
