@@ -15,6 +15,8 @@ struct PreviewFixtureParityTests {
     let keySelection: KeyWheelSelection?
     let tempoMarking: String?
     let tempoBpm: UInt16?
+    let tempoLine: String?
+    let tempoLineSpoken: String?
   }
 
   private struct ExerciseInput {
@@ -257,13 +259,15 @@ struct PreviewFixtureParityTests {
   private func fields(_ item: LibraryItemView) -> KeyAndTempo {
     KeyAndTempo(
       title: item.title, key: item.key,
-      keySelection: item.keySelection, tempoMarking: item.tempoMarking, tempoBpm: item.tempoBpm)
+      keySelection: item.keySelection, tempoMarking: item.tempoMarking, tempoBpm: item.tempoBpm,
+      tempoLine: item.tempoLine, tempoLineSpoken: item.tempoLineSpoken)
   }
 
   private func fields(_ exercise: LinkedExerciseView) -> KeyAndTempo {
     KeyAndTempo(
       title: exercise.title, key: exercise.key,
-      keySelection: nil, tempoMarking: exercise.tempoMarking, tempoBpm: exercise.tempoBpm)
+      keySelection: nil, tempoMarking: exercise.tempoMarking, tempoBpm: exercise.tempoBpm,
+      tempoLine: exercise.tempoLine, tempoLineSpoken: exercise.tempoLineSpoken)
   }
 
   private func ladder(_ item: LibraryItemView) -> Ladder {

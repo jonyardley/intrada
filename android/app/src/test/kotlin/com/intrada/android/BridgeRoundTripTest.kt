@@ -175,8 +175,6 @@ class BridgeRoundTripTest {
         assertEquals(72.toUShort(), sections.last().targetBpm)
     }
 
-    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after
-    // them (#2225).
     @Test
     fun theClicksTempoWordsComeFromTheCore() {
         val words = clickTempoWords(168u, 8u)
@@ -184,6 +182,8 @@ class BridgeRoundTripTest {
         assertEquals("168 quaver beats per minute", words.spoken)
     }
 
+    // The click's band and bars sit mid-ViewModel, so a skew here also garbles the fields after
+    // them (#2225).
     @Test
     fun theClicksBandAndBarsDecode() {
         val limits = LiveBridge().view().limits

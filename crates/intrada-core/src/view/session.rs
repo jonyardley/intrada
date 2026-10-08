@@ -1641,6 +1641,10 @@ mod tests {
             view.current_item_tempo_line.as_deref(),
             Some("Allegro · ♩ = 132")
         );
+        assert_eq!(
+            view.current_item_tempo_line_spoken.as_deref(),
+            Some("Allegro, 132 beats per minute")
+        );
     }
 
     #[test]

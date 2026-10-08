@@ -421,7 +421,7 @@ pub struct LinkedExerciseView {
     pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
-    /// "Lent · ♩ = 70", and its spoken form (#2480).
+    /// "Lent · ♩ = 70", and its spoken form.
     pub tempo_line: Option<String>,
     pub tempo_line_spoken: Option<String>,
     pub practice: Option<ItemPracticeSummary>,
@@ -535,7 +535,7 @@ pub struct LibraryItemView {
     pub key_label: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
-    /// "Lent · ♩ = 70", and its spoken form (#2480).
+    /// "Lent · ♩ = 70", and its spoken form.
     pub tempo_line: Option<String>,
     pub tempo_line_spoken: Option<String>,
     pub notes: Option<String>,

@@ -64,12 +64,13 @@
   extension LinkedExerciseView {
     static func fixture(
       id: String = "exercise-1", title: String = "Hanon No. 1", key: Key? = nil,
-      tempoMarking: String? = nil, tempoBpm: UInt16? = nil, tempoLine: String? = nil
+      tempoMarking: String? = nil, tempoBpm: UInt16? = nil, tempoLine: String? = nil,
+      tempoLineSpoken: String? = nil
     ) -> LinkedExerciseView {
       LinkedExerciseView(
         id: id, title: title, key: key, keyLabel: key.flatMap(KeyHelper.display),
         tempoMarking: tempoMarking, tempoBpm: tempoBpm, tempoLine: tempoLine,
-        tempoLineSpoken: nil, practice: nil, pieceContextScore: nil,
+        tempoLineSpoken: tempoLineSpoken, practice: nil, pieceContextScore: nil,
         wholePiece: true, sections: [], linkCaption: nil)
     }
   }
@@ -144,7 +145,7 @@
       var thirds = LinkedExerciseView.fixture(
         id: "exercise-thirds", title: "Thirds in D\u{266D}",
         key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60,
-        tempoLine: "♩ = 60")
+        tempoLine: "♩ = 60", tempoLineSpoken: "60 beats per minute")
       thirds.wholePiece = false
       thirds.sections = [
         LinkedSectionView(id: "s3", label: "Bars 19 to 20", labelInText: "bars 19 to 20")

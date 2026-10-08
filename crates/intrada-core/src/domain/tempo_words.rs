@@ -3,7 +3,6 @@ use super::types::Tempo;
 const MINIM: u8 = 2;
 const QUAVER: u8 = 8;
 
-/// A tempo as the screen shows it and as a screen reader says it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TempoWords {
     pub text: String,
@@ -11,7 +10,6 @@ pub struct TempoWords {
 }
 
 impl TempoWords {
-    /// The text and spoken form as the two view fields that carry them.
     #[must_use]
     pub fn split(words: Option<Self>) -> (Option<String>, Option<String>) {
         words.map_or((None, None), |w| (Some(w.text), Some(w.spoken)))
