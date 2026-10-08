@@ -91,6 +91,52 @@ class ItemFormWheelAndRowsTest {
     }
 
     @Test
+    fun aSecondTapFlipsTheSpelling() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
+        compose.onNodeWithTag("itemForm.key").performClick()
+        val spoke = compose.onNodeWithTag("itemForm.key.major.6").performScrollTo()
+        listOf("G flat major", "F sharp major", "G flat major", "F sharp major").forEach {
+            spoke.performClick()
+            compose
+                .onNodeWithTag("itemForm.key")
+                .assertContentDescriptionContains(it, substring = true)
+        }
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+
+        assertEquals(
+            Key(Letter.F, Accidental.SHARP, Modality.MAJOR),
+            store.libraryRows.value.single().key,
+        )
+    }
+
+    @Test
+    fun aSecondTapFlipsTheMinorSpelling() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
+        compose.onNodeWithTag("itemForm.key").performClick()
+        val spoke = compose.onNodeWithTag("itemForm.key.minor.6").performScrollTo()
+        listOf("E flat minor", "D sharp minor").forEach {
+            spoke.performClick()
+            compose
+                .onNodeWithTag("itemForm.key")
+                .assertContentDescriptionContains(it, substring = true)
+        }
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+
+        assertEquals(
+            Key(Letter.D, Accidental.SHARP, Modality.MINOR),
+            store.libraryRows.value.single().key,
+        )
+    }
+
+    @Test
     fun anEditClearsTheKey() = runTest {
         val store = editing(cMajor)
         compose.onNodeWithTag("itemForm.key.clear").performClick()

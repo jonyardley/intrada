@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -157,11 +158,12 @@ private fun pointOn(radius: Dp, ring: Int): Pair<Dp, Dp> {
 private fun KeyWheel(selection: WheelSelection?, onTap: (Int, WheelMode) -> Unit) {
     fun chosen(ring: Int, mode: WheelMode) =
         selection?.takeIf { it.ring.toInt() == ring && it.mode == mode }?.spelling
+    val currentOnTap by rememberUpdatedState(onTap)
     Box(
         Modifier.size(WHEEL).pointerInput(Unit) {
             detectTapGestures { tap ->
                 spokeAt(tap - Offset(size.width / 2f, size.height / 2f))?.let { (ring, mode) ->
-                    onTap(ring, mode)
+                    currentOnTap(ring, mode)
                 }
             }
         }
