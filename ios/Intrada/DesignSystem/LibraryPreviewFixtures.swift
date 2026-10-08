@@ -64,11 +64,12 @@
   extension LinkedExerciseView {
     static func fixture(
       id: String = "exercise-1", title: String = "Hanon No. 1", key: Key? = nil,
-      tempoMarking: String? = nil, tempoBpm: UInt16? = nil
+      tempoMarking: String? = nil, tempoBpm: UInt16? = nil, tempoLine: String? = nil
     ) -> LinkedExerciseView {
       LinkedExerciseView(
         id: id, title: title, key: key, keyLabel: key.flatMap(KeyHelper.display),
-        tempoMarking: tempoMarking, tempoBpm: tempoBpm, practice: nil, pieceContextScore: nil,
+        tempoMarking: tempoMarking, tempoBpm: tempoBpm, tempoLine: tempoLine,
+        tempoLineSpoken: nil, practice: nil, pieceContextScore: nil,
         wholePiece: true, sections: [], linkCaption: nil)
     }
   }
@@ -79,7 +80,8 @@
         id: "piece-1", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
-        tempoBpm: 72,
+        tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
+        tempoLineSpoken: "Andante, 72 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         priority: false,
         linkedExercises: [
@@ -87,14 +89,14 @@
             id: "exercise-1", title: "Hanon No. 1",
             key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
             tempoMarking: nil,
-            tempoBpm: 108,
+            tempoBpm: 108, tempoLine: "♩ = 108", tempoLineSpoken: "108 beats per minute",
             practice: nil, pieceContextScore: 7, wholePiece: true, sections: [],
             linkCaption: nil),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
             tempoMarking: nil,
-            tempoBpm: nil, practice: nil,
+            tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil, practice: nil,
             pieceContextScore: nil, wholePiece: true, sections: [], linkCaption: nil),
         ],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -141,7 +143,8 @@
       octaves.linkCaption = "For the whole piece and A2"
       var thirds = LinkedExerciseView.fixture(
         id: "exercise-thirds", title: "Thirds in D\u{266D}",
-        key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60)
+        key: Key(letter: .d, accidental: .flat, mode: .major), tempoBpm: 60,
+        tempoLine: "♩ = 60")
       thirds.wholePiece = false
       thirds.sections = [
         LinkedSectionView(id: "s3", label: "Bars 19 to 20", labelInText: "bars 19 to 20")
@@ -168,7 +171,8 @@
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 108,
+        tempoMarking: nil, tempoBpm: 108, tempoLine: "♩ = 108",
+        tempoLineSpoken: "108 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
@@ -182,7 +186,8 @@
     static var previewScales: LibraryItemView {
       LibraryItemView(
         id: "ex-a", itemType: .exercise, title: "Scales", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil,
+        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
+        tempoLineSpoken: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],
@@ -196,7 +201,8 @@
         id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
-        tempoBpm: 72,
+        tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
+        tempoLineSpoken: "Andante, 72 beats per minute",
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
@@ -227,7 +233,7 @@
       return LibraryItemView(
         id: "piece-charted", itemType: .piece, title: "Autumn Leaves", subtitle: "Standard",
         key: Key(letter: .g, accidental: .natural, mode: .minor), keyLabel: "G minor",
-        tempoMarking: nil, tempoBpm: nil,
+        tempoMarking: nil, tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: .preview, chordChart: chart, metre: nil, variations: [],
@@ -245,7 +251,8 @@
         id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
         key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
         tempoMarking: "Andante",
-        tempoBpm: 72,
+        tempoBpm: 72, tempoLine: "Andante · ♩ = 72",
+        tempoLineSpoken: "Andante, 72 beats per minute",
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist"], createdAt: "", updatedAt: "",
         practice: ItemPracticeSummary.fixture(
@@ -266,7 +273,7 @@
             id: "exercise-1", title: "Hanon No. 1",
             key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
             tempoMarking: nil,
-            tempoBpm: 108,
+            tempoBpm: 108, tempoLine: "♩ = 108", tempoLineSpoken: "108 beats per minute",
             practice: ItemPracticeSummary.fixture(
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
               tempoTrend: .fixture([100, 104, 108]),
@@ -276,14 +283,14 @@
             id: "exercise-2", title: "Db Major Scale",
             key: Key(letter: .d, accidental: .flat, mode: .major), keyLabel: "D♭ major",
             tempoMarking: nil,
-            tempoBpm: nil,
+            tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
             practice: ItemPracticeSummary.fixture(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
               lastPracticedAt: "2026-06-25T09:00:00Z"),
             pieceContextScore: 6, wholePiece: true, sections: [], linkCaption: nil),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, keyLabel: nil,
-            tempoMarking: nil, tempoBpm: nil,
+            tempoMarking: nil, tempoBpm: nil, tempoLine: nil, tempoLineSpoken: nil,
             practice: nil, pieceContextScore: nil, wholePiece: true, sections: [],
             linkCaption: nil),
         ],
@@ -299,7 +306,8 @@
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 108,
+        tempoMarking: nil, tempoBpm: 108, tempoLine: "♩ = 108",
+        tempoLineSpoken: "108 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: ItemPracticeSummary.fixture(
           sessionCount: 9, totalMinutes: 90, latestScore: 7,
@@ -336,7 +344,8 @@
         id: "exercise-1", itemType: .exercise, title: "Enclosures",
         subtitle: "Bebop vocabulary",
         key: Key(letter: .c, accidental: .natural, mode: .major), keyLabel: "C major",
-        tempoMarking: nil, tempoBpm: 120,
+        tempoMarking: nil, tempoBpm: 120, tempoLine: "♩ = 120",
+        tempoLineSpoken: "120 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: ItemPracticeSummary.fixture(
           sessionCount: 10, totalMinutes: 120, latestScore: 7,
@@ -384,7 +393,8 @@
       LibraryItemView(
         id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
         subtitle: "Bebop vocabulary, 12 keys",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 132,
+        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 132, tempoLine: "♩ = 132",
+        tempoLineSpoken: "132 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -410,7 +420,8 @@
       return LibraryItemView(
         id: "exercise-3", itemType: .exercise, title: "Chromatic run",
         subtitle: "All 12 keys",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 72,
+        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: 72, tempoLine: "♩ = 72",
+        tempoLineSpoken: "72 beats per minute",
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -432,7 +443,8 @@
       let rungs = ["Root position", "1st inversion", "2nd inversion"]
       return LibraryItemView(
         id: "exercise-4", itemType: .exercise, title: "Triad inversions", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil,
+        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
+        tempoLineSpoken: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -452,7 +464,8 @@
       ]
       return LibraryItemView(
         id: "exercise-5", itemType: .exercise, title: "Arpeggios, four octaves", subtitle: "",
-        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil,
+        key: nil, keyLabel: nil, tempoMarking: nil, tempoBpm: nil, tempoLine: nil,
+        tempoLineSpoken: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil,
@@ -472,7 +485,9 @@
         id: "piece-4", itemType: .piece, title: "Gymnopédie No. 1", subtitle: "Erik Satie",
         key: Key(letter: .d, accidental: .natural, mode: .major), keyLabel: "D major",
         tempoMarking: "Lent et douloureux",
-        tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
+        tempoBpm: 60, tempoLine: "Lent et douloureux · ♩ = 60",
+        tempoLineSpoken: "Lent et douloureux, 60 beats per minute", notes: nil, tags: [],
+        createdAt: "", updatedAt: "",
         practice: nil, priority: false,
         linkedExercises: [], usedIn: [], scaffoldPreview: nil,
         chordChart: nil, metre: nil, variations: [], photoId: nil, keys: [],
@@ -520,6 +535,7 @@
       LibraryItemView(
         id: id, itemType: itemType, title: title, subtitle: subtitle,
         key: key, keyLabel: key.flatMap(KeyHelper.display), tempoMarking: nil, tempoBpm: nil,
+        tempoLine: nil, tempoLineSpoken: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         priority: false, linkedExercises: [],
         usedIn: [], scaffoldPreview: nil, chordChart: nil, metre: nil, variations: [],

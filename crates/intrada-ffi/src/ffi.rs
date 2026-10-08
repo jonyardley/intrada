@@ -436,6 +436,25 @@ pub fn key_label(key: Vec<u8>) -> Result<String, CoreError> {
     Ok(decode_key(&key)?.label())
 }
 
+// ── The click's tempo ──
+
+#[cfg_attr(feature = "uniffi", derive(uniffi::Record))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TempoWords {
+    pub text: String,
+    pub spoken: String,
+}
+
+/// The click's readout for a tempo counted in `unit`: "♪ = 168".
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn click_tempo_words(bpm: u16, unit: u8) -> TempoWords {
+    let words = intrada_core::domain::tempo_words::click_readout(bpm, unit);
+    TempoWords {
+        text: words.text,
+        spoken: words.spoken,
+    }
+}
+
 /// Whether the add and edit form enables Save, judged on the title as typed.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn item_form_can_save(title: String) -> bool {
@@ -947,5 +966,16 @@ mod tests {
     fn fill_form_from_read_refuses_bytes_that_are_not_a_draft() {
         let result = fill_form_from_read(vec![7, 0, 0], vec![blank(FormReadField::Title)]);
         assert!(matches!(result, Err(CoreError::Bridge(_))));
+    }
+
+    #[test]
+    fn click_tempo_words_carries_the_cores_readout_across() {
+        assert_eq!(
+            click_tempo_words(168, 8),
+            TempoWords {
+                text: "♪ = 168".to_string(),
+                spoken: "168 quaver beats per minute".to_string(),
+            }
+        );
     }
 }

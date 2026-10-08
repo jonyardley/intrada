@@ -10,6 +10,7 @@ use crate::domain::session::{
     self as session, ActiveSession, ClickState, EntryStatus, IntentionFocus, NotePoint, Play,
     PlayWay, PracticeSession, ReflectionDraft, SetlistEntry, SummarySession,
 };
+use crate::domain::tempo_words::{self, TempoWords};
 use crate::domain::variation::Variation;
 use crate::model::{
     ActiveRecordView, ActiveSessionView, AwayOfferView, EntryKeysView, EntryRecordView,
@@ -706,6 +707,8 @@ pub fn build_active_session_view(
     let current_item_tempo = item_index
         .get(current.item_id.as_str())
         .and_then(|i| i.tempo.as_ref());
+    let (current_item_tempo_line, current_item_tempo_line_spoken) =
+        TempoWords::split(tempo_words::tempo_line(current_item_tempo));
 
     let click_seed_metre = item_index
         .get(current.item_id.as_str())
@@ -750,6 +753,8 @@ pub fn build_active_session_view(
         current_related_piece_title,
         current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
         current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
+        current_item_tempo_line,
+        current_item_tempo_line_spoken,
         current_click_sounding: defaults.click.sounding(&click_seed_metre),
         current_variations: picker_variations(current, current_variations),
         reflection: active.reflection.as_ref().map(|draft| ReflectionView {
@@ -1632,6 +1637,10 @@ mod tests {
         );
         assert_eq!(view.current_item_tempo_marking.as_deref(), Some("Allegro"));
         assert_eq!(view.current_item_tempo_bpm, Some(132));
+        assert_eq!(
+            view.current_item_tempo_line.as_deref(),
+            Some("Allegro · ♩ = 132")
+        );
     }
 
     #[test]
@@ -1654,6 +1663,7 @@ mod tests {
         );
         assert!(view.current_item_tempo_marking.is_none());
         assert!(view.current_item_tempo_bpm.is_none());
+        assert!(view.current_item_tempo_line.is_none());
     }
 
     #[test]
