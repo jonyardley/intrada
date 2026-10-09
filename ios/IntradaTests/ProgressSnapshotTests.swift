@@ -33,6 +33,7 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     analytics.climbing = nil
     analytics.weekLine = nil
     analytics.consistencyWeeks[4].minutes = 0
+    analytics.consistencyWeeks[4].spoken = "This week: 0 minutes"
     let store = Store(bridge: PreviewBridge(analytics: analytics))
     assertSnapshot(of: host(AnalyticsScreen(), store: store), as: config)
   }
