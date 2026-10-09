@@ -112,6 +112,7 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
             }
             practiceRoutes(store, navController, onBuild = { navController.navigate(BUILD_ROUTE) })
             builderRoutes(store, navController)
+            profileRoute(store)
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
             composable(AppTab.PROGRESS.route) {
                 ProgressRoute(

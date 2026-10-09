@@ -28,6 +28,7 @@ import com.intrada.android.core.Store
 import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.shared.Event
 import com.intrada.shared.HighlighterColour
+import com.intrada.shared.InstrumentIcon
 import com.intrada.shared.LastPractisedView
 import com.intrada.shared.PracticeSessionView
 import com.intrada.shared.PracticeWeekView
@@ -46,6 +47,7 @@ fun NavGraphBuilder.practiceRoutes(
             store,
             onBuild = onBuild,
             onOpen = { id -> navController.navigate("$SESSION_ROUTE/$id") },
+            onProfile = { navController.navigate(PROFILE_ROUTE) },
         )
     }
     composable("$SESSION_ROUTE/{id}") { backStack ->
@@ -59,6 +61,7 @@ fun PracticeRoute(
     onBuild: () -> Unit,
     modifier: Modifier = Modifier,
     onOpen: (String) -> Unit = {},
+    onProfile: (() -> Unit)? = null,
 ) {
     val viewModel by store.viewModel.collectAsState()
     val recoverable by store.recoverableSession.collectAsState()
@@ -71,10 +74,12 @@ fun PracticeRoute(
             viewModel?.lastPractised,
             viewModel?.profile?.colour ?: HighlighterColour.BUTTER,
             viewModel?.profile?.greeting.orEmpty(),
+            viewModel?.profile?.icon ?: InstrumentIcon.OTHER,
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
         modifier = modifier,
+        onProfile = onProfile,
     ) {
         recoverable?.let { session ->
             RecoveryCard(
@@ -92,6 +97,7 @@ class PracticeModel(
     val lastPractised: LastPractisedView?,
     val colour: HighlighterColour = HighlighterColour.BUTTER,
     val greeting: String = "",
+    val icon: InstrumentIcon = InstrumentIcon.OTHER,
 )
 
 @Composable
@@ -100,9 +106,15 @@ fun PracticeScreen(
     onStart: () -> Unit,
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onProfile: (() -> Unit)? = null,
     top: @Composable ColumnScope.() -> Unit = {},
 ) {
-    ScreenScaffold("Practice", modifier, subtitle = model.subtitle) {
+    ScreenScaffold(
+        "Practice",
+        modifier,
+        subtitle = model.subtitle,
+        actions = { onProfile?.let { ProfileButton(model.icon, model.colour, it) } },
+    ) {
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())

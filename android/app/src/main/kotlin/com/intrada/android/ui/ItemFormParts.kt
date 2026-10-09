@@ -1,5 +1,6 @@
 package com.intrada.android.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +17,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.intrada.android.ui.components.FieldLabel
@@ -35,24 +38,36 @@ internal fun FormField(
     keyboard: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
     note: String? = null,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    faulted: Boolean = false,
 ) {
     Column(
         modifier
             .fillMaxWidth()
+            .background(if (faulted) IntradaColor.dangerWash else Color.Transparent)
             .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (label.isNotEmpty()) FieldLabel(label)
+        if (label.isNotEmpty()) {
+            FieldLabel(
+                label,
+                colour = if (faulted) IntradaColor.danger else IntradaColor.inkSecondary,
+            )
+        }
         BasicTextField(
             value,
             onValueChange,
             Modifier.fillMaxWidth()
-                .semantics { contentDescription = label.ifEmpty { placeholder } }
+                .semantics {
+                    contentDescription =
+                        label.ifEmpty { placeholder } + if (faulted) ", $FAULT_HINT" else ""
+                }
                 .testTag(tag),
             textStyle = IntradaFont.body.copy(color = IntradaColor.ink),
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+            keyboardOptions =
+                KeyboardOptions(capitalization = capitalization, keyboardType = keyboard),
             cursorBrush = SolidColor(IntradaColor.ink),
             decorationBox = { field ->
                 Box {
@@ -71,6 +86,9 @@ internal fun FormField(
         }
     }
 }
+
+// The banner carries the core's sentence; the faulted field only says where (#1595).
+private const val FAULT_HINT = "The message at the top of the form is about this"
 
 @Composable
 internal fun AddInputRow(
