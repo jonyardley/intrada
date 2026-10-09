@@ -31,7 +31,8 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     analytics.topMover = nil
     analytics.masteryChange = nil
     analytics.climbing = nil
-    analytics.weeklyMinutes = [40, 75, 55, 95, 0]
+    analytics.weekLine = nil
+    analytics.consistencyWeeks[4].minutes = 0
     let store = Store(bridge: PreviewBridge(analytics: analytics))
     assertSnapshot(of: host(AnalyticsScreen(), store: store), as: config)
   }
@@ -72,14 +73,8 @@ final class ProgressSnapshotTests: SnapshotTestCase {
   func testConsistencyBars() {
     let bars = ZStack {
       PaperBackground()
-      ConsistencyBars(weeks: [
-        ConsistencyWeek(label: "W1", minutes: 40),
-        ConsistencyWeek(label: "W2", minutes: 75),
-        ConsistencyWeek(label: "W3", minutes: 55),
-        ConsistencyWeek(label: "W4", minutes: 95),
-        ConsistencyWeek(label: "Now", minutes: 82, isCurrent: true),
-      ])
-      .padding(16)
+      ConsistencyBars(weeks: AnalyticsView.previewAnalytics.consistencyWeeks)
+        .padding(16)
     }
     assertSnapshot(of: host(bars), as: config)
   }
