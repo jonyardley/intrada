@@ -19,7 +19,9 @@ interface ItemStore {
 // as tombstones, as they do on disk, so a merge sees the delete.
 class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
     private val items =
-        LinkedHashMap<String, StoredItem>().apply { items.forEach { put(it.id, StoredItem(it, null)) } }
+        LinkedHashMap<String, StoredItem>().apply {
+            items.forEach { put(it.id, StoredItem(it, null)) }
+        }
     private val sessions = LinkedHashMap<String, PracticeSession>()
     private val variations = LinkedHashMap<String, Variation>()
 
@@ -27,32 +29,41 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
     override fun run(operation: PersistenceOperation): PersistenceOutput =
         when (operation) {
             PersistenceOperation.LoadItems ->
-                PersistenceOutput.Items(items.values.filter { it.deletedAt == null }.map { it.item })
+                PersistenceOutput.Items(
+                    items.values.filter { it.deletedAt == null }.map { it.item }
+                )
             PersistenceOperation.LoadSessions ->
                 PersistenceOutput.Sessions(sessions.values.toList())
             is PersistenceOperation.SaveItem -> ack { save(operation.value) }
             is PersistenceOperation.SaveItems -> ack { operation.value.forEach(::save) }
-            is PersistenceOperation.DeleteItem ->
-                ack {
-                    items[operation.id]?.let {
-                        items[operation.id] = StoredItem(it.item, operation.deletedAt)
-                    }
-                }
+            is PersistenceOperation.DeleteItem -> ack { delete(operation) }
             is PersistenceOperation.SaveSession ->
                 ack { sessions[operation.value.id] = operation.value }
             PersistenceOperation.LoadVariations ->
                 PersistenceOutput.Variations(variations.values.toList())
             is PersistenceOperation.SaveVariations ->
                 ack { operation.value.forEach { variations[it.id] = it } }
-            is PersistenceOperation.LoadRecords -> records { kind, id -> RecordKey(kind, id) in operation.value }
-            PersistenceOperation.LoadAllRecords -> records { _, _ -> true }
+            is PersistenceOperation.LoadRecords,
+            PersistenceOperation.LoadAllRecords,
+            is PersistenceOperation.ApplyMerged -> sync(operation)
+        }
+
+    private fun sync(operation: PersistenceOperation): PersistenceOutput =
+        when (operation) {
+            is PersistenceOperation.LoadRecords ->
+                records { kind, id -> RecordKey(kind, id) in operation.value }
             is PersistenceOperation.ApplyMerged ->
                 ack {
                     operation.value.items.forEach { items[it.item.id] = it }
                     operation.value.variations.forEach { variations[it.id] = it }
                     operation.value.sessions.forEach { sessions[it.id] = it }
                 }
+            else -> records { _, _ -> true }
         }
+
+    private fun delete(operation: PersistenceOperation.DeleteItem) {
+        items[operation.id]?.let { items[operation.id] = StoredItem(it.item, operation.deletedAt) }
+    }
 
     private fun save(item: Item) {
         items[item.id] = StoredItem(item, null)
