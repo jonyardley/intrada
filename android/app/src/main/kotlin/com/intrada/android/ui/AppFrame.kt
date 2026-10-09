@@ -110,9 +110,7 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
                     onDone = { navController.closeForm() },
                 )
             }
-            composable(AppTab.PRACTICE.route) {
-                PracticeRoute(store, onBuild = { navController.navigate(BUILD_ROUTE) })
-            }
+            practiceRoutes(store, navController, onBuild = { navController.navigate(BUILD_ROUTE) })
             builderRoutes(store, navController)
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
             composable(AppTab.PROGRESS.route) {
