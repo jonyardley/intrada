@@ -248,8 +248,13 @@ fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}):
 private const val SAVE_FAILED = "Couldn't save. Try again."
 
 @Composable
-fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
-    val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState() }
+fun LibraryAddRoute(
+    store: Store,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    kind: ItemKind = ItemKind.PIECE,
+) {
+    val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState(kind) }
     val rows by store.libraryRows.collectAsState()
     var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
