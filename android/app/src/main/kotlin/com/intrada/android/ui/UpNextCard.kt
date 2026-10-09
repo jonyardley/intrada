@@ -267,13 +267,13 @@ private fun SecondaryActions(actions: UpNextActions) {
         HeroLink(
             "Change it first",
             "practice.changePlan",
-            "Opens the session builder with this plan in it",
+            "open the session builder with this plan in it",
             actions.onChange,
         )
         HeroLink(
             "Build my own instead",
             "practice.buildOwn",
-            "Opens the session builder",
+            "open the session builder",
             actions.onBuildOwn,
         )
     }

@@ -37,7 +37,7 @@ internal fun PrioritiesButton(onTap: () -> Unit) {
     IconLink(
         "Practise your priorities",
         R.drawable.ic_star,
-        "Builds a session from everything you have starred",
+        "build a session from everything you have starred",
         "practice.priorities",
         onTap,
     )
@@ -48,7 +48,7 @@ internal fun ShowSuggestionButton(onTap: () -> Unit) {
     IconLink(
         "Show suggestion",
         R.drawable.ic_restore,
-        "Brings back the suggested session",
+        "bring back the suggested session",
         "practice.showSuggestion",
         onTap,
         muted = true,

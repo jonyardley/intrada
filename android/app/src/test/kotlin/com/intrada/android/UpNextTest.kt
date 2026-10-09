@@ -28,7 +28,7 @@ class UpNextTest {
     @get:Rule val compose = createComposeRule()
 
     @Test
-    fun aPieceWithALinkedExerciseIsOfferedAndStartingItOpensThePlayer() = runTest {
+    fun aPieceWithALinkedExerciseIsOfferedAndStartingItStartsTheSession() = runTest {
         val store = libraryStore()
         compose.setContent { PracticeRoute(store, onBuild = {}) }
 
@@ -60,12 +60,26 @@ class UpNextTest {
         compose.setContent { PracticeRoute(store, onBuild = {}) }
 
         compose.onNodeWithTag("practice.buildOwn").performScrollTo().performClick()
+        store.settle()
+        compose.onNodeWithTag("practice.showSuggestion").assertDoesNotExist()
         store.send(Event.Session(SessionEvent.CancelBuilding))
         store.settle()
         compose.onNodeWithTag("practice.upNext").assertDoesNotExist()
 
         compose.onNodeWithTag("practice.showSuggestion").performScrollTo().performClick()
         compose.onNodeWithTag("practice.upNext").assertExists()
+    }
+
+    @Test
+    fun aLiveSessionHidesTheWayBack() = runTest {
+        val store = libraryStore()
+        compose.setContent { PracticeRoute(store, onBuild = {}) }
+        compose.onNodeWithTag("practice.buildOwn").performScrollTo().performClick()
+        store.send(Event.Session(SessionEvent.CancelBuilding))
+        store.startTwoItems()
+        store.settle()
+
+        compose.onNodeWithTag("practice.showSuggestion").assertDoesNotExist()
     }
 
     @Test
