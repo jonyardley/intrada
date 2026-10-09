@@ -223,7 +223,8 @@ class StoreTest {
         store.send(Event.StartApp)
         store.settle()
 
-        assertEquals(setOf("persistence"), reporter.reports.map { it.second }.toSet())
+        assertTrue(reporter.reports.isNotEmpty())
+        assertTrue(reporter.reports.all { it.second == "persistence" })
     }
 
     @Test
@@ -231,14 +232,14 @@ class StoreTest {
         val items = SharedItemStore(StoreFfi.inMemory(), log = {})
         val unstorable =
             ItemSection(
-                "s1",
-                "A",
-                null,
-                SectionKind.FORM,
-                null,
-                ULong.MAX_VALUE,
-                "2026-09-01T09:00:00Z",
-                null,
+                id = "s1",
+                name = "A",
+                bars = null,
+                kind = SectionKind.FORM,
+                targetBpm = null,
+                position = ULong.MAX_VALUE,
+                updatedAt = "2026-09-01T09:00:00Z",
+                deletedAt = null,
             )
         val broken = Fixtures.item().copy(sections = listOf(unstorable))
 
