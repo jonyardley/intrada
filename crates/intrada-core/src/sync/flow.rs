@@ -23,6 +23,12 @@ pub struct SyncState {
     /// copies were asked for. One at a time, so two never race.
     merging: Option<BTreeMap<RecordKind, u64>>,
     queued: Vec<SyncRecord>,
+    /// A load or merge write failed since the core last settled, so the
+    /// shell must fetch those batches again.
+    failed: bool,
+    /// Rows the store cannot read: uploading the readable part would delete
+    /// the rest on the other device.
+    unreadable: BTreeSet<RecordKey>,
 }
 
 /// Provisional until the trial on #2361 reports.
@@ -53,6 +59,7 @@ pub fn upload_for(model: &Model, changed: &[Synced]) -> Vec<SyncRecord> {
     changed
         .iter()
         .filter(|s| !model.sync.parked.contains_key(&s.key()))
+        .filter(|s| !model.sync.unreadable.contains(&s.key()))
         .filter_map(|s| s.record().ok())
         .collect()
 }
@@ -72,10 +79,14 @@ pub fn update(event: SyncEvent, model: &mut Model) -> Command<Effect, Event> {
             }
             PersistenceOutput::Records(stored) => merge(model, arrived, stored),
             PersistenceOutput::Failed => {
+                model.sync.failed = true;
                 let failed = storage_failed(model);
                 Command::all([failed, finish(model)])
             }
-            _ => finish(model),
+            _ => {
+                model.sync.failed = true;
+                finish(model)
+            }
         },
         SyncEvent::MergeWritten {
             touched,
@@ -84,20 +95,23 @@ pub fn update(event: SyncEvent, model: &mut Model) -> Command<Effect, Event> {
         } => {
             let refused = !matches!(output, PersistenceOutput::Ack);
             let reloads = persistence::merge_written(model, &touched, refused);
-            let settled = if refused {
+            let shown = if refused {
+                model.sync.failed = true;
                 model.surface_storage_error();
                 crux_core::render::render()
             } else {
                 unpark_command(model, unpark)
             };
-            Command::all([reloads, settled, finish(model)])
+            Command::all([reloads, shown, finish(model)])
         }
         SyncEvent::UploadEverything => {
             Command::request_from_shell(PersistenceOperation::LoadAllRecords)
                 .then_send(|output| Event::Sync(SyncEvent::EverythingLoaded(output)))
         }
         SyncEvent::EverythingLoaded(output) => match output {
-            PersistenceOutput::Records(stored) => {
+            PersistenceOutput::Records(mut stored) => {
+                model.sync.unreadable =
+                    std::mem::take(&mut stored.unreadable).into_iter().collect();
                 let records = upload_for(model, &synced(stored));
                 if records.is_empty() {
                     Command::done()
@@ -121,7 +135,7 @@ fn start(model: &mut Model, records: Vec<SyncRecord>) -> Command<Effect, Event> 
         .partition(|r| decide(None, r) == Verdict::Park);
     let park = park_command(model, too_new);
     if readable.is_empty() {
-        return park;
+        return Command::all([park, finish(model)]);
     }
     Command::all([park, load_stored(model, readable)])
 }
@@ -153,10 +167,13 @@ fn written_since_loaded(model: &Model, arrived: &[SyncRecord]) -> bool {
 fn finish(model: &mut Model) -> Command<Effect, Event> {
     model.sync.merging = None;
     let queued = std::mem::take(&mut model.sync.queued);
-    if queued.is_empty() {
+    if !queued.is_empty() {
+        return start(model, queued);
+    }
+    if std::mem::take(&mut model.sync.failed) {
         return Command::done();
     }
-    start(model, queued)
+    Command::notify_shell(SyncOperation::Settled).into()
 }
 
 fn merge(
@@ -166,6 +183,9 @@ fn merge(
 ) -> Command<Effect, Event> {
     let unreadable_here: BTreeSet<RecordKey> =
         std::mem::take(&mut stored.unreadable).into_iter().collect();
+    for record in &arrived {
+        model.sync.unreadable.remove(&record.key());
+    }
     let mut current: BTreeMap<RecordKey, SyncRecord> = synced(stored)
         .iter()
         .filter_map(|s| s.record().ok().map(|r| (s.key(), r)))

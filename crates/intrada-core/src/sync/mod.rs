@@ -68,6 +68,9 @@ pub enum SyncOperation {
     Upload(Vec<SyncRecord>),
     Park(Vec<SyncRecord>),
     Unpark(Vec<RecordKey>),
+    /// Every batch handed to the core since the last one is stored, so the
+    /// shell may move its change token on (#2355).
+    Settled,
 }
 
 impl Operation for SyncOperation {

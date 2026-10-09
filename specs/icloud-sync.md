@@ -102,6 +102,7 @@ pub enum SyncOperation {           // Effect::Sync, fire and forget
     Upload(Vec<SyncRecord>),
     Park(Vec<SyncRecord>),
     Unpark(Vec<RecordKey>),
+    Settled,
 }
 
 pub enum SyncEvent {               // Event::Sync
@@ -136,20 +137,32 @@ the app knows is parked too, so it is never uploaded over, and so is an arrival
 whose stored row this app cannot read, so the merge never writes over it.
 
 One merge runs at a time. A batch arriving mid-merge waits in the core and
-starts when the merge's write lands, acknowledged or refused, or when the merge
-ends with nothing to write. If a local save on a list the batch touches is sent
-after the stored copies were asked for, the core asks for them again rather
-than decide on a copy the save may have changed.
+starts when the merge's write lands, acknowledged or refused, when the merge
+ends with nothing to write, or when its load fails. If any local save on a
+list the batch touches (pieces, variations or sessions) is sent after the
+stored copies were asked for, the core asks for them again rather than decide
+on a copy the save may have changed, whether or not the save names a record in
+the batch.
 
 A parked id is unparked by an arrival as late as the parked copy or later:
 taken, once the merge write is acknowledged; kept, at once, with the local copy
 uploaded, since it was held back while parked. An earlier arrival is decided
-as usual and the id stays parked.
+as usual and the id stays parked. A local copy kept while sync is paused is
+not uploaded then; #2356 re-sends it when it resumes uploads.
 
-**The change token (#2355).** The shell must not advance its iCloud change
-token past a batch until that batch's merge write comes back acknowledged. The
-core does not retry a refused merge; fetching the batch again is how it is
-retried.
+**The change token (#2355).** The core sends `Settled` when nothing is waiting
+and every batch handed to it since it was last idle is stored: no load failed
+and no merge write was refused. The shell advances its iCloud change token only
+on `Settled`. After a refused write or a failed load no `Settled` comes, so the
+shell's next fetch starts from the old token and brings the batch back; the
+core does not retry it any other way.
+
+**Unreadable rows.** A row the store reports it cannot read, from either load,
+is never uploaded, by a local save or `UploadEverything`, until a later load
+reads it. Uploading the readable part of a piece would delete the unread
+section or link on the other device. A session that reads with part of its
+data unreadable is not reported and can upload without that part; sessions are
+never edited today, so this is left until they are.
 
 **First upload.** `UploadEverything` uploads every record, tombstones
 included, for #2355's first sync on a device.
@@ -181,7 +194,9 @@ they live in `intrada-store`.
   sections and links only the losing device had; `LoadRecords` names the rows
   it could not read.
 - Races: a save sent while the stored copy loads makes the merge load again; a
-  batch arriving mid-merge waits and merges after.
+  batch arriving mid-merge waits and merges after, a failed load included.
+- `Settled` after an acknowledged or all-kept merge with nothing waiting, and
+  never after a failed load, a refused write, or while a batch waits.
 - `LiveBridge` for the new event and effect shapes (#846), and Android's
   `BridgeRoundTripTest`.
 

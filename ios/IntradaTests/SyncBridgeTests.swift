@@ -78,6 +78,11 @@ struct SyncBridgeTests {
     }
     let park = try #require(parked.first)
     #expect(park.1 == [tooNew])
+    #expect(
+      requests.contains { request in
+        if case .sync(.settled) = request.effect { return true }
+        return false
+      })
     #expect(throws: (any Error).self) { try bridge.resolveEmpty(park.0) }
   }
 

@@ -382,6 +382,7 @@ fn the_bridge_shapes_round_trip_on_the_ffi_wire() {
     assert_round_trips(SyncOperation::Upload(vec![r.clone()]));
     assert_round_trips(SyncOperation::Park(vec![r.clone()]));
     assert_round_trips(SyncOperation::Unpark(vec![r.key()]));
+    assert_round_trips(SyncOperation::Settled);
     assert_round_trips(Event::Sync(SyncEvent::RecordsArrived(vec![r.clone()])));
     assert_round_trips(Event::Sync(SyncEvent::UploadEverything));
     assert_round_trips(Event::Sync(SyncEvent::AccountChanged));
@@ -600,7 +601,10 @@ fn a_record_from_a_newer_app_is_parked_and_never_loaded() {
     );
     assert_eq!(
         sync_effects(&mut cmd),
-        vec![SyncOperation::Park(vec![too_new.clone()])]
+        vec![
+            SyncOperation::Park(vec![too_new.clone()]),
+            SyncOperation::Settled
+        ]
     );
     assert!(model.sync.parked.contains_key(&too_new.key()));
 }
@@ -702,7 +706,13 @@ fn a_written_merge_reloads_the_list_and_unparks_what_it_took() {
         PersistenceOutput::Ack,
     );
     assert!(run.after_write.contains(&PersistenceOperation::LoadItems));
-    assert_eq!(run.sync, vec![SyncOperation::Unpark(vec![key.clone()])]);
+    assert_eq!(
+        run.sync,
+        vec![
+            SyncOperation::Unpark(vec![key.clone()]),
+            SyncOperation::Settled
+        ]
+    );
     assert!(!model.sync.parked.contains_key(&key));
 }
 
@@ -747,6 +757,7 @@ fn a_parked_id_whose_local_copy_wins_is_unparked_and_uploaded() {
         vec![
             SyncOperation::Unpark(vec![key.clone()]),
             SyncOperation::Upload(vec![local]),
+            SyncOperation::Settled,
         ]
     );
     assert!(!model.sync.parked.contains_key(&key));
@@ -828,7 +839,13 @@ fn an_unreadable_row_here_parks_the_arrival_instead_of_writing_over_it() {
         stored,
         PersistenceOutput::Ack,
     );
-    assert_eq!(run.sync, vec![SyncOperation::Park(vec![arrival.clone()])]);
+    assert_eq!(
+        run.sync,
+        vec![
+            SyncOperation::Park(vec![arrival.clone()]),
+            SyncOperation::Settled
+        ]
+    );
     assert!(run.after_write.is_empty());
     assert!(model.sync.parked.contains_key(&arrival.key()));
 }
@@ -953,4 +970,195 @@ fn upload_everything_sends_every_record_tombstones_included() {
     let sent = uploads(&mut cmd);
     assert_eq!(sent.len(), 2);
     assert_eq!(sent[0].deleted_at, Some(at(5)));
+}
+
+#[test]
+fn a_failed_load_lets_the_waiting_batch_load() {
+    let mut model = Model::default();
+    let second = SyncRecord {
+        id: "other".to_string(),
+        ..arrived_piece(60, "Second")
+    };
+    let mut cmd = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![arrived_piece(60, "First")])),
+        &mut model,
+    );
+    let mut load = load_request(&mut cmd).expect("loads the first batch");
+    let _ = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![second.clone()])),
+        &mut model,
+    );
+    load.resolve(PersistenceOutput::Failed)
+        .expect("resolves once");
+    let failed = cmd.events().next().expect("the load fails");
+    let mut next = Intrada.update(failed, &mut model);
+    let load = load_request(&mut next).expect("the waiting batch loads");
+    assert_eq!(
+        load.operation,
+        PersistenceOperation::LoadRecords(vec![second.key()])
+    );
+}
+
+// ── Settled ──
+
+fn settled(ops: &[SyncOperation]) -> bool {
+    ops.contains(&SyncOperation::Settled)
+}
+
+#[test]
+fn the_core_settles_only_once_every_batch_is_stored() {
+    let cases = [
+        (
+            "an acknowledged merge",
+            StoredRecords::default(),
+            PersistenceOutput::Ack,
+            true,
+        ),
+        (
+            "a refused merge write",
+            StoredRecords::default(),
+            PersistenceOutput::Failed,
+            false,
+        ),
+        (
+            "a batch that is all kept",
+            stored_piece(600),
+            PersistenceOutput::Ack,
+            true,
+        ),
+    ];
+    for (case, stored, written, expected) in cases {
+        let mut model = Model::default();
+        let run = merge_through(
+            &mut model,
+            vec![arrived_piece(60, "Theirs")],
+            stored,
+            written,
+        );
+        assert_eq!(settled(&run.sync), expected, "{case}");
+    }
+}
+
+#[test]
+fn a_load_that_brings_back_no_records_never_settles() {
+    for answer in [PersistenceOutput::Failed, PersistenceOutput::Ack] {
+        let mut model = Model::default();
+        let mut cmd = Intrada.update(
+            Event::Sync(SyncEvent::RecordsArrived(vec![arrived_piece(60, "Theirs")])),
+            &mut model,
+        );
+        let mut load = load_request(&mut cmd).expect("loads");
+        load.resolve(answer.clone()).expect("resolves once");
+        let failed = cmd.events().next().expect("answered");
+        assert!(
+            !settled(&sync_effects(&mut Intrada.update(failed, &mut model))),
+            "{answer:?}"
+        );
+    }
+}
+
+#[test]
+fn a_failure_earlier_in_the_run_keeps_a_later_batch_from_settling() {
+    let mut model = Model::default();
+    let mut cmd = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![arrived_piece(60, "First")])),
+        &mut model,
+    );
+    let mut load = load_request(&mut cmd).expect("loads");
+    let _ = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![newer_app(arrived_piece(
+            60, "x",
+        ))])),
+        &mut model,
+    );
+    load.resolve(PersistenceOutput::Failed)
+        .expect("resolves once");
+    let failed = cmd.events().next().expect("fails");
+    assert!(!settled(&sync_effects(
+        &mut Intrada.update(failed, &mut model)
+    )));
+
+    let run = merge_through(
+        &mut model,
+        vec![arrived_piece(60, "Again")],
+        StoredRecords::default(),
+        PersistenceOutput::Ack,
+    );
+    assert!(settled(&run.sync));
+}
+
+#[test]
+fn nothing_settles_while_a_batch_waits() {
+    let mut model = Model::default();
+    let mut cmd = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![arrived_piece(60, "First")])),
+        &mut model,
+    );
+    let mut load = load_request(&mut cmd).expect("loads");
+    let _ = Intrada.update(
+        Event::Sync(SyncEvent::RecordsArrived(vec![SyncRecord {
+            id: "other".to_string(),
+            ..arrived_piece(60, "Second")
+        }])),
+        &mut model,
+    );
+    load.resolve(PersistenceOutput::Records(stored_piece(600)))
+        .expect("resolves once");
+    let loaded = cmd.events().next().expect("loaded");
+    let mut next = Intrada.update(loaded, &mut model);
+    let ops: Vec<SyncOperation> = next
+        .effects()
+        .filter_map(|e| match e {
+            Effect::Sync(req) => Some(req.operation),
+            _ => None,
+        })
+        .collect();
+    assert!(!settled(&ops));
+}
+
+// ── Rows this device cannot read ──
+
+fn piece_with_unreadable_row() -> StoredRecords {
+    StoredRecords {
+        unreadable: vec![arrived_piece(0, "x").key()],
+        ..stored_piece(0)
+    }
+}
+
+#[test]
+fn upload_everything_leaves_out_a_piece_with_a_row_it_cannot_read() {
+    let mut model = Model::default();
+    let mut cmd = Intrada.update(Event::Sync(SyncEvent::UploadEverything), &mut model);
+    let mut load = persistence_request(&mut cmd);
+    load.resolve(PersistenceOutput::Records(piece_with_unreadable_row()))
+        .expect("resolves once");
+    let loaded = cmd.events().next().expect("loaded");
+    assert!(uploads(&mut Intrada.update(loaded, &mut model)).is_empty());
+}
+
+#[test]
+fn a_piece_the_store_reported_unreadable_uploads_nothing_until_it_reads() {
+    let mut model = Model::default();
+    let mut cmd = Intrada.update(Event::Sync(SyncEvent::UploadEverything), &mut model);
+    persistence_request(&mut cmd)
+        .resolve(PersistenceOutput::Records(piece_with_unreadable_row()))
+        .expect("resolves once");
+    let loaded = cmd.events().next().expect("loaded");
+    let _ = Intrada.update(loaded, &mut model);
+    let save_uploads = |model: &mut Model| {
+        let mut cmd = persistence::save_item(model, Item::fixture("piece"));
+        persistence_request(&mut cmd)
+            .resolve(PersistenceOutput::Ack)
+            .expect("resolves once");
+        uploads(&mut cmd).len()
+    };
+    assert_eq!(save_uploads(&mut model), 0);
+
+    let _ = merge_through(
+        &mut model,
+        vec![arrived_piece(70, "Theirs")],
+        stored_piece(0),
+        PersistenceOutput::Ack,
+    );
+    assert_eq!(save_uploads(&mut model), 1, "readable again, it uploads");
 }

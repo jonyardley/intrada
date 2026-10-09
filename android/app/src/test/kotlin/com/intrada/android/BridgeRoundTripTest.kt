@@ -731,11 +731,11 @@ class BridgeRoundTripTest {
     @Test
     fun aRecordFromANewerAppIsParked() {
         val tooNew = syncRecord(99u)
-        val parked =
-            LiveBridge()
-                .update(Event.Sync(SyncEvent.RecordsArrived(listOf(tooNew))))
-                .mapNotNull { ((it.effect as? Effect.Sync)?.value as? SyncOperation.Park)?.value }
-        assertEquals(listOf(listOf(tooNew)), parked)
+        val sent =
+            LiveBridge().update(Event.Sync(SyncEvent.RecordsArrived(listOf(tooNew)))).mapNotNull {
+                (it.effect as? Effect.Sync)?.value
+            }
+        assertEquals(listOf(SyncOperation.Park(listOf(tooNew)), SyncOperation.Settled), sent)
     }
 
     private fun syncRecord(schemaVersion: UInt) =
