@@ -39,10 +39,10 @@ Strategic decisions (settled; not re-litigated here):
   truth. The app is fully functional with **no network and no account** — local
   writes always succeed. The existing Axum+Turso backend demotes from live data
   source to an **optional sync target**.
-- **Sync is the paid tier.** Free tier = a complete single-device offline app.
-  Paid tier (subscription) = multi-device sync + backup/restore. The backend
-  earns its keep as a sync/backup service, not as the data source. **Auth is
-  therefore optional** — only required to enable sync.
+- **Sync is free, through iCloud** (superseded 2026-10-03, #2353): iPhone and
+  iPad sync through the user's own iCloud, with no account and nothing to pay.
+  Paid features will be things like AI, never sync. The design is
+  `specs/icloud-sync.md`.
 - **Sync scope is deliberately small.** Single-user, multi-device,
   **last-write-wins on `updated_at` — not CRDTs**, not multi-user collaboration.
 - **Rethink as we build.** The native build is **not** a 1:1 port of the web
@@ -199,7 +199,7 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     summary** (player Slice 1, #964/#932) have since shipped, closing the
     build→practise→reflect→save loop. Next: per-item transition beats (Slice 2,
     #961); the SaveSession retry path (#974) shipped.
-- **Phase D (sync = the paid tier):** LWW sync to the Axum API (server-
+- **Phase D (superseded by `specs/icloud-sync.md`):** LWW sync to the Axum API (server-
   authoritative `updated_at`, tombstones, deterministic tiebreak — designed
   above); account/sign-in gates sync; StoreKit subscription + entitlement
   gating; backup/restore. The parked #800 error-surface folds in here. Retire
@@ -267,6 +267,10 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
   while beta/lossy; roll-our-own LWW-to-Turso is the lead, Automerge-in-the-core
   the fallback. B2 schema bakes in `updated_at` + tombstones so the choice
   stays open.
+
+- 2026-10-03: **Sync is free, through iCloud** (#2353), superseding the
+  2026-06-01 paid tier: iCloud only, iPhone and iPad, no Android sync for now.
+  The core decides every merge (`specs/icloud-sync.md`).
 
 ## YAGNI (explicitly out of scope for now)
 
