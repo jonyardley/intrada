@@ -24,10 +24,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.intrada.android.core.FeedbackReport
 import com.intrada.android.ui.components.cardSurface
+
+/** Taps and TalkBack stop at the open form, never reaching the screen beneath. */
+@Composable
+fun FeedbackLayer(
+    open: Boolean,
+    screenshot: ByteArray?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    send: (FeedbackReport) -> Unit = FeedbackReport::send,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier) {
+        Box(if (open) Modifier.clearAndSetSemantics {} else Modifier) { content() }
+        if (open) {
+            FeedbackSheet(screenshot, onDismiss, Modifier.pointerInput(Unit) {}, send)
+        }
+    }
+}
 
 /**
  * Send feedback during the beta (#598): a note, and from a shake the screen the tester was on, sent

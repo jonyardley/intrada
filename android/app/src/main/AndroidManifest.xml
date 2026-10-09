@@ -9,7 +9,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="intrada"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <!-- IntradaApplication starts Sentry, only when the build carries a DSN. -->
+        <!-- Off so the SDK's own start cannot race IntradaApplication's, which needs the DSN check (#2497). -->
         <meta-data
             android:name="io.sentry.auto-init"
             android:value="false" />
