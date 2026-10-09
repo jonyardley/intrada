@@ -23,11 +23,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -72,9 +78,11 @@ private val SWATCH_ORDER =
 @Composable
 internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<String>) {
     val faulted = form.refusal?.field
+    val focusManager = LocalFocusManager.current
+    var instrumentFocused by remember { mutableStateOf(false) }
     val query = form.instrument.trim()
     val matches =
-        if (query.isEmpty()) emptyList()
+        if (!instrumentFocused) emptyList()
         else
             instrumentNames
                 .filter {
@@ -97,6 +105,7 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
             form.instrument,
             { form.instrument = it },
             "profileEdit.instrument",
+            Modifier.onFocusChanged { instrumentFocused = it.hasFocus },
             placeholder = "e.g. Cello",
             capitalization = KeyboardCapitalization.Words,
             faulted = faulted == ProfileField.INSTRUMENT,
@@ -107,8 +116,11 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
                 match,
                 Modifier.fillMaxWidth()
                     .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button) { form.instrument = match }
-                    .testTag("profileEdit.instrument.suggestion")
+                    .clickable(onClickLabel = "Fills Instrument with $match", role = Role.Button) {
+                        form.instrument = match
+                        focusManager.clearFocus()
+                    }
+                    .testTag("suggestion.row")
                     .padding(
                         horizontal = IntradaSpacing.card,
                         vertical = IntradaSpacing.cardCompact,
@@ -174,21 +186,16 @@ private fun Swatch(
     }
 }
 
-/**
- * The instrument's match first, then every icon. Picking the match clears the choice, so the icon
- * follows the instrument again; any other pins it (#1692).
- */
 @Composable
 internal fun InstrumentIconPicker(
     suggested: InstrumentIcon,
     choice: InstrumentIcon?,
     marker: Color,
-    onChoose: (InstrumentIcon?) -> Unit,
+    onChoose: (InstrumentIcon) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shown = choice ?: suggested
-    val pick = { icon: InstrumentIcon -> onChoose(icon.takeIf { it != suggested }) }
     ScreenScaffold(
         "Icon",
         modifier,
@@ -202,7 +209,7 @@ internal fun InstrumentIconPicker(
         ) {
             if (suggested != InstrumentIcon.OTHER) {
                 SectionHeader("Matches ${suggested.tileLabel.lowercase()}")
-                IconGrid(listOf(suggested), shown, marker, pick)
+                IconGrid(listOf(suggested), shown, marker, onChoose)
                 Spacer(Modifier.size(IntradaSpacing.cardCompact))
             }
             SectionHeader("All icons")
@@ -212,7 +219,7 @@ internal fun InstrumentIconPicker(
                 },
                 shown,
                 marker,
-                pick,
+                onChoose,
             )
         }
     }

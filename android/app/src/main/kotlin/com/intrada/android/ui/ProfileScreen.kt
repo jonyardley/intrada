@@ -1,6 +1,5 @@
 package com.intrada.android.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,10 +66,7 @@ fun ProfileRoute(store: Store, modifier: Modifier = Modifier) {
     var editing by rememberSaveable { mutableStateOf(false) }
     var feedback by rememberSaveable { mutableStateOf(false) }
     when {
-        editing -> {
-            BackHandler { editing = false }
-            ProfileEditRoute(store, view.profile, onDone = { editing = false }, modifier)
-        }
+        editing -> ProfileEditRoute(store, view.profile, onDone = { editing = false }, modifier)
         feedback -> FeedbackSheet(null, onDismiss = { feedback = false }, modifier)
         else ->
             ProfileScreen(
@@ -90,7 +86,6 @@ fun ProfileRoute(store: Store, modifier: Modifier = Modifier) {
     }
 }
 
-/** Who is practising: everything shown comes from the core's profile view (#1692). */
 @Composable
 fun ProfileScreen(
     profile: ProfileView,

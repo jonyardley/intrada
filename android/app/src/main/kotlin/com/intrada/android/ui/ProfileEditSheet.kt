@@ -135,7 +135,6 @@ fun ProfileEditRoute(
     )
 }
 
-/** Name, instrument with suggestions, the icon and the eight swatches; Save sends one event. */
 @Composable
 fun ProfileEditSheet(
     form: ProfileEditState,
@@ -144,8 +143,8 @@ fun ProfileEditSheet(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler { if (form.choosingIcon) form.choosingIcon = false else onCancel() }
     if (form.choosingIcon) {
-        BackHandler { form.choosingIcon = false }
         InstrumentIconPicker(
             profile.suggestedIcon,
             form.iconChoice,

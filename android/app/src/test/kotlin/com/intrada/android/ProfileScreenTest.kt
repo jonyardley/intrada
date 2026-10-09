@@ -1,15 +1,25 @@
 package com.intrada.android
 
 import android.content.Context
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionContains
-import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.intrada.android.core.Settings
 import com.intrada.android.ui.PracticeRoute
 import com.intrada.android.ui.ProfileRoute
@@ -17,6 +27,7 @@ import com.intrada.shared.HighlighterColour
 import com.intrada.shared.InstrumentIcon
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -29,7 +40,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ProfileScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val prefs =
         RuntimeEnvironment.getApplication()
@@ -72,6 +83,9 @@ class ProfileScreenTest {
         compose
             .onNodeWithTag("profileEdit.error")
             .assertContentDescriptionContains("Name must be", substring = true)
+            .assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+            )
         compose
             .onNodeWithTag("profileEdit.name")
             .assertContentDescriptionContains("The message at the top", substring = true)
@@ -93,7 +107,7 @@ class ProfileScreenTest {
     }
 
     @Test
-    fun anIconPickedOtherThanTheMatchIsPinnedAndTheMatchUnpinsIt() = runTest {
+    fun theMatchingTileLeavesTheIconFollowingTheInstrument() = runTest {
         val store = openedStore()
         compose.setContent { ProfileRoute(store) }
 
@@ -102,20 +116,34 @@ class ProfileScreenTest {
         compose.onNodeWithTag("profileEdit.save").performClick()
         compose.onNodeWithTag("profile.edit").performClick()
         compose.onNodeWithTag("profileEdit.changeIcon").performClick()
-        compose.onNodeWithContentDescription("Harp").performScrollTo().performClick()
-        compose.onNodeWithContentDescription("Harp").assertIsSelected()
+        compose.onNodeWithContentDescription("Cello and double bass").performClick()
         compose.onNodeWithTag("iconPicker.done").performClick()
         compose.onNodeWithTag("profileEdit.save").performClick()
-        assertEquals(InstrumentIcon.HARP, checkNotNull(store.viewModel.value).profile.icon)
+
+        val profile = checkNotNull(store.viewModel.value).profile
+        assertEquals(InstrumentIcon.CELLO, profile.icon)
+        assertFalse(profile.iconChosen)
+    }
+
+    @Test
+    fun theOldInstrumentsTilePickedForANewInstrumentIsPinned() = runTest {
+        val store = openedStore()
+        compose.setContent { ProfileRoute(store) }
 
         compose.onNodeWithTag("profile.edit").performClick()
+        compose.onNodeWithTag("profileEdit.instrument").performTextInput("Cello")
+        compose.onNodeWithTag("profileEdit.save").performClick()
+        compose.onNodeWithTag("profile.edit").performClick()
+        compose.onNodeWithTag("profileEdit.instrument").performTextReplacement("Violin")
         compose.onNodeWithTag("profileEdit.changeIcon").performClick()
         compose.onNodeWithContentDescription("Cello and double bass").performClick()
         compose.onNodeWithTag("iconPicker.done").performClick()
         compose.onNodeWithTag("profileEdit.save").performClick()
+
         val profile = checkNotNull(store.viewModel.value).profile
+        assertEquals("Violin", profile.instrument)
         assertEquals(InstrumentIcon.CELLO, profile.icon)
-        assertEquals(false, profile.iconChosen)
+        assertTrue(profile.iconChosen)
     }
 
     @Test
@@ -129,6 +157,47 @@ class ProfileScreenTest {
         compose.onNodeWithTag("profileEdit.save").performClick()
 
         assertEquals("Violin", checkNotNull(store.viewModel.value).profile.instrument)
+    }
+
+    @Test
+    fun suggestionsShowOnlyWhileTheInstrumentIsBeingEdited() = runTest {
+        val store = openedStore()
+        compose.setContent { ProfileRoute(store) }
+        compose.onNodeWithTag("profile.edit").performClick()
+        compose.onNodeWithTag("profileEdit.instrument").performTextInput("Guitar")
+        compose.onNodeWithTag("profileEdit.save").performClick()
+
+        compose.onNodeWithTag("profile.edit").performClick()
+        compose.onAllNodesWithTag("suggestion.row").assertCountEquals(0)
+
+        compose.onNodeWithTag("profileEdit.instrument").performTextReplacement("")
+        compose.onAllNodesWithTag("suggestion.row").assertCountEquals(6)
+
+        compose.onNodeWithTag("profileEdit.instrument").performTextReplacement("Guita")
+        compose.onAllNodesWithTag("suggestion.row").assertCountEquals(3)
+
+        compose
+            .onNode(hasTestTag("suggestion.row") and hasText("Guitar"))
+            .performScrollTo()
+            .performClick()
+        compose.onAllNodesWithTag("suggestion.row").assertCountEquals(0)
+        compose.onNodeWithTag("profileEdit.instrument").assertTextContains("Guitar")
+    }
+
+    @Test
+    fun backFromThePickerKeepsTheEditAndBackAgainLeavesIt() = runTest {
+        val store = openedStore()
+        compose.setContent { ProfileRoute(store) }
+
+        compose.onNodeWithTag("profile.edit").performClick()
+        compose.onNodeWithTag("profileEdit.name").performTextInput("Clara")
+        compose.onNodeWithTag("profileEdit.changeIcon").performClick()
+        pressBack()
+
+        compose.onNodeWithTag("profileEdit.name").assertTextContains("Clara")
+        pressBack()
+        compose.onNodeWithTag("profile.edit").assertExists()
+        assertEquals("", checkNotNull(store.viewModel.value).profile.name)
     }
 
     @Test
@@ -154,5 +223,10 @@ class ProfileScreenTest {
         compose.onNodeWithTag("practice.profile").performClick()
 
         assertTrue(opened)
+    }
+
+    private fun pressBack() {
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
     }
 }
