@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -84,12 +85,13 @@ class ItemFormExercisesTest {
 
         compose.onNodeWithTag("itemForm.title").performTextInput("Autumn Leaves")
         openPicker()
-        write("Shell voicings")
         write("Guide tones", bpm = "999")
+        write("Shell voicings")
         compose.onNodeWithTag("exercisePicker.done").performClick()
         compose.onNodeWithTag("itemForm.confirm").performClick()
         store.settle()
-        compose.onAllNodesWithTag("itemForm.exercise.remove")[1].performScrollTo().performClick()
+        assertEquals(listOf("Tempo. $FAULT_HINT", null), rowStates())
+        compose.onAllNodesWithTag("itemForm.exercise.remove")[0].performScrollTo().performClick()
 
         assertEquals(listOf<String?>(null), rowStates())
     }
@@ -117,30 +119,56 @@ class ItemFormExercisesTest {
 
         openPicker()
         compose.onNodeWithTag("exercisePicker.row").performClick()
-        write("Shell voicings")
+        write("Shell voicings", bpm = "80", key = true)
         compose.onNodeWithTag("exercisePicker.done").performClick()
+        val before = rowTexts()
         restoration.emulateSavedInstanceStateRestore()
 
-        assertEquals(
-            listOf("Shell voicings", "Hanon No. 1"),
-            compose.onAllNodesWithTag("itemForm.exercise").fetchSemanticsNodes().map { node ->
-                node.children.firstNotNullOf {
-                    it.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text
-                }
-            },
-        )
+        assertEquals(2, before.size)
+        assertTrue("the written row shows its key and tempo", " · " in before[0][1])
+        assertEquals(before, rowTexts())
+    }
+
+    @Test
+    fun theMarkSurvivesTheActivityBeingRecreated() = runTest {
+        val store = startedStore()
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.title").performTextInput("Autumn Leaves")
+        openPicker()
+        write("Shell voicings")
+        write("Guide tones", bpm = "999")
+        compose.onNodeWithTag("exercisePicker.done").performClick()
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+        restoration.emulateSavedInstanceStateRestore()
+
+        assertEquals(listOf(null, "Tempo. $FAULT_HINT"), rowStates())
     }
 
     private fun openPicker() {
         compose.onNodeWithTag("itemForm.addExercise").performScrollTo().performClick()
     }
 
-    private fun write(title: String, bpm: String = "") {
+    private fun write(title: String, bpm: String = "", key: Boolean = false) {
         compose.onNodeWithTag("exercisePicker.create").performScrollTo().performClick()
         compose.onNodeWithTag("writtenExercise.title").performTextInput(title)
+        if (key) {
+            // The form's own key picker sits under the pop-up, so the pop-up's is the last.
+            compose.onAllNodesWithTag("itemForm.key").onLast().performClick()
+            compose.onNodeWithTag("itemForm.key.major.1").performScrollTo().performClick()
+        }
         if (bpm.isNotEmpty()) compose.onNodeWithTag("writtenExercise.bpm").performTextInput(bpm)
         compose.onNodeWithTag("writtenExercise.done").performClick()
     }
+
+    private fun rowTexts(): List<List<String>> =
+        compose.onAllNodesWithTag("itemForm.exercise").fetchSemanticsNodes().map { node ->
+            node.children.flatMap { child ->
+                child.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+            }
+        }
 
     private fun rowStates(): List<String?> =
         compose.onAllNodesWithTag("itemForm.exercise").fetchSemanticsNodes().map { node ->

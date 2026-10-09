@@ -207,27 +207,36 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     }
                 }
 
-        private fun restoredExercises(saved: Map<String, Any?>): List<StagedExercise> =
-            (0 until (saved["exerciseCount"] as? Int ?: 0)).mapNotNull { index ->
-                val title = saved["exercise.$index.title"] as? String ?: return@mapNotNull null
-                val chosen = saved["exercise.$index.chosen"] as? String
-                if (chosen != null) {
+        // All rows or none: a dropped row would shift every later one under the restored mark.
+        private fun restoredExercises(saved: Map<String, Any?>): List<StagedExercise> {
+            val rows =
+                (0 until (saved["exerciseCount"] as? Int ?: 0)).map { restoredExercise(saved, it) }
+            return if (rows.all { it != null }) rows.filterNotNull() else emptyList()
+        }
+
+        private fun restoredExercise(saved: Map<String, Any?>, index: Int): StagedExercise? {
+            val title = saved["exercise.$index.title"] as? String
+            val chosen = saved["exercise.$index.chosen"] as? String
+            val id = saved["exercise.$index.id"] as? String
+            return when {
+                title == null -> null
+                chosen != null ->
                     StagedExercise.Chosen(chosen, title, saved["exercise.$index.meta"] as? String)
-                } else {
+                id != null ->
                     StagedExercise.Written(
                         title,
                         (saved["exercise.$index.key"] as? ByteArray)?.let(Key::bincodeDeserialize),
                         (saved["exercise.$index.bpm"] as? String).orEmpty(),
-                        saved["exercise.$index.id"] as? String ?: return@mapNotNull null,
+                        id,
                     )
-                }
+                else -> null
             }
+        }
     }
 }
 
-// A refusal comes back for the form to show inline and leaves the core, so the app banner does not
-// repeat it; nothing closes until the core accepts (#1595).
-// The row a refusal names is read before the clear, which drops it with the message.
+// A refusal, and the row it names, come back for the form to show inline and leave the core, so the
+// app banner does not repeat it; nothing closes until the core accepts (#1595).
 fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}): String? {
     val accepted = sendAccepted(event)
     val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED

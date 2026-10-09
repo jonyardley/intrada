@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -49,7 +48,7 @@ internal fun ItemFormExercises(
     library: List<LibraryItemView>,
     modifier: Modifier = Modifier,
 ) {
-    var choosing by rememberSaveable { mutableStateOf(false) }
+    var choosing by remember { mutableStateOf(false) }
     Column(modifier.cardSurface()) {
         FieldLabel(
             "Related exercises",
@@ -95,13 +94,14 @@ private fun StagedExerciseRow(
     staged: StagedExercise,
     fault: FormErrorTarget.Exercise?,
     onRemove: () -> Unit,
+    tag: String = "itemForm.exercise",
 ) {
     Row(
         Modifier.fillMaxWidth()
             .height(IntrinsicSize.Min)
             .heightIn(min = 48.dp)
             .background(if (fault != null) IntradaColor.dangerWash else IntradaColor.cardFill)
-            .testTag("itemForm.exercise"),
+            .testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -130,7 +130,7 @@ private fun StagedExerciseRow(
             R.drawable.ic_minus_circle,
             "Remove ${staged.title}",
             onRemove,
-            Modifier.padding(end = IntradaSpacing.controlGap).testTag("itemForm.exercise.remove"),
+            Modifier.padding(end = IntradaSpacing.controlGap).testTag("$tag.remove"),
             tint = IntradaColor.danger,
         )
     }
@@ -168,7 +168,7 @@ private fun StagedExercisePicker(
     val written = remember {
         staged.filterIsInstance<StagedExercise.Written>().toMutableStateList()
     }
-    var writing by rememberSaveable { mutableStateOf(false) }
+    var writing by remember { mutableStateOf(false) }
     FullScreenDialog(onCancel) {
         ExercisePickerScreen(
             library,
@@ -186,7 +186,12 @@ private fun StagedExercisePicker(
         ) {
             Column(Modifier.cardSurface()) {
                 written.forEach { draft ->
-                    StagedExerciseRow(draft, null, onRemove = { written.remove(draft) })
+                    StagedExerciseRow(
+                        draft,
+                        null,
+                        onRemove = { written.remove(draft) },
+                        tag = "exercisePicker.written",
+                    )
                     HairlineDivider()
                 }
                 AddRow(
@@ -211,9 +216,9 @@ private fun StagedExercisePicker(
 
 @Composable
 private fun WrittenExerciseDialog(onCancel: () -> Unit, onDone: (StagedExercise.Written) -> Unit) {
-    var title by rememberSaveable { mutableStateOf("") }
+    var title by remember { mutableStateOf("") }
     var key by remember { mutableStateOf<Key?>(null) }
-    var bpm by rememberSaveable { mutableStateOf("") }
+    var bpm by remember { mutableStateOf("") }
     FullScreenDialog(onCancel) {
         ScreenScaffold(
             "New exercise",
