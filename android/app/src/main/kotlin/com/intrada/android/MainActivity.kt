@@ -8,6 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.intrada.android.core.ClickEngine
@@ -18,6 +21,7 @@ import com.intrada.android.core.SharedItemStore
 import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
 import com.intrada.android.ui.ClickController
+import com.intrada.android.ui.FeedbackSheet
 import com.intrada.shared.Event
 import java.util.TimeZone
 
@@ -27,6 +31,9 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
 
     /** Kept here so turning the phone neither silences the click nor loses its tempo. */
     val click = ClickController { ClickEngine(application) }
+
+    /** Kept here so turning the phone keeps a half-written note. */
+    val feedback = mutableStateOf<FeedbackRequest?>(null)
 
     override fun onCleared() = click.release()
 
@@ -64,6 +71,7 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
 
 class MainActivity : ComponentActivity() {
     private val holder: StoreHolder by viewModels()
+    private val shake by lazy { ShakeFeedback(this, holder.feedback) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +91,25 @@ class MainActivity : ComponentActivity() {
                 store.loadRecoverableSession()
             }
         }
-        setContent { AppFrame(store, click = holder.click) }
+        setContent {
+            Box {
+                AppFrame(store, click = holder.click)
+                val feedback by holder.feedback
+                feedback?.let {
+                    FeedbackSheet(it.screenshot, onDismiss = { holder.feedback.value = null })
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        shake.listen()
+    }
+
+    override fun onPause() {
+        shake.stop()
+        super.onPause()
     }
 
     companion object {

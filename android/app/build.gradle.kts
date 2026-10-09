@@ -21,6 +21,14 @@ android {
         versionName = "0.1.0"
         // The bridge is built for these two only (just android-package).
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        // Unset or not https keeps Sentry off, which is how CI and local builds run (#2497).
+        val sentryDsn =
+            providers
+                .environmentVariable("SENTRY_DSN_ANDROID")
+                .orElse(providers.gradleProperty("SENTRY_DSN_ANDROID"))
+                .getOrElse("")
+                .trim()
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
     }
 
     compileOptions {
@@ -28,7 +36,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     lint {
         warningsAsErrors = true
@@ -88,6 +99,7 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.coroutines.android)
     implementation(project(":bridge"))
+    implementation(libs.sentry.android)
 
     testImplementation(libs.jna)
     testImplementation(libs.junit)
