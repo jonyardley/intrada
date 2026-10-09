@@ -11,6 +11,8 @@ use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
 use intrada_core::domain::session::{Play, RepAction, RepEvent};
 use intrada_core::domain::{Metre, Variation};
+use intrada_core::persistence::{StoredItem, StoredRecords};
+use intrada_core::sync::{RecordKey, RecordKind};
 use intrada_core::{
     Accidental, CompletionStatus, EntryStatus, Item, ItemKind, Key, Letter, Modality,
     PersistenceOperation, PersistenceOutput, PracticeSession, SetlistEntry, Tempo,
@@ -1701,4 +1703,113 @@ fn near_miss_text_is_refused_as_a_kind_and_as_a_modality() {
             vec![format!("unknown Modality on decode: \"{raw}\"")]
         );
     }
+}
+
+// ── Sync merge (#2354) ──
+
+fn stored_records(store: &mut Store, keys: Option<Vec<RecordKey>>) -> StoredRecords {
+    let operation = match keys {
+        Some(keys) => PersistenceOperation::LoadRecords(keys),
+        None => PersistenceOperation::LoadAllRecords,
+    };
+    match store.ok(&operation) {
+        PersistenceOutput::Records(records) => records,
+        other => panic!("expected records, got {other:?}"),
+    }
+}
+
+fn item_key(id: &str) -> RecordKey {
+    RecordKey {
+        kind: RecordKind::Item,
+        id: id.into(),
+    }
+}
+
+#[test]
+fn a_merge_load_sees_deleted_pieces_and_only_the_keys_asked_for() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save(&record("kept", "Kept"));
+    store.save(&record("gone", "Gone"));
+    store.save(&record("other", "Other"));
+    store.ok(&PersistenceOperation::DeleteItem {
+        id: "gone".into(),
+        deleted_at: at("2026-02-01T00:00:00Z"),
+    });
+
+    let records = stored_records(&mut store, Some(vec![item_key("kept"), item_key("gone")]));
+
+    let mut found: Vec<(String, Option<DateTime<Utc>>)> = records
+        .items
+        .into_iter()
+        .map(|s| (s.item.id, s.deleted_at))
+        .collect();
+    found.sort();
+    assert_eq!(
+        found,
+        vec![
+            ("gone".to_string(), Some(at("2026-02-01T00:00:00Z"))),
+            ("kept".to_string(), None),
+        ]
+    );
+}
+
+#[test]
+fn a_merged_tombstone_is_stored_even_for_a_piece_never_seen_here() {
+    let mut store = Store::in_memory().expect("opens");
+    let deleted_at = at("2026-02-01T00:00:00Z");
+    let merged = StoredRecords {
+        items: vec![StoredItem {
+            item: record("theirs", "Theirs"),
+            deleted_at: Some(deleted_at),
+        }],
+        ..Default::default()
+    };
+    assert_eq!(
+        store.ok(&PersistenceOperation::ApplyMerged(merged)),
+        PersistenceOutput::Ack
+    );
+
+    assert!(store.items().is_empty());
+    let all = stored_records(&mut store, None);
+    assert_eq!(all.items[0].deleted_at, Some(deleted_at));
+}
+
+#[test]
+fn a_merged_edit_brings_back_a_piece_deleted_earlier_here() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save(&record("piece", "Old"));
+    store.ok(&PersistenceOperation::DeleteItem {
+        id: "piece".into(),
+        deleted_at: at("2026-02-01T00:00:00Z"),
+    });
+    let merged = StoredRecords {
+        items: vec![StoredItem {
+            item: record("piece", "Newer"),
+            deleted_at: None,
+        }],
+        ..Default::default()
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert_eq!(store.item("piece").title, "Newer");
+}
+
+#[test]
+fn a_merge_writes_variations_and_sessions_in_one_go() {
+    let mut store = Store::in_memory().expect("opens");
+    let variation = Variation {
+        id: "v".into(),
+        label: "Slow".into(),
+        updated_at: at(EARLY),
+        deleted_at: Some(at("2026-02-01T00:00:00Z")),
+    };
+    let merged = StoredRecords {
+        items: vec![],
+        variations: vec![variation.clone()],
+        sessions: vec![session("s", "2026-02-02T00:00:00Z")],
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert_eq!(store.variations(), vec![variation]);
+    assert_eq!(store.sessions()[0].id, "s");
 }

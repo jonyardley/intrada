@@ -12,8 +12,25 @@ pub(crate) fn load(
     tx: &Transaction,
     unreadable: &mut Unreadable,
 ) -> Result<Vec<PracticeSession>, StoreError> {
-    let mut stmt =
-        tx.prepare("SELECT * FROM session WHERE deleted_at IS NULL ORDER BY completed_at DESC")?;
+    load_rows(tx, "WHERE deleted_at IS NULL", unreadable)
+}
+
+/// Tombstones included, for the sync merge (`specs/icloud-sync.md`).
+pub(crate) fn load_with_tombstones(
+    tx: &Transaction,
+    unreadable: &mut Unreadable,
+) -> Result<Vec<PracticeSession>, StoreError> {
+    load_rows(tx, "", unreadable)
+}
+
+fn load_rows(
+    tx: &Transaction,
+    filter: &str,
+    unreadable: &mut Unreadable,
+) -> Result<Vec<PracticeSession>, StoreError> {
+    let mut stmt = tx.prepare(&format!(
+        "SELECT * FROM session {filter} ORDER BY completed_at DESC"
+    ))?;
     let mut rows = stmt.query([])?;
     let mut sessions = Vec::new();
     while let Some(row) = rows.next()? {

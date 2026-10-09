@@ -79,6 +79,7 @@ pub struct Model {
     /// The library's variations, tombstones included (#2246).
     pub variations: Tracked<Vec<crate::domain::variation::Variation>>,
     pub variations_sync: crate::persistence::ListSync,
+    pub sync: crate::sync::SyncState,
 }
 
 static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);

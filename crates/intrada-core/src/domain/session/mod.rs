@@ -240,6 +240,24 @@ impl SetlistEntry {
 }
 
 #[cfg(test)]
+impl PracticeSession {
+    pub(crate) fn fixture(id: &str) -> Self {
+        let at = DateTime::<Utc>::from_timestamp(1_790_000_000, 0).expect("fixed time");
+        Self {
+            id: id.to_string(),
+            entries: Vec::new(),
+            session_notes: None,
+            started_at: at,
+            completed_at: at,
+            total_duration_secs: 0,
+            completion_status: CompletionStatus::Completed,
+            session_score: None,
+            capture_version: Some(CAPTURE_VERSION),
+        }
+    }
+}
+
+#[cfg(test)]
 impl Play {
     pub(crate) fn fixture() -> Self {
         Self {

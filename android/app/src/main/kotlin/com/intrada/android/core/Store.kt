@@ -101,6 +101,8 @@ class Store(
                         bridged { bridge.resolve(request.id, RecognitionOutput.Failed) }.orEmpty()
                     )
                 }
+                // Android has no sync for now (#2353).
+                is Effect.Sync -> Unit
             }
         }
     }

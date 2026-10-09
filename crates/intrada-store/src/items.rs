@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection};
+use intrada_core::persistence::StoredItem;
 use intrada_core::{Item, Key, Tempo};
 use rusqlite::{params, OptionalExtension, Row, Transaction};
 use serde::de::DeserializeOwned;
@@ -18,24 +19,63 @@ use crate::codec::{
 use crate::StoreError;
 
 pub(crate) fn load(tx: &Transaction, unreadable: &mut Unreadable) -> Result<Vec<Item>, StoreError> {
+    Ok(load_rows(tx, "WHERE deleted_at IS NULL", unreadable)?
+        .into_iter()
+        .map(|stored| stored.item)
+        .collect())
+}
+
+/// Tombstones included, for the sync merge (`specs/icloud-sync.md`).
+pub(crate) fn load_with_tombstones(
+    tx: &Transaction,
+    unreadable: &mut Unreadable,
+) -> Result<Vec<StoredItem>, StoreError> {
+    load_rows(tx, "", unreadable)
+}
+
+fn load_rows(
+    tx: &Transaction,
+    filter: &str,
+    unreadable: &mut Unreadable,
+) -> Result<Vec<StoredItem>, StoreError> {
     let mut sections = sections_by_item(tx, unreadable)?;
     let mut links = links_by_piece(tx, unreadable)?;
-    let mut stmt =
-        tx.prepare("SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC")?;
+    let mut stmt = tx.prepare(&format!(
+        "SELECT * FROM item {filter} ORDER BY created_at DESC"
+    ))?;
     let mut rows = stmt.query([])?;
     let mut items = Vec::new();
     while let Some(row) = rows.next()? {
         let id: String = row.get("id")?;
         let item_sections = sections.remove(&id).unwrap_or_default();
         let item_links = links.remove(&id).unwrap_or_default();
-        match item(row, item_sections, item_links, unreadable) {
-            Ok(item) => items.push(item),
+        let read = item(row, item_sections, item_links, unreadable).and_then(|item| {
+            Ok(StoredItem {
+                item,
+                deleted_at: optional_time(row, "deleted_at")?,
+            })
+        });
+        match read {
+            Ok(stored) => items.push(stored),
             // Skipped, not defaulted: the row stays on disk untouched, since no
             // save names an item the core never loaded.
             Err(reason) => unreadable.push(format!("item {id} skipped: {reason}")),
         }
     }
     Ok(items)
+}
+
+/// The merge's copy, its tombstone written exactly as it arrived.
+pub(crate) fn put_merged(
+    tx: &Transaction,
+    stored: &StoredItem,
+    unreadable: &mut Unreadable,
+) -> Result<(), StoreError> {
+    upsert(tx, &stored.item, unreadable)?;
+    if let Some(deleted_at) = &stored.deleted_at {
+        delete(tx, &stored.item.id, deleted_at)?;
+    }
+    Ok(())
 }
 
 fn item(
