@@ -46,7 +46,7 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
     override fun run(operation: PersistenceOperation): PersistenceOutput {
         val answer = store.handle(operation.bincodeSerialize())
         answer.unreadable.forEach { log("store could not read: $it") }
-        answer.error?.let { log("persistence failed: $it") }
+        answer.error?.let { throw StoreFailure(it) }
         return PersistenceOutput.bincodeDeserialize(answer.output)
     }
 
@@ -55,20 +55,32 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
          * A file that will not open, or a migration that panics on it, falls back to memory so the
          * app still launches; `degraded` says nothing will be kept.
          */
-        fun open(path: String, log: (String) -> Unit): Opened =
+        fun open(
+            path: String,
+            log: (String) -> Unit,
+            reporter: Reporter = SentryReporter,
+        ): Opened =
             try {
                 Opened(SharedItemStore(StoreFfi.open(path), log), degraded = false)
             } catch (e: CoreException) {
-                inMemory("store did not open, keeping nothing: $e", log)
+                inMemory(e, "store did not open, keeping nothing", log, reporter)
             } catch (e: InternalException) {
-                inMemory("store panicked opening, keeping nothing: $e", log)
+                inMemory(e, "store panicked opening, keeping nothing", log, reporter)
             }
 
-        private fun inMemory(reason: String, log: (String) -> Unit): Opened {
-            log(reason)
+        private fun inMemory(
+            error: Exception,
+            reason: String,
+            log: (String) -> Unit,
+            reporter: Reporter,
+        ): Opened {
+            log("$reason: $error")
+            reporter.report(error, "store-open")
             return Opened(SharedItemStore(StoreFfi.inMemory(), log), degraded = true)
         }
     }
 
     class Opened(val store: SharedItemStore, val degraded: Boolean)
 }
+
+class StoreFailure(reason: String) : Exception(reason)
