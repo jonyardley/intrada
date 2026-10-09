@@ -15,6 +15,7 @@ import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,7 @@ class Store(
     /** The database did not open, so nothing is kept; the shell warns (#2428). */
     val degraded: Boolean = false,
     private val reporter: Reporter = SentryReporter,
+    private val pageReader: PageReader = PageReader.Unavailable,
 ) {
     private val _viewModel = MutableStateFlow<ViewModel?>(null)
     val viewModel: StateFlow<ViewModel?> = _viewModel.asStateFlow()
@@ -95,12 +97,22 @@ class Store(
                         }
                 is Effect.App -> handleAppEffect(effect.value)
                 is Effect.Persistence -> enqueueDiskJob(effect.value, request.id)
-                is Effect.Recognition -> {
-                    log("recognition is not built on Android yet; answering Failed")
-                    process(
-                        bridged { bridge.resolve(request.id, RecognitionOutput.Failed) }.orEmpty()
-                    )
-                }
+                is Effect.Recognition ->
+                    scope.launch {
+                        val output =
+                            withContext(io) {
+                                try {
+                                    pageReader.read(effect.value)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    log("page reading failed: $e")
+                                    reporter.report(e, "page-recognition")
+                                    RecognitionOutput.Failed
+                                }
+                            }
+                        process(bridged { bridge.resolve(request.id, output) }.orEmpty())
+                    }
             }
         }
     }
