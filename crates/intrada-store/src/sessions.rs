@@ -12,21 +12,23 @@ pub(crate) fn load(
     tx: &Transaction,
     unreadable: &mut Unreadable,
 ) -> Result<Vec<PracticeSession>, StoreError> {
-    load_rows(tx, "WHERE deleted_at IS NULL", unreadable)
+    load_rows(tx, "WHERE deleted_at IS NULL", unreadable, &mut Vec::new())
 }
 
 /// Tombstones included, for the sync merge (`specs/icloud-sync.md`).
 pub(crate) fn load_with_tombstones(
     tx: &Transaction,
     unreadable: &mut Unreadable,
+    skipped: &mut Vec<String>,
 ) -> Result<Vec<PracticeSession>, StoreError> {
-    load_rows(tx, "", unreadable)
+    load_rows(tx, "", unreadable, skipped)
 }
 
 fn load_rows(
     tx: &Transaction,
     filter: &str,
     unreadable: &mut Unreadable,
+    skipped: &mut Vec<String>,
 ) -> Result<Vec<PracticeSession>, StoreError> {
     let mut stmt = tx.prepare(&format!(
         "SELECT * FROM session {filter} ORDER BY completed_at DESC"
@@ -46,7 +48,10 @@ fn load_rows(
                 unreadable.extend(read.unreadable);
                 sessions.push(read.session);
             }
-            Err(reason) => unreadable.push(format!("session {id} skipped: {reason}")),
+            Err(reason) => {
+                unreadable.push(format!("session {id} skipped: {reason}"));
+                skipped.push(id);
+            }
         }
     }
     Ok(sessions)
@@ -103,6 +108,14 @@ pub(crate) fn load_variations(
     tx: &Transaction,
     unreadable: &mut Unreadable,
 ) -> Result<Vec<Variation>, StoreError> {
+    variation_rows(tx, unreadable, &mut Vec::new())
+}
+
+pub(crate) fn variation_rows(
+    tx: &Transaction,
+    unreadable: &mut Unreadable,
+    skipped: &mut Vec<String>,
+) -> Result<Vec<Variation>, StoreError> {
     let mut stmt = tx.prepare("SELECT * FROM variation ORDER BY rowid")?;
     let mut rows = stmt.query([])?;
     let mut variations = Vec::new();
@@ -110,7 +123,10 @@ pub(crate) fn load_variations(
         let id: String = row.get("id")?;
         match variation(row) {
             Some(v) => variations.push(v),
-            None => unreadable.push(format!("variation {id} skipped: a column did not read")),
+            None => {
+                unreadable.push(format!("variation {id} skipped: a column did not read"));
+                skipped.push(id);
+            }
         }
     }
     Ok(variations)

@@ -21,6 +21,8 @@ import com.intrada.shared.ItemSection
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.RecognitionOutput
+import com.intrada.shared.RecordKey
+import com.intrada.shared.RecordKind
 import com.intrada.shared.Request
 import com.intrada.shared.SectionKind
 import com.intrada.shared.ViewModel
@@ -244,6 +246,24 @@ class StoreTest {
         val broken = Fixtures.item().copy(sections = listOf(unstorable))
 
         assertThrows(StoreFailure::class.java) { items.run(PersistenceOperation.SaveItem(broken)) }
+    }
+
+    @Test
+    fun theInMemoryStoreKeepsTombstonesAndLoadsOnlyTheKeysAskedFor() {
+        val store = InMemoryItemStore(Fixtures.library)
+        val gone = Fixtures.library[0].id
+        store.run(PersistenceOperation.DeleteItem(gone, "2026-09-02T09:00:00Z"))
+
+        val records =
+            store.run(
+                PersistenceOperation.LoadRecords(
+                    listOf(RecordKey(RecordKind.ITEM, gone), RecordKey(RecordKind.ITEM, "absent"))
+                )
+            ) as PersistenceOutput.Records
+        assertEquals(listOf(gone), records.value.items.map { it.item.id })
+        assertEquals(listOf("2026-09-02T09:00:00Z"), records.value.items.map { it.deletedAt })
+        val live = store.run(PersistenceOperation.LoadItems) as PersistenceOutput.Items
+        assertFalse(live.value.any { it.id == gone })
     }
 
     private fun TestScope.store(

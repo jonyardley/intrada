@@ -58,6 +58,9 @@ pub struct StoredRecords {
     pub items: Vec<StoredItem>,
     pub variations: Vec<Variation>,
     pub sessions: Vec<PracticeSession>,
+    /// Asked for but on disk in a shape this app cannot read, so a merge must
+    /// not write over them.
+    pub unreadable: Vec<RecordKey>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -85,6 +88,7 @@ pub struct ListSync {
     loads_out: u32,
     stale: bool,
     loaded: bool,
+    generation: u64,
 }
 
 #[derive(Debug, PartialEq)]
@@ -97,6 +101,7 @@ pub enum Landed {
 impl ListSync {
     fn write_sent(&mut self) {
         self.writes_out += 1;
+        self.generation += 1;
         if self.loads_out > 0 {
             self.stale = true;
         }
@@ -295,6 +300,16 @@ fn touched(records: &StoredRecords) -> Vec<RecordKind> {
     .into_iter()
     .filter_map(|(kind, empty)| (!empty).then_some(kind))
     .collect()
+}
+
+/// Moves on with every write sent on the list, so a merge can tell that its
+/// stored copy may be out of date.
+pub fn write_generation(model: &Model, kind: RecordKind) -> u64 {
+    match kind {
+        RecordKind::Item => model.items_sync.generation,
+        RecordKind::Variation => model.variations_sync.generation,
+        RecordKind::Session => model.sessions_sync.generation,
+    }
 }
 
 fn list_sync(model: &mut Model, kind: RecordKind) -> &mut ListSync {

@@ -683,7 +683,9 @@ class BridgeRoundTripTest {
             bridge
                 .resolve(
                     load.id,
-                    PersistenceOutput.Records(StoredRecords(emptyList(), emptyList(), emptyList())),
+                    PersistenceOutput.Records(
+                        StoredRecords(emptyList(), emptyList(), emptyList(), emptyList())
+                    ),
                 )
                 .mapNotNull {
                     ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.ApplyMerged)
@@ -693,6 +695,37 @@ class BridgeRoundTripTest {
         val items: List<StoredItem> = written.items
         assertEquals(listOf("Etude"), items.map { it.item.title })
         assertEquals(listOf(null), items.map { it.deletedAt })
+    }
+
+    @Test
+    fun anArrivalForARowThisAppCannotReadIsParkedNotWritten() {
+        val bridge = LiveBridge()
+        val arrived = syncRecord(1u)
+        val load =
+            bridge.update(Event.Sync(SyncEvent.RecordsArrived(listOf(arrived)))).single {
+                (it.effect as? Effect.Persistence)?.value is PersistenceOperation.LoadRecords
+            }
+        val answered =
+            bridge.resolve(
+                load.id,
+                PersistenceOutput.Records(
+                    StoredRecords(
+                        emptyList(),
+                        emptyList(),
+                        emptyList(),
+                        listOf(RecordKey(RecordKind.ITEM, "piece")),
+                    )
+                ),
+            )
+        assertEquals(
+            listOf(listOf(arrived)),
+            answered.mapNotNull { ((it.effect as? Effect.Sync)?.value as? SyncOperation.Park)?.value },
+        )
+        assertTrue(
+            answered.none {
+                (it.effect as? Effect.Persistence)?.value is PersistenceOperation.ApplyMerged
+            }
+        )
     }
 
     @Test

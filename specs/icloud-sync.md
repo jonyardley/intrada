@@ -11,8 +11,8 @@ Each device is its own notebook. #2353 decided on 3 October 2026 that iPhone
 and iPad sync through the musician's own iCloud, free, with no account. When
 two devices change the same piece while apart, something has to pick the copy
 both keep, and both devices must pick the same one. Nothing in the core merges
-two devices' copies today: `reconcile_sections` and `reconcile_variants` merge
-one edit into one device's list.
+two devices' copies today: `reconcile_sections` merges one edit into one
+device's list.
 
 The merge is the riskiest part of sync, so it lands first, on its own, with
 the iOS engine only carrying records to and from iCloud.
@@ -33,7 +33,9 @@ copy it into every one.
 
 A whole piece wins or loses together. A section edit on the iPad and a title
 edit on the iPhone, both offline, keep whichever was later. Merging section by
-section would add record kinds before anyone has hit the case.
+section would add record kinds before anyone has hit the case. A section or
+exercise link only the losing device has is deleted (soft, stamped with the
+winner's change time), so the losing device ends with the winner's piece.
 
 Sessions are never edited or deleted today, so two copies of one session never
 differ. The record carries `deleted_at` anyway, for when they can be.
@@ -59,9 +61,10 @@ device's records, and positional bincode cannot decode a shape with a field
 added (the reason stored sessions are JSON, #2234). A field added to a synced
 type takes `#[serde(default)]`, never `skip_serializing_if` (#846).
 
-`SCHEMA_VERSION` starts at 1. A test pins each kind's body for a fixture; a
-change to any synced type fails it, and the fix is to bump `SCHEMA_VERSION`,
-then re-pin.
+`SCHEMA_VERSION` starts at 1. A test pins each kind's body for a fixture with
+every optional field set and every list holding one, down to a play's taps. A
+field added, renamed or removed anywhere in a synced type fails it, and the fix
+is to bump `SCHEMA_VERSION`, then re-pin. A new enum variant does not fail it.
 
 ## The merge
 
@@ -83,7 +86,9 @@ body, so a stale edit from a device that was off for a week loses to it.
 
 **Built-in variations** (Hands separately and the rest) are seeded with a
 fixed early `updated_at`, not the seeding time. Seeded at "now", a new iPad
-would overwrite a rename made on the iPhone yesterday.
+would overwrite a rename made on the iPhone yesterday. For #2355: a fresh
+device's upload of those seeded rows, stamped at the epoch, goes through the
+same conflict path as any upload and never overwrites a newer iCloud copy.
 
 Clocks are trusted. A device whose clock is wrong can win when it should not;
 single user, accepted.
@@ -109,9 +114,11 @@ pub enum SyncEvent {               // Event::Sync
 
 New persistence operations, run by `intrada-store`, so neither shell changes:
 
-- `LoadRecords(Vec<RecordKey>)`: the stored copies, tombstones included.
+- `LoadRecords(Vec<RecordKey>)`: the stored copies, tombstones included, and
+  in `StoredRecords::unreadable` the named rows this app cannot read (a piece
+  counts when one of its sections or links will not read).
 - `LoadAllRecords`: every item, variation and session, tombstones included.
-- `ApplyMerged(MergedRecords)`: the winners, in one transaction, writing
+- `ApplyMerged(StoredRecords)`: the winners, in one transaction, writing
   `deleted_at` exactly as given (the ordinary saves clear it).
 
 ## The flow
@@ -123,10 +130,26 @@ uploaded, and nothing uploads while sync is paused.
 
 **Records arrive.** Newer-app records go straight to `Park`. The core loads the
 stored copies of the rest, decides each, writes the winners in one
-`ApplyMerged`, and reloads the lists it changed. A parked record that now
-decodes is unparked. A failed merge write shows the storage error, like any
-refused write. A body that will not decode at a version the app knows is
-parked too, so it is never uploaded over.
+`ApplyMerged`, and reloads the lists it changed. A failed merge write shows the
+storage error, like any refused write. A body that will not decode at a version
+the app knows is parked too, so it is never uploaded over, and so is an arrival
+whose stored row this app cannot read, so the merge never writes over it.
+
+One merge runs at a time. A batch arriving mid-merge waits in the core and
+starts when the merge's write lands, acknowledged or refused, or when the merge
+ends with nothing to write. If a local save on a list the batch touches is sent
+after the stored copies were asked for, the core asks for them again rather
+than decide on a copy the save may have changed.
+
+A parked id is unparked by an arrival as late as the parked copy or later:
+taken, once the merge write is acknowledged; kept, at once, with the local copy
+uploaded, since it was held back while parked. An earlier arrival is decided
+as usual and the id stays parked.
+
+**The change token (#2355).** The shell must not advance its iCloud change
+token past a batch until that batch's merge write comes back acknowledged. The
+core does not retry a refused merge; fetching the batch again is how it is
+retried.
 
 **First upload.** `UploadEverything` uploads every record, tombstones
 included, for #2355's first sync on a device.
@@ -154,7 +177,11 @@ they live in `intrada-store`.
 - The core flow: an acknowledged save uploads, a refused one does not; an
   arrived record loads, writes and reloads; a parked id is not uploaded.
 - The store: `ApplyMerged` keeps a tombstone, and an arrived tombstone for a
-  piece this device never had is still stored.
+  piece this device never had is still stored; a winning piece deletes the
+  sections and links only the losing device had; `LoadRecords` names the rows
+  it could not read.
+- Races: a save sent while the stored copy loads makes the merge load again; a
+  batch arriving mid-merge waits and merges after.
 - `LiveBridge` for the new event and effect shapes (#846), and Android's
   `BridgeRoundTripTest`.
 

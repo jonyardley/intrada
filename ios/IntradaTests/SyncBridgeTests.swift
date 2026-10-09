@@ -28,7 +28,9 @@ struct SyncBridgeTests {
     #expect(load.1 == [RecordKey(kind: .item, id: "piece")])
 
     let merged = try bridge.resolve(
-      load.0, persistenceOutput: .records(StoredRecords(items: [], variations: [], sessions: [])))
+      load.0,
+      persistenceOutput: .records(
+        StoredRecords(items: [], variations: [], sessions: [], unreadable: [])))
     let written = merged.compactMap { request -> StoredRecords? in
       if case .persistence(.applyMerged(let records)) = request.effect { return records }
       return nil
@@ -36,6 +38,34 @@ struct SyncBridgeTests {
     let items: [StoredItem] = written.first?.items ?? []
     #expect(items.map(\.item.title) == ["Etude"])
     #expect(items.map(\.deletedAt) == [nil])
+  }
+
+  @Test func anArrivalForARowThisAppCannotReadIsParkedNotWritten() throws {
+    let bridge = LiveBridge()
+    let arrived = record()
+    let requests = try bridge.update(.sync(.recordsArrived([arrived])))
+    let loadId = try #require(
+      requests.compactMap { request -> UInt32? in
+        if case .persistence(.loadRecords) = request.effect { return request.id }
+        return nil
+      }.first)
+
+    let answered = try bridge.resolve(
+      loadId,
+      persistenceOutput: .records(
+        StoredRecords(
+          items: [], variations: [], sessions: [],
+          unreadable: [RecordKey(kind: .item, id: "piece")])))
+    let parked = answered.compactMap { request -> [SyncRecord]? in
+      if case .sync(.park(let records)) = request.effect { return records }
+      return nil
+    }
+    #expect(parked == [[arrived]])
+    #expect(
+      !answered.contains { request in
+        if case .persistence(.applyMerged) = request.effect { return true }
+        return false
+      })
   }
 
   @Test func aRecordFromANewerAppIsParkedAndNeverResolved() throws {

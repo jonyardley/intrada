@@ -399,7 +399,6 @@ impl Intrada {
                     persistence::variations_load_ended(model, crux_core::render::render())
                 }
             },
-            Event::Sync(event) => crate::sync::update(event, model),
             Event::VariationsStoreWritten(output) => {
                 let refused = matches!(output, PersistenceOutput::Failed);
                 let shown = match output {
@@ -422,6 +421,7 @@ impl Intrada {
                     shown
                 }
             }
+            Event::Sync(event) => crate::sync::update(event, model),
         }
     }
 }
