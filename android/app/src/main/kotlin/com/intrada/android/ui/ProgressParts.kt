@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.intrada.android.R
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.android.ui.components.dropShadow
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.ConsistencyWeekView
 import java.util.Locale
@@ -156,10 +157,15 @@ internal fun ConsistencyBars(weeks: List<ConsistencyWeekView>, modifier: Modifie
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                val bar = RoundedCornerShape(5.dp)
                 Box(
                     Modifier.fillMaxWidth()
                         .height(maxOf(BAR_MIN, BAR_MAX * (week.minutes.toFloat() / peak)))
-                        .clip(RoundedCornerShape(5.dp))
+                        .then(
+                            if (week.isCurrent) Modifier.dropShadow(IntradaShadow.glow, bar)
+                            else Modifier
+                        )
+                        .clip(bar)
                         .background(
                             if (week.isCurrent) IntradaGradient.inkBar
                             else SolidColor(IntradaColor.consistencyTrack)
@@ -206,11 +212,12 @@ internal fun SolidCountRow(
         Row(horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
             BasicText(
                 title,
-                Modifier.weight(1f),
+                Modifier.weight(1f).alignByBaseline(),
                 style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink),
             )
             BasicText(
                 trailing,
+                Modifier.alignByBaseline(),
                 style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
             )
         }

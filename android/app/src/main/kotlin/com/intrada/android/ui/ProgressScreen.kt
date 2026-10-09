@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -30,7 +31,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
 import com.intrada.android.core.Store
-import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.AnalyticsView
 import com.intrada.shared.Event
@@ -144,7 +144,7 @@ private fun Section(
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
-        if (trailing == null) FieldLabel(title) else SectionHeader(title, trailing = trailing)
+        SectionHeader(title, trailing = trailing)
         content()
     }
 }
@@ -182,7 +182,8 @@ private fun ProgressEmpty(onBuild: () -> Unit) {
         Box(
             Modifier.fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .background(IntradaColor.marker, RoundedCornerShape(IntradaRadius.card))
+                .clip(RoundedCornerShape(IntradaRadius.card))
+                .background(IntradaColor.marker)
                 .clickable(role = Role.Button, onClick = onBuild)
                 .testTag("progress.empty.build")
                 .padding(vertical = IntradaSpacing.card),

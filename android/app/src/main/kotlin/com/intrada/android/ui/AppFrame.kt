@@ -114,7 +114,7 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
                     store,
                     onBuild = {
                         navController.select(AppTab.PRACTICE)
-                        navController.navigate(BUILD_ROUTE)
+                        navController.navigate(BUILD_ROUTE) { launchSingleTop = true }
                     },
                 )
             }
