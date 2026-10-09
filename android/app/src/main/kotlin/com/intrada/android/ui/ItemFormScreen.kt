@@ -60,6 +60,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
 
     /** The page the fields were read off, kept on the piece so it is not photographed twice. */
     var photoId by mutableStateOf<String?>(null)
+    var filledFrom by mutableStateOf<String?>(null)
 
     /**
      * Fields still holding the page's read, and whether that read was weak. Typing takes a field
@@ -233,6 +234,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                         "error" to form.formError,
                         "fault" to form.faultedExercise?.bincodeSerialize(),
                         "photo" to form.photoId,
+                        "filledFrom" to form.filledFrom,
                         "readFields" to ArrayList(form.readFrom.keys.map { it.name }),
                         "readWeak" to form.readFrom.values.toBooleanArray(),
                     ) + savedExercises(form.exercises)
@@ -267,6 +269,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                 formError = saved["error"] as? String
                 exercises.addAll(restoredExercises(saved))
                 photoId = saved["photo"] as? String
+                filledFrom = saved["filledFrom"] as? String
                 val weak = saved["readWeak"] as? BooleanArray ?: BooleanArray(0)
                 strings("readFields").forEachIndexed { index, name ->
                     val field = FormReadField.entries.firstOrNull { it.name == name }
@@ -348,7 +351,11 @@ fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modif
     // Keyed on the projection, not the draft: a rescan of the same page reads to an equal draft.
     DisposableEffect(recognition) {
         recognition?.photoId?.let { form.photoId = it }
-        recognition?.draft?.let(form::fill)
+        val draft = recognition?.draft
+        if (draft != null && recognition.photoId != form.filledFrom) {
+            form.fill(draft)
+            form.filledFrom = recognition.photoId
+        }
         onDispose {}
     }
     val activity = LocalActivity.current

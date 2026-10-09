@@ -46,6 +46,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
@@ -63,10 +65,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * The way into recognition on the add form (#2479): photograph the page, and the form arrives
- * holding what could be read off it. Above the fields, not among them.
- */
 @Composable
 fun ScanPageEntry(
     recognition: PhotoRecognitionView,
@@ -77,6 +75,11 @@ fun ScanPageEntry(
     val context = LocalContext.current
     val photos = remember(context) { PhotoFiles.of(context) }
     val scope = rememberCoroutineScope()
+    val canScan =
+        remember(context) {
+            GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) ==
+                ConnectionResult.SUCCESS
+        }
     var failure by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun keep(source: Uri?) {
@@ -90,6 +93,9 @@ fun ScanPageEntry(
                         SentryReporter.report(e, "photo write")
                         null
                     } catch (e: SecurityException) {
+                        SentryReporter.report(e, "photo write")
+                        null
+                    } catch (e: IllegalArgumentException) {
                         SentryReporter.report(e, "photo write")
                         null
                     }
@@ -145,6 +151,7 @@ fun ScanPageEntry(
             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         },
         modifier = modifier,
+        canScan = canScan,
     )
 }
 
@@ -156,6 +163,7 @@ internal fun ScanPageCard(
     onScan: () -> Unit,
     onChoose: () -> Unit,
     modifier: Modifier = Modifier,
+    canScan: Boolean = true,
 ) {
     Column(modifier.fillMaxWidth().cardSurface()) {
         if (failure != null) {
@@ -178,7 +186,7 @@ internal fun ScanPageCard(
                 Modifier.padding(horizontal = IntradaSpacing.controlGap),
                 horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
             ) {
-                TextAction("Scan the page", "itemForm.scan", onScan)
+                if (canScan) TextAction("Scan the page", "itemForm.scan", onScan)
                 TextAction("Choose a photo", "itemForm.choosePhoto", onChoose)
             }
         }
@@ -259,7 +267,6 @@ private fun outcome(status: PhotoRecognitionStatus, readNothing: Boolean): Strin
         else -> "Scanned page"
     }
 
-/** Under a field still holding the page's read; a weak read dims its icon, as on the iPhone. */
 @Composable
 internal fun FieldMark(weak: Boolean, modifier: Modifier = Modifier) {
     val spoken =

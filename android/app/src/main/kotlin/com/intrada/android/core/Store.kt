@@ -15,6 +15,7 @@ import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -102,6 +103,8 @@ class Store(
                             withContext(io) {
                                 try {
                                     pageReader.read(effect.value)
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (e: Exception) {
                                     log("page reading failed: $e")
                                     reporter.report(e, "page-recognition")

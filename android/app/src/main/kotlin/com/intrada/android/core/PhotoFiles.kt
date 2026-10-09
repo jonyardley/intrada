@@ -44,10 +44,16 @@ class PhotoFiles(private val directory: File) {
         val destination = checkNotNull(file(photoId)) { "minted an id that is not a ulid" }
         directory.mkdirs()
         val partial = File(directory, "$photoId.partial")
-        val encoded =
-            partial.outputStream().use { decoded.compress(Bitmap.CompressFormat.JPEG, QUALITY, it) }
-        if (!encoded || !partial.renameTo(destination))
-            throw IOException("could not keep the photo")
+        try {
+            val encoded =
+                partial.outputStream().use {
+                    decoded.compress(Bitmap.CompressFormat.JPEG, QUALITY, it)
+                }
+            if (!encoded || !partial.renameTo(destination))
+                throw IOException("could not keep the photo")
+        } finally {
+            partial.delete()
+        }
         return photoId
     }
 
@@ -60,7 +66,7 @@ class PhotoFiles(private val directory: File) {
         file(photoId)?.takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path, options) }
 
     companion object {
-        /** A page stays readable zoomed at this size, as on the iPhone. */
+        /** A page stays readable zoomed at this size. */
         const val LONGEST_EDGE = 2048
         const val QUALITY = 80
         private const val THUMBNAIL_SAMPLE = 8
