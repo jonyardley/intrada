@@ -18,9 +18,7 @@ android {
         applicationId = "com.intrada.android"
         minSdk = 28
         targetSdk = 36
-        // The release workflow sets the code from its run number (#2499). The name is the tag, or
-        // else the iPhone app's version, so Sentry files no build under a release nobody cut
-        // (#1961).
+        // Name: the tag, else the iPhone app's, so no build reports under a release never cut (#1961).
         versionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toInt() ?: 1
         versionName =
             providers
