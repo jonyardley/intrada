@@ -7,6 +7,7 @@ plugins {
 }
 
 val generated = rootProject.layout.projectDirectory.dir("generated")
+val iosProject = rootProject.layout.projectDirectory.file("../ios/project.yml")
 
 android {
     namespace = "com.intrada.android"
@@ -17,9 +18,20 @@ android {
         applicationId = "com.intrada.android"
         minSdk = 28
         targetSdk = 36
-        // The release workflow sets both (#2499): the run number, and the tag without its v.
+        // The release workflow sets the code from its run number (#2499). The name is the tag, or
+        // else the iPhone app's version, so Sentry files no build under a release nobody cut
+        // (#1961).
         versionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toInt() ?: 1
-        versionName = providers.environmentVariable("ANDROID_VERSION_NAME").getOrElse("0.1.0")
+        versionName =
+            providers
+                .environmentVariable("ANDROID_VERSION_NAME")
+                .orElse(
+                    providers.fileContents(iosProject).asText.map {
+                        Regex("""MARKETING_VERSION: "([0-9.]+)"""").find(it)?.groupValues?.get(1)
+                            ?: error("no MARKETING_VERSION in ios/project.yml")
+                    }
+                )
+                .get()
         // The bridge is built for these two only (just android-package).
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         // Unset or not https keeps Sentry off, which is how CI and local builds run (#2497).

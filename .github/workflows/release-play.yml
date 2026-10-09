@@ -43,7 +43,7 @@ jobs:
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           SENTRY_DSN_ANDROID: ${{ secrets.SENTRY_DSN_ANDROID }}
-          UPLOAD: ${{ github.ref_type == 'tag' || inputs.upload }}
+          UPLOAD: ${{ github.event_name == 'push' || inputs.upload }}
         run: |
           missing=()
           for name in ANDROID_UPLOAD_KEYSTORE_BASE64 ANDROID_UPLOAD_KEYSTORE_PASSWORD ANDROID_UPLOAD_KEY_ALIAS ANDROID_UPLOAD_KEY_PASSWORD; do
@@ -65,7 +65,7 @@ jobs:
               echo "Sentry DSN present: this build will report crashes."
               ;;
             *)
-              if [ "${{ github.ref_type }}" = "tag" ]; then
+              if [ "${{ github.event_name }}" = "push" ]; then
                 echo "::error::SENTRY_DSN_ANDROID is unset or is not an https DSN, so this build would ship with Sentry off. Set it with: gh secret set SENTRY_DSN_ANDROID"
                 exit 1
               fi
@@ -108,7 +108,7 @@ jobs:
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           SENTRY_DSN_ANDROID: ${{ secrets.SENTRY_DSN_ANDROID }}
           ANDROID_VERSION_CODE: ${{ github.run_number }}
-          # Tag without its v; on a branch dispatch the Gradle default stands.
+          # Tag without its v; on a branch dispatch Gradle reads ios/project.yml (#1961).
           ANDROID_VERSION_NAME: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
           set -euo pipefail
@@ -116,9 +116,10 @@ jobs:
           [ -n "$ANDROID_VERSION_NAME" ] || unset ANDROID_VERSION_NAME
           export ANDROID_VERSION_NAME
           export ANDROID_UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.jks"
+          trap 'rm -f "$ANDROID_UPLOAD_KEYSTORE"' EXIT
           printf %s "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$ANDROID_UPLOAD_KEYSTORE"
-          ./gradlew :app:bundleRelease
-          rm -f "$ANDROID_UPLOAD_KEYSTORE"
+          # The signing passwords are read while Gradle configures, so keep them out of the saved cache.
+          ./gradlew --no-configuration-cache :app:bundleRelease
           ls -l app/build/outputs/bundle/release/
       - name: Upload the bundle as a run artifact
         uses: actions/upload-artifact@v7
@@ -128,14 +129,15 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - uses: ruby/setup-ruby@v1
-        if: github.ref_type == 'tag' || inputs.upload
+        if: github.event_name == 'push' || inputs.upload
         with:
           ruby-version: "3.3"
           bundler-cache: true
       - name: Upload to Play internal testing
-        if: github.ref_type == 'tag' || inputs.upload
+        if: github.event_name == 'push' || inputs.upload
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          PLAY_RELEASE_STATUS: ${{ inputs.release_status || 'completed' }}
+          # A tag takes the repo variable, set to draft until the first rollout from the Console.
+          PLAY_RELEASE_STATUS: ${{ inputs.release_status || vars.PLAY_RELEASE_STATUS || 'completed' }}
           ANDROID_AAB: android/app/build/outputs/bundle/release/app-release.aab
         run: bundle exec fastlane android internal

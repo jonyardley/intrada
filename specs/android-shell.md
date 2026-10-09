@@ -122,12 +122,13 @@ bridge, persistence, screens and snapshots. It cannot judge audio latency,
 real camera OCR, or haptics: have a device (a Pixel 8a, or a second-hand
 Pixel 7a) before the metronome phase starts.
 
-Play Store (settled in #2499): the developer account is a one-off fee. A
-personal account opened after November 2023 must run a closed test with 12
-testers opted in for 14 days in a row before it can publish to production;
-organisation accounts are exempt. Internal testing carries no such rule and
-is the TestFlight equivalent: `release-play.yml` uploads every release tag
-there.
+Play Store (settled in #2499, from Play Console Help, [testing requirements
+for new personal developer
+accounts](https://support.google.com/googleplay/android-developer/answer/14151465)):
+a personal account opened after 13 November 2023 must run a closed test with
+12 testers opted in for 14 days in a row before it can publish to
+production. The internal testing track has no requirement and is the
+TestFlight equivalent: `release-play.yml` uploads every release tag there.
 
 ## Build phases
 
