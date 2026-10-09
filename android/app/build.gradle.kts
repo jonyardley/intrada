@@ -18,7 +18,7 @@ android {
         applicationId = "com.intrada.android"
         minSdk = 28
         targetSdk = 36
-        // Name: the tag, else the iPhone app's, so no build reports under a release never cut (#1961).
+        // Name: the tag, else the iPhone app's, so no build reports to an uncut release (#1961).
         versionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toInt() ?: 1
         versionName =
             providers
