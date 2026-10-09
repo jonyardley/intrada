@@ -44,8 +44,7 @@ android {
         buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
     }
 
-    // Play App Signing holds the app key; this is the upload key, present only in the release
-    // workflow. Without it a release build comes out unsigned and Play refuses it (#2499).
+    // The upload key, set only in release-play.yml; Play App Signing holds the app key (#2499).
     val uploadKeystore = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE").orNull
     if (uploadKeystore != null) {
         signingConfigs {
