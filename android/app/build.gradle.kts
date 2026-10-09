@@ -17,8 +17,9 @@ android {
         applicationId = "com.intrada.android"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // The release workflow sets both (#2499): the run number, and the tag without its v.
+        versionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toInt() ?: 1
+        versionName = providers.environmentVariable("ANDROID_VERSION_NAME").getOrElse("0.1.0")
         // The bridge is built for these two only (just android-package).
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         // Unset or not https keeps Sentry off, which is how CI and local builds run (#2497).
@@ -29,6 +30,22 @@ android {
                 .getOrElse("")
                 .trim()
         buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+    }
+
+    // Play App Signing holds the app key; this is the upload key, present only in the release
+    // workflow. Without it a release build comes out unsigned and Play refuses it (#2499).
+    val uploadKeystore = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE").orNull
+    if (uploadKeystore != null) {
+        signingConfigs {
+            create("upload") {
+                storeFile = file(uploadKeystore)
+                storePassword =
+                    providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("ANDROID_UPLOAD_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("ANDROID_UPLOAD_KEY_PASSWORD").get()
+            }
+        }
+        buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("upload") } }
     }
 
     compileOptions {
