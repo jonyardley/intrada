@@ -1,18 +1,12 @@
 package com.intrada.android.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,21 +18,11 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.intrada.android.core.Store
-import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
-import com.intrada.android.ui.components.HairlineDivider
-import com.intrada.android.ui.components.TagChip
-import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
 import com.intrada.ffi.itemFormCanSave
 import com.intrada.shared.CreateItem
@@ -57,8 +41,6 @@ enum class ItemFormMode(val confirmLabel: String) {
 
     fun title(kind: ItemKind) = if (this == ADD) "New ${kind.label}" else "Edit"
 }
-
-private class ChipListLabels(val label: String, val addLabel: String, val tag: String)
 
 class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     var kind by mutableStateOf(kind)
@@ -278,52 +260,11 @@ private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
         KindSegment(form.kind, { form.kind = it })
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Title",
-                form.title,
-                { form.title = it },
-                "itemForm.title",
-                placeholder = "Required",
-            )
-            HairlineDivider()
-            FormField("Composer", form.composer, { form.composer = it }, "itemForm.composer")
-            HairlineDivider()
-            KeyPicker(form.key, { form.key = it })
-        }
+        ItemFormDetails(form)
         if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Tempo marking",
-                form.marking,
-                { form.marking = it },
-                "itemForm.marking",
-                placeholder = "e.g. Allegro",
-            )
-            HairlineDivider()
-            FormField(
-                "Beats per minute",
-                form.bpm,
-                { form.bpm = it },
-                "itemForm.bpm",
-                keyboard = KeyboardType.Number,
-            )
-        }
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Notes",
-                form.notes,
-                { form.notes = it },
-                "itemForm.notes",
-                singleLine = false,
-            )
-        }
-        ChipListCard(
-            ChipListLabels("Tags", "Add a tag", "itemForm.tag"),
-            form.tags,
-            onRemove = { form.tags.removeAt(it) },
-            onAdd = { form.tags.add(it) },
-        )
+        ItemFormPractice(form)
+        ItemFormNotes(form)
+        ItemFormTags(form)
     }
 }
 
@@ -359,109 +300,3 @@ private val ItemKind.caption: String
             ItemKind.PIECE -> "Repertoire to learn and keep up"
             ItemKind.EXERCISE -> "Drills and studies to build technique"
         }
-
-@Composable
-internal fun FormField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    tag: String,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    keyboard: KeyboardType = KeyboardType.Text,
-    singleLine: Boolean = true,
-    note: String? = null,
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        if (label.isNotEmpty()) FieldLabel(label)
-        BasicTextField(
-            value,
-            onValueChange,
-            Modifier.fillMaxWidth()
-                .semantics { contentDescription = label.ifEmpty { placeholder } }
-                .testTag(tag),
-            textStyle = IntradaFont.body.copy(color = IntradaColor.ink),
-            singleLine = singleLine,
-            minLines = if (singleLine) 1 else 3,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
-            cursorBrush = SolidColor(IntradaColor.ink),
-            decorationBox = { field ->
-                Box {
-                    if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        BasicText(
-                            placeholder,
-                            style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
-                        )
-                    }
-                    field()
-                }
-            },
-        )
-        if (note != null) {
-            BasicText(note, style = IntradaFont.small.copy(color = IntradaColor.inkSecondary))
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ChipListCard(
-    labels: ChipListLabels,
-    chips: List<String>,
-    onRemove: (Int) -> Unit,
-    onAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val tag = labels.tag
-    Column(modifier.cardSurface()) {
-        FieldLabel(
-            labels.label,
-            Modifier.padding(horizontal = IntradaSpacing.card)
-                .padding(top = IntradaSpacing.cardCompact),
-        )
-        if (chips.isNotEmpty()) {
-            FlowRow(
-                Modifier.fillMaxWidth().padding(horizontal = IntradaSpacing.card),
-                horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-            ) {
-                chips.forEachIndexed { index, chip ->
-                    TagChip(chip, Modifier.testTag("$tag.chip"), onRemove = { onRemove(index) })
-                }
-            }
-        }
-        AddInputRow(labels.addLabel, labels.tag, onAdd)
-    }
-}
-
-@Composable
-internal fun AddInputRow(
-    addLabel: String,
-    tag: String,
-    onAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var typed by rememberSaveable { mutableStateOf("") }
-    Row(modifier, verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.weight(1f)) {
-            FormField("", typed, { typed = it }, "$tag.input", placeholder = addLabel)
-        }
-        TextAction(
-            "Add",
-            "$tag.add",
-            onClick = {
-                if (typed.isNotBlank()) {
-                    onAdd(typed)
-                    typed = ""
-                }
-            },
-            Modifier.padding(end = IntradaSpacing.controlGap).semantics {
-                contentDescription = addLabel
-            },
-        )
-    }
-}
