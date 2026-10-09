@@ -48,7 +48,7 @@ private val InstrumentIcon.drawable: Int
             InstrumentIcon.OTHER -> R.drawable.instrument_other
         }
 
-private val InstrumentIcon.accessibilityLabel: String
+internal val InstrumentIcon.accessibilityLabel: String
     get() =
         when (this) {
             InstrumentIcon.PIANO -> "Piano and keys"

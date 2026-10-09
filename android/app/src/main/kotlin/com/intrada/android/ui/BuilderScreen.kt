@@ -43,9 +43,19 @@ import com.intrada.shared.SetlistBlockView
 // ── Practice tab ──
 
 @Composable
-fun PracticeRoute(store: Store, onBuild: () -> Unit, modifier: Modifier = Modifier) {
+fun PracticeRoute(
+    store: Store,
+    onBuild: () -> Unit,
+    modifier: Modifier = Modifier,
+    onProfile: () -> Unit = {},
+) {
     val recoverable by store.recoverableSession.collectAsState()
-    ScreenScaffold("Practice", modifier) {
+    val viewModel by store.viewModel.collectAsState()
+    ScreenScaffold(
+        "Practice",
+        modifier,
+        actions = { viewModel?.profile?.let { ProfileButton(it, onProfile) } },
+    ) {
         Column(
             Modifier.fillMaxSize().padding(IntradaSpacing.card),
             verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
