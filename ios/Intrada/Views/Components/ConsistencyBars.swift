@@ -1,18 +1,11 @@
+import SharedTypes
 import SwiftUI
-
-/// One week's bucket for `ConsistencyBars`.
-struct ConsistencyWeek: Identifiable {
-  let id = UUID()
-  let label: String
-  let minutes: Int
-  var isCurrent: Bool = false
-}
 
 /// Weekly practice-minutes bars: comeback, not streak (no counter). The current
 /// week is accented; bars grow from the baseline (`barGrow`, staggered) on appear,
 /// settling to final height instantly under Reduce Motion.
 struct ConsistencyBars: View {
-  let weeks: [ConsistencyWeek]
+  let weeks: [ConsistencyWeekView]
   /// The tallest the busiest week's bar may draw, in points.
   private let maxBarHeight: CGFloat = 58
 
@@ -20,11 +13,11 @@ struct ConsistencyBars: View {
   @Environment(\.intradaMotionDisabled) private var motionDisabled
   @State private var grown = false
 
-  private var peakMinutes: Int { max(1, weeks.map(\.minutes).max() ?? 1) }
+  private var peakMinutes: UInt32 { max(1, weeks.map(\.minutes).max() ?? 1) }
 
   var body: some View {
     HStack(alignment: .bottom, spacing: 9) {
-      ForEach(Array(weeks.enumerated()), id: \.element.id) { index, week in
+      ForEach(Array(weeks.enumerated()), id: \.offset) { index, week in
         VStack(spacing: 6) {
           Spacer(minLength: 0)
           RoundedRectangle(cornerRadius: 5)
@@ -45,28 +38,14 @@ struct ConsistencyBars: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-          Self.spokenLabel(index: index, count: weeks.count, minutes: week.minutes))
+        .accessibilityLabel(week.spoken)
       }
     }
     .frame(height: maxBarHeight + 18, alignment: .bottom)
     .onAppear { grown = true }
   }
 
-  static func spokenLabel(index: Int, count: Int, minutes: Int) -> String {
-    let when = spokenWhen(weeksAgo: count - 1 - index)
-    return "\(when): \(minutes) \(minutes == 1 ? "minute" : "minutes")"
-  }
-
-  static func spokenWhen(weeksAgo: Int) -> String {
-    switch weeksAgo {
-    case ...0: "This week"
-    case 1: "Last week"
-    default: "\(weeksAgo) weeks ago"
-    }
-  }
-
-  private func barHeight(for week: ConsistencyWeek) -> CGFloat {
+  private func barHeight(for week: ConsistencyWeekView) -> CGFloat {
     max(6, CGFloat(week.minutes) / CGFloat(peakMinutes) * maxBarHeight)
   }
 
@@ -85,14 +64,8 @@ struct ConsistencyBars: View {
   #Preview {
     ZStack {
       PaperBackground()
-      ConsistencyBars(weeks: [
-        ConsistencyWeek(label: "W1", minutes: 40),
-        ConsistencyWeek(label: "W2", minutes: 75),
-        ConsistencyWeek(label: "W3", minutes: 55),
-        ConsistencyWeek(label: "W4", minutes: 95),
-        ConsistencyWeek(label: "Now", minutes: 82, isCurrent: true),
-      ])
-      .padding(IntradaSpacing.card)
+      ConsistencyBars(weeks: AnalyticsView.previewAnalytics.consistencyWeeks)
+        .padding(IntradaSpacing.card)
     }
   }
 #endif

@@ -11,6 +11,7 @@ use crate::domain::item::{Item, ItemKind};
 use crate::domain::session::PracticeSession;
 use crate::model::{ItemPracticeSummary, LibraryItemView};
 use crate::staleness;
+use crate::view::session::format_duration_summary;
 
 /// Rows on the Progress screen's Variations section; past this a large
 /// library takes the screen over (#1762).
@@ -68,6 +69,9 @@ pub struct VariationCoverageView {
     pub title: String,
     pub solid: usize,
     pub total: usize,
+    /// `2 of 3 solid`.
+    pub caption: String,
+    pub spoken: String,
 }
 
 /// One variation or key across every item that has a mark on it: a count of
@@ -82,6 +86,17 @@ pub struct PooledMarkView {
     pub caption: String,
 }
 
+/// One bar of the Progress screen's last five weeks, oldest first.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ConsistencyWeekView {
+    pub label: String,
+    pub minutes: u32,
+    pub is_current: bool,
+    /// `Last week: 95 minutes`, read out in place of the label.
+    pub spoken: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AnalyticsView {
@@ -90,7 +105,13 @@ pub struct AnalyticsView {
     pub neglected_items: Vec<NeglectedItem>,
     pub score_changes: Vec<ScoreChange>,
     pub variation_coverage: Vec<VariationCoverageView>,
-    pub weekly_minutes: Vec<u32>,
+    pub variation_coverage_caption: String,
+    /// `3 sessions · 1h 20m this week` under the title; `None` before the
+    /// week's first session.
+    pub week_line: Option<String>,
+    pub consistency_weeks: Vec<ConsistencyWeekView>,
+    /// `best week · 95m`, beside the last five weeks.
+    pub best_week: String,
     /// The mean latest mark of every library item that has one (#2046).
     pub overall_mastery: f64,
     /// This week's largest rise, found across every change rather than the
@@ -211,13 +232,19 @@ pub(crate) fn analytics_from_changes(
     item_views: &[LibraryItemView],
     clock: LocalClock,
 ) -> AnalyticsView {
+    let weekly_summary = compute_weekly_summary(sessions, clock);
+    let weekly_minutes = compute_weekly_minutes(sessions, clock);
+    let variation_coverage = compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT);
     AnalyticsView {
-        weekly_summary: compute_weekly_summary(sessions, clock),
+        week_line: week_line(&weekly_summary),
+        weekly_summary,
         top_items: compute_top_items(sessions),
         neglected_items: compute_neglected_items(summaries, items, clock),
         score_changes: changes.iter().take(SCORE_CHANGES_LIMIT).cloned().collect(),
-        variation_coverage: compute_variation_coverage(item_views, VARIATION_COVERAGE_LIMIT),
-        weekly_minutes: compute_weekly_minutes(sessions, clock),
+        variation_coverage_caption: variation_coverage_caption(&variation_coverage),
+        variation_coverage,
+        consistency_weeks: consistency_weeks(&weekly_minutes),
+        best_week: best_week(&weekly_minutes),
         overall_mastery: compute_overall_mastery(item_views),
         top_mover: top_mover(changes),
         mastery_change: mastery_change(changes),
@@ -225,6 +252,47 @@ pub(crate) fn analytics_from_changes(
         pooled_variations: compute_pooled_variations(item_views),
         pooled_keys: compute_pooled_keys(item_views),
     }
+}
+
+fn week_line(summary: &WeeklySummary) -> Option<String> {
+    let sessions = summary.session_count;
+    if sessions == 0 {
+        return None;
+    }
+    let noun = if sessions == 1 { "session" } else { "sessions" };
+    let time = format_duration_summary(u64::from(summary.total_minutes) * 60);
+    Some(format!("{sessions} {noun} · {time} this week"))
+}
+
+fn consistency_weeks(weekly_minutes: &[u32]) -> Vec<ConsistencyWeekView> {
+    let last = weekly_minutes.len().saturating_sub(1);
+    weekly_minutes
+        .iter()
+        .enumerate()
+        .map(|(i, &minutes)| {
+            let when = match last - i {
+                0 => "This week".to_string(),
+                1 => "Last week".to_string(),
+                ago => format!("{ago} weeks ago"),
+            };
+            let unit = if minutes == 1 { "minute" } else { "minutes" };
+            ConsistencyWeekView {
+                label: if i == last {
+                    "Now".to_string()
+                } else {
+                    format!("W{}", i + 1)
+                },
+                minutes,
+                is_current: i == last,
+                spoken: format!("{when}: {minutes} {unit}"),
+            }
+        })
+        .collect()
+}
+
+fn best_week(weekly_minutes: &[u32]) -> String {
+    let best = weekly_minutes.iter().max().copied().unwrap_or(0);
+    format!("best week · {best}m")
 }
 
 fn compute_pooled_variations(item_views: &[LibraryItemView]) -> Vec<PooledMarkView> {
@@ -318,15 +386,28 @@ pub fn compute_variation_coverage(
     practised
         .into_iter()
         .take(limit)
-        .map(|i| VariationCoverageView {
-            item_id: i.id.clone(),
-            title: i.title.clone(),
-            solid: coverage_marks(i)
+        .map(|i| {
+            let solid = coverage_marks(i)
                 .filter(|m| m.is_some_and(|m| m >= crate::model::SOLID_MIN))
-                .count(),
-            total: coverage_marks(i).count(),
+                .count();
+            let total = coverage_marks(i).count();
+            VariationCoverageView {
+                item_id: i.id.clone(),
+                title: i.title.clone(),
+                solid,
+                total,
+                caption: format!("{solid} of {total} solid"),
+                spoken: format!("{}, {solid} of {total} variations solid", i.title),
+            }
         })
         .collect()
+}
+
+/// The Variations heading's `5 of 15 solid`, across the rows shown.
+fn variation_coverage_caption(rows: &[VariationCoverageView]) -> String {
+    let solid: usize = rows.iter().map(|r| r.solid).sum();
+    let total: usize = rows.iter().map(|r| r.total).sum();
+    format!("{solid} of {total} solid")
 }
 
 /// Uses ISO week numbering (Monday = start of week).
@@ -996,6 +1077,64 @@ mod tests {
         }
     }
 
+    // ── Progress wording (#2493) ──────────────────────────────────────
+
+    #[test]
+    fn the_week_line_counts_sessions_and_time() {
+        let cases = [
+            (0, 0, None),
+            (1, 25, Some("1 session · 25m this week")),
+            (3, 59, Some("3 sessions · 59m this week")),
+            (2, 60, Some("2 sessions · 1h 0m this week")),
+            (4, 125, Some("4 sessions · 2h 5m this week")),
+        ];
+        for (sessions, minutes, expected) in cases {
+            let summary = WeeklySummary {
+                total_minutes: minutes,
+                session_count: sessions,
+                ..WeeklySummary::default()
+            };
+            assert_eq!(
+                week_line(&summary).as_deref(),
+                expected,
+                "{sessions} sessions, {minutes} minutes"
+            );
+        }
+    }
+
+    #[test]
+    fn the_consistency_weeks_end_on_now() {
+        let weeks = consistency_weeks(&[40, 75, 55, 95, 82]);
+        let labels: Vec<_> = weeks.iter().map(|w| w.label.as_str()).collect();
+        assert_eq!(labels, ["W1", "W2", "W3", "W4", "Now"]);
+        let current: Vec<_> = weeks.iter().map(|w| w.is_current).collect();
+        assert_eq!(current, [false, false, false, false, true]);
+        assert_eq!(weeks[3].minutes, 95);
+    }
+
+    #[test]
+    fn each_bar_is_spoken_as_how_long_ago() {
+        let weeks = consistency_weeks(&[40, 1, 0, 95, 82]);
+        let spoken: Vec<_> = weeks.iter().map(|w| w.spoken.as_str()).collect();
+        assert_eq!(
+            spoken,
+            [
+                "4 weeks ago: 40 minutes",
+                "3 weeks ago: 1 minute",
+                "2 weeks ago: 0 minutes",
+                "Last week: 95 minutes",
+                "This week: 82 minutes",
+            ]
+        );
+    }
+
+    #[test]
+    fn the_best_week_is_the_busiest_bar() {
+        assert_eq!(best_week(&[40, 75, 55, 95, 82]), "best week · 95m");
+        assert_eq!(best_week(&[0; 5]), "best week · 0m");
+        assert_eq!(best_week(&[]), "best week · 0m");
+    }
+
     #[test]
     fn weekly_minutes_with_no_sessions_are_five_zeros() {
         assert_eq!(
@@ -1020,7 +1159,11 @@ mod tests {
             &[],
             clock(day(2026, 9, 23)),
         );
-        let weekly = &analytics.weekly_minutes;
+        let weekly: Vec<_> = analytics
+            .consistency_weeks
+            .iter()
+            .map(|w| w.minutes)
+            .collect();
         assert_eq!(weekly[3..], [3, 3]);
         assert_eq!(weekly[3], analytics.weekly_summary.prev_total_minutes);
         assert_eq!(weekly[4], analytics.weekly_summary.total_minutes);
@@ -1029,7 +1172,9 @@ mod tests {
     #[test]
     fn analytics_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(AnalyticsView {
-            weekly_minutes: vec![25, 0, 0, 30, 40],
+            week_line: Some("2 sessions · 40m this week".to_string()),
+            consistency_weeks: consistency_weeks(&[25, 0, 0, 30, 40]),
+            best_week: "best week · 40m".to_string(),
             overall_mastery: 6.5,
             top_mover: Some(change("a", Some(3), 5)),
             mastery_change: Some("+0.7 this week".to_string()),
@@ -2002,6 +2147,8 @@ mod tests {
         assert_eq!(rows.iter().map(|r| r.solid).collect::<Vec<_>>(), [2]);
         assert_eq!(rows.iter().map(|r| r.total).collect::<Vec<_>>(), [3]);
         assert_eq!(rows[0].item_id, "Scales");
+        assert_eq!(rows[0].caption, "2 of 3 solid");
+        assert_eq!(rows[0].spoken, "Scales, 2 of 3 variations solid");
     }
 
     #[test]
@@ -2118,6 +2265,28 @@ mod tests {
         assert_eq!(analytics.variation_coverage[0].solid, 1);
     }
 
+    #[test]
+    fn the_variations_heading_adds_up_every_row() {
+        let rows = |counts: &[(usize, usize)]| -> Vec<VariationCoverageView> {
+            counts
+                .iter()
+                .map(|&(solid, total)| VariationCoverageView {
+                    item_id: String::new(),
+                    title: String::new(),
+                    solid,
+                    total,
+                    caption: String::new(),
+                    spoken: String::new(),
+                })
+                .collect()
+        };
+        assert_eq!(
+            variation_coverage_caption(&rows(&[(1, 3), (4, 12)])),
+            "5 of 15 solid"
+        );
+        assert_eq!(variation_coverage_caption(&rows(&[])), "0 of 0 solid");
+    }
+
     /// `VariationCoverageView` crosses the bincode wire inside
     /// `AnalyticsView`; guard it against the #846 drop class.
     #[test]
@@ -2127,6 +2296,8 @@ mod tests {
             title: "Scales".to_string(),
             solid: 2,
             total: 3,
+            caption: "2 of 3 solid".to_string(),
+            spoken: "Scales, 2 of 3 variations solid".to_string(),
         });
     }
 

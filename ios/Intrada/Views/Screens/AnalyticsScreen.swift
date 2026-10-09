@@ -27,8 +27,10 @@ struct AnalyticsScreen: View {
           heroCard(analytics)
             .fadeUp(1)
           if !variationCoverage.isEmpty {
-            VariationCoverageSection(rows: variationCoverage)
-              .fadeUp(2)
+            VariationCoverageSection(
+              caption: analytics.variationCoverageCaption, rows: variationCoverage
+            )
+            .fadeUp(2)
           }
           if !analytics.pooledVariations.isEmpty {
             PooledMarksSection(
@@ -75,11 +77,9 @@ struct AnalyticsScreen: View {
   // ── Consistency ──
 
   private func consistencySection(_ analytics: AnalyticsView) -> some View {
-    let weeks = weeklyBuckets(analytics)
-    let maxMinutes = weeks.map(\.minutes).max() ?? 0
-    return VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "Last five weeks", trailing: "best week · \(maxMinutes)m")
-      ConsistencyBars(weeks: weeks)
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionHeader(title: "Last five weeks", trailing: analytics.bestWeek)
+      ConsistencyBars(weeks: analytics.consistencyWeeks)
     }
   }
 
@@ -108,27 +108,9 @@ struct AnalyticsScreen: View {
     }
   }
 
-  // ── Derivations ──
-
   private var subtitle: String? {
-    guard let summary = analytics?.weeklySummary else { return "No sessions yet" }
-    guard summary.sessionCount > 0 else { return nil }
-    let h = summary.totalMinutes / 60
-    let m = summary.totalMinutes % 60
-    let duration = h == 0 ? "\(m)m" : "\(h)h \(m)m"
-    let noun = summary.sessionCount == 1 ? "session" : "sessions"
-    return "\(summary.sessionCount) \(noun) · \(duration) this week"
-  }
-
-  private func weeklyBuckets(_ analytics: AnalyticsView) -> [ConsistencyWeek] {
-    let lastIndex = analytics.weeklyMinutes.count - 1
-    return analytics.weeklyMinutes.enumerated().map { idx, minutes in
-      let isCurrent = idx == lastIndex
-      return ConsistencyWeek(
-        label: isCurrent ? "Now" : "W\(idx + 1)",
-        minutes: Int(minutes),
-        isCurrent: isCurrent)
-    }
+    guard let analytics else { return "No sessions yet" }
+    return analytics.weekLine
   }
 }
 
