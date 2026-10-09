@@ -109,7 +109,15 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
             }
             builderRoutes(store, navController)
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
-            composable(AppTab.PROGRESS.route) { EmptyTab(AppTab.PROGRESS) }
+            composable(AppTab.PROGRESS.route) {
+                ProgressRoute(
+                    store,
+                    onBuild = {
+                        navController.select(AppTab.PRACTICE)
+                        navController.navigate(BUILD_ROUTE)
+                    },
+                )
+            }
         }
         if (onTab) TabBar(tab ?: AppTab.LIBRARY, onSelect = { navController.select(it) })
     }
