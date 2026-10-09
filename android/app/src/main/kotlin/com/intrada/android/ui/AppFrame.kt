@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
 import com.intrada.shared.ItemKind
 
@@ -63,6 +65,10 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
     val onTab = route == null || tab != null
     val viewModel by store.viewModel.collectAsState()
     val live = viewModel?.activeSession != null || viewModel?.summary != null
+    DisposableEffect(route) {
+        SentryReporter.screen(tab?.label ?: route ?: AppTab.LIBRARY.label)
+        onDispose {}
+    }
     Box(modifier.fillMaxSize()) {
         // Composed under a live session so the builder route sees Building end and closes (#2459).
         Box(if (live) Modifier.clearAndSetSemantics {} else Modifier) {

@@ -4,8 +4,10 @@ import com.intrada.android.core.CoreBridge
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.ItemStore
 import com.intrada.android.core.LiveBridge
+import com.intrada.android.core.Reporter
 import com.intrada.android.core.SharedItemStore
 import com.intrada.android.core.Store
+import com.intrada.android.core.stepName
 import com.intrada.android.core.withIds
 import com.intrada.ffi.CoreException
 import com.intrada.ffi.InternalException
@@ -129,6 +131,39 @@ class StoreTest {
     }
 
     @Test
+    fun aCorePanicIsReportedAsOne() = runTest {
+        val reporter = RecordingReporter()
+        val panic = InternalException("panicked at app.rs")
+        val store = store(ScriptedBridge(listOf(panic)), reporter = reporter)
+
+        store.send(Event.ClearError)
+
+        assertEquals(listOf(panic to "core-panic"), reporter.reports)
+    }
+
+    @Test
+    fun aBridgeFailureIsReportedAsOne() = runTest {
+        val reporter = RecordingReporter()
+        val failure = CoreException.Bridge("decode")
+        val store = store(ScriptedBridge(listOf(failure)), reporter = reporter)
+
+        store.send(Event.ClearError)
+
+        assertEquals(listOf(failure to "bridge"), reporter.reports)
+    }
+
+    @Test
+    fun eachSendLeavesAStep() = runTest {
+        val reporter = RecordingReporter()
+        val store = store(ScriptedBridge(emptyList()), reporter = reporter)
+
+        store.send(Event.ClearError)
+        store.send(Event.ClearNotice)
+
+        assertEquals(listOf("ClearError", "ClearNotice"), reporter.steps)
+    }
+
+    @Test
     fun aSavedPieceIsThereWhenTheAppOpensAgain() = runTest {
         val file = File.createTempFile("intrada", ".sqlite").also { it.delete() }
         try {
@@ -171,14 +206,32 @@ class StoreTest {
         assertNull(store.viewModel.value?.error)
     }
 
-    private fun TestScope.store(bridge: CoreBridge, items: ItemStore = InMemoryItemStore()) =
+    private fun TestScope.store(
+        bridge: CoreBridge,
+        items: ItemStore = InMemoryItemStore(),
+        reporter: Reporter = RecordingReporter(),
+    ) =
         Store(
             bridge,
             items,
             scope = this,
             io = StandardTestDispatcher(testScheduler),
             log = {},
+            reporter = reporter,
         )
+}
+
+private class RecordingReporter : Reporter {
+    val reports = mutableListOf<Pair<Throwable, String>>()
+    val steps = mutableListOf<String>()
+
+    override fun report(error: Throwable, context: String) {
+        reports += error to context
+    }
+
+    override fun step(event: Event) {
+        steps += stepName(event)
+    }
 }
 
 private class ScriptedBridge(failures: List<Exception?>) : CoreBridge {

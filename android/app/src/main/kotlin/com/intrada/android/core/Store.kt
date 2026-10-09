@@ -36,6 +36,7 @@ class Store(
     private val settings: Settings? = null,
     /** The database did not open, so nothing is kept; the shell warns (#2428). */
     val degraded: Boolean = false,
+    private val reporter: Reporter = SentryReporter,
 ) {
     private val _viewModel = MutableStateFlow<ViewModel?>(null)
     val viewModel: StateFlow<ViewModel?> = _viewModel.asStateFlow()
@@ -62,6 +63,7 @@ class Store(
     }
 
     fun send(event: Event) {
+        reporter.step(event)
         process(bridged { bridge.update(event) }.orEmpty())
     }
 
@@ -165,15 +167,17 @@ class Store(
         return try {
             work().also { consecutiveBridgeFailures = 0 }
         } catch (e: InternalException) {
-            failed("core panic: $e", panicked = true)
+            failed(e, panicked = true)
         } catch (e: Exception) {
-            failed("bridge failed: $e", panicked = false)
+            failed(e, panicked = false)
         }
     }
 
-    private fun failed(message: String, panicked: Boolean): Nothing? {
+    private fun failed(error: Exception, panicked: Boolean): Nothing? {
         consecutiveBridgeFailures += 1
-        log(message)
+        val context = if (panicked) "core-panic" else "bridge"
+        log("$context: $error")
+        reporter.report(error, context)
         if (panicked || consecutiveBridgeFailures >= 2) _halted.value = true
         return null
     }
