@@ -3,8 +3,10 @@ package com.intrada.android.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import com.intrada.android.core.Store
 import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.label
@@ -264,3 +267,36 @@ private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
         ItemFormTags(form)
     }
 }
+
+@Composable
+private fun KindSegment(
+    selection: ItemKind,
+    onSelect: (ItemKind) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
+        SegmentedPills(
+            ItemKind.entries,
+            selection,
+            onSelect,
+            label = { it.label },
+            tag = { "itemForm.kind.${it.name.lowercase()}" },
+        )
+        BasicText(
+            selection.caption,
+            Modifier.fillMaxWidth(),
+            style =
+                IntradaFont.secondary.copy(
+                    color = IntradaColor.inkSecondary,
+                    textAlign = TextAlign.Center,
+                ),
+        )
+    }
+}
+
+private val ItemKind.caption: String
+    get() =
+        when (this) {
+            ItemKind.PIECE -> "Repertoire to learn and keep up"
+            ItemKind.EXERCISE -> "Drills and studies to build technique"
+        }
