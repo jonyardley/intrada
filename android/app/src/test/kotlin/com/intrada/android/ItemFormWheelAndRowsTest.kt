@@ -68,7 +68,7 @@ class ItemFormWheelAndRowsTest {
         compose.setContent { LibraryAddRoute(store, onDone = {}) }
 
         compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
-        compose.onNodeWithTag("itemForm.key").performClick()
+        compose.onNodeWithTag("itemForm.key").performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.key.major.1").performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.key.major.1").assertIsSelected()
         compose
@@ -83,7 +83,7 @@ class ItemFormWheelAndRowsTest {
     @Test
     fun anEditChangesTheKey() = runTest {
         val store = editing(cMajor)
-        compose.onNodeWithTag("itemForm.key").performClick()
+        compose.onNodeWithTag("itemForm.key").performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.key.major.0").assertIsSelected()
         compose.onNodeWithTag("itemForm.key.major.1").performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.confirm").performClick()
@@ -98,7 +98,7 @@ class ItemFormWheelAndRowsTest {
         compose.setContent { LibraryAddRoute(store, onDone = {}) }
 
         compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
-        compose.onNodeWithTag("itemForm.key").performClick()
+        compose.onNodeWithTag("itemForm.key").performScrollTo().performClick()
         val spoke = compose.onNodeWithTag("itemForm.key.major.6").performScrollTo()
         listOf("G flat major", "F sharp major", "G flat major", "F sharp major").forEach {
             spoke.performClick()
@@ -121,7 +121,7 @@ class ItemFormWheelAndRowsTest {
         compose.setContent { LibraryAddRoute(store, onDone = {}) }
 
         compose.onNodeWithTag("itemForm.title").performTextInput("Prelude")
-        compose.onNodeWithTag("itemForm.key").performClick()
+        compose.onNodeWithTag("itemForm.key").performScrollTo().performClick()
         val spoke = compose.onNodeWithTag("itemForm.key.minor.6").performScrollTo()
         listOf("E flat minor", "D sharp minor").forEach {
             spoke.performClick()
@@ -181,7 +181,7 @@ class ItemFormWheelAndRowsTest {
         compose.onNodeWithTag("itemForm.kind.exercise").performClick()
         compose.onNodeWithTag("itemForm.title").performTextInput("Arpeggios")
         compose.onNodeWithTag("itemForm.composer").performTextInput("Czerny")
-        compose.onNodeWithTag("itemForm.key").performClick()
+        compose.onNodeWithTag("itemForm.key").performScrollTo().performClick()
         compose.onNodeWithTag("itemForm.key.major.0").performScrollTo().performClick()
         compose
             .onNodeWithTag("itemForm.variation.input")

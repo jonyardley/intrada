@@ -19,8 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
@@ -43,7 +45,10 @@ fun FormErrorBanner(message: String, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(IntradaColor.dangerWash, shape)
             .border(1.dp, IntradaColor.dangerEdge, shape)
-            .clearAndSetSemantics { contentDescription = "Error: $message" }
+            .clearAndSetSemantics {
+                contentDescription = "Error: $message"
+                liveRegion = LiveRegionMode.Polite
+            }
             .padding(IntradaSpacing.cardCompact),
         horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
         verticalAlignment = Alignment.Top,

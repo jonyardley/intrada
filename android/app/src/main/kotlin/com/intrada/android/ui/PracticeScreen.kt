@@ -28,10 +28,12 @@ import com.intrada.android.core.Store
 import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.shared.Event
 import com.intrada.shared.HighlighterColour
+import com.intrada.shared.InstrumentIcon
 import com.intrada.shared.LastPractisedView
 import com.intrada.shared.PracticeSessionView
 import com.intrada.shared.PracticeWeekView
 import com.intrada.shared.SessionEvent
+import com.intrada.shared.SuggestedPlan
 import kotlinx.coroutines.flow.drop
 
 private const val SESSION_ROUTE = "practice/session"
@@ -46,6 +48,7 @@ fun NavGraphBuilder.practiceRoutes(
             store,
             onBuild = onBuild,
             onOpen = { id -> navController.navigate("$SESSION_ROUTE/$id") },
+            onProfile = { navController.navigate(PROFILE_ROUTE) },
         )
     }
     composable("$SESSION_ROUTE/{id}") { backStack ->
@@ -59,6 +62,7 @@ fun PracticeRoute(
     onBuild: () -> Unit,
     modifier: Modifier = Modifier,
     onOpen: (String) -> Unit = {},
+    onProfile: (() -> Unit)? = null,
 ) {
     val viewModel by store.viewModel.collectAsState()
     val recoverable by store.recoverableSession.collectAsState()
@@ -71,10 +75,35 @@ fun PracticeRoute(
             viewModel?.lastPractised,
             viewModel?.profile?.colour ?: HighlighterColour.BUTTER,
             viewModel?.profile?.greeting.orEmpty(),
+            viewModel?.profile?.icon ?: InstrumentIcon.OTHER,
+            viewModel?.upNext,
+            viewModel?.showsPriorities == true,
+            idle =
+                viewModel?.let {
+                    it.buildingSetlist == null && it.activeSession == null && it.summary == null
+                } ?: false,
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
         modifier = modifier,
+        onProfile = onProfile,
+        upNext =
+            UpNextActions(
+                onStart = {
+                    store.send(Event.Session(SessionEvent.StartFromSuggestion(SessionClock.now())))
+                },
+                onChange = {
+                    val event = SessionEvent.StartBuildingFromSuggestion(SessionClock.now())
+                    if (store.sendAccepted(Event.Session(event))) onBuild()
+                },
+                onBuildOwn = {
+                    if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild()
+                },
+                onPriorities = {
+                    val event = SessionEvent.StartBuildingWithPriorities(SessionClock.now())
+                    if (store.sendAccepted(Event.Session(event))) onBuild()
+                },
+            ),
     ) {
         recoverable?.let { session ->
             RecoveryCard(
@@ -92,6 +121,10 @@ class PracticeModel(
     val lastPractised: LastPractisedView?,
     val colour: HighlighterColour = HighlighterColour.BUTTER,
     val greeting: String = "",
+    val icon: InstrumentIcon = InstrumentIcon.OTHER,
+    val upNext: SuggestedPlan? = null,
+    val showsPriorities: Boolean = false,
+    val idle: Boolean = true,
 )
 
 @Composable
@@ -100,9 +133,19 @@ fun PracticeScreen(
     onStart: () -> Unit,
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onProfile: (() -> Unit)? = null,
+    upNext: UpNextActions = UpNextActions(),
+    suggestionDismissed: Boolean = false,
     top: @Composable ColumnScope.() -> Unit = {},
 ) {
-    ScreenScaffold("Practice", modifier, subtitle = model.subtitle) {
+    // Shell state by decision 9 of specs/up-next-card.md: no domain consequence, never persisted.
+    var dismissed by rememberSaveable { mutableStateOf(suggestionDismissed) }
+    ScreenScaffold(
+        "Practice",
+        modifier,
+        subtitle = model.subtitle,
+        actions = { onProfile?.let { ProfileButton(model.icon, model.colour, it) } },
+    ) {
         Column(
             Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
@@ -110,9 +153,40 @@ fun PracticeScreen(
             verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
         ) {
             top()
-            LastPractisedHero(model.lastPractised, model.colour, onStart)
+            HeroSection(model, dismissed, onStart, upNext) { dismissed = it }
             History(model, onOpen)
         }
+    }
+}
+
+@Composable
+private fun HeroSection(
+    model: PracticeModel,
+    dismissed: Boolean,
+    onStart: () -> Unit,
+    actions: UpNextActions,
+    onDismiss: (Boolean) -> Unit,
+) {
+    val plan = model.upNext?.takeUnless { dismissed || it.blocks.isEmpty() }
+    Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact)) {
+        if (plan != null) {
+            // "Build my own" is a decision, not a dismissal (#1617).
+            val buildOwn = {
+                onDismiss(true)
+                actions.onBuildOwn()
+            }
+            UpNextCard(
+                plan,
+                model.colour,
+                UpNextActions(actions.onStart, actions.onChange, buildOwn),
+            )
+        } else {
+            LastPractisedHero(model.lastPractised, model.colour, onStart)
+            if (showsSuggestionRestore(model.upNext, model.idle, dismissed)) {
+                ShowSuggestionButton { onDismiss(false) }
+            }
+        }
+        if (model.showsPriorities) PrioritiesButton(actions.onPriorities)
     }
 }
 

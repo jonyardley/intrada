@@ -18,6 +18,7 @@ import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
 import com.intrada.android.ui.AppTab
 import com.intrada.shared.Event
+import com.intrada.shared.FirstRunEvent
 import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -144,6 +145,7 @@ class AppFrameTest {
         val store =
             Store(LiveBridge(), items, this, StandardTestDispatcher(testScheduler), log = {})
         store.send(Event.StartApp)
+        store.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
         store.settle()
         compose.setContent { AppFrame(store) }
     }

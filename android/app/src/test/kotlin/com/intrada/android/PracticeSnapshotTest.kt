@@ -1,9 +1,21 @@
 package com.intrada.android
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaSpacing
 import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.SessionDetailScreen
+import com.intrada.android.ui.UpNextActions
+import com.intrada.android.ui.UpNextCard
+import com.intrada.shared.HighlighterColour
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -29,6 +41,33 @@ class PracticeSnapshotTest {
         }
 
     @Test
+    fun practiceUpNext() =
+        captureRoboImage("src/test/snapshots/practice-up-next.png") {
+            CardOnPaper {
+                UpNextCard(PracticeFixtures.plan, HighlighterColour.BUTTER, UpNextActions())
+            }
+        }
+
+    @Test
+    fun practiceUpNextFilled() =
+        captureRoboImage("src/test/snapshots/practice-up-next-filled.png") {
+            CardOnPaper {
+                UpNextCard(PracticeFixtures.filledPlan, HighlighterColour.BUTTER, UpNextActions())
+            }
+        }
+
+    @Test
+    fun practiceUpNextDismissed() =
+        captureRoboImage("src/test/snapshots/practice-up-next-dismissed.png") {
+            PracticeScreen(
+                PracticeFixtures.suggested,
+                onStart = {},
+                onOpen = {},
+                suggestionDismissed = true,
+            )
+        }
+
+    @Test
     fun sessionDetail() = runTest {
         val topMark = topMark()
         captureRoboImage("src/test/snapshots/session-detail.png") {
@@ -41,6 +80,13 @@ class PracticeSnapshotTest {
         val topMark = topMark()
         captureRoboImage("src/test/snapshots/session-detail-variations.png") {
             SessionDetailScreen(PracticeFixtures.withVariations, topMark)
+        }
+    }
+
+    @Composable
+    private fun CardOnPaper(content: @Composable () -> Unit) {
+        Box(Modifier.width(360.dp).background(IntradaColor.paperTop).padding(IntradaSpacing.card)) {
+            content()
         }
     }
 
