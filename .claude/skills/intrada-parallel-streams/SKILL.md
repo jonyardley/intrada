@@ -1,6 +1,6 @@
 ---
 name: intrada-parallel-streams
-description: Running more than one Claude Code session or subagent against this repo at once: two streams by default and a third only when it is shell-only, the decoupled file set a second stream may use, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
+description: Running more than one Claude Code session or subagent against this repo at once: two streams by default and a third only when it is shell-only, up to four Android lanes beside them, the decoupled file set a second stream may use, the serialisation points never edited in parallel, one agent per vertical slice, worktree mechanics, and the definition of done. Read before starting a second stream or fanning out.
 ---
 
 ## Stream rules
@@ -26,6 +26,23 @@ crate, which is what most UX issues are (for example #1616, #1617, #1618 and
   test runs serialise on app launch whatever device they name (#1621; the
   mechanism and the recovery are in `docs/ios-testing.md`, "Running alongside
   another checkout").
+- **Android runs up to four lanes of its own, beside the iOS streams**
+  (#2220, agreed 2026-10-09). The two-stream cap exists because iOS test runs
+  queue on one simulator; Android's unit and Roborazzi snapshot tests run on
+  the JVM with no emulator, so `android/` lanes do not queue on a device. The
+  lanes and their order are in #2220: player, add form, new screens (two at
+  once), release. An Android lane that needs a core change takes the one core
+  slot, shared with every iOS stream; it never runs a core change of its own
+  alongside one.
+- **Android serialisation points.** A lane that touches one of these
+  serialises with every other live Android lane:
+  `android/app/src/test/kotlin/com/intrada/android/BridgeRoundTripTest.kt`
+  (17 of the 40 Android commits before 2026-10-09 touched it), `Fixtures.kt`
+  in the same folder, `android/app/src/main/kotlin/com/intrada/android/ui/Theme.kt`,
+  the navigation files (`AppFrame.kt`, `AppTab.kt`, `MainActivity.kt`), and
+  the Gradle build and version catalog files, where adding a library counts as
+  a dependency change. A new screen keeps its wiring in those files to one
+  line.
 - A **stream that touches neither the core crates nor `ios/`** keeps to the
   decoupled set: `docs/`, `specs/`, `design/`, or CI and tooling (`justfile`,
   `.github/workflows/`).
