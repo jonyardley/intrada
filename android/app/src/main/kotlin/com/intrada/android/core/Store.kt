@@ -109,6 +109,7 @@ class Store(
                         itemStore.run(operation)
                     } catch (e: Exception) {
                         log("persistence failed: $e")
+                        reporter.report(e, "persistence")
                         PersistenceOutput.Failed
                     }
                 }
