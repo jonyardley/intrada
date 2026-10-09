@@ -1,5 +1,6 @@
 package com.intrada.android.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,9 +10,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -21,9 +24,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
+import com.intrada.android.core.Reporter
+import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
 import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.label
+import com.intrada.ffi.CoreException
+import com.intrada.ffi.FormFieldNow
+import com.intrada.ffi.FormReadField
+import com.intrada.ffi.fillFormFromRead
 import com.intrada.ffi.itemFormCanSave
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
@@ -33,6 +42,7 @@ import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
 import com.intrada.shared.KeyEdit
 import com.intrada.shared.LibraryItemView
+import com.intrada.shared.PhotoDraft
 import com.intrada.shared.TempoInput
 import com.intrada.shared.UpdateItem
 
@@ -45,12 +55,51 @@ enum class ItemFormMode(val confirmLabel: String) {
 
 class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     var kind by mutableStateOf(kind)
-    var title by mutableStateOf("")
-    var composer by mutableStateOf("")
     var key by mutableStateOf<Key?>(null)
-    var marking by mutableStateOf("")
-    var bpm by mutableStateOf("")
     var notes by mutableStateOf("")
+
+    /** The page the fields were read off, kept on the piece so it is not photographed twice. */
+    var photoId by mutableStateOf<String?>(null)
+
+    /**
+     * Fields still holding the page's read, and whether that read was weak. Typing takes a field
+     * off: from that keystroke it is the musician's, not the page's.
+     */
+    val readFrom = mutableStateMapOf<FormReadField, Boolean>()
+
+    private var storedTitle by mutableStateOf("")
+    private var storedComposer by mutableStateOf("")
+    private var storedMarking by mutableStateOf("")
+    private var storedBpm by mutableStateOf("")
+
+    var title: String
+        get() = storedTitle
+        set(value) {
+            storedTitle = value
+            readFrom.remove(FormReadField.TITLE)
+        }
+
+    var composer: String
+        get() = storedComposer
+        set(value) {
+            storedComposer = value
+            readFrom.remove(FormReadField.COMPOSER)
+        }
+
+    var marking: String
+        get() = storedMarking
+        set(value) {
+            storedMarking = value
+            readFrom.remove(FormReadField.MARKING)
+        }
+
+    var bpm: String
+        get() = storedBpm
+        set(value) {
+            storedBpm = value
+            readFrom.remove(FormReadField.BPM)
+        }
+
     val tags = mutableStateListOf<String>()
     val variations = mutableStateListOf<VariationRow>()
     val exercises = mutableStateListOf<StagedExercise>()
@@ -64,6 +113,38 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     fun switchKind(to: ItemKind) {
         kind = to
         if (to != ItemKind.PIECE) chooseExercises(emptyList())
+    }
+
+    /** The core picks the fields (#2229); nothing is saved until Add. */
+    fun fill(draft: PhotoDraft, reporter: Reporter = SentryReporter) {
+        val now =
+            listOf(
+                FormReadField.TITLE to storedTitle,
+                FormReadField.COMPOSER to storedComposer,
+                FormReadField.MARKING to storedMarking,
+                FormReadField.BPM to storedBpm,
+            )
+        val fills =
+            try {
+                fillFormFromRead(
+                    draft.bincodeSerialize(),
+                    now.map { (field, text) -> FormFieldNow(field, text, field in readFrom) },
+                )
+            } catch (e: CoreException) {
+                reporter.report(e, "bridge")
+                return
+            }
+        for (fill in fills) {
+            when (fill.field) {
+                FormReadField.TITLE -> storedTitle = fill.value
+                FormReadField.COMPOSER -> storedComposer = fill.value
+                FormReadField.MARKING -> storedMarking = fill.value
+                FormReadField.BPM -> storedBpm = fill.value
+                // Chord charts wait for #2025 on Android, so a read chart has nowhere to go.
+                FormReadField.CHART -> continue
+            }
+            readFrom[fill.field] = fill.weak
+        }
     }
 
     fun chooseExercises(staged: List<StagedExercise>) {
@@ -87,6 +168,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                 tempo = TempoInput(marking, bpm),
                 notes = notes,
                 tags = tags.toList(),
+                photoId = photoId,
                 variationLabels = variations.map { it.label },
             )
         return if (kind == ItemKind.PIECE && exercises.isNotEmpty()) {
@@ -150,6 +232,9 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                         "marks" to form.variations.map { it.hasMarks }.toBooleanArray(),
                         "error" to form.formError,
                         "fault" to form.faultedExercise?.bincodeSerialize(),
+                        "photo" to form.photoId,
+                        "readFields" to ArrayList(form.readFrom.keys.map { it.name }),
+                        "readWeak" to form.readFrom.values.toBooleanArray(),
                     ) + savedExercises(form.exercises)
                 },
                 restore = ::restored,
@@ -181,6 +266,12 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                 }
                 formError = saved["error"] as? String
                 exercises.addAll(restoredExercises(saved))
+                photoId = saved["photo"] as? String
+                val weak = saved["readWeak"] as? BooleanArray ?: BooleanArray(0)
+                strings("readFields").forEachIndexed { index, name ->
+                    val field = FormReadField.entries.firstOrNull { it.name == name }
+                    if (field != null && index < weak.size) readFrom[field] = weak[index]
+                }
                 faultedExercise =
                     (saved["fault"] as? ByteArray)?.let(FormErrorTarget::bincodeDeserialize)
                         as? FormErrorTarget.Exercise
@@ -251,11 +342,30 @@ private const val SAVE_FAILED = "Couldn't save. Try again."
 fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState() }
     val rows by store.libraryRows.collectAsState()
+    val view by store.viewModel.collectAsState()
     var closing by remember { mutableStateOf(false) }
+    val recognition = view?.photoRecognition
+    // Keyed on the projection, not the draft: a rescan of the same page reads to an equal draft.
+    DisposableEffect(recognition) {
+        recognition?.photoId?.let { form.photoId = it }
+        recognition?.draft?.let(form::fill)
+        onDispose {}
+    }
+    val activity = LocalActivity.current
+    DisposableEffect(store) {
+        onDispose {
+            if (activity?.isChangingConfigurations != true) store.send(Event.DiscardPhotoDraft)
+        }
+    }
     ItemFormScreen(
         form,
         ItemFormMode.ADD,
         onCancel = onDone,
+        header = {
+            if (recognition != null) {
+                ScanPageEntry(recognition, { store.send(Event.Item(ItemEvent.ReadPhoto(it))) })
+            }
+        },
         exerciseLibrary = rows.filter { it.itemType == ItemKind.EXERCISE },
         onConfirm = {
             if (!closing) {
@@ -303,6 +413,7 @@ fun ItemFormScreen(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
+    header: @Composable () -> Unit = {},
     exerciseLibrary: List<LibraryItemView> = emptyList(),
 ) {
     ScreenScaffold(
@@ -332,6 +443,7 @@ fun ItemFormScreen(
             ItemFormFields(
                 form,
                 exerciseLibrary.takeIf { mode == ItemFormMode.ADD },
+                header,
                 Modifier.verticalScroll(rememberScrollState()),
             )
         }
@@ -342,12 +454,14 @@ fun ItemFormScreen(
 private fun ItemFormFields(
     form: ItemFormState,
     exerciseLibrary: List<LibraryItemView>?,
+    header: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier.padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
+        header()
         KindSegment(form.kind, form::switchKind)
         ItemFormDetails(form)
         if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)

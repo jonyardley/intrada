@@ -126,6 +126,9 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(project(":bridge"))
     implementation(libs.sentry.android)
+    implementation(libs.coroutines.play.services)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.document.scanner)
 
     testImplementation(libs.jna)
     testImplementation(libs.junit)

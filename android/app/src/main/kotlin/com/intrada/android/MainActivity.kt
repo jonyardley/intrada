@@ -15,6 +15,8 @@ import androidx.lifecycle.viewModelScope
 import com.intrada.android.core.ClickEngine
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
+import com.intrada.android.core.MlKitPageReader
+import com.intrada.android.core.PhotoFiles
 import com.intrada.android.core.Settings
 import com.intrada.android.core.SharedItemStore
 import com.intrada.android.core.Store
@@ -40,7 +42,10 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
     fun store(seed: Boolean): Store =
         created ?: (if (seed) seeded() else kept()).also { created = it }
 
-    private fun seeded() = Store(LiveBridge(), InMemoryItemStore(), viewModelScope)
+    private fun seeded() =
+        Store(LiveBridge(), InMemoryItemStore(), viewModelScope, pageReader = pageReader())
+
+    private fun pageReader() = MlKitPageReader(PhotoFiles.of(getApplication<Application>()))
 
     private fun kept(): Store {
         val app = getApplication<Application>()
@@ -60,6 +65,7 @@ class StoreHolder(application: Application) : AndroidViewModel(application) {
                     log,
                 ),
             degraded = opened.degraded,
+            pageReader = pageReader(),
         )
     }
 

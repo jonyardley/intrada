@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.ffi.FormReadField
 
 @Composable
 internal fun ItemFormPractice(form: ItemFormState, modifier: Modifier = Modifier) {
@@ -17,6 +18,7 @@ internal fun ItemFormPractice(form: ItemFormState, modifier: Modifier = Modifier
             "itemForm.marking",
             placeholder = "e.g. Allegro",
         )
+        form.readFrom[FormReadField.MARKING]?.let { FieldMark(it) }
         HairlineDivider()
         FormField(
             "Beats per minute",
@@ -25,5 +27,6 @@ internal fun ItemFormPractice(form: ItemFormState, modifier: Modifier = Modifier
             "itemForm.bpm",
             keyboard = KeyboardType.Number,
         )
+        form.readFrom[FormReadField.BPM]?.let { FieldMark(it) }
     }
 }
