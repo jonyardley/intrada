@@ -173,6 +173,43 @@ object PracticeFixtures {
             greeting = "Good morning, Jon",
         )
 
+    val earlier =
+        completed.copy(
+            id = "session-3",
+            totalDurationSummary = "30 min",
+            sessionScore = 3u,
+            dayLabel = "Thu 1 Oct",
+        )
+
+    val earlierWeek =
+        PracticeWeekView(
+            days =
+                listOf(28, 29, 30, 1, 2, 3, 4).mapIndexed { index, date ->
+                    val month = if (date > 20) "09" else "10"
+                    val name = if (date > 20) "September" else "October"
+                    PracticeDayView(
+                        date = "2026-$month-${date.toString().padStart(2, '0')}",
+                        weekdayInitial = "MTWTFSS"[index].toString(),
+                        dayNumber = date.toUInt(),
+                        fullDate = "${FULL[index]} $date $name",
+                        heading = "${FULL[index]} $date $name",
+                        isToday = false,
+                        isFuture = false,
+                        sessionIds = if (date == 1) listOf(earlier.id) else emptyList(),
+                    )
+                },
+            practisedDays = 1uL,
+            openingDay = 3uL,
+        )
+
+    val twoWeeks =
+        PracticeModel(
+            weeks = listOf(earlierWeek, week),
+            sessions = listOf(completed, withVariations, earlier),
+            lastPractised = filled.lastPractised,
+            greeting = filled.greeting,
+        )
+
     val empty =
         PracticeModel(
             weeks =

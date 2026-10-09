@@ -260,7 +260,7 @@ internal fun SessionCard(session: PracticeSessionView, onOpen: () -> Unit) {
     }
 }
 
-// HACK(#2494): iOS builds this line in Swift too; the core gap is noted on the issue.
+// HACK(#2515): the core should word this line; iOS builds it in Swift too.
 internal val PracticeSessionView.itemCountDisplay: String
     get() {
         val count = entries.size

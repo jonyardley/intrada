@@ -163,7 +163,7 @@ private fun EntryRow(entry: SetlistEntryView, topMark: Int) {
     }
 }
 
-// HACK(#2494): iOS builds these lines in Swift too; the core gap is noted on the issue.
+// HACK(#2515): the core should word these lines; iOS builds them in Swift too.
 private fun SetlistEntryView.metaLine(): String =
     when (status) {
         EntryStatus.NOTATTEMPTED -> "Not played"

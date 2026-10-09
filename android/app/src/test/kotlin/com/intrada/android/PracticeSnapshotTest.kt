@@ -4,6 +4,8 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.SessionDetailScreen
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -27,14 +29,21 @@ class PracticeSnapshotTest {
         }
 
     @Test
-    fun sessionDetail() =
+    fun sessionDetail() = runTest {
+        val topMark = topMark()
         captureRoboImage("src/test/snapshots/session-detail.png") {
-            SessionDetailScreen(PracticeFixtures.completed, topMark = 10)
+            SessionDetailScreen(PracticeFixtures.completed, topMark)
         }
+    }
 
     @Test
-    fun sessionDetailVariations() =
+    fun sessionDetailVariations() = runTest {
+        val topMark = topMark()
         captureRoboImage("src/test/snapshots/session-detail-variations.png") {
-            SessionDetailScreen(PracticeFixtures.withVariations, topMark = 10)
+            SessionDetailScreen(PracticeFixtures.withVariations, topMark)
         }
+    }
+
+    private suspend fun TestScope.topMark(): Int =
+        openedStore().viewModel.value?.limits?.scoreMax?.toInt() ?: error("no view")
 }

@@ -13,11 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -29,6 +32,7 @@ import com.intrada.shared.LastPractisedView
 import com.intrada.shared.PracticeSessionView
 import com.intrada.shared.PracticeWeekView
 import com.intrada.shared.SessionEvent
+import kotlinx.coroutines.flow.drop
 
 private const val SESSION_ROUTE = "practice/session"
 
@@ -126,7 +130,16 @@ private fun History(model: PracticeModel, onOpen: (String) -> Unit) {
     if (weeks.isEmpty()) return
     val pager = rememberPagerState(initialPage = weeks.lastIndex) { weeks.size }
     var selectedDay by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(weeks.size) { pager.scrollToPage(weeks.lastIndex) }
+    var knownWeeks by rememberSaveable { mutableIntStateOf(weeks.size) }
+    LaunchedEffect(weeks.size) {
+        if (weeks.size > knownWeeks && pager.currentPage == knownWeeks - 1) {
+            pager.scrollToPage(weeks.lastIndex)
+        }
+        knownWeeks = weeks.size
+    }
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.currentPage }.drop(1).collect { selectedDay = null }
+    }
     val week = weeks[pager.currentPage.coerceIn(0, weeks.lastIndex)]
     val day =
         week.days.firstOrNull { it.date == selectedDay }
@@ -150,7 +163,11 @@ private fun History(model: PracticeModel, onOpen: (String) -> Unit) {
                 "This week",
                 trailing = "$practised day${if (practised == 1) "" else "s"} practised",
             )
-            HorizontalPager(pager, verticalAlignment = Alignment.Top) { page ->
+            HorizontalPager(
+                pager,
+                Modifier.testTag("practice.weeks"),
+                verticalAlignment = Alignment.Top,
+            ) { page ->
                 WeekStrip(weeks[page].days, day?.date) { selectedDay = it }
             }
         }
