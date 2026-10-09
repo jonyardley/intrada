@@ -5,7 +5,7 @@ use crate::domain::variation::{Variation, BUILT_INS};
 
 /// The built-ins, as a fresh library is seeded with.
 pub(crate) fn sample_variations() -> Vec<Variation> {
-    crate::domain::variation::seed_if_empty(&[], chrono::Utc::now()).unwrap_or_default()
+    crate::domain::variation::seed_if_empty(&[]).unwrap_or_default()
 }
 
 fn sample_key(raw: &str) -> Option<Key> {

@@ -312,6 +312,33 @@ mod photo;
 mod sections;
 pub(crate) use sections::update_sections;
 #[cfg(test)]
+impl Item {
+    pub(crate) fn fixture(id: &str) -> Self {
+        let at = DateTime::<Utc>::from_timestamp(1_790_000_000, 0).expect("fixed time");
+        Self {
+            id: id.to_string(),
+            title: "Etude".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: Vec::new(),
+            created_at: at,
+            updated_at: at,
+            priority: false,
+            chord_chart: None,
+            photo_id: None,
+            metre: None,
+            sections: Vec::new(),
+            variation_ids: Vec::new(),
+            keys: Vec::new(),
+            exercise_links: Vec::new(),
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests;
 mod variations;
 

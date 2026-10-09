@@ -82,6 +82,9 @@ pub enum Event {
     Variation(VariationEvent),
     VariationsStoreLoaded(PersistenceOutput),
     VariationsStoreWritten(PersistenceOutput),
+
+    // ── Appended (#2354) ─────────────────────────────────────────────
+    Sync(crate::sync::SyncEvent),
 }
 
 /// Side effects the core requests from shells.
@@ -98,6 +101,8 @@ pub enum Effect {
     /// On-device page recognition. The shell runs the frameworks and returns
     /// text with geometry; the core decides what it means (spec decision 4).
     Recognition(RecognitionOperation),
+    /// iCloud sync (`specs/icloud-sync.md`); provisional until #2361 reports.
+    Sync(crate::sync::SyncOperation),
 }
 
 /// Fire-and-forget operations the shell handles: UserDefaults singletons, and the
@@ -247,7 +252,8 @@ impl Intrada {
                 },
                 PersistenceOutput::Ack
                 | PersistenceOutput::Sessions(_)
-                | PersistenceOutput::Variations(_) => {
+                | PersistenceOutput::Variations(_)
+                | PersistenceOutput::Records(_) => {
                     persistence::items_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
@@ -268,7 +274,8 @@ impl Intrada {
                     }
                     PersistenceOutput::Items(_)
                     | PersistenceOutput::Sessions(_)
-                    | PersistenceOutput::Variations(_) => Command::done(),
+                    | PersistenceOutput::Variations(_)
+                    | PersistenceOutput::Records(_) => Command::done(),
                 };
                 // A refused write reloads to roll back the un-persisted change (#825).
                 if model.items_sync.write_settled(refused) {
@@ -289,7 +296,8 @@ impl Intrada {
                 },
                 PersistenceOutput::Items(_)
                 | PersistenceOutput::Ack
-                | PersistenceOutput::Variations(_) => {
+                | PersistenceOutput::Variations(_)
+                | PersistenceOutput::Records(_) => {
                     persistence::sessions_load_ended(model, Command::done())
                 }
                 PersistenceOutput::Failed => {
@@ -305,7 +313,8 @@ impl Intrada {
                     }
                     PersistenceOutput::Items(_)
                     | PersistenceOutput::Sessions(_)
-                    | PersistenceOutput::Variations(_) => (Command::done(), false),
+                    | PersistenceOutput::Variations(_)
+                    | PersistenceOutput::Records(_) => (Command::done(), false),
                     PersistenceOutput::Failed => {
                         match crate::domain::session::save_refused(model) {
                             Some(handed_back) => (handed_back, false),
@@ -359,7 +368,7 @@ impl Intrada {
                     match model.variations_sync.load_landed() {
                         persistence::Landed::Apply => {
                             let seeded = if first_load {
-                                crate::domain::variation::seed_if_empty(&rows, chrono::Utc::now())
+                                crate::domain::variation::seed_if_empty(&rows)
                             } else {
                                 None
                             };
@@ -381,6 +390,7 @@ impl Intrada {
                 }
                 PersistenceOutput::Items(_)
                 | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::Records(_)
                 | PersistenceOutput::Ack => {
                     persistence::variations_load_ended(model, Command::done())
                 }
@@ -402,7 +412,8 @@ impl Intrada {
                     }
                     PersistenceOutput::Items(_)
                     | PersistenceOutput::Sessions(_)
-                    | PersistenceOutput::Variations(_) => Command::done(),
+                    | PersistenceOutput::Variations(_)
+                    | PersistenceOutput::Records(_) => Command::done(),
                 };
                 if model.variations_sync.write_settled(refused) {
                     Command::all([shown, persistence::load_variations(model)])
@@ -410,6 +421,7 @@ impl Intrada {
                     shown
                 }
             }
+            Event::Sync(event) => crate::sync::update(event, model),
         }
     }
 }
@@ -1237,7 +1249,7 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
         // Every item on every built-in, so the sheet's usage pass is timed (#2366).
-        let built_ins = crate::domain::variation::seed_if_empty(&[], now).unwrap_or_default();
+        let built_ins = crate::domain::variation::seed_if_empty(&[]).unwrap_or_default();
         let all_variations: Vec<String> = built_ins.iter().map(|v| v.id.clone()).collect();
         model.variations = built_ins.into();
         for i in 0..pieces {

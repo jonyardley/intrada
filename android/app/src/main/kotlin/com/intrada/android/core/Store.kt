@@ -113,6 +113,8 @@ class Store(
                             }
                         process(bridged { bridge.resolve(request.id, output) }.orEmpty())
                     }
+                // Android has no sync for now (#2353).
+                is Effect.Sync -> Unit
             }
         }
     }

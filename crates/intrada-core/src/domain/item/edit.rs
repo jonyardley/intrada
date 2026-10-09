@@ -105,17 +105,16 @@ fn apply_fields(item: &mut Item, input: UpdateItem, tempo: Option<Option<Tempo>>
 }
 
 pub(super) fn delete(model: &mut Model, id: String) -> Command<Effect, Event> {
-    let len_before = model.items.len();
-    model.items.retain(|i| i.id != id);
-    if model.items.len() == len_before {
+    let Some(item) = model.items.iter().find(|i| i.id == id).cloned() else {
         model.raise_error(LibraryError::NotFound { id }.to_string());
         return crux_core::render::render();
-    }
+    };
+    model.items.retain(|i| i.id != id);
     model.last_error = None;
 
     model.clear_error();
     Command::all([
-        crate::persistence::delete_item(model, id, chrono::Utc::now()),
+        crate::persistence::delete_item(model, item, chrono::Utc::now()),
         crux_core::render::render(),
     ])
 }

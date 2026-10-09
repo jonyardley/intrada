@@ -62,7 +62,7 @@ for symbols; never rebuild it without `.graphifyignore`.
 ## Architecture (non-negotiables)
 
 ```text
-User → Events → crux_core (Rust) → Effects (Persistence, App, Render) → Shell → I/O
+User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Recognition, Sync) → Shell → I/O
 ```
 
 1. **Core owns all logic.** The shell never understands domain types.

@@ -23,16 +23,22 @@ pub const BUILT_INS: [(&str, &str); 4] = [
     ("00000000000000000000000004", "Three chord tones only"),
 ];
 
+/// Fixed, not the seeding time, so a fresh device never outranks a rename
+/// synced from another (`specs/icloud-sync.md`).
+pub fn built_ins_seeded_at() -> DateTime<Utc> {
+    DateTime::<Utc>::UNIX_EPOCH
+}
+
 /// The built-ins, for a library that has never held a variation. A library
 /// with only tombstones is not empty, so a deleted built-in stays deleted.
-pub fn seed_if_empty(library: &[Variation], now: DateTime<Utc>) -> Option<Vec<Variation>> {
+pub fn seed_if_empty(library: &[Variation]) -> Option<Vec<Variation>> {
     library.is_empty().then(|| {
         BUILT_INS
             .iter()
             .map(|(id, label)| Variation {
                 id: (*id).to_string(),
                 label: (*label).to_string(),
-                updated_at: now,
+                updated_at: built_ins_seeded_at(),
                 deleted_at: None,
             })
             .collect()
@@ -122,7 +128,7 @@ mod tests {
     #[test]
     fn the_built_ins_seed_once_and_never_return_after_deletion() {
         let now = Utc::now();
-        let seeded = seed_if_empty(&[], now).expect("an empty library is seeded");
+        let seeded = seed_if_empty(&[]).expect("an empty library is seeded");
         let labels: Vec<&str> = seeded.iter().map(|v| v.label.as_str()).collect();
         assert_eq!(
             labels,
@@ -133,7 +139,7 @@ mod tests {
                 "Three chord tones only"
             ]
         );
-        assert_eq!(seed_if_empty(&seeded, now), None);
+        assert_eq!(seed_if_empty(&seeded), None);
 
         let all_deleted: Vec<Variation> = seeded
             .into_iter()
@@ -142,7 +148,17 @@ mod tests {
                 ..v
             })
             .collect();
-        assert_eq!(seed_if_empty(&all_deleted, now), None);
+        assert_eq!(seed_if_empty(&all_deleted), None);
+    }
+
+    #[test]
+    fn a_seeded_built_in_is_older_than_any_rename() {
+        let seeded = seed_if_empty(&[]).expect("an empty library is seeded");
+        assert!(seeded.iter().all(|v| v.updated_at == built_ins_seeded_at()));
+        assert!(
+            built_ins_seeded_at()
+                < DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z").expect("date")
+        );
     }
 
     #[test]
