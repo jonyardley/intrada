@@ -11,6 +11,9 @@ import com.intrada.shared.PracticeDayView
 import com.intrada.shared.PracticeSessionView
 import com.intrada.shared.PracticeWeekView
 import com.intrada.shared.SetlistEntryView
+import com.intrada.shared.SuggestedItem
+import com.intrada.shared.SuggestedPlan
+import com.intrada.shared.SuggestedSession
 
 // Fixed, because the core dates live sessions from today.
 object PracticeFixtures {
@@ -208,6 +211,80 @@ object PracticeFixtures {
             sessions = listOf(completed, withVariations, earlier),
             lastPractised = filled.lastPractised,
             greeting = filled.greeting,
+        )
+
+    private val hanon =
+        SuggestedItem(
+            itemId = "item-hanon",
+            itemTitle = "Hanon No. 1",
+            itemType = ItemKind.EXERCISE,
+            reason = "Linked to this piece",
+        )
+
+    val plan =
+        SuggestedPlan(
+            blocks =
+                listOf(
+                    SuggestedSession(
+                        pieceId = "item-clair",
+                        pieceTitle = "Clair de Lune",
+                        pieceSubtitle = "Claude Debussy",
+                        reason = "Starred · not played for 6 days",
+                        priority = true,
+                        items =
+                            listOf(
+                                hanon,
+                                SuggestedItem(
+                                    itemId = "item-clair",
+                                    itemTitle = "Clair de Lune",
+                                    itemType = ItemKind.PIECE,
+                                    latestScore = 3u,
+                                    reason = "Last marked 3",
+                                    weakestSection = "Weakest section · Bars 15 to 18",
+                                ),
+                            ),
+                        estimatedMinutes = 15u,
+                    )
+                ),
+            estimatedMinutes = 15u,
+            itemCount = 2u,
+        )
+
+    private val satieBlock =
+        SuggestedSession(
+            pieceId = "item-satie",
+            pieceTitle = "Gymnopédie No. 1",
+            pieceSubtitle = "Erik Satie",
+            reason = "Not played yet",
+            priority = false,
+            items =
+                listOf(
+                    SuggestedItem(
+                        itemId = "item-satie",
+                        itemTitle = "Gymnopédie No. 1",
+                        itemType = ItemKind.PIECE,
+                        reason = "Not played yet",
+                    )
+                ),
+            estimatedMinutes = 10u,
+        )
+
+    val filledPlan =
+        plan.copy(
+            blocks = plan.blocks + satieBlock,
+            estimatedMinutes = 25u,
+            itemCount = 3u,
+            lengthMins = 25u,
+        )
+
+    val suggested =
+        PracticeModel(
+            weeks = filled.weeks,
+            sessions = filled.sessions,
+            lastPractised = filled.lastPractised,
+            greeting = filled.greeting,
+            upNext = plan,
+            showsPriorities = true,
         )
 
     val empty =
