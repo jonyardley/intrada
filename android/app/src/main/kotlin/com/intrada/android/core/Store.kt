@@ -9,6 +9,8 @@ import com.intrada.shared.Event
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
+import com.intrada.shared.PracticeSessionView
+import com.intrada.shared.PracticeWeekView
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
 import com.intrada.shared.SessionEvent
@@ -45,6 +47,11 @@ class Store(
     // (#1801).
     private val _libraryRows = MutableStateFlow<List<LibraryItemView>>(emptyList())
     val libraryRows: StateFlow<List<LibraryItemView>> = _libraryRows.asStateFlow()
+
+    private val _sessionHistory = MutableStateFlow<List<PracticeSessionView>>(emptyList())
+    val sessionHistory: StateFlow<List<PracticeSessionView>> = _sessionHistory.asStateFlow()
+    private val _practiceWeeks = MutableStateFlow<List<PracticeWeekView>>(emptyList())
+    val practiceWeeks: StateFlow<List<PracticeWeekView>> = _practiceWeeks.asStateFlow()
 
     // The core panicked, or the bridge failed twice running: nothing after that can work, so
     // sends are refused without reaching the bridge and the screen shows a standing banner (#1946).
@@ -109,6 +116,7 @@ class Store(
                         itemStore.run(operation)
                     } catch (e: Exception) {
                         log("persistence failed: $e")
+                        reporter.report(e, "persistence")
                         PersistenceOutput.Failed
                     }
                 }
@@ -119,6 +127,8 @@ class Store(
     private fun handleAppEffect(effect: AppEffect) {
         when (effect) {
             is AppEffect.LibraryChanged -> _libraryRows.value = effect.value
+            is AppEffect.HistoryChanged -> _sessionHistory.value = effect.value
+            is AppEffect.WeeksChanged -> _practiceWeeks.value = effect.value
             AppEffect.ClearSessionInProgress -> {
                 settings?.sessionInProgress?.clear()
                 _recoverableSession.value = null

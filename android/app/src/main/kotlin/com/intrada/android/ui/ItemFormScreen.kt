@@ -27,6 +27,7 @@ import com.intrada.android.ui.components.label
 import com.intrada.ffi.itemFormCanSave
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
+import com.intrada.shared.FormErrorTarget
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
@@ -52,26 +53,48 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     var notes by mutableStateOf("")
     val tags = mutableStateListOf<String>()
     val variations = mutableStateListOf<VariationRow>()
+    val exercises = mutableStateListOf<StagedExercise>()
+    var faultedExercise by mutableStateOf<FormErrorTarget.Exercise?>(null)
     var formError by mutableStateOf<String?>(null)
 
     val canSave: Boolean
         get() = itemFormCanSave(title)
 
-    fun addEvent(): Event =
-        Event.Item(
-            ItemEvent.Add(
-                CreateItem(
-                    title = title,
-                    kind = kind,
-                    composer = composer,
-                    key = key,
-                    tempo = TempoInput(marking, bpm),
-                    notes = notes,
-                    tags = tags.toList(),
-                    variationLabels = variations.map { it.label },
-                )
+    // An exercise carries no related exercises, so switching kind drops what was staged.
+    fun switchKind(to: ItemKind) {
+        kind = to
+        if (to != ItemKind.PIECE) chooseExercises(emptyList())
+    }
+
+    fun chooseExercises(staged: List<StagedExercise>) {
+        exercises.clear()
+        exercises.addAll(staged)
+        faultedExercise = null
+    }
+
+    fun removeExercise(id: String) {
+        exercises.removeAll { it.id == id }
+        faultedExercise = null
+    }
+
+    fun addEvent(): Event {
+        val piece =
+            CreateItem(
+                title = title,
+                kind = kind,
+                composer = composer,
+                key = key,
+                tempo = TempoInput(marking, bpm),
+                notes = notes,
+                tags = tags.toList(),
+                variationLabels = variations.map { it.label },
             )
-        )
+        return if (kind == ItemKind.PIECE && exercises.isNotEmpty()) {
+            Event.Item(ItemEvent.AddPieceInFull(piece, null, exercises.map { it.entry }))
+        } else {
+            Event.Item(ItemEvent.Add(piece))
+        }
+    }
 
     fun editEvent(id: String): Event =
         Event.Item(
@@ -126,7 +149,8 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                         "rowIds" to ArrayList(form.variations.map { it.id }),
                         "marks" to form.variations.map { it.hasMarks }.toBooleanArray(),
                         "error" to form.formError,
-                    )
+                        "fault" to form.faultedExercise?.bincodeSerialize(),
+                    ) + savedExercises(form.exercises)
                 },
                 restore = ::restored,
             )
@@ -156,16 +180,67 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     )
                 }
                 formError = saved["error"] as? String
+                exercises.addAll(restoredExercises(saved))
+                faultedExercise =
+                    (saved["fault"] as? ByteArray)?.let(FormErrorTarget::bincodeDeserialize)
+                        as? FormErrorTarget.Exercise
+            }
+        }
+
+        private fun savedExercises(staged: List<StagedExercise>): Map<String, Any?> =
+            mapOf("exerciseCount" to staged.size) +
+                staged.flatMapIndexed { index, row ->
+                    when (row) {
+                        is StagedExercise.Written ->
+                            listOf(
+                                "exercise.$index.title" to row.title,
+                                "exercise.$index.key" to row.key?.bincodeSerialize(),
+                                "exercise.$index.bpm" to row.bpm,
+                                "exercise.$index.id" to row.id,
+                            )
+                        is StagedExercise.Chosen ->
+                            listOf(
+                                "exercise.$index.title" to row.title,
+                                "exercise.$index.meta" to row.meta,
+                                "exercise.$index.chosen" to row.id,
+                            )
+                    }
+                }
+
+        // All rows or none: a dropped row would shift every later one under the restored mark.
+        private fun restoredExercises(saved: Map<String, Any?>): List<StagedExercise> {
+            val rows =
+                (0 until (saved["exerciseCount"] as? Int ?: 0)).map { restoredExercise(saved, it) }
+            return if (rows.all { it != null }) rows.filterNotNull() else emptyList()
+        }
+
+        private fun restoredExercise(saved: Map<String, Any?>, index: Int): StagedExercise? {
+            val title = saved["exercise.$index.title"] as? String
+            val chosen = saved["exercise.$index.chosen"] as? String
+            val id = saved["exercise.$index.id"] as? String
+            return when {
+                title == null -> null
+                chosen != null ->
+                    StagedExercise.Chosen(chosen, title, saved["exercise.$index.meta"] as? String)
+                id != null ->
+                    StagedExercise.Written(
+                        title,
+                        (saved["exercise.$index.key"] as? ByteArray)?.let(Key::bincodeDeserialize),
+                        (saved["exercise.$index.bpm"] as? String).orEmpty(),
+                        id,
+                    )
+                else -> null
             }
         }
     }
 }
 
-// A refusal comes back for the form to show inline and leaves the core, so the app banner does not
-// repeat it; nothing closes until the core accepts (#1595).
-fun Store.sendFromForm(event: Event): String? {
+// A refusal, and the row it names, come back for the form to show inline and leave the core, so the
+// app banner does not repeat it; nothing closes until the core accepts (#1595).
+fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}): String? {
     val accepted = sendAccepted(event)
     val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED
+    onTarget(if (error != null) viewModel.value?.errorTarget else null)
     if (error != null) send(Event.ClearError)
     return error
 }
@@ -175,14 +250,19 @@ private const val SAVE_FAILED = "Couldn't save. Try again."
 @Composable
 fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState() }
+    val rows by store.libraryRows.collectAsState()
     var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
         ItemFormMode.ADD,
         onCancel = onDone,
+        exerciseLibrary = rows.filter { it.itemType == ItemKind.EXERCISE },
         onConfirm = {
             if (!closing) {
-                form.formError = store.sendFromForm(form.addEvent())
+                form.formError =
+                    store.sendFromForm(form.addEvent()) {
+                        form.faultedExercise = it as? FormErrorTarget.Exercise
+                    }
                 closing = form.formError == null
                 if (closing) onDone()
             }
@@ -223,6 +303,7 @@ fun ItemFormScreen(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
+    exerciseLibrary: List<LibraryItemView> = emptyList(),
 ) {
     ScreenScaffold(
         mode.title(form.kind),
@@ -248,23 +329,34 @@ fun ItemFormScreen(
                         .testTag("itemForm.error"),
                 )
             }
-            ItemFormFields(form, Modifier.verticalScroll(rememberScrollState()))
+            ItemFormFields(
+                form,
+                exerciseLibrary.takeIf { mode == ItemFormMode.ADD },
+                Modifier.verticalScroll(rememberScrollState()),
+            )
         }
     }
 }
 
 @Composable
-private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
+private fun ItemFormFields(
+    form: ItemFormState,
+    exerciseLibrary: List<LibraryItemView>?,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier.padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
-        KindSegment(form.kind, { form.kind = it })
+        KindSegment(form.kind, form::switchKind)
         ItemFormDetails(form)
         if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
         ItemFormPractice(form)
         ItemFormNotes(form)
         ItemFormTags(form)
+        if (exerciseLibrary != null && form.kind == ItemKind.PIECE) {
+            ItemFormExercises(form, exerciseLibrary)
+        }
     }
 }
 

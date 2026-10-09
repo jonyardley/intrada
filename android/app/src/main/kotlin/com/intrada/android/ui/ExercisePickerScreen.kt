@@ -69,6 +69,7 @@ fun ExercisePickerScreen(
     onCancel: () -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    written: @Composable () -> Unit = {},
 ) {
     ScreenScaffold(
         "Add exercises",
@@ -85,6 +86,7 @@ fun ExercisePickerScreen(
             verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
         ) {
             state.formError?.let { FormErrorBanner(it, Modifier.testTag("exercisePicker.error")) }
+            written()
             if (exercises.isEmpty()) {
                 BasicText(
                     "No exercises in your library yet.",

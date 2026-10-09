@@ -236,7 +236,7 @@ internal val InstrumentIcon.tileLabel: String
         }
 
 @Composable
-internal fun ProfileButton(profile: ProfileView, onOpen: () -> Unit) {
+internal fun ProfileButton(icon: InstrumentIcon, colour: HighlighterColour, onOpen: () -> Unit) {
     Box(
         Modifier.size(48.dp).clickable(role = Role.Button, onClick = onOpen).clearAndSetSemantics {
             contentDescription = "Profile"
@@ -249,6 +249,6 @@ internal fun ProfileButton(profile: ProfileView, onOpen: () -> Unit) {
         },
         contentAlignment = Alignment.Center,
     ) {
-        ProfileBadge(profile.icon, IntradaColor.marker(profile.colour), size = IntradaGlyph.bar)
+        ProfileBadge(icon, IntradaColor.marker(colour), size = IntradaGlyph.bar)
     }
 }

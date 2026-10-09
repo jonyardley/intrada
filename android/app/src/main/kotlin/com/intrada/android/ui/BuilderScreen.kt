@@ -30,7 +30,6 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.intrada.android.core.Store
-import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
@@ -39,45 +38,6 @@ import com.intrada.shared.Event
 import com.intrada.shared.LimitsView
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.SetlistBlockView
-
-// ── Practice tab ──
-
-@Composable
-fun PracticeRoute(
-    store: Store,
-    onBuild: () -> Unit,
-    modifier: Modifier = Modifier,
-    onProfile: () -> Unit = {},
-) {
-    val recoverable by store.recoverableSession.collectAsState()
-    val viewModel by store.viewModel.collectAsState()
-    ScreenScaffold(
-        "Practice",
-        modifier,
-        actions = { viewModel?.profile?.let { ProfileButton(it, onProfile) } },
-    ) {
-        Column(
-            Modifier.fillMaxSize().padding(IntradaSpacing.card),
-            verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
-        ) {
-            recoverable?.let { session ->
-                RecoveryCard(
-                    session,
-                    onResume = { store.resumeRecoverableSession(SessionClock.now()) },
-                    onDiscard = store::discardSessionInProgress,
-                )
-            }
-            AddRow(
-                "Build a session",
-                "Build a session",
-                "practice.build",
-                { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
-                Modifier.cardSurface(),
-                hint = "Pick pieces and exercises from the library",
-            )
-        }
-    }
-}
 
 // ── Banners ──
 
