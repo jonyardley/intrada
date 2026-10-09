@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -62,8 +63,7 @@ private enum class FirstRunStep {
 
 private val READABLE_WIDTH = 560.dp
 
-// The core decides whether the welcome is due; which step is up is screen state, as on iOS
-// (#2117).
+// The core decides whether the welcome is due; which step is up is screen state (#2117).
 @Composable
 fun FirstRunRoute(store: Store, onFinish: (added: Boolean) -> Unit, modifier: Modifier = Modifier) {
     var step by rememberSaveable { mutableStateOf(FirstRunStep.WELCOME) }
@@ -74,8 +74,8 @@ fun FirstRunRoute(store: Store, onFinish: (added: Boolean) -> Unit, modifier: Mo
         }
     val viewModel by store.viewModel.collectAsState()
     val profile = viewModel?.profile ?: return
-    BackHandler(enabled = adding == null && step != FirstRunStep.WELCOME) {
-        step = FirstRunStep.entries[step.ordinal - 1]
+    BackHandler(enabled = adding != null || step != FirstRunStep.WELCOME) {
+        if (adding != null) adding = null else step = FirstRunStep.entries[step.ordinal - 1]
     }
     adding?.let { kind ->
         LibraryAddRoute(
@@ -230,7 +230,11 @@ fun ProfileStep(
                 horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
             ) {
                 StepTitle("Your profile", Modifier.weight(1f))
-                ProfileBadge(profile.icon, IntradaColor.marker(form.colour))
+                ProfileBadge(
+                    profile.icon,
+                    IntradaColor.marker(form.colour),
+                    Modifier.clearAndSetSemantics {},
+                )
             }
             Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card)) {
                 BasicText(

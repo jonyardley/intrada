@@ -3,6 +3,7 @@ package com.intrada.android
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -87,8 +88,7 @@ class FirstRunTest {
 
         compose.onNodeWithTag("firstRun.setUpProfile").performClick()
         compose.onNodeWithTag("firstRun.saveProfile").assertExists()
-        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        compose.waitForIdle()
+        pressBack()
 
         compose.onNodeWithTag("firstRun.skipWelcome").assertExists()
         assertFalse(compose.activity.isFinishing)
@@ -123,5 +123,42 @@ class FirstRunTest {
 
         compose.onNodeWithTag(AppTab.LIBRARY.tag).assertIsSelected()
         compose.onNodeWithTag("firstRun.typePiece").assertDoesNotExist()
+        assertTrue(store.libraryRows.value.isEmpty())
+    }
+
+    @Test
+    fun backFromTheAddFormReturnsToTheFirstPiece() = runTest {
+        val store = openedStore(InMemoryItemStore())
+        compose.setContent { AppFrame(store) }
+
+        compose.onNodeWithTag("firstRun.setUpProfile").performClick()
+        compose.onNodeWithTag("firstRun.skipProfile").performClick()
+        compose.onNodeWithTag("firstRun.addExercise").performClick()
+        compose.onNodeWithTag("itemForm.title").assertExists()
+        pressBack()
+
+        compose.onNodeWithTag("firstRun.addExercise").assertExists()
+        assertFalse(compose.activity.isFinishing)
+    }
+
+    @Test
+    fun theFirstPieceStepSurvivesARestoreAfterTheProfileSaves() = runTest {
+        val store = openedStore(InMemoryItemStore())
+        val restorer = StateRestorationTester(compose)
+        restorer.setContent { AppFrame(store) }
+
+        compose.onNodeWithTag("firstRun.setUpProfile").performClick()
+        compose.onNodeWithTag("profileEdit.name").performTextInput("Clara")
+        compose.onNodeWithTag("firstRun.saveProfile").performClick()
+        store.settle()
+        assertFalse(checkNotNull(store.viewModel.value).firstRun.showsWelcome)
+        restorer.emulateSavedInstanceStateRestore()
+
+        compose.onNodeWithTag("firstRun.typePiece").assertExists()
+    }
+
+    private fun pressBack() {
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
     }
 }
