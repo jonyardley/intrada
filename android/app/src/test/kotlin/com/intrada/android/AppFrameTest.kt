@@ -104,7 +104,7 @@ class AppFrameTest {
         val store = openedStore()
         compose.setContent { AppFrame(store) }
         compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
-        compose.onNodeWithTag("practice.build").performClick()
+        compose.onNodeWithTag("practice.start").performClick()
         store.send(Event.Session(SessionEvent.AddToSetlist(BuilderFixtures.SATIE)))
 
         compose.onNodeWithTag("builder.start").performClick()
@@ -119,7 +119,7 @@ class AppFrameTest {
         compose.setContent { AppFrame(store) }
         compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
         val library = compose.onNodeWithTag(AppTab.LIBRARY.tag).fetchSemanticsNode().boundsInRoot
-        compose.onNodeWithTag("practice.build").performClick()
+        compose.onNodeWithTag("practice.start").performClick()
         store.send(Event.Session(SessionEvent.AddToSetlist(BuilderFixtures.SATIE)))
         compose.onNodeWithTag("builder.start").performClick()
 
