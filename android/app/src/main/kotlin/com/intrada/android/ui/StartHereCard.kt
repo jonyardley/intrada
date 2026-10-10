@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import com.intrada.android.R
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
@@ -132,10 +134,9 @@ private fun StepRow(step: StartHereStep, state: StepState, marker: Color) {
     }
 }
 
-private val tickSize = 24.dp
-
 @Composable
 private fun Tick(state: StepState, marker: Color) {
+    val tickSize = min(24.dp * LocalDensity.current.fontScale, 36.dp)
     when (state) {
         StepState.DONE ->
             Box(
