@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SwiftUI
 
 /// Tag editor for the add/edit forms: removable chips plus a field that suggests
@@ -15,26 +16,9 @@ struct TagChipInput: View {
   /// Previews/snapshots can't drive `@FocusState`; forces the list open.
   var initiallyShowingSuggestions: Bool = false
 
-  private var matches: [String] {
-    let query = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-    let unused = suggestions.filter { suggestion in
-      !tags.contains { $0.localizedCaseInsensitiveCompare(suggestion) == .orderedSame }
-    }
-    let pool =
-      query.isEmpty
-      ? unused
-      : unused.filter {
-        $0.localizedCaseInsensitiveContains(query)
-          && $0.localizedCaseInsensitiveCompare(query) != .orderedSame
-      }
-    return Array(pool.prefix(6))
-  }
-
-  private var showSuggestions: Bool {
-    (focused || initiallyShowingSuggestions) && !matches.isEmpty
-  }
-
   var body: some View {
+    let matches = formSuggestions(pool: suggestions, typed: draft, alreadyChosen: tags)
+    let showSuggestions = (focused || initiallyShowingSuggestions) && !matches.isEmpty
     VStack(spacing: 0) {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
@@ -62,7 +46,7 @@ struct TagChipInput: View {
       .zIndex(1)
 
       if showSuggestions {
-        suggestionList
+        suggestionList(matches)
           .transition(.move(edge: .top).combined(with: .opacity))
       }
     }
@@ -86,7 +70,7 @@ struct TagChipInput: View {
     tags.removeAll { $0 == tag }
   }
 
-  private var suggestionList: some View {
+  private func suggestionList(_ matches: [String]) -> some View {
     InlineSuggestionList(
       matches: matches,
       systemImage: "plus",

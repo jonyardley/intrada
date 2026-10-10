@@ -1,3 +1,4 @@
+import IntradaCoreFFI
 import SwiftUI
 
 /// A `FormField` whose matching `suggestions` reveal inline below the input (the
@@ -19,23 +20,9 @@ struct AutocompleteField: View {
   /// state so the revealed list is renderable. Runtime always leaves it false.
   var initiallyShowingSuggestions: Bool = false
 
-  private var matches: [String] {
-    let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    let pool =
-      query.isEmpty
-      ? suggestions
-      : suggestions.filter {
-        $0.localizedCaseInsensitiveContains(query)
-          && $0.localizedCaseInsensitiveCompare(query) != .orderedSame
-      }
-    return Array(pool.prefix(6))
-  }
-
-  private var showSuggestions: Bool {
-    (focused || initiallyShowingSuggestions) && !matches.isEmpty
-  }
-
   var body: some View {
+    let matches = formSuggestions(pool: suggestions, typed: text, alreadyChosen: [])
+    let showSuggestions = (focused || initiallyShowingSuggestions) && !matches.isEmpty
     VStack(spacing: 0) {
       VStack(alignment: .leading, spacing: 4) {
         FieldLabel(label, tint: faulted ? IntradaColor.danger : IntradaColor.inkSecondary)
@@ -60,7 +47,7 @@ struct AutocompleteField: View {
       .zIndex(1)
 
       if showSuggestions {
-        suggestionList
+        suggestionList(matches)
           .transition(.move(edge: .top).combined(with: .opacity))
       }
     }
@@ -76,7 +63,7 @@ struct AutocompleteField: View {
       .joined(separator: ". ")
   }
 
-  private var suggestionList: some View {
+  private func suggestionList(_ matches: [String]) -> some View {
     InlineSuggestionList(
       matches: matches,
       systemImage: "arrow.up.left",
