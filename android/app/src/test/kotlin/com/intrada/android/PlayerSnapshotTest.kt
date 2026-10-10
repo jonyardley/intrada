@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.Settings
+import com.intrada.android.ui.ClickController
 import com.intrada.android.ui.ClickRow
 import com.intrada.android.ui.ClickRowState
 import com.intrada.android.ui.ClickStatus
@@ -45,8 +46,17 @@ class PlayerSnapshotTest {
             Event.Session(SessionEvent.RepGotIt("2026-10-07T09:01:00Z", PlayerFixtures.silent))
         )
         val view = store.viewModel.value ?: error("no view")
+        val active = store.active()
+        // Seeded before composition, or the row reads whatever frame the looper reached (#2503).
+        val click = ClickController {
+            error("a snapshot never sounds")
+        }
+            .apply { follow(active, view.limits) }
         captureRoboImage("src/test/snapshots/player.png") {
-            PlayerScreen(PlayerModel(store.active(), view.limits, held = held), send = { true })
+            PlayerScreen(
+                PlayerModel(active, view.limits, held = held, click = click),
+                send = { true },
+            )
         }
     }
 

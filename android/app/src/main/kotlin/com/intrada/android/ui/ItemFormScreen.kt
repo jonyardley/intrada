@@ -45,6 +45,7 @@ import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PhotoDraft
 import com.intrada.shared.TempoInput
 import com.intrada.shared.UpdateItem
+import com.intrada.shared.ViewModel
 
 enum class ItemFormMode(val confirmLabel: String) {
     ADD("Add"),
@@ -341,6 +342,16 @@ fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}):
 
 private const val SAVE_FAILED = "Couldn't save. Try again."
 
+data class FormVocabulary(
+    val composers: List<String> = emptyList(),
+    val tags: List<String> = emptyList(),
+) {
+    companion object {
+        fun of(view: ViewModel?) =
+            FormVocabulary(view?.availableComposers.orEmpty(), view?.availableTags.orEmpty())
+    }
+}
+
 @Composable
 fun LibraryAddRoute(
     store: Store,
@@ -379,6 +390,7 @@ fun LibraryAddRoute(
             }
         },
         exerciseLibrary = rows.filter { it.itemType == ItemKind.EXERCISE },
+        vocabulary = FormVocabulary.of(view),
         onConfirm = {
             if (!closing) {
                 form.formError =
@@ -402,11 +414,13 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
         return
     }
     val form = rememberSaveable(id, saver = ItemFormState.Saver) { ItemFormState.of(item) }
+    val view by store.viewModel.collectAsState()
     var closing by remember { mutableStateOf(false) }
     ItemFormScreen(
         form,
         ItemFormMode.EDIT,
         onCancel = onDone,
+        vocabulary = FormVocabulary.of(view),
         onConfirm = {
             if (!closing) {
                 form.formError = store.sendFromForm(form.editEvent(id))
@@ -427,6 +441,7 @@ fun ItemFormScreen(
     modifier: Modifier = Modifier,
     header: @Composable () -> Unit = {},
     exerciseLibrary: List<LibraryItemView> = emptyList(),
+    vocabulary: FormVocabulary = FormVocabulary(),
 ) {
     ScreenScaffold(
         mode.title(form.kind),
@@ -455,6 +470,7 @@ fun ItemFormScreen(
             ItemFormFields(
                 form,
                 exerciseLibrary.takeIf { mode == ItemFormMode.ADD },
+                vocabulary,
                 header,
                 Modifier.verticalScroll(rememberScrollState()),
             )
@@ -466,6 +482,7 @@ fun ItemFormScreen(
 private fun ItemFormFields(
     form: ItemFormState,
     exerciseLibrary: List<LibraryItemView>?,
+    vocabulary: FormVocabulary,
     header: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -475,11 +492,11 @@ private fun ItemFormFields(
     ) {
         header()
         KindSegment(form.kind, form::switchKind)
-        ItemFormDetails(form)
+        ItemFormDetails(form, vocabulary.composers)
         if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
         ItemFormPractice(form)
         ItemFormNotes(form)
-        ItemFormTags(form)
+        ItemFormTags(form, vocabulary.tags)
         if (exerciseLibrary != null && form.kind == ItemKind.PIECE) {
             ItemFormExercises(form, exerciseLibrary)
         }
