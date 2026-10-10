@@ -1,0 +1,26 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "defaultThreadEnvMode": "local",
+  "scripts": [
+    {
+      "name": "Run iOS",
+      "command": "just ios-run",
+      "icon": "play"
+    },
+    {
+      "name": "Run Android",
+      "command": "just android-run",
+      "icon": "play"
+    },
+    {
+      "name": "Rust gate",
+      "command": "just check",
+      "icon": "test"
+    },
+    {
+      "name": "In flight",
+      "command": "just status",
+      "icon": "configure"
+    }
+  ]
+}
