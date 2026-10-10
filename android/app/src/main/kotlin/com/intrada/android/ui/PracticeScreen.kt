@@ -27,6 +27,7 @@ import androidx.navigation.compose.composable
 import com.intrada.android.core.Store
 import com.intrada.android.core.resumeRecoverableSession
 import com.intrada.shared.Event
+import com.intrada.shared.FirstRunView
 import com.intrada.shared.HighlighterColour
 import com.intrada.shared.InstrumentIcon
 import com.intrada.shared.LastPractisedView
@@ -47,6 +48,7 @@ fun NavGraphBuilder.practiceRoutes(
         PracticeRoute(
             store,
             onBuild = onBuild,
+            onAdd = { navController.navigate(ADD_ROUTE) },
             onOpen = { id -> navController.navigate("$SESSION_ROUTE/$id") },
             onProfile = { navController.navigate(PROFILE_ROUTE) },
         )
@@ -63,6 +65,7 @@ fun PracticeRoute(
     modifier: Modifier = Modifier,
     onOpen: (String) -> Unit = {},
     onProfile: (() -> Unit)? = null,
+    onAdd: () -> Unit = {},
 ) {
     val viewModel by store.viewModel.collectAsState()
     val recoverable by store.recoverableSession.collectAsState()
@@ -82,11 +85,13 @@ fun PracticeRoute(
                 viewModel?.let {
                     it.buildingSetlist == null && it.activeSession == null && it.summary == null
                 } ?: false,
+            firstRun = viewModel?.firstRun,
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
         modifier = modifier,
         onProfile = onProfile,
+        onAdd = onAdd,
         upNext =
             UpNextActions(
                 onStart = {
@@ -125,6 +130,7 @@ class PracticeModel(
     val upNext: SuggestedPlan? = null,
     val showsPriorities: Boolean = false,
     val idle: Boolean = true,
+    val firstRun: FirstRunView? = null,
 )
 
 @Composable
@@ -134,6 +140,7 @@ fun PracticeScreen(
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
     onProfile: (() -> Unit)? = null,
+    onAdd: () -> Unit = {},
     upNext: UpNextActions = UpNextActions(),
     suggestionDismissed: Boolean = false,
     top: @Composable ColumnScope.() -> Unit = {},
@@ -154,6 +161,9 @@ fun PracticeScreen(
         ) {
             top()
             HeroSection(model, dismissed, onStart, upNext) { dismissed = it }
+            model.firstRun
+                ?.takeIf { it.showsStartHere }
+                ?.let { StartHereCard(it, IntradaColor.marker(model.colour), onAdd, onStart) }
             History(model, onOpen)
         }
     }
