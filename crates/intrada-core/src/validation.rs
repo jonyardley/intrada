@@ -108,6 +108,30 @@ pub fn item_form_can_save(title: &str) -> bool {
     !title.trim().is_empty()
 }
 
+const MAX_FORM_SUGGESTIONS: usize = 6;
+
+/// NFC first: a name pasted from a file name can carry its accents decomposed (#2477).
+#[must_use]
+pub fn form_suggestions<P: AsRef<str>, C: AsRef<str>>(
+    pool: &[P],
+    typed: &str,
+    already_chosen: &[C],
+) -> Vec<String> {
+    use unicode_normalization::UnicodeNormalization;
+    let fold = |s: &str| s.nfc().collect::<String>().to_lowercase();
+    let typed = fold(typed.trim());
+    let chosen: Vec<String> = already_chosen.iter().map(|c| fold(c.as_ref())).collect();
+    pool.iter()
+        .map(AsRef::as_ref)
+        .filter(|word| {
+            let word = fold(word);
+            !chosen.contains(&word) && word.contains(&typed) && word != typed
+        })
+        .take(MAX_FORM_SUGGESTIONS)
+        .map(str::to_string)
+        .collect()
+}
+
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || exceeds_chars(title, MAX_TITLE) {
         return Err(LibraryError::Validation {
@@ -894,6 +918,77 @@ mod tests {
         for (title, expected) in cases {
             assert_eq!(item_form_can_save(title), *expected, "{title:?}");
         }
+    }
+
+    #[test]
+    fn form_suggestions_offer_the_library_words_a_musician_is_typing() {
+        let composers = ["Bach", "Chopin", "Debussy", "C. P. E. Bach", "Satie"];
+        let cases: &[(&str, &[&str], &[&str])] = &[
+            (
+                "",
+                &[],
+                &["Bach", "Chopin", "Debussy", "C. P. E. Bach", "Satie"],
+            ),
+            (
+                "   ",
+                &[],
+                &["Bach", "Chopin", "Debussy", "C. P. E. Bach", "Satie"],
+            ),
+            ("bach", &[], &["C. P. E. Bach"]),
+            ("BAC", &[], &["Bach", "C. P. E. Bach"]),
+            (" deb ", &[], &["Debussy"]),
+            ("Chopin", &[], &[]),
+            ("chopin ", &[], &[]),
+            ("Liszt", &[], &[]),
+            (
+                "",
+                &["bach", "Satie"],
+                &["Chopin", "Debussy", "C. P. E. Bach"],
+            ),
+            ("bac", &["BACH"], &["C. P. E. Bach"]),
+        ];
+        for (typed, chosen, expected) in cases {
+            assert_eq!(
+                form_suggestions(&composers, typed, chosen),
+                *expected,
+                "{typed:?} with {chosen:?} chosen"
+            );
+        }
+    }
+
+    #[test]
+    fn form_suggestions_match_accents_however_they_were_stored() {
+        let pasted = ["Dvor\u{30c}a\u{301}k"];
+        assert_eq!(
+            form_suggestions(&pasted, "dvo\u{159}\u{e1}", &[] as &[&str]),
+            pasted
+        );
+        assert!(form_suggestions(&pasted, "Dvo\u{159}\u{e1}k", &[] as &[&str]).is_empty());
+        assert!(form_suggestions(&pasted, "", &["Dvo\u{159}\u{e1}k"]).is_empty());
+    }
+
+    #[test]
+    fn form_suggestions_stop_at_six() {
+        let tags = [
+            "scales",
+            "sight-reading",
+            "Schubert",
+            "study",
+            "swing",
+            "Satie",
+            "sonata",
+        ];
+        assert_eq!(
+            form_suggestions(&tags, "s", &[] as &[&str]),
+            [
+                "scales",
+                "sight-reading",
+                "Schubert",
+                "study",
+                "swing",
+                "Satie"
+            ]
+        );
     }
 
     #[test]
