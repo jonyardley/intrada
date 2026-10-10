@@ -23,6 +23,7 @@ object Fixtures {
         tempo: Tempo? = null,
         tags: List<String> = emptyList(),
         exerciseLinks: List<ExerciseLink> = emptyList(),
+        priority: Boolean = false,
     ) =
         Item(
             id = id,
@@ -34,7 +35,7 @@ object Fixtures {
             tags = tags,
             createdAt = "2026-09-01T09:00:00Z",
             updatedAt = "2026-09-01T09:00:00Z",
-            priority = false,
+            priority = priority,
             sections = emptyList(),
             variationIds = emptyList(),
             keys = emptyList(),

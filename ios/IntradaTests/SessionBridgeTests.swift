@@ -1118,5 +1118,10 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(pooled.first?.caption, "Solid on 1 of 2 items")
     XCTAssertEqual(pooled.first?.solid, 1)
     XCTAssertEqual(pooled.first?.total, 2)
+    let weeks: [ConsistencyWeekView] = try XCTUnwrap(view.analytics?.consistencyWeeks)
+    XCTAssertEqual(weeks.map(\.label), ["W1", "W2", "W3", "W4", "Now"])
+    XCTAssertEqual(weeks.last?.isCurrent, true)
+    XCTAssertEqual(weeks.last?.spoken, "This week: \(weeks.last?.minutes ?? 0) minutes")
+    XCTAssertEqual(view.analytics?.bestWeek.hasPrefix("best week · "), true)
   }
 }

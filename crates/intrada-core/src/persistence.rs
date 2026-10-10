@@ -12,6 +12,7 @@ use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
 use crate::domain::variation::Variation;
 use crate::model::Model;
+use crate::sync::{self, RecordKey, RecordKind, SyncOperation, SyncRecord, Synced};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -37,6 +38,29 @@ pub enum PersistenceOperation {
     LoadVariations,
     /// Upsert the rows in one transaction.
     SaveVariations(Vec<Variation>),
+    /// Tombstones included, so a merge sees a delete (`specs/icloud-sync.md`).
+    LoadRecords(Vec<RecordKey>),
+    LoadAllRecords,
+    /// The merge's winners in one transaction, `deleted_at` written as given.
+    ApplyMerged(StoredRecords),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct StoredItem {
+    pub item: Item,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct StoredRecords {
+    pub items: Vec<StoredItem>,
+    pub variations: Vec<Variation>,
+    pub sessions: Vec<PracticeSession>,
+    /// Asked for but on disk in a shape this app cannot read, so a merge must
+    /// not write over them.
+    pub unreadable: Vec<RecordKey>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -49,6 +73,7 @@ pub enum PersistenceOutput {
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
     Variations(Vec<Variation>),
+    Records(StoredRecords),
 }
 
 impl Operation for PersistenceOperation {
@@ -63,6 +88,7 @@ pub struct ListSync {
     loads_out: u32,
     stale: bool,
     loaded: bool,
+    generation: u64,
 }
 
 #[derive(Debug, PartialEq)]
@@ -75,6 +101,7 @@ pub enum Landed {
 impl ListSync {
     fn write_sent(&mut self) {
         self.writes_out += 1;
+        self.generation += 1;
         if self.loads_out > 0 {
             self.stale = true;
         }
@@ -153,25 +180,71 @@ pub fn load_items(model: &mut Model) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::LoadItems).then_send(Event::StoreLoaded)
 }
 
+/// Uploads only what the store kept: a refused write never reaches the other
+/// devices.
+fn write_then_upload(
+    operation: PersistenceOperation,
+    upload: Vec<SyncRecord>,
+    written: fn(PersistenceOutput) -> Event,
+) -> Command<Effect, Event> {
+    Command::new(|ctx| async move {
+        let output = ctx.request_from_shell(operation).await;
+        if output == PersistenceOutput::Ack && !upload.is_empty() {
+            ctx.notify_shell(SyncOperation::Upload(upload));
+        }
+        ctx.send_event(written(output));
+    })
+}
+
+fn live_items(items: &[Item]) -> Vec<Synced> {
+    items
+        .iter()
+        .map(|item| Synced::Item {
+            item: Box::new(item.clone()),
+            deleted_at: None,
+        })
+        .collect()
+}
+
 pub fn save_item(model: &mut Model, item: Item) -> Command<Effect, Event> {
     model.items_sync.write_sent();
-    Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
+    let upload = sync::upload_for(model, &live_items(std::slice::from_ref(&item)));
+    write_then_upload(
+        PersistenceOperation::SaveItem(item),
+        upload,
+        Event::StoreWritten,
+    )
 }
 
 pub fn save_items(model: &mut Model, items: Vec<Item>) -> Command<Effect, Event> {
     model.items_sync.write_sent();
-    Command::request_from_shell(PersistenceOperation::SaveItems(items))
-        .then_send(Event::StoreWritten)
+    let upload = sync::upload_for(model, &live_items(&items));
+    write_then_upload(
+        PersistenceOperation::SaveItems(items),
+        upload,
+        Event::StoreWritten,
+    )
 }
 
 pub fn delete_item(
     model: &mut Model,
-    id: String,
+    item: Item,
     deleted_at: DateTime<Utc>,
 ) -> Command<Effect, Event> {
     model.items_sync.write_sent();
-    Command::request_from_shell(PersistenceOperation::DeleteItem { id, deleted_at })
-        .then_send(Event::StoreWritten)
+    let id = item.id.clone();
+    let upload = sync::upload_for(
+        model,
+        &[Synced::Item {
+            item: Box::new(item),
+            deleted_at: Some(deleted_at),
+        }],
+    );
+    write_then_upload(
+        PersistenceOperation::DeleteItem { id, deleted_at },
+        upload,
+        Event::StoreWritten,
+    )
 }
 
 pub fn load_sessions(model: &mut Model) -> Command<Effect, Event> {
@@ -199,14 +272,98 @@ pub fn load_variations(model: &mut Model) -> Command<Effect, Event> {
 
 pub fn save_variations(model: &mut Model, rows: Vec<Variation>) -> Command<Effect, Event> {
     model.variations_sync.write_sent();
-    Command::request_from_shell(PersistenceOperation::SaveVariations(rows))
-        .then_send(Event::VariationsStoreWritten)
+    let changed: Vec<Synced> = rows.iter().cloned().map(Synced::Variation).collect();
+    let upload = sync::upload_for(model, &changed);
+    write_then_upload(
+        PersistenceOperation::SaveVariations(rows),
+        upload,
+        Event::VariationsStoreWritten,
+    )
 }
 
 pub fn save_session(model: &mut Model, session: PracticeSession) -> Command<Effect, Event> {
     model.sessions_sync.write_sent();
-    Command::request_from_shell(PersistenceOperation::SaveSession(session))
-        .then_send(Event::SessionStoreWritten)
+    let upload = sync::upload_for(model, &[Synced::Session(session.clone())]);
+    write_then_upload(
+        PersistenceOperation::SaveSession(session),
+        upload,
+        Event::SessionStoreWritten,
+    )
+}
+
+fn touched(records: &StoredRecords) -> Vec<RecordKind> {
+    [
+        (RecordKind::Item, records.items.is_empty()),
+        (RecordKind::Variation, records.variations.is_empty()),
+        (RecordKind::Session, records.sessions.is_empty()),
+    ]
+    .into_iter()
+    .filter_map(|(kind, empty)| (!empty).then_some(kind))
+    .collect()
+}
+
+/// Moves on with every write sent on the list, so a merge can tell that its
+/// stored copy may be out of date.
+pub fn write_generation(model: &Model, kind: RecordKind) -> u64 {
+    match kind {
+        RecordKind::Item => model.items_sync.generation,
+        RecordKind::Variation => model.variations_sync.generation,
+        RecordKind::Session => model.sessions_sync.generation,
+    }
+}
+
+fn list_sync(model: &mut Model, kind: RecordKind) -> &mut ListSync {
+    match kind {
+        RecordKind::Item => &mut model.items_sync,
+        RecordKind::Variation => &mut model.variations_sync,
+        RecordKind::Session => &mut model.sessions_sync,
+    }
+}
+
+fn load_list(model: &mut Model, kind: RecordKind) -> Command<Effect, Event> {
+    match kind {
+        RecordKind::Item => load_items(model),
+        RecordKind::Variation => load_variations(model),
+        RecordKind::Session => load_sessions(model),
+    }
+}
+
+/// Counted as a write on each list it changes, so a load already out cannot
+/// land over the merge (#2067).
+pub fn apply_merged(
+    model: &mut Model,
+    records: StoredRecords,
+    unpark: Vec<RecordKey>,
+) -> Command<Effect, Event> {
+    let touched = touched(&records);
+    for kind in &touched {
+        list_sync(model, *kind).write_sent();
+    }
+    Command::request_from_shell(PersistenceOperation::ApplyMerged(records)).then_send(
+        move |output| {
+            Event::Sync(sync::SyncEvent::MergeWritten {
+                touched,
+                unpark,
+                output,
+            })
+        },
+    )
+}
+
+/// Reloads each list the merge changed, so the screens show the winners.
+pub fn merge_written(
+    model: &mut Model,
+    touched: &[RecordKind],
+    refused: bool,
+) -> Command<Effect, Event> {
+    let reloads: Vec<_> = touched
+        .iter()
+        .filter_map(|kind| {
+            let due = list_sync(model, *kind).write_settled(refused);
+            (due || !refused).then(|| load_list(model, *kind))
+        })
+        .collect();
+    Command::all(reloads)
 }
 
 #[cfg(test)]
@@ -462,7 +619,7 @@ mod tests {
     fn delete_item_requests_a_delete_op() {
         let mut cmd = delete_item(
             &mut Model::default(),
-            "gone".to_string(),
+            Item::fixture("gone"),
             chrono::Utc::now(),
         );
         assert!(has_delete(&mut cmd, "gone"));

@@ -9,10 +9,13 @@ import com.intrada.shared.Event
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
+import com.intrada.shared.PracticeSessionView
+import com.intrada.shared.PracticeWeekView
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +39,8 @@ class Store(
     private val settings: Settings? = null,
     /** The database did not open, so nothing is kept; the shell warns (#2428). */
     val degraded: Boolean = false,
+    private val reporter: Reporter = SentryReporter,
+    private val pageReader: PageReader = PageReader.Unavailable,
 ) {
     private val _viewModel = MutableStateFlow<ViewModel?>(null)
     val viewModel: StateFlow<ViewModel?> = _viewModel.asStateFlow()
@@ -44,6 +49,11 @@ class Store(
     // (#1801).
     private val _libraryRows = MutableStateFlow<List<LibraryItemView>>(emptyList())
     val libraryRows: StateFlow<List<LibraryItemView>> = _libraryRows.asStateFlow()
+
+    private val _sessionHistory = MutableStateFlow<List<PracticeSessionView>>(emptyList())
+    val sessionHistory: StateFlow<List<PracticeSessionView>> = _sessionHistory.asStateFlow()
+    private val _practiceWeeks = MutableStateFlow<List<PracticeWeekView>>(emptyList())
+    val practiceWeeks: StateFlow<List<PracticeWeekView>> = _practiceWeeks.asStateFlow()
 
     // The core panicked, or the bridge failed twice running: nothing after that can work, so
     // sends are refused without reaching the bridge and the screen shows a standing banner (#1946).
@@ -62,6 +72,7 @@ class Store(
     }
 
     fun send(event: Event) {
+        reporter.step(event)
         process(bridged { bridge.update(event) }.orEmpty())
     }
 
@@ -86,12 +97,24 @@ class Store(
                         }
                 is Effect.App -> handleAppEffect(effect.value)
                 is Effect.Persistence -> enqueueDiskJob(effect.value, request.id)
-                is Effect.Recognition -> {
-                    log("recognition is not built on Android yet; answering Failed")
-                    process(
-                        bridged { bridge.resolve(request.id, RecognitionOutput.Failed) }.orEmpty()
-                    )
-                }
+                is Effect.Recognition ->
+                    scope.launch {
+                        val output =
+                            withContext(io) {
+                                try {
+                                    pageReader.read(effect.value)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    log("page reading failed: $e")
+                                    reporter.report(e, "page-recognition")
+                                    RecognitionOutput.Failed
+                                }
+                            }
+                        process(bridged { bridge.resolve(request.id, output) }.orEmpty())
+                    }
+                // Android has no sync for now (#2353).
+                is Effect.Sync -> Unit
             }
         }
     }
@@ -107,6 +130,7 @@ class Store(
                         itemStore.run(operation)
                     } catch (e: Exception) {
                         log("persistence failed: $e")
+                        reporter.report(e, "persistence")
                         PersistenceOutput.Failed
                     }
                 }
@@ -117,6 +141,8 @@ class Store(
     private fun handleAppEffect(effect: AppEffect) {
         when (effect) {
             is AppEffect.LibraryChanged -> _libraryRows.value = effect.value
+            is AppEffect.HistoryChanged -> _sessionHistory.value = effect.value
+            is AppEffect.WeeksChanged -> _practiceWeeks.value = effect.value
             AppEffect.ClearSessionInProgress -> {
                 settings?.sessionInProgress?.clear()
                 _recoverableSession.value = null
@@ -165,15 +191,17 @@ class Store(
         return try {
             work().also { consecutiveBridgeFailures = 0 }
         } catch (e: InternalException) {
-            failed("core panic: $e", panicked = true)
+            failed(e, panicked = true)
         } catch (e: Exception) {
-            failed("bridge failed: $e", panicked = false)
+            failed(e, panicked = false)
         }
     }
 
-    private fun failed(message: String, panicked: Boolean): Nothing? {
+    private fun failed(error: Exception, panicked: Boolean): Nothing? {
         consecutiveBridgeFailures += 1
-        log(message)
+        val context = if (panicked) "core-panic" else "bridge"
+        log("$context: $error")
+        reporter.report(error, context)
         if (panicked || consecutiveBridgeFailures >= 2) _halted.value = true
         return null
     }

@@ -9,8 +9,9 @@ paths:
 # Offline-first invariants
 
 On-device SQLite is the source of truth, the app works with no network and no
-account, and sync is a future paid tier. On the free tier the device is the
-only copy of the user's data. Break one of these and the app silently stops
+account, and sync is free, through the user's own iCloud, never a paid tier
+(#2353, `specs/icloud-sync.md`). Without iCloud the device is the only copy of
+the user's data. Break one of these and the app silently stops
 being offline.
 
 1. **No network on the local-first path.** New reads and writes go through the

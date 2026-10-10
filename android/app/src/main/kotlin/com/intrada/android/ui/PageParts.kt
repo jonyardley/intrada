@@ -90,6 +90,7 @@ internal fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     caption: String? = null,
+    trailing: String? = null,
     action: HeaderAction? = null,
 ) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -102,6 +103,13 @@ internal fun SectionHeader(
             )
         }
         Box(Modifier.weight(1f))
+        if (trailing != null) {
+            BasicText(
+                trailing,
+                Modifier.padding(start = IntradaSpacing.controlGap),
+                style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
+            )
+        }
         if (action != null) {
             TextAction(
                 action.title,

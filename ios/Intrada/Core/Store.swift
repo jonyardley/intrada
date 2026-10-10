@@ -103,6 +103,9 @@ final class Store {
         enqueueDiskJob(operation, id: request.id)
       case .recognition(let operation):
         Task { await self.handleRecognition(operation, id: request.id) }
+      case .sync:
+        // FIXME(#2355): the sync engine carries these to iCloud.
+        break
       }
     }
   }

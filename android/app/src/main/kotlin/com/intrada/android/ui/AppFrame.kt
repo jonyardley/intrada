@@ -25,9 +25,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -51,6 +56,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
 import com.intrada.shared.ItemKind
 
@@ -63,12 +69,31 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
     val onTab = route == null || tab != null
     val viewModel by store.viewModel.collectAsState()
     val live = viewModel?.activeSession != null || viewModel?.summary != null
+    val showsWelcome = viewModel?.firstRun?.showsWelcome == true
+    // Held open once shown: saving the profile ends the welcome before the first piece step.
+    var firstRunOpen by rememberSaveable { mutableStateOf(false) }
+    SideEffect { if (showsWelcome) firstRunOpen = true }
+    val firstRun = firstRunOpen || showsWelcome
+    DisposableEffect(route) {
+        SentryReporter.screen(tab?.label ?: route ?: AppTab.LIBRARY.label)
+        onDispose {}
+    }
     Box(modifier.fillMaxSize()) {
         // Composed under a live session so the builder route sees Building end and closes (#2459).
-        Box(if (live) Modifier.clearAndSetSemantics {} else Modifier) {
+        Box(if (live || firstRun) Modifier.clearAndSetSemantics {} else Modifier) {
             Tabs(store, navController, onTab, tab)
         }
         PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
+        if (firstRun) {
+            FirstRunRoute(
+                store,
+                onFinish = { added ->
+                    firstRunOpen = false
+                    if (added) navController.select(AppTab.PRACTICE)
+                },
+                Modifier.pointerInput(Unit) {},
+            )
+        }
     }
 }
 
@@ -104,12 +129,19 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
                     onDone = { navController.closeForm() },
                 )
             }
-            composable(AppTab.PRACTICE.route) {
-                PracticeRoute(store, onBuild = { navController.navigate(BUILD_ROUTE) })
-            }
+            practiceRoutes(store, navController, onBuild = { navController.navigate(BUILD_ROUTE) })
             builderRoutes(store, navController)
+            profileRoute(store)
             composable(AppTab.ROUTINES.route) { EmptyTab(AppTab.ROUTINES) }
-            composable(AppTab.PROGRESS.route) { EmptyTab(AppTab.PROGRESS) }
+            composable(AppTab.PROGRESS.route) {
+                ProgressRoute(
+                    store,
+                    onBuild = {
+                        navController.select(AppTab.PRACTICE)
+                        navController.navigate(BUILD_ROUTE) { launchSingleTop = true }
+                    },
+                )
+            }
         }
         if (onTab) TabBar(tab ?: AppTab.LIBRARY, onSelect = { navController.select(it) })
     }

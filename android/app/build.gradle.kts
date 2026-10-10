@@ -7,6 +7,7 @@ plugins {
 }
 
 val generated = rootProject.layout.projectDirectory.dir("generated")
+val iosProject = rootProject.layout.projectDirectory.file("../ios/project.yml")
 
 android {
     namespace = "com.intrada.android"
@@ -17,10 +18,43 @@ android {
         applicationId = "com.intrada.android"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Name: the tag, else the iPhone app's, so no build reports to an uncut release (#1961).
+        versionCode = providers.environmentVariable("ANDROID_VERSION_CODE").orNull?.toInt() ?: 1
+        versionName =
+            providers
+                .environmentVariable("ANDROID_VERSION_NAME")
+                .orElse(
+                    providers.fileContents(iosProject).asText.map {
+                        Regex("""MARKETING_VERSION: "([0-9.]+)"""").find(it)?.groupValues?.get(1)
+                            ?: error("no MARKETING_VERSION in ios/project.yml")
+                    }
+                )
+                .get()
         // The bridge is built for these two only (just android-package).
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        // Unset or not https keeps Sentry off, which is how CI and local builds run (#2497).
+        val sentryDsn =
+            providers
+                .environmentVariable("SENTRY_DSN_ANDROID")
+                .orElse(providers.gradleProperty("SENTRY_DSN_ANDROID"))
+                .getOrElse("")
+                .trim()
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+    }
+
+    // The upload key, set only in release-play.yml; Play App Signing holds the app key (#2499).
+    val uploadKeystore = providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE").orNull
+    if (uploadKeystore != null) {
+        signingConfigs {
+            create("upload") {
+                storeFile = file(uploadKeystore)
+                storePassword =
+                    providers.environmentVariable("ANDROID_UPLOAD_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("ANDROID_UPLOAD_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("ANDROID_UPLOAD_KEY_PASSWORD").get()
+            }
+        }
+        buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("upload") } }
     }
 
     compileOptions {
@@ -28,7 +62,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 
     lint {
         warningsAsErrors = true
@@ -88,6 +125,10 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.coroutines.android)
     implementation(project(":bridge"))
+    implementation(libs.sentry.android)
+    implementation(libs.coroutines.play.services)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.document.scanner)
 
     testImplementation(libs.jna)
     testImplementation(libs.junit)

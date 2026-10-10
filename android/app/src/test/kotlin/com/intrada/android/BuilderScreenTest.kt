@@ -38,7 +38,7 @@ class BuilderScreenTest {
         var opened = false
         compose.setContent { PracticeRoute(store, onBuild = { opened = true }) }
 
-        compose.onNodeWithTag("practice.build").performClick()
+        compose.onNodeWithTag("practice.buildOwn").performScrollTo().performClick()
 
         assertTrue(opened)
         assertEquals(emptyList<String>(), store.setlist().titles())

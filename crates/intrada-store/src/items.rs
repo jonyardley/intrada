@@ -1,10 +1,11 @@
 // ── Items ────────────────────────────────────────────────────────────
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection};
+use intrada_core::persistence::StoredItem;
 use intrada_core::{Item, Key, Tempo};
 use rusqlite::{params, OptionalExtension, Row, Transaction};
 use serde::de::DeserializeOwned;
@@ -18,24 +19,114 @@ use crate::codec::{
 use crate::StoreError;
 
 pub(crate) fn load(tx: &Transaction, unreadable: &mut Unreadable) -> Result<Vec<Item>, StoreError> {
-    let mut sections = sections_by_item(tx, unreadable)?;
-    let mut links = links_by_piece(tx, unreadable)?;
-    let mut stmt =
-        tx.prepare("SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC")?;
+    Ok(
+        load_rows(tx, "WHERE deleted_at IS NULL", unreadable, &mut Vec::new())?
+            .into_iter()
+            .map(|stored| stored.item)
+            .collect(),
+    )
+}
+
+/// Tombstones included, for the sync merge (`specs/icloud-sync.md`).
+/// `skipped` gains each piece the merge must not write over: one that will
+/// not read, or one with a section or link that will not.
+pub(crate) fn load_with_tombstones(
+    tx: &Transaction,
+    unreadable: &mut Unreadable,
+    skipped: &mut Vec<String>,
+) -> Result<Vec<StoredItem>, StoreError> {
+    load_rows(tx, "", unreadable, skipped)
+}
+
+fn load_rows(
+    tx: &Transaction,
+    filter: &str,
+    unreadable: &mut Unreadable,
+    skipped: &mut Vec<String>,
+) -> Result<Vec<StoredItem>, StoreError> {
+    let mut partial = HashSet::new();
+    let mut sections = sections_by_item(tx, unreadable, &mut partial)?;
+    let mut links = links_by_piece(tx, unreadable, &mut partial)?;
+    let mut stmt = tx.prepare(&format!(
+        "SELECT * FROM item {filter} ORDER BY created_at DESC"
+    ))?;
     let mut rows = stmt.query([])?;
     let mut items = Vec::new();
     while let Some(row) = rows.next()? {
         let id: String = row.get("id")?;
         let item_sections = sections.remove(&id).unwrap_or_default();
         let item_links = links.remove(&id).unwrap_or_default();
-        match item(row, item_sections, item_links, unreadable) {
-            Ok(item) => items.push(item),
+        let read = item(row, item_sections, item_links, unreadable).and_then(|item| {
+            Ok(StoredItem {
+                item,
+                deleted_at: optional_time(row, "deleted_at")?,
+            })
+        });
+        if partial.contains(&id) {
+            skipped.push(id.clone());
+        }
+        match read {
+            Ok(stored) => items.push(stored),
             // Skipped, not defaulted: the row stays on disk untouched, since no
             // save names an item the core never loaded.
-            Err(reason) => unreadable.push(format!("item {id} skipped: {reason}")),
+            Err(reason) => {
+                unreadable.push(format!("item {id} skipped: {reason}"));
+                if !partial.contains(&id) {
+                    skipped.push(id);
+                }
+            }
         }
     }
     Ok(items)
+}
+
+/// The merge's copy, its tombstone written exactly as it arrived. The piece
+/// wins whole: a section or link only this device has is deleted as of the
+/// winner's change.
+pub(crate) fn put_merged(
+    tx: &Transaction,
+    stored: &StoredItem,
+    unreadable: &mut Unreadable,
+) -> Result<(), StoreError> {
+    let item = &stored.item;
+    upsert(tx, item, unreadable)?;
+    if let Some(deleted_at) = &stored.deleted_at {
+        delete(tx, &item.id, deleted_at)?;
+    }
+    let changed_at = stored
+        .deleted_at
+        .map_or(item.updated_at, |d| d.max(item.updated_at));
+    let sections: Vec<&str> = item.sections.iter().map(|s| s.id.as_str()).collect();
+    let links: Vec<&str> = item.exercise_links.iter().map(|l| l.id.as_str()).collect();
+    delete_unnamed(tx, "section", "item_id", &item.id, &sections, &changed_at)?;
+    delete_unnamed(
+        tx,
+        "exercise_link",
+        "piece_id",
+        &item.id,
+        &links,
+        &changed_at,
+    )?;
+    Ok(())
+}
+
+fn delete_unnamed(
+    tx: &Transaction,
+    table: &str,
+    owner: &str,
+    owner_id: &str,
+    named: &[&str],
+    deleted_at: &DateTime<Utc>,
+) -> Result<(), StoreError> {
+    tx.execute(
+        &format!(
+            "UPDATE {table} SET deleted_at = ?1
+             WHERE {owner} = ?2 AND deleted_at IS NULL
+               AND id NOT IN (SELECT value FROM json_each(?3))"
+        ),
+        params![time_text(deleted_at), owner_id, encode_json(&named)?],
+    )?;
+    Ok(())
 }
 
 fn item(
@@ -104,6 +195,7 @@ fn narrow<T: TryFrom<i64>>(value: Option<i64>, name: &str) -> Result<Option<T>, 
 fn sections_by_item(
     tx: &Transaction,
     unreadable: &mut Unreadable,
+    partial: &mut HashSet<String>,
 ) -> Result<HashMap<String, Vec<ItemSection>>, StoreError> {
     let mut stmt = tx.prepare("SELECT * FROM section ORDER BY item_id, position, id")?;
     let mut rows = stmt.query([])?;
@@ -112,7 +204,10 @@ fn sections_by_item(
         let id: String = row.get("id")?;
         match section(row, unreadable) {
             Ok((item_id, section)) => by_item.entry(item_id).or_default().push(section),
-            Err(reason) => unreadable.push(format!("section {id} skipped: {reason}")),
+            Err(reason) => {
+                unreadable.push(format!("section {id} skipped: {reason}"));
+                partial.extend(row.get::<_, String>("item_id").ok());
+            }
         }
     }
     Ok(by_item)
@@ -141,6 +236,7 @@ fn section(row: &Row, unreadable: &mut Unreadable) -> Result<(String, ItemSectio
 fn links_by_piece(
     tx: &Transaction,
     unreadable: &mut Unreadable,
+    partial: &mut HashSet<String>,
 ) -> Result<HashMap<String, Vec<ExerciseLink>>, StoreError> {
     let mut stmt = tx.prepare("SELECT * FROM exercise_link ORDER BY piece_id, position, id")?;
     let mut rows = stmt.query([])?;
@@ -149,7 +245,10 @@ fn links_by_piece(
         let id: String = row.get("id")?;
         match exercise_link(row) {
             Ok((piece_id, link)) => by_piece.entry(piece_id).or_default().push(link),
-            Err(reason) => unreadable.push(format!("exercise link {id} skipped: {reason}")),
+            Err(reason) => {
+                unreadable.push(format!("exercise link {id} skipped: {reason}"));
+                partial.extend(row.get::<_, String>("piece_id").ok());
+            }
         }
     }
     Ok(by_piece)

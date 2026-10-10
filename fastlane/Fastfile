@@ -86,3 +86,25 @@ platform :ios do
     )
   end
 end
+
+platform :android do
+  desc "Upload the signed release bundle to Play's internal testing track (#2499)."
+  lane :internal do
+    # The track is the TestFlight equivalent: no review and no closed test
+    # rule, which gates production only (specs/android-shell.md).
+    upload_to_play_store(
+      package_name: "com.intrada.android",
+      track: "internal",
+      # Play refuses a completed release while the app has never been rolled
+      # out; the bootstrap run sets "draft" and the release is rolled out by hand.
+      release_status: ENV.fetch("PLAY_RELEASE_STATUS", "completed"),
+      aab: ENV.fetch("ANDROID_AAB"),
+      json_key_data: ENV.fetch("PLAY_SERVICE_ACCOUNT_JSON"),
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

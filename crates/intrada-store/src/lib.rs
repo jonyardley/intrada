@@ -11,7 +11,9 @@ mod tests;
 
 use std::path::Path;
 
+use intrada_core::persistence::StoredRecords;
 use intrada_core::stored_session::StoredSessionError;
+use intrada_core::sync::{RecordKey, RecordKind};
 use intrada_core::{PersistenceOperation, PersistenceOutput};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 
@@ -88,7 +90,9 @@ impl Store {
         let behaviour = match operation {
             PersistenceOperation::LoadItems
             | PersistenceOperation::LoadSessions
-            | PersistenceOperation::LoadVariations => TransactionBehavior::Deferred,
+            | PersistenceOperation::LoadVariations
+            | PersistenceOperation::LoadRecords(_)
+            | PersistenceOperation::LoadAllRecords => TransactionBehavior::Deferred,
             _ => TransactionBehavior::Immediate,
         };
         let tx = self.conn.transaction_with_behavior(behaviour)?;
@@ -133,5 +137,60 @@ fn run_in(
             sessions::save_variations(tx, variations)?;
             PersistenceOutput::Ack
         }
+        PersistenceOperation::LoadRecords(keys) => {
+            PersistenceOutput::Records(records(tx, Some(keys), unreadable)?)
+        }
+        PersistenceOperation::LoadAllRecords => {
+            PersistenceOutput::Records(records(tx, None, unreadable)?)
+        }
+        PersistenceOperation::ApplyMerged(merged) => {
+            for item in &merged.items {
+                items::put_merged(tx, item, unreadable)?;
+            }
+            sessions::save_variations(tx, &merged.variations)?;
+            for session in &merged.sessions {
+                sessions::save(tx, session)?;
+            }
+            PersistenceOutput::Ack
+        }
+    })
+}
+
+/// Every stored copy the keys name, or everything when there are none, with
+/// the named rows this app cannot read.
+fn records(
+    tx: &Transaction,
+    keys: Option<&Vec<RecordKey>>,
+    unreadable: &mut Vec<String>,
+) -> Result<StoredRecords, StoreError> {
+    let wanted = |kind: RecordKind, id: &str| {
+        keys.is_none_or(|keys| keys.iter().any(|k| k.kind == kind && k.id == id))
+    };
+    let mut skipped = [Vec::new(), Vec::new(), Vec::new()];
+    let [skipped_items, skipped_variations, skipped_sessions] = &mut skipped;
+    let records = StoredRecords {
+        items: items::load_with_tombstones(tx, unreadable, skipped_items)?
+            .into_iter()
+            .filter(|s| wanted(RecordKind::Item, &s.item.id))
+            .collect(),
+        variations: sessions::variation_rows(tx, unreadable, skipped_variations)?
+            .into_iter()
+            .filter(|v| wanted(RecordKind::Variation, &v.id))
+            .collect(),
+        sessions: sessions::load_with_tombstones(tx, unreadable, skipped_sessions)?
+            .into_iter()
+            .filter(|s| wanted(RecordKind::Session, &s.id))
+            .collect(),
+        unreadable: Vec::new(),
+    };
+    let unreadable_keys = [RecordKind::Item, RecordKind::Variation, RecordKind::Session]
+        .into_iter()
+        .zip(skipped)
+        .flat_map(|(kind, ids)| ids.into_iter().map(move |id| RecordKey { kind, id }))
+        .filter(|key| wanted(key.kind, &key.id))
+        .collect();
+    Ok(StoredRecords {
+        unreadable: unreadable_keys,
+        ..records
     })
 }

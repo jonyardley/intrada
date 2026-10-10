@@ -1,53 +1,48 @@
 package com.intrada.android.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import com.intrada.android.core.Reporter
+import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
-import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
-import com.intrada.android.ui.components.HairlineDivider
-import com.intrada.android.ui.components.TagChip
-import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
+import com.intrada.ffi.CoreException
+import com.intrada.ffi.FormFieldNow
+import com.intrada.ffi.FormReadField
+import com.intrada.ffi.fillFormFromRead
 import com.intrada.ffi.itemFormCanSave
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
+import com.intrada.shared.FormErrorTarget
 import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
 import com.intrada.shared.KeyEdit
 import com.intrada.shared.LibraryItemView
+import com.intrada.shared.PhotoDraft
 import com.intrada.shared.TempoInput
 import com.intrada.shared.UpdateItem
 
@@ -58,38 +53,131 @@ enum class ItemFormMode(val confirmLabel: String) {
     fun title(kind: ItemKind) = if (this == ADD) "New ${kind.label}" else "Edit"
 }
 
-private class ChipListLabels(val label: String, val addLabel: String, val tag: String)
-
 class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     var kind by mutableStateOf(kind)
-    var title by mutableStateOf("")
-    var composer by mutableStateOf("")
     var key by mutableStateOf<Key?>(null)
-    var marking by mutableStateOf("")
-    var bpm by mutableStateOf("")
     var notes by mutableStateOf("")
+
+    /** The page the fields were read off, kept on the piece so it is not photographed twice. */
+    var photoId by mutableStateOf<String?>(null)
+    var filledFrom by mutableStateOf<String?>(null)
+
+    /**
+     * Fields still holding the page's read, and whether that read was weak. Typing takes a field
+     * off: from that keystroke it is the musician's, not the page's.
+     */
+    val readFrom = mutableStateMapOf<FormReadField, Boolean>()
+
+    private var storedTitle by mutableStateOf("")
+    private var storedComposer by mutableStateOf("")
+    private var storedMarking by mutableStateOf("")
+    private var storedBpm by mutableStateOf("")
+
+    var title: String
+        get() = storedTitle
+        set(value) {
+            storedTitle = value
+            readFrom.remove(FormReadField.TITLE)
+        }
+
+    var composer: String
+        get() = storedComposer
+        set(value) {
+            storedComposer = value
+            readFrom.remove(FormReadField.COMPOSER)
+        }
+
+    var marking: String
+        get() = storedMarking
+        set(value) {
+            storedMarking = value
+            readFrom.remove(FormReadField.MARKING)
+        }
+
+    var bpm: String
+        get() = storedBpm
+        set(value) {
+            storedBpm = value
+            readFrom.remove(FormReadField.BPM)
+        }
+
     val tags = mutableStateListOf<String>()
     val variations = mutableStateListOf<VariationRow>()
+    val exercises = mutableStateListOf<StagedExercise>()
+    var faultedExercise by mutableStateOf<FormErrorTarget.Exercise?>(null)
     var formError by mutableStateOf<String?>(null)
 
     val canSave: Boolean
         get() = itemFormCanSave(title)
 
-    fun addEvent(): Event =
-        Event.Item(
-            ItemEvent.Add(
-                CreateItem(
-                    title = title,
-                    kind = kind,
-                    composer = composer,
-                    key = key,
-                    tempo = TempoInput(marking, bpm),
-                    notes = notes,
-                    tags = tags.toList(),
-                    variationLabels = variations.map { it.label },
-                )
+    // An exercise carries no related exercises, so switching kind drops what was staged.
+    fun switchKind(to: ItemKind) {
+        kind = to
+        if (to != ItemKind.PIECE) chooseExercises(emptyList())
+    }
+
+    /** The core picks the fields (#2229); nothing is saved until Add. */
+    fun fill(draft: PhotoDraft, reporter: Reporter = SentryReporter) {
+        val now =
+            listOf(
+                FormReadField.TITLE to storedTitle,
+                FormReadField.COMPOSER to storedComposer,
+                FormReadField.MARKING to storedMarking,
+                FormReadField.BPM to storedBpm,
             )
-        )
+        val fills =
+            try {
+                fillFormFromRead(
+                    draft.bincodeSerialize(),
+                    now.map { (field, text) -> FormFieldNow(field, text, field in readFrom) },
+                )
+            } catch (e: CoreException) {
+                reporter.report(e, "bridge")
+                return
+            }
+        for (fill in fills) {
+            when (fill.field) {
+                FormReadField.TITLE -> storedTitle = fill.value
+                FormReadField.COMPOSER -> storedComposer = fill.value
+                FormReadField.MARKING -> storedMarking = fill.value
+                FormReadField.BPM -> storedBpm = fill.value
+                // Chord charts wait for #2025 on Android, so a read chart has nowhere to go.
+                FormReadField.CHART -> continue
+            }
+            readFrom[fill.field] = fill.weak
+        }
+    }
+
+    fun chooseExercises(staged: List<StagedExercise>) {
+        exercises.clear()
+        exercises.addAll(staged)
+        faultedExercise = null
+    }
+
+    fun removeExercise(id: String) {
+        exercises.removeAll { it.id == id }
+        faultedExercise = null
+    }
+
+    fun addEvent(): Event {
+        val piece =
+            CreateItem(
+                title = title,
+                kind = kind,
+                composer = composer,
+                key = key,
+                tempo = TempoInput(marking, bpm),
+                notes = notes,
+                tags = tags.toList(),
+                photoId = photoId,
+                variationLabels = variations.map { it.label },
+            )
+        return if (kind == ItemKind.PIECE && exercises.isNotEmpty()) {
+            Event.Item(ItemEvent.AddPieceInFull(piece, null, exercises.map { it.entry }))
+        } else {
+            Event.Item(ItemEvent.Add(piece))
+        }
+    }
 
     fun editEvent(id: String): Event =
         Event.Item(
@@ -144,7 +232,12 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                         "rowIds" to ArrayList(form.variations.map { it.id }),
                         "marks" to form.variations.map { it.hasMarks }.toBooleanArray(),
                         "error" to form.formError,
-                    )
+                        "fault" to form.faultedExercise?.bincodeSerialize(),
+                        "photo" to form.photoId,
+                        "filledFrom" to form.filledFrom,
+                        "readFields" to ArrayList(form.readFrom.keys.map { it.name }),
+                        "readWeak" to form.readFrom.values.toBooleanArray(),
+                    ) + savedExercises(form.exercises)
                 },
                 restore = ::restored,
             )
@@ -174,16 +267,74 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
                     )
                 }
                 formError = saved["error"] as? String
+                exercises.addAll(restoredExercises(saved))
+                photoId = saved["photo"] as? String
+                filledFrom = saved["filledFrom"] as? String
+                val weak = saved["readWeak"] as? BooleanArray ?: BooleanArray(0)
+                strings("readFields").forEachIndexed { index, name ->
+                    val field = FormReadField.entries.firstOrNull { it.name == name }
+                    if (field != null && index < weak.size) readFrom[field] = weak[index]
+                }
+                faultedExercise =
+                    (saved["fault"] as? ByteArray)?.let(FormErrorTarget::bincodeDeserialize)
+                        as? FormErrorTarget.Exercise
+            }
+        }
+
+        private fun savedExercises(staged: List<StagedExercise>): Map<String, Any?> =
+            mapOf("exerciseCount" to staged.size) +
+                staged.flatMapIndexed { index, row ->
+                    when (row) {
+                        is StagedExercise.Written ->
+                            listOf(
+                                "exercise.$index.title" to row.title,
+                                "exercise.$index.key" to row.key?.bincodeSerialize(),
+                                "exercise.$index.bpm" to row.bpm,
+                                "exercise.$index.id" to row.id,
+                            )
+                        is StagedExercise.Chosen ->
+                            listOf(
+                                "exercise.$index.title" to row.title,
+                                "exercise.$index.meta" to row.meta,
+                                "exercise.$index.chosen" to row.id,
+                            )
+                    }
+                }
+
+        // All rows or none: a dropped row would shift every later one under the restored mark.
+        private fun restoredExercises(saved: Map<String, Any?>): List<StagedExercise> {
+            val rows =
+                (0 until (saved["exerciseCount"] as? Int ?: 0)).map { restoredExercise(saved, it) }
+            return if (rows.all { it != null }) rows.filterNotNull() else emptyList()
+        }
+
+        private fun restoredExercise(saved: Map<String, Any?>, index: Int): StagedExercise? {
+            val title = saved["exercise.$index.title"] as? String
+            val chosen = saved["exercise.$index.chosen"] as? String
+            val id = saved["exercise.$index.id"] as? String
+            return when {
+                title == null -> null
+                chosen != null ->
+                    StagedExercise.Chosen(chosen, title, saved["exercise.$index.meta"] as? String)
+                id != null ->
+                    StagedExercise.Written(
+                        title,
+                        (saved["exercise.$index.key"] as? ByteArray)?.let(Key::bincodeDeserialize),
+                        (saved["exercise.$index.bpm"] as? String).orEmpty(),
+                        id,
+                    )
+                else -> null
             }
         }
     }
 }
 
-// A refusal comes back for the form to show inline and leaves the core, so the app banner does not
-// repeat it; nothing closes until the core accepts (#1595).
-fun Store.sendFromForm(event: Event): String? {
+// A refusal, and the row it names, come back for the form to show inline and leave the core, so the
+// app banner does not repeat it; nothing closes until the core accepts (#1595).
+fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}): String? {
     val accepted = sendAccepted(event)
     val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED
+    onTarget(if (error != null) viewModel.value?.errorTarget else null)
     if (error != null) send(Event.ClearError)
     return error
 }
@@ -191,16 +342,49 @@ fun Store.sendFromForm(event: Event): String? {
 private const val SAVE_FAILED = "Couldn't save. Try again."
 
 @Composable
-fun LibraryAddRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Modifier) {
-    val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState() }
+fun LibraryAddRoute(
+    store: Store,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    kind: ItemKind = ItemKind.PIECE,
+) {
+    val form = rememberSaveable(saver = ItemFormState.Saver) { ItemFormState(kind) }
+    val rows by store.libraryRows.collectAsState()
+    val view by store.viewModel.collectAsState()
     var closing by remember { mutableStateOf(false) }
+    val recognition = view?.photoRecognition
+    // Keyed on the projection, not the draft: a rescan of the same page reads to an equal draft.
+    DisposableEffect(recognition) {
+        recognition?.photoId?.let { form.photoId = it }
+        val draft = recognition?.draft
+        if (draft != null && recognition.photoId != form.filledFrom) {
+            form.fill(draft)
+            form.filledFrom = recognition.photoId
+        }
+        onDispose {}
+    }
+    val activity = LocalActivity.current
+    DisposableEffect(store) {
+        onDispose {
+            if (activity?.isChangingConfigurations != true) store.send(Event.DiscardPhotoDraft)
+        }
+    }
     ItemFormScreen(
         form,
         ItemFormMode.ADD,
         onCancel = onDone,
+        header = {
+            if (recognition != null) {
+                ScanPageEntry(recognition, { store.send(Event.Item(ItemEvent.ReadPhoto(it))) })
+            }
+        },
+        exerciseLibrary = rows.filter { it.itemType == ItemKind.EXERCISE },
         onConfirm = {
             if (!closing) {
-                form.formError = store.sendFromForm(form.addEvent())
+                form.formError =
+                    store.sendFromForm(form.addEvent()) {
+                        form.faultedExercise = it as? FormErrorTarget.Exercise
+                    }
                 closing = form.formError == null
                 if (closing) onDone()
             }
@@ -241,6 +425,8 @@ fun ItemFormScreen(
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
+    header: @Composable () -> Unit = {},
+    exerciseLibrary: List<LibraryItemView> = emptyList(),
 ) {
     ScreenScaffold(
         mode.title(form.kind),
@@ -266,64 +452,37 @@ fun ItemFormScreen(
                         .testTag("itemForm.error"),
                 )
             }
-            ItemFormFields(form, Modifier.verticalScroll(rememberScrollState()))
+            ItemFormFields(
+                form,
+                exerciseLibrary.takeIf { mode == ItemFormMode.ADD },
+                header,
+                Modifier.verticalScroll(rememberScrollState()),
+            )
         }
     }
 }
 
 @Composable
-private fun ItemFormFields(form: ItemFormState, modifier: Modifier = Modifier) {
+private fun ItemFormFields(
+    form: ItemFormState,
+    exerciseLibrary: List<LibraryItemView>?,
+    header: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier.padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
-        KindSegment(form.kind, { form.kind = it })
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Title",
-                form.title,
-                { form.title = it },
-                "itemForm.title",
-                placeholder = "Required",
-            )
-            HairlineDivider()
-            FormField("Composer", form.composer, { form.composer = it }, "itemForm.composer")
-            HairlineDivider()
-            KeyPicker(form.key, { form.key = it })
-        }
+        header()
+        KindSegment(form.kind, form::switchKind)
+        ItemFormDetails(form)
         if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Tempo marking",
-                form.marking,
-                { form.marking = it },
-                "itemForm.marking",
-                placeholder = "e.g. Allegro",
-            )
-            HairlineDivider()
-            FormField(
-                "Beats per minute",
-                form.bpm,
-                { form.bpm = it },
-                "itemForm.bpm",
-                keyboard = KeyboardType.Number,
-            )
+        ItemFormPractice(form)
+        ItemFormNotes(form)
+        ItemFormTags(form)
+        if (exerciseLibrary != null && form.kind == ItemKind.PIECE) {
+            ItemFormExercises(form, exerciseLibrary)
         }
-        Column(Modifier.cardSurface()) {
-            FormField(
-                "Notes",
-                form.notes,
-                { form.notes = it },
-                "itemForm.notes",
-                singleLine = false,
-            )
-        }
-        ChipListCard(
-            ChipListLabels("Tags", "Add a tag", "itemForm.tag"),
-            form.tags,
-            onRemove = { form.tags.removeAt(it) },
-            onAdd = { form.tags.add(it) },
-        )
     }
 }
 
@@ -359,109 +518,3 @@ private val ItemKind.caption: String
             ItemKind.PIECE -> "Repertoire to learn and keep up"
             ItemKind.EXERCISE -> "Drills and studies to build technique"
         }
-
-@Composable
-internal fun FormField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    tag: String,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    keyboard: KeyboardType = KeyboardType.Text,
-    singleLine: Boolean = true,
-    note: String? = null,
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        if (label.isNotEmpty()) FieldLabel(label)
-        BasicTextField(
-            value,
-            onValueChange,
-            Modifier.fillMaxWidth()
-                .semantics { contentDescription = label.ifEmpty { placeholder } }
-                .testTag(tag),
-            textStyle = IntradaFont.body.copy(color = IntradaColor.ink),
-            singleLine = singleLine,
-            minLines = if (singleLine) 1 else 3,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
-            cursorBrush = SolidColor(IntradaColor.ink),
-            decorationBox = { field ->
-                Box {
-                    if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        BasicText(
-                            placeholder,
-                            style = IntradaFont.body.copy(color = IntradaColor.inkSecondary),
-                        )
-                    }
-                    field()
-                }
-            },
-        )
-        if (note != null) {
-            BasicText(note, style = IntradaFont.small.copy(color = IntradaColor.inkSecondary))
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ChipListCard(
-    labels: ChipListLabels,
-    chips: List<String>,
-    onRemove: (Int) -> Unit,
-    onAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val tag = labels.tag
-    Column(modifier.cardSurface()) {
-        FieldLabel(
-            labels.label,
-            Modifier.padding(horizontal = IntradaSpacing.card)
-                .padding(top = IntradaSpacing.cardCompact),
-        )
-        if (chips.isNotEmpty()) {
-            FlowRow(
-                Modifier.fillMaxWidth().padding(horizontal = IntradaSpacing.card),
-                horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
-            ) {
-                chips.forEachIndexed { index, chip ->
-                    TagChip(chip, Modifier.testTag("$tag.chip"), onRemove = { onRemove(index) })
-                }
-            }
-        }
-        AddInputRow(labels.addLabel, labels.tag, onAdd)
-    }
-}
-
-@Composable
-internal fun AddInputRow(
-    addLabel: String,
-    tag: String,
-    onAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var typed by rememberSaveable { mutableStateOf("") }
-    Row(modifier, verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.weight(1f)) {
-            FormField("", typed, { typed = it }, "$tag.input", placeholder = addLabel)
-        }
-        TextAction(
-            "Add",
-            "$tag.add",
-            onClick = {
-                if (typed.isNotBlank()) {
-                    onAdd(typed)
-                    typed = ""
-                }
-            },
-            Modifier.padding(end = IntradaSpacing.controlGap).semantics {
-                contentDescription = addLabel
-            },
-        )
-    }
-}

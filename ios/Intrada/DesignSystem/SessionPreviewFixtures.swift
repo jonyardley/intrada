@@ -61,7 +61,7 @@
   extension AnalyticsView {
     /// A deterministic analytics fixture for the Progress screen + snapshots.
     /// `scoreChanges` (this week's movers) drive the Recent-mastery rows;
-    /// `weeklyMinutes` are the consistency bars (40/75/55/95/82).
+    /// `consistencyWeeks` are the bars (40/75/55/95/82).
     static var previewAnalytics: AnalyticsView {
       AnalyticsView(
         weeklySummary: WeeklySummary(
@@ -89,10 +89,28 @@
         variationCoverage: [
           VariationCoverageView(
             itemId: "exercise-2", title: LibraryItemView.previewExerciseWithVariations.title,
-            solid: 1, total: 3),
-          VariationCoverageView(itemId: "exercise-3", title: "Chromatic run", solid: 4, total: 12),
+            solid: 1, total: 3, caption: "1 of 3 solid",
+            spoken:
+              "\(LibraryItemView.previewExerciseWithVariations.title), 1 of 3 variations solid"),
+          VariationCoverageView(
+            itemId: "exercise-3", title: "Chromatic run", solid: 4, total: 12,
+            caption: "4 of 12 solid", spoken: "Chromatic run, 4 of 12 variations solid"),
         ],
-        weeklyMinutes: [40, 75, 55, 95, 82],
+        variationCoverageCaption: "5 of 15 solid",
+        weekLine: "14 sessions · 6h 20m this week",
+        consistencyWeeks: [
+          ConsistencyWeekView(
+            label: "W1", minutes: 40, isCurrent: false, spoken: "4 weeks ago: 40 minutes"),
+          ConsistencyWeekView(
+            label: "W2", minutes: 75, isCurrent: false, spoken: "3 weeks ago: 75 minutes"),
+          ConsistencyWeekView(
+            label: "W3", minutes: 55, isCurrent: false, spoken: "2 weeks ago: 55 minutes"),
+          ConsistencyWeekView(
+            label: "W4", minutes: 95, isCurrent: false, spoken: "Last week: 95 minutes"),
+          ConsistencyWeekView(
+            label: "Now", minutes: 82, isCurrent: true, spoken: "This week: 82 minutes"),
+        ],
+        bestWeek: "best week · 95m",
         overallMastery: 3.4,
         topMover: ScoreChange(
           itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,

@@ -114,6 +114,45 @@ class ItemEditRoundTripTest {
         assertEquals(null, edit(KeyEdit.Clear).key)
     }
 
+    // Kotlin cannot send a nested clear, so the form sends a blank composer or notes, which the
+    // core normalises to none (#2417).
+    @Test
+    fun anEditKeepsOrClearsTheComposerAndNotes() {
+        val bridge = LiveBridge()
+        val item =
+            savedItems(
+                    bridge.update(
+                        Event.Item(
+                            ItemEvent.Add(
+                                CreateItem(
+                                    title = "Nocturne",
+                                    kind = ItemKind.PIECE,
+                                    composer = "Chopin",
+                                    notes = "Pedal lightly",
+                                    tags = emptyList(),
+                                    variationLabels = emptyList(),
+                                )
+                            )
+                        )
+                    )
+                )
+                .single()
+        fun edit(update: UpdateItem) =
+            savedItems(
+                    bridge.update(
+                        Event.Item(ItemEvent.Edit(item.id, update, emptyList(), emptyList()))
+                    )
+                )
+                .single()
+
+        val kept = edit(UpdateItem(title = "Nocturne in E flat", key = KeyEdit.Keep))
+        assertEquals("Chopin", kept.composer)
+        assertEquals("Pedal lightly", kept.notes)
+        val cleared = edit(UpdateItem(composer = "", key = KeyEdit.Keep, notes = "  "))
+        assertEquals(null, cleared.composer)
+        assertEquals(null, cleared.notes)
+    }
+
     private fun savedItems(effects: List<Request>) = effects.mapNotNull {
         ((it.effect as? Effect.Persistence)?.value as? PersistenceOperation.SaveItem)?.value
     }

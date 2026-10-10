@@ -11,6 +11,8 @@ use intrada_core::domain::link::ExerciseLink;
 use intrada_core::domain::section::{BarRange, ItemSection, SectionKind};
 use intrada_core::domain::session::{Play, RepAction, RepEvent};
 use intrada_core::domain::{Metre, Variation};
+use intrada_core::persistence::{StoredItem, StoredRecords};
+use intrada_core::sync::{RecordKey, RecordKind};
 use intrada_core::{
     Accidental, CompletionStatus, EntryStatus, Item, ItemKind, Key, Letter, Modality,
     PersistenceOperation, PersistenceOutput, PracticeSession, SetlistEntry, Tempo,
@@ -1701,4 +1703,257 @@ fn near_miss_text_is_refused_as_a_kind_and_as_a_modality() {
             vec![format!("unknown Modality on decode: \"{raw}\"")]
         );
     }
+}
+
+// ── Sync merge (#2354) ──
+
+fn stored_records(store: &mut Store, keys: Option<Vec<RecordKey>>) -> StoredRecords {
+    let operation = match keys {
+        Some(keys) => PersistenceOperation::LoadRecords(keys),
+        None => PersistenceOperation::LoadAllRecords,
+    };
+    match store.ok(&operation) {
+        PersistenceOutput::Records(records) => records,
+        other => panic!("expected records, got {other:?}"),
+    }
+}
+
+fn item_key(id: &str) -> RecordKey {
+    RecordKey {
+        kind: RecordKind::Item,
+        id: id.into(),
+    }
+}
+
+#[test]
+fn a_merge_load_sees_deleted_pieces_and_only_the_keys_asked_for() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save(&record("kept", "Kept"));
+    store.save(&record("gone", "Gone"));
+    store.save(&record("other", "Other"));
+    store.ok(&PersistenceOperation::DeleteItem {
+        id: "gone".into(),
+        deleted_at: at("2026-02-01T00:00:00Z"),
+    });
+
+    let records = stored_records(&mut store, Some(vec![item_key("kept"), item_key("gone")]));
+
+    let mut found: Vec<(String, Option<DateTime<Utc>>)> = records
+        .items
+        .into_iter()
+        .map(|s| (s.item.id, s.deleted_at))
+        .collect();
+    found.sort();
+    assert_eq!(
+        found,
+        vec![
+            ("gone".to_string(), Some(at("2026-02-01T00:00:00Z"))),
+            ("kept".to_string(), None),
+        ]
+    );
+}
+
+#[test]
+fn a_merged_tombstone_is_stored_even_for_a_piece_never_seen_here() {
+    let mut store = Store::in_memory().expect("opens");
+    let deleted_at = at("2026-02-01T00:00:00Z");
+    let merged = StoredRecords {
+        items: vec![StoredItem {
+            item: record("theirs", "Theirs"),
+            deleted_at: Some(deleted_at),
+        }],
+        ..Default::default()
+    };
+    assert_eq!(
+        store.ok(&PersistenceOperation::ApplyMerged(merged)),
+        PersistenceOutput::Ack
+    );
+
+    assert!(store.items().is_empty());
+    let all = stored_records(&mut store, None);
+    assert_eq!(all.items[0].deleted_at, Some(deleted_at));
+}
+
+#[test]
+fn a_merged_edit_brings_back_a_piece_deleted_earlier_here() {
+    let mut store = Store::in_memory().expect("opens");
+    store.save(&record("piece", "Old"));
+    store.ok(&PersistenceOperation::DeleteItem {
+        id: "piece".into(),
+        deleted_at: at("2026-02-01T00:00:00Z"),
+    });
+    let merged = StoredRecords {
+        items: vec![StoredItem {
+            item: record("piece", "Newer"),
+            deleted_at: None,
+        }],
+        ..Default::default()
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert_eq!(store.item("piece").title, "Newer");
+}
+
+#[test]
+fn a_merge_writes_variations_and_sessions_in_one_go() {
+    let mut store = Store::in_memory().expect("opens");
+    let variation = Variation {
+        id: "v".into(),
+        label: "Slow".into(),
+        updated_at: at(EARLY),
+        deleted_at: Some(at("2026-02-01T00:00:00Z")),
+    };
+    let merged = StoredRecords {
+        items: vec![],
+        variations: vec![variation.clone()],
+        sessions: vec![session("s", "2026-02-02T00:00:00Z")],
+        unreadable: vec![],
+    };
+    store.ok(&PersistenceOperation::ApplyMerged(merged));
+
+    assert_eq!(store.variations(), vec![variation]);
+    assert_eq!(store.sessions()[0].id, "s");
+}
+
+fn section_row(id: &str, deleted_at: Option<&str>) -> ItemSection {
+    ItemSection {
+        id: id.into(),
+        name: id.into(),
+        bars: None,
+        kind: SectionKind::Form,
+        target_bpm: None,
+        position: 0,
+        updated_at: at(EARLY),
+        deleted_at: deleted_at.map(at),
+    }
+}
+
+fn link_row(id: &str) -> ExerciseLink {
+    ExerciseLink {
+        id: id.into(),
+        exercise_id: "e1".into(),
+        section_id: None,
+        position: 0,
+        updated_at: at(EARLY),
+        deleted_at: None,
+    }
+}
+
+#[test]
+fn a_winning_piece_deletes_the_sections_and_links_only_this_device_added() {
+    let earlier = "2026-01-15T00:00:00Z";
+    let won = "2026-03-01T00:00:00Z";
+    let deleted = "2026-04-01T00:00:00Z";
+    for (case, deleted_at, expected) in [
+        ("a live winner", None, won),
+        ("a deleted winner", Some(deleted), deleted),
+    ] {
+        let mut store = Store::in_memory().expect("opens");
+        store.save(&Item {
+            sections: vec![
+                section_row("both", None),
+                section_row("added here", None),
+                section_row("gone here", Some(earlier)),
+            ],
+            exercise_links: vec![link_row("both"), link_row("added here")],
+            ..record("piece", "Ours")
+        });
+        let winner = Item {
+            updated_at: at(won),
+            sections: vec![section_row("both", None)],
+            exercise_links: vec![link_row("both")],
+            ..record("piece", "Theirs")
+        };
+        store.ok(&PersistenceOperation::ApplyMerged(StoredRecords {
+            items: vec![StoredItem {
+                item: winner,
+                deleted_at: deleted_at.map(at),
+            }],
+            ..Default::default()
+        }));
+
+        let stored = stored_records(&mut store, None).items.remove(0).item;
+        let sections: Vec<(String, Option<DateTime<Utc>>)> = stored
+            .sections
+            .into_iter()
+            .map(|s| (s.id, s.deleted_at))
+            .collect();
+        let links: Vec<(String, Option<DateTime<Utc>>)> = stored
+            .exercise_links
+            .into_iter()
+            .map(|l| (l.id, l.deleted_at))
+            .collect();
+        assert_eq!(
+            sections,
+            vec![
+                ("added here".to_string(), Some(at(expected))),
+                ("both".to_string(), None),
+                ("gone here".to_string(), Some(at(earlier))),
+            ],
+            "{case}"
+        );
+        assert_eq!(
+            links,
+            vec![
+                ("added here".to_string(), Some(at(expected))),
+                ("both".to_string(), None),
+            ],
+            "{case}"
+        );
+    }
+}
+
+#[test]
+fn a_merge_load_names_the_rows_it_could_not_read() {
+    let mut store = upgraded(
+        migrations::latest(),
+        &format!(
+            "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('bad', 'Bad', 'piece', '[]', 'last tuesday', '{EARLY}');
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('not asked', 'Bad', 'piece', '[]', 'last tuesday', '{EARLY}');
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('good', 'Good', 'piece', '[]', '{EARLY}', '{EARLY}');
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('partial', 'Partial', 'piece', '[]', '{EARLY}', '{EARLY}');
+             INSERT INTO section (id, item_id, name, kind, position, updated_at)
+             VALUES ('s', 'partial', 'A', 'form', 0, 'never');
+             INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+             VALUES ('linked', 'Linked', 'piece', '[]', '{EARLY}', '{EARLY}');
+             INSERT INTO exercise_link (id, piece_id, exercise_id, position, updated_at)
+             VALUES ('l', 'linked', 'e1', 0, 'never');
+             INSERT INTO variation (id, label, updated_at) VALUES ('v', 'Slow', 'never');
+             INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+               completion_status, entries, updated_at)
+             VALUES ('s1', 'yesterday', '2026-09-01T10:10:00Z', 600, 'completed', '[]',
+               '2026-09-01T10:10:00Z');"
+        ),
+    );
+    let key = |kind, id: &str| RecordKey {
+        kind,
+        id: id.into(),
+    };
+    let records = stored_records(
+        &mut store,
+        Some(vec![
+            item_key("bad"),
+            item_key("good"),
+            item_key("partial"),
+            item_key("linked"),
+            key(RecordKind::Variation, "v"),
+            key(RecordKind::Session, "s1"),
+        ]),
+    );
+    let mut unreadable = records.unreadable;
+    unreadable.sort();
+    assert_eq!(
+        unreadable,
+        vec![
+            item_key("bad"),
+            item_key("linked"),
+            item_key("partial"),
+            key(RecordKind::Variation, "v"),
+            key(RecordKind::Session, "s1"),
+        ]
+    );
 }
