@@ -50,7 +50,8 @@ class PlayerSnapshotTest {
         // Seeded before composition, or the row reads whatever frame the looper reached (#2503).
         val click = ClickController {
             error("a snapshot never sounds")
-        }.apply { follow(active, view.limits) }
+        }
+            .apply { follow(active, view.limits) }
         captureRoboImage("src/test/snapshots/player.png") {
             PlayerScreen(
                 PlayerModel(active, view.limits, held = held, click = click),
