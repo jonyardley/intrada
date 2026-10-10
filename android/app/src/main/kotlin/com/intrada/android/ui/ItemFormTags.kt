@@ -12,16 +12,18 @@ import androidx.compose.ui.platform.testTag
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.TagChip
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.ffi.formSuggestions
 
 private class ChipListLabels(val label: String, val addLabel: String, val tag: String)
 
 @Composable
-internal fun ItemFormTags(form: ItemFormState, modifier: Modifier = Modifier) {
+internal fun ItemFormTags(form: ItemFormState, tags: List<String>, modifier: Modifier = Modifier) {
     ChipListCard(
         ChipListLabels("Tags", "Add a tag", "itemForm.tag"),
         form.tags,
         onRemove = { form.tags.removeAt(it) },
         onAdd = { form.tags.add(it) },
+        suggest = { formSuggestions(tags, it, form.tags) },
         modifier,
     )
 }
@@ -33,6 +35,7 @@ private fun ChipListCard(
     chips: List<String>,
     onRemove: (Int) -> Unit,
     onAdd: (String) -> Unit,
+    suggest: (String) -> List<String>,
     modifier: Modifier = Modifier,
 ) {
     val tag = labels.tag
@@ -52,6 +55,12 @@ private fun ChipListCard(
                 }
             }
         }
-        AddInputRow(labels.addLabel, labels.tag, onAdd)
+        AddInputRow(
+            labels.addLabel,
+            labels.tag,
+            onAdd,
+            suggest = suggest,
+            suggestionLabel = { "Adds the tag $it" },
+        )
     }
 }
