@@ -7,12 +7,18 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.intrada.android.core.CoreBridge
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.AppFrame
 import com.intrada.android.ui.AppTab
+import com.intrada.shared.AppEffect
+import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.PersistenceOutput
+import com.intrada.shared.RecognitionOutput
+import com.intrada.shared.Request
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -39,7 +45,7 @@ class AppFrameSnapshotTest {
     private fun capture(tab: AppTab, reference: String) = runTest {
         val store =
             Store(
-                LiveBridge(),
+                PinnedWeekBridge(),
                 InMemoryItemStore(Fixtures.library),
                 this,
                 StandardTestDispatcher(testScheduler),
@@ -50,5 +56,29 @@ class AppFrameSnapshotTest {
         compose.setContent { AppFrame(store) }
         compose.onNodeWithTag(tab.tag).performClick()
         compose.onRoot().captureRoboImage(reference)
+    }
+}
+
+/**
+ * The core reads today from the clock, so the week strip would change with the calendar (#2530).
+ */
+private class PinnedWeekBridge(private val live: CoreBridge = LiveBridge()) : CoreBridge by live {
+    private val weeks = PracticeFixtures.empty.weeks
+
+    override fun update(event: Event): List<Request> = live.update(event).map(::pin)
+
+    override fun resolve(id: UInt, output: PersistenceOutput): List<Request> =
+        live.resolve(id, output).map(::pin)
+
+    override fun resolve(id: UInt, output: RecognitionOutput): List<Request> =
+        live.resolve(id, output).map(::pin)
+
+    private fun pin(request: Request): Request {
+        val effect = request.effect
+        return if (effect is Effect.App && effect.value is AppEffect.WeeksChanged) {
+            request.copy(effect = Effect.App(AppEffect.WeeksChanged(weeks)))
+        } else {
+            request
+        }
     }
 }
