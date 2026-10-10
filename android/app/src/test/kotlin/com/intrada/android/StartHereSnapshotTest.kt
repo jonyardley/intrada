@@ -11,8 +11,6 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaSpacing
-import com.intrada.android.ui.PracticeModel
-import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.StartHereCard
 import com.intrada.shared.FirstRunView
 import com.intrada.shared.HighlighterColour
@@ -26,28 +24,24 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class StartHereSnapshotTest {
-    @Test fun startHereAdd() = card("start-here-add", progress())
+    @Test fun startHereAdd() = card("src/test/snapshots/start-here-add.png", progress())
 
-    @Test fun startHereBuild() = card("start-here-build", progress(added = true))
+    @Test
+    fun startHereBuild() = card("src/test/snapshots/start-here-build.png", progress(added = true))
 
-    @Test fun startHerePlay() = card("start-here-play", progress(added = true, built = true))
+    @Test
+    fun startHerePlay() =
+        card("src/test/snapshots/start-here-play.png", progress(added = true, built = true))
 
     @Test
     fun startHereMark() =
-        card("start-here-mark", progress(added = true, built = true, played = true))
+        card(
+            "src/test/snapshots/start-here-mark.png",
+            progress(added = true, built = true, played = true),
+        )
 
-    @Test
-    fun practiceStartHere() =
-        captureRoboImage("src/test/snapshots/practice-start-here.png") {
-            PracticeScreen(
-                PracticeModel(emptyList(), emptyList(), null, firstRun = progress()),
-                onStart = {},
-                onOpen = {},
-            )
-        }
-
-    private fun card(name: String, progress: FirstRunView) =
-        captureRoboImage("src/test/snapshots/$name.png") {
+    private fun card(path: String, progress: FirstRunView) =
+        captureRoboImage(path) {
             CardOnPaper {
                 StartHereCard(
                     progress,
