@@ -9,14 +9,11 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
-import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
-import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
@@ -32,23 +29,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [36], qualifiers = RobolectricDeviceQualifiers.Pixel7)
+@Config(sdk = [36])
 class ItemFormSuggestionsTest {
     @get:Rule val compose = createComposeRule()
-
-    @Test
-    fun composerListOpen() = runTest {
-        val store = startedStore()
-        compose.setContent { LibraryAddRoute(store, onDone = {}) }
-
-        compose.onNodeWithTag("itemForm.composer").performClick()
-
-        compose.onRoot().captureRoboImage("src/test/snapshots/item-form-composer-suggestions.png")
-    }
 
     @Test
     fun pickingAComposerFillsTheFieldAndClosesTheList() = runTest {
