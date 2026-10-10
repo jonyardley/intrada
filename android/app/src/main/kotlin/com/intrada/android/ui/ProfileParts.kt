@@ -79,9 +79,6 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
     val faulted = form.refusal?.field
     val focusManager = LocalFocusManager.current
     var instrumentFocused by remember { mutableStateOf(false) }
-    val matches =
-        if (instrumentFocused) formSuggestions(instrumentNames, form.instrument, emptyList())
-        else emptyList()
     Column(Modifier.cardSurface()) {
         FormField(
             "Name",
@@ -103,9 +100,14 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
             capitalization = KeyboardCapitalization.Words,
             faulted = faulted == ProfileField.INSTRUMENT,
         )
-        SuggestionRows(matches, { "Fills Instrument with $it" }) {
-            form.instrument = it
-            focusManager.clearFocus()
+        if (instrumentFocused) {
+            SuggestionRows(
+                formSuggestions(instrumentNames, form.instrument, emptyList()),
+                { "Fills Instrument with $it" },
+            ) {
+                form.instrument = it
+                focusManager.clearFocus()
+            }
         }
     }
 }

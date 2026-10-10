@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -20,6 +21,7 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.LibraryAddRoute
+import com.intrada.android.ui.LibraryEditRoute
 import com.intrada.shared.Event
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -64,6 +66,7 @@ class ItemFormSuggestionsTest {
     fun pickingATagAddsItAndEmptiesTheInput() = runTest {
         val store = startedStore()
         compose.setContent { LibraryAddRoute(store, onDone = {}) }
+        assertEquals(emptyList<String>(), rows())
 
         compose.onNodeWithTag("itemForm.tag.input").performScrollTo().performTextInput("recital")
         compose.onNodeWithTag("itemForm.tag.add").performScrollTo().performClick()
@@ -78,6 +81,18 @@ class ItemFormSuggestionsTest {
             .assert(
                 SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(""))
             )
+    }
+
+    @Test
+    fun theEditFormSuggestsFromTheLibraryAndLeavesOutTheItemsOwnTags() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryEditRoute(store, "01J0000000000000000000SATI", onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.composer").performTextReplacement("Deb")
+        assertEquals(listOf("Claude Debussy"), rows())
+
+        compose.onNodeWithTag("itemForm.tag.input").performScrollTo().performClick()
+        assertEquals(emptyList<String>(), rows())
     }
 
     private fun rows() =
