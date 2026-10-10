@@ -320,7 +320,8 @@ internal fun <T> SegmentedPills(
                         selected = chosen
                         spoken?.let { contentDescription = it(option) }
                     }
-                    .testTag(tag(option)),
+                    .testTag(tag(option))
+                    .padding(horizontal = IntradaSpacing.controlGap / 2),
                 contentAlignment = Alignment.Center,
             ) {
                 BasicText(
