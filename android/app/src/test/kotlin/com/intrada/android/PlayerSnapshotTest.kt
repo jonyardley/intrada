@@ -73,16 +73,22 @@ class PlayerSnapshotTest {
                 Modifier.background(IntradaColor.paperTop).padding(IntradaSpacing.card),
                 verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
             ) {
-                ClickRow(row(ClickStatus.STOPPED), ClickActions({}, {}, step = 2))
+                ClickRow(
+                    row(ClickStatus.STOPPED),
+                    ClickActions({}, {}, step = 2, band = 40..208, onDrag = {}),
+                )
                 ClickRow(
                     row(ClickStatus.RUNNING, bpm = 72, seeded = false),
-                    ClickActions({}, {}, step = 2),
+                    ClickActions({}, {}, step = 2, band = 40..208, onDrag = {}),
                 )
                 ClickRow(
                     row(ClickStatus.RUNNING, bpm = 168, unit = 8u),
-                    ClickActions({}, {}, step = 2),
+                    ClickActions({}, {}, step = 2, band = 40..208, onDrag = {}),
                 )
-                ClickRow(row(ClickStatus.UNAVAILABLE), ClickActions({}, {}, step = 2))
+                ClickRow(
+                    row(ClickStatus.UNAVAILABLE),
+                    ClickActions({}, {}, step = 2, band = 40..208, onDrag = {}),
+                )
             }
         }
     }

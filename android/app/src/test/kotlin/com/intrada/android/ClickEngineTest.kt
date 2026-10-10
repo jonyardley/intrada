@@ -39,10 +39,8 @@ class ClickEngineTest {
         assertTrue(listening)
     }
 
-    // Robolectric's AudioTrack cannot write floats, so the pulse soon dies by itself and posts its
-    // stop to the main looper. Delivered by hand and checked before that looper idles, the
-    // broadcast
-    // is the only thing that can have stopped it.
+    // Robolectric's AudioTrack cannot write floats, so the pulse dies by itself on the next looper
+    // idle; checked before it idles, only the broadcast can have stopped it.
     @Test
     fun unpluggedHeadphonesStopTheClick() {
         startEngine()

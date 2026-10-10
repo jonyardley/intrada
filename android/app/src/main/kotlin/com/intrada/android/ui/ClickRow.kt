@@ -149,9 +149,8 @@ class ClickActions(
     val onToggle: () -> Unit,
     val onStep: (Int) -> Unit,
     val step: Int,
-    val band: IntRange = 0..0,
-    /** The drag's absolute target, unlike [onStep]'s relative nudge (#1823). */
-    val onDrag: (Int) -> Unit = {},
+    val band: IntRange,
+    val onDrag: (Int) -> Unit,
 )
 
 /** The player's metronome. The steppers show only while it sounds (design principles T14). */

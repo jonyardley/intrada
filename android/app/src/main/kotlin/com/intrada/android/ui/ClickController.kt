@@ -126,7 +126,6 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
 
     fun step(by: Int) = dragTo(bpm + by)
 
-    /** The drag's absolute counterpart to [step] (#1823). */
     fun dragTo(value: Int) {
         val next = limits?.clampClickTempo(value, metre.unit) ?: value
         if (next == bpm) return
