@@ -2,6 +2,14 @@
   import Foundation
   import SharedTypes
 
+  func previewMetaParts(
+    _ duration: String, tempo: UInt16? = nil, repTarget: UInt8? = nil, repCount: UInt8? = nil
+  ) -> [String] {
+    [duration]
+      + [tempo.map { "\($0) bpm" }, repTarget.map { "\(repCount ?? 0) of \($0) reps" }]
+      .compactMap { $0 }
+  }
+
   extension EntryRecordView {
     static var empty: EntryRecordView {
       EntryRecordView(
@@ -382,7 +390,7 @@
         ],
         sessionScore: 7,
         playedSummary: "Clair de Lune · Gymnopédie No. 1 · Nocturne Op. 9 No. 2",
-        dayLabel: "Yesterday")
+        dayLabel: "Yesterday", itemCountDisplay: "3 pieces")
     }
 
     /// One exercise practised across three keys, so the detail screen lists a
@@ -394,7 +402,7 @@
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewThreeVariations], sessionScore: 8,
         playedSummary: "Major Scales in C major, G major and D major",
-        dayLabel: "Fri 29 May")
+        dayLabel: "Fri 29 May", itemCountDisplay: "1 exercise")
     }
 
     /// One exercise practised in a single key, so the detail screen still
@@ -406,7 +414,7 @@
         completionStatus: .completed, notes: nil,
         entries: [SetlistEntryView.previewOneVariation], sessionScore: nil,
         playedSummary: "Arpeggios in E\u{266d} major",
-        dayLabel: "Wed 27 May")
+        dayLabel: "Wed 27 May", itemCountDisplay: "1 exercise")
     }
 
     /// No session mark, and the two statuses a detail view must state plainly
@@ -420,7 +428,7 @@
           previewEntry(0, "Hanon No. 1", .exercise, score: 5, repTarget: 10, repCount: 4),
           previewEntry(1, "Major Scales", .exercise, status: .notAttempted),
         ], sessionScore: nil, playedSummary: "Hanon No. 1",
-        dayLabel: "Thu 28 May")
+        dayLabel: "Thu 28 May", itemCountDisplay: "2 exercises")
     }
 
     private static func previewEntry(
@@ -434,7 +442,10 @@
           PlayView(
             id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
             seconds: 600,
-            durationDisplay: "10 min", repTarget: repTarget, repCount: repCount,
+            durationDisplay: "10 min",
+            metaParts: previewMetaParts(
+              "10 min", tempo: tempo, repTarget: repTarget, repCount: repCount),
+            repTarget: repTarget, repCount: repCount,
             repTargetReached: repTarget.map { repCount ?? 0 >= $0 }, repHistory: nil,
             achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score,
             isMarkable: true)
@@ -482,7 +493,8 @@
           PlayView(
             id: "entry-\(position)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
             seconds: 600,
-            durationDisplay: "10 min", repTarget: nil, repCount: nil, repTargetReached: nil,
+            durationDisplay: "10 min", metaParts: ["10 min"], repTarget: nil, repCount: nil,
+            repTargetReached: nil,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true)
         ], scoreSummary: nil, record: .empty, plannedKey: nil)
@@ -602,13 +614,15 @@
           PlayView(
             id: "entry-0-p1", sectionId: nil, key: nil, variationIds: ["variation-c"], label: "C",
             seconds: 190,
-            durationDisplay: "3m 10s", repTarget: 10, repCount: 10, repTargetReached: true,
+            durationDisplay: "3m 10s", metaParts: ["3m 10s", "10 of 10 reps"],
+            repTarget: 10, repCount: 10, repTargetReached: true,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
           PlayView(
             id: "entry-0-p2", sectionId: nil, key: nil, variationIds: ["variation-f"], label: "F",
             seconds: 0,
-            durationDisplay: "0s", repTarget: 10, repCount: 4, repTargetReached: false,
+            durationDisplay: "0s", metaParts: ["0s", "4 of 10 reps"],
+            repTarget: 10, repCount: 4, repTargetReached: false,
             repHistory: nil, achievedTempo: nil, clickPattern: nil, tempoDisplay: nil, score: nil,
             isMarkable: true),
         ], scoreSummary: nil, record: .empty, plannedKey: nil)
@@ -698,7 +712,8 @@
           PlayView(
             id: "\(id)-p1", sectionId: nil, key: nil, variationIds: [], label: nil,
             seconds: seconds,
-            durationDisplay: duration, repTarget: nil, repCount: nil, repTargetReached: nil,
+            durationDisplay: duration, metaParts: previewMetaParts(duration, tempo: tempo),
+            repTarget: nil, repCount: nil, repTargetReached: nil,
             repHistory: nil, achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo,
             score: score, isMarkable: true
           )
@@ -763,7 +778,10 @@
       PlayView(
         id: id, sectionId: nil, key: nil, variationIds: variationLabel.map { ["v-\($0)"] } ?? [],
         label: variationLabel,
-        seconds: seconds, durationDisplay: duration, repTarget: repTarget, repCount: repCount,
+        seconds: seconds, durationDisplay: duration,
+        metaParts: previewMetaParts(
+          duration, tempo: tempo, repTarget: repTarget, repCount: repCount),
+        repTarget: repTarget, repCount: repCount,
         repTargetReached: repTarget.map { (repCount ?? 0) >= $0 }, repHistory: nil,
         achievedTempo: tempo, clickPattern: nil, tempoDisplay: tempo, score: score, isMarkable: true
       )

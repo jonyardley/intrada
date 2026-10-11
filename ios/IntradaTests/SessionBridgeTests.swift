@@ -610,6 +610,7 @@ final class SessionBridgeTests: XCTestCase {
     let row = try XCTUnwrap(bridge.sessions.first)
     XCTAssertEqual(row.playedSummary, "Etude")
     XCTAssertEqual(row.dayLabel, "Tue 16 Jun")
+    XCTAssertEqual(row.itemCountDisplay, "1 piece")
 
     // Crash recovery: RecoverSession (with its new `now` re-anchor field) has
     // never crossed the live bridge from Swift before (#846, #962). The stale
@@ -921,6 +922,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(play.repTarget, 3)
     XCTAssertEqual(play.repCount, 3, "missed then three got-its: 0, 1, 2, 3")
     XCTAssertEqual(play.repTargetReached, true)
+    XCTAssertEqual(play.metaParts, [play.durationDisplay, "88 bpm", "3 of 3 reps"])
     let history = try XCTUnwrap(play.repHistory)
     XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
     XCTAssertEqual(play.achievedTempo, 88, "176 quavers halves to 88 crotchets")

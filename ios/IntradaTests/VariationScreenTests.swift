@@ -14,7 +14,7 @@ struct VariationScreenTests {
     PlayView(
       id: id, sectionId: nil, key: nil, variationIds: label.map { ["v-\($0)"] } ?? [],
       label: label, seconds: seconds,
-      durationDisplay: "4m 10s", repTarget: repTarget, repCount: repCount,
+      durationDisplay: "4m 10s", metaParts: [], repTarget: repTarget, repCount: repCount,
       repTargetReached: nil, repHistory: nil, achievedTempo: tempo, clickPattern: nil,
       tempoDisplay: tempo,
       score: nil, isMarkable: isMarkable)
@@ -73,16 +73,7 @@ struct VariationScreenTests {
     #expect(rows.first?.meta == "04:10 · 0 of 10")
   }
 
-  // ── The read-only meta line ──
-
-  @Test("a play's meta names only what it measured")
-  func metaPartsStateOnlyWhatWasMeasured() {
-    #expect(play("p", "C", seconds: 250).metaParts == ["4m 10s"])
-    #expect(play("p", "C", seconds: 250, tempo: 96).metaParts == ["4m 10s", "96 bpm"])
-    #expect(
-      play("p", "C", seconds: 250, tempo: 96, repCount: 8, repTarget: 10).metaParts
-        == ["4m 10s", "96 bpm", "8 of 10 reps"])
-  }
+  // ── The read-only label ──
 
   @Test("an unattributed play is named rather than left blank")
   func unattributedPlaysAreNamed() {

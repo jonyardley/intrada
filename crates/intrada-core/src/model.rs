@@ -690,6 +690,9 @@ pub struct PlayView {
     pub label: Option<String>,
     pub seconds: u64,
     pub duration_display: String,
+    /// "4m 0s", "92 bpm", "5 of 6 reps": only what this play recorded, the
+    /// duration always first, since rows that show it elsewhere drop it (#2515).
+    pub meta_parts: Vec<String>,
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
     /// Worked out from the count and the target, never stored (#2107).
@@ -790,6 +793,8 @@ pub struct PracticeSessionView {
     pub played_summary: String,
     /// `Today`, `Yesterday` or `Sat 30 May`, on the week strip's clock (#2053).
     pub day_label: String,
+    /// "3 pieces", "2 exercises", or "5 items" when the session spans both (#2515).
+    pub item_count_display: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

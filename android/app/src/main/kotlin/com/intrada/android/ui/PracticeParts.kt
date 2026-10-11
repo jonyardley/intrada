@@ -51,7 +51,6 @@ import com.intrada.android.R
 import com.intrada.android.ui.components.dropShadow
 import com.intrada.shared.CompletionStatus
 import com.intrada.shared.HighlighterColour
-import com.intrada.shared.ItemKind
 import com.intrada.shared.LastPractisedView
 import com.intrada.shared.PracticeDayView
 import com.intrada.shared.PracticeSessionView
@@ -259,21 +258,6 @@ internal fun SessionCard(session: PracticeSessionView, onOpen: () -> Unit) {
         }
     }
 }
-
-// HACK(#2515): the core should word this line; iOS builds it in Swift too.
-internal val PracticeSessionView.itemCountDisplay: String
-    get() {
-        val count = entries.size
-        val noun =
-            when {
-                entries.all { it.itemType == ItemKind.PIECE } ->
-                    if (count == 1) "piece" else "pieces"
-                entries.all { it.itemType == ItemKind.EXERCISE } ->
-                    if (count == 1) "exercise" else "exercises"
-                else -> if (count == 1) "item" else "items"
-            }
-        return "$count $noun"
-    }
 
 @Composable
 internal fun EmptyDayCard(future: Boolean) {

@@ -32,6 +32,12 @@ object PracticeFixtures {
             label = label,
             seconds = 480uL,
             durationDisplay = duration,
+            metaParts =
+                listOfNotNull(
+                    duration,
+                    tempo?.let { "$it bpm" },
+                    repTarget?.let { "${repCount ?: 0u} of $it reps" },
+                ),
             repTarget = repTarget,
             repCount = repCount,
             achievedTempo = tempo,
@@ -98,6 +104,7 @@ object PracticeFixtures {
             sessionScore = 4u,
             playedSummary = "Clair de Lune · Hanon No. 1",
             dayLabel = "Today",
+            itemCountDisplay = "3 items",
         )
 
     val withVariations =
@@ -135,6 +142,7 @@ object PracticeFixtures {
                 ),
             playedSummary = "Major scales in C, G and D · Arpeggios in E♭ major",
             dayLabel = "Tue 6 Oct",
+            itemCountDisplay = "3 items",
         )
 
     private val dates = listOf(5, 6, 7, 8, 9, 10, 11)
