@@ -16,7 +16,7 @@ struct PooledMarksSection: View {
             trailing: row.caption,
             solid: Int(row.solid),
             total: Int(row.total),
-            accessibilityLabel: "\(row.label), \(row.caption)")
+            accessibilityLabel: row.spoken)
         }
       }
     }

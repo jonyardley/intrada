@@ -9,6 +9,7 @@ struct MasteryDelta: View {
   var subtitle: String?
   let was: Int?
   let now: Int
+  let spoken: String
   // `ScoreChange` carries no item type — the leading dot defaults to the piece
   // accent; callers pass `.exercise` when they know it.
   var kind: ItemKind = .piece
@@ -52,18 +53,7 @@ struct MasteryDelta: View {
         .stroke(IntradaColor.hairline, lineWidth: 1)
     )
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-  }
-
-  private var accessibilityLabel: String {
-    var parts = [title]
-    if let subtitle { parts.append(subtitle) }
-    if let was {
-      parts.append("mastery up from \(was) to \(now)")
-    } else {
-      parts.append("mastery \(now)")
-    }
-    return parts.joined(separator: ", ")
+    .accessibilityLabel(spoken)
   }
 }
 
@@ -139,10 +129,10 @@ struct MasteryDeltaToast: View {
       VStack(spacing: IntradaSpacing.cardCompact) {
         MasteryDelta(
           title: "Clair de Lune", subtitle: "D♭ major · 3 weeks ago → now",
-          was: 3, now: 4, kind: .piece)
+          was: 3, now: 4, spoken: "Clair de Lune, mastery up from 3 to 4", kind: .piece)
         MasteryDelta(
           title: "Hanon No. 1", subtitle: "first time marked",
-          was: nil, now: 3, kind: .exercise)
+          was: nil, now: 3, spoken: "Hanon No. 1, first time marked, mastery 3", kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
       }
