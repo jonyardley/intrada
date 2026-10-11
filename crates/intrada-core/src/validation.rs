@@ -85,7 +85,12 @@ pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
     input.composer = trimmed_nonempty(input.composer);
     input.notes = trimmed_nonempty(input.notes);
     input.tags = distinct_ignoring_case(input.tags);
-    input.variation_labels = distinct_ignoring_case(input.variation_labels);
+    // The form keeps its rows while the kind flips; only an exercise shows them (#2461, #2473).
+    input.variation_labels = if input.kind == ItemKind::Exercise {
+        distinct_ignoring_case(input.variation_labels)
+    } else {
+        Vec::new()
+    };
     input
 }
 
@@ -176,10 +181,11 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
 }
 
 /// `ItemEvent::Add` is the only event that honours
-/// `CreateItem.variation_labels` (#1783): `ChoosePieceExercises` and
-/// `AddPieceInFull` create items too, and silently dropping a caller's labels
-/// there would be the #846 shape, a field that validates but never lands.
-/// Both reject instead.
+/// `CreateItem.variation_labels` (#1783), and only on an exercise. A written
+/// exercise row in `ChoosePieceExercises` or `AddPieceInFull` is an exercise
+/// whose labels would never land, the #846 shape, so those rows reject them.
+/// The one-pass piece itself drops them in `normalize_create_item`, as a
+/// plain piece add does (#2473).
 pub fn validate_no_variation_labels(input: &CreateItem) -> Result<(), LibraryError> {
     if input.variation_labels.is_empty() {
         return Ok(());
