@@ -147,7 +147,7 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
     }
 }
 
-private const val ADD_ROUTE = "library/add"
+internal const val ADD_ROUTE = "library/add"
 private const val EDIT_ROUTE = "library/edit"
 private const val PIECE_ROUTE = "library/piece"
 private const val BUILD_ROUTE = "practice/build"

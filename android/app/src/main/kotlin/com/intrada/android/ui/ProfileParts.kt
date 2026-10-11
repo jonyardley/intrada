@@ -3,7 +3,6 @@ package com.intrada.android.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +51,7 @@ import com.intrada.android.ui.components.InstrumentGlyph
 import com.intrada.android.ui.components.accessibilityLabel
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.scaled
+import com.intrada.ffi.formSuggestions
 import com.intrada.shared.ClickStart
 import com.intrada.shared.HighlighterColour
 import com.intrada.shared.InstrumentIcon
@@ -60,7 +60,6 @@ import com.intrada.shared.PracticeDefaults
 import com.intrada.shared.ProfileField
 
 private const val GRID_COLUMNS = 4
-private const val MAX_SUGGESTIONS = 6
 
 // The token sheet's order, butter first; the core's enum order is its wire order, not this.
 private val SWATCH_ORDER =
@@ -80,15 +79,6 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
     val faulted = form.refusal?.field
     val focusManager = LocalFocusManager.current
     var instrumentFocused by remember { mutableStateOf(false) }
-    val query = form.instrument.trim()
-    val matches =
-        if (!instrumentFocused) emptyList()
-        else
-            instrumentNames
-                .filter {
-                    it.contains(query, ignoreCase = true) && !it.equals(query, ignoreCase = true)
-                }
-                .take(MAX_SUGGESTIONS)
     Column(Modifier.cardSurface()) {
         FormField(
             "Name",
@@ -110,23 +100,14 @@ internal fun ProfileNameFields(form: ProfileEditState, instrumentNames: List<Str
             capitalization = KeyboardCapitalization.Words,
             faulted = faulted == ProfileField.INSTRUMENT,
         )
-        matches.forEach { match ->
-            HairlineDivider(Modifier.padding(start = IntradaSpacing.card))
-            BasicText(
-                match,
-                Modifier.fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable(onClickLabel = "Fills Instrument with $match", role = Role.Button) {
-                        form.instrument = match
-                        focusManager.clearFocus()
-                    }
-                    .testTag("suggestion.row")
-                    .padding(
-                        horizontal = IntradaSpacing.card,
-                        vertical = IntradaSpacing.cardCompact,
-                    ),
-                style = IntradaFont.body.copy(color = IntradaColor.ink),
-            )
+        if (instrumentFocused) {
+            SuggestionRows(
+                formSuggestions(instrumentNames, form.instrument, emptyList()),
+                { "Fills Instrument with $it" },
+            ) {
+                form.instrument = it
+                focusManager.clearFocus()
+            }
         }
     }
 }

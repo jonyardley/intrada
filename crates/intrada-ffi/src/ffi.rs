@@ -461,6 +461,18 @@ pub fn item_form_can_save(title: String) -> bool {
     intrada_core::validation::item_form_can_save(&title)
 }
 
+/// A plain call, not an `Event`, since it runs on every keystroke (#2477).
+/// Serves the composer, tag and instrument fields; only tags pass `already_chosen`.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[must_use]
+pub fn form_suggestions(
+    pool: Vec<String>,
+    typed: String,
+    already_chosen: Vec<String>,
+) -> Vec<String> {
+    intrada_core::validation::form_suggestions(&pool, &typed, &already_chosen)
+}
+
 // ── Filling the form from a read ──
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Enum))]
@@ -976,6 +988,19 @@ mod tests {
                 text: "♪ = 168".to_string(),
                 spoken: "168 quaver beats per minute".to_string(),
             }
+        );
+    }
+
+    #[test]
+    fn form_suggestions_carry_the_cores_matches_across() {
+        let words = |w: &[&str]| w.iter().map(ToString::to_string).collect::<Vec<_>>();
+        assert_eq!(
+            form_suggestions(
+                words(&["scales", "Schubert", "jazz"]),
+                "sc".to_string(),
+                words(&["Scales"])
+            ),
+            words(&["Schubert"])
         );
     }
 }

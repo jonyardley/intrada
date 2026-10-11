@@ -12,7 +12,9 @@ import com.intrada.android.core.stepName
 import com.intrada.android.core.withIds
 import com.intrada.ffi.CoreException
 import com.intrada.ffi.InternalException
+import com.intrada.ffi.StoreAnswer
 import com.intrada.ffi.StoreFfi
+import com.intrada.ffi.StoreFfiInterface
 import com.intrada.shared.CreateItem
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
@@ -230,8 +232,30 @@ class StoreTest {
     }
 
     @Test
+    fun everyValueTheStoreCouldNotReadIsReported() {
+        val reporter = RecordingReporter()
+        val unreadable = listOf("session bad: refused-2234", "unknown CompletionStatus")
+        val answer =
+            StoreAnswer(
+                output = PersistenceOutput.Items(emptyList()).bincodeSerialize(),
+                unreadable = unreadable,
+                error = null,
+            )
+        val items = SharedItemStore(Answering(answer), log = {}, reporter = reporter)
+
+        assertEquals(
+            PersistenceOutput.Items(emptyList()),
+            items.run(PersistenceOperation.LoadItems),
+        )
+        assertEquals(
+            unreadable.map { it to "LibraryStore decode" },
+            reporter.reports.map { it.first.message to it.second },
+        )
+    }
+
+    @Test
     fun aWriteTheStoreRefusesIsThrownForTheStoreToReport() {
-        val items = SharedItemStore(StoreFfi.inMemory(), log = {})
+        val items = SharedItemStore(StoreFfi.inMemory(), log = {}, reporter = RecordingReporter())
         val unstorable =
             ItemSection(
                 id = "s1",
@@ -292,6 +316,10 @@ private class RecordingReporter : Reporter {
     override fun step(event: Event) {
         steps += stepName(event)
     }
+}
+
+private class Answering(private val answer: StoreAnswer) : StoreFfiInterface {
+    override fun handle(operation: ByteArray): StoreAnswer = answer
 }
 
 private class ScriptedBridge(failures: List<Exception?>) : CoreBridge {

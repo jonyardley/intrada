@@ -4,6 +4,7 @@ import com.intrada.ffi.CoreException
 import com.intrada.ffi.CoreFfi
 import com.intrada.ffi.InternalException
 import com.intrada.ffi.StoreFfi
+import com.intrada.ffi.StoreFfiInterface
 import com.intrada.shared.Event
 import com.intrada.shared.PersistenceOperation
 import com.intrada.shared.PersistenceOutput
@@ -42,15 +43,24 @@ class LiveBridge : CoreBridge {
  * The shared Rust store (#2421): the operation's bytes in, the output's bytes out, so the shell
  * never reads a row. Calls arrive one at a time off the main thread.
  */
-class SharedItemStore(private val store: StoreFfi, private val log: (String) -> Unit) : ItemStore {
+class SharedItemStore(
+    private val store: StoreFfiInterface,
+    private val log: (String) -> Unit,
+    private val reporter: Reporter,
+) : ItemStore {
     override fun run(operation: PersistenceOperation): PersistenceOutput {
         val answer = store.handle(operation.bincodeSerialize())
-        answer.unreadable.forEach { log("store could not read: $it") }
+        answer.unreadable.forEach {
+            log("store could not read: $it")
+            reporter.report(UnreadableStoredValue(it), DECODE_CONTEXT)
+        }
         answer.error?.let { throw StoreFailure(it) }
         return PersistenceOutput.bincodeDeserialize(answer.output)
     }
 
     companion object {
+        const val DECODE_CONTEXT = "LibraryStore decode"
+
         /**
          * A file that will not open, or a migration that panics on it, falls back to memory so the
          * app still launches; `degraded` says nothing will be kept.
@@ -61,7 +71,7 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
             reporter: Reporter = SentryReporter,
         ): Opened =
             try {
-                Opened(SharedItemStore(StoreFfi.open(path), log), degraded = false)
+                Opened(SharedItemStore(StoreFfi.open(path), log, reporter), degraded = false)
             } catch (e: CoreException) {
                 inMemory(e, "store did not open, keeping nothing", log, reporter)
             } catch (e: InternalException) {
@@ -76,7 +86,7 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
         ): Opened {
             log("$reason: $error")
             reporter.report(error, "store-open")
-            return Opened(SharedItemStore(StoreFfi.inMemory(), log), degraded = true)
+            return Opened(SharedItemStore(StoreFfi.inMemory(), log, reporter), degraded = true)
         }
     }
 
@@ -84,3 +94,5 @@ class SharedItemStore(private val store: StoreFfi, private val log: (String) -> 
 }
 
 class StoreFailure(reason: String) : Exception(reason)
+
+class UnreadableStoredValue(description: String) : Exception(description)
