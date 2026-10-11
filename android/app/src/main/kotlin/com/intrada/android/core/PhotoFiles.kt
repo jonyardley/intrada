@@ -57,6 +57,21 @@ class PhotoFiles(private val directory: File) {
         return photoId
     }
 
+    /** [save] for a screen: a failure is reported and comes back as null, never thrown. */
+    fun keep(resolver: ContentResolver, source: Uri, reporter: Reporter = SentryReporter): String? =
+        try {
+            save(resolver, source)
+        } catch (e: IOException) {
+            reporter.report(e, "photo write")
+            null
+        } catch (e: SecurityException) {
+            reporter.report(e, "photo write")
+            null
+        } catch (e: IllegalArgumentException) {
+            reporter.report(e, "photo write")
+            null
+        }
+
     fun bitmap(photoId: String): Bitmap? = decode(photoId, BitmapFactory.Options())
 
     fun thumbnail(photoId: String): Bitmap? =

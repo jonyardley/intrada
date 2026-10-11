@@ -1,7 +1,9 @@
 package com.intrada.android
 
 import androidx.compose.ui.test.assertContentDescriptionContains
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -64,6 +66,22 @@ class ItemFormScreenTest {
         compose.onNodeWithTag("itemForm.confirm").assertIsNotEnabled()
         compose.onNodeWithTag("itemForm.title").performTextInput("Arpeggios")
         compose.onNodeWithTag("itemForm.confirm").assertIsEnabled()
+    }
+
+    @Test
+    fun aRefusedFieldAboveTheFoldIsScrolledIntoView() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.title").performTextInput("Arpeggios")
+        compose.onNodeWithTag("itemForm.bpm").performScrollTo().performTextInput("999")
+        compose.onNodeWithTag("itemForm.addExercise").performScrollTo()
+        compose.onNodeWithTag("itemForm.bpm").assertIsNotDisplayed()
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("itemForm.bpm").assertIsDisplayed()
     }
 
     @Test

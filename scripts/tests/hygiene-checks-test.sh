@@ -363,6 +363,18 @@ rm "$haptics/Store+Feedback.swift"
 
 expect 2 "a root that is not there" env HAPTICS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-haptics.sh"
 
+android_haptics="$work/android-haptics"
+mkdir -p "$android_haptics/ui"
+android_haptics_check() {
+  HAPTICS_ROOT="$haptics" ANDROID_HAPTICS_ROOT="$android_haptics" bash "$repo_root/scripts/check-haptics.sh"
+}
+printf 'SELECTION(HapticFeedbackType.SegmentTick)\n' >"$android_haptics/ui/Haptic.kt"
+printf 'haptics.play(Haptic.SELECTION) // not performHapticFeedback\n' >"$android_haptics/ui/Wheel.kt"
+expect 0 "the Kotlin helper, a call through it and a comment" android_haptics_check
+printf 'view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)\n' >"$android_haptics/ui/Save.kt"
+expect 1 "a Kotlin haptic built by hand" android_haptics_check
+rm "$android_haptics/ui/Save.kt"
+
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-haptics.sh"
 
 # ── The bridge-test check ───────────────────────────────────────────────────

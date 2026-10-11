@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -107,6 +109,13 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
     val exercises = mutableStateListOf<StagedExercise>()
     var faultedExercise by mutableStateOf<FormErrorTarget.Exercise?>(null)
     var formError by mutableStateOf<String?>(null)
+    var refusal by mutableStateOf<Refusal?>(null)
+        private set
+
+    fun refused(target: FormErrorTarget?) {
+        faultedExercise = target as? FormErrorTarget.Exercise
+        refusal = Refusal(target, (refusal?.seq ?: 0) + 1)
+    }
 
     val canSave: Boolean
         get() = itemFormCanSave(title)
@@ -393,10 +402,7 @@ fun LibraryAddRoute(
         vocabulary = FormVocabulary.of(view),
         onConfirm = {
             if (!closing) {
-                form.formError =
-                    store.sendFromForm(form.addEvent()) {
-                        form.faultedExercise = it as? FormErrorTarget.Exercise
-                    }
+                form.formError = store.sendFromForm(form.addEvent(), form::refused)
                 closing = form.formError == null
                 if (closing) onDone()
             }
@@ -423,7 +429,7 @@ fun LibraryEditRoute(store: Store, id: String, onDone: () -> Unit, modifier: Mod
         vocabulary = FormVocabulary.of(view),
         onConfirm = {
             if (!closing) {
-                form.formError = store.sendFromForm(form.editEvent(id))
+                form.formError = store.sendFromForm(form.editEvent(id), form::refused)
                 closing = form.formError == null
                 if (closing) onDone()
             }
@@ -486,19 +492,34 @@ private fun ItemFormFields(
     header: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val anchors = remember { FormAnchors() }
+    LaunchedEffect(form.refusal) { anchors.bringIntoView(form.refusal?.target) }
     Column(
         modifier.padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.card),
     ) {
         header()
         KindSegment(form.kind, form::switchKind)
-        ItemFormDetails(form, vocabulary.composers)
-        if (form.kind == ItemKind.EXERCISE) VariationRowsCard(form.variations)
-        ItemFormPractice(form)
-        ItemFormNotes(form)
-        ItemFormTags(form, vocabulary.tags)
+        ItemFormDetails(
+            form,
+            vocabulary.composers,
+            Modifier.bringIntoViewRequester(anchors.at(FormAnchor.DETAILS)),
+        )
+        if (form.kind == ItemKind.EXERCISE) {
+            VariationRowsCard(
+                form.variations,
+                Modifier.bringIntoViewRequester(anchors.at(FormAnchor.VARIATIONS)),
+            )
+        }
+        ItemFormPractice(form, Modifier.bringIntoViewRequester(anchors.at(FormAnchor.PRACTICE)))
+        ItemFormNotes(form, Modifier.bringIntoViewRequester(anchors.at(FormAnchor.NOTES)))
+        ItemFormTags(
+            form,
+            vocabulary.tags,
+            Modifier.bringIntoViewRequester(anchors.at(FormAnchor.TAGS)),
+        )
         if (exerciseLibrary != null && form.kind == ItemKind.PIECE) {
-            ItemFormExercises(form, exerciseLibrary)
+            ItemFormExercises(form, exerciseLibrary, rowAnchor = anchors.row)
         }
     }
 }
