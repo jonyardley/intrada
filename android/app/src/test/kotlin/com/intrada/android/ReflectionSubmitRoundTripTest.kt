@@ -48,6 +48,9 @@ class ReflectionSubmitRoundTripTest {
         assertEquals("Pedal clearer", entry?.notes)
         assertEquals(4.toUByte(), entry?.plays?.lastOrNull()?.score)
         assertEquals(96.toUShort(), entry?.plays?.lastOrNull()?.achievedTempo)
+        val play = entry?.plays?.lastOrNull()
+        assertEquals(play?.durationDisplay, play?.metaParts?.firstOrNull())
+        assertEquals("96 bpm", play?.metaParts?.getOrNull(1))
     }
 
     @Test
