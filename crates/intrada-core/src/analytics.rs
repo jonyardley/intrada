@@ -58,7 +58,6 @@ pub struct ScoreChange {
     /// Signed change (current − previous); 0 for newly scored items.
     pub delta: i8,
     pub is_new: bool,
-    /// `first time marked` under the title; `None` for a change.
     pub subtitle: Option<String>,
     /// What a screen reader says for the row (#2506).
     pub spoken: String,
@@ -69,6 +68,7 @@ impl ScoreChange {
         let subtitle = previous.is_none().then(|| "first time marked".to_string());
         let movement = match previous {
             None => format!("mastery {current}"),
+            Some(p) if current == p => format!("mastery {current}"),
             Some(p) if current < p => format!("mastery down from {p} to {current}"),
             Some(p) => format!("mastery up from {p} to {current}"),
         };
@@ -1225,6 +1225,7 @@ mod tests {
         let cases = [
             (Some(3), 4, None, "Clair de Lune, mastery up from 3 to 4"),
             (Some(6), 4, None, "Clair de Lune, mastery down from 6 to 4"),
+            (Some(4), 4, None, "Clair de Lune, mastery 4"),
             (
                 None,
                 3,
