@@ -10,6 +10,7 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.intrada.android.core.ClickOutput
 import com.intrada.android.core.Settings
+import com.intrada.android.core.Store
 import com.intrada.android.ui.ClickActions
 import com.intrada.android.ui.ClickBarLine
 import com.intrada.android.ui.ClickController
@@ -19,17 +20,30 @@ import com.intrada.android.ui.ClickSheetPage
 import com.intrada.android.ui.ClickStatus
 import com.intrada.android.ui.IntradaColor
 import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.PlayWayChoices
 import com.intrada.android.ui.PlayerModel
 import com.intrada.android.ui.PlayerScreen
 import com.intrada.android.ui.RecoveryCard
+import com.intrada.android.ui.ReflectionActions
+import com.intrada.android.ui.ReflectionModel
+import com.intrada.android.ui.ReflectionSheet
+import com.intrada.android.ui.ReflectionState
+import com.intrada.android.ui.SheetPage
 import com.intrada.android.ui.SummaryModel
 import com.intrada.android.ui.SummaryScreen
+import com.intrada.android.ui.TroubleSpotContent
+import com.intrada.android.ui.VariationChoice
+import com.intrada.android.ui.VariationPickerContent
 import com.intrada.shared.ClickPreset
 import com.intrada.shared.Event
+import com.intrada.shared.LastTimeView
 import com.intrada.shared.Metre
+import com.intrada.shared.ReflectionAnswers
+import com.intrada.shared.SegmentClockView
 import com.intrada.shared.SessionEvent
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -160,6 +174,116 @@ class PlayerSnapshotTest {
     }
 
     @Test
+    fun playerRecord() = runTest {
+        val store = libraryStore()
+        store.send(Event.Session(SessionEvent.StartBuilding))
+        store.send(Event.Session(SessionEvent.AddToSetlist(store.scalesId())))
+        store.send(Event.Session(SessionEvent.StartSession(PlayerFixtures.STARTED)))
+        val view = store.viewModel.value ?: error("no view")
+        val active = store.active()
+        val record =
+            active.record.copy(
+                segment =
+                    SegmentClockView("A1", "2026-10-07T09:03:00Z", "Move on to Run", "Stay on A1"),
+                lastTime =
+                    LastTimeView(
+                        active.entries.first().id,
+                        null,
+                        listOf(active.currentVariations.last().id),
+                        "Last time: Swung",
+                        null,
+                    ),
+            )
+        val click = ClickController {
+            error("a snapshot never sounds")
+        }
+            .apply { follow(active, view.limits) }
+        captureRoboImage("src/test/snapshots/player-record.png") {
+            PlayerScreen(
+                PlayerModel(active.copy(record = record), view.limits, held = held, click = click),
+                send = { true },
+            )
+        }
+    }
+
+    @Test
+    fun recordSheets() = runTest {
+        val store = libraryStore()
+        store.send(Event.Session(SessionEvent.StartBuilding))
+        store.send(Event.Session(SessionEvent.AddToSetlist(store.scalesId())))
+        store.send(Event.Session(SessionEvent.StartSession(PlayerFixtures.STARTED)))
+        val active = store.active()
+        captureRoboImage("src/test/snapshots/player-variation-picker.png") {
+            SheetPage("Switch variation", {}, "variationPicker.cancel") {
+                VariationPickerContent(
+                    VariationChoice(
+                        active.currentVariations,
+                        active.currentVariations.first().id,
+                    )
+                ) {
+                    true
+                }
+            }
+        }
+        captureRoboImage("src/test/snapshots/player-trouble-spot.png") {
+            SheetPage("Trouble spot", {}, "troubleSpot.cancel") {
+                TroubleSpotContent("Clair de Lune · in A1", null) { _, _ -> }
+            }
+        }
+    }
+
+    @Test
+    fun reflectionRecord() = runTest {
+        val store = scalesReflection()
+        val view = store.viewModel.value ?: error("no view")
+        val active = store.active()
+        val reflection = active.reflection ?: error("no reflection")
+        val entry = active.entries.first()
+        val finish = active.record.finish
+        val model =
+            ReflectionModel(
+                active.currentItemTitle,
+                reflection,
+                entry.plays,
+                finish,
+                null,
+                view.limits,
+                finish?.let {
+                    PlayWayChoices(
+                        it.sections,
+                        it.keys,
+                        active.currentVariations,
+                        entry.plannedLabel,
+                    )
+                },
+            )
+        val state =
+            ReflectionState(reflection.answers, reflection.tempos).apply {
+                changingPlayId = entry.plays.last().id
+            }
+        captureRoboImage("src/test/snapshots/player-reflection-record.png") {
+            ReflectionSheet(model, state, ReflectionActions({}, {}, {}))
+        }
+    }
+
+    @Test
+    fun summaryWithANote() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        val at = "2026-10-07T09:06:00Z"
+        store.send(Event.Session(SessionEvent.EndSessionEarly(at, PlayerFixtures.silent)))
+        val first = store.viewModel.value?.summary?.entries?.first() ?: error("no summary")
+        store.send(
+            Event.Session(SessionEvent.UpdateEntryNotes(first.id, "Left hand rushed in bar 12"))
+        )
+        val view = store.viewModel.value ?: error("no view")
+        val summary = view.summary ?: error("no summary")
+        captureRoboImage("src/test/snapshots/player-summary-note.png") {
+            SummaryScreen(SummaryModel(summary, view.limits), send = { true })
+        }
+    }
+
+    @Test
     fun recoveryCard() = runTest {
         val app = RuntimeEnvironment.getApplication()
         val settings =
@@ -180,6 +304,40 @@ class PlayerSnapshotTest {
             )
         }
     }
+}
+
+private suspend fun TestScope.scalesReflection(): Store {
+    val store = libraryStore()
+    store.send(Event.Session(SessionEvent.StartBuilding))
+    store.send(Event.Session(SessionEvent.AddToSetlist(store.scalesId())))
+    store.send(Event.Session(SessionEvent.StartSession(PlayerFixtures.STARTED)))
+    val started = store.active()
+    store.send(
+        Event.Session(
+            SessionEvent.SwitchPlay(
+                started.entries.first().id,
+                null,
+                null,
+                listOf(started.currentVariations.first().id),
+                "2026-10-07T09:02:00Z",
+                PlayerFixtures.silent,
+            )
+        )
+    )
+    store.send(
+        Event.Session(SessionEvent.PrepareReflection("2026-10-07T09:04:10Z", PlayerFixtures.silent))
+    )
+    val draft =
+        ReflectionAnswers(
+            marks = emptyList(),
+            note = "left hand rushed in bar 12, got it at 84",
+            tempos = emptyList(),
+            gotInTheWay = emptyList(),
+            notePoints = emptyList(),
+            ways = emptyList(),
+        )
+    store.send(Event.Session(SessionEvent.UpdateReflectionDraft(draft)))
+    return store
 }
 
 private object SilentClick : ClickOutput {
