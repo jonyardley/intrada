@@ -2193,6 +2193,11 @@ mod tests {
             trend.points.iter().map(|p| p.tempo).collect::<Vec<_>>(),
             vec![Some(88), None, Some(104)]
         );
+        assert_eq!(trend.chip.as_deref(), Some("♩ = 88 → 104"));
+        assert_eq!(
+            trend.spoken,
+            "Measured tempo, 88 to 104 beats per minute across 2 of 3 sessions"
+        );
     }
 
     #[test]
@@ -2743,6 +2748,27 @@ mod tests {
             })
             .collect();
         ctx_session(id, chrono::Utc::now(), vec![entry])
+    }
+
+    #[test]
+    fn a_sections_target_tempo_is_worded_on_the_view() {
+        let app = Intrada;
+        let mut piece = sectioned_piece(&["A", "B"]);
+        piece.sections[1].target_bpm = Some(60);
+        let model = Model {
+            items: vec![piece].into(),
+            ..Default::default()
+        };
+        let vm = app.rendered(&model);
+        let words: Vec<_> = vm.items[0]
+            .sections
+            .iter()
+            .map(|s| (s.target_tempo.as_deref(), s.target_tempo_spoken.as_deref()))
+            .collect();
+        assert_eq!(
+            words,
+            [(None, None), (Some("♩ 60"), Some("60 beats per minute"))]
+        );
     }
 
     fn section_marks(view: &LibraryItemView) -> Vec<(Option<u8>, bool)> {

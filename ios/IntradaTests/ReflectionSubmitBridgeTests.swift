@@ -46,6 +46,26 @@ struct ReflectionSubmitBridgeTests {
     #expect(entry.plays.last?.achievedTempo == 96)
   }
 
+  /// The measured tempo card's words cross the wire inside the item's practice (#2486).
+  @Test func aSavedTempoReachesTheTrendCardsWords() throws {
+    let bridge = RowsBridge()
+    let playId = try sheetOpen(bridge)
+    _ = try bridge.update(
+      .session(
+        .submitReflection(
+          nextItemStartedAt: "2026-09-21T10:05:30Z", answers: answers(playId: playId, note: ""))))
+    let write = try #require(
+      try bridge.update(.session(.saveSession(now: "2026-09-21T10:06:00Z"))).first {
+        if case .persistence(.saveSession) = $0.effect { return true } else { return false }
+      })
+    _ = try bridge.resolve(write.id, persistenceOutput: .ack)
+
+    let trend = try #require(try bridge.rendered().items.first?.practice?.tempoTrend)
+    #expect(trend.chip == nil)
+    #expect(trend.caption == "Measured once, at ♩ = 96 · no trend yet")
+    #expect(trend.spoken == "Measured tempo, measured once at 96 beats per minute, no trend yet")
+  }
+
   @Test func aRefusedNoteKeepsTheItemCurrent() throws {
     let bridge = RowsBridge()
     let playId = try sheetOpen(bridge)

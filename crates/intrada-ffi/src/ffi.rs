@@ -455,6 +455,22 @@ pub fn click_tempo_words(bpm: u16, unit: u8) -> TempoWords {
     }
 }
 
+/// A bare declared tempo, "♩ = 66", for a number the core holds no item for:
+/// a reflection's target, a staged exercise's typed tempo.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn declared_tempo_words(bpm: u16) -> TempoWords {
+    let tempo = intrada_core::domain::types::Tempo {
+        marking: None,
+        bpm: Some(bpm),
+    };
+    let words = intrada_core::domain::tempo_words::tempo_line(Some(&tempo));
+    let (text, spoken) = intrada_core::domain::tempo_words::TempoWords::split(words);
+    TempoWords {
+        text: text.unwrap_or_default(),
+        spoken: spoken.unwrap_or_default(),
+    }
+}
+
 /// Whether the add and edit form enables Save, judged on the title as typed.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn item_form_can_save(title: String) -> bool {
@@ -987,6 +1003,17 @@ mod tests {
             TempoWords {
                 text: "♪ = 168".to_string(),
                 spoken: "168 quaver beats per minute".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn declared_tempo_words_carry_a_bare_crotchet_tempo_across() {
+        assert_eq!(
+            declared_tempo_words(66),
+            TempoWords {
+                text: "♩ = 66".to_string(),
+                spoken: "66 beats per minute".to_string(),
             }
         );
     }

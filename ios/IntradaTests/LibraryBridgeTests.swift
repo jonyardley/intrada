@@ -218,6 +218,8 @@ final class LibraryBridgeTests: XCTestCase {
     XCTAssertEqual(views.map(\.barsCaption), ["Bars 1 to 16", nil])
     XCTAssertEqual(views.map(\.barsFieldText), ["1 to 16", "12 to 14"])
     XCTAssertEqual(views.last?.kind, spot)
+    XCTAssertEqual(views.map(\.targetTempo), [nil, "♩ 72"])
+    XCTAssertEqual(views.map(\.targetTempoSpoken), [nil, "72 beats per minute"])
   }
 
   /// A refused bar range points the form at the sections (#2245).
@@ -272,6 +274,12 @@ final class LibraryBridgeTests: XCTestCase {
     let words = clickTempoWords(bpm: 168, unit: 8)
     XCTAssertEqual(words.text, "♪ = 168")
     XCTAssertEqual(words.spoken, "168 quaver beats per minute")
+  }
+
+  func testDeclaredTempoWordsComeFromTheCore() {
+    let words = declaredTempoWords(bpm: 66)
+    XCTAssertEqual(words.text, "♩ = 66")
+    XCTAssertEqual(words.spoken, "66 beats per minute")
   }
 
   func testRealBridgeReadsTheTypedBpm() throws {

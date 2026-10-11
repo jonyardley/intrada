@@ -603,6 +603,8 @@ pub struct SectionView {
     /// The one section the builder and Up next point to: the lowest latest
     /// mark, once two or more are marked and they differ (#2250).
     pub is_weakest: bool,
+    pub target_tempo: Option<String>,
+    pub target_tempo_spoken: Option<String>,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -774,6 +776,26 @@ pub struct TempoTrendView {
     pub points: Vec<TempoTrendPoint>,
     /// Two or more measured tempos; below that there is no direction to read.
     pub has_trend: bool,
+    /// `♩ = 88 → 104`, beside the title once there is a trend.
+    pub chip: Option<String>,
+    /// `Measured once, at ♩ = 72 · no trend yet`, in place of the plot.
+    pub caption: Option<String>,
+    pub spoken: String,
+}
+
+impl TempoTrendView {
+    #[must_use]
+    pub fn new(points: Vec<TempoTrendPoint>) -> Self {
+        let measured: Vec<u16> = points.iter().filter_map(|p| p.tempo).collect();
+        let words = crate::domain::tempo_words::trend_words(&measured, points.len());
+        Self {
+            has_trend: measured.len() >= 2,
+            points,
+            chip: words.chip,
+            caption: words.caption,
+            spoken: words.spoken,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1596,6 +1618,8 @@ mod tests {
             }],
             caption: "4 of 10".to_string(),
             is_weakest: true,
+            target_tempo: Some("♩ 84".to_string()),
+            target_tempo_spoken: Some("84 beats per minute".to_string()),
         });
     }
 

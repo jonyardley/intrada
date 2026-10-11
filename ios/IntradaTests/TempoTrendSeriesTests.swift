@@ -108,7 +108,7 @@ struct TempoTrendSeriesTests {
         points: points.enumerated().map { index, point in
           TempoTrendPoint(sessionDate: point.date, sessionId: "s\(index)", tempo: point.tempo)
         },
-        hasTrend: hasTrend))
+        hasTrend: hasTrend, chip: nil, caption: nil, spoken: ""))
   }
 
   @Test("nothing measured draws no card at all")
