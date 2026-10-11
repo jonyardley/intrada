@@ -8,8 +8,17 @@ class TempoDragTest {
     private var clock = 0L
     private val committed = mutableListOf<Int>()
 
+    private var heard = true
+
     private fun drag(anchor: Int = 96) =
-        TempoDrag(anchor, step = 2, band = 40..208, commit = { committed += it }, now = { clock })
+        TempoDrag(
+            anchor,
+            step = 2,
+            band = 40..208,
+            commit = { committed += it },
+            heard = { heard },
+            now = { clock },
+        )
 
     @Test
     fun draggingUpEightDpIsOneStepFaster() {
@@ -38,6 +47,62 @@ class TempoDragTest {
         clock = TempoDrag.COMMIT_INTERVAL_MILLIS
         drag.moved(-24f)
         assertEquals(listOf(102), committed)
+    }
+
+    // Bluetooth's output latency outlasts the lead-in, so the last start may still be silent
+    // (#2539).
+    @Test
+    fun aStepWaitsUntilTheLastStartHasBeenHeard() {
+        val drag = drag()
+        heard = false
+        clock = TempoDrag.COMMIT_INTERVAL_MILLIS
+        drag.moved(-8f)
+
+        assertEquals(98, drag.live)
+        assertEquals(emptyList<Int>(), committed)
+
+        heard = true
+        drag.moved(-16f)
+        assertEquals(listOf(100), committed)
+    }
+
+    @Test
+    fun aStepHeldBackReachesTheClickWhileTheFingerRests() {
+        val drag = drag()
+        heard = false
+        clock = TempoDrag.COMMIT_INTERVAL_MILLIS
+        drag.moved(-8f)
+        assertEquals(emptyList<Int>(), committed)
+
+        heard = true
+        drag.settle()
+
+        assertEquals(listOf(98), committed)
+    }
+
+    @Test
+    fun aClickThatNeverReportsBeingHeardStillFollowsTheDrag() {
+        val drag = drag()
+        heard = false
+        clock = TempoDrag.UNHEARD_LIMIT_MILLIS - 1
+        drag.moved(-8f)
+        assertEquals(emptyList<Int>(), committed)
+
+        clock = TempoDrag.UNHEARD_LIMIT_MILLIS
+        drag.moved(-16f)
+        assertEquals(listOf(100), committed)
+    }
+
+    @Test
+    fun liftingTheFingerCommitsEvenBeforeTheLastStartIsHeard() {
+        val drag = drag()
+        heard = false
+        clock = TempoDrag.COMMIT_INTERVAL_MILLIS
+        drag.moved(-16f)
+
+        drag.ended()
+
+        assertEquals(listOf(100), committed)
     }
 
     @Test

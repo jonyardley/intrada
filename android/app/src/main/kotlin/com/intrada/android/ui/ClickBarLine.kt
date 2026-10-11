@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -28,6 +30,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -48,8 +51,6 @@ internal fun ClickBarLine(
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // A twelve-beat bar outgrows a phone's row, so a long bar tightens its gaps (#2139).
-    val roomy = metre.beats.toInt() <= ROOMY_BEATS
     Row(
         modifier
             .heightIn(min = 48.dp)
@@ -59,38 +60,55 @@ internal fun ClickBarLine(
                 stateDescription = spokenBar(metre, sounding)
                 role = Role.Button
                 testTag = "click.bar"
-                onClick {
+                onClick(label = "Choose the time signature and which beats sound") {
                     onTap()
                     true
                 }
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.heightIn(min = 36.dp)
-                .background(IntradaColor.surfaceSunken, CircleShape)
-                .border(1.dp, IntradaColor.divider, CircleShape)
-                .padding(horizontal = IntradaSpacing.cardCompact),
-            horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        // A twelve-beat bar outgrows a phone's row, so the line tightens its groups, then drops the
+        // metre, before it overflows (#2139, #2540).
+        FirstThatFits(BarFit.entries.size) {
+            BarPill(metre, sounding, currentBeat, BarFit.entries[it])
+        }
+    }
+}
+
+private enum class BarFit {
+    FULL,
+    COMPACT,
+    BARE,
+}
+
+@Composable
+private fun BarPill(metre: Metre, sounding: UShort, currentBeat: Int?, fit: BarFit) {
+    Row(
+        Modifier.heightIn(min = 36.dp)
+            .background(IntradaColor.surfaceSunken, CircleShape)
+            .border(1.dp, IntradaColor.divider, CircleShape)
+            .padding(horizontal = IntradaSpacing.cardCompact),
+        horizontalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (fit != BarFit.BARE) {
             BasicText(
                 metre.label,
                 style = IntradaFont.label.copy(color = IntradaColor.inkSecondary),
                 maxLines = 1,
             )
-            BeatDots(metre, sounding, currentBeat, roomy)
-            if (roomy) {
-                val height = DIVIDER * LocalDensity.current.fontScale
-                Box(Modifier.width(1.dp).height(height).background(IntradaColor.divider))
-            }
-            Image(
-                painterResource(R.drawable.ic_sliders),
-                contentDescription = null,
-                modifier = Modifier.size(IntradaIconSize.inline.scaled()),
-                colorFilter = ColorFilter.tint(IntradaColor.ink),
-            )
         }
+        BeatDots(metre, sounding, currentBeat, fit == BarFit.FULL)
+        if (fit == BarFit.FULL) {
+            val height = DIVIDER * LocalDensity.current.fontScale
+            Box(Modifier.width(1.dp).height(height).background(IntradaColor.divider))
+        }
+        Image(
+            painterResource(R.drawable.ic_sliders),
+            contentDescription = null,
+            modifier = Modifier.size(IntradaIconSize.inline.scaled()),
+            colorFilter = ColorFilter.tint(IntradaColor.ink),
+        )
     }
 }
 
@@ -103,6 +121,36 @@ private fun BeatDots(metre: Metre, sounding: UShort, currentBeat: Int?, roomy: B
             Row(horizontalArrangement = Arrangement.spacedBy(beatGap)) {
                 group.forEach { beat -> BeatDot(sounds(sounding, beat), beat == currentBeat) }
             }
+        }
+    }
+}
+
+/** Lays out the first of [count] versions whose natural width fits, the last when none does. */
+@Composable
+internal fun FirstThatFits(
+    count: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable (Int) -> Unit,
+) {
+    SubcomposeLayout(modifier) { constraints ->
+        val natural = constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity)
+        var placeables = emptyList<Placeable>()
+        for (index in 0 until count) {
+            placeables = subcompose(index) { content(index) }.map { it.measure(natural) }
+            if ((placeables.maxOfOrNull { it.width } ?: 0) <= constraints.maxWidth) break
+        }
+        val width =
+            (placeables.maxOfOrNull { it.width } ?: 0).coerceIn(
+                constraints.minWidth,
+                constraints.maxWidth,
+            )
+        val height =
+            (placeables.maxOfOrNull { it.height } ?: 0).coerceIn(
+                constraints.minHeight,
+                constraints.maxHeight,
+            )
+        layout(width, height) {
+            placeables.forEach { it.placeRelative(0, (height - it.height) / 2) }
         }
     }
 }
@@ -148,7 +196,6 @@ internal fun spokenBar(metre: Metre, sounding: UShort): String {
     return "${metre.beats} ${spokenUnit(metre.unit)} beats, metronome on $sounded"
 }
 
-private const val ROOMY_BEATS = 8
 private val DOT = 10.dp
 private val DOT_MAX = 14.dp
 private val RING_GAP = 3.dp
