@@ -63,7 +63,7 @@ fun AddToSessionRoute(store: Store, onDone: () -> Unit, modifier: Modifier = Mod
     val viewModel by store.viewModel.collectAsState()
     val rows by store.libraryRows.collectAsState()
     var text by rememberSaveable { mutableStateOf("") }
-    LibraryQueryScope(store)
+    LibraryQueryScope(store, text)
     val entries = viewModel?.buildingSetlist?.entries.orEmpty()
     val entryByItem = entries.associateBy({ it.itemId }, { it.id })
     val filtered = viewModel?.activeQuery != null
@@ -259,13 +259,14 @@ private fun SearchField(search: PickerSearch, tag: String) {
 }
 
 /**
- * The add screen starts from the whole library and gives the library its own query back (#1440).
+ * The add screen starts from its own search, so a restored field still narrows the list, and gives
+ * the library its own query back (#1440).
  */
 @Composable
-private fun LibraryQueryScope(store: Store) {
+private fun LibraryQueryScope(store: Store, restored: String) {
     DisposableEffect(store) {
         val before = store.viewModel.value?.activeQuery
-        store.send(Event.SetQuery(null))
+        store.send(Event.SetQuery(searchQuery(restored)))
         onDispose { store.send(Event.SetQuery(before)) }
     }
 }

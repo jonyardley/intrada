@@ -91,7 +91,12 @@ private fun TargetStepper(
             "target",
             "entrySettings.focusTarget",
             onStep = { direction ->
-                send(focus.copy(target = (value + direction * range.step.toInt()).toUShort()))
+                val next = value + direction * range.step.toInt()
+                send(
+                    focus.copy(
+                        target = next.coerceIn(range.min.toInt(), range.max.toInt()).toUShort()
+                    )
+                )
             },
             canDecrease = value > range.min.toInt(),
             canIncrease = value < range.max.toInt(),

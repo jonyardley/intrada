@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -126,6 +127,10 @@ class BuilderScreenTest {
         val store = plannedPieceStore()
         val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
         compose.setContent { EntrySettingsRoute(store, piece.id, onDone = {}) }
+        assertEquals(
+            "Written key",
+            store.setlist().entryKeys.single { it.entryId == piece.id }.currentLabel,
+        )
 
         compose.onNodeWithContentDescription("A minor").performScrollTo().performClick()
 
@@ -164,6 +169,21 @@ class BuilderScreenTest {
         open = false
         compose.waitForIdle()
         assertEquals(libraryQuery, store.viewModel.value?.activeQuery)
+    }
+
+    @Test
+    fun aSearchRestoredAfterRotationStillNarrowsTheList() = runTest {
+        val store = libraryStore()
+        store.send(Event.Session(SessionEvent.StartBuilding))
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { AddToSessionRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("addToSession.search").performTextInput("hanon")
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitForIdle()
+
+        assertEquals("hanon", store.viewModel.value?.activeQuery?.text)
+        compose.onAllNodesWithTag("addToSession.row").assertCountEquals(1)
     }
 
     @Test
