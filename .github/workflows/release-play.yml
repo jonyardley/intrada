@@ -160,8 +160,7 @@ jobs:
           ANDROID_AAB: android/app/build/outputs/bundle/release/app-release.aab
         run: bundle exec fastlane android internal
       # The name is what Reporting.kt's releaseName composes at runtime: package,
-      # then the version name and version code Gradle took from this tag and run.
-      # Tag only and continue-on-error, as in release-testflight.yml (#1553).
+      # then the version name and version code Gradle took from this tag and run (#2517).
       - name: Create the Sentry release for this build
         if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_PROJECT_ANDROID != ''
         continue-on-error: true
@@ -177,7 +176,12 @@ jobs:
             "https://downloads.sentry-cdn.com/sentry-cli/3.7.0/sentry-cli-Linux-x86_64"
           chmod +x "$RUNNER_TEMP/sentry-cli"
 
-          release="com.intrada.android@${GITHUB_REF_NAME#v}+${VERSION_CODE}"
+          package=$(sed -n 's/^ *applicationId = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
+          if [ -z "$package" ]; then
+            echo "::error::No applicationId in android/app/build.gradle.kts, so no release name could match this build's crashes."
+            exit 1
+          fi
+          release="$package@${GITHUB_REF_NAME#v}+${VERSION_CODE}"
           echo "Sentry release: $release"
 
           "$RUNNER_TEMP/sentry-cli" releases new "$release"
