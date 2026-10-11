@@ -76,6 +76,9 @@ struct TempoTrendSeries {
 struct TempoTrendDisplay {
   let series: TempoTrendSeries
   let hasTrend: Bool
+  let chip: String?
+  let caption: String?
+  let spoken: String
   let startDateText: String
   let endDateText: String
 }
@@ -103,8 +106,8 @@ struct TempoTrend: View {
         plot
           .frame(height: plotHeight + tickHeight)
         footer
-      } else if let only = measured.first {
-        Text("Measured once, at ♩ = \(only) · no trend yet")
+      } else if let caption = display.caption {
+        Text(caption)
           .font(IntradaFont.secondary)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -114,7 +117,7 @@ struct TempoTrend: View {
     .padding(.vertical, IntradaSpacing.cardCompact)
     .cardSurface(cornerRadius: IntradaRadius.panel)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
+    .accessibilityLabel(display.spoken)
   }
 
   // ── Header ──
@@ -140,10 +143,10 @@ struct TempoTrend: View {
   }
 
   @ViewBuilder private var chip: some View {
-    if display.hasTrend, let first = measured.first, let latest = measured.last {
+    if let chip = display.chip {
       // Neutral, never a success colour: a faster tempo is not a better one,
       // and slowing down deliberately is practice, not a decline.
-      Text("♩ = \(first) → \(latest)")
+      Text(chip)
         .font(IntradaFont.badge)
         .foregroundStyle(IntradaColor.inkSecondary)
     }
@@ -233,17 +236,6 @@ struct TempoTrend: View {
 
   private var measuredCountText: String {
     "\(measured.count) of \(series.marks.count) sessions measured"
-  }
-
-  /// Spelled out, because VoiceOver reads neither the ♩ glyph nor the middle
-  /// dot.
-  private var accessibilityLabel: String {
-    guard display.hasTrend, let first = measured.first, let latest = measured.last else {
-      guard let only = measured.first else { return "Measured tempo" }
-      return "Measured tempo, measured once at \(only) beats per minute, no trend yet"
-    }
-    return
-      "Measured tempo, \(first) to \(latest) beats per minute across \(measured.count) of \(series.marks.count) sessions"
   }
 }
 
