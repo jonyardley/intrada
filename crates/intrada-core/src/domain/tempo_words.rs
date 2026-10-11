@@ -45,10 +45,20 @@ pub fn tempo_line(tempo: Option<&Tempo>) -> Option<TempoWords> {
             .collect();
         (!parts.is_empty()).then(|| parts.join(separator))
     };
+    let bpm = tempo.bpm.map(declared_bpm);
     Some(TempoWords {
-        text: join(tempo.bpm.map(|bpm| format!("♩ = {bpm}")), " · ")?,
-        spoken: join(tempo.bpm.map(|bpm| format!("{bpm} beats per minute")), ", ")?,
+        text: join(bpm.as_ref().map(|w| w.text.clone()), " · ")?,
+        spoken: join(bpm.map(|w| w.spoken), ", ")?,
     })
+}
+
+/// A bpm worded without its marking: "♩ = 66".
+#[must_use]
+pub fn declared_bpm(bpm: u16) -> TempoWords {
+    TempoWords {
+        text: format!("♩ = {bpm}"),
+        spoken: format!("{bpm} beats per minute"),
+    }
 }
 
 /// A section's target beside its name: "♩ 60".
@@ -60,8 +70,6 @@ pub fn section_target(bpm: u16) -> TempoWords {
     }
 }
 
-/// The measured tempo card's words, from its measured tempos oldest first and
-/// how many sessions it spans.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TrendWords {
     pub chip: Option<String>,
@@ -69,6 +77,8 @@ pub struct TrendWords {
     pub spoken: String,
 }
 
+/// The measured tempo card's words, from its measured tempos oldest first and
+/// how many sessions it spans.
 #[must_use]
 pub fn trend_words(measured: &[u16], sessions: usize) -> TrendWords {
     match measured {

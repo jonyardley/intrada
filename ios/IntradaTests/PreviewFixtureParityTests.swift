@@ -145,6 +145,69 @@ struct PreviewFixtureParityTests {
     #expect(fixture.currentVariations.map(picker) == active.currentVariations.map(picker))
   }
 
+  // ── Measured tempo and section targets (#2486) ────────────────────────
+
+  private struct TrendWords: Equatable {
+    let hasTrend: Bool
+    let chip: String?
+    let caption: String?
+    let spoken: String
+  }
+
+  private func words(_ trend: TempoTrendView) -> TrendWords {
+    TrendWords(
+      hasTrend: trend.hasTrend, chip: trend.chip, caption: trend.caption, spoken: trend.spoken)
+  }
+
+  @Test(arguments: [[96], [88, 96, 104]] as [[UInt16]])
+  func theTrendFixtureWordsItsMeasurementsAsTheCoreDoes(tempos: [UInt16]) throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let id = try add(bridge, title: "Clair de Lune", kind: .piece, key: nil, tempo: nil, labels: [])
+    for (index, tempo) in tempos.enumerated() {
+      let day = "2026-06-2\(index + 1)"
+      _ = try bridge.update(.session(.startBuilding))
+      _ = try bridge.update(.session(.addToSetlist(itemId: id)))
+      _ = try bridge.update(.session(.startSession(now: "\(day)T09:00:00Z")))
+      _ = try bridge.update(
+        .session(.prepareReflection(now: "\(day)T09:05:00Z", reading: .silent)))
+      let playId = try #require(try bridge.rendered().activeSession?.entries.first?.plays.last?.id)
+      _ = try bridge.update(
+        .session(
+          .submitReflection(
+            nextItemStartedAt: "\(day)T09:05:30Z",
+            answers: ReflectionAnswers(
+              marks: [], note: "", tempos: [DraftTempo(playId: playId, tempo: tempo, click: nil)],
+              felt: nil, gotInTheWay: [], notePoints: [], intentionMet: nil, ways: []))))
+      let write = try #require(
+        try bridge.update(.session(.saveSession(now: "\(day)T09:06:00Z"))).first {
+          if case .persistence(.saveSession) = $0.effect { return true } else { return false }
+        })
+      _ = try bridge.resolve(write.id, persistenceOutput: .ack)
+    }
+    let projected = try #require(try item(bridge, id).practice?.tempoTrend)
+
+    #expect(words(TempoTrendView.fixture(tempos.map { $0 })) == words(projected))
+  }
+
+  @Test func theTrickySpotsTargetIsWordedAsTheCoreDoes() throws {
+    let bridge = RowsBridge()
+    _ = try bridge.update(.startApp)
+    let id = try add(bridge, title: "Clair de Lune", kind: .piece, key: nil, tempo: nil, labels: [])
+    try bridge.addSections(
+      [
+        SectionEdit(
+          id: nil, name: "", bars: .picked(first: 19, last: 20), kind: .troubleSpot,
+          targetBpm: "54")
+      ], to: id)
+    let projected = try #require(try item(bridge, id).sections.first)
+    let fixture = try #require(
+      LibraryItemView.previewPieceWithSections.sections.first { $0.targetBpm == 54 })
+
+    #expect(fixture.targetTempo == projected.targetTempo)
+    #expect(fixture.targetTempoSpoken == projected.targetTempoSpoken)
+  }
+
   // ── Driving the core ───────────────────────────────────────────────────
 
   private func projectedPiece(

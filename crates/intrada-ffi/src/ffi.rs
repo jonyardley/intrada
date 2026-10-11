@@ -455,19 +455,14 @@ pub fn click_tempo_words(bpm: u16, unit: u8) -> TempoWords {
     }
 }
 
-/// A bare declared tempo, "♩ = 66", for a number the core holds no item for:
-/// a reflection's target, a staged exercise's typed tempo.
+/// A bpm worded without its marking, "♩ = 66": the reflection's target
+/// heading and a staged exercise's typed tempo.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn declared_tempo_words(bpm: u16) -> TempoWords {
-    let tempo = intrada_core::domain::types::Tempo {
-        marking: None,
-        bpm: Some(bpm),
-    };
-    let words = intrada_core::domain::tempo_words::tempo_line(Some(&tempo));
-    let (text, spoken) = intrada_core::domain::tempo_words::TempoWords::split(words);
+    let words = intrada_core::domain::tempo_words::declared_bpm(bpm);
     TempoWords {
-        text: text.unwrap_or_default(),
-        spoken: spoken.unwrap_or_default(),
+        text: words.text,
+        spoken: words.spoken,
     }
 }
 

@@ -767,7 +767,7 @@ pub struct TempoTrendPoint {
 /// line there rather than drawing a zero or interpolating across it (#1420).
 /// Every number present was measured, because the evidence contract keeps
 /// unevidenced defaults out of `achieved_tempo` upstream (T16, #1422).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoTrendView {
     /// Oldest first, the reverse of `score_history`. One point per setlist
@@ -1301,7 +1301,7 @@ impl ItemPracticeSummary {
             latest_score: None,
             score_history: Vec::new(),
             score_trend: None,
-            tempo_trend: TempoTrendView::default(),
+            tempo_trend: TempoTrendView::new(Vec::new()),
             last_practiced_at: None,
         }
     }
@@ -1595,6 +1595,20 @@ mod tests {
             latest_score: None,
             caption: "Not yet played".to_string(),
         });
+    }
+
+    #[test]
+    fn tempo_trend_view_round_trips_on_ffi_bincode_wire() {
+        let point = |tempo| TempoTrendPoint {
+            session_date: "2026-10-01T00:00:00+00:00".to_string(),
+            session_id: "s1".to_string(),
+            tempo,
+        };
+        crate::domain::types::assert_round_trips(TempoTrendView::new(vec![
+            point(Some(88)),
+            point(None),
+            point(Some(104)),
+        ]));
     }
 
     /// A section's marks cross the wire inside `LibraryItemView` (#2250).
