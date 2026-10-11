@@ -81,10 +81,7 @@ fun PracticeRoute(
             viewModel?.profile?.icon ?: InstrumentIcon.OTHER,
             viewModel?.upNext,
             viewModel?.showsPriorities == true,
-            idle =
-                viewModel?.let {
-                    it.buildingSetlist == null && it.activeSession == null && it.summary == null
-                } ?: false,
+            showsSuggestionRestore = viewModel?.showsSuggestionRestore == true,
             firstRun = viewModel?.firstRun,
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
@@ -129,7 +126,7 @@ class PracticeModel(
     val icon: InstrumentIcon = InstrumentIcon.OTHER,
     val upNext: SuggestedPlan? = null,
     val showsPriorities: Boolean = false,
-    val idle: Boolean = true,
+    val showsSuggestionRestore: Boolean = false,
     val firstRun: FirstRunView? = null,
 )
 
@@ -192,7 +189,8 @@ private fun HeroSection(
             )
         } else {
             LastPractisedHero(model.lastPractised, model.colour, onStart)
-            if (showsSuggestionRestore(model.upNext, model.idle, dismissed)) {
+            // Dismissal is not a one-way door while the core still has a plan to offer (#1618).
+            if (dismissed && model.showsSuggestionRestore) {
                 ShowSuggestionButton { onDismiss(false) }
             }
         }
