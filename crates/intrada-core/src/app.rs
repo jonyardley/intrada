@@ -2637,6 +2637,51 @@ mod tests {
     }
 
     #[test]
+    fn show_suggestion_shows_only_while_a_plan_waits_and_nothing_is_under_way() {
+        use crate::domain::session::{SessionEvent, TempoReading};
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let shows = |model: &Model| app.view(model).shows_suggestion_restore;
+
+        assert!(!shows(&Model::default()), "no plan");
+
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], now);
+        let mut model = Model {
+            items: vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into(),
+            ..Default::default()
+        };
+        assert!(app.view(&model).up_next.is_some());
+        assert!(shows(&model), "a plan and nothing under way");
+
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        let _ = app.update(
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "p1".to_string(),
+            }),
+            &mut model,
+        );
+        assert!(!shows(&model), "a session is being built");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::StartSession { now }),
+            &mut model,
+        );
+        assert!(!shows(&model), "a session is being played");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::EndSessionEarly {
+                now,
+                reading: TempoReading::silent(),
+            }),
+            &mut model,
+        );
+        assert!(app.view(&model).summary.is_some());
+        assert!(!shows(&model), "a finished session is on screen");
+    }
+
+    #[test]
     fn an_unfinished_session_is_offered_only_while_none_is_played_or_summarised() {
         use crate::domain::session::{SessionEvent, TempoReading};
 
