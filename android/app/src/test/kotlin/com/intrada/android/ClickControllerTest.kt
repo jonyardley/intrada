@@ -3,7 +3,9 @@ package com.intrada.android
 import android.os.Looper
 import com.intrada.android.core.ClickOutput
 import com.intrada.android.ui.ClickController
+import com.intrada.shared.ClickPreset
 import com.intrada.shared.Event
+import com.intrada.shared.Metre
 import com.intrada.shared.SessionEvent
 import java.time.Duration
 import kotlinx.coroutines.test.runTest
@@ -18,12 +20,16 @@ import org.robolectric.annotation.Config
 
 private class CountingClick : ClickOutput {
     val started = mutableListOf<Int>()
+    val beats = mutableListOf<Int>()
+    val soundings = mutableListOf<Int>()
     var stops = 0
 
     override var onPulseDied: (() -> Unit)? = null
 
     override fun start(bpm: Int, beats: Int, sounding: Int): Boolean {
         started += bpm
+        this.beats += beats
+        soundings += sounding
         return true
     }
 
@@ -93,6 +99,91 @@ class ClickControllerTest {
 
         assertTrue(click.isRunning)
     }
+
+    @Test
+    fun aNewBarSoundsEveryBeatAndIsReportedAsChosen() = runTest {
+        startOnFirstItem()
+
+        click.bar.choose(sixEight)
+
+        assertEquals(0b111111, click.bar.sounding.toInt())
+        assertEquals(sixEight, click.reading.click?.metre)
+        assertEquals(6, output.beats.last())
+    }
+
+    @Test
+    fun groupStartsInSixEightSoundsBeatsOneAndFour() = runTest {
+        startOnFirstItem()
+        click.bar.choose(sixEight)
+
+        click.bar.apply(ClickPreset.GROUPSTARTS)
+
+        assertEquals(0b001001, click.bar.sounding.toInt())
+        assertEquals(ClickPreset.GROUPSTARTS, click.bar.matchingPreset)
+        assertEquals(0b001001, output.soundings.last())
+    }
+
+    @Test
+    fun theLastSoundingBeatCannotBeSilenced() = runTest {
+        startOnFirstItem()
+        click.bar.apply(ClickPreset.DOWNBEAT)
+
+        click.bar.toggleBeat(0)
+
+        assertEquals(1, click.bar.sounding.toInt())
+    }
+
+    @Test
+    fun aSilencedBeatMatchesNoPattern() = runTest {
+        startOnFirstItem()
+        click.bar.choose(Metre(4u, 4u))
+
+        click.bar.toggleBeat(2)
+
+        assertEquals(0b1011, click.bar.sounding.toInt())
+        assertEquals(null, click.bar.matchingPreset)
+    }
+
+    @Test
+    fun aDragPastTheBandStopsAtItsEdge() = runTest {
+        startOnFirstItem()
+
+        click.dragTo(10_000)
+
+        assertEquals(click.band.last, click.bpm)
+        assertEquals(click.band.last, output.started.last())
+    }
+
+    @Test
+    fun aBarChosenWhileStoppedIsReportedAsChosen() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        click.follow(store.active(), checkNotNull(store.viewModel.value?.limits))
+
+        click.bar.choose(sixEight)
+
+        assertFalse(click.isRunning)
+        assertEquals(sixEight, click.reading.click?.metre)
+    }
+
+    @Test
+    fun aCrotchetBarCapsAQuaverTempoAtItsBand() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        val limits = checkNotNull(store.viewModel.value?.limits)
+        click.follow(store.active(), limits)
+        val crotchetMax =
+            checkNotNull(limits.clickTempoBands.firstOrNull { it.unit == 4u.toUByte() }).max
+        click.bar.choose(sixEight)
+        click.dragTo(click.band.last)
+        assertTrue(click.bpm > crotchetMax.toInt())
+
+        click.bar.choose(Metre(4u, 4u))
+
+        assertEquals(crotchetMax.toInt(), click.bpm)
+    }
+
+    private val sixEight = Metre(6u, 8u, listOf(3u, 3u))
 
     private suspend fun kotlinx.coroutines.test.TestScope.startOnFirstItem() {
         val store = openedStore()

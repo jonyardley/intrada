@@ -296,6 +296,7 @@ internal fun <T> SegmentedPills(
     label: (T) -> String,
     tag: (T) -> String,
     modifier: Modifier = Modifier,
+    spoken: ((T) -> String)? = null,
 ) {
     val track = RoundedCornerShape(IntradaRadius.control)
     Row(
@@ -317,8 +318,10 @@ internal fun <T> SegmentedPills(
                     .semantics {
                         role = Role.Tab
                         selected = chosen
+                        spoken?.let { contentDescription = it(option) }
                     }
-                    .testTag(tag(option)),
+                    .testTag(tag(option))
+                    .padding(horizontal = IntradaSpacing.controlGap / 2),
                 contentAlignment = Alignment.Center,
             ) {
                 BasicText(

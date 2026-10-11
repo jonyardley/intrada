@@ -1,5 +1,6 @@
 package com.intrada.android
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -9,11 +10,16 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import com.intrada.android.core.ClickOutput
 import com.intrada.android.ui.ClickController
 import com.intrada.android.ui.PlayerModel
 import com.intrada.android.ui.PlayerScreen
+import com.intrada.android.ui.TempoDrag
 import com.intrada.shared.Event
+import com.intrada.shared.LimitsView
+import com.intrada.shared.Metre
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.TempoReading
 import kotlinx.coroutines.test.TestScope
@@ -60,7 +66,7 @@ class ClickFlowTest {
             }
         }
 
-    private suspend fun TestScope.showPlayer(fake: FakeClick) {
+    private suspend fun TestScope.showPlayer(fake: FakeClick): LimitsView {
         val store = openedStore()
         store.startTwoItems()
         val limits = checkNotNull(store.viewModel.value?.limits)
@@ -74,6 +80,7 @@ class ClickFlowTest {
                 },
             )
         }
+        return limits
     }
 
     @Test
@@ -121,6 +128,25 @@ class ClickFlowTest {
         compose.onNodeWithContentDescription("Stop the metronome").assertExists()
         assertEquals(fake.started.last(), readings.last().bpm.toInt())
         assertTrue(readings.last().clickSounding)
+    }
+
+    // Five and a half steps of travel from the finger-down point, so a lost touch slop would show
+    // as four (#2476).
+    @Test
+    fun aDragUpCountsItsTravelFromTheFingerDown() = runTest {
+        val fake = FakeClick()
+        val step = showPlayer(fake).clickTempoStep.toInt()
+        compose.onNodeWithTag("click.toggle").performScrollTo().performClick()
+
+        compose.onNodeWithTag("click.toggle").performTouchInput {
+            val travel = (TempoDrag.DP_PER_STEP * 5.5f).dp.toPx()
+            down(center)
+            repeat(DRAG_MOVES) { moveBy(Offset(0f, -travel / DRAG_MOVES)) }
+            up()
+        }
+        compose.waitForIdle()
+
+        assertEquals(5, (fake.started.last() - fake.started.first()) / step)
     }
 
     @Test
@@ -171,4 +197,23 @@ class ClickFlowTest {
 
         compose.onNodeWithContentDescription("Start the metronome").assertExists()
     }
+
+    @Test
+    fun aBarAndPatternChosenInTheSheetReachTheReflection() = runTest {
+        showPlayer(FakeClick())
+
+        compose.onNodeWithTag("click.toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("click.bar").performScrollTo().performClick()
+        compose.onNodeWithTag("clickSheet.metre.6-8").performClick()
+        compose.onNodeWithTag("clickSheet.pattern.groupStarts").performClick()
+        compose.onNodeWithTag("clickSheet.beat.4").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Done").performClick()
+        compose.onNodeWithTag("player.advance").performClick()
+
+        val chosen = readings.last().click
+        assertEquals(Metre(6u, 8u, listOf(3u, 3u)), chosen?.metre)
+        assertEquals(0b000001, chosen?.sounding?.toInt())
+    }
 }
+
+private const val DRAG_MOVES = 11
