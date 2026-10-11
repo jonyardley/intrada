@@ -1,5 +1,6 @@
 package com.intrada.android.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -18,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
 import com.intrada.android.core.Store
@@ -25,6 +29,8 @@ import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.shared.BuildingSetlistView
+import com.intrada.shared.DrillOfferView
+import com.intrada.shared.EntryKeysView
 import com.intrada.shared.Event
 import com.intrada.shared.LimitsView
 import com.intrada.shared.PickerVariationView
@@ -98,6 +104,12 @@ private fun ColumnScope.EntrySettingsBody(
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.section),
     ) {
         AimCard(entry, send)
+        EntryFocusCard(
+            entry.record.focus,
+            setlist.focusChoices,
+            plannable?.sections.orEmpty(),
+            send = { send(SessionEvent.SetFocus(entry.id, it)) },
+        )
         setlist.lastTimes
             .firstOrNull { it.entryId == entry.id }
             ?.let { offer ->
@@ -110,7 +122,15 @@ private fun ColumnScope.EntrySettingsBody(
                 )
             }
         val sections = plannable?.sections.orEmpty()
-        if (sections.isNotEmpty()) SectionsCard(entry, sections, send)
+        if (sections.isNotEmpty()) {
+            SectionsCard(
+                entry,
+                sections,
+                setlist.drillOffers.filter { it.entryId == entry.id },
+                send,
+            )
+        }
+        setlist.entryKeys.firstOrNull { it.entryId == entry.id }?.let { KeyCard(it, send) }
         val variations = plannable?.variations.orEmpty()
         if (variations.isNotEmpty()) VariationCard(entry, variations, send)
         RepsCard(entry, limits, send)
@@ -171,6 +191,48 @@ private fun AimCard(entry: SetlistEntryView, send: (SessionEvent) -> Boolean) {
             placeholder = "What are you aiming for on this one?",
             singleLine = false,
         )
+        entry.record.suggestedFocus?.let { suggested ->
+            AddRow(
+                "Focus: ${suggested.label}",
+                "Make ${suggested.label} the focus",
+                "entrySettings.suggestedFocus",
+                { send(SessionEvent.SetFocus(entry.id, suggested.focus)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeyCard(keys: EntryKeysView, send: (SessionEvent) -> Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap)) {
+        Column(Modifier.cardSurface()) {
+            FieldLabel(
+                "Key",
+                Modifier.padding(
+                    horizontal = IntradaSpacing.card,
+                    vertical = IntradaSpacing.controlGap,
+                ),
+            )
+            keys.keys.forEachIndexed { index, choice ->
+                if (index > 0) HairlineDivider()
+                TickRow(
+                    choice.label,
+                    choice.caption,
+                    choice.key == keys.current,
+                    "entryKey.row",
+                    {
+                        if (choice.key != keys.current) {
+                            send(SessionEvent.SetEntryKey(keys.entryId, choice.key))
+                        }
+                    },
+                )
+            }
+        }
+        BasicText(
+            "The keys you keep for this piece. Add more on the piece's page.",
+            Modifier.padding(horizontal = IntradaSpacing.controlGap),
+            style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
+        )
     }
 }
 
@@ -178,6 +240,7 @@ private fun AimCard(entry: SetlistEntryView, send: (SessionEvent) -> Boolean) {
 private fun SectionsCard(
     entry: SetlistEntryView,
     sections: List<SectionView>,
+    drills: List<DrillOfferView>,
     send: (SessionEvent) -> Boolean,
 ) {
     val segments = entry.record.segments
@@ -212,6 +275,8 @@ private fun SectionsCard(
                 timed = entry.plannedDurationSecs != null && segments.size > 1,
                 send,
             )
+            val offers = drills.filter { it.sectionId == segment.sectionId }
+            if (offers.isNotEmpty()) DrillGroup(segment.label, offers, send)
             HairlineDivider()
         }
         if (entry.record.canAddSection) {
@@ -223,6 +288,40 @@ private fun SectionsCard(
                     { send(SessionEvent.AddSegment(entry.id, section.id)) },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DrillGroup(
+    sectionLabel: String,
+    offers: List<DrillOfferView>,
+    send: (SessionEvent) -> Boolean,
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(bottom = IntradaSpacing.controlGap)
+            .background(IntradaColor.paperTop, RoundedCornerShape(IntradaRadius.control))
+    ) {
+        FieldLabel(
+            "Drills for $sectionLabel",
+            Modifier.padding(horizontal = IntradaSpacing.card)
+                .padding(top = IntradaSpacing.cardCompact)
+                .semantics { heading() },
+        )
+        offers.forEach { offer ->
+            TickRow(
+                offer.title,
+                null,
+                offer.addedEntryId != null,
+                "entrySettings.drill",
+                {
+                    send(
+                        offer.addedEntryId?.let { SessionEvent.RemoveFromSetlist(it) }
+                            ?: SessionEvent.AddDrill(offer.entryId, offer.exerciseId)
+                    )
+                },
+            )
         }
     }
 }
