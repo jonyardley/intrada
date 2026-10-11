@@ -127,6 +127,23 @@ pub struct ListQuery {
     pub priority_only: bool,
 }
 
+impl ListQuery {
+    /// A query with nothing set is no filter (#2462), so the Library line
+    /// reads "No items yet" however a shell clears its controls.
+    pub fn normalised(mut self) -> Option<Self> {
+        self.text = self
+            .text
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty());
+        let unset = self.text.is_none()
+            && self.item_type.is_none()
+            && self.key.is_none()
+            && self.tags.is_empty()
+            && !self.priority_only;
+        (!unset).then_some(self)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]

@@ -189,13 +189,8 @@ struct BrowseControlsBar: View {
   }
 
   private func applyQuery(kind: ItemKind?, text: String, tags: [String], priorityOnly: Bool) {
-    let trimmed = text.trimmingCharacters(in: .whitespaces)
-    let query =
-      (kind == nil && trimmed.isEmpty && tags.isEmpty && !priorityOnly)
-      ? nil
-      : ListQuery(
-        text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags,
-        priorityOnly: priorityOnly)
-    store.send(.setQuery(query))
+    store.send(
+      .setQuery(
+        ListQuery(text: text, itemType: kind, key: nil, tags: tags, priorityOnly: priorityOnly)))
   }
 }
