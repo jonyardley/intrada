@@ -8,14 +8,14 @@ import com.intrada.shared.FormErrorTarget
 data class Refusal(val target: FormErrorTarget?, val seq: Int)
 
 internal enum class FormAnchor {
-    DETAILS,
+    TITLE,
+    COMPOSER,
     VARIATIONS,
     PRACTICE,
     NOTES,
     TAGS,
 }
 
-/** Where on the form each refused field sits, so a refusal scrolls to it as on iOS (#2512). */
 internal class FormAnchors {
     private val cards = FormAnchor.entries.associateWith { BringIntoViewRequester() }
     val row = BringIntoViewRequester()
@@ -36,8 +36,8 @@ internal class FormAnchors {
 private val FormErrorField.anchor: FormAnchor?
     get() =
         when (this) {
-            FormErrorField.TITLE,
-            FormErrorField.COMPOSER -> FormAnchor.DETAILS
+            FormErrorField.TITLE -> FormAnchor.TITLE
+            FormErrorField.COMPOSER -> FormAnchor.COMPOSER
             FormErrorField.TEMPO -> FormAnchor.PRACTICE
             FormErrorField.NOTES -> FormAnchor.NOTES
             FormErrorField.TAGS -> FormAnchor.TAGS

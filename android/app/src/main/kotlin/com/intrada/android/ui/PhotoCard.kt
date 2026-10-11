@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,7 +51,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** The page a piece is practised from (#1355), kept with it and opened full screen (#2520). */
 @Composable
 internal fun PhotoCard(
     itemId: String,
@@ -66,7 +66,7 @@ internal fun PhotoCard(
     val loaded by
         produceState<LoadedPhoto?>(null, photoId) {
             value = photoId?.let {
-                LoadedPhoto(it, withContext(io) { photos.bitmap(it) }?.asImageBitmap())
+                LoadedPhoto(it, withContext(io) { photos.preview(it) }?.asImageBitmap())
             }
         }
     val picker =
@@ -93,14 +93,19 @@ internal fun PhotoCard(
                 failure = null
                 send(Event.Item(ItemEvent.ClearPhoto(itemId)))
             },
+            loadFull = { photoId?.let { withContext(io) { photos.bitmap(it) }?.asImageBitmap() } },
         ),
         modifier,
     )
 }
 
-class LoadedPhoto(val photoId: String, val image: ImageBitmap?)
+internal class LoadedPhoto(val photoId: String, val image: ImageBitmap?)
 
-class PhotoCardActions(val onChoose: () -> Unit, val onRemove: () -> Unit)
+internal class PhotoCardActions(
+    val onChoose: () -> Unit,
+    val onRemove: () -> Unit,
+    val loadFull: suspend () -> ImageBitmap? = { null },
+)
 
 @Composable
 internal fun PhotoCardContent(
@@ -124,7 +129,7 @@ internal fun PhotoCardContent(
         }
         PhotoBody(photoId, loaded) { viewing = true }
     }
-    if (viewing && image != null) PhotoViewer(image) { viewing = false }
+    if (viewing && image != null) PhotoViewer(image, actions.loadFull) { viewing = false }
     if (confirmingRemove) {
         ConfirmDialog(
             ConfirmCopy(
@@ -143,11 +148,17 @@ internal fun PhotoCardContent(
 }
 
 @Composable
-private fun PhotoViewer(image: ImageBitmap, onClose: () -> Unit) {
+private fun PhotoViewer(
+    preview: ImageBitmap,
+    loadFull: suspend () -> ImageBitmap?,
+    onClose: () -> Unit,
+) {
+    val currentLoad by rememberUpdatedState(loadFull)
+    val full by produceState<ImageBitmap?>(null) { value = currentLoad() }
     Dialog(onClose, DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(IntradaColor.ink).safeDrawingPadding()) {
             Image(
-                image,
+                full ?: preview,
                 contentDescription = "Photo of the page",
                 modifier = Modifier.fillMaxSize().testTag("piece.photo.full"),
                 contentScale = ContentScale.Fit,
@@ -174,7 +185,12 @@ private fun PhotoHeader(photoId: String?, onChoose: () -> Unit, onRemove: () -> 
     ) {
         FieldLabel("Photo", Modifier.weight(1f))
         if (photoId != null) {
-            TextAction("Remove", "piece.photo.remove", onRemove)
+            TextAction(
+                "Remove",
+                "piece.photo.remove",
+                onRemove,
+                Modifier.semantics { contentDescription = "Remove the photo" },
+            )
         }
         TextAction(
             if (photoId == null) "Add" else "Change",

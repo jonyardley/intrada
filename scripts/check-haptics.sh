@@ -33,13 +33,15 @@ if [ -n "$hits" ]; then
   exit 1
 fi
 
-if [ -d "$android_root" ]; then
-  kotlin_hits=$(find "$android_root" -name '*.kt' ! -path "$android_root/ui/Haptic.kt" -print0 |
-    xargs -0 perl -ne 's{//.*}{}; print "$ARGV:$.: $_" if /\bperformHapticFeedback\b/ || /\bHapticFeedbackType\b/ || /\bHapticFeedbackConstants\b/; close ARGV if eof')
-  if [ -n "$kotlin_hits" ]; then
-    echo "✗ a haptic built outside ui/Haptic.kt (#2488):" >&2
-    printf '%s\n' "$kotlin_hits" | sed 's/^/    /' >&2
-    echo "  Use LocalHapticFeedback.current.play(Haptic.<kind>)." >&2
-    exit 1
-  fi
+if [ ! -d "$android_root" ]; then
+  echo "✗ check-haptics: no $android_root to read" >&2
+  exit 2
+fi
+kotlin_hits=$(find "$android_root" -name '*.kt' ! -path "$android_root/ui/Haptic.kt" -print0 |
+  xargs -0 perl -ne 's{//.*}{}; print "$ARGV:$.: $_" if /\bperformHapticFeedback\b/ || /\bHapticFeedbackType\b/ || /\bHapticFeedbackConstants\b/; close ARGV if eof')
+if [ -n "$kotlin_hits" ]; then
+  echo "✗ a haptic built outside ui/Haptic.kt (#2488):" >&2
+  printf '%s\n' "$kotlin_hits" | sed 's/^/    /' >&2
+  echo "  Use LocalHapticFeedback.current.play(Haptic.<kind>)." >&2
+  exit 1
 fi

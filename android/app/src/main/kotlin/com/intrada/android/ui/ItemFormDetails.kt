@@ -19,6 +19,7 @@ internal fun ItemFormDetails(
     form: ItemFormState,
     composers: List<String>,
     modifier: Modifier = Modifier,
+    anchors: DetailAnchors = DetailAnchors(),
 ) {
     val focusManager = LocalFocusManager.current
     var composerFocused by remember { mutableStateOf(false) }
@@ -28,6 +29,7 @@ internal fun ItemFormDetails(
             form.title,
             { form.title = it },
             "itemForm.title",
+            anchors.title,
             placeholder = "Required",
         )
         form.readFrom[FormReadField.TITLE]?.let { FieldMark(it) }
@@ -37,7 +39,7 @@ internal fun ItemFormDetails(
             form.composer,
             { form.composer = it },
             "itemForm.composer",
-            Modifier.onFocusChanged { composerFocused = it.hasFocus },
+            anchors.composer.onFocusChanged { composerFocused = it.hasFocus },
         )
         form.readFrom[FormReadField.COMPOSER]?.let { FieldMark(it) }
         if (composerFocused) {
@@ -53,3 +55,8 @@ internal fun ItemFormDetails(
         KeyPicker(form.key, { form.key = it })
     }
 }
+
+internal class DetailAnchors(
+    val title: Modifier = Modifier,
+    val composer: Modifier = Modifier,
+)

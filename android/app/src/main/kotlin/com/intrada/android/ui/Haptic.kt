@@ -3,12 +3,10 @@ package com.intrada.android.ui
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
-/**
- * Every Android haptic goes through here, as on iOS (#2013), so a change to the feel is made once.
- */
+/** Every Android haptic goes through here, so a change to the feel is made once (#2013). */
 enum class Haptic(val type: HapticFeedbackType) {
     SELECTION(HapticFeedbackType.SegmentTick),
-    IMPACT(HapticFeedbackType.ContextClick),
+    IMPACT(HapticFeedbackType.LongPress),
 }
 
 fun HapticFeedback.play(haptic: Haptic) = performHapticFeedback(haptic.type)

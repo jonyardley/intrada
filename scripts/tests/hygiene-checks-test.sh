@@ -374,6 +374,7 @@ expect 0 "the Kotlin helper, a call through it and a comment" android_haptics_ch
 printf 'view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)\n' >"$android_haptics/ui/Save.kt"
 expect 1 "a Kotlin haptic built by hand" android_haptics_check
 rm "$android_haptics/ui/Save.kt"
+expect 2 "a Kotlin root that is not there" env HAPTICS_ROOT="$haptics" ANDROID_HAPTICS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-haptics.sh"
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-haptics.sh"
 

@@ -344,7 +344,7 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
 fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}): String? {
     val accepted = sendAccepted(event)
     val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED
-    onTarget(if (error != null) viewModel.value?.errorTarget else null)
+    if (error != null) onTarget(viewModel.value?.errorTarget)
     if (error != null) send(Event.ClearError)
     return error
 }
@@ -503,7 +503,11 @@ private fun ItemFormFields(
         ItemFormDetails(
             form,
             vocabulary.composers,
-            Modifier.bringIntoViewRequester(anchors.at(FormAnchor.DETAILS)),
+            anchors =
+                DetailAnchors(
+                    Modifier.bringIntoViewRequester(anchors.at(FormAnchor.TITLE)),
+                    Modifier.bringIntoViewRequester(anchors.at(FormAnchor.COMPOSER)),
+                ),
         )
         if (form.kind == ItemKind.EXERCISE) {
             VariationRowsCard(
