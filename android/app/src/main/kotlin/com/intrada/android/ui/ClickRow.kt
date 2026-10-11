@@ -256,7 +256,7 @@ private fun ToggleReadout(
 
 /**
  * [begin] and [show] are read once, so they must read current state rather than capture it. Travel
- * runs from the finger-down point, as iOS's translation does, so the touch slop is not lost.
+ * runs from the finger-down point, so the touch slop is not lost.
  */
 private fun Modifier.tempoDrag(begin: () -> TempoDrag, show: (TempoDrag?) -> Unit) =
     pointerInput(Unit) {
