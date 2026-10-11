@@ -26,6 +26,7 @@ permissions:
 
 env:
   RUST_VERSION: "1.97.1"
+  SENTRY_ORG: jon-yardley
 
 jobs:
   play:
@@ -43,6 +44,8 @@ jobs:
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           SENTRY_DSN_ANDROID: ${{ secrets.SENTRY_DSN_ANDROID }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT_ANDROID: ${{ vars.SENTRY_PROJECT_ANDROID }}
           UPLOAD: ${{ github.event_name == 'push' || inputs.upload }}
         run: |
           missing=()
@@ -72,7 +75,18 @@ jobs:
               echo "::warning::SENTRY_DSN_ANDROID is unset, so this build reports nothing."
               ;;
           esac
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+              echo "::warning::SENTRY_AUTH_TOKEN is unset, so this build will report its crashes but no release will be created to file them against."
+            fi
+            if [ -z "${SENTRY_PROJECT_ANDROID:-}" ]; then
+              echo "::warning::The repo variable SENTRY_PROJECT_ANDROID is unset, so no Sentry release or native symbols will be uploaded. Set it with: gh variable set SENTRY_PROJECT_ANDROID --body <project slug>"
+            fi
+          fi
+      # Full history: `sentry-cli releases set-commits --auto` reads the local git log.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -97,7 +111,11 @@ jobs:
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       # Release core: debug cores are 10 to 100 times slower in hot paths.
+      # Line tables give Sentry file and line for native frames (#2517); Gradle
+      # strips them from the bundle, so what ships does not grow.
       - name: Generate the Kotlin bindings and native libraries (release core)
+        env:
+          CARGO_PROFILE_RELEASE_DEBUG: line-tables-only
         run: just android-gen release
       - name: Build the signed release bundle
         working-directory: android
@@ -141,3 +159,56 @@ jobs:
           PLAY_RELEASE_STATUS: ${{ inputs.release_status || vars.PLAY_RELEASE_STATUS || 'completed' }}
           ANDROID_AAB: android/app/build/outputs/bundle/release/app-release.aab
         run: bundle exec fastlane android internal
+      # The name is what Reporting.kt's releaseName composes at runtime: package,
+      # then the version name and version code Gradle took from this tag and run.
+      # Tag only and continue-on-error, as in release-testflight.yml (#1553).
+      - name: Create the Sentry release for this build
+        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_PROJECT_ANDROID != ''
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_ANDROID }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::warning::No Sentry release was created for this build, so its crashes will arrive unattributed."' ERR
+
+          curl -fsSL -o "$RUNNER_TEMP/sentry-cli" \
+            "https://downloads.sentry-cdn.com/sentry-cli/3.7.0/sentry-cli-Linux-x86_64"
+          chmod +x "$RUNNER_TEMP/sentry-cli"
+
+          release="com.intrada.android@${GITHUB_REF_NAME#v}+${VERSION_CODE}"
+          echo "Sentry release: $release"
+
+          "$RUNNER_TEMP/sentry-cli" releases new "$release"
+          "$RUNNER_TEMP/sentry-cli" releases set-commits "$release" --auto \
+            || echo "::warning::Could not associate commits with $release, which is created either way. Check the Sentry GitHub integration, that the repository is associated, and the token's org:read scope."
+          "$RUNNER_TEMP/sentry-cli" releases finalize "$release"
+      # Same job as the build: a rebuild mints new debug ids and its symbols would
+      # match none of the uploaded bundle's crashes (#1610).
+      - name: Upload the native debug symbols for this build to Sentry
+        if: github.ref_type == 'tag' && env.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_PROJECT_ANDROID != ''
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_ANDROID }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::warning::The native symbols for this build did not reach Sentry, so its native frames will show addresses, not lines."' ERR
+
+          libs=(android/generated/jniLibs/arm64-v8a/libintrada_ffi.so android/generated/jniLibs/x86_64/libintrada_ffi.so)
+          for lib in "${libs[@]}"; do
+            if [ ! -f "$lib" ]; then
+              echo "::warning::No $lib, so this build's native frames will show addresses, not lines."
+              exit 0
+            fi
+          done
+          du -h "${libs[@]}"
+
+          if [ ! -x "$RUNNER_TEMP/sentry-cli" ]; then
+            curl -fsSL -o "$RUNNER_TEMP/sentry-cli" \
+              "https://downloads.sentry-cdn.com/sentry-cli/3.7.0/sentry-cli-Linux-x86_64"
+            chmod +x "$RUNNER_TEMP/sentry-cli"
+          fi
+
+          "$RUNNER_TEMP/sentry-cli" debug-files upload --wait-for 300 "${libs[@]}"
