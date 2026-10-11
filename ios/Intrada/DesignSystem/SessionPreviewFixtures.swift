@@ -86,13 +86,16 @@
         scoreChanges: [
           ScoreChange(
             itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3,
-            currentScore: 4, delta: 1, isNew: false),
+            currentScore: 4, delta: 1, isNew: false, subtitle: nil,
+            spoken: "Clair de Lune, mastery up from 3 to 4"),
           ScoreChange(
             itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
-            currentScore: 3, delta: 1, isNew: false),
+            currentScore: 3, delta: 1, isNew: false, subtitle: nil,
+            spoken: "Hanon No. 1, mastery up from 2 to 3"),
           ScoreChange(
             itemId: "piece-2", itemTitle: "Gymnopédie No. 1", previousScore: nil,
-            currentScore: 3, delta: 0, isNew: true),
+            currentScore: 3, delta: 0, isNew: true, subtitle: "first time marked",
+            spoken: "Gymnopédie No. 1, first time marked, mastery 3"),
         ],
         variationCoverage: [
           VariationCoverageView(
@@ -122,18 +125,22 @@
         overallMastery: 3.4,
         topMover: ScoreChange(
           itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
-          currentScore: 3, delta: 1, isNew: false),
+          currentScore: 3, delta: 1, isNew: false, subtitle: nil,
+          spoken: "Hanon No. 1, mastery up from 2 to 3"),
         masteryChange: "+1.0 this week",
         climbing: "Climbing steadily across 2 items.",
         pooledVariations: [
           PooledMarkView(
-            label: "Dotted rhythms", solid: 2, total: 5, caption: "Solid on 2 of 5 items"),
+            label: "Dotted rhythms", solid: 2, total: 5, caption: "Solid on 2 of 5 items",
+            spoken: "Dotted rhythms, Solid on 2 of 5 items"),
           PooledMarkView(
-            label: "Hands separately", solid: 1, total: 3, caption: "Solid on 1 of 3 items"),
+            label: "Hands separately", solid: 1, total: 3, caption: "Solid on 1 of 3 items",
+            spoken: "Hands separately, Solid on 1 of 3 items"),
         ],
         pooledKeys: [
           PooledMarkView(
-            label: "E\u{266D} major", solid: 1, total: 2, caption: "Solid on 1 of 2 items")
+            label: "E\u{266D} major", solid: 1, total: 2, caption: "Solid on 1 of 2 items",
+            spoken: "E\u{266D} major, Solid on 1 of 2 items")
         ])
     }
   }
@@ -688,7 +695,7 @@
         ], sessionScore: 8, completedCount: 4,
         topMover: ScoreChange(
           itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3, currentScore: 4,
-          delta: 1, isNew: false))
+          delta: 1, isNew: false, subtitle: nil, spoken: "Clair de Lune, mastery up from 3 to 4"))
     }
 
     static var previewSummaryEndedEarly: SummaryView {

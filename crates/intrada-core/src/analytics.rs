@@ -58,6 +58,40 @@ pub struct ScoreChange {
     /// Signed change (current − previous); 0 for newly scored items.
     pub delta: i8,
     pub is_new: bool,
+    /// `first time marked` under the title; `None` for a change.
+    pub subtitle: Option<String>,
+    /// What a screen reader says for the row (#2506).
+    pub spoken: String,
+}
+
+impl ScoreChange {
+    pub fn new(item_id: &str, item_title: &str, previous: Option<u8>, current: u8) -> Self {
+        let subtitle = previous.is_none().then(|| "first time marked".to_string());
+        let movement = match previous {
+            None => format!("mastery {current}"),
+            Some(p) if current < p => format!("mastery down from {p} to {current}"),
+            Some(p) => format!("mastery up from {p} to {current}"),
+        };
+        let spoken = [
+            Some(item_title),
+            subtitle.as_deref(),
+            Some(movement.as_str()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(", ");
+        Self {
+            item_id: item_id.to_string(),
+            item_title: item_title.to_string(),
+            previous_score: previous,
+            current_score: current,
+            delta: previous.map_or(0, |p| current as i8 - p as i8),
+            is_new: previous.is_none(),
+            subtitle,
+            spoken,
+        }
+    }
 }
 
 /// One practised exercise's variations and how many are solid: coverage, not
@@ -84,6 +118,7 @@ pub struct PooledMarkView {
     pub solid: usize,
     pub total: usize,
     pub caption: String,
+    pub spoken: String,
 }
 
 /// One bar of the Progress screen's last five weeks, oldest first.
@@ -340,11 +375,15 @@ fn pool_marks<'a, G>(
     let mut rows: Vec<PooledMarkView> = pools
         .into_iter()
         .filter(|&(_, _, _, total)| total >= 2)
-        .map(|(_, label, solid, total)| PooledMarkView {
-            label: label.to_string(),
-            solid,
-            total,
-            caption: format!("Solid on {solid} of {total} items"),
+        .map(|(_, label, solid, total)| {
+            let caption = format!("Solid on {solid} of {total} items");
+            PooledMarkView {
+                label: label.to_string(),
+                solid,
+                total,
+                spoken: format!("{label}, {caption}"),
+                caption,
+            }
         })
         .collect();
     rows.sort_by(|a, b| {
@@ -603,31 +642,16 @@ pub fn compute_score_changes(sessions: &[PracticeSession], clock: LocalClock) ->
     for (item_id, (current_score, _date, item_title)) in &this_week {
         let previous = prev.get(item_id);
 
-        match previous {
-            Some((prev_score, _)) if *prev_score == *current_score => {
-                continue;
-            }
-            Some((prev_score, _)) => {
-                changes.push(ScoreChange {
-                    item_id: item_id.clone(),
-                    item_title: item_title.clone(),
-                    previous_score: Some(*prev_score),
-                    current_score: *current_score,
-                    delta: *current_score as i8 - *prev_score as i8,
-                    is_new: false,
-                });
-            }
-            None => {
-                changes.push(ScoreChange {
-                    item_id: item_id.clone(),
-                    item_title: item_title.clone(),
-                    previous_score: None,
-                    current_score: *current_score,
-                    delta: 0,
-                    is_new: true,
-                });
-            }
+        let previous = previous.map(|(score, _)| *score);
+        if previous == Some(*current_score) {
+            continue;
         }
+        changes.push(ScoreChange::new(
+            item_id,
+            item_title,
+            previous,
+            *current_score,
+        ));
     }
 
     changes.sort_by_key(|c| (Reverse(c.delta.unsigned_abs()), c.item_id.clone()));
@@ -1184,6 +1208,7 @@ mod tests {
                 solid: 1,
                 total: 2,
                 caption: "Solid on 1 of 2 items".to_string(),
+                spoken: "E\u{266D} major, Solid on 1 of 2 items".to_string(),
             }],
             ..AnalyticsView::default()
         });
@@ -1192,13 +1217,29 @@ mod tests {
     // ── Progress headline numbers ─────────────────────────────────────
 
     fn change(item_id: &str, previous: Option<u8>, current: u8) -> ScoreChange {
-        ScoreChange {
-            item_id: item_id.to_string(),
-            item_title: item_id.to_string(),
-            previous_score: previous,
-            current_score: current,
-            delta: previous.map_or(0, |p| current as i8 - p as i8),
-            is_new: previous.is_none(),
+        ScoreChange::new(item_id, item_id, previous, current)
+    }
+
+    #[test]
+    fn a_mastery_row_says_a_rise_a_drop_and_a_first_mark() {
+        let cases = [
+            (Some(3), 4, None, "Clair de Lune, mastery up from 3 to 4"),
+            (Some(6), 4, None, "Clair de Lune, mastery down from 6 to 4"),
+            (
+                None,
+                3,
+                Some("first time marked"),
+                "Clair de Lune, first time marked, mastery 3",
+            ),
+        ];
+        for (previous, current, subtitle, spoken) in cases {
+            let row = ScoreChange::new("piece-1", "Clair de Lune", previous, current);
+            assert_eq!(
+                row.subtitle.as_deref(),
+                subtitle,
+                "{previous:?} to {current}"
+            );
+            assert_eq!(row.spoken, spoken);
         }
     }
 
@@ -2338,6 +2379,7 @@ mod tests {
                 solid: 1,
                 total: 2,
                 caption: "Solid on 1 of 2 items".to_string(),
+                spoken: "Dotted rhythms, Solid on 1 of 2 items".to_string(),
             }]
         );
     }
@@ -2462,6 +2504,7 @@ mod tests {
             solid: 2,
             total: 5,
             caption: "Solid on 2 of 5 items".to_string(),
+            spoken: "Dotted rhythms, Solid on 2 of 5 items".to_string(),
         });
     }
 
