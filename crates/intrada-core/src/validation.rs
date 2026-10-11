@@ -181,11 +181,10 @@ pub fn validate_create_item(input: &CreateItem) -> Result<Option<Tempo>, Library
 }
 
 /// `ItemEvent::Add` is the only event that honours
-/// `CreateItem.variation_labels` (#1783), and only on an exercise. A written
-/// exercise row in `ChoosePieceExercises` or `AddPieceInFull` is an exercise
-/// whose labels would never land, the #846 shape, so those rows reject them.
-/// The one-pass piece itself drops them in `normalize_create_item`, as a
-/// plain piece add does (#2473).
+/// `CreateItem.variation_labels` (#1783): `ChoosePieceExercises` and
+/// `AddPieceInFull` write exercise rows too, and silently dropping a row's labels
+/// there would be the #846 shape, a field that validates but never lands.
+/// Both reject on those rows; the piece drops its own, as a plain add does (#2473).
 pub fn validate_no_variation_labels(input: &CreateItem) -> Result<(), LibraryError> {
     if input.variation_labels.is_empty() {
         return Ok(());

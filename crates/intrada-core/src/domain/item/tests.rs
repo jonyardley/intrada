@@ -1709,14 +1709,12 @@ fn add_piece_in_full_writes_nothing_when_any_exercise_is_invalid() {
     assert!(model.last_error.is_some());
 }
 
-/// The form keeps its variation rows while the kind flips (#2461), so the
-/// one-pass piece ignores them as a plain add does (#2473): even a name too
-/// long to save never refuses the piece.
 #[test]
 fn add_piece_in_full_ignores_variation_names_on_the_piece() {
     let mut model = model_with_piece_and_exercise();
     let before = model.items.len();
     let mut piece = one_pass_piece_input("Autumn Leaves");
+    piece.kind = ItemKind::Exercise;
     piece.variation_labels = vec!["Slow".to_string(), "x".repeat(101)];
 
     send(
