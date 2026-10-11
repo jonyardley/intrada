@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.intrada.android.ui.ProgressRoute
 import com.intrada.android.ui.ProgressScreen
+import com.intrada.shared.ScoreChange
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -32,6 +33,30 @@ class ProgressScreenTest {
         compose
             .onNodeWithContentDescription("Gymnopédie No. 1, first time marked, mastery 3")
             .assertExists()
+    }
+
+    @Test
+    fun aMasteryRowSpeaksTheCoreWordsForAFall() {
+        val fall =
+            ScoreChange(
+                "exercise-1",
+                "Hanon No. 1",
+                4u,
+                3u,
+                -1,
+                false,
+                null,
+                "Hanon No. 1, mastery down from 4 to 3",
+            )
+        compose.setContent {
+            ProgressScreen(
+                ProgressFixtures.analytics.copy(scoreChanges = listOf(fall)),
+                topMark = 10,
+                onBuild = {},
+            )
+        }
+
+        compose.onNodeWithContentDescription("Hanon No. 1, mastery down from 4 to 3").assertExists()
     }
 
     @Test

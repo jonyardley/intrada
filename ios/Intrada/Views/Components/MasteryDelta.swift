@@ -129,7 +129,9 @@ struct MasteryDeltaToast: View {
       VStack(spacing: IntradaSpacing.cardCompact) {
         MasteryDelta(
           title: "Clair de Lune", subtitle: "D♭ major · 3 weeks ago → now",
-          was: 3, now: 4, spoken: "Clair de Lune, mastery up from 3 to 4", kind: .piece)
+          was: 3, now: 4,
+          spoken: "Clair de Lune, D♭ major · 3 weeks ago → now, mastery up from 3 to 4",
+          kind: .piece)
         MasteryDelta(
           title: "Hanon No. 1", subtitle: "first time marked",
           was: nil, now: 3, spoken: "Hanon No. 1, first time marked, mastery 3", kind: .exercise)
