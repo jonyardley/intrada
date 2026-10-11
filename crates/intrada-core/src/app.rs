@@ -898,6 +898,40 @@ mod tests {
     }
 
     #[test]
+    fn set_query_with_any_one_field_set_is_a_filter() {
+        let app = Intrada;
+        let cases = [
+            ListQuery {
+                text: Some("Bach".to_string()),
+                ..Default::default()
+            },
+            ListQuery {
+                item_type: Some(ItemKind::Piece),
+                ..Default::default()
+            },
+            ListQuery {
+                key: Some(Key::C_MAJOR),
+                ..Default::default()
+            },
+            ListQuery {
+                tags: vec!["scales".to_string()],
+                ..Default::default()
+            },
+            ListQuery {
+                priority_only: true,
+                ..Default::default()
+            },
+        ];
+        for query in cases {
+            let mut model = Model::default();
+            let _cmd = app.update(Event::SetQuery(Some(query.clone())), &mut model);
+            let vm = app.rendered(&model);
+            assert_eq!(vm.active_query, Some(query.clone()), "{query:?}");
+            assert_eq!(vm.library_count_line, "No matches", "{query:?}");
+        }
+    }
+
+    #[test]
     fn set_query_trims_the_search_text() {
         let app = Intrada;
         let mut model = Model::default();
