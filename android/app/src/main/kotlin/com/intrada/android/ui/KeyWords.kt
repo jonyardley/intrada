@@ -23,9 +23,14 @@ internal fun wheelSelection(key: Key): WheelSelection? = bridged {
     keyWheelSelection(key.bincodeSerialize())
 }
 
-internal fun keyAfterTap(current: Key?, ring: Int, mode: WheelMode): Key? = bridged {
+internal class KeyTap(val key: Key, val flipped: Boolean) {
+    val haptic: Haptic
+        get() = if (flipped) Haptic.IMPACT else Haptic.SELECTION
+}
+
+internal fun keyAfterTap(current: Key?, ring: Int, mode: WheelMode): KeyTap? = bridged {
     keyNextOnTap(current?.bincodeSerialize(), ring.toUByte(), mode)?.let {
-        Key.bincodeDeserialize(it.key)
+        KeyTap(Key.bincodeDeserialize(it.key), it.flipped)
     }
 }
 

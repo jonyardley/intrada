@@ -3,6 +3,8 @@ package com.intrada.android
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertContentDescriptionContains
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -145,6 +147,25 @@ class ItemFormExercisesTest {
         restoration.emulateSavedInstanceStateRestore()
 
         assertEquals(listOf(null, "Tempo. $FAULT_HINT"), rowStates())
+    }
+
+    @Test
+    fun aRefusedRowBelowTheFoldIsScrolledIntoView() = runTest {
+        val store = startedStore()
+        compose.setContent { LibraryAddRoute(store, onDone = {}) }
+
+        compose.onNodeWithTag("itemForm.title").performTextInput("Autumn Leaves")
+        openPicker()
+        write("Shell voicings")
+        write("Guide tones", bpm = "999")
+        compose.onNodeWithTag("exercisePicker.done").performClick()
+        compose.onNodeWithTag("itemForm.title").performScrollTo()
+        compose.onAllNodesWithTag("itemForm.exercise").onLast().assertIsNotDisplayed()
+        compose.onNodeWithTag("itemForm.confirm").performClick()
+        store.settle()
+        compose.waitForIdle()
+
+        compose.onAllNodesWithTag("itemForm.exercise").onLast().assertIsDisplayed()
     }
 
     private fun openPicker() {

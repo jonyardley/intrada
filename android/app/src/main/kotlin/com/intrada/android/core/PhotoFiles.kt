@@ -57,7 +57,24 @@ class PhotoFiles(private val directory: File) {
         return photoId
     }
 
+    fun keep(resolver: ContentResolver, source: Uri, reporter: Reporter = SentryReporter): String? =
+        try {
+            save(resolver, source)
+        } catch (e: IOException) {
+            reporter.report(e, "photo write")
+            null
+        } catch (e: SecurityException) {
+            reporter.report(e, "photo write")
+            null
+        } catch (e: IllegalArgumentException) {
+            reporter.report(e, "photo write")
+            null
+        }
+
     fun bitmap(photoId: String): Bitmap? = decode(photoId, BitmapFactory.Options())
+
+    fun preview(photoId: String): Bitmap? =
+        decode(photoId, BitmapFactory.Options().apply { inSampleSize = PREVIEW_SAMPLE })
 
     fun thumbnail(photoId: String): Bitmap? =
         decode(photoId, BitmapFactory.Options().apply { inSampleSize = THUMBNAIL_SAMPLE })
@@ -70,6 +87,7 @@ class PhotoFiles(private val directory: File) {
         const val LONGEST_EDGE = 2048
         const val QUALITY = 80
         private const val THUMBNAIL_SAMPLE = 8
+        private const val PREVIEW_SAMPLE = 2
         private const val DIRECTORY = "photos"
 
         fun of(context: Context) = PhotoFiles(File(context.filesDir, DIRECTORY))

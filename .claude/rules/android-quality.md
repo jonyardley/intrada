@@ -51,8 +51,8 @@ bars, read in Kotlin and Compose.
 - **The comment density, bridge test and snapshot checks read Kotlin and the
   Android snapshot references** (#2265, #2241), and so does the faint ink
   check (#2309), which keeps the token off the screens; neither theme carries
-  it since #1881 and #2351. The haptics check stays Swift only: the Android shell has no haptic
-  helper.
+  it since #1881 and #2351. The haptics check reads Kotlin too: every haptic goes
+  through `ui/Haptic.kt` (#2488).
 - **The generated bindings compile in `:bridge`**, outside the warnings gate,
   because crux's typegen emits warnings we cannot fix at the source (a
   redundant `?` on non-null types). Hand-written Kotlin lives in `:app`.

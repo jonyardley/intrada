@@ -148,6 +148,7 @@ fun PieceScreen(
                 item.notes?.takeIf { it.isNotEmpty() }?.let { NotesCard(it) }
                 SectionsCard(item, state, actions)
                 DetailRows(item)
+                PhotoCard(item.id, item.photoId, actions.send)
                 RelatedExercisesCard(item, state, actions)
                 DeleteButton(
                     "Delete ${item.itemType.label.lowercase()}",
