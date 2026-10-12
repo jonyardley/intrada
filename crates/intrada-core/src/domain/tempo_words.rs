@@ -45,15 +45,105 @@ pub fn tempo_line(tempo: Option<&Tempo>) -> Option<TempoWords> {
             .collect();
         (!parts.is_empty()).then(|| parts.join(separator))
     };
+    let bpm = tempo.bpm.map(declared_bpm);
     Some(TempoWords {
-        text: join(tempo.bpm.map(|bpm| format!("♩ = {bpm}")), " · ")?,
-        spoken: join(tempo.bpm.map(|bpm| format!("{bpm} beats per minute")), ", ")?,
+        text: join(bpm.as_ref().map(|w| w.text.clone()), " · ")?,
+        spoken: join(bpm.map(|w| w.spoken), ", ")?,
     })
+}
+
+/// A bpm worded without its marking: "♩ = 66".
+#[must_use]
+pub fn declared_bpm(bpm: u16) -> TempoWords {
+    TempoWords {
+        text: format!("♩ = {bpm}"),
+        spoken: format!("{bpm} beats per minute"),
+    }
+}
+
+/// A section's target beside its name: "♩ 60".
+#[must_use]
+pub fn section_target(bpm: u16) -> TempoWords {
+    TempoWords {
+        text: format!("♩ {bpm}"),
+        spoken: format!("{bpm} beats per minute"),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TrendWords {
+    pub chip: Option<String>,
+    pub caption: Option<String>,
+    pub spoken: String,
+}
+
+/// The measured tempo card's words, from its measured tempos oldest first and
+/// how many sessions it spans.
+#[must_use]
+pub fn trend_words(measured: &[u16], sessions: usize) -> TrendWords {
+    match measured {
+        [] => TrendWords {
+            spoken: "Measured tempo".to_string(),
+            ..TrendWords::default()
+        },
+        [only] => TrendWords {
+            chip: None,
+            caption: Some(format!("Measured once, at ♩ = {only} · no trend yet")),
+            spoken: format!(
+                "Measured tempo, measured once at {only} beats per minute, no trend yet"
+            ),
+        },
+        [first, .., latest] => TrendWords {
+            chip: Some(format!("♩ = {first} → {latest}")),
+            caption: None,
+            spoken: format!(
+                "Measured tempo, {first} to {latest} beats per minute across {} of {sessions} sessions",
+                measured.len()
+            ),
+        },
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_sections_target_reads_as_a_crotchet_figure() {
+        let words = section_target(60);
+        assert_eq!(words.text, "♩ 60");
+        assert_eq!(words.spoken, "60 beats per minute");
+    }
+
+    #[test]
+    fn the_trend_card_words_none_one_and_several_measurements() {
+        assert_eq!(
+            trend_words(&[], 3),
+            TrendWords {
+                chip: None,
+                caption: None,
+                spoken: "Measured tempo".to_string(),
+            }
+        );
+        assert_eq!(
+            trend_words(&[72], 3),
+            TrendWords {
+                chip: None,
+                caption: Some("Measured once, at ♩ = 72 · no trend yet".to_string()),
+                spoken: "Measured tempo, measured once at 72 beats per minute, no trend yet"
+                    .to_string(),
+            }
+        );
+        assert_eq!(
+            trend_words(&[88, 96, 104], 5),
+            TrendWords {
+                chip: Some("♩ = 88 → 104".to_string()),
+                caption: None,
+                spoken: "Measured tempo, 88 to 104 beats per minute across 3 of 5 sessions"
+                    .to_string(),
+            }
+        );
+    }
 
     #[test]
     fn the_click_names_the_note_value_it_counts_in() {

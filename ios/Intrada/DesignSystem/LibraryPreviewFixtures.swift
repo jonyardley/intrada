@@ -38,7 +38,28 @@
           sessionId: "t\(index)",
           tempo: tempo)
       }
-      return TempoTrendView(points: points, hasTrend: tempos.compactMap { $0 }.count >= 2)
+      return .fixture(points: points)
+    }
+
+    /// The core's words for these points, built here only so previews read as the app does.
+    static func fixture(points: [TempoTrendPoint]) -> TempoTrendView {
+      let measured = points.compactMap(\.tempo)
+      var words: (chip: String?, caption: String?, spoken: String) = (nil, nil, "Measured tempo")
+      if let first = measured.first, let latest = measured.last {
+        words =
+          measured.count == 1
+          ? (
+            nil, "Measured once, at ♩ = \(first) · no trend yet",
+            "Measured tempo, measured once at \(first) beats per minute, no trend yet"
+          )
+          : (
+            "♩ = \(first) → \(latest)", nil,
+            "Measured tempo, \(first) to \(latest) beats per minute across \(measured.count) of \(points.count) sessions"
+          )
+      }
+      return TempoTrendView(
+        points: points, hasTrend: measured.count >= 2, chip: words.chip, caption: words.caption,
+        spoken: words.spoken)
     }
   }
 
@@ -51,7 +72,7 @@
       latestScore: UInt8? = nil,
       scoreHistory: [ScoreHistoryEntry] = [],
       scoreTrend: ScoreTrend? = nil,
-      tempoTrend: TempoTrendView = TempoTrendView(points: [], hasTrend: false),
+      tempoTrend: TempoTrendView = .fixture(points: []),
       lastPracticedAt: String? = nil
     ) -> ItemPracticeSummary {
       ItemPracticeSummary(
@@ -117,7 +138,7 @@
           barsFieldText: "\(first) to \(last)",
           latestScore: mark,
           scoreHistory: [], caption: mark.map { "\($0) of 10" } ?? "Not yet played",
-          isWeakest: false)
+          isWeakest: false, targetTempo: nil, targetTempoSpoken: nil)
       }
       var item = previewPiece
       item.id = "piece-sections"
@@ -128,7 +149,8 @@
           id: "s3", name: "", kind: .troubleSpot, targetBpm: 54, firstBar: 19, lastBar: 20,
           label: "Bars 19 to 20", barsCaption: nil, barsFieldText: "19 to 20", latestScore: 4,
           scoreHistory: [],
-          caption: "4 of 10", isWeakest: true),
+          caption: "4 of 10", isWeakest: true, targetTempo: "♩ 54",
+          targetTempoSpoken: "54 beats per minute"),
         part("s4", "A2", 27, 42), part("s5", "Coda", 43, 72, 7),
       ]
       return item

@@ -262,11 +262,7 @@ pub(crate) fn build_practice_summaries(
                 tempo_points.sort_by(|a, b| {
                     (&a.session_date, &a.session_id).cmp(&(&b.session_date, &b.session_id))
                 });
-                let measured = tempo_points.iter().filter(|p| p.tempo.is_some()).count();
-                let tempo_trend = TempoTrendView {
-                    points: tempo_points,
-                    has_trend: measured >= 2,
-                };
+                let tempo_trend = TempoTrendView::new(tempo_points);
 
                 (
                     item_id,
@@ -608,6 +604,9 @@ pub(crate) fn build_section_views(
                 p.section_id.as_deref() == Some(s.id.as_str()) && p.variation_ids.is_empty()
             });
             let latest_score = score_history.first().map(|e| e.score);
+            let (target_tempo, target_tempo_spoken) = crate::domain::tempo_words::TempoWords::split(
+                s.target_bpm.map(crate::domain::tempo_words::section_target),
+            );
             crate::model::SectionView {
                 id: s.id.clone(),
                 name: s.name.clone(),
@@ -622,6 +621,8 @@ pub(crate) fn build_section_views(
                 score_history,
                 caption: crate::model::saved_mark_caption(latest_score),
                 is_weakest: false,
+                target_tempo,
+                target_tempo_spoken,
             }
         })
         .collect();

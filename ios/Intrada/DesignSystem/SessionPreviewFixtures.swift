@@ -35,7 +35,8 @@
           lastBar: UInt16(last), label: name, barsCaption: "Bars \(first) to \(last)",
           barsFieldText: "\(first) to \(last)",
           latestScore: mark, scoreHistory: [],
-          caption: mark.map { "\($0) of 10" } ?? "Not yet played", isWeakest: id == "sec-b")
+          caption: mark.map { "\($0) of 10" } ?? "Not yet played", isWeakest: id == "sec-b",
+          targetTempo: nil, targetTempoSpoken: nil)
       }
     }
   }
@@ -896,7 +897,7 @@
         SectionView(
           id: id, name: label, kind: .form, targetBpm: nil, firstBar: nil, lastBar: nil,
           label: label, barsCaption: nil, barsFieldText: "", latestScore: nil, scoreHistory: [],
-          caption: "Not yet played", isWeakest: false)
+          caption: "Not yet played", isWeakest: false, targetTempo: nil, targetTempoSpoken: nil)
       }
       var finish = preview(asksIntention: false)
       finish.noteOffers = []
