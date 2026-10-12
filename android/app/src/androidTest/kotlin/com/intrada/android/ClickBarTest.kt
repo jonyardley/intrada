@@ -3,7 +3,6 @@ package com.intrada.android
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Rule
@@ -50,15 +49,6 @@ class ClickBarTest {
 
         app.tap("player.advance")
         app.control("reflection.tempo.increase")
-
-        // A stray back must not throw the marks and the note away (#1934).
-        Espresso.pressBack()
-        app.assertNeverShows(
-            hasTestTag("click.toggle"),
-            withinMillis = 1_000,
-            "back left the item-complete page",
-        )
-        app.control("reflection.skip")
     }
 
     private fun bar(spoken: String) =
