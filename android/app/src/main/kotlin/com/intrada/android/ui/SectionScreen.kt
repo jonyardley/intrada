@@ -47,7 +47,6 @@ fun SectionRoute(
     val form = remember(pieceId, sectionId) { SectionFormState(existing) }
     fun send(change: SectionChange) {
         if (closing) return
-        form.formError = store.sendFromForm(Event.Item(ItemEvent.ChangeSection(pieceId, change)))
         closing = form.formError == null
         if (closing) onDone()
     }
