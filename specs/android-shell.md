@@ -74,7 +74,7 @@ contract, shown below.
 | Page OCR | Apple Vision behind `Recognition` | ML Kit on-device text recognition behind the same `Recognition` effect | ML Kit returns blocks; the shell splits them into `RecognisedLine`s with geometry. The core still decides field assignment. |
 | Page suggestions | `PageSuggester` on FoundationModels | Open: no on-device model is assumed. Android ships OCR without the suggestion pass until one is chosen (Open questions). | The capture screen must read well with the fields left for the musician to fill. |
 | Screen wake lock | `ScreenWakeLock` | `FLAG_KEEP_SCREEN_ON` on the player activity | |
-| Crash reporting | Sentry | Sentry's Android SDK, DSN from the build config | Day-one quality, as on iOS. |
+| Crash reporting | Sentry | Sentry's Android SDK, DSN from the build config | Day-one quality, as on iOS. A tagged Play build creates its Sentry release and uploads the core's native symbols, so native frames can show file and line (#2517). |
 | Camera and photos | `PageCamera` view | CameraX plus the system Photo Picker | |
 | Design system | `Theme.swift` tokens | A Compose theme object with the same token names | Built on Compose foundation with intrada's own look, not Material's. Back gesture and predictive back follow Android convention. |
 | Screens | Thirteen SwiftUI screens plus the sheets and form scaffolds | Compose screens, one per iOS screen, same `ViewModel` projections | Navigation via Navigation Compose. |
