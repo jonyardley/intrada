@@ -293,6 +293,7 @@ object PracticeFixtures {
             greeting = filled.greeting,
             upNext = plan,
             showsPriorities = true,
+            showsSuggestionRestore = true,
         )
 
     val empty =

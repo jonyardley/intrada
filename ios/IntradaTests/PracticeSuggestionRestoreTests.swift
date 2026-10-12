@@ -28,22 +28,10 @@ struct PracticeSuggestionRestoreTests {
     #expect(PracticeScreen.showsSuggestionRestore(viewModel, dismissed: true))
   }
 
-  // Building your own is exactly what dismissing led to, so the route must not
-  // survive into it (#1618).
-  @Test("Anything already under way hides it")
-  func hiddenWhileSessionUnderWay() throws {
-    let idle = try #require(Store.previewPracticeSuggestion.viewModel)
-
-    var building = idle
-    building.buildingSetlist = try #require(Store.previewBuilding.viewModel?.buildingSetlist)
-    #expect(!PracticeScreen.showsSuggestionRestore(building, dismissed: true))
-
-    var active = idle
-    active.activeSession = try #require(Store.previewActive.viewModel?.activeSession)
-    #expect(!PracticeScreen.showsSuggestionRestore(active, dismissed: true))
-
-    var summary = idle
-    summary.summary = try #require(Store.previewSummary.viewModel?.summary)
-    #expect(!PracticeScreen.showsSuggestionRestore(summary, dismissed: true))
+  @Test("Dismissed, but the core says the link may not show")
+  func hiddenWhenTheCoreSaysNo() throws {
+    var viewModel = try #require(Store.previewPracticeSuggestion.viewModel)
+    viewModel.showsSuggestionRestore = false
+    #expect(!PracticeScreen.showsSuggestionRestore(viewModel, dismissed: true))
   }
 }

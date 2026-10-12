@@ -218,9 +218,7 @@ struct PracticeScreen: View {
   /// True once the suggestion has been waved away but the core still has one
   /// to offer: dismissal is not a one-way door (#1618).
   static func showsSuggestionRestore(_ viewModel: ViewModel?, dismissed: Bool) -> Bool {
-    guard dismissed, let viewModel else { return false }
-    return viewModel.upNext != nil && viewModel.buildingSetlist == nil
-      && viewModel.activeSession == nil && viewModel.summary == nil
+    dismissed && viewModel?.showsSuggestionRestore == true
   }
 
   private var showsSuggestionRestore: Bool {
