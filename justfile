@@ -1071,19 +1071,10 @@ android-run: android-gen
     #!/usr/bin/env bash
     set -euo pipefail
     source android/env.sh
-    avd=intrada-api36
-    if ! "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx "$avd"; then
-        avdmanager="$(command -v avdmanager || echo "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager")"
-        echo "↻ creating the $avd emulator"
-        # A Homebrew avdmanager looks for system images beside itself unless told where the SDK is.
-        echo no | AVDMANAGER_OPTS="-Dcom.android.sdkmanager.toolsdir=$ANDROID_HOME/cmdline-tools/latest" "$avdmanager" create avd -n "$avd" -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7
-    fi
-    if ! adb devices | grep -q '^emulator-.*device$'; then
-        echo "↻ booting $avd"
-        nohup "$ANDROID_HOME/emulator/emulator" -avd "$avd" -no-snapshot-save -no-audio -no-boot-anim >/dev/null 2>&1 &
-        adb wait-for-device
-        until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done
-    fi
+    source scripts/android-emu-lock.sh
+    android_emu_lock_acquire
+    trap android_emu_lock_release EXIT
+    android_emu_boot
     android/gradlew -q -p android :app:installDebug
     seed=true; [ "${SEED:-1}" = 0 ] && seed=false
     adb shell am force-stop com.intrada.android
@@ -1092,7 +1083,7 @@ android-run: android-gen
     shot="${SCREENSHOT:-android/build/screenshots/library.png}"
     mkdir -p "$(dirname "$shot")"
     adb exec-out screencap -p > "$shot"
-    echo "✓ running on $avd; screenshot at $shot"
+    echo "✓ running on $ANDROID_EMU_AVD; screenshot at $shot"
 
 [doc("Run the Android JVM unit and snapshot tests and print the counts")]
 [group('Android')]
@@ -1114,13 +1105,43 @@ android-test:
     echo "Android tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
     exit $status
 
+[doc("Run the Android UI tests on the intrada-api36 emulator and print the counts (class= runs one)")]
+[group('Android')]
+android-test-ui class="": android-gen
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source android/env.sh
+    source scripts/android-emu-lock.sh
+    android_emu_lock_acquire
+    trap android_emu_lock_release EXIT
+    android_emu_boot
+    for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+        adb shell settings put global "$scale" 0
+    done
+    results=android/app/build/outputs/androidTest-results/connected
+    rm -rf "$results"
+    status=0
+    only=(); [ -n "{{class}}" ] && only=(-Pandroid.testInstrumentationRunnerArguments.class="com.intrada.android.{{class}}")
+    android/gradlew -q -p android :app:connectedDebugAndroidTest ${only[@]+"${only[@]}"} || status=$?
+    for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+        adb shell settings put global "$scale" 1
+    done
+    t=0; f=0; s=0
+    while IFS= read -r head; do
+        n() { printf '%s' "$head" | sed -E "s/.* $1=\"([0-9]+)\".*/\1/"; }
+        t=$((t + $(n tests))); f=$((f + $(n failures) + $(n errors))); s=$((s + $(n skipped)))
+    done < <(find "$results" -name '*.xml' -exec grep -ho '<testsuite [^>]*>' {} + 2>/dev/null)
+    echo "Android UI tests: $t run, $((t - f - s)) passed, $f failed, $s skipped"
+    [ "$t" -gt 0 ] || { echo "✗ no UI test results, so nothing ran" >&2; status=1; }
+    exit $status
+
 [doc("Run CI's Android gates: ktfmt, the build with warnings as errors, Android lint and detekt")]
 [group('Android')]
 android-check:
     #!/usr/bin/env bash
     set -euo pipefail
     source android/env.sh
-    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest
+    android/gradlew -q -p android ktfmtCheck :app:assembleDebug :app:compileDebugUnitTestKotlin :app:compileDebugAndroidTestKotlin :app:lintDebug :app:detektDebug :app:detektDebugUnitTest :app:detektDebugAndroidTest
     echo "✓ Android gates pass"
 
 [doc("Rewrite the Gradle lockfiles after an Android dependency change")]
