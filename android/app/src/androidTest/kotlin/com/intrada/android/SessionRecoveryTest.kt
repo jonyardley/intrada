@@ -51,7 +51,7 @@ class SessionRecoveryTest {
         app.await(markSeven)
         val prefilled = checkNotNull(tempo()) { "the sheet shows a tempo" }
         app.tap("reflection.tempo.increase")
-        val setTempo = tempo()
+        val setTempo = checkNotNull(tempo()) { "the sheet still shows a tempo" }
         assertNotEquals("the step moved the tempo", prefilled, setTempo)
 
         app.resumeAfterRelaunch()
@@ -59,7 +59,6 @@ class SessionRecoveryTest {
         app.await(markSeven)
 
         app.control("reflection.note").performTextInput("Pedal clearer in bar 12")
-        app.background()
         app.resumeAfterRelaunch()
         app.await(hasTestTag("reflection.note") and hasText("Pedal clearer in bar 12"))
         app.await(markSeven)

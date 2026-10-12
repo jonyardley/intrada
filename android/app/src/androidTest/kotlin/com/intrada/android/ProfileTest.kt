@@ -19,9 +19,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The profile round trip (#1692), the icon button's edge (#2318) and the practice defaults (#1915),
- * each read back after a relaunch. iPhone: ProfileUITests. Unseeded, since seed mode keeps nothing
- * and the relaunch is the point.
+ * The profile round trip (#1692), the icon button's edge (#2318) and the practice defaults (#1915).
+ * iPhone: ProfileUITests. The round trip and the defaults are read back after a relaunch, so the
+ * app launches unseeded: seed mode keeps nothing.
  */
 @RunWith(AndroidJUnit4::class)
 class ProfileTest {
@@ -54,8 +54,7 @@ class ProfileTest {
         app.assertGone(hasTestTag("profileEdit.cancel"), "Cancel closes the sheet")
         assertProfileReads("Jon", "Cello", "Coral")
 
-        app.relaunch()
-        app.tapTab(AppTab.PRACTICE.tag)
+        app.relaunchToPractice()
         app.text(", Jon · No sessions yet")
         app.tap("practice.profile")
         assertProfileReads("Jon", "Cello", "Coral")
@@ -81,8 +80,7 @@ class ProfileTest {
         app.await(hasTestTag("profile.click.twoAndFour") and isSelected())
         app.text("9 per item")
 
-        app.relaunch()
-        app.tapTab(AppTab.PRACTICE.tag)
+        app.relaunchToPractice()
         app.tap("practice.profile")
         app.text("9 per item")
         app.await(hasTestTag("profile.click.twoAndFour") and isSelected())

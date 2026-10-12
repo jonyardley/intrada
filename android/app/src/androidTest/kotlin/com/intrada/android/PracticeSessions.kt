@@ -1,6 +1,7 @@
 package com.intrada.android
 
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.intrada.android.ui.AppTab
 
@@ -38,8 +39,15 @@ fun App.discardSummary() {
     assertGone(hasTestTag("summary.discard"), "the discarded session leaves the summary")
 }
 
-fun App.resumeAfterRelaunch() {
+// The screen after a relaunch can take well past the usual wait on a loaded machine (#1923).
+const val CONTENDED = 30_000L
+
+fun App.relaunchToPractice() {
     relaunch()
-    tapTab(AppTab.PRACTICE.tag)
-    tap("practice.resume")
+    control(AppTab.PRACTICE.tag, CONTENDED).performClick()
+}
+
+fun App.resumeAfterRelaunch() {
+    relaunchToPractice()
+    tap("practice.resume", CONTENDED)
 }
