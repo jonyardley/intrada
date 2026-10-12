@@ -87,10 +87,10 @@ internal fun VariationsCard(item: LibraryItemView, onChoose: () -> Unit) {
 private fun VariationListRow(variation: VariationView) {
     Column(
         Modifier.fillMaxWidth()
+            .testTag("variations.row")
             .clearAndSetSemantics {
                 contentDescription = "${variation.label}, ${variation.caption}"
             }
-            .testTag("variations.row")
             .padding(IntradaSpacing.card),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -163,7 +163,8 @@ internal fun VariationsSheetScreen(
         return formError == null
     }
     fun save() {
-        val unchanged = choice.ids == item.variations.map { it.id } && choice.newLabels.isEmpty()
+        val unchanged =
+            choice.ids.toList() == item.variations.map { it.id } && choice.newLabels.isEmpty()
         if (
             unchanged ||
                 send(

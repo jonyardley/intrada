@@ -60,7 +60,7 @@ class PieceActions(
     val navigation: PieceNavigation,
     val send: (Event) -> Boolean,
     val onDismissError: () -> Unit,
-    val sendFromSheet: (Event) -> String? = { if (send(it)) null else FORM_SAVE_FAILED },
+    val sendFromSheet: (Event) -> String?,
 )
 
 @Composable

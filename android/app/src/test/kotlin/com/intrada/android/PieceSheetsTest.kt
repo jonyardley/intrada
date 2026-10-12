@@ -1,5 +1,8 @@
 package com.intrada.android
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,8 +16,10 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.ExercisePickerRoute
+import com.intrada.android.ui.KeysSheetScreen
 import com.intrada.android.ui.PieceNavigation
 import com.intrada.android.ui.PieceRoute
+import com.intrada.android.ui.VariationsSheetScreen
 import com.intrada.shared.Event
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
@@ -74,6 +79,28 @@ class PieceSheetsTest {
         store.settle()
 
         assertEquals(listOf("Hands apart"), store.piece().variations.map { it.label })
+    }
+
+    @Test
+    fun doneWithNothingChangedSendsNothing() = runTest {
+        val store = startedStore()
+        val piece = store.piece()
+        val sent = mutableListOf<Event>()
+        var closed = 0
+        var keys by mutableStateOf(false)
+        compose.setContent {
+            if (keys) KeysSheetScreen(piece, { sent.add(it).let { null } }) { closed++ }
+            else
+                VariationsSheetScreen(piece, emptyList(), { sent.add(it).let { null } }) {
+                    closed++
+                }
+        }
+        compose.onNodeWithTag("sheet.done").performClick()
+        keys = true
+        compose.onNodeWithTag("sheet.done").performClick()
+
+        assertEquals(emptyList<Event>(), sent)
+        assertEquals(2, closed)
     }
 
     @Test

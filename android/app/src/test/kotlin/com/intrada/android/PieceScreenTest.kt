@@ -249,6 +249,7 @@ class PieceScreenTest {
                     navigation(onClosed = { closed = true }),
                     send = { store.sendAccepted(it) },
                     onDismissError = {},
+                    sendFromSheet = { null },
                 ),
                 error = viewModel?.error,
             )

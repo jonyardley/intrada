@@ -113,6 +113,7 @@ class PieceSnapshotTest {
             PieceNavigation({}, {}, {}, {}, {}, {}),
             send = { true },
             onDismissError = {},
+            sendFromSheet = { null },
         )
 
     private suspend fun TestScope.populatedPiece(): LibraryItemView = startedStore().populate()
