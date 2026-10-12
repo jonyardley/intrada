@@ -29,6 +29,7 @@ just check-all             # check + the fast ios-test tier
 just android-gen           # regenerate the Kotlin types, bridge and native libraries
 just android-run           # build + launch on the intrada-api36 emulator + screenshot
 just android-test          # JVM unit + Roborazzi snapshot tests, with counts
+just android-test-ui       # tap-through UI tests on the emulator (class=Name for one); clears the app's data
 just android-fmt           # format Kotlin sources and build scripts (ktfmt)
 just android-check         # CI's Android gates: ktfmt, warnings as errors, lint, detekt
 just testflight            # signed Release .ipa → TestFlight (needs setup)
