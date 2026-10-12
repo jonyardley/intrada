@@ -131,6 +131,20 @@ class PlayerSnapshotTest {
         }
     }
 
+    // Every grouping of a long bar reads on one line (#2490).
+    @Test
+    fun clickSheetLongBar() = runTest {
+        val store = openedStore()
+        store.startTwoItems()
+        val limits = store.viewModel.value?.limits ?: error("no limits")
+        val click = ClickController { SilentClick }
+        click.follow(store.active(), limits)
+        click.bar.choose(Metre(12u, 8u))
+        captureRoboImage("src/test/snapshots/player-click-sheet-long.png") {
+            ClickSheetPage(click, limits, onClose = {})
+        }
+    }
+
     @Test
     fun reflection() = runTest {
         val store = openedStore()

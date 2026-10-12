@@ -160,6 +160,7 @@ private fun OtherSection(click: ClickController, limits: LimitsView) {
                 onSelect = { click.bar.choose(metre.copy(groups = it)) },
                 label = { it?.joinToString(" + ") ?: "Not grouped" },
                 tag = { "clickSheet.grouping.${it?.joinToString("-") ?: "none"}" },
+                wraps = true,
             )
         }
     }

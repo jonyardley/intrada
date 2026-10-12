@@ -18,12 +18,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +104,7 @@ internal fun PlayerClick(
                     click.dragTo(it)
                     changed()
                 },
+                heard = { click.lastStartHeard },
             ),
             Modifier.padding(top = IntradaSpacing.controlGap),
         )
@@ -151,6 +154,8 @@ class ClickActions(
     val step: Int,
     val band: IntRange,
     val onDrag: (Int) -> Unit,
+    /** False while the last start is still silent at the speaker (#2539). */
+    val heard: () -> Boolean = { true },
 )
 
 /** The player's metronome. The steppers show only while it sounds (design principles T14). */
@@ -188,6 +193,10 @@ private fun ClickToggle(state: ClickRowState, actions: ClickActions) {
     val anchor by rememberUpdatedState(state.bpm)
     val latest by rememberUpdatedState(actions)
     val dragging = drag != null
+    LaunchedEffect(drag) {
+        val held = drag ?: return@LaunchedEffect
+        while (true) withFrameMillis { held.settle() }
+    }
     val shown = drag?.let { state.copy(bpm = it.live, atSeededTempo = false) } ?: state
     val tint =
         when {
@@ -207,7 +216,11 @@ private fun ClickToggle(state: ClickRowState, actions: ClickActions) {
         tint,
         dragging,
         Modifier.heightIn(min = 48.dp)
-            .tempoDrag({ TempoDrag(anchor, latest.step, latest.band, latest.onDrag) }) { drag = it }
+            .tempoDrag({
+                TempoDrag(anchor, latest.step, latest.band, latest.onDrag, latest.heard)
+            }) {
+                drag = it
+            }
             .scale(if (dragging) DRAG_SCALE else 1f)
             .clip(CircleShape)
             .background(fill)

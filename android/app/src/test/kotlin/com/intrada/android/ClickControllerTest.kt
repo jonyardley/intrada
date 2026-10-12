@@ -38,6 +38,21 @@ private class CountingClick : ClickOutput {
     }
 }
 
+private class ClockedClick : ClickOutput {
+    var beat: Int? = null
+
+    override var onPulseDied: (() -> Unit)? = null
+
+    override fun start(bpm: Int, beats: Int, sounding: Int) = true
+
+    override fun stop() = Unit
+
+    override fun currentBeat(): Int? = beat
+
+    override val tracksBeat: Boolean
+        get() = true
+}
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ClickControllerTest {
@@ -181,6 +196,22 @@ class ClickControllerTest {
         click.bar.choose(Metre(4u, 4u))
 
         assertEquals(crotchetMax.toInt(), click.bpm)
+    }
+
+    @Test
+    fun aStartIsUnheardUntilTheSpeakerReachesItsFirstBeat() = runTest {
+        val clocked = ClockedClick()
+        val timed = ClickController { clocked }
+        val store = openedStore()
+        store.startTwoItems()
+        timed.follow(store.active(), checkNotNull(store.viewModel.value?.limits))
+        assertTrue(timed.lastStartHeard)
+
+        timed.toggle()
+        assertFalse(timed.lastStartHeard)
+
+        clocked.beat = 0
+        assertTrue(timed.lastStartHeard)
     }
 
     private val sixEight = Metre(6u, 8u, listOf(3u, 3u))

@@ -135,6 +135,10 @@ class ClickController(private val makeOutput: () -> ClickOutput) {
 
     fun currentBeat(): Int? = if (isRunning) output?.currentBeat() else null
 
+    /** True once the last start reaches the speaker, or when no audio clock can say (#2539). */
+    val lastStartHeard: Boolean
+        get() = !tracksBeat || currentBeat() != null
+
     fun stop() {
         main.removeCallbacks(backgroundStop)
         output?.stop()
