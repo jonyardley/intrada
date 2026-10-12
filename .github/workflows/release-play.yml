@@ -189,7 +189,7 @@ jobs:
             echo "::error::No applicationId in android/app/build.gradle.kts, so no release name could match this build's crashes."
             exit 1
           fi
-          release="$package@${GITHUB_REF_NAME#v}+${VERSION_CODE}"
+          release="$package-${GITHUB_REF_NAME#v}+${VERSION_CODE}"
           echo "Sentry release: $release"
 
           "$RUNNER_TEMP/sentry-cli" releases new "$release"
