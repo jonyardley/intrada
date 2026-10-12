@@ -21,8 +21,9 @@
 #
 # The Android app and the Play lane hold the same contract (#2565), read the
 # same way: Reporting.kt for shape and fields (its composition is pinned by
-# ReportingTest.kt), release-play.yml resolved back to where Gradle takes
-# each field from.
+# ReportingTest.kt), release-play.yml resolved back to the env Gradle is
+# given. Its gap: a later shell change to that env, or a rename in
+# build.gradle.kts, passes here.
 #
 # The file paths are overridable so the self-test can point the same parser
 # at fixtures that disagree (scripts/tests/hygiene-checks-test.sh).
@@ -192,13 +193,13 @@ play_strips=("${BASH_REMATCH[2]}" "${BASH_REMATCH[5]}" "${BASH_REMATCH[8]}")
 play_seps=("${BASH_REMATCH[3]}" "${BASH_REMATCH[6]}")
 
 env_expr() {
-  { grep -E "^[[:space:]]*$1:[[:space:]]*\\$\\{\\{.*\\}\\}" "$play_file" || true; } | head -1 |
+  { grep -E "^[[:space:]]*$1:[[:space:]]*[\"']?\\$\\{\\{.*\\}\\}" "$play_file" || true; } | head -1 |
     sed -E 's/^[^$]*\$\{\{[[:space:]]*//; s/[[:space:]]*\}\}.*$//'
 }
 
 # Gradle builds with the tag as its version name, less this prefix.
-gradle_name_strip=$({ grep -oE 'ANDROID_VERSION_NAME="\$\{ANDROID_VERSION_NAME(#[^}]*)?\}"' "$play_file" || true; } |
-  head -1 | sed -E 's/^ANDROID_VERSION_NAME="\$\{ANDROID_VERSION_NAME//; s/\}"$//')
+gradle_name_strip=$({ grep -oE 'ANDROID_VERSION_NAME="?\$\{ANDROID_VERSION_NAME(#[^}]*)?\}' "$play_file" || true; } |
+  head -1 | sed -E 's/^ANDROID_VERSION_NAME="?\$\{ANDROID_VERSION_NAME//; s/\}$//')
 gradle_name_expr=$(env_expr ANDROID_VERSION_NAME)
 gradle_code_expr=$(env_expr ANDROID_VERSION_CODE)
 [ -n "$gradle_name_expr" ] || fail "$play_file sets no ANDROID_VERSION_NAME for Gradle, so the version name cannot be resolved."
@@ -215,8 +216,11 @@ play_field_for() {
     return
   fi
   expr=$(env_expr "$var")
-  if [ -z "$expr" ] && [ "$var" = "GITHUB_REF_NAME" ]; then
-    expr="github.ref_name"
+  if [ -z "$expr" ]; then
+    case "$var" in
+      GITHUB_REF_NAME) expr="github.ref_name" ;;
+      GITHUB_RUN_NUMBER) expr="github.run_number" ;;
+    esac
   fi
   [ -n "$expr" ] || fail "$play_file interpolates \$$var into the release name but sets it from nothing Gradle reads."
   if [ "$expr" = "$gradle_code_expr" ]; then

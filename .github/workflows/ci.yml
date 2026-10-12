@@ -574,9 +574,8 @@ jobs:
             android/app/build/test-results/roborazzi/
           retention-days: 7
           if-no-files-found: ignore
-      # The variant release-play.yml ships, on every PR rather than only on a tag (#2565).
-      # Unsigned: the upload key exists only in that workflow. Last, because the release
-      # core replaces the debug libraries the tests above ran against.
+      # Unsigned: the upload key exists only in release-play.yml. Last, because the release
+      # core replaces the debug libraries the tests above ran against (#2565).
       - name: Build the release variant (release core, unsigned)
         run: |
           just android-gen release
@@ -637,7 +636,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          # The launch after the tests, so it cannot leave state on the device they read.
+          # The launch after the tests, so it cannot leave state on the device they read (#2565).
           script: |
             just android-test-ui
             SCREENSHOT="$GITHUB_WORKSPACE/android-screenshots/library.png" just android-run

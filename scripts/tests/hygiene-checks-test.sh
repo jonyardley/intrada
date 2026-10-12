@@ -325,9 +325,9 @@ play_fixture() {
           ANDROID_VERSION_NAME="\${ANDROID_VERSION_NAME#v}"
       - name: Create the Sentry release for this build
         env:
-          VERSION_CODE: \${{ github.run_number }}
+          VERSION_CODE: \${{ ${6:-github.run_number} }}
         run: |
-          package=\$(sed -n 's/^ *applicationId = "\\(.*\\)"\$/\\1/p' android/app/build.gradle.kts)
+          package=\$(sed -n 's/^ *${7:-applicationId} = "\\(.*\\)"\$/\\1/p' android/app/build.gradle.kts)
           release="\$package$2$4$3$5"
           echo "Sentry release: \$release"
 EOF
@@ -373,6 +373,34 @@ expect 1 "the Play lane using a build number Gradle does not build with" \
 unbraced_play="$work/unbraced-play.yml"
 play_fixture "$unbraced_play" "@" "+" '${GITHUB_REF_NAME#v}' '$VERSION_CODE'
 expect 0 "the Play lane dropping the braces round a plain variable" android_check "$good_kt" "$unbraced_play"
+
+attempt_play="$work/attempt-play.yml"
+play_fixture "$attempt_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_attempt
+expect 1 "the Play lane's version code set from a run number Gradle does not take" \
+  android_check "$good_kt" "$attempt_play"
+
+namespace_play="$work/namespace-play.yml"
+play_fixture "$namespace_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_number namespace
+expect 1 "the Play lane reading the namespace, not the applicationId" \
+  android_check "$good_kt" "$namespace_play"
+
+two_templates_kt="$work/TwoTemplates.kt"
+kotlin_fixture "$two_templates_kt" "@" "+" longVersionCode
+printf 'fun legacyName(a: String, b: String, c: Long) = "$a-$b-$c"\n' >>"$two_templates_kt"
+expect 1 "the Android app composing two three-field names" android_check "$two_templates_kt" "$good_play"
+
+run_number_play="$work/run-number-play.yml"
+play_fixture "$run_number_play" "@" "+" '${GITHUB_REF_NAME#v}' '${GITHUB_RUN_NUMBER}'
+expect 0 "the Play lane reading the run number from the runner's own variable" \
+  android_check "$good_kt" "$run_number_play"
+
+quoted_play="$work/quoted-play.yml"
+sed -E 's/: (\$\{\{.*\}\})$/: "\1"/; s/^( *)ANDROID_VERSION_NAME="(.*)"$/\1ANDROID_VERSION_NAME=\2/' "$good_play" >"$quoted_play"
+grep -q 'VERSION_CODE: "' "$quoted_play" && grep -q 'ANDROID_VERSION_NAME=\$' "$quoted_play" || {
+  echo "  ✗ the quoted Play fixture did not take its edits" >&2
+  failures=$((failures + 1))
+}
+expect 0 "the Play lane quoting its env values and unquoting the strip" android_check "$good_kt" "$quoted_play"
 
 # ── The faint ink check ─────────────────────────────────────────────────────
 
