@@ -222,6 +222,10 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         ),
     };
 
+    let up_next = crate::suggestion::plan(
+        &cached.up_next_blocks,
+        model.practice_defaults.session_length_mins,
+    );
     ViewModel {
         active_query: model.active_query.clone(),
         active_sort: model.active_sort,
@@ -243,10 +247,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
         analytics: cached.analytics.clone(),
         last_practised: cached.last_practised.clone(),
         profile: build_profile_view(&model.profile, clock.hour_of(now)),
-        up_next: crate::suggestion::plan(
-            &cached.up_next_blocks,
-            model.practice_defaults.session_length_mins,
-        ),
+        shows_suggestion_restore: up_next.is_some()
+            && matches!(model.session_status, SessionStatus::Idle),
+        up_next,
         photo_recognition: photo_recognition_view(&model.photo_recognition),
         limits: LimitsView {
             rep_target_default: model.practice_defaults.rep_target,

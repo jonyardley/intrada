@@ -496,11 +496,13 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(plan.blocks.map(\SuggestedSession.pieceTitle), ["Arabesque", "Berceuse"])
     XCTAssertEqual(plan.itemCount, 4)
     XCTAssertEqual(plan.lengthMins, 25)
+    XCTAssertTrue(try bridge.rendered().showsSuggestionRestore, "a plan, nothing under way")
 
     _ = try bridge.update(.session(.startFromSuggestion(now: SessionClock.nowRFC3339())))
     let vm = try bridge.rendered()
     XCTAssertNil(vm.error)
     XCTAssertNil(vm.buildingSetlist, "one tap goes past the builder")
+    XCTAssertFalse(vm.showsSuggestionRestore, "a session is being played")
     XCTAssertEqual(
       vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
   }

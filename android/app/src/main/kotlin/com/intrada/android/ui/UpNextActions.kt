@@ -17,7 +17,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.intrada.android.R
-import com.intrada.shared.SuggestedPlan
 
 class UpNextActions(
     val onStart: () -> Unit = {},
@@ -25,10 +24,6 @@ class UpNextActions(
     val onBuildOwn: () -> Unit = {},
     val onPriorities: () -> Unit = {},
 )
-
-// Dismissal is not a one-way door while the core still has a plan to offer (#1618).
-fun showsSuggestionRestore(plan: SuggestedPlan?, idle: Boolean, dismissed: Boolean): Boolean =
-    dismissed && plan != null && idle
 
 // Text, never a filled button: two filled buttons a thumb apart that both start a session is the
 // ambiguity T15 rejected for the Up next card (T20, docs/design-principles.md).

@@ -314,6 +314,9 @@ pub struct ViewModel {
     /// core's "already in progress" refusal (#981). Derived before the Library
     /// filter, like `up_next`.
     pub shows_priorities: bool,
+    /// "Show suggestion" may show once the plan is put aside: a plan waits and
+    /// nothing is being built, played or summarised (#2521).
+    pub shows_suggestion_restore: bool,
     /// The crash-recovery prompt may show: no session is being played or
     /// summarised, so resuming cannot replace one (#962).
     pub offers_recovery: bool,
