@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -181,7 +182,6 @@ private fun StagedExercisePicker(
     val written = remember {
         staged.filterIsInstance<StagedExercise.Written>().toMutableStateList()
     }
-    var writing by remember { mutableStateOf(false) }
     FullScreenDialog(onCancel) {
         ExercisePickerScreen(
             library,
@@ -197,24 +197,30 @@ private fun StagedExercisePicker(
                 onDone(written + chosen)
             },
         ) {
-            Column(Modifier.cardSurface()) {
-                written.forEach { draft ->
-                    StagedExerciseRow(
-                        draft,
-                        null,
-                        onRemove = { written.remove(draft) },
-                        tag = "exercisePicker.written",
-                    )
-                    HairlineDivider()
-                }
-                AddRow(
-                    "Create an exercise",
-                    "Create an exercise",
-                    "exercisePicker.create",
-                    { writing = true },
-                )
-            }
+            WrittenExercisesCard(written)
         }
+    }
+}
+
+@Composable
+internal fun WrittenExercisesCard(written: SnapshotStateList<StagedExercise.Written>) {
+    var writing by remember { mutableStateOf(false) }
+    Column(Modifier.cardSurface()) {
+        written.forEach { draft ->
+            StagedExerciseRow(
+                draft,
+                null,
+                onRemove = { written.remove(draft) },
+                tag = "exercisePicker.written",
+            )
+            HairlineDivider()
+        }
+        AddRow(
+            "Create an exercise",
+            "Create an exercise",
+            "exercisePicker.create",
+            { writing = true },
+        )
     }
     if (writing) {
         WrittenExerciseDialog(
@@ -281,6 +287,6 @@ private fun WrittenExerciseDialog(onCancel: () -> Unit, onDone: (StagedExercise.
 }
 
 @Composable
-private fun FullScreenDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+internal fun FullScreenDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     Dialog(onDismiss, DialogProperties(usePlatformDefaultWidth = false)) { content() }
 }

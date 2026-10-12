@@ -7,6 +7,8 @@ import com.intrada.ffi.WheelSelection
 import com.intrada.ffi.WheelWedge
 import com.intrada.ffi.keyLabel
 import com.intrada.ffi.keyNextOnTap
+import com.intrada.ffi.keySetAddAll
+import com.intrada.ffi.keySetTap
 import com.intrada.ffi.keyWheel
 import com.intrada.ffi.keyWheelSelection
 import com.intrada.shared.Key
@@ -33,6 +35,15 @@ internal fun keyAfterTap(current: Key?, ring: Int, mode: WheelMode): KeyTap? = b
         KeyTap(Key.bincodeDeserialize(it.key), it.flipped)
     }
 }
+
+internal fun keysAfterTap(keys: List<Key>, ring: Int, mode: WheelMode): List<Key> =
+    keySet(keys) { keySetTap(it, ring.toUByte(), mode) }
+
+internal fun keysWithAll(keys: List<Key>, mode: WheelMode): List<Key> =
+    keySet(keys) { keySetAddAll(it, mode) }
+
+private fun keySet(keys: List<Key>, call: (List<ByteArray>) -> List<ByteArray>): List<Key> =
+    bridged { call(keys.map { it.bincodeSerialize() }).map(Key::bincodeDeserialize) } ?: keys
 
 internal fun keyDisplay(key: Key): String? = bridged { keyLabel(key.bincodeSerialize()) }
 

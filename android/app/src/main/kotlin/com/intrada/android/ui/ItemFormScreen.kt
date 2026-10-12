@@ -343,13 +343,13 @@ class ItemFormState(kind: ItemKind = ItemKind.PIECE) {
 // app banner does not repeat it; nothing closes until the core accepts (#1595).
 fun Store.sendFromForm(event: Event, onTarget: (FormErrorTarget?) -> Unit = {}): String? {
     val accepted = sendAccepted(event)
-    val error = viewModel.value?.error ?: if (accepted) null else SAVE_FAILED
+    val error = viewModel.value?.error ?: if (accepted) null else FORM_SAVE_FAILED
     if (error != null) onTarget(viewModel.value?.errorTarget)
     if (error != null) send(Event.ClearError)
     return error
 }
 
-private const val SAVE_FAILED = "Couldn't save. Try again."
+internal const val FORM_SAVE_FAILED = "Couldn't save. Try again."
 
 data class FormVocabulary(
     val composers: List<String> = emptyList(),

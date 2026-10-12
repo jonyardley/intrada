@@ -7,6 +7,7 @@ import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.Store
 import com.intrada.android.ui.ExercisePickerScreen
 import com.intrada.android.ui.ExercisePickerState
+import com.intrada.android.ui.KeysSheetScreen
 import com.intrada.android.ui.LinkSectionsScreen
 import com.intrada.android.ui.LinkSectionsState
 import com.intrada.android.ui.PieceActions
@@ -15,6 +16,9 @@ import com.intrada.android.ui.PieceScreen
 import com.intrada.android.ui.PieceScreenState
 import com.intrada.android.ui.SectionFormState
 import com.intrada.android.ui.SectionScreen
+import com.intrada.android.ui.VariationsSheetScreen
+import com.intrada.android.ui.keysWithAll
+import com.intrada.ffi.WheelMode
 import com.intrada.shared.BarsInput
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
@@ -86,6 +90,24 @@ class PieceSnapshotTest {
         }
     }
 
+    @Test
+    fun keysSheet() = runTest {
+        val piece = populatedPiece()
+        captureRoboImage("src/test/snapshots/piece-keys-sheet.png") {
+            KeysSheetScreen(piece, { null }, {})
+        }
+    }
+
+    @Test
+    fun variationsSheet() = runTest {
+        val store = startedStore()
+        val piece = store.populate()
+        val library = store.viewModel.value?.variations.orEmpty()
+        captureRoboImage("src/test/snapshots/piece-variations-sheet.png") {
+            VariationsSheetScreen(piece, library, { null }, {})
+        }
+    }
+
     private val actions =
         PieceActions(
             PieceNavigation({}, {}, {}, {}, {}, {}),
@@ -93,8 +115,10 @@ class PieceSnapshotTest {
             onDismissError = {},
         )
 
-    private suspend fun TestScope.populatedPiece(): LibraryItemView {
-        val store = startedStore()
+    private suspend fun TestScope.populatedPiece(): LibraryItemView = startedStore().populate()
+
+    private suspend fun Store.populate(): LibraryItemView {
+        val store = this
         listOf(
                 SectionEdit(null, "A1", BarsInput.Typed("1 to 12"), SectionKind.FORM, "54"),
                 SectionEdit(null, "Run", BarsInput.Typed("19 to 20"), SectionKind.TROUBLESPOT, ""),
@@ -106,6 +130,13 @@ class PieceSnapshotTest {
         val run = store.libraryRows.value.single { it.id == PIECE }.sections.last().id
         store.send(
             Event.Item(ItemEvent.ChangePieceLink(PIECE, LinkChange.Set(HANON, true, listOf(run))))
+        )
+        val keys = keysWithAll(emptyList(), WheelMode.MAJOR).take(3)
+        store.send(Event.Item(ItemEvent.UpdateKeys(PIECE, keys)))
+        store.send(
+            Event.Item(
+                ItemEvent.UpdateItemVariations(PIECE, emptyList(), listOf("Left hand alone"))
+            )
         )
         store.settle()
         return store.libraryRows.value.single { it.id == PIECE }
