@@ -12,7 +12,10 @@ import com.intrada.android.ui.EntrySettingsScreen
 import com.intrada.android.ui.LibraryPickerScreen
 import com.intrada.android.ui.PickerActions
 import com.intrada.android.ui.PickerCopy
+import com.intrada.android.ui.PickerRows
+import com.intrada.android.ui.PickerSearch
 import com.intrada.shared.Event
+import com.intrada.shared.IntentionFocus
 import com.intrada.shared.SessionEvent
 import com.intrada.shared.ViewModel
 import kotlinx.coroutines.test.runTest
@@ -50,11 +53,17 @@ class BuilderSnapshotTest {
 
     @Test
     fun entrySettings() = runTest {
-        val store = plannedStore()
+        val store = plannedPieceStore()
         val piece = store.setlist().entries.single { it.itemId == BuilderFixtures.PIECE }
+        val tempo = store.setlist().focusChoices.first { it.target != null }
+        store.send(
+            Event.Session(SessionEvent.SetFocus(piece.id, IntentionFocus(tempo.kind, null, null)))
+        )
+        store.settle()
+        val planned = store.setlist().entries.single { it.id == piece.id }
         val limits = store.viewModel.value?.limits ?: error("no limits")
         captureRoboImage("src/test/snapshots/builder-entry-settings.png") {
-            EntrySettingsScreen(piece, store.setlist(), limits, send = { true }, onDone = {})
+            EntrySettingsScreen(planned, store.setlist(), limits, send = { true }, onDone = {})
         }
     }
 
@@ -71,7 +80,7 @@ class BuilderSnapshotTest {
                     "Pieces bring their related exercises as a group.",
                     "",
                 ),
-                rows,
+                PickerRows(rows, search = PickerSearch("") {}),
                 added,
                 PickerActions(onDone = {}, onToggle = {}),
             )
