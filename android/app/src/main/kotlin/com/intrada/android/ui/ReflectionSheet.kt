@@ -43,11 +43,14 @@ import com.intrada.shared.Event
 import com.intrada.shared.Felt
 import com.intrada.shared.FinishSheetView
 import com.intrada.shared.IntentionMet
+import com.intrada.shared.KeyChoiceView
 import com.intrada.shared.LimitsView
 import com.intrada.shared.Obstacle
+import com.intrada.shared.PickerVariationView
 import com.intrada.shared.PlayView
 import com.intrada.shared.ReflectionAnswers
 import com.intrada.shared.ReflectionView
+import com.intrada.shared.SectionView
 import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.delay
 
@@ -80,8 +83,9 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
     var obstacles by mutableStateOf(seed.gotInTheWay)
     var intentionMet by mutableStateOf(seed.intentionMet)
     var detailOpen by mutableStateOf(seed.felt != null || seed.gotInTheWay.isNotEmpty())
-    private val notePoints = seed.notePoints
-    private val ways = seed.ways
+    var notePoints by mutableStateOf(seed.notePoints)
+    var ways by mutableStateOf(seed.ways)
+    var changingPlayId by mutableStateOf<String?>(null)
 
     fun answers(plays: List<PlayView>, rows: List<com.intrada.shared.ReflectionTempoView>) =
         ReflectionAnswers(
@@ -104,6 +108,13 @@ class ReflectionState(seed: ReflectionAnswers, rows: List<com.intrada.shared.Ref
         )
 }
 
+class PlayWayChoices(
+    val sections: List<SectionView>,
+    val keys: List<KeyChoiceView>,
+    val variations: List<PickerVariationView>,
+    val planned: String?,
+)
+
 class ReflectionModel(
     val itemTitle: String,
     val reflection: ReflectionView,
@@ -111,6 +122,7 @@ class ReflectionModel(
     val finish: FinishSheetView?,
     val aim: String?,
     val limits: LimitsView,
+    val wayChoices: PlayWayChoices? = null,
 ) {
     val scoreRange: IntRange
         get() = limits.scoreMin.toInt()..limits.scoreMax.toInt()
@@ -144,6 +156,15 @@ internal fun ReflectionRoute(
             finish = active.record.finish,
             aim = entry?.record?.focus?.label ?: active.currentItemIntention,
             limits = model.limits,
+            wayChoices =
+                active.record.finish?.let {
+                    PlayWayChoices(
+                        it.sections,
+                        it.keys,
+                        active.currentVariations,
+                        entry?.plannedLabel,
+                    )
+                },
         ),
         remember(entry?.id) { ReflectionState(reflection.answers, reflection.tempos) },
         ReflectionActions(
@@ -215,6 +236,7 @@ fun ReflectionSheet(
             placeholder = "What went well? What to fix next time?",
             singleLine = false,
         )
+        model.finish?.let { ReflectionNoteOffers(state, it.noteOffers, draft) }
         model.finish?.let { DetailSection(it, state, draft) }
         refusal?.let {
             FormErrorBanner(
@@ -329,16 +351,14 @@ private fun MarkSection(model: ReflectionModel, state: ReflectionState, draft: (
                     verticalArrangement = Arrangement.spacedBy(IntradaSpacing.controlGap),
                 ) {
                     val title = model.rowTitle(play)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        BasicText(
-                            title,
-                            Modifier.weight(1f),
-                            style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink),
-                        )
-                        BasicText(
-                            play.meta,
-                            style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
-                        )
+                    PlayRowHeader(model, state, play, title)
+                    val row = model.finish?.rows?.firstOrNull { it.playId == play.id }
+                    val choices = model.wayChoices
+                    if (state.changingPlayId == play.id && row != null && choices != null) {
+                        PlayWayEditor(row, choices) { next ->
+                            state.ways = state.ways.filter { it.playId != next.playId } + next
+                            draft()
+                        }
                     }
                     if (play.isMarkable) PlayMarks(model, state, play, title, draft)
                 }
@@ -391,6 +411,36 @@ private fun PlayMarks(
                 },
                 canDecrease = bpm > row.band.min.toInt(),
                 canIncrease = bpm < row.band.max.toInt(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayRowHeader(
+    model: ReflectionModel,
+    state: ReflectionState,
+    play: PlayView,
+    title: String,
+) {
+    val canChange = model.finish?.rows?.firstOrNull { it.playId == play.id }?.canChange == true
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            BasicText(title, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
+            if (canChange) {
+                BasicText(
+                    play.meta,
+                    style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
+                )
+            }
+        }
+        if (canChange) {
+            val open = state.changingPlayId == play.id
+            ChangeWayAction(title, open) { state.changingPlayId = if (open) null else play.id }
+        } else {
+            BasicText(
+                play.meta,
+                style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
             )
         }
     }
