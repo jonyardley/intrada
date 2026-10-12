@@ -25,7 +25,6 @@ import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
 import com.intrada.shared.CompletionStatus
 import com.intrada.shared.EntryStatus
-import com.intrada.shared.PlayView
 import com.intrada.shared.PracticeSessionView
 import com.intrada.shared.SetlistEntryView
 
@@ -163,7 +162,7 @@ private fun EntryRow(entry: SetlistEntryView, topMark: Int) {
     }
 }
 
-// HACK(#2515): the core should word these lines; iOS builds them in Swift too.
+// HACK(#2542): the core should word "Not played", "Skipped" and "No variation".
 private fun SetlistEntryView.metaLine(): String =
     when (status) {
         EntryStatus.NOTATTEMPTED -> "Not played"
@@ -191,11 +190,3 @@ private fun SetlistEntryView.detailLines(): List<String> {
         else -> emptyList()
     }
 }
-
-private val PlayView.metaParts: List<String>
-    get() =
-        listOfNotNull(
-            durationDisplay,
-            achievedTempo?.let { "$it bpm" },
-            repTarget?.let { "${repCount ?: 0u} of $it reps" },
-        )

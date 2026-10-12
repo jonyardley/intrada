@@ -12,7 +12,17 @@ import com.intrada.shared.WeeklySummary
 
 // The iPhone's previewAnalytics, fixed because the sample sessions are dated from today.
 object ProgressFixtures {
-    private val hanon = ScoreChange("exercise-1", "Hanon No. 1", 2u, 3u, 1, false)
+    private val hanon =
+        ScoreChange(
+            "exercise-1",
+            "Hanon No. 1",
+            2u,
+            3u,
+            1,
+            false,
+            null,
+            "Hanon No. 1, mastery up from 2 to 3",
+        )
 
     val analytics =
         AnalyticsView(
@@ -33,9 +43,27 @@ object ProgressFixtures {
             neglectedItems = emptyList(),
             scoreChanges =
                 listOf(
-                    ScoreChange("piece-1", "Clair de Lune", 3u, 4u, 1, false),
+                    ScoreChange(
+                        "piece-1",
+                        "Clair de Lune",
+                        3u,
+                        4u,
+                        1,
+                        false,
+                        null,
+                        "Clair de Lune, mastery up from 3 to 4",
+                    ),
                     hanon,
-                    ScoreChange("piece-2", "Gymnopédie No. 1", null, 3u, 0, true),
+                    ScoreChange(
+                        "piece-2",
+                        "Gymnopédie No. 1",
+                        null,
+                        3u,
+                        0,
+                        true,
+                        "first time marked",
+                        "Gymnopédie No. 1, first time marked, mastery 3",
+                    ),
                 ),
             variationCoverage =
                 listOf(
@@ -73,9 +101,30 @@ object ProgressFixtures {
             climbing = "Climbing steadily across 2 items.",
             pooledVariations =
                 listOf(
-                    PooledMarkView("Dotted rhythms", 2uL, 5uL, "Solid on 2 of 5 items"),
-                    PooledMarkView("Hands separately", 1uL, 3uL, "Solid on 1 of 3 items"),
+                    PooledMarkView(
+                        "Dotted rhythms",
+                        2uL,
+                        5uL,
+                        "Solid on 2 of 5 items",
+                        "Dotted rhythms, Solid on 2 of 5 items",
+                    ),
+                    PooledMarkView(
+                        "Hands separately",
+                        1uL,
+                        3uL,
+                        "Solid on 1 of 3 items",
+                        "Hands separately, Solid on 1 of 3 items",
+                    ),
                 ),
-            pooledKeys = listOf(PooledMarkView("E\u266D major", 1uL, 2uL, "Solid on 1 of 2 items")),
+            pooledKeys =
+                listOf(
+                    PooledMarkView(
+                        "E\u266D major",
+                        1uL,
+                        2uL,
+                        "Solid on 1 of 2 items",
+                        "E\u266D major, Solid on 1 of 2 items",
+                    )
+                ),
         )
 }

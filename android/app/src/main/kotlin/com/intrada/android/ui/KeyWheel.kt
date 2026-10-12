@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -65,6 +66,7 @@ internal fun KeyPicker(
 ) {
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val selection = key?.let(::wheelSelection)
+    val haptics = LocalHapticFeedback.current
     Column(modifier.fillMaxWidth()) {
         KeyRow(key, selection, expanded, { expanded = !expanded }, { onKey(null) })
         if (expanded) {
@@ -72,7 +74,12 @@ internal fun KeyPicker(
                 Modifier.fillMaxWidth().padding(top = IntradaSpacing.cardCompact, bottom = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                KeyWheel(selection) { ring, mode -> keyAfterTap(key, ring, mode)?.let(onKey) }
+                KeyWheel(selection) { ring, mode ->
+                    keyAfterTap(key, ring, mode)?.let {
+                        haptics.play(it.haptic)
+                        onKey(it.key)
+                    }
+                }
             }
         }
     }

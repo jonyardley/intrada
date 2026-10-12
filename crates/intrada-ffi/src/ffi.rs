@@ -455,6 +455,17 @@ pub fn click_tempo_words(bpm: u16, unit: u8) -> TempoWords {
     }
 }
 
+/// A bpm worded without its marking, "♩ = 66": the reflection's target
+/// heading and a staged exercise's typed tempo.
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+pub fn declared_tempo_words(bpm: u16) -> TempoWords {
+    let words = intrada_core::domain::tempo_words::declared_bpm(bpm);
+    TempoWords {
+        text: words.text,
+        spoken: words.spoken,
+    }
+}
+
 /// Whether the add and edit form enables Save, judged on the title as typed.
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 pub fn item_form_can_save(title: String) -> bool {
@@ -987,6 +998,17 @@ mod tests {
             TempoWords {
                 text: "♪ = 168".to_string(),
                 spoken: "168 quaver beats per minute".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn declared_tempo_words_carry_a_bare_crotchet_tempo_across() {
+        assert_eq!(
+            declared_tempo_words(66),
+            TempoWords {
+                text: "♩ = 66".to_string(),
+                spoken: "66 beats per minute".to_string(),
             }
         );
     }

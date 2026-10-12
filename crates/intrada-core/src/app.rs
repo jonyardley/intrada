@@ -229,7 +229,7 @@ impl Intrada {
                 crux_core::render::render()
             }
             Event::SetQuery(query) => {
-                model.active_query = query;
+                model.active_query = query.and_then(ListQuery::normalised);
                 crux_core::render::render()
             }
             Event::SetSort(sort) => {
@@ -872,6 +872,82 @@ mod tests {
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 2);
+    }
+
+    #[test]
+    fn set_query_with_nothing_set_is_no_filter() {
+        let app = Intrada;
+        let cases = [
+            ListQuery::default(),
+            ListQuery {
+                text: Some(String::new()),
+                ..Default::default()
+            },
+            ListQuery {
+                text: Some("  ".to_string()),
+                ..Default::default()
+            },
+        ];
+        for query in cases {
+            let mut model = Model::default();
+            let _cmd = app.update(Event::SetQuery(Some(query.clone())), &mut model);
+            let vm = app.rendered(&model);
+            assert_eq!(vm.active_query, None, "{query:?}");
+            assert_eq!(vm.library_count_line, "No items yet", "{query:?}");
+        }
+    }
+
+    #[test]
+    fn set_query_with_any_one_field_set_is_a_filter() {
+        let app = Intrada;
+        let cases = [
+            ListQuery {
+                text: Some("Bach".to_string()),
+                ..Default::default()
+            },
+            ListQuery {
+                item_type: Some(ItemKind::Piece),
+                ..Default::default()
+            },
+            ListQuery {
+                key: Some(Key::C_MAJOR),
+                ..Default::default()
+            },
+            ListQuery {
+                tags: vec!["scales".to_string()],
+                ..Default::default()
+            },
+            ListQuery {
+                priority_only: true,
+                ..Default::default()
+            },
+        ];
+        for query in cases {
+            let mut model = Model::default();
+            let _cmd = app.update(Event::SetQuery(Some(query.clone())), &mut model);
+            let vm = app.rendered(&model);
+            assert_eq!(vm.active_query, Some(query.clone()), "{query:?}");
+            assert_eq!(vm.library_count_line, "No matches", "{query:?}");
+        }
+    }
+
+    #[test]
+    fn set_query_trims_the_search_text() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _cmd = app.update(
+            Event::SetQuery(Some(ListQuery {
+                text: Some(" Bach ".to_string()),
+                ..Default::default()
+            })),
+            &mut model,
+        );
+        let vm = app.rendered(&model);
+        assert_eq!(
+            vm.active_query.as_ref().and_then(|q| q.text.as_deref()),
+            Some("Bach")
+        );
+        assert_eq!(vm.library_count_line, "No matches");
     }
 
     #[test]
@@ -2193,6 +2269,11 @@ mod tests {
             trend.points.iter().map(|p| p.tempo).collect::<Vec<_>>(),
             vec![Some(88), None, Some(104)]
         );
+        assert_eq!(trend.chip.as_deref(), Some("♩ = 88 → 104"));
+        assert_eq!(
+            trend.spoken,
+            "Measured tempo, 88 to 104 beats per minute across 2 of 3 sessions"
+        );
     }
 
     #[test]
@@ -2637,6 +2718,51 @@ mod tests {
     }
 
     #[test]
+    fn show_suggestion_shows_only_while_a_plan_waits_and_nothing_is_under_way() {
+        use crate::domain::session::{SessionEvent, TempoReading};
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let shows = |model: &Model| app.view(model).shows_suggestion_restore;
+
+        assert!(!shows(&Model::default()), "no plan");
+
+        let mut piece = make_item("p1", "Sonata", ItemKind::Piece, now);
+        piece.exercise_links = crate::domain::link::whole_piece_links(&["ex1"], now);
+        let mut model = Model {
+            items: vec![piece, make_item("ex1", "Scales", ItemKind::Exercise, now)].into(),
+            ..Default::default()
+        };
+        assert!(app.view(&model).up_next.is_some());
+        assert!(shows(&model), "a plan and nothing under way");
+
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        let _ = app.update(
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "p1".to_string(),
+            }),
+            &mut model,
+        );
+        assert!(!shows(&model), "a session is being built");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::StartSession { now }),
+            &mut model,
+        );
+        assert!(!shows(&model), "a session is being played");
+
+        let _ = app.update(
+            Event::Session(SessionEvent::EndSessionEarly {
+                now,
+                reading: TempoReading::silent(),
+            }),
+            &mut model,
+        );
+        assert!(app.view(&model).summary.is_some());
+        assert!(!shows(&model), "a finished session is on screen");
+    }
+
+    #[test]
     fn an_unfinished_session_is_offered_only_while_none_is_played_or_summarised() {
         use crate::domain::session::{SessionEvent, TempoReading};
 
@@ -2743,6 +2869,27 @@ mod tests {
             })
             .collect();
         ctx_session(id, chrono::Utc::now(), vec![entry])
+    }
+
+    #[test]
+    fn a_sections_target_tempo_is_worded_on_the_view() {
+        let app = Intrada;
+        let mut piece = sectioned_piece(&["A", "B"]);
+        piece.sections[1].target_bpm = Some(60);
+        let model = Model {
+            items: vec![piece].into(),
+            ..Default::default()
+        };
+        let vm = app.rendered(&model);
+        let words: Vec<_> = vm.items[0]
+            .sections
+            .iter()
+            .map(|s| (s.target_tempo.as_deref(), s.target_tempo_spoken.as_deref()))
+            .collect();
+        assert_eq!(
+            words,
+            [(None, None), (Some("♩ 60"), Some("60 beats per minute"))]
+        );
     }
 
     fn section_marks(view: &LibraryItemView) -> Vec<(Option<u8>, bool)> {

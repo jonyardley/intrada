@@ -496,11 +496,13 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(plan.blocks.map(\SuggestedSession.pieceTitle), ["Arabesque", "Berceuse"])
     XCTAssertEqual(plan.itemCount, 4)
     XCTAssertEqual(plan.lengthMins, 25)
+    XCTAssertTrue(try bridge.rendered().showsSuggestionRestore, "a plan, nothing under way")
 
     _ = try bridge.update(.session(.startFromSuggestion(now: SessionClock.nowRFC3339())))
     let vm = try bridge.rendered()
     XCTAssertNil(vm.error)
     XCTAssertNil(vm.buildingSetlist, "one tap goes past the builder")
+    XCTAssertFalse(vm.showsSuggestionRestore, "a session is being played")
     XCTAssertEqual(
       vm.activeSession?.entries.map(\.itemTitle), ["Scales", "Arabesque", "Arpeggios", "Berceuse"])
   }
@@ -610,6 +612,7 @@ final class SessionBridgeTests: XCTestCase {
     let row = try XCTUnwrap(bridge.sessions.first)
     XCTAssertEqual(row.playedSummary, "Etude")
     XCTAssertEqual(row.dayLabel, "Tue 16 Jun")
+    XCTAssertEqual(row.itemCountDisplay, "1 piece")
 
     // Crash recovery: RecoverSession (with its new `now` re-anchor field) has
     // never crossed the live bridge from Swift before (#846, #962). The stale
@@ -921,6 +924,7 @@ final class SessionBridgeTests: XCTestCase {
     XCTAssertEqual(play.repTarget, 3)
     XCTAssertEqual(play.repCount, 3, "missed then three got-its: 0, 1, 2, 3")
     XCTAssertEqual(play.repTargetReached, true)
+    XCTAssertEqual(play.metaParts, [play.durationDisplay, "88 bpm", "3 of 3 reps"])
     let history = try XCTUnwrap(play.repHistory)
     XCTAssertEqual(history.map(\.action), [.missed, .success, .success, .success])
     XCTAssertEqual(play.achievedTempo, 88, "176 quavers halves to 88 crotchets")
@@ -1063,6 +1067,9 @@ final class SessionBridgeTests: XCTestCase {
     try play(at: thisWeek, score: 7)
     XCTAssertEqual(
       try bridge.rendered().analytics?.climbing, "Climbing steadily across 1 item.")
+    let change = try XCTUnwrap(try bridge.rendered().analytics?.scoreChanges.first)
+    XCTAssertNil(change.subtitle)
+    XCTAssertEqual(change.spoken, "Clair de Lune, mastery up from 5 to 7")
   }
 
   /// One variation marked on two items pools on Progress (#2250), a view
@@ -1116,6 +1123,7 @@ final class SessionBridgeTests: XCTestCase {
     let pooled: [PooledMarkView] = try XCTUnwrap(view.analytics?.pooledVariations)
     XCTAssertEqual(pooled.map(\.label), ["Dotted rhythms"])
     XCTAssertEqual(pooled.first?.caption, "Solid on 1 of 2 items")
+    XCTAssertEqual(pooled.first?.spoken, "Dotted rhythms, Solid on 1 of 2 items")
     XCTAssertEqual(pooled.first?.solid, 1)
     XCTAssertEqual(pooled.first?.total, 2)
     let weeks: [ConsistencyWeekView] = try XCTUnwrap(view.analytics?.consistencyWeeks)

@@ -216,6 +216,7 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
         label: labels.play(play),
         seconds: play.seconds,
         duration_display: format_duration_display(play.seconds),
+        meta_parts: play_meta_parts(play),
         rep_target: play.rep_target,
         rep_count: play.rep_count,
         rep_target_reached: target_reached(play),
@@ -230,6 +231,17 @@ pub fn play_to_view(play: &Play, entry: &SetlistEntry, labels: &PlayLabels) -> P
         score: play.score,
         is_markable: crate::domain::session::play_would_survive_drop(entry, play),
     }
+}
+
+fn play_meta_parts(play: &Play) -> Vec<String> {
+    let mut parts = vec![format_duration_display(play.seconds)];
+    if let Some(tempo) = play.achieved_tempo {
+        parts.push(format!("{tempo} bpm"));
+    }
+    if let Some(target) = play.rep_target {
+        parts.push(format!("{} of {target} reps", play.rep_count.unwrap_or(0)));
+    }
+    parts
 }
 
 /// Set by hand, else the stamp, else the reading, clamped to the row's band.
@@ -870,14 +882,7 @@ fn session_changes(
         .into_iter()
         .map(|(entry, current)| {
             let previous = before.get(&entry.item_id).and_then(|p| p.latest_score);
-            ScoreChange {
-                item_id: entry.item_id.clone(),
-                item_title: entry.item_title.clone(),
-                previous_score: previous,
-                current_score: current,
-                delta: previous.map_or(0, |p| current as i8 - p as i8),
-                is_new: previous.is_none(),
-            }
+            ScoreChange::new(&entry.item_id, &entry.item_title, previous, current)
         })
         .collect()
 }
@@ -895,6 +900,7 @@ pub fn session_to_view(
         completion_status: session.completion_status.clone(),
         notes: session.session_notes.clone(),
         played_summary: format_played_summary(&session.entries, labels),
+        item_count_display: format_item_count(&session.entries),
         session_score: session.session_score,
         entries: session
             .entries
@@ -902,6 +908,19 @@ pub fn session_to_view(
             .map(|e| entry_to_view(e, labels))
             .collect(),
     }
+}
+
+fn format_item_count(entries: &[SetlistEntry]) -> String {
+    let count = entries.len();
+    let all = |kind: ItemKind| entries.iter().all(|e| e.item_type == kind);
+    let (one, many) = if all(ItemKind::Piece) {
+        ("piece", "pieces")
+    } else if all(ItemKind::Exercise) {
+        ("exercise", "exercises")
+    } else {
+        ("item", "items")
+    };
+    format!("{count} {}", if count == 1 { one } else { many })
 }
 
 /// The line's character budget before it falls back to "and N more" (#1785):
@@ -2197,6 +2216,66 @@ mod tests {
         assert_eq!(view.session_score, Some(5));
     }
 
+    #[test]
+    fn the_item_count_line_names_what_the_session_held() {
+        use ItemKind::{Exercise, Piece};
+        let table: &[(&[ItemKind], &str)] = &[
+            (&[Piece], "1 piece"),
+            (&[Piece, Piece, Piece], "3 pieces"),
+            (&[Exercise], "1 exercise"),
+            (&[Exercise, Exercise], "2 exercises"),
+            (&[Piece, Exercise], "2 items"),
+            (&[Exercise, Piece, Piece, Exercise, Piece], "5 items"),
+        ];
+        for (kinds, expected) in table {
+            let mut session = crate::domain::session::PracticeSession::fixture("s1");
+            session.entries = kinds
+                .iter()
+                .enumerate()
+                .map(|(i, kind)| SetlistEntry {
+                    item_type: kind.clone(),
+                    ..make_entry(&format!("e{i}"), &format!("i{i}"), "Item", i)
+                })
+                .collect();
+            let view = session_to_view(
+                &session,
+                &PlayLabels::new(),
+                LocalClock::from_now(Utc::now(), 0),
+            );
+            assert_eq!(view.item_count_display, *expected, "{kinds:?}");
+        }
+    }
+
+    #[test]
+    fn a_plays_facts_name_only_what_it_recorded() {
+        type Row = (Option<u16>, Option<u8>, Option<u8>, &'static [&'static str]);
+        let table: &[Row] = &[
+            (None, None, None, &["4m 0s"]),
+            (Some(92), None, None, &["4m 0s", "92 bpm"]),
+            (None, Some(6), Some(5), &["4m 0s", "5 of 6 reps"]),
+            (None, Some(6), None, &["4m 0s", "0 of 6 reps"]),
+            (None, None, Some(5), &["4m 0s"]),
+            (
+                Some(92),
+                Some(6),
+                Some(5),
+                &["4m 0s", "92 bpm", "5 of 6 reps"],
+            ),
+        ];
+        let entry = make_entry("e1", "i1", "Scale", 0);
+        for (tempo, target, count, expected) in table {
+            let play = Play {
+                seconds: 240,
+                achieved_tempo: *tempo,
+                rep_target: *target,
+                rep_count: *count,
+                ..Play::fixture()
+            };
+            let view = play_to_view(&play, &entry, &PlayLabels::new());
+            assert_eq!(view.meta_parts, *expected, "{tempo:?} {count:?}/{target:?}");
+        }
+    }
+
     // ── Integration: Event → model → ViewModel ────────────────────────
 
     fn update_model(model: &mut Model, event: crate::app::Event) {
@@ -2291,6 +2370,11 @@ mod tests {
             label: Some("Coda · E\u{266d} major · Hands separately".to_string()),
             seconds: 180,
             duration_display: "3m 0s".to_string(),
+            meta_parts: vec![
+                "3m 0s".to_string(),
+                "84 bpm".to_string(),
+                "4 of 10 reps".to_string(),
+            ],
             rep_target: Some(10),
             rep_count: Some(4),
             rep_target_reached: Some(false),

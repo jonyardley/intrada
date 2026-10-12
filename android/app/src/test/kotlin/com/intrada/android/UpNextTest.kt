@@ -9,7 +9,6 @@ import com.intrada.android.core.InMemoryItemStore
 import com.intrada.android.ui.PracticeRoute
 import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.UpNextActions
-import com.intrada.android.ui.showsSuggestionRestore
 import com.intrada.shared.Event
 import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.runTest
@@ -112,25 +111,5 @@ class UpNextTest {
         compose.onNodeWithTag("practice.changePlan").performScrollTo().performClick()
 
         assertEquals(listOf("start", "change"), taps)
-    }
-
-    @Test
-    fun theRestoreLinkShowsOnlyWhenDismissedWithAPlanAndNothingUnderway() {
-        val plan = PracticeFixtures.plan
-        val cases =
-            listOf(
-                Triple(plan, true, true) to true,
-                Triple(plan, false, true) to false,
-                Triple(plan, true, false) to false,
-                Triple(null, true, true) to false,
-            )
-        cases.forEach { (input, expected) ->
-            val (offered, idle, dismissed) = input
-            assertEquals(
-                "idle $idle, dismissed $dismissed, plan ${offered != null}",
-                expected,
-                showsSuggestionRestore(offered, idle, dismissed),
-            )
-        }
     }
 }

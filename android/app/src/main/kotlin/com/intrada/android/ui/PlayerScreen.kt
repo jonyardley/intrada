@@ -124,6 +124,7 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
         return
     }
     var options by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf<RecordSheet?>(null) }
     BackHandler { options = true }
     val density = LocalDensity.current
     Column(
@@ -154,21 +155,25 @@ fun PlayerScreen(model: PlayerModel, send: (Event) -> Boolean, modifier: Modifie
                     onKeep = { keptAway = offer.label },
                 )
             }
-        PlayerBody(active, now, click, send)
+        PlayerBody(active, model.limits, now, click, BodyActions(send) { sheet = it })
         Transport(active, click, send)
     }
     if (options) OptionsDialog(click, send, onDismiss = { options = false })
+    sheet?.let { RecordSheets(it, model, { click.reading }, send, onClose = { sheet = null }) }
 }
+
+private class BodyActions(val send: (Event) -> Boolean, val open: (RecordSheet) -> Unit)
 
 @Composable
 private fun ColumnScope.PlayerBody(
     active: ActiveSessionView,
+    limits: LimitsView,
     now: Instant,
     click: ClickController,
-    send: (Event) -> Boolean,
+    actions: BodyActions,
 ) {
     val stamped = { event: (String, TempoReading) -> SessionEvent ->
-        send(Event.Session(event(SessionClock.now(), click.reading)))
+        actions.send(Event.Session(event(SessionClock.now(), click.reading)))
     }
     // The core keeps the tempo once it settles, so every change is sent (#2107).
     val changed = { stamped(SessionEvent::TempoChanged) }
@@ -177,7 +182,7 @@ private fun ColumnScope.PlayerBody(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.heightIn(min = IntradaSpacing.card))
-        CentreInfo(active)
+        PlayHeader(active, now, stamped, actions)
         SessionClock.parse(active.currentItemStartedAt)?.let { itemStart ->
             TimerRing(
                 SessionClock.secondsBetween(itemStart, now),
@@ -185,7 +190,13 @@ private fun ColumnScope.PlayerBody(
                 Modifier.padding(top = IntradaSpacing.section),
             )
         }
-        PlayerClick(active, click, changed)
+        PlayerClick(active, limits, click, changed)
+        if (!offersMoveOn(active.record.segment, now)) {
+            TroubleSpotButton(
+                { actions.open(RecordSheet.TROUBLE_SPOT) },
+                Modifier.padding(top = IntradaSpacing.controlGap),
+            )
+        }
         RepCounter(
             RepState(
                 count = active.currentRepCount?.toInt() ?: 0,
@@ -207,7 +218,46 @@ private fun ColumnScope.PlayerBody(
 }
 
 @Composable
-private fun CentreInfo(active: ActiveSessionView) {
+private fun PlayHeader(
+    active: ActiveSessionView,
+    now: Instant,
+    stamped: ((String, TempoReading) -> SessionEvent) -> Boolean,
+    actions: BodyActions,
+) {
+    val lastTime = active.record.lastTime
+    CentreInfo(
+        active,
+        PlayChipActions(
+            onPickVariation = { actions.open(RecordSheet.VARIATION) },
+            onLastTime = {
+                if (lastTime != null) {
+                    stamped { at, reading ->
+                        SessionEvent.SwitchPlay(
+                            lastTime.entryId,
+                            lastTime.sectionId,
+                            lastTime.key,
+                            lastTime.variationIds,
+                            at,
+                            reading,
+                        )
+                    }
+                }
+            },
+        ),
+    )
+    active.record.segment?.let {
+        SegmentClockRow(
+            it,
+            now,
+            onMove = { stamped(SessionEvent::MoveToNextSegment) },
+            onStay = { actions.send(Event.Session(SessionEvent.StayOnSegment)) },
+            Modifier.padding(top = IntradaSpacing.cardCompact),
+        )
+    }
+}
+
+@Composable
+private fun CentreInfo(active: ActiveSessionView, chips: PlayChipActions) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = IntradaSpacing.card),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -229,13 +279,11 @@ private fun CentreInfo(active: ActiveSessionView) {
                 style = IntradaFont.secondary.copy(color = IntradaColor.accent),
             )
         }
-        active.currentPlayLabel?.let {
-            BasicText(it, style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary))
-        }
         active.currentItemIntention?.takeIf { it.isNotEmpty() }?.let { Secondary("Aim: $it") }
         active.currentItemNotes
             ?.takeIf { it.isNotEmpty() }
             ?.let { Secondary("Notes: $it", NOTES_LINES) }
+        PlayChips(active, chips)
     }
 }
 

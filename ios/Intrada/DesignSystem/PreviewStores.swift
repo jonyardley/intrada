@@ -100,6 +100,8 @@
       viewModel.showsPriorities =
         items.contains { $0.priority } && buildingSetlist == nil && activeSession == nil
         && summary == nil
+      viewModel.showsSuggestionRestore =
+        upNext != nil && buildingSetlist == nil && activeSession == nil && summary == nil
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary

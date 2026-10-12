@@ -244,15 +244,9 @@ internal fun MasteryDelta(
     subtitle: String?,
     was: Int?,
     now: Int,
+    spoken: String,
     modifier: Modifier = Modifier,
 ) {
-    val spoken =
-        listOfNotNull(
-                title,
-                subtitle,
-                if (was != null) "mastery up from $was to $now" else "mastery $now",
-            )
-            .joinToString(", ")
     Row(
         modifier
             .fillMaxWidth()

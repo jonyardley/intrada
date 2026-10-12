@@ -48,6 +48,39 @@ class ReflectionSubmitRoundTripTest {
         assertEquals("Pedal clearer", entry?.notes)
         assertEquals(4.toUByte(), entry?.plays?.lastOrNull()?.score)
         assertEquals(96.toUShort(), entry?.plays?.lastOrNull()?.achievedTempo)
+        val play = entry?.plays?.lastOrNull()
+        assertEquals(play?.durationDisplay, play?.metaParts?.firstOrNull())
+        assertEquals("96 bpm", play?.metaParts?.getOrNull(1))
+    }
+
+    // The measured tempo card's words cross on Kotlin's decoder (#2486).
+    @Test
+    fun aSavedTempoReachesTheTrendCardsWords() {
+        val bridge = LiveBridge()
+        val playId = sheetOpen(bridge, silent)
+        bridge.update(
+            Event.Session(
+                SessionEvent.SubmitReflection(
+                    "2026-10-06T10:05:30Z",
+                    answers(DraftTempo(playId, 96.toUShort()), note = ""),
+                )
+            )
+        )
+        val write =
+            bridge.update(Event.Session(SessionEvent.SaveSession("2026-10-06T10:06:00Z"))).single {
+                (it.effect as? Effect.Persistence)?.value is PersistenceOperation.SaveSession
+            }
+
+        val trend =
+            libraryChanged(bridge.resolve(write.id, PersistenceOutput.Ack))
+                .single { it.practice != null }
+                .practice
+                ?.tempoTrend
+        assertEquals("Measured once, at \u2669 = 96 \u00B7 no trend yet", trend?.caption)
+        assertEquals(
+            "Measured tempo, measured once at 96 beats per minute, no trend yet",
+            trend?.spoken,
+        )
     }
 
     @Test

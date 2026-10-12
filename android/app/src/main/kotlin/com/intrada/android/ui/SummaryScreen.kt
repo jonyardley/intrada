@@ -2,22 +2,30 @@ package com.intrada.android.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.HairlineDivider
@@ -168,6 +176,7 @@ private fun EntryRow(entry: SetlistEntryView, range: IntRange, send: (Event) -> 
                     entry.metaLine(unfinished),
                     style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
                 )
+                entry.intention?.takeIf { it.isNotEmpty() }?.let { AimLine(it) }
             }
             if (!unfinished) {
                 BasicText(
@@ -194,6 +203,80 @@ private fun EntryRow(entry: SetlistEntryView, range: IntRange, send: (Event) -> 
                     },
                 )
             }
+        }
+        if (!unfinished) EntryNote(entry, send)
+    }
+}
+
+@Composable
+private fun AimLine(aim: String) {
+    BasicText(
+        "\u201C$aim\u201D",
+        style =
+            IntradaFont.small.copy(
+                color = IntradaColor.inkSecondary,
+                fontStyle = FontStyle.Italic,
+            ),
+    )
+}
+
+/** A written note stays on the row: a note the musician cannot see again is admin (T7). */
+@Composable
+private fun EntryNote(entry: SetlistEntryView, send: (Event) -> Boolean) {
+    val written = entry.notes.orEmpty()
+    var editing by remember(entry.id) { mutableStateOf(false) }
+    var text by remember(entry.id) { mutableStateOf(written) }
+    if (editing) {
+        val focus = remember { FocusRequester() }
+        DisposableEffect(Unit) {
+            focus.requestFocus()
+            onDispose {}
+        }
+        FormField(
+            "",
+            text,
+            { value ->
+                text = value
+                // The field must not keep showing text the core refused (an over-long note).
+                if (
+                    value != written &&
+                        !send(Event.Session(SessionEvent.UpdateEntryNotes(entry.id, value)))
+                ) {
+                    text = written
+                }
+            },
+            "summary.entryNote",
+            Modifier.focusRequester(focus).cardSurface(IntradaRadius.control).semantics {
+                contentDescription = "Note for ${entry.itemTitle}"
+            },
+            placeholder = "Anything worth remembering",
+            singleLine = false,
+        )
+    } else {
+        val open = {
+            text = written
+            editing = true
+        }
+        Box(
+            Modifier.fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .buttonSemantics(
+                    if (written.isEmpty()) "Add a note for ${entry.itemTitle}"
+                    else "Note for ${entry.itemTitle}, $written",
+                    "summary.addNote",
+                    open,
+                ),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            BasicText(
+                written.ifEmpty { "Add a note" },
+                style =
+                    IntradaFont.small.copy(
+                        color =
+                            if (written.isEmpty()) IntradaColor.accent
+                            else IntradaColor.inkSecondary
+                    ),
+            )
         }
     }
 }

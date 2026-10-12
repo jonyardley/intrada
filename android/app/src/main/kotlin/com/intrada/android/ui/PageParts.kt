@@ -7,7 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -288,6 +291,7 @@ private fun TickMark(chosen: Boolean) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun <T> SegmentedPills(
     options: List<T>,
@@ -296,41 +300,55 @@ internal fun <T> SegmentedPills(
     label: (T) -> String,
     tag: (T) -> String,
     modifier: Modifier = Modifier,
+    spoken: ((T) -> String)? = null,
+    wraps: Boolean = false,
 ) {
     val track = RoundedCornerShape(IntradaRadius.control)
-    Row(
+    val trackModifier =
         modifier
             .fillMaxWidth()
             .background(IntradaColor.surfaceSunken, track)
             .padding(IntradaSpacing.controlGap / 2)
-    ) {
-        options.forEach { option ->
-            val chosen = option == selection
-            Box(
-                Modifier.weight(1f)
-                    .heightIn(min = 48.dp)
-                    .background(
-                        if (chosen) IntradaColor.cardFill else IntradaColor.surfaceSunken,
-                        track,
-                    )
-                    .clickable(role = Role.Tab) { onSelect(option) }
-                    .semantics {
-                        role = Role.Tab
-                        selected = chosen
-                    }
-                    .testTag(tag(option)),
-                contentAlignment = Alignment.Center,
-            ) {
-                BasicText(
-                    label(option),
-                    style =
-                        IntradaFont.segment.copy(
-                            color = if (chosen) IntradaColor.ink else IntradaColor.inkSecondary,
-                            textAlign = TextAlign.Center,
-                        ),
+    val pill: @Composable (T, Modifier) -> Unit = { option, sizing ->
+        val chosen = option == selection
+        Box(
+            sizing
+                .heightIn(min = 48.dp)
+                .background(
+                    if (chosen) IntradaColor.cardFill else IntradaColor.surfaceSunken,
+                    track,
                 )
-            }
+                .clickable(role = Role.Tab) { onSelect(option) }
+                .semantics {
+                    role = Role.Tab
+                    selected = chosen
+                    spoken?.let { contentDescription = it(option) }
+                }
+                .testTag(tag(option))
+                .padding(
+                    horizontal =
+                        if (wraps) IntradaSpacing.cardCompact else IntradaSpacing.controlGap / 2
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
+                label(option),
+                style =
+                    IntradaFont.segment.copy(
+                        color = if (chosen) IntradaColor.ink else IntradaColor.inkSecondary,
+                        textAlign = TextAlign.Center,
+                    ),
+            )
         }
+    }
+    // A long grouping such as 2 + 2 + 3 + 2 + 2 takes a row of its own rather than breaking
+    // (#2490).
+    if (wraps) {
+        FlowRow(trackModifier) {
+            options.forEach { pill(it, Modifier.defaultMinSize(minWidth = 48.dp)) }
+        }
+    } else {
+        Row(trackModifier) { options.forEach { pill(it, Modifier.weight(1f)) } }
     }
 }
 

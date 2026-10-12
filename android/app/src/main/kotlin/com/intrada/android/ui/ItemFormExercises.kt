@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +49,7 @@ internal fun ItemFormExercises(
     form: ItemFormState,
     library: List<LibraryItemView>,
     modifier: Modifier = Modifier,
+    rowAnchor: BringIntoViewRequester? = null,
 ) {
     var choosing by remember { mutableStateOf(false) }
     Column(modifier.cardSurface()) {
@@ -66,7 +69,15 @@ internal fun ItemFormExercises(
         form.exercises.forEachIndexed { index, staged ->
             HairlineDivider()
             val fault = form.faultedExercise?.takeIf { it.index.toInt() == index }
-            StagedExerciseRow(staged, fault, onRemove = { form.removeExercise(staged.id) })
+            StagedExerciseRow(
+                staged,
+                fault,
+                onRemove = { form.removeExercise(staged.id) },
+                modifier =
+                    if (fault != null && rowAnchor != null) {
+                        Modifier.bringIntoViewRequester(rowAnchor)
+                    } else Modifier,
+            )
         }
         HairlineDivider()
         AddRow(
@@ -94,10 +105,12 @@ private fun StagedExerciseRow(
     staged: StagedExercise,
     fault: FormErrorTarget.Exercise?,
     onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
     tag: String = "itemForm.exercise",
 ) {
     Row(
-        Modifier.fillMaxWidth()
+        modifier
+            .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .heightIn(min = 48.dp)
             .background(if (fault != null) IntradaColor.dangerWash else IntradaColor.cardFill)

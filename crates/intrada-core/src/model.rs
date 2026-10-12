@@ -314,6 +314,9 @@ pub struct ViewModel {
     /// core's "already in progress" refusal (#981). Derived before the Library
     /// filter, like `up_next`.
     pub shows_priorities: bool,
+    /// "Show suggestion" may show once the plan is put aside: a plan waits and
+    /// nothing is being built, played or summarised (#2521).
+    pub shows_suggestion_restore: bool,
     /// The crash-recovery prompt may show: no session is being played or
     /// summarised, so resuming cannot replace one (#962).
     pub offers_recovery: bool,
@@ -603,6 +606,8 @@ pub struct SectionView {
     /// The one section the builder and Up next point to: the lowest latest
     /// mark, once two or more are marked and they differ (#2250).
     pub is_weakest: bool,
+    pub target_tempo: Option<String>,
+    pub target_tempo_spoken: Option<String>,
 }
 
 /// One library variation an item uses, with its practice state on that item:
@@ -690,6 +695,9 @@ pub struct PlayView {
     pub label: Option<String>,
     pub seconds: u64,
     pub duration_display: String,
+    /// "4m 0s", "92 bpm", "5 of 6 reps": only what this play recorded, the
+    /// duration always first, since rows that show it elsewhere drop it (#2515).
+    pub meta_parts: Vec<String>,
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
     /// Worked out from the count and the target, never stored (#2107).
@@ -762,7 +770,7 @@ pub struct TempoTrendPoint {
 /// line there rather than drawing a zero or interpolating across it (#1420).
 /// Every number present was measured, because the evidence contract keeps
 /// unevidenced defaults out of `achieved_tempo` upstream (T16, #1422).
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoTrendView {
     /// Oldest first, the reverse of `score_history`. One point per setlist
@@ -771,6 +779,26 @@ pub struct TempoTrendView {
     pub points: Vec<TempoTrendPoint>,
     /// Two or more measured tempos; below that there is no direction to read.
     pub has_trend: bool,
+    /// `♩ = 88 → 104`, beside the title once there is a trend.
+    pub chip: Option<String>,
+    /// `Measured once, at ♩ = 72 · no trend yet`, in place of the plot.
+    pub caption: Option<String>,
+    pub spoken: String,
+}
+
+impl TempoTrendView {
+    #[must_use]
+    pub fn new(points: Vec<TempoTrendPoint>) -> Self {
+        let measured: Vec<u16> = points.iter().filter_map(|p| p.tempo).collect();
+        let words = crate::domain::tempo_words::trend_words(&measured, points.len());
+        Self {
+            has_trend: measured.len() >= 2,
+            points,
+            chip: words.chip,
+            caption: words.caption,
+            spoken: words.spoken,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -790,6 +818,8 @@ pub struct PracticeSessionView {
     pub played_summary: String,
     /// `Today`, `Yesterday` or `Sat 30 May`, on the week strip's clock (#2053).
     pub day_label: String,
+    /// "3 pieces", "2 exercises", or "5 items" when the session spans both (#2515).
+    pub item_count_display: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1274,7 +1304,7 @@ impl ItemPracticeSummary {
             latest_score: None,
             score_history: Vec::new(),
             score_trend: None,
-            tempo_trend: TempoTrendView::default(),
+            tempo_trend: TempoTrendView::new(Vec::new()),
             last_practiced_at: None,
         }
     }
@@ -1570,6 +1600,20 @@ mod tests {
         });
     }
 
+    #[test]
+    fn tempo_trend_view_round_trips_on_ffi_bincode_wire() {
+        let point = |tempo| TempoTrendPoint {
+            session_date: "2026-10-01T00:00:00+00:00".to_string(),
+            session_id: "s1".to_string(),
+            tempo,
+        };
+        crate::domain::types::assert_round_trips(TempoTrendView::new(vec![
+            point(Some(88)),
+            point(None),
+            point(Some(104)),
+        ]));
+    }
+
     /// A section's marks cross the wire inside `LibraryItemView` (#2250).
     #[test]
     fn section_view_round_trips_on_ffi_bincode_wire() {
@@ -1591,6 +1635,8 @@ mod tests {
             }],
             caption: "4 of 10".to_string(),
             is_weakest: true,
+            target_tempo: Some("♩ 84".to_string()),
+            target_tempo_spoken: Some("84 beats per minute".to_string()),
         });
     }
 

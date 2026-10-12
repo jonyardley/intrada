@@ -132,8 +132,8 @@ private fun SectionRow(section: SectionView, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SectionTitleStack(section, Modifier.weight(1f))
-        section.targetBpm?.let {
-            BasicText("♩ $it", style = IntradaFont.figure.copy(color = IntradaColor.inkSecondary))
+        section.targetTempo?.let {
+            BasicText(it, style = IntradaFont.figure.copy(color = IntradaColor.inkSecondary))
         }
         Chevron()
     }
@@ -211,7 +211,7 @@ private val SectionView.spoken: String
                 label,
                 barsCaption?.lowercase(),
                 TRICKY_SPOT.lowercase().takeIf { kind == SectionKind.TROUBLESPOT },
-                targetBpm?.let { "$it beats per minute" },
+                targetTempoSpoken,
                 caption,
                 WEAKEST.lowercase().takeIf { isWeakest },
             )

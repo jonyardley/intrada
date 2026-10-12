@@ -92,9 +92,10 @@ private fun ProgressBody(analytics: AnalyticsView, topMark: Int) {
                 analytics.scoreChanges.forEach { change ->
                     MasteryDelta(
                         change.itemTitle,
-                        if (change.isNew) "first time marked" else null,
+                        change.subtitle,
                         was = change.previousScore?.toInt(),
                         now = change.currentScore.toInt(),
+                        spoken = change.spoken,
                     )
                 }
             }
@@ -130,7 +131,7 @@ private fun MarkSections(analytics: AnalyticsView) {
                         row.caption,
                         row.solid.toInt(),
                         row.total.toInt(),
-                        "${row.label}, ${row.caption}",
+                        row.spoken,
                     )
                 }
             }

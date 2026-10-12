@@ -184,13 +184,17 @@ class PieceScreenTest {
         store.link(HANON, scales)
         compose.setContent { PieceRoute(store, PIECE, navigation()) }
 
-        compose.onNodeWithTag("relatedExercises.header").performClick()
-        compose.onNodeWithContentDescription("Move Hanon No. 1 down").performClick()
+        compose.onNodeWithTag("relatedExercises.header").performScrollTo().performClick()
+        compose
+            .onNodeWithContentDescription("Move Hanon No. 1 down")
+            .performScrollTo()
+            .performClick()
         store.settle()
         assertEquals(listOf(scales, HANON), store.piece().linkedExercises.map { it.id })
 
         compose
             .onNodeWithContentDescription("Remove Scales in thirds from related exercises")
+            .performScrollTo()
             .performClick()
         store.settle()
         assertEquals(listOf(HANON), store.piece().linkedExercises.map { it.id })
