@@ -1065,6 +1065,9 @@ final class SessionBridgeTests: XCTestCase {
     try play(at: thisWeek, score: 7)
     XCTAssertEqual(
       try bridge.rendered().analytics?.climbing, "Climbing steadily across 1 item.")
+    let change = try XCTUnwrap(try bridge.rendered().analytics?.scoreChanges.first)
+    XCTAssertNil(change.subtitle)
+    XCTAssertEqual(change.spoken, "Clair de Lune, mastery up from 5 to 7")
   }
 
   /// One variation marked on two items pools on Progress (#2250), a view
@@ -1118,6 +1121,7 @@ final class SessionBridgeTests: XCTestCase {
     let pooled: [PooledMarkView] = try XCTUnwrap(view.analytics?.pooledVariations)
     XCTAssertEqual(pooled.map(\.label), ["Dotted rhythms"])
     XCTAssertEqual(pooled.first?.caption, "Solid on 1 of 2 items")
+    XCTAssertEqual(pooled.first?.spoken, "Dotted rhythms, Solid on 1 of 2 items")
     XCTAssertEqual(pooled.first?.solid, 1)
     XCTAssertEqual(pooled.first?.total, 2)
     let weeks: [ConsistencyWeekView] = try XCTUnwrap(view.analytics?.consistencyWeeks)

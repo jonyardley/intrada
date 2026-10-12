@@ -882,14 +882,7 @@ fn session_changes(
         .into_iter()
         .map(|(entry, current)| {
             let previous = before.get(&entry.item_id).and_then(|p| p.latest_score);
-            ScoreChange {
-                item_id: entry.item_id.clone(),
-                item_title: entry.item_title.clone(),
-                previous_score: previous,
-                current_score: current,
-                delta: previous.map_or(0, |p| current as i8 - p as i8),
-                is_new: previous.is_none(),
-            }
+            ScoreChange::new(&entry.item_id, &entry.item_title, previous, current)
         })
         .collect()
 }
