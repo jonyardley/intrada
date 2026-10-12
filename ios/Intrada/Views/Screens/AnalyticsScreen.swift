@@ -98,9 +98,10 @@ struct AnalyticsScreen: View {
         ForEach(Array(analytics.scoreChanges.enumerated()), id: \.offset) { idx, change in
           MasteryDelta(
             title: change.itemTitle,
-            subtitle: change.isNew ? "first time marked" : nil,
+            subtitle: change.subtitle,
             was: change.previousScore.map(Int.init),
-            now: Int(change.currentScore)
+            now: Int(change.currentScore),
+            spoken: change.spoken
           )
           .fadeUp(5 + idx)
         }
