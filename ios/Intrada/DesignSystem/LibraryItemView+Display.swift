@@ -30,6 +30,9 @@ extension ItemPracticeSummary {
     return TempoTrendDisplay(
       series: TempoTrendSeries(marks: marks),
       hasTrend: tempoTrend.hasTrend,
+      chip: tempoTrend.chip,
+      caption: tempoTrend.caption,
+      spoken: tempoTrend.spoken,
       startDateText: text(marks.first),
       endDateText: text(marks.last))
   }

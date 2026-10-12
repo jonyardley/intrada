@@ -411,7 +411,7 @@ struct ReflectionSheet: View {
   }
 
   private var singlePlayTempoHeading: String {
-    tempoTarget.map { clickTempoWords(bpm: $0, unit: 4).text }
+    tempoTarget.map { declaredTempoWords(bpm: $0).text }
       .map { "Tempo reached · target \($0)" } ?? "Tempo reached"
   }
 

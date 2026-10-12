@@ -302,7 +302,7 @@ enum StagedExercise: Identifiable, Hashable {
     switch self {
     case .draft(_, _, let key, let bpm):
       let tempo = UInt16(bpm.trimmingCharacters(in: .whitespaces))
-        .map { clickTempoWords(bpm: $0, unit: 4).text }
+        .map { declaredTempoWords(bpm: $0).text }
       let parts = [key.flatMap(KeyHelper.display), tempo].compactMap { $0 }
       return parts.isEmpty ? nil : parts.joined(separator: " · ")
     case .existing(_, _, let meta): return meta

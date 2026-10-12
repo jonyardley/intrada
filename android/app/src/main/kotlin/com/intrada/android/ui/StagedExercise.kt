@@ -1,6 +1,6 @@
 package com.intrada.android.ui
 
-import com.intrada.ffi.clickTempoWords
+import com.intrada.ffi.declaredTempoWords
 import com.intrada.shared.CreateItem
 import com.intrada.shared.ItemKind
 import com.intrada.shared.Key
@@ -26,7 +26,7 @@ sealed interface StagedExercise {
     ) : StagedExercise {
         override val meta: String?
             get() {
-                val tempo = bpm.trim().toUShortOrNull()?.let { clickTempoWords(it, 4u).text }
+                val tempo = bpm.trim().toUShortOrNull()?.let { declaredTempoWords(it).text }
                 return listOfNotNull(key?.let(::keyDisplay), tempo).joinToString(" · ").ifEmpty {
                     null
                 }

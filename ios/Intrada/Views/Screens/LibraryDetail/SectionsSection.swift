@@ -181,8 +181,8 @@ private struct SectionRow: View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       ScoreRing(score: section.latestScore.map(Int.init), size: 32)
       SectionTitleStack(section: section)
-      if let bpm = section.targetBpm {
-        Text("♩ \(bpm)")
+      if let target = section.targetTempo {
+        Text(target)
           .font(IntradaFont.figure)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
@@ -211,7 +211,7 @@ enum SectionText {
     var parts = [section.label]
     if let bars = section.barsCaption { parts.append(bars.lowercased()) }
     if section.kind == .troubleSpot { parts.append(trickySpot.lowercased()) }
-    if let bpm = section.targetBpm { parts.append("\(bpm) beats per minute") }
+    if let target = section.targetTempoSpoken { parts.append(target) }
     parts.append(section.caption)
     if section.isWeakest { parts.append(weakest.lowercased()) }
     return parts.joined(separator: ", ")
