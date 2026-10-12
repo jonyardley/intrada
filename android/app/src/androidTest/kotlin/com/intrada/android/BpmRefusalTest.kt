@@ -14,7 +14,8 @@ import org.junit.runner.RunWith
 
 /**
  * A BPM the core cannot read is refused on the form, in the core's own sentence, rather than
- * dropped on save (#2224). The iPhone's two refusals inside a piece's exercise sheet wait on #2569.
+ * dropped on save (#2224). The iPhone's two refusals inside a piece's exercise sheet are ported
+ * with that sheet's create, in LibraryDetailAddExerciseTest (#2573).
  */
 @RunWith(AndroidJUnit4::class)
 class BpmRefusalTest {
@@ -33,6 +34,11 @@ class BpmRefusalTest {
         app.tap("itemForm.confirm")
 
         app.row("itemForm.error", "BPM must be a whole number between 1 and 400")
+        app.assertNeverShows(
+            hasTestTag("library.add"),
+            withinMillis = 1_000,
+            "a refused add closed the form",
+        )
         app.control("itemForm.confirm")
         app.await(hasTestTag("itemForm.bpm") and hasText("12a"))
     }

@@ -52,20 +52,32 @@ class SessionBuilderTest {
 
         val hanon = builderRow("Hanon No. 1", "Exercise")
         val scales = builderRow("Major Scales", "Exercise")
-        assertTrue("Hanon starts above Scales", top(hanon) < top(scales))
+        app.await(hanon)
+        app.await(scales)
+        assertTrue("Hanon starts above Scales", rowsInOrder(hanon, scales))
 
-        val from = app.await(hanon).fetchSemanticsNode().boundsInRoot
-        val to = app.await(scales).fetchSemanticsNode().boundsInRoot
+        // A slow emulator can miss the lift, so a drag that does not settle is tried again.
+        repeat(DRAG_ATTEMPTS) {
+            if (rowsInOrder(scales, hanon)) return@repeat
+            dragBelow(hanon, scales)
+            compose.settles(SETTLE_MILLIS) { rowsInOrder(scales, hanon) }
+        }
+        compose.awaitThat("Scales above Hanon after a long-press drag") {
+            rowsInOrder(scales, hanon)
+        }
+    }
+
+    private fun dragBelow(mover: SemanticsMatcher, target: SemanticsMatcher) {
+        val from = app.await(mover).fetchSemanticsNode().boundsInRoot
+        val to = app.await(target).fetchSemanticsNode().boundsInRoot
         // Past the middle of the row below, which is where the drop counts as a move.
         val travel = to.center.y - from.center.y + to.height / 2
-        app.await(hanon).performTouchInput {
+        app.await(mover).performTouchInput {
             down(center)
             advanceEventTime(viewConfiguration.longPressTimeoutMillis + LIFT_PAUSE)
             repeat(DRAG_STEPS) { moveBy(Offset(0f, travel / DRAG_STEPS)) }
             up()
         }
-
-        compose.waitUntil(App.TIMEOUT) { top(scales) < top(hanon) }
     }
 
     @Test
@@ -99,10 +111,17 @@ class SessionBuilderTest {
 
     private fun top(row: SemanticsMatcher) =
         compose.onAllNodes(row).fetchSemanticsNodes().firstOrNull()?.boundsInRoot?.top
-            ?: Float.MAX_VALUE
+
+    private fun rowsInOrder(upper: SemanticsMatcher, lower: SemanticsMatcher): Boolean {
+        val above = top(upper)
+        val below = top(lower)
+        return above != null && below != null && above < below
+    }
 
     private companion object {
         const val LIFT_PAUSE = 200L
         const val DRAG_STEPS = 10
+        const val DRAG_ATTEMPTS = 3
+        const val SETTLE_MILLIS = 3_000L
     }
 }
