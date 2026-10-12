@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.printToString
 import androidx.core.content.edit
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import com.intrada.android.core.Settings
@@ -45,6 +46,11 @@ class App(private val compose: ComposeTestRule) {
     fun relaunch() {
         close()
         launch(seed = false)
+    }
+
+    /** The musician leaves for the home screen: the activity stops but is not yet gone. */
+    fun background() {
+        scenario?.moveToState(Lifecycle.State.CREATED)
     }
 
     fun close() {

@@ -1,0 +1,88 @@
+package com.intrada.android
+
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * A practice the app was closed on comes back on the next launch (#962), with the item-complete
+ * sheet's answers (#2137). iPhone: SessionRecoveryUITests. Each test starts from an empty store and
+ * no saved settings, so a session left by an earlier run can neither pass nor fail it.
+ */
+@RunWith(AndroidJUnit4::class)
+class SessionRecoveryTest {
+    @get:Rule val compose = createEmptyComposeRule()
+    private val app = App(compose)
+
+    @After fun close() = app.close()
+
+    @Test
+    fun aClosedSessionOffersResumeOnRelaunch() {
+        startClairDeLune()
+        app.control("player.skip")
+
+        app.resumeAfterRelaunch()
+
+        app.control("player.skip")
+        app.endSessionEarly()
+        app.discardSummary()
+    }
+
+    @Test
+    fun aClosedSheetComesBackWithItsAnswers() {
+        startClairDeLune()
+        app.tap("player.advance")
+        app.tap("reflection.mark.7")
+        app.await(markSeven)
+        val prefilled = checkNotNull(tempo()) { "the sheet shows a tempo" }
+        app.tap("reflection.tempo.increase")
+        val setTempo = tempo()
+        assertNotEquals("the step moved the tempo", prefilled, setTempo)
+
+        // Closed with no note typed, so only the mark's and the tempo's own sends can have kept
+        // them.
+        app.resumeAfterRelaunch()
+        app.await(markSeven)
+        assertEquals("the tempo set by hand survived", setTempo, tempo())
+
+        app.control("reflection.note").performTextInput("Pedal clearer in bar 12")
+        app.background()
+        app.resumeAfterRelaunch()
+        app.await(hasTestTag("reflection.note") and hasText("Pedal clearer in bar 12"))
+        app.await(markSeven)
+
+        app.tap("reflection.skip")
+        app.discardSummary()
+    }
+
+    private val markSeven = hasTestTag("reflection.mark.7") and isSelected()
+
+    private fun startClairDeLune() {
+        app.launchWithOnePiece("Clair de Lune")
+        app.tap("practice.startHere.next")
+        app.startWith("Clair de Lune")
+    }
+
+    /** The stepper's value is a plain text beside its buttons, so it is read from their parent. */
+    private fun tempo(): String? =
+        app.control("reflection.tempo.increase")
+            .fetchSemanticsNode()
+            .parent
+            ?.children
+            ?.firstNotNullOfOrNull {
+                it.config
+                    .getOrElseNullable(SemanticsProperties.Text) { null }
+                    ?.joinToString()
+                    ?.takeIf { text -> text.endsWith(" bpm") }
+            }
+}
