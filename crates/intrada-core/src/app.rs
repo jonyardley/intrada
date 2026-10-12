@@ -229,7 +229,7 @@ impl Intrada {
                 crux_core::render::render()
             }
             Event::SetQuery(query) => {
-                model.active_query = query;
+                model.active_query = query.and_then(ListQuery::normalised);
                 crux_core::render::render()
             }
             Event::SetSort(sort) => {
@@ -872,6 +872,82 @@ mod tests {
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.rendered(&model);
         assert_eq!(visible(&vm).len(), 2);
+    }
+
+    #[test]
+    fn set_query_with_nothing_set_is_no_filter() {
+        let app = Intrada;
+        let cases = [
+            ListQuery::default(),
+            ListQuery {
+                text: Some(String::new()),
+                ..Default::default()
+            },
+            ListQuery {
+                text: Some("  ".to_string()),
+                ..Default::default()
+            },
+        ];
+        for query in cases {
+            let mut model = Model::default();
+            let _cmd = app.update(Event::SetQuery(Some(query.clone())), &mut model);
+            let vm = app.rendered(&model);
+            assert_eq!(vm.active_query, None, "{query:?}");
+            assert_eq!(vm.library_count_line, "No items yet", "{query:?}");
+        }
+    }
+
+    #[test]
+    fn set_query_with_any_one_field_set_is_a_filter() {
+        let app = Intrada;
+        let cases = [
+            ListQuery {
+                text: Some("Bach".to_string()),
+                ..Default::default()
+            },
+            ListQuery {
+                item_type: Some(ItemKind::Piece),
+                ..Default::default()
+            },
+            ListQuery {
+                key: Some(Key::C_MAJOR),
+                ..Default::default()
+            },
+            ListQuery {
+                tags: vec!["scales".to_string()],
+                ..Default::default()
+            },
+            ListQuery {
+                priority_only: true,
+                ..Default::default()
+            },
+        ];
+        for query in cases {
+            let mut model = Model::default();
+            let _cmd = app.update(Event::SetQuery(Some(query.clone())), &mut model);
+            let vm = app.rendered(&model);
+            assert_eq!(vm.active_query, Some(query.clone()), "{query:?}");
+            assert_eq!(vm.library_count_line, "No matches", "{query:?}");
+        }
+    }
+
+    #[test]
+    fn set_query_trims_the_search_text() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _cmd = app.update(
+            Event::SetQuery(Some(ListQuery {
+                text: Some(" Bach ".to_string()),
+                ..Default::default()
+            })),
+            &mut model,
+        );
+        let vm = app.rendered(&model);
+        assert_eq!(
+            vm.active_query.as_ref().and_then(|q| q.text.as_deref()),
+            Some("Bach")
+        );
+        assert_eq!(vm.library_count_line, "No matches");
     }
 
     #[test]
