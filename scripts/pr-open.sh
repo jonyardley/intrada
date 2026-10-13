@@ -84,4 +84,9 @@ for n in $numbers; do
   fi
 done
 
+# Drafts until reviewed and green (Jon's rule); `gh pr ready` lifts it.
+case " ${args[*]} " in
+  *" --draft "* | *" -d "*) ;;
+  *) args+=(--draft) ;;
+esac
 gh pr create "${args[@]}"

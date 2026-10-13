@@ -115,6 +115,17 @@ else
   printf '✗ legacy format: expected gh pr create to run with the same args\n' >&2
 fi
 
+# ── Opens as a draft unless told otherwise ──────────────────────────────────
+
+rm -rf "$CALLS" && mkdir -p "$CALLS"
+run "Fix the thing (#42)" >/dev/null
+if grep -qF -- "--draft" "$CALLS/pr_create.log" 2>/dev/null; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf '✗ draft: expected gh pr create to get --draft\n' >&2
+fi
+
 # ── Claimed on this branch, current backtick format: opens the PR ──────────
 
 cat >"$work/fixtures/comments_42.json" <<'JSON'
