@@ -30,22 +30,25 @@ wins.
 
 - **The review** (#2577,
   [review page](https://claude.ai/artifact/9D4tbou13mtMcvY1Jj27tn)): the record
-  checked against Progress, routines, the week and sync, with nine decisions
-  for Jon. Each accepted one becomes an issue in this milestone.
+  checked against Progress, routines, the week and sync, ruled on 2026-10-13.
+  Before sync: a saved session that can be deleted and carries its change time
+  (#2581), one migration clearing the leftovers (#2317), and the time zone a
+  session was played in (#1379). Before routines: one planned-item shape for
+  sessions, routines and the week (#2582).
 - **What is left of #50**: adding a section and a key while building a session
   (#2392), every section on the practice screen (#2394), last time's aim as a
   one-tap start (#2397) and the builder rules the core still has to take over
   (#2404, #2405, #2406).
-- **Leftovers and loose ends**: the coach-era tables (#2317), values an older
-  build does not recognise (#2437), the practice defaults version (#2216),
-  tempo in compound time (#1510, #2543) and the time zone a session was played
-  in (#1379).
+- **Loose ends**: values an older build does not recognise (#2437), the
+  practice defaults version (#2216), and tempo in compound time shown by the
+  piece's beat (#1510, #2543).
 
 ### Next, in order
 
 1. **v0.20.0 Progress, reworked**: the four-week look back decided on
    2026-10-04 (#1787), core first (#2375), then the screen (#2376), with
-   variation coverage moved onto the exercise (#2377).
+   variation coverage moved onto the exercise (#2377) and history showing an
+   item's current name (#2583).
 2. **v0.21.0 The fourth tab earns its place**: decide between routines on their
    own tab and a Week tab holding the week's practice set with routines inside
    it (#2579), then build the one chosen (#1348, #2180, and #1926 if Week).
