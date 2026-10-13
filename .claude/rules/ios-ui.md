@@ -31,6 +31,7 @@ YYYY-MM-DD"; a no is a push to the open PR. A PR that
 goes ready without that exchange is the failure this rule exists to stop
 (#1891; the terracotta accent, the metronome drag icon and the header toolbar
 all shipped, and were each reworked, the same way).
+Every feature ships on both apps, so the Android half follows `.claude/rules/android-quality.md`.
 
 ## Tokens, then modifiers, then components, then screens
 

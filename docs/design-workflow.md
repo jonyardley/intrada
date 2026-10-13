@@ -65,22 +65,24 @@ Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md`
 `tasks.md`). Insert a **Design** step between `spec` and `plan`:
 
 1. **Design** — In Claude Design, open `intrada-design-system.dc.html` for context
-   and mock the new screens/states using the existing kit. Save the mockup as
-   `specs/NNN-feature/design/<screen>.dc.html` (+ exported `.html`).
+   and mock the new screens/states using the existing kit, with an iPhone frame
+   and an Android frame for each, since every feature ships on both. Save the
+   mockup as `specs/NNN-feature/design/<screen>.dc.html` (+ exported `.html`).
    - Reuse components and tokens; if something new is needed, that's a signal a
      new primitive/token belongs in `Theme.swift` **and** the design system.
 2. **Plan / tasks** — Reference the committed mockup. Build against it.
 3. **PR checklist** — add two gates:
    - [ ] If a token or component changed, `Theme.swift` and
          `design/intrada-design-system.dc.html` were updated together.
-   - [ ] New screens have a committed Claude Design mockup under their spec folder.
+   - [ ] New screens have a committed Claude Design mockup, iPhone and Android
+         frames, under their spec folder.
 
 ## Keeping code and design in sync
 
 - **New token or component** → change `Theme.swift` first, then update the design
   system reference and re-export the `.html`. Same PR.
 - **Exploring a direction** (e.g. the Liquid Glass tab bar) → mock it in Claude
-  Design first, get sign-off, then implement in SwiftUI and fold the agreed result
+  Design first, get sign-off, then implement in SwiftUI and Compose and fold the agreed result
   back into the reference.
 - Treat the design system file the way you treat `Theme.swift`: a reviewed,
   versioned part of the codebase — not a throwaway mock.

@@ -4,7 +4,7 @@ A **practice notebook** for musicians, built with [Crux](https://redbadger.githu
 
 See [`docs/roadmap.md`](docs/roadmap.md) for direction, `just status` for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation. (A practice-coach direction was built July to August 2026 and reversed; its design record lives in [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md), bannered.)
 
-The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQLite is the source of truth and the app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/rebuild-review.md`](docs/rebuild-review.md)), and the app has been native-iOS-only since.
+intrada ships **two native apps on one Rust core**: SwiftUI for iPhone in `ios/` and Compose for Android in `android/`, kept at parity, so every new feature lands on both. Both are offline-first: on-device SQLite is the source of truth and each app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed in 2026-07 (see [`docs/rebuild-review.md`](docs/rebuild-review.md)).
 
 ## Architecture
 

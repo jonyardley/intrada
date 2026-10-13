@@ -14,6 +14,7 @@ right now is `just status`, which reads GitHub.
 | `ux` / `accessibility` | Cross-cutting work on how the app feels and who can use it |
 | `security` | Security-relevant |
 | `ios` | The native SwiftUI app |
+| `android` | The native Compose app |
 | `epic` | A body of work whose issues are its sub-issues ([Epics](#epics)) |
 
 ### Horizons
@@ -68,7 +69,7 @@ a horizon.
 ## Cutting a release
 
 A milestone is one headline plus whatever rides along. **Cut when the headline
-works on the phone.** The work here comes in bursts, so a fixed day would fire
+works on iPhone and Android.** The work here comes in bursts, so a fixed day would fire
 on the empty weeks and miss the busy ones. v0.9.0 (photos) and v0.10.0
 (capture) were both cut this way before the rule was written down.
 

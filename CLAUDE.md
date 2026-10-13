@@ -6,7 +6,7 @@ else lives in the path-scoped rules, the skills and the docs below. Trial from 2
 
 intrada is a **practice notebook** for musicians: build a session from the library, play it
 through with a timer and rep counting, and score how it went (Plan, Practice, Track). Two native shells on one Rust
-core: SwiftUI in `ios/` ships, Compose in `android/` is being built (#2220). The web and
+core: SwiftUI in `ios/`, Compose in `android/`; every feature ships on both. The web and
 Tauri shells were deleted (`docs/rebuild-review.md`): **a request implying web work?
 Confirm the platform first.** Direction: `docs/roadmap.md`; in flight: `just status`.
 

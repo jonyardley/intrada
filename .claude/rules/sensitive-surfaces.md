@@ -29,11 +29,11 @@ migrations, auth, and any bridge change that is not additive.
    stays on the lead's usual effort.
 2. **Pair the `reviewer` agent on the core diff before the screens**, on its
    Opus pin, whoever built it.
-3. **One PR or two.** An additive change ships as one PR, the core commits
-   first, and `reviewer` reads them on their own before the screens commits.
-   Lead-only work goes up at least one tier in ceremony and ships as two PRs:
-   core first, screens in the same working session, or the core PR waits (a
-   merged core PR with no caller is shell-dead, #1374).
+3. **One PR across the stack.** Every change ships as one PR holding the core,
+   iOS and Android commits, the core commits first, and `reviewer` reads them
+   on their own before the screens commits are added. Lead-only work goes up
+   at least one tier in ceremony but still ships as one PR, because a merged
+   core with no caller is shell-dead (#1374).
 
 The hazards, by file:
 

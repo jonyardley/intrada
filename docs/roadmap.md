@@ -73,10 +73,12 @@ wins.
 
 ### Alongside: Android parity
 
-The Android app on the same core (#2220) is pressed toward parity with the
-iPhone app as its own stream, tracked in the
+Both apps ship, and from 2026-10-13 every new feature lands on iPhone and
+Android together. The
 [Android parity milestone](https://github.com/jonyardley/intrada/milestone/13)
-and not ranked against the product work. The last rules come out of the Swift
+holds only the catch-up list: what the Android app on the same core (#2220)
+still lacks from before that date, worked as its own stream and not ranked
+against the product work. The last rules come out of the Swift
 shell first (#2223: #2230, #2231, #2352). Then, from
 [`specs/android-shell.md`](../specs/android-shell.md): adding and editing pieces
 kept after the app closes (#2421, which can start now), building and playing a
@@ -99,13 +101,14 @@ Specs and designs divide a musician's practice into three parts:
 
 ## Platform
 
-intrada is a native iPhone app, built in SwiftUI on a shared Rust core, that
-keeps everything on the phone ([`specs/native-ios.md`](../specs/native-ios.md)).
+intrada is two native apps on a shared Rust core, kept at parity: SwiftUI on
+iPhone ([`specs/native-ios.md`](../specs/native-ios.md)) and Compose on Android
+([`specs/android-shell.md`](../specs/android-shell.md)). Each keeps everything
+on the phone, and every new feature ships on both; the Android catch-up list
+(#2220) is not ranked here.
 There is no web app and no sync yet: the server that once carried sync was
 removed (#1746), and iCloud sync between iPhone and iPad (#2353) is planned for
-v0.23.0. An Android app on the same core is being built
-alongside (#2220, [`specs/android-shell.md`](../specs/android-shell.md)), and is
-not ranked here.
+v0.23.0.
 
 ## Open questions
 
