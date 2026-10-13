@@ -45,7 +45,10 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
                 ack {
                     sessions[operation.id]?.let {
                         sessions[operation.id] =
-                            it.copy(updatedAt = operation.deletedAt, deletedAt = operation.deletedAt)
+                            it.copy(
+                                updatedAt = operation.deletedAt,
+                                deletedAt = operation.deletedAt,
+                            )
                     }
                 }
             is PersistenceOperation.RestoreSession ->

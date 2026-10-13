@@ -104,8 +104,7 @@ class SyncRoundTripTest {
                 totalDurationSecs = 1800u,
                 completionStatus = CompletionStatus.COMPLETED,
             )
-        val stored =
-            StoredPracticeSession(session, "2026-10-02T09:00:00Z", "2026-10-03T09:00:00Z")
+        val stored = StoredPracticeSession(session, "2026-10-02T09:00:00Z", "2026-10-03T09:00:00Z")
 
         val sent =
             bridge
