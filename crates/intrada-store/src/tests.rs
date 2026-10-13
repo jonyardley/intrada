@@ -630,16 +630,13 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     assert_eq!(links(&mut store, "p2"), vec![]);
     assert_eq!(links(&mut store, "p3"), vec![]);
     assert_eq!(links(&mut store, "p4"), vec![link("p4", "a", 1)]);
-    assert_eq!(
-        store.raw("SELECT linked_exercise_ids FROM item WHERE id = 'p2'"),
-        Some("{".into())
-    );
     assert_eq!(links(&mut store, "a"), vec![]);
     assert_eq!(links(&mut store, "x-y"), vec![link("x-y", "z", 0)]);
     assert_eq!(links(&mut store, "x"), vec![link("x", "y-z", 0)]);
 }
 
-const COACH_TABLES: [&str; 9] = [
+const DROPPED_TABLES: [&str; 10] = [
+    "variant",
     "block_record",
     "wander_record",
     "user_drill",
@@ -649,6 +646,14 @@ const COACH_TABLES: [&str; 9] = [
     "reflection",
     "feel_entry",
     "unmonitored_play",
+];
+
+const DROPPED_COLUMNS: [(&str, &str); 5] = [
+    ("item", "linked_exercise_ids"),
+    ("session", "session_intention"),
+    ("session", "reflection_improved"),
+    ("session", "reflection_still_rough"),
+    ("session", "reflection_next_target"),
 ];
 
 fn tables(conn: &Connection) -> Vec<String> {
@@ -664,26 +669,42 @@ fn tables(conn: &Connection) -> Vec<String> {
     .expect("reads")
 }
 
-fn rows(conn: &Connection, table: &str) -> Vec<Vec<rusqlite::types::Value>> {
+type Row = Vec<(String, rusqlite::types::Value)>;
+
+fn rows(conn: &Connection, table: &str) -> Vec<Row> {
     let mut statement = conn
         .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
         .expect("prepares");
-    let width = statement.column_count();
+    let names: Vec<String> = statement
+        .column_names()
+        .iter()
+        .map(|n| n.to_string())
+        .collect();
     statement
-        .query_map([], |row| (0..width).map(|i| row.get(i)).collect())
+        .query_map([], |row| {
+            names
+                .iter()
+                .enumerate()
+                .map(|(i, name)| Ok((name.clone(), row.get(i)?)))
+                .collect()
+        })
         .expect("queries")
         .collect::<rusqlite::Result<_>>()
         .expect("reads")
 }
 
 #[test]
-fn v21_drops_the_coach_tables_and_leaves_every_live_row_alone() {
+fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
     let seed = format!(
-        "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
-           VALUES ('p1', 'Waltz', 'piece', '[]', '{EARLY}', '{EARLY}');
+        "INSERT INTO item (id, title, kind, key, modality, tags, linked_exercise_ids,
+             created_at, updated_at)
+           VALUES ('p1', 'Waltz', 'piece', 'G', 'minor', '[]', '[\"e1\"]', '{EARLY}',
+             '{EARLY}');
          INSERT INTO session (id, started_at, completed_at, total_duration_secs,
-             completion_status, entries, updated_at)
-           VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'Completed', '[]', '{EARLY}');
+             completion_status, session_intention, entries, updated_at, reflection_improved,
+             reflection_still_rough, reflection_next_target)
+           VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'Completed', 'even RH', '[]', '{EARLY}',
+             'thumb', 'bars 12-14', 'at 80');
          INSERT INTO variant (id, item_id, label, position, updated_at)
            VALUES ('v1', 'p1', 'Dotted', 0, '{EARLY}');
          INSERT INTO section (id, item_id, name, kind, position, updated_at)
@@ -716,18 +737,34 @@ fn v21_drops_the_coach_tables_and_leaves_every_live_row_alone() {
     let mut conn = Connection::open_in_memory().expect("opens");
     migrations::migrate(&mut conn, "v20_exercise_link", &mut vec![]).expect("migrates");
     conn.execute_batch(&seed).expect("seeds");
-    let live: Vec<String> = tables(&conn)
+    let kept: Vec<String> = tables(&conn)
         .into_iter()
-        .filter(|t| !COACH_TABLES.contains(&t.as_str()))
+        .filter(|t| !DROPPED_TABLES.contains(&t.as_str()))
         .collect();
-    let before: Vec<_> = live.iter().map(|t| rows(&conn, t)).collect();
-    assert!(before.iter().all(|r| r.len() == 1), "{live:?}");
+    let before: Vec<Vec<Row>> = kept
+        .iter()
+        .map(|t| {
+            rows(&conn, t)
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .filter(|(c, _)| !DROPPED_COLUMNS.contains(&(t.as_str(), c.as_str())))
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
+    assert!(before.iter().all(|r| r.len() == 1), "{kept:?}");
 
-    let store = Store::new(conn, migrations::latest()).expect("finishes");
+    let mut store = Store::new(conn, migrations::latest()).expect("finishes");
 
-    assert_eq!(tables(&store.conn), live);
-    let after: Vec<_> = live.iter().map(|t| rows(&store.conn, t)).collect();
+    assert_eq!(tables(&store.conn), kept);
+    let after: Vec<Vec<Row>> = kept.iter().map(|t| rows(&store.conn, t)).collect();
     assert_eq!(after, before);
+    assert_eq!(
+        store.item("p1").key,
+        Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor)))
+    );
 }
 
 // ── Round trips ──
@@ -1166,9 +1203,6 @@ fn an_item_from_each_older_schema_loads_whole() {
          VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
                  '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)",
     );
-    assert!(store
-        .columns("item")
-        .contains(&"linked_exercise_ids".to_string()));
     assert_eq!(store.items(), vec![record("p1", "Legacy Piece")]);
 
     let mut store = upgraded(
@@ -1190,17 +1224,6 @@ fn an_item_from_each_older_schema_loads_whole() {
          VALUES ('e1', 'Legacy Exercise', 'exercise', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
                  '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)",
     );
-    let variant = store.columns("variant");
-    for expected in [
-        "id",
-        "item_id",
-        "label",
-        "position",
-        "updated_at",
-        "deleted_at",
-    ] {
-        assert!(variant.contains(&expected.to_string()), "{variant:?}");
-    }
     assert_eq!(
         store.items(),
         vec![Item {
@@ -1328,48 +1351,6 @@ fn a_v6_session_keeps_its_notes_and_score() {
         (Some("old note"), Some(7))
     );
 }
-
-#[test]
-fn the_retired_session_columns_and_their_text_survive_a_save() {
-    let mut store = upgraded(
-        migrations::latest(),
-        "INSERT INTO session
-           (id, started_at, completed_at, total_duration_secs, completion_status,
-            session_notes, session_intention, entries, updated_at, deleted_at,
-            reflection_improved, reflection_still_rough, reflection_next_target)
-         VALUES ('s-old', '2026-05-01T10:00:00Z', '2026-05-01T10:30:00Z', 1800, 'completed',
-                 'old note', 'even RH at 96', '[]', '2026-05-01T10:30:00Z', NULL,
-                 'thumb-unders even', 'bars 12-14 rush', 'bars 12-14 at 80')",
-    );
-    let retired = [
-        ("session_intention", "even RH at 96"),
-        ("reflection_improved", "thumb-unders even"),
-        ("reflection_still_rough", "bars 12-14 rush"),
-        ("reflection_next_target", "bars 12-14 at 80"),
-    ];
-    let columns = store.columns("session");
-    for (column, _) in retired {
-        assert!(columns.contains(&column.to_string()), "{columns:?}");
-    }
-
-    let mut reloaded = store.sessions().pop().expect("a session");
-    reloaded.session_notes = Some("edited".into());
-    store.save_session(&reloaded);
-
-    assert_eq!(
-        store.raw("SELECT session_notes FROM session WHERE id = 's-old'"),
-        Some("edited".into())
-    );
-    for (column, text) in retired {
-        assert_eq!(
-            store.raw(&format!("SELECT {column} FROM session WHERE id = 's-old'")),
-            Some(text.into()),
-            "{column}"
-        );
-    }
-}
-
-// ── More round trips (LibraryStoreTests.swift, LibraryStoreMigrationTests.swift) ──
 
 #[test]
 fn an_exercise_with_no_tempo_or_tags_reads_back_as_written() {
@@ -1552,16 +1533,12 @@ fn links_and_a_tombstone_update_by_id_and_load_by_position() {
     store.save(&item);
     let reversed: Vec<ExerciseLink> = item.exercise_links.iter().rev().cloned().collect();
     assert_eq!(store.item("p1").exercise_links, reversed);
-    assert_eq!(
-        store.raw("SELECT linked_exercise_ids FROM item WHERE id = 'p1'"),
-        Some("[]".into())
-    );
 }
 
 // ── More values the core cannot read (#2005, #2097, #2106, #2234) ──
 
 #[test]
-fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
+fn unreadable_tags_survive_until_the_tags_change() {
     let mut store = upgraded(
         "v17_item_metre",
         "INSERT INTO item
@@ -1576,7 +1553,6 @@ fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
     loaded.title = "Renamed".into();
     store.save(&loaded);
     assert_eq!(raw(&store, "tags"), Some("not json".into()));
-    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
 
     loaded.tags = vec!["scales".into()];
     loaded.exercise_links = vec![ExerciseLink {
@@ -1589,7 +1565,6 @@ fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
     }];
     store.save(&loaded);
     assert_eq!(raw(&store, "tags"), Some(r#"["scales"]"#.into()));
-    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
 }
 
 #[test]
@@ -1669,10 +1644,10 @@ fn a_refused_session_is_skipped_and_a_replaced_status_is_named() {
     let mut store = upgraded(
         migrations::latest(),
         "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
-           completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
-         VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+           completion_status, session_notes, entries, updated_at, deleted_at)
+         VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,'[]',
            '2026-09-01T10:10:00Z',NULL),
-           ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,NULL,
+           ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,
            '[]','2026-09-01T10:10:00Z',NULL)",
     );
     let answer = store.handle(&PersistenceOperation::LoadSessions);

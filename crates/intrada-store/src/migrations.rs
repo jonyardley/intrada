@@ -287,11 +287,13 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
              GROUP BY item.id, j.value;",
         ),
     ),
-    // Coach era, reversed 2026-08-13; nothing reads them (#2317).
+    // Nothing reads these: the coach era (reversed 2026-08-13), the variant
+    // table variations replaced, and the retired columns (#2317, #2577).
     (
-        "v21_drop_coach_tables",
+        "v21_drop_unread_tables_and_columns",
         Step::Sql(
-            "DROP TABLE IF EXISTS block_record;
+            "DROP TABLE IF EXISTS variant;
+             DROP TABLE IF EXISTS block_record;
              DROP TABLE IF EXISTS wander_record;
              DROP TABLE IF EXISTS user_drill;
              DROP TABLE IF EXISTS journal_item;
@@ -299,7 +301,12 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
              DROP TABLE IF EXISTS play_through;
              DROP TABLE IF EXISTS reflection;
              DROP TABLE IF EXISTS feel_entry;
-             DROP TABLE IF EXISTS unmonitored_play;",
+             DROP TABLE IF EXISTS unmonitored_play;
+             ALTER TABLE item DROP COLUMN linked_exercise_ids;
+             ALTER TABLE session DROP COLUMN session_intention;
+             ALTER TABLE session DROP COLUMN reflection_improved;
+             ALTER TABLE session DROP COLUMN reflection_still_rough;
+             ALTER TABLE session DROP COLUMN reflection_next_target;",
         ),
     ),
 ];

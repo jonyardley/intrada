@@ -37,9 +37,6 @@ fn load_rows(
     let mut sessions = Vec::new();
     while let Some(row) = rows.next()? {
         let id: String = row.get("id")?;
-        // The intention and the three reflection columns stay in the table
-        // unread: nothing can set them and the core no longer carries them
-        // (#1766, #1374).
         let read = stored(row)
             .map_err(|e| e.to_string())
             .and_then(|s| session_from_stored(&s).map_err(|e| e.to_string()));
