@@ -383,17 +383,7 @@ fn a_recorded_migration_is_not_run_again() {
 #[test]
 fn every_table_carries_the_sync_columns() {
     let store = Store::in_memory().expect("opens");
-    let tables: Vec<String> = store
-        .conn
-        .prepare(
-            "SELECT name FROM sqlite_master
-             WHERE type = 'table' AND name NOT GLOB 'sqlite_*' AND name != 'grdb_migrations'",
-        )
-        .expect("prepares")
-        .query_map([], |row| row.get(0))
-        .expect("queries")
-        .collect::<rusqlite::Result<_>>()
-        .expect("reads");
+    let tables = tables(&store.conn);
     assert!(tables.contains(&"item".to_string()), "{tables:?}");
     for table in tables {
         let columns: Vec<String> = store
@@ -630,13 +620,141 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     assert_eq!(links(&mut store, "p2"), vec![]);
     assert_eq!(links(&mut store, "p3"), vec![]);
     assert_eq!(links(&mut store, "p4"), vec![link("p4", "a", 1)]);
-    assert_eq!(
-        store.raw("SELECT linked_exercise_ids FROM item WHERE id = 'p2'"),
-        Some("{".into())
-    );
     assert_eq!(links(&mut store, "a"), vec![]);
     assert_eq!(links(&mut store, "x-y"), vec![link("x-y", "z", 0)]);
     assert_eq!(links(&mut store, "x"), vec![link("x", "y-z", 0)]);
+}
+
+const DROPPED_TABLES: [&str; 10] = [
+    "variant",
+    "block_record",
+    "wander_record",
+    "user_drill",
+    "journal_item",
+    "built_session",
+    "play_through",
+    "reflection",
+    "feel_entry",
+    "unmonitored_play",
+];
+
+const DROPPED_COLUMNS: [(&str, &str); 5] = [
+    ("item", "linked_exercise_ids"),
+    ("session", "session_intention"),
+    ("session", "reflection_improved"),
+    ("session", "reflection_still_rough"),
+    ("session", "reflection_next_target"),
+];
+
+fn tables(conn: &Connection) -> Vec<String> {
+    conn.prepare(
+        "SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name NOT GLOB 'sqlite_*' AND name != 'grdb_migrations'
+         ORDER BY name",
+    )
+    .expect("prepares")
+    .query_map([], |row| row.get(0))
+    .expect("queries")
+    .collect::<rusqlite::Result<_>>()
+    .expect("reads")
+}
+
+type Row = Vec<(String, rusqlite::types::Value)>;
+
+fn rows(conn: &Connection, table: &str) -> Vec<Row> {
+    let mut statement = conn
+        .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
+        .expect("prepares");
+    let names: Vec<String> = statement
+        .column_names()
+        .iter()
+        .map(|n| n.to_string())
+        .collect();
+    statement
+        .query_map([], |row| {
+            names
+                .iter()
+                .enumerate()
+                .map(|(i, name)| Ok((name.clone(), row.get(i)?)))
+                .collect()
+        })
+        .expect("queries")
+        .collect::<rusqlite::Result<_>>()
+        .expect("reads")
+}
+
+#[test]
+fn v21_drops_the_unread_tables_and_columns_and_leaves_every_kept_value_alone() {
+    let seed = format!(
+        "INSERT INTO item (id, title, kind, key, modality, tags, linked_exercise_ids,
+             created_at, updated_at)
+           VALUES ('p1', 'Waltz', 'piece', 'G', 'minor', '[]', '[\"e1\"]', '{EARLY}',
+             '{EARLY}');
+         INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+             completion_status, session_intention, entries, updated_at, reflection_improved,
+             reflection_still_rough, reflection_next_target)
+           VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'Completed', 'even RH', '[]', '{EARLY}',
+             'thumb', 'bars 12-14', 'at 80');
+         INSERT INTO variant (id, item_id, label, position, updated_at)
+           VALUES ('v1', 'p1', 'Dotted', 0, '{EARLY}');
+         INSERT INTO section (id, item_id, name, kind, position, updated_at)
+           VALUES ('a1', 'p1', 'A1', 'form', 0, '{EARLY}');
+         INSERT INTO variation (id, label, updated_at) VALUES ('d', 'Dotted', '{EARLY}');
+         INSERT INTO exercise_link (id, piece_id, exercise_id, position, updated_at)
+           VALUES ('l1', 'p1', 'e1', 0, '{EARLY}');
+         INSERT INTO block_record (id, node, drill, gate, level_tempo_bpm,
+             level_click_level, circle, mode, started_at, ended_at, reps_after_gate,
+             active_ms, exit, updated_at)
+           VALUES ('b', 'n', 'd', 'g', 80, 'full', 'c', 'm', '{EARLY}', '{EARLY}', 0, 0,
+             'done', '{EARLY}');
+         INSERT INTO wander_record (id, started_at, ended_at, updated_at)
+           VALUES ('w', '{EARLY}', '{EARLY}', '{EARLY}');
+         INSERT INTO user_drill (id, name, criterion, passes_to_open, created_at, updated_at)
+           VALUES ('u', 'n', 'c', 3, '{EARLY}', '{EARLY}');
+         INSERT INTO journal_item (id, name, created_at, updated_at)
+           VALUES ('j', 'n', '{EARLY}', '{EARLY}');
+         INSERT INTO built_session (id, created_at, updated_at)
+           VALUES ('bs', '{EARLY}', '{EARLY}');
+         INSERT INTO play_through (id, item_id, started_at, ended_at, counted, updated_at)
+           VALUES ('pt', 'p1', '{EARLY}', '{EARLY}', 1, '{EARLY}');
+         INSERT INTO reflection (id, kind, at, updated_at)
+           VALUES ('r', 'k', '{EARLY}', '{EARLY}');
+         INSERT INTO feel_entry (id, block_id, feel, at, updated_at)
+           VALUES ('f', 'b', 'ok', '{EARLY}', '{EARLY}');
+         INSERT INTO unmonitored_play (id, started_at, ended_at, updated_at)
+           VALUES ('up', '{EARLY}', '{EARLY}', '{EARLY}');"
+    );
+    let mut conn = Connection::open_in_memory().expect("opens");
+    migrations::migrate(&mut conn, "v20_exercise_link", &mut vec![]).expect("migrates");
+    conn.execute_batch(&seed).expect("seeds");
+    let kept: Vec<String> = tables(&conn)
+        .into_iter()
+        .filter(|t| !DROPPED_TABLES.contains(&t.as_str()))
+        .collect();
+    let before: Vec<Vec<Row>> = kept
+        .iter()
+        .map(|t| {
+            rows(&conn, t)
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .filter(|(c, _)| !DROPPED_COLUMNS.contains(&(t.as_str(), c.as_str())))
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
+    assert!(before.iter().all(|r| r.len() == 1), "{kept:?}");
+
+    let mut store = Store::new(conn, migrations::latest()).expect("finishes");
+
+    assert_eq!(tables(&store.conn), kept);
+    let after: Vec<Vec<Row>> = kept.iter().map(|t| rows(&store.conn, t)).collect();
+    assert_eq!(after, before);
+    assert_eq!(
+        store.item("p1").key,
+        Some(key(Letter::G, Accidental::Natural, Some(Modality::Minor)))
+    );
 }
 
 // ── Round trips ──
@@ -1075,9 +1193,6 @@ fn an_item_from_each_older_schema_loads_whole() {
          VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
                  '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)",
     );
-    assert!(store
-        .columns("item")
-        .contains(&"linked_exercise_ids".to_string()));
     assert_eq!(store.items(), vec![record("p1", "Legacy Piece")]);
 
     let mut store = upgraded(
@@ -1099,17 +1214,6 @@ fn an_item_from_each_older_schema_loads_whole() {
          VALUES ('e1', 'Legacy Exercise', 'exercise', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
                  '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)",
     );
-    let variant = store.columns("variant");
-    for expected in [
-        "id",
-        "item_id",
-        "label",
-        "position",
-        "updated_at",
-        "deleted_at",
-    ] {
-        assert!(variant.contains(&expected.to_string()), "{variant:?}");
-    }
     assert_eq!(
         store.items(),
         vec![Item {
@@ -1239,28 +1343,15 @@ fn a_v6_session_keeps_its_notes_and_score() {
 }
 
 #[test]
-fn the_retired_session_columns_and_their_text_survive_a_save() {
+fn an_edited_session_note_is_saved_over_the_old_one() {
     let mut store = upgraded(
         migrations::latest(),
         "INSERT INTO session
            (id, started_at, completed_at, total_duration_secs, completion_status,
-            session_notes, session_intention, entries, updated_at, deleted_at,
-            reflection_improved, reflection_still_rough, reflection_next_target)
+            session_notes, entries, updated_at, deleted_at)
          VALUES ('s-old', '2026-05-01T10:00:00Z', '2026-05-01T10:30:00Z', 1800, 'completed',
-                 'old note', 'even RH at 96', '[]', '2026-05-01T10:30:00Z', NULL,
-                 'thumb-unders even', 'bars 12-14 rush', 'bars 12-14 at 80')",
+                 'old note', '[]', '2026-05-01T10:30:00Z', NULL)",
     );
-    let retired = [
-        ("session_intention", "even RH at 96"),
-        ("reflection_improved", "thumb-unders even"),
-        ("reflection_still_rough", "bars 12-14 rush"),
-        ("reflection_next_target", "bars 12-14 at 80"),
-    ];
-    let columns = store.columns("session");
-    for (column, _) in retired {
-        assert!(columns.contains(&column.to_string()), "{columns:?}");
-    }
-
     let mut reloaded = store.sessions().pop().expect("a session");
     reloaded.session_notes = Some("edited".into());
     store.save_session(&reloaded);
@@ -1269,13 +1360,6 @@ fn the_retired_session_columns_and_their_text_survive_a_save() {
         store.raw("SELECT session_notes FROM session WHERE id = 's-old'"),
         Some("edited".into())
     );
-    for (column, text) in retired {
-        assert_eq!(
-            store.raw(&format!("SELECT {column} FROM session WHERE id = 's-old'")),
-            Some(text.into()),
-            "{column}"
-        );
-    }
 }
 
 // ── More round trips (LibraryStoreTests.swift, LibraryStoreMigrationTests.swift) ──
@@ -1461,16 +1545,12 @@ fn links_and_a_tombstone_update_by_id_and_load_by_position() {
     store.save(&item);
     let reversed: Vec<ExerciseLink> = item.exercise_links.iter().rev().cloned().collect();
     assert_eq!(store.item("p1").exercise_links, reversed);
-    assert_eq!(
-        store.raw("SELECT linked_exercise_ids FROM item WHERE id = 'p1'"),
-        Some("[]".into())
-    );
 }
 
 // ── More values the core cannot read (#2005, #2097, #2106, #2234) ──
 
 #[test]
-fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
+fn unreadable_tags_survive_until_the_tags_change() {
     let mut store = upgraded(
         "v17_item_metre",
         "INSERT INTO item
@@ -1485,7 +1565,6 @@ fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
     loaded.title = "Renamed".into();
     store.save(&loaded);
     assert_eq!(raw(&store, "tags"), Some("not json".into()));
-    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
 
     loaded.tags = vec!["scales".into()];
     loaded.exercise_links = vec![ExerciseLink {
@@ -1498,7 +1577,6 @@ fn unreadable_tags_and_the_old_link_list_survive_until_the_tags_change() {
     }];
     store.save(&loaded);
     assert_eq!(raw(&store, "tags"), Some(r#"["scales"]"#.into()));
-    assert_eq!(raw(&store, "linked_exercise_ids"), Some("[1, 2]".into()));
 }
 
 #[test]
@@ -1578,10 +1656,10 @@ fn a_refused_session_is_skipped_and_a_replaced_status_is_named() {
     let mut store = upgraded(
         migrations::latest(),
         "INSERT INTO session (id, started_at, completed_at, total_duration_secs,
-           completion_status, session_notes, session_intention, entries, updated_at, deleted_at)
-         VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,NULL,'[]',
+           completion_status, session_notes, entries, updated_at, deleted_at)
+         VALUES ('bad','refused-2234','2026-09-01T10:10:00Z',600,'completed',NULL,'[]',
            '2026-09-01T10:10:00Z',NULL),
-           ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,NULL,
+           ('good','2026-09-01T10:00:00Z','2026-09-01T10:10:00Z',600,'replaced-2234',NULL,
            '[]','2026-09-01T10:10:00Z',NULL)",
     );
     let answer = store.handle(&PersistenceOperation::LoadSessions);
