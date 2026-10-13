@@ -75,16 +75,10 @@ class SessionRecoveryTest {
         app.startWith("Clair de Lune")
     }
 
-    /** The stepper's value is a plain text beside its buttons, so it is read from their parent. */
     private fun tempo(): String? =
-        app.control("reflection.tempo.increase")
+        app.control("reflection.tempo")
             .fetchSemanticsNode()
-            .parent
-            ?.children
-            ?.firstNotNullOfOrNull {
-                it.config
-                    .getOrElseNullable(SemanticsProperties.Text) { null }
-                    ?.joinToString()
-                    ?.takeIf { text -> text.endsWith(" bpm") }
-            }
+            .config
+            .getOrElseNullable(SemanticsProperties.Text) { null }
+            ?.joinToString()
 }
