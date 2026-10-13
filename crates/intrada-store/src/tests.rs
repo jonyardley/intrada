@@ -383,17 +383,7 @@ fn a_recorded_migration_is_not_run_again() {
 #[test]
 fn every_table_carries_the_sync_columns() {
     let store = Store::in_memory().expect("opens");
-    let tables: Vec<String> = store
-        .conn
-        .prepare(
-            "SELECT name FROM sqlite_master
-             WHERE type = 'table' AND name NOT GLOB 'sqlite_*' AND name != 'grdb_migrations'",
-        )
-        .expect("prepares")
-        .query_map([], |row| row.get(0))
-        .expect("queries")
-        .collect::<rusqlite::Result<_>>()
-        .expect("reads");
+    let tables = tables(&store.conn);
     assert!(tables.contains(&"item".to_string()), "{tables:?}");
     for table in tables {
         let columns: Vec<String> = store
