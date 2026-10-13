@@ -89,6 +89,7 @@ fun PracticeRoute(
             showsSuggestionRestore = viewModel?.showsSuggestionRestore == true,
             firstRun = viewModel?.firstRun,
             undoDelete = viewModel?.undoDelete,
+            alerts = storeAlerts(store),
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
         onOpen = onOpen,
@@ -143,6 +144,7 @@ class PracticeModel(
     val showsSuggestionRestore: Boolean = false,
     val firstRun: FirstRunView? = null,
     val undoDelete: String? = null,
+    val alerts: ScreenAlerts = ScreenAlerts(),
 )
 
 /** What history does with a saved session: delete it, and take the delete back. */
@@ -174,6 +176,7 @@ fun PracticeScreen(
         actions = { onProfile?.let { ProfileButton(model.icon, model.colour, it) } },
     ) {
         Column(Modifier.fillMaxSize()) {
+            AlertBanners(model.alerts)
             model.undoDelete?.let { message ->
                 GlobalBanner(
                     message,
