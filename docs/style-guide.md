@@ -12,7 +12,7 @@ Words on screen follow [`tone-of-voice.md`](tone-of-voice.md) instead. The
 shape of a pull request or issue body (its sections and length) is in the
 [shipping skill](../.claude/skills/intrada-shipping/SKILL.md); this guide is how
 the sentences inside it read. Comment density and kind are in
-[`CLAUDE.md`](../CLAUDE.md#code-style).
+[`code-and-tests.md`](../.claude/rules/code-and-tests.md).
 
 ## Who the reader is
 

@@ -2,8 +2,8 @@
 
 > How one unit of work runs in this repo, in the order it runs: claim,
 > isolate, route, plan, build, review, ship, measure. Each section says what to
-> do at that step, what holds it, and the number it was set from. The tier
-> system in [`CLAUDE.md`](../CLAUDE.md) is normative and not restated. Harness,
+> do at that step, what holds it, and the number it was set from. Step 4
+> defines the tiers. Harness,
 > process, isolation, routing, rung, context, speed, rework and spend are
 > defined in the glossary in [`reference.md`](reference.md). This file replaced
 > the OMP-era guides and `model-guide.md` on 2026-09-08; why OMP was retired is
@@ -29,7 +29,7 @@
 | 1. Claim | `just claim N`, and stop if a PR already exists | `scripts/claim-issue.sh`, `just pr-open` |
 | 2. Isolate | `just worktree-new <name>`, then `cd <worktree> && ` on every command | The worktree guard and its lease |
 | 3. Route | Opus 5.5 `medium` in the lead; Opus 5.5 `high` for the sensitive surfaces | `.claude/settings.json`, the agent pins, the spawn guard |
-| 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon (the next Tier 2 child of a named epic builds at once, unless on the sensitive surfaces or naming a choice Jon has not made) | CLAUDE.md Workflow; `reviewer` checks the diff against it |
+| 4. Plan | Tier 2 and 3: a plan comment on the issue, approved by Jon (the next Tier 2 child of a named epic builds at once, unless on the sensitive surfaces or naming a choice Jon has not made) | Step 4 below; `reviewer` checks the diff against it |
 | 5. Build | Settled slices to `task`, gates to `test-runner`, each file read once | The read guard, the bash guard, the context watch |
 | 6. Review | `reviewer` over the local diff, briefed with the worktree and the issue | `/ship` |
 | 7. Ship | `just pr-open` as a draft, CI watched to a conclusion, a human merges | Branch protection, the deny list, the git hooks |
@@ -69,8 +69,8 @@ to 14 September, each a fresh 80k to 200k context, all picking Tier 1 work
 | Spawning a subagent | Name the worktree by absolute path in the brief |
 
 Every session that edits works in its own worktree, whether or not another is
-running, and makes it itself from the main checkout Jon started it in
-(CLAUDE.md, Always step 3). Over 12 to 14 September the three rules that said
+running, and makes it itself from the main checkout Jon started it in.
+Over 12 to 14 September the three rules that said
 otherwise cost eleven corrections (#1837), and `guard-worktree.sh` denied 51
 writes in main, almost all a missing `cd` prefix, which the self-heal now adds
 for you (#1840).
@@ -272,7 +272,7 @@ column below is in that bill.
 
 | Input | Path | When it loads |
 |---|---|---|
-| Project rules | `CLAUDE.md` | Every session and every subagent, in full. Under 200 lines by rule |
+| Project rules | `CLAUDE.md` | Every session and every subagent, in full. About 450 words while the #2595 trial runs; the rules that moved out need reading by hand in a worktree |
 | Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
@@ -302,6 +302,23 @@ standalone globals: `test-driven-development`, `requesting-code-review`,
 | Holding a Tier 2 or Tier 3 issue | Write the plan comment on the issue before the first commit, on the sensitive surfaces' rung (Opus 5.5 `high`) if the work is on the list and on the lead's own rung if it is not; wait for Jon's approval, unless it is a Tier 2 issue that is the next child of an epic whose body names it, off the sensitive surfaces, naming no choice Jon has not made |
 | Holding a Tier 1 fix | No plan comment; build it |
 | Handing a task to a new session | `just handover [N]`, which starts the opener with the `/model` and `/effort` lines and names the issue; add the stream by hand when there is more than one |
+
+Match ceremony to scope; if unsure, go one tier lighter and drift up.
+
+- **Tier 1, just do it**: bug fixes, copy, style, renames, lint, one-file
+  refactors, docs.
+- **Tier 2, plan comment** (the default for feature work): a component or
+  screen on existing patterns, an endpoint on established conventions, a field
+  on a model. UI work does Claude Design first, and a new screen starts by
+  reading an existing one, which loads the UI rules.
+- **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux
+  core or non-additive bridge changes, auth or schema changes. The plan
+  comment, then one `specs/<feature>.md` of 100 to 200 lines riding as the
+  first commit of Phase A, never its own PR.
+
+Lead-only work on the sensitive surfaces goes up at least one tier and ships as
+two PRs; an additive bridge change keeps its tier and ships as one
+(`.claude/rules/sensitive-surfaces.md`).
 
 A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words,
 on the skeleton in the shipping skill's
@@ -536,8 +553,10 @@ subagent at 200k and says `/compact` at 400k (`CONTEXT_WARN` and
 thousands, amber from 200k and red from 400k.
 
 **Build and test control.** The rules on driving iOS through the `just`
-recipes, running `just check` before pushing, and the machine-global simulator
-are in `CLAUDE.md`. Beyond those: `just check` and `just ios-test` skip on an
+recipes and running `just check` before pushing are in `CLAUDE.md`. Local
+green means CI green bar MSRV and coverage, so the justfile and `ci.yml` change
+together. Beyond those: global simulator resets are denied, and a device outside the lock's flow
+is asked about before it is touched; `just check` and `just ios-test` skip on an
 already-green HEAD (delete `target/.check-stamp` or
 `ios/build/.ios-test-stamp` to force a run); `scripts/ios-sim-lock.sh`
 serialises the test recipes and the boot and launch in `just ios-run`
@@ -638,7 +657,9 @@ with no gate ended with a median of 544 words in the week to 2026-10-13, so
   inside compound commands.
 
 After the merge, the body's `Closes #N` closes the issue, the board's own
-automation moves it to Done and a workflow drops `in-flight`; `just worktree-rm`
+automation moves it to Done and a workflow drops `in-flight`; close by hand
+only when no PR closed it. Update `docs/roadmap.md` and `docs/where-we-are.md`
+if a phase changed, `CLAUDE.md` if architecture did, and `just worktree-rm`
 once merged. Seven sessions over four hours, every one Fable or Opus left open
 across a break, and 194 cold turns costing $233 in the week before, are why
 the unit ends with `/clear`; a launchd timer (`cold-nudge.sh`, machine-local,
@@ -703,10 +724,10 @@ who reads it and when.
    hooks. Enforced whether or not anyone read a rule, so the prose comes out in
    the same change that adds the gate. The comment density check, the dash
    check and the simulator lock are the models.
-2. **`CLAUDE.md`.** Invariants every session needs: architecture, the tier
-   system, the Always list. Paid on every request, so it stays under 200 lines.
-3. **Path-scoped rules.** Offline-first, the UI and tone rules, the per-screen
-   quality bar and the silent-failure hazards. Free until a covered file is
+2. **`CLAUDE.md`.** Invariants every session needs: architecture, gotchas,
+   commands. Paid on every request, so it stays near 450 words (#2595).
+3. **Path-scoped rules.** Code style and tests, offline-first, the UI and tone
+   rules, the per-screen quality bar and the silent-failure hazards. Free until a covered file is
    read, then in context for the rest of the session.
 4. **Skills, by name.** Workflows rather than surfaces: shipping and parallel
    streams. `/ship` is the pre-push funnel.

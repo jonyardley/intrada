@@ -505,7 +505,7 @@ reloading (`specs/save-acknowledged.md`, #974).
 ## Glossary
 
 Process words that recur in docs, issues and PR bodies. Feature names don't
-belong here: they follow the plain-language rule (CLAUDE.md → Conventions),
+belong here: they follow the plain-language rule (`docs/style-guide.md`),
 which names the musician-visible outcome and allows a codename in brackets
 once.
 
@@ -513,7 +513,7 @@ once.
   one is shipped and used before the next is built.
 - **stream** — one line of work in one worktree and session; *vertical* means
   core + iOS together.
-- **tier** — ceremony level per CLAUDE.md Workflow: 1 just do it, 2 plan
+- **tier**: ceremony level per `working-with-agents.md` step 4: 1 just do it, 2 plan
   comment, 3 spec first.
 - **fast tier / full tier**, the two iOS test gates: `just ios-test` (unit and
   snapshot) and `just ios-test-full` (adds XCUITests). CI runs the full tier on
@@ -560,7 +560,7 @@ dropped a tempo the user had earned. Inverting is the weaker mutation because
 a reversed sort fails any assertion about order whether or not the test
 actually constrains anything — deleting the line (or substituting the naive
 version a future reader would plausibly write) is what surfaces a test that
-passes for the wrong reason. The resulting rule is in CLAUDE.md under
+passes for the wrong reason. The resulting rule is in `.claude/rules/code-and-tests.md` under
 *Testing*.
 
 ## Why hand-picked test cases hid a real bug (#1256)
@@ -571,7 +571,7 @@ keys silently doubled the gate. Every one of those tests used a sentence
 written to match the scanner, so they agreed with the implementation by
 construction instead of constraining it. The fix is to write the test table
 as inputs a *user* would actually produce and assert the property the next
-stage needs. The resulting rule is in CLAUDE.md under *Testing*.
+stage needs. The resulting rule is in `.claude/rules/code-and-tests.md` under *Tests*.
 
 ## Why #1214 got two independent implementations (2026-08-07)
 
@@ -580,11 +580,11 @@ hours apart. The merged one was the weaker, and #1250 had to port back what
 was lost. The issue carried no assignee, label or comment, and nothing
 required looking at the one live claim signal, which is an open PR.
 `just status` now puts both signals on one screen. The resulting claim
-protocol is in CLAUDE.md under *Always*(1).
+protocol is in `working-with-agents.md` step 1.
 
 ## Worked tier examples
 
-The tier decision rule is in CLAUDE.md under *Workflow*. These are the calls
+The tier decision rule is in `working-with-agents.md` step 4. These are the calls
 that were genuinely arguable when it was written.
 
 |Task|Tier|Why|
@@ -629,7 +629,7 @@ When one turns up, mutation-test it (delete the line it names, see whether it
 fails) before hardening it. If nothing can distinguish the behaviour being
 present from absent, the honest fix is to delete the test, never to bulk it out
 with assertions about something else while keeping the name. The resulting rule
-is in CLAUDE.md under *Testing*.
+is in `.claude/rules/code-and-tests.md` under *Tests*.
 
 ## Why the crash-recovery blob is wire-pinned
 
@@ -671,7 +671,7 @@ Bypass a genuinely justified case locally with `SKIP_COMMENT_CHECK=1 git push`;
 in CI, add the `comments-justified` label to the PR instead. When invoking any
 code-review agent for a PR, include "comment-policy violations are Blockers,
 not Nits" so the review treats drift as a merge-blocker rather than a taste
-note. The policy itself is in CLAUDE.md under *Code Style*.
+note. The policy itself is in `.claude/rules/code-and-tests.md`.
 
 ## How a rule leaves CLAUDE.md (2026-09-08)
 

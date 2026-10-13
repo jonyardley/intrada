@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Attach issues to an epic as GitHub sub-issues (#1968).
 #
-# The convention it holds (CLAUDE.md, Workflow): the parent carries the epic
+# The convention it holds (docs/how-the-work-runs.md, Epics): the parent carries the epic
 # label, an epic never sits under another epic, and an issue has one parent.
 # Moving an issue that already has a different parent needs --move, so a
 # grouping pass never silently steals an audit finding from its audit.
