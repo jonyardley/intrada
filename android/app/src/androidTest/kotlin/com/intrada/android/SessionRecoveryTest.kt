@@ -16,8 +16,10 @@ import org.junit.runner.RunWith
 
 /**
  * A practice the app was closed on comes back on the next launch (#962), with the item-complete
- * sheet's answers (#2137). iPhone: SessionRecoveryUITests. Each test starts from an empty store and
- * no saved settings, so a session left by an earlier run can neither pass nor fail it.
+ * sheet's answers (#2137), each sent on its own. iPhone: SessionRecoveryUITests. The relaunch stays
+ * in one process, so it reads saves still in memory; KilledSessionRecoveryTest checks the disk
+ * (#2576). Each test starts from an empty store and no saved settings, so a session left by an
+ * earlier run can neither pass nor fail it.
  */
 @RunWith(AndroidJUnit4::class)
 class SessionRecoveryTest {
@@ -28,7 +30,7 @@ class SessionRecoveryTest {
 
     @Test
     fun aClosedSessionOffersResumeOnRelaunch() {
-        startClairDeLune()
+        app.startClairDeLune()
         app.control("player.skip")
 
         app.resumeAfterRelaunch()
@@ -40,7 +42,7 @@ class SessionRecoveryTest {
 
     @Test
     fun aClosedSheetComesBackWithItsAnswers() {
-        startClairDeLune()
+        app.startClairDeLune()
         app.tap("player.advance")
         app.tap("reflection.mark.7")
         app.await(markSeven)
@@ -49,13 +51,13 @@ class SessionRecoveryTest {
         // later one would keep an earlier one that never sent.
         app.resumeAfterRelaunch()
         app.await(markSeven)
-        val prefilled = checkNotNull(tempo()) { "the sheet shows a tempo" }
+        val prefilled = checkNotNull(app.reflectionTempo()) { "the sheet shows a tempo" }
         app.tap("reflection.tempo.increase")
-        val setTempo = checkNotNull(tempo()) { "the sheet still shows a tempo" }
+        val setTempo = checkNotNull(app.reflectionTempo()) { "the sheet still shows a tempo" }
         assertNotEquals("the step moved the tempo", prefilled, setTempo)
 
         app.resumeAfterRelaunch()
-        assertEquals("the tempo set by hand survived", setTempo, tempo())
+        assertEquals("the tempo set by hand survived", setTempo, app.reflectionTempo())
         app.await(markSeven)
 
         app.control("reflection.note").performTextInput("Pedal clearer in bar 12")
@@ -66,25 +68,25 @@ class SessionRecoveryTest {
         app.tap("reflection.skip")
         app.discardSummary()
     }
-
-    private val markSeven = hasTestTag("reflection.mark.7") and isSelected()
-
-    private fun startClairDeLune() {
-        app.launchWithOnePiece("Clair de Lune")
-        app.tap("practice.startHere.next")
-        app.startWith("Clair de Lune")
-    }
-
-    /** The stepper's value is a plain text beside its buttons, so it is read from their parent. */
-    private fun tempo(): String? =
-        app.control("reflection.tempo.increase")
-            .fetchSemanticsNode()
-            .parent
-            ?.children
-            ?.firstNotNullOfOrNull {
-                it.config
-                    .getOrElseNullable(SemanticsProperties.Text) { null }
-                    ?.joinToString()
-                    ?.takeIf { text -> text.endsWith(" bpm") }
-            }
 }
+
+internal val markSeven = hasTestTag("reflection.mark.7") and isSelected()
+
+internal fun App.startClairDeLune() {
+    launchWithOnePiece("Clair de Lune")
+    tap("practice.startHere.next")
+    startWith("Clair de Lune")
+}
+
+/** The stepper's value is a plain text beside its buttons, so it is read from their parent. */
+internal fun App.reflectionTempo(): String? =
+    control("reflection.tempo.increase")
+        .fetchSemanticsNode()
+        .parent
+        ?.children
+        ?.firstNotNullOfOrNull {
+            it.config
+                .getOrElseNullable(SemanticsProperties.Text) { null }
+                ?.joinToString()
+                ?.takeIf { text -> text.endsWith(" bpm") }
+        }
