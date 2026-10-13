@@ -45,7 +45,7 @@ struct SegmentedPills<Option: Hashable>: View {
         fullWidthTrack(.row)
       }
     case .wrappingTrack:
-      wrappingTrack
+      if typeSize.isAccessibilitySize { fullWidthTrack(.stacked) } else { wrappingTrack }
     }
   }
 
@@ -99,6 +99,7 @@ struct SegmentedPills<Option: Hashable>: View {
       }
     } label: {
       pillLabel(option, isSelected: isSelected, style: style)
+        .contentShape(Capsule())
         .background {
           if isSelected {
             Capsule()
@@ -123,6 +124,8 @@ struct SegmentedPills<Option: Hashable>: View {
     switch layout {
     case .inlineScrolling:
       text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
+    case .wrappingTrack where style == .stacked:
+      text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack:
       text.lineLimit(1).fixedSize().padding(.horizontal, IntradaSpacing.card)
         .frame(minHeight: 44)

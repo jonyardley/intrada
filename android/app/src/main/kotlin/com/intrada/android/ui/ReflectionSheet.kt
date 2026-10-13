@@ -28,8 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.Lifecycle
@@ -415,11 +413,7 @@ private fun PlayMarks(
                 },
                 canDecrease = bpm > row.band.min.toInt(),
                 canIncrease = bpm < row.band.max.toInt(),
-                modifier =
-                    Modifier.semantics {
-                        testTag = "reflection.tempo"
-                        stateDescription = words.spoken
-                    },
+                valueSpoken = words.spoken,
             )
         }
     }

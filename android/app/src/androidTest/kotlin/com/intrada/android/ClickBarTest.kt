@@ -55,8 +55,10 @@ class ClickBarTest {
     }
 
     private fun spokenIn(unit: String) =
-        SemanticsMatcher("spoken in $unit") {
-            it.config.getOrNull(SemanticsProperties.StateDescription)?.endsWith(unit) == true
+        SemanticsMatcher("spoken in $unit") { node ->
+            node.config.getOrNull(SemanticsProperties.ContentDescription)?.any {
+                it.endsWith(unit)
+            } == true
         }
 
     private fun bar(spoken: String) =
