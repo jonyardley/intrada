@@ -135,7 +135,7 @@ The nine coach-era tables are `block_record`, `wander_record`, `user_drill`, `jo
 
 **The shell stays a dumb pipe.** Swift reports two facts the core cannot see: the app went to the background, and it came back. The core parses plain patterns itself (tempos, bars, targets). The on-device reader only handles fuzzy ones (what got in the way, how it felt), and Swift runs it when the core asks. Without on-device AI (older iPhones, much of Android) the full experience is the core's plain patterns plus the folded Add detail row. The core decides what is a gap, what is a suggestion, what counts as met, and when to offer anything.
 
-**Sensitive surfaces.** Schema, bridge and the practice in progress blob. Each phase that touches them ships the core PR first and the screens in the same working session (#1374). If the upgrade fails part way, the app keeps the old data untouched and says so. Android runs on the same core, so each core phase regenerates both sets of bindings, and each migration needs its androidx.sqlite counterpart once that shell holds data.
+**Sensitive surfaces.** Schema, bridge and the practice in progress blob. Each phase that touches them ships as one PR across core, iOS and Android, the core commits first and read by the reviewer agent on their own before the screens commits (#1374). If the upgrade fails part way, the app keeps the old data untouched and says so. Android runs on the same core, so each core phase regenerates both sets of bindings, and each migration needs its androidx.sqlite counterpart once that shell holds data.
 
 **Offline first.** The section, variation and exercise link tables each carry a per-row `updated_at` and `deleted_at`. Keys have no table, so they need neither.
 
@@ -225,7 +225,7 @@ Rules for every help idea:
 2. #2246 core, carrying #2106 and #2107: the big migration, the core moving old plays, the bridge, blob 5 to 6.
 3. #2226, then #2247 screens in the same working session as step 2; #2246's screens half adds the undo control on the player.
 4. #2248 core, then its screen.
-5. #2190, #2170 and #2089 fit around these. #2170 is a bridge shape and goes core first; #2089 is core only.
+5. #2190, #2170 and #2089 fit around these. #2170 is a bridge shape, so its core commits come first in its one PR; #2089 is core only.
 
 ## 7. The release is right if
 

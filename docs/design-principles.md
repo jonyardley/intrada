@@ -819,7 +819,7 @@ musician goes looking, tracked as #1538).
 
 **Status:** DECIDED 2026-09-07 (jonyardley/intrada#1390; spec
 [`../specs/one-pass-create.md`](../specs/one-pass-create.md)). The layout is
-settled at the Claude Design pass before the screens PR; what is decided here
+settled at the Claude Design pass before the screens commits; what is decided here
 is the shape that pass works inside.
 
 Adding a piece is admin, so its friction is the bad kind (§A). Today the chart
