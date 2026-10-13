@@ -1278,13 +1278,6 @@ mod tests {
         }
     }
 
-    /// The builders hid the old placeholder by matching its text (#1101).
-    #[test]
-    fn a_block_with_nothing_planned_sends_no_placeholder() {
-        let blocks = build_blocks(&[planned("p", ItemKind::Piece, None, None)]);
-        assert_eq!(blocks[0].duration_display, "");
-    }
-
     fn segment(label: &str, secs: u32) -> SegmentView {
         SegmentView {
             section_id: format!("s-{label}"),

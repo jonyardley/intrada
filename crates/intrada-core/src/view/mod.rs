@@ -71,19 +71,9 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 .iter()
                 .map(|e| {
                     let mut view = entry_to_view(e, &labels);
-                    // The picker's own list: a variation deleted or taken off
-                    // the item since it was planned cannot be unticked, so it
-                    // is not shown either.
-                    let live = cached
-                        .library
-                        .iter()
-                        .find(|i| i.id == e.item_id)
-                        .map_or(&[][..], |i| i.variations.as_slice());
                     view.plan_tags = plan_tags(
                         &view.record.segments,
-                        e.planned_variation_ids.iter().filter_map(|id| {
-                            live.iter().find(|v| &v.id == id).map(|v| v.label.clone())
-                        }),
+                        live_variation_labels(&cached.library, e).into_iter(),
                         view.record.focus.as_ref(),
                     );
                     view
@@ -369,6 +359,21 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             read_nothing: false,
         },
     }
+}
+
+fn live_variation_labels(
+    library: &[crate::model::LibraryItemView],
+    entry: &crate::domain::session::SetlistEntry,
+) -> Vec<String> {
+    let live = library
+        .iter()
+        .find(|i| i.id == entry.item_id)
+        .map_or(&[][..], |i| i.variations.as_slice());
+    entry
+        .planned_variation_ids
+        .iter()
+        .filter_map(|id| live.iter().find(|v| &v.id == id).map(|v| v.label.clone()))
+        .collect()
 }
 
 fn builder_summary(total: Option<&str>, blocks: &[SetlistBlockView], items: usize) -> String {

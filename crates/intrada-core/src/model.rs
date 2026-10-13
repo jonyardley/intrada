@@ -364,14 +364,13 @@ pub struct LimitsView {
 }
 
 /// Seconds to the stepper's whole minutes: the lower bound rounds up and the
-/// upper one down, so every minute offered is one the core accepts.
+/// upper one down, so every minute offered is one the core accepts. The range
+/// never inverts, since a stepper over `2...1` traps (#2467).
 fn whole_minutes(min_secs: u32, max_secs: u32, default_secs: u32) -> (u16, u16, u16) {
     let mins = |m: u32| u16::try_from(m).unwrap_or(u16::MAX);
-    (
-        mins(min_secs.div_ceil(60)),
-        mins(max_secs / 60),
-        mins(default_secs / 60),
-    )
+    let min = mins(min_secs.div_ceil(60));
+    let max = mins(max_secs / 60).max(min);
+    (min, max, mins(default_secs / 60).clamp(min, max))
 }
 
 impl Default for LimitsView {
@@ -1575,7 +1574,9 @@ mod tests {
         let cases = [
             ((60, 7200, 600), (1, 120, 10)),
             ((90, 7230, 630), (2, 120, 10)),
-            ((0, 0, 0), (0, 0, 0)),
+            ((90, 110, 100), (2, 2, 2)),
+            ((90, 600, 100), (2, 10, 2)),
+            ((60, 600, 9000), (1, 10, 10)),
         ];
         for ((min, max, default), expected) in cases {
             assert_eq!(
