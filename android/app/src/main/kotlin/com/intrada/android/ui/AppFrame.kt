@@ -84,7 +84,7 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
     Box(modifier.fillMaxSize()) {
         // Composed under a live session so the builder route sees Building end and closes (#2459).
         Box(if (live || firstRun) Modifier.clearAndSetSemantics {} else Modifier) {
-            Tabs(store, navController, TabsState(onTab, tab, viewModel?.undoDelete))
+            Tabs(store, navController, onTab, tab, viewModel?.undoDelete)
         }
         PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
         if (firstRun) {
@@ -101,12 +101,17 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
 }
 
 @Composable
-private fun Tabs(store: Store, navController: NavHostController, state: TabsState) {
-    val (onTab, tab, undoDelete) = state
+private fun Tabs(
+    store: Store,
+    navController: NavHostController,
+    onTab: Boolean,
+    tab: AppTab?,
+    undoDelete: String?,
+) {
     val top = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
     Column(Modifier.fillMaxSize()) {
         // App-wide like the iPhone's banner stack, so an Undo follows you across tabs (#2639).
-        undoDelete?.let { UndoDeleteBanner(store, it, top) }
+        undoDelete?.let { UndoDeleteBanner(store, it) }
         NavHost(
             navController,
             startDestination = AppTab.LIBRARY.route,
@@ -155,14 +160,13 @@ private fun Tabs(store: Store, navController: NavHostController, state: TabsStat
     }
 }
 
-private data class TabsState(val onTab: Boolean, val tab: AppTab?, val undoDelete: String?)
-
 @Composable
-private fun UndoDeleteBanner(store: Store, message: String, top: WindowInsets) {
+private fun UndoDeleteBanner(store: Store, message: String) {
+    val edges = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     GlobalBanner(
         message,
         tag = "banner.undoDelete",
-        modifier = Modifier.background(IntradaColor.paperTop).windowInsetsPadding(top),
+        modifier = Modifier.background(IntradaColor.paperTop).windowInsetsPadding(edges),
         tone = BannerTone.NOTICE,
         action =
             BannerAction("Undo") {

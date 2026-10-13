@@ -95,12 +95,9 @@ fun PracticeRoute(
         modifier = modifier,
         onProfile = onProfile,
         onAdd = onAdd,
-        history =
-            HistoryActions(
-                onDelete = { id ->
-                    store.send(Event.Session(SessionEvent.DeleteSaved(id, SessionClock.now())))
-                }
-            ),
+        onDelete = { id ->
+            store.send(Event.Session(SessionEvent.DeleteSaved(id, SessionClock.now())))
+        },
         upNext =
             UpNextActions(
                 onStart = {
@@ -143,9 +140,6 @@ class PracticeModel(
     val alerts: ScreenAlerts = ScreenAlerts(),
 )
 
-/** What history does with a saved session; its Undo sits in the app frame (#2639). */
-class HistoryActions(val onDelete: (String) -> Unit = {})
-
 @Composable
 fun PracticeScreen(
     model: PracticeModel,
@@ -155,7 +149,7 @@ fun PracticeScreen(
     onProfile: (() -> Unit)? = null,
     onAdd: () -> Unit = {},
     upNext: UpNextActions = UpNextActions(),
-    history: HistoryActions = HistoryActions(),
+    onDelete: (String) -> Unit = {},
     suggestionDismissed: Boolean = false,
     top: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -180,7 +174,7 @@ fun PracticeScreen(
                 model.firstRun
                     ?.takeIf { it.showsStartHere }
                     ?.let { StartHereCard(it, IntradaColor.marker(model.colour), onAdd, onStart) }
-                History(model, onOpen, history.onDelete)
+                History(model, onOpen, onDelete)
             }
         }
     }

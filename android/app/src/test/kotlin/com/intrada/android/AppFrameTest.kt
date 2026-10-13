@@ -169,6 +169,7 @@ class AppFrameTest {
         compose.runOnIdle { undo.action() }
         store.settle()
         compose.onNodeWithTag("banner.undoDelete").assertDoesNotExist()
+        assertTrue(store.sessionHistory.value.any { it.id == "sample-session-3d" })
     }
 
     private fun pressBack() {

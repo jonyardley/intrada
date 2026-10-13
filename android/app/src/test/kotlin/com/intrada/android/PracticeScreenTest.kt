@@ -13,7 +13,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import com.intrada.android.ui.HistoryActions
 import com.intrada.android.ui.PracticeModel
 import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.SessionDetailScreen
@@ -119,7 +118,7 @@ class PracticeScreenTest {
                 PracticeFixtures.filled,
                 onStart = {},
                 onOpen = {},
-                history = HistoryActions(onDelete = { deleted += it }),
+                onDelete = { deleted += it },
             )
         }
 
@@ -139,7 +138,7 @@ class PracticeScreenTest {
                 PracticeFixtures.filled,
                 onStart = {},
                 onOpen = {},
-                history = HistoryActions(onDelete = { deleted += it }),
+                onDelete = { deleted += it },
             )
         }
 
