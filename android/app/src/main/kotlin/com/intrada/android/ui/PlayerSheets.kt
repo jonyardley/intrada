@@ -53,7 +53,10 @@ internal fun PlayerSheet(
         val view = LocalView.current
         SideEffect {
             (view.parent as? DialogWindowProvider)?.window?.let {
-                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = true
+                WindowCompat.getInsetsController(it, view).apply {
+                    isAppearanceLightStatusBars = true
+                    isAppearanceLightNavigationBars = true
+                }
             }
         }
         SheetPage(title, onClose, closeTag, content = content)

@@ -55,11 +55,14 @@ internal fun ClickSheet(click: ClickController, limits: LimitsView, onClose: () 
         properties =
             DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        // The page is always paper, so the status bar's icons stay dark over it.
+        // The page is always paper, so the bars keep dark icons over it.
         val view = LocalView.current
         SideEffect {
             (view.parent as? DialogWindowProvider)?.window?.let {
-                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = true
+                WindowCompat.getInsetsController(it, view).apply {
+                    isAppearanceLightStatusBars = true
+                    isAppearanceLightNavigationBars = true
+                }
             }
         }
         ClickSheetPage(click, limits, onClose)
