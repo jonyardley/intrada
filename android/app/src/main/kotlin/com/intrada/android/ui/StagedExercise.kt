@@ -32,18 +32,19 @@ sealed interface StagedExercise {
                 }
             }
 
-        override val entry: ScaffoldEntry
+        val create: CreateItem
             get() =
-                ScaffoldEntry.New(
-                    CreateItem(
-                        title = title.trim(),
-                        kind = ItemKind.EXERCISE,
-                        key = key,
-                        tempo = TempoInput(null, bpm.trim()),
-                        tags = emptyList(),
-                        variationLabels = emptyList(),
-                    )
+                CreateItem(
+                    title = title.trim(),
+                    kind = ItemKind.EXERCISE,
+                    key = key,
+                    tempo = TempoInput(null, bpm.trim()),
+                    tags = emptyList(),
+                    variationLabels = emptyList(),
                 )
+
+        override val entry: ScaffoldEntry
+            get() = ScaffoldEntry.New(create)
     }
 
     class Chosen(override val id: String, override val title: String, override val meta: String?) :

@@ -37,6 +37,7 @@ import com.intrada.shared.ItemEvent
 import com.intrada.shared.ItemKind
 import com.intrada.shared.LibraryItemView
 import com.intrada.shared.SectionView
+import com.intrada.shared.VariationOptionView
 
 class PieceNavigation(
     val onEdit: () -> Unit,
@@ -51,12 +52,15 @@ class PieceScreenState(reordering: List<SectionView>? = null, editingLinks: Bool
     var reordering by mutableStateOf(reordering)
     var editingLinks by mutableStateOf(editingLinks)
     var confirmingDelete by mutableStateOf(false)
+    var choosingKeys by mutableStateOf(false)
+    var choosingVariations by mutableStateOf(false)
 }
 
 class PieceActions(
     val navigation: PieceNavigation,
     val send: (Event) -> Boolean,
     val onDismissError: () -> Unit,
+    val sendFromSheet: (Event) -> String?,
 )
 
 @Composable
@@ -96,10 +100,13 @@ fun PieceRoute(
             closingNavigation,
             send = { store.sendAccepted(it) },
             onDismissError = { store.send(Event.ClearError) },
+            sendFromSheet = { store.sendFromForm(it) },
         ),
         modifier,
         error = viewModel?.error,
         halted = halted,
+        variationLibrary = viewModel?.variations.orEmpty(),
+        topMark = viewModel?.limits?.scoreMax?.toInt() ?: 0,
     )
 }
 
@@ -124,6 +131,8 @@ fun PieceScreen(
     modifier: Modifier = Modifier,
     error: String? = null,
     halted: Boolean = false,
+    variationLibrary: List<VariationOptionView> = emptyList(),
+    topMark: Int = 0,
 ) {
     ScreenScaffold(
         item.title,
@@ -147,6 +156,7 @@ fun PieceScreen(
                 BadgeRow(item)
                 item.notes?.takeIf { it.isNotEmpty() }?.let { NotesCard(it) }
                 SectionsCard(item, state, actions)
+                KeysAndVariations(item, state, topMark)
                 DetailRows(item)
                 PhotoCard(item.id, item.photoId, actions.send)
                 RelatedExercisesCard(item, state, actions)
@@ -157,6 +167,14 @@ fun PieceScreen(
                     Modifier.padding(top = IntradaSpacing.controlGap),
                 )
             }
+        }
+    }
+    if (state.choosingKeys) {
+        KeysSheet(item, actions.sendFromSheet) { state.choosingKeys = false }
+    }
+    if (state.choosingVariations) {
+        VariationsSheet(item, variationLibrary, actions.sendFromSheet) {
+            state.choosingVariations = false
         }
     }
     if (state.confirmingDelete) {
