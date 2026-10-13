@@ -92,7 +92,7 @@ internal fun StepperRow(
                 .then(
                     if (valueSpoken == null) Modifier
                     else
-                        Modifier.clearAndSetSemantics {
+                        Modifier.semantics {
                             contentDescription = valueSpoken
                             testTag = tag
                         }
