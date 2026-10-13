@@ -13,10 +13,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import com.intrada.android.ui.HistoryActions
 import com.intrada.android.ui.PracticeModel
 import com.intrada.android.ui.PracticeScreen
-import com.intrada.android.ui.ScreenAlerts
 import com.intrada.android.ui.SessionDetailScreen
 import com.intrada.shared.Event
 import com.intrada.shared.SessionEvent
@@ -120,7 +118,7 @@ class PracticeScreenTest {
                 PracticeFixtures.filled,
                 onStart = {},
                 onOpen = {},
-                history = HistoryActions(onDelete = { deleted += it }),
+                onDelete = { deleted += it },
             )
         }
 
@@ -140,7 +138,7 @@ class PracticeScreenTest {
                 PracticeFixtures.filled,
                 onStart = {},
                 onOpen = {},
-                history = HistoryActions(onDelete = { deleted += it }),
+                onDelete = { deleted += it },
             )
         }
 
@@ -165,26 +163,6 @@ class PracticeScreenTest {
         compose.onNodeWithTag("practice.day.2026-10-06").performClick()
 
         compose.onNodeWithContentDescription("Delete session").assertDoesNotExist()
-    }
-
-    @Test
-    fun aFailedDeleteIsSaidAboveTheUndo() {
-        val model =
-            PracticeModel(
-                PracticeFixtures.filled.weeks,
-                PracticeFixtures.filled.sessions,
-                PracticeFixtures.filled.lastPractised,
-                undoDelete = "Session deleted",
-                alerts = ScreenAlerts("Couldn't delete that session.", halted = true),
-            )
-        compose.setContent { PracticeScreen(model, onStart = {}, onOpen = {}) }
-
-        val tops =
-            listOf("banner.halted", "banner.error", "banner.undoDelete").map {
-                compose.onNodeWithTag(it).assertExists().fetchSemanticsNode().boundsInRoot.top
-            }
-        assertEquals(tops.sorted(), tops)
-        assertEquals(3, tops.distinct().size)
     }
 
     @Test

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -58,7 +59,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.intrada.android.core.SentryReporter
 import com.intrada.android.core.Store
+import com.intrada.shared.Event
 import com.intrada.shared.ItemKind
+import com.intrada.shared.SessionEvent
 
 @Composable
 fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController? = null) {
@@ -81,7 +84,7 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
     Box(modifier.fillMaxSize()) {
         // Composed under a live session so the builder route sees Building end and closes (#2459).
         Box(if (live || firstRun) Modifier.clearAndSetSemantics {} else Modifier) {
-            Tabs(store, navController, onTab, tab)
+            Tabs(store, navController, onTab, tab, viewModel?.undoDelete)
         }
         PlayerHost(store, Modifier.pointerInput(Unit) {}, click)
         if (firstRun) {
@@ -98,13 +101,23 @@ fun AppFrame(store: Store, modifier: Modifier = Modifier, click: ClickController
 }
 
 @Composable
-private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean, tab: AppTab?) {
+private fun Tabs(
+    store: Store,
+    navController: NavHostController,
+    onTab: Boolean,
+    tab: AppTab?,
+    undoDelete: String?,
+) {
+    val top = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
     Column(Modifier.fillMaxSize()) {
+        // App-wide like the iPhone's banner stack, so an Undo follows you across tabs (#2639).
+        undoDelete?.let { UndoDeleteBanner(store, it) }
         NavHost(
             navController,
             startDestination = AppTab.LIBRARY.route,
             modifier =
                 Modifier.weight(1f)
+                    .then(if (undoDelete != null) Modifier.consumeWindowInsets(top) else Modifier)
                     .then(
                         if (onTab) Modifier.consumeWindowInsets(WindowInsets.navigationBars)
                         else Modifier
@@ -145,6 +158,22 @@ private fun Tabs(store: Store, navController: NavHostController, onTab: Boolean,
         }
         if (onTab) TabBar(tab ?: AppTab.LIBRARY, onSelect = { navController.select(it) })
     }
+}
+
+@Composable
+private fun UndoDeleteBanner(store: Store, message: String) {
+    val edges = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    GlobalBanner(
+        message,
+        tag = "banner.undoDelete",
+        modifier = Modifier.background(IntradaColor.paperTop).windowInsetsPadding(edges),
+        tone = BannerTone.NOTICE,
+        action =
+            BannerAction("Undo") {
+                store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now())))
+            },
+        onDismiss = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
+    )
 }
 
 internal const val ADD_ROUTE = "library/add"
