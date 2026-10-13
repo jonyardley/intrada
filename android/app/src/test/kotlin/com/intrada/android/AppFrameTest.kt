@@ -1,6 +1,7 @@
 package com.intrada.android
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
@@ -134,6 +135,40 @@ class AppFrameTest {
         )
         store.send(Event.Session(SessionEvent.DiscardSession))
         compose.onNodeWithTag(AppTab.PRACTICE.tag).assertIsSelected()
+    }
+
+    @Test
+    fun theUndoOfADeleteStaysUpOnEveryTab() = runTest {
+        val store =
+            Store(
+                LiveBridge(),
+                InMemoryItemStore(),
+                this,
+                StandardTestDispatcher(testScheduler),
+                log = {},
+            )
+        store.send(Event.LoadSampleData)
+        store.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
+        store.settle()
+        compose.setContent { AppFrame(store) }
+        compose.onNodeWithTag(AppTab.PRACTICE.tag).performClick()
+        store.send(
+            Event.Session(SessionEvent.DeleteSaved("sample-session-3d", PlayerFixtures.STARTED))
+        )
+        store.settle()
+
+        compose.onNodeWithTag(AppTab.LIBRARY.tag).performClick()
+
+        val banner = compose.onNodeWithTag("banner.undoDelete").assertIsDisplayed()
+        val title = compose.onNodeWithText("Library").fetchSemanticsNode().boundsInRoot
+        assertTrue(banner.fetchSemanticsNode().boundsInRoot.bottom <= title.top)
+        val undo =
+            banner.fetchSemanticsNode().config[SemanticsActions.CustomActions].single {
+                it.label == "Undo"
+            }
+        compose.runOnIdle { undo.action() }
+        store.settle()
+        compose.onNodeWithTag("banner.undoDelete").assertDoesNotExist()
     }
 
     private fun pressBack() {

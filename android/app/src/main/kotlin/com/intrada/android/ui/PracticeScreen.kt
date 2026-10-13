@@ -88,7 +88,6 @@ fun PracticeRoute(
             viewModel?.showsPriorities == true,
             showsSuggestionRestore = viewModel?.showsSuggestionRestore == true,
             firstRun = viewModel?.firstRun,
-            undoDelete = viewModel?.undoDelete,
             alerts = storeAlerts(store),
         ),
         onStart = { if (store.sendAccepted(Event.Session(SessionEvent.StartBuilding))) onBuild() },
@@ -100,9 +99,7 @@ fun PracticeRoute(
             HistoryActions(
                 onDelete = { id ->
                     store.send(Event.Session(SessionEvent.DeleteSaved(id, SessionClock.now())))
-                },
-                onUndo = { store.send(Event.Session(SessionEvent.UndoDelete(SessionClock.now()))) },
-                onDismissUndo = { store.send(Event.Session(SessionEvent.DismissUndoDelete)) },
+                }
             ),
         upNext =
             UpNextActions(
@@ -143,16 +140,11 @@ class PracticeModel(
     val showsPriorities: Boolean = false,
     val showsSuggestionRestore: Boolean = false,
     val firstRun: FirstRunView? = null,
-    val undoDelete: String? = null,
     val alerts: ScreenAlerts = ScreenAlerts(),
 )
 
-/** What history does with a saved session: delete it, and take the delete back. */
-class HistoryActions(
-    val onDelete: (String) -> Unit = {},
-    val onUndo: () -> Unit = {},
-    val onDismissUndo: () -> Unit = {},
-)
+/** What history does with a saved session; its Undo sits in the app frame (#2639). */
+class HistoryActions(val onDelete: (String) -> Unit = {})
 
 @Composable
 fun PracticeScreen(
@@ -177,15 +169,6 @@ fun PracticeScreen(
     ) {
         Column(Modifier.fillMaxSize()) {
             AlertBanners(model.alerts)
-            model.undoDelete?.let { message ->
-                GlobalBanner(
-                    message,
-                    tag = "banner.undoDelete",
-                    tone = BannerTone.NOTICE,
-                    action = BannerAction("Undo", history.onUndo),
-                    onDismiss = history.onDismissUndo,
-                )
-            }
             Column(
                 Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
