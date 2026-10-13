@@ -87,7 +87,7 @@ class SyncRoundTripTest {
         )
     }
 
-    // Three times side by side swap silently on a field-order mismatch (#846, #2581).
+    // Two times side by side swap silently on a field-order mismatch (#846, #2581).
     @Test
     fun aDeletedSessionUploadsWithItsDeleteAsItsChange() {
         val bridge = LiveBridge()

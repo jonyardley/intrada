@@ -12,7 +12,7 @@
 A saved session cannot change. The store writes `updated_at` as the session's
 `completed_at`, a save clears `deleted_at`, and a sync record for a session is
 always live with `completed_at` as its change time. That holds only while
-nothing edits or removes a session, and testers will want to remove one left
+nothing edits or removes a session, and the data model review (#2577) expects testers to want to remove one left
 running overnight. Once sync ships, a delete on the iPhone has to reach the
 iPad and stay there.
 
@@ -32,7 +32,7 @@ pub struct StoredPracticeSession {
 
 Keeping them out of `PracticeSession` leaves the sync body, the session's
 JSON, exactly as it is: no sync schema bump, no optional field with a meaning
-for its absence, and none of the 52 places that build a session change. The
+for its absence, and none of the places that build a session change. The
 crash-recovery blob does not hold a `PracticeSession`, so it is untouched.
 
 ## The store
@@ -67,7 +67,7 @@ deleted session's record and miss its delete.
 
 ## The core
 
-Three events, appended so the bridge change stays additive for the shells:
+Three events, each appended after the last variant of its enum:
 
 - `SessionEvent::DeleteSaved { session_id, now }` takes the session off the
   list and rebuilds the practice summaries at once, keeps it for undo, writes
@@ -100,6 +100,9 @@ Only the last delete can be undone, which is all the screen's undo needs.
    the core commits alone.
 2. The screens on iPhone and Android at parity, with an undo, on the layout
    Jon picks from the mock-up. Same branch and PR.
+
+A save always uploads a live record stamped `completed_at`, so a re-save of a
+deleted id would win elsewhere; nothing re-saves one today.
 
 ## Out of scope
 

@@ -1940,7 +1940,7 @@ fn a_deleted_session_leaves_the_list_and_keeps_its_tombstone() {
     assert_eq!(ids, vec!["kept".to_string()]);
     let gone = stored_session(&mut store, "gone");
     assert_eq!(gone.deleted_at, Some(at("2026-02-04T00:00:00Z")));
-    assert_eq!(gone.updated_at, at("2026-02-03T00:00:00Z"));
+    assert_eq!(gone.updated_at, at("2026-02-04T00:00:00Z"));
 }
 
 #[test]

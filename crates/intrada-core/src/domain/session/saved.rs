@@ -17,7 +17,7 @@ pub(super) fn delete(
     };
     let session = model.sessions.remove(at);
     model.practice_summaries = build_practice_summaries(&model.sessions).into();
-    model.deleted_session = Some(session.clone());
+    model.deleted_session = Some((session.clone(), now));
     model.clear_error();
     Command::all([
         crate::persistence::delete_session(model, session, now),
@@ -27,17 +27,19 @@ pub(super) fn delete(
 
 /// A reload after a refused delete may have put it back already.
 pub(super) fn undo_delete(model: &mut Model, now: DateTime<Utc>) -> Command<Effect, Event> {
-    let Some(session) = model.deleted_session.take() else {
+    let Some((session, deleted_at)) = model.deleted_session.take() else {
         return Command::done();
     };
     if model.sessions.iter().any(|s| s.id == session.id) {
         return Command::done();
     }
+    // A clock stepped back must not let the delete outrank its undo.
+    let restored_at = now.max(deleted_at + chrono::Duration::milliseconds(1));
     model.sessions.push(session.clone());
     model.practice_summaries = build_practice_summaries(&model.sessions).into();
     model.clear_error();
     Command::all([
-        crate::persistence::restore_session(model, session, now),
+        crate::persistence::restore_session(model, session, restored_at),
         crux_core::render::render(),
     ])
 }
@@ -185,7 +187,6 @@ mod tests {
         let mut back = ids(&model);
         back.sort();
         assert_eq!(back, vec!["gone".to_string(), "kept".to_string()]);
-        assert!(model.practice_summaries.contains_key("item-1"));
         assert_eq!(
             store_request(&mut cmd).operation,
             PersistenceOperation::RestoreSession {
@@ -193,6 +194,71 @@ mod tests {
                 restored_at: at(20),
             }
         );
+    }
+
+    #[test]
+    fn undo_puts_the_session_back_in_the_practice_summaries() {
+        let mut model = practised(&["gone"]);
+        let _ = delete(&mut model, "gone", at(10));
+        assert!(model.practice_summaries.is_empty());
+        let _ = undo(&mut model, at(20));
+        assert!(model.practice_summaries.contains_key("item-1"));
+    }
+
+    #[test]
+    fn an_undo_on_a_clock_behind_the_delete_is_still_the_later_change() {
+        let mut model = practised(&["gone"]);
+        let _ = delete(&mut model, "gone", at(10));
+        let mut cmd = undo(&mut model, at(5));
+        let PersistenceOperation::RestoreSession { restored_at, .. } =
+            store_request(&mut cmd).operation
+        else {
+            panic!("a restore");
+        };
+        assert!(restored_at > at(10));
+    }
+
+    #[test]
+    fn a_load_out_when_a_delete_is_sent_cannot_bring_it_back() {
+        let mut model = practised(&["gone"]);
+        let mut load = crate::persistence::load_sessions(&mut model);
+        let _ = delete(&mut model, "gone", at(10));
+        store_request(&mut load)
+            .resolve(PersistenceOutput::Sessions(vec![PracticeSession::fixture(
+                "gone",
+            )]))
+            .expect("resolves once");
+        let loaded = load.events().next().expect("the load");
+        let _ = Intrada.update(loaded, &mut model);
+        assert!(ids(&model).is_empty());
+    }
+
+    #[test]
+    fn a_merge_whose_stored_copy_predates_a_delete_reads_again() {
+        use crate::sync::{SyncEvent, Synced};
+        let mut model = practised(&["gone"]);
+        let arrived = Synced::Session {
+            session: Box::new(PracticeSession::fixture("gone")),
+            updated_at: at(1),
+            deleted_at: None,
+        }
+        .record()
+        .expect("encodes");
+        let mut cmd = Intrada.update(
+            Event::Sync(SyncEvent::RecordsArrived(vec![arrived])),
+            &mut model,
+        );
+        let _ = delete(&mut model, "gone", at(10));
+        store_request(&mut cmd)
+            .resolve(PersistenceOutput::Records(Default::default()))
+            .expect("resolves once");
+        let stored = cmd.events().next().expect("the stored copies");
+
+        let mut cmd = Intrada.update(stored, &mut model);
+        assert!(matches!(
+            store_request(&mut cmd).operation,
+            PersistenceOperation::LoadRecords(_)
+        ));
     }
 
     #[test]

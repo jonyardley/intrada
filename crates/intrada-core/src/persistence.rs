@@ -317,8 +317,8 @@ pub fn save_session(model: &mut Model, session: PracticeSession) -> Command<Effe
     )
 }
 
-/// The record's change time is the delete: the model has no stored
-/// `updated_at`, and a delete stamped now is never earlier than it.
+/// The delete is the change, in the store and the record alike, so the rule
+/// is plain last write wins whatever the clocks say.
 pub fn delete_session(
     model: &mut Model,
     session: PracticeSession,
@@ -329,8 +329,8 @@ pub fn delete_session(
     let upload = sync::upload_for(
         model,
         &[Synced::Session {
-            updated_at: session.completed_at,
             session: Box::new(session),
+            updated_at: deleted_at,
             deleted_at: Some(deleted_at),
         }],
     );

@@ -37,7 +37,7 @@ pub struct Model {
     /// back to the summary so Save can be tapped again (#974).
     pub saving_session: Option<PracticeSession>,
     /// The saved session the last delete took out, for its undo (#2581).
-    pub deleted_session: Option<PracticeSession>,
+    pub deleted_session: Option<(PracticeSession, chrono::DateTime<chrono::Utc>)>,
     pub active_query: Option<ListQuery>,
     pub active_sort: LibrarySort,
     pub last_error: Option<String>,

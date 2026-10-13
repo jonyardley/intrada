@@ -94,9 +94,8 @@ fn stored(row: &Row) -> rusqlite::Result<StoredSession> {
     })
 }
 
-/// Insert or update by id. A new row changed when it was completed; an
-/// existing one keeps its change time and its delete, so a later save never
-/// brings a deleted session back (#2581).
+/// A later save keeps the change time and the delete, so it never brings a
+/// deleted session back (#2581).
 pub(crate) fn save(tx: &Transaction, session: &PracticeSession) -> Result<(), StoreError> {
     write(tx, session, &session.completed_at, None, "")
 }
@@ -160,7 +159,7 @@ pub(crate) fn delete(
     deleted_at: &DateTime<Utc>,
 ) -> Result<(), StoreError> {
     tx.execute(
-        "UPDATE session SET deleted_at = ?1 WHERE id = ?2",
+        "UPDATE session SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2",
         params![time_text(deleted_at), id],
     )?;
     Ok(())
