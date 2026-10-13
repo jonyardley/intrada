@@ -169,6 +169,20 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
+  // Too narrow for one row, the groupings move to balanced rows of whole pills (#2490).
+  func testGroupedPillsWrap() {
+    let options: [[UInt8]?] = [nil, [3, 3, 3, 3], [2, 2, 2, 2, 2, 2]]
+    let pills = SegmentedPills(
+      options: options, selection: .constant(nil),
+      label: { $0.map { $0.map(String.init).joined(separator: " + ") } ?? "Not grouped" },
+      layout: .wrappingTrack
+    )
+    .frame(width: 260)
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    assertSnapshot(of: pills, as: .image(precision: 0.99))
+  }
+
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the
   // orientation slot's minimum. Full-screen because the whole strip reflows.
   func testFocusPlayerLongSession() {

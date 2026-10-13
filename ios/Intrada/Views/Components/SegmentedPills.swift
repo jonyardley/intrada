@@ -9,8 +9,8 @@ struct SegmentedPills<Option: Hashable>: View {
     case inlineScrolling(edgeInset: CGFloat)
     /// Equal-width segments on a bordered card track.
     case fullWidthTrack
-    /// Pills that hug their labels on a bordered card track, wrapping whole
-    /// pills to a new row rather than breaking a label (#2490).
+    /// The full-width track while every label fits on one row, then whole
+    /// pills over balanced rows rather than a broken label (#2490).
     case wrappingTrack
   }
 
@@ -26,6 +26,7 @@ struct SegmentedPills<Option: Hashable>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var typeSize
   @Namespace private var pill
+  @ScaledMetric(relativeTo: .footnote) private var rowRadius: CGFloat = 19
 
   var body: some View {
     switch layout {
@@ -45,7 +46,15 @@ struct SegmentedPills<Option: Hashable>: View {
         fullWidthTrack(.row)
       }
     case .wrappingTrack:
-      if typeSize.isAccessibilitySize { fullWidthTrack(.stacked) } else { wrappingTrack }
+      if typeSize.isAccessibilitySize {
+        fullWidthTrack(.stacked)
+      } else {
+        ViewThatFits(in: .horizontal) {
+          fullWidthTrack(.equalRow)
+          ForEach(2..<max(options.count, 2), id: \.self) { wrappedTrack(rows: $0) }
+          fullWidthTrack(.stacked)
+        }
+      }
     }
   }
 
@@ -65,7 +74,11 @@ struct SegmentedPills<Option: Hashable>: View {
 
   private func fullWidthTrack(_ style: TrackStyle) -> some View {
     let stacked = style == .stacked
-    let shape = RoundedRectangle(cornerRadius: stacked ? IntradaRadius.card : IntradaRadius.pill)
+    // Circular: a continuous capsule or a 999pt corner strokes a flat sliver at each end (#2490).
+    let shape =
+      stacked
+      ? AnyShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+      : AnyShape(Capsule(style: .circular))
     let trackLayout =
       stacked ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
     return trackLayout {
@@ -78,31 +91,40 @@ struct SegmentedPills<Option: Hashable>: View {
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
 
-  private var wrappingTrack: some View {
-    let shape = RoundedRectangle(cornerRadius: IntradaRadius.card)
-    return FlowLayout(spacing: 4) {
-      ForEach(options, id: \.self) { option in
-        pillButton(option, style: .row)
+  private func wrappedTrack(rows: Int) -> some View {
+    let perRow = (options.count + rows - 1) / rows
+    let chunks = stride(from: 0, to: options.count, by: perRow).map {
+      Array(options[$0..<min($0 + perRow, options.count)])
+    }
+    let shape = RoundedRectangle(cornerRadius: rowRadius, style: .continuous)
+    return VStack(spacing: 4) {
+      ForEach(chunks, id: \.self) { row in
+        HStack(spacing: 4) {
+          ForEach(row, id: \.self) { option in
+            pillButton(option, style: .equalRow, sizedTo: row)
+          }
+        }
       }
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(4)
     .background(IntradaColor.cardFill, in: shape)
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
 
-  private func pillButton(_ option: Option, style: TrackStyle) -> some View {
+  private func pillButton(_ option: Option, style: TrackStyle, sizedTo row: [Option]? = nil)
+    -> some View
+  {
     let isSelected = option == selection
     return Button {
       withAnimation(reduceMotion ? nil : IntradaMotion.snappy) {
         selection = option
       }
     } label: {
-      pillLabel(option, isSelected: isSelected, style: style)
-        .contentShape(Capsule())
+      pillLabel(option, isSelected: isSelected, style: style, sizedTo: row ?? options)
+        .contentShape(Capsule(style: .circular))
         .background {
           if isSelected {
-            Capsule()
+            Capsule(style: .circular)
               .fill(IntradaColor.accent)
               .matchedGeometryEffect(id: "selectedPill", in: pill)
           }
@@ -115,9 +137,9 @@ struct SegmentedPills<Option: Hashable>: View {
     .accessibilityAddTraits(isSelected ? [.isSelected] : [])
   }
 
-  @ViewBuilder private func pillLabel(_ option: Option, isSelected: Bool, style: TrackStyle)
-    -> some View
-  {
+  @ViewBuilder private func pillLabel(
+    _ option: Option, isSelected: Bool, style: TrackStyle, sizedTo row: [Option]
+  ) -> some View {
     let text = Text(label(option))
       .font(font)
       .foregroundStyle(isSelected ? IntradaColor.onAccent : unselectedColor)
@@ -127,8 +149,13 @@ struct SegmentedPills<Option: Hashable>: View {
     case .wrappingTrack where style == .stacked:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack:
-      text.lineLimit(1).fixedSize().padding(.horizontal, IntradaSpacing.card)
-        .frame(minHeight: 44)
+      // A label's own width plus a margin, so a row that only just fits wraps instead (#2490).
+      ZStack {
+        ForEach(row, id: \.self) { Text(label($0)).font(font).hidden() }
+        text
+      }
+      .padding(.horizontal, 4)
+      .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .fullWidthTrack where style == .equalRow:
       // Sized to the longest label so the row wins only when every segment fits (#2133).
       ZStack {
