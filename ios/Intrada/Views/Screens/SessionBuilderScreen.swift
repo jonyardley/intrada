@@ -132,7 +132,7 @@ struct SessionBuilderScreen: View {
   var body: some View {
     ScreenScaffold(
       title: "Build session",
-      subtitle: isEditing ? "Editing" : summary,
+      subtitle: isEditing ? "Editing" : setlist?.summary ?? "",
       leadingContent: {
         Button("Cancel") { cancel() }
           .accessibilityIdentifier("builder.cancel")
@@ -333,7 +333,7 @@ struct SessionBuilderScreen: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(entry.itemTitle).font(IntradaFont.cardTitle).foregroundStyle(IntradaColor.ink)
             .lineLimit(rowLineLimit)
-          Text("\(entry.itemType.label)\(durationSuffix(block.durationDisplay))")
+          Text(block.caption)
             .font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
             .lineLimit(rowLineLimit)
           planLine(entry)
@@ -391,13 +391,13 @@ struct SessionBuilderScreen: View {
               .lineLimit(rowLineLimit)
               .fixedSize(horizontal: false, vertical: true)
             if collapsed {
-              Text(relatedLabel(block)).font(IntradaFont.secondary)
+              Text(block.relatedLabel).font(IntradaFont.secondary)
                 .foregroundStyle(IntradaColor.inkSecondary)
             } else {
               groupPill
             }
           }
-          if let subtitle = headerSubtitle(block, collapsed: collapsed) {
+          if let subtitle = collapsed ? block.plannedDisplay : block.caption {
             Text(subtitle).font(IntradaFont.small).foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
           }
@@ -408,7 +408,7 @@ struct SessionBuilderScreen: View {
       .accessibilityElement(children: .combine)
       .accessibilityAddTraits(.isButton)
       .accessibilityLabel(
-        "\(block.pieceTitle ?? "Related exercises"), \(relatedLabel(block))"
+        "\(block.pieceTitle ?? "Related exercises"), \(block.relatedLabel)"
           + (block.piece.map(spokenPlan) ?? "")
       )
       .lastTimeAction(block.piece.flatMap(lastTime)) {
@@ -446,7 +446,7 @@ struct SessionBuilderScreen: View {
           VStack(alignment: .leading, spacing: 1) {
             Text(entry.itemTitle).font(IntradaFont.bodyMedium).foregroundStyle(IntradaColor.ink)
               .lineLimit(rowLineLimit)
-            Text(nestedMeta(entry)).font(IntradaFont.small)
+            Text("Related").font(IntradaFont.small)
               .foregroundStyle(IntradaColor.inkSecondary)
               .lineLimit(rowLineLimit)
             planLine(entry)
@@ -497,7 +497,7 @@ struct SessionBuilderScreen: View {
   // ── Plan (#2249, #2303, #2315) ──────────────────────────────────────
 
   @ViewBuilder private func planLine(_ entry: SetlistEntryView) -> some View {
-    let tags = planTags(entry)
+    let tags = entry.planTags
     if !tags.isEmpty {
       FlowLayout(spacing: 6) {
         ForEach(tags, id: \.self) { TagChip($0) }
@@ -511,21 +511,9 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  private func planTags(_ entry: SetlistEntryView) -> [String] {
-    let segments = entry.record.segments
-    let split = segments.count > 1
-    let variations =
-      setlist?.entryVariations.first { $0.entryId == entry.id }?.variations ?? []
-    return segments.map {
-      split && $0.plannedSecs > 0 ? "\($0.label) \($0.plannedDisplay)" : $0.label
-    }
-      + entry.plannedVariationIds.compactMap { id in variations.first { $0.id == id }?.label }
-      + (entry.record.focus.map { ["Focus: \($0.label)"] } ?? [])
-  }
-
   /// The header sets its own label, which drops the tags it holds.
   private func spokenPlan(_ entry: SetlistEntryView) -> String {
-    planTags(entry).map { ", \($0)" }.joined()
+    entry.planTags.map { ", \($0)" }.joined()
   }
 
   private func lastTime(_ entry: SetlistEntryView) -> LastTimeView? {
@@ -577,7 +565,7 @@ struct SessionBuilderScreen: View {
       store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
     } label: {
       Image(systemName: "play.fill")
-      Text(startTitle)
+      Text(setlist?.startTitle ?? "Start session")
     }
     .accessibilityIdentifier("builder.start")
     .padding(.horizontal, IntradaSpacing.card)
@@ -590,53 +578,6 @@ struct SessionBuilderScreen: View {
     .accessibilityValue(
       "\(entries.count) item\(entries.count == 1 ? "" : "s")"
         + (setlist?.totalDurationSummary.map { ", \($0)" } ?? ""))
-  }
-
-  // ── Copy ─────────────────────────────────────────────────────────────
-
-  private var summary: String {
-    let items = Int(setlist?.itemCount ?? 0)
-    let itemStr = "\(items) item\(items == 1 ? "" : "s")"
-    var counts = itemStr
-    if hasGroups {
-      let n = blocks.count
-      counts = "\(n) block\(n == 1 ? "" : "s") · \(itemStr)"
-    }
-    guard let duration = setlist?.totalDurationSummary else { return counts }
-    return "\(duration) · \(counts)"
-  }
-
-  private var startTitle: String {
-    guard let duration = setlist?.totalDurationSummary else { return "Start session" }
-    return "Start session · \(duration)"
-  }
-
-  private func relatedLabel(_ block: SetlistBlockView) -> String {
-    block.relatedCount == 0 ? "piece only" : "+\(block.relatedCount) related"
-  }
-
-  // HACK(#1101): string-matches the core's rendered sentinels ("—" for no
-  // planned durations, "0s" for a not-yet-practised entry) to drop the noise;
-  // the core should send empty strings instead — tracked in that issue.
-  private func durationSuffix(_ display: String) -> String {
-    display.isEmpty || display == "—" || display == "0s" ? "" : " · \(display)"
-  }
-
-  private func headerSubtitle(_ block: SetlistBlockView, collapsed: Bool) -> String? {
-    if collapsed {
-      let suffix = durationSuffix(block.durationDisplay)
-      return suffix.isEmpty ? nil : block.durationDisplay
-    }
-    guard block.relatedCount > 0 else {
-      let suffix = durationSuffix(block.durationDisplay)
-      return suffix.isEmpty ? "Piece only" : block.durationDisplay
-    }
-    let related = block.relatedCount == 1 ? "1 related" : "\(block.relatedCount) related"
-    return "\(related), then piece\(durationSuffix(block.durationDisplay))"
-  }
-
-  private func nestedMeta(_ entry: SetlistEntryView) -> String {
-    "Related\(durationSuffix(entry.durationDisplay))"
   }
 
   // ── Actions ──────────────────────────────────────────────────────────

@@ -1,8 +1,19 @@
 package com.intrada.android
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.intrada.android.ui.IntradaColor
+import com.intrada.android.ui.IntradaSpacing
+import com.intrada.android.ui.MasteryDelta
 import com.intrada.android.ui.ProgressScreen
+import com.intrada.shared.Direction
+import com.intrada.shared.ScoreChange
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -30,6 +41,32 @@ class ProgressSnapshotTest {
         val topMark = topMark()
         captureRoboImage("src/test/snapshots/progress-empty.png") {
             ProgressScreen(null, topMark, onBuild = {})
+        }
+    }
+
+    // A fall keeps plain ink, never the success colour of a rise (#2551).
+    @Test
+    fun masteryAfterAFall() {
+        captureRoboImage("src/test/snapshots/progress-mastery-fall.png") {
+            Box(
+                Modifier.width(360.dp)
+                    .background(IntradaColor.paperTop)
+                    .padding(IntradaSpacing.section)
+            ) {
+                MasteryDelta(
+                    ScoreChange(
+                        "exercise-2",
+                        "Arpeggios",
+                        6u,
+                        4u,
+                        -2,
+                        false,
+                        null,
+                        "Arpeggios, mastery down from 6 to 4",
+                        Direction.DOWN,
+                    )
+                )
+            }
         }
     }
 

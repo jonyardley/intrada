@@ -39,6 +39,8 @@ import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.dropShadow
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.ConsistencyWeekView
+import com.intrada.shared.Direction
+import com.intrada.shared.ScoreChange
 import java.util.Locale
 
 // ── Hero ──
@@ -239,45 +241,43 @@ internal fun SolidCountRow(
 // ── Mastery changes ──
 
 @Composable
-internal fun MasteryDelta(
-    title: String,
-    subtitle: String?,
-    was: Int?,
-    now: Int,
-    spoken: String,
-    modifier: Modifier = Modifier,
-) {
+internal fun MasteryDelta(change: ScoreChange, modifier: Modifier = Modifier) {
+    // A fall keeps plain ink, never the success colour of a rise (#2551).
+    val nowInk = if (change.direction == Direction.UP) IntradaColor.success else IntradaColor.ink
     Row(
         modifier
             .fillMaxWidth()
             .cardSurface()
-            .clearAndSetSemantics { contentDescription = spoken }
+            .clearAndSetSemantics { contentDescription = change.spoken }
             .padding(horizontal = 14.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).background(IntradaColor.accent, CircleShape))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            BasicText(title, style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink))
-            if (subtitle != null) {
-                BasicText(
-                    subtitle,
-                    style = IntradaFont.small.copy(color = IntradaColor.inkSecondary),
-                )
+            BasicText(
+                change.itemTitle,
+                style = IntradaFont.bodyMedium.copy(color = IntradaColor.ink),
+            )
+            change.subtitle?.let {
+                BasicText(it, style = IntradaFont.small.copy(color = IntradaColor.inkSecondary))
             }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (was != null) {
+            change.previousScore?.let { was ->
                 BasicText(
                     "$was",
                     style = IntradaFont.cardTitle.copy(color = IntradaColor.inkSecondary),
                 )
                 Glyph(R.drawable.ic_arrow_right, IntradaColor.inkFaintIcon)
             }
-            BasicText("$now", style = IntradaFont.cardTitle.copy(color = IntradaColor.success))
+            BasicText(
+                "${change.currentScore}",
+                style = IntradaFont.cardTitle.copy(color = nowInk),
+            )
         }
     }
 }

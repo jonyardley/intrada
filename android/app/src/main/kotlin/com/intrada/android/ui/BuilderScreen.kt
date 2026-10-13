@@ -164,7 +164,7 @@ private fun ColumnScope.BuilderBody(
         verticalArrangement = Arrangement.spacedBy(IntradaSpacing.cardCompact),
     ) {
         BasicText(
-            if (editing) "Editing" else summary(setlist),
+            if (editing) "Editing" else setlist.summary,
             Modifier.testTag("builder.summary"),
             style = IntradaFont.secondary.copy(color = IntradaColor.inkSecondary),
         )
@@ -231,7 +231,7 @@ private fun StartBar(setlist: BuildingSetlistView, actions: BuilderActions) {
     Column(Modifier.fillMaxWidth().background(IntradaColor.paperTop)) {
         HairlineDivider()
         InkButton(
-            startTitle(setlist),
+            setlist.startTitle,
             "builder.start",
             { actions.send(Event.Session(SessionEvent.StartSession(SessionClock.now()))) },
             Modifier.padding(

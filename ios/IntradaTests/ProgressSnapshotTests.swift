@@ -60,10 +60,10 @@ final class ProgressSnapshotTests: SnapshotTestCase {
       PaperBackground()
       VStack(spacing: 12) {
         MasteryDelta(
-          title: "Clair de Lune", subtitle: "D♭ major · now", was: 3, now: 4,
+          title: "Clair de Lune", subtitle: "D♭ major · now", was: 3, now: 4, direction: .up,
           spoken: "Clair de Lune, D♭ major · now, mastery up from 3 to 4", kind: .piece)
         MasteryDelta(
-          title: "Hanon No. 1", subtitle: "first time marked", was: nil, now: 3,
+          title: "Hanon No. 1", subtitle: "first time marked", was: nil, now: 3, direction: .up,
           spoken: "Hanon No. 1, first time marked, mastery 3", kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
@@ -71,6 +71,19 @@ final class ProgressSnapshotTests: SnapshotTestCase {
       .padding(16)
     }
     assertSnapshot(of: host(rows), as: config)
+  }
+
+  /// A fall keeps plain ink, never the success colour of a rise (#2551).
+  func testMasteryDeltaRowAfterAFall() {
+    let row = ZStack {
+      PaperBackground()
+      MasteryDelta(
+        title: "Arpeggios", was: 6, now: 4, direction: .down,
+        spoken: "Arpeggios, mastery down from 6 to 4", kind: .exercise
+      )
+      .padding(16)
+    }
+    assertSnapshot(of: host(row), as: config)
   }
 
   func testConsistencyBars() {

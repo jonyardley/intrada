@@ -184,8 +184,7 @@ private fun AimCard(entry: SetlistEntryView, send: (SessionEvent) -> Boolean) {
             text,
             { value ->
                 text = value
-                val next = value.trim().ifEmpty { null }
-                if (next != entry.intention) send(SessionEvent.SetEntryIntention(entry.id, next))
+                send(SessionEvent.SetEntryIntention(entry.id, value))
             },
             "entrySettings.aim",
             placeholder = "What are you aiming for on this one?",
@@ -406,10 +405,8 @@ private fun DurationCard(
     send: (SessionEvent) -> Boolean,
 ) {
     val secs = entry.plannedDurationSecs
-    // The core bounds seconds and the stepper offers whole minutes, so both ends round inwards.
-    val minMinutes =
-        (limits.plannedDurationMinSecs.toInt() + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
-    val maxMinutes = limits.plannedDurationMaxSecs.toInt() / SECONDS_PER_MINUTE
+    val minMinutes = limits.plannedDurationMinMins.toInt()
+    val maxMinutes = limits.plannedDurationMaxMins.toInt()
     Column(
         Modifier.fillMaxWidth()
             .cardSurface()
@@ -420,7 +417,7 @@ private fun DurationCard(
             on = secs != null,
             tag = "entrySettings.duration",
             onChange = { on ->
-                val minutes = limits.plannedDurationDefaultSecs.toInt() / SECONDS_PER_MINUTE
+                val minutes = limits.plannedDurationDefaultMins.toInt()
                 send(
                     SessionEvent.SetEntryDuration(
                         entry.id,

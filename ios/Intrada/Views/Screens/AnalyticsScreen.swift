@@ -101,6 +101,7 @@ struct AnalyticsScreen: View {
             subtitle: change.subtitle,
             was: change.previousScore.map(Int.init),
             now: Int(change.currentScore),
+            direction: change.direction,
             spoken: change.spoken
           )
           .fadeUp(5 + idx)

@@ -88,17 +88,7 @@ private fun ProgressBody(analytics: AnalyticsView, topMark: Int) {
             ConsistencyBars(analytics.consistencyWeeks)
         }
         if (analytics.scoreChanges.isNotEmpty()) {
-            Section("Recent mastery") {
-                analytics.scoreChanges.forEach { change ->
-                    MasteryDelta(
-                        change.itemTitle,
-                        change.subtitle,
-                        was = change.previousScore?.toInt(),
-                        now = change.currentScore.toInt(),
-                        spoken = change.spoken,
-                    )
-                }
-            }
+            Section("Recent mastery") { analytics.scoreChanges.forEach { MasteryDelta(it) } }
         }
     }
 }

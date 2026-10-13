@@ -36,11 +36,8 @@ struct EntrySettingsSheet: View {
 
   var repTargetRange: ClosedRange<Int> { Int(limits.repTargetMin)...Int(limits.repTargetMax) }
 
-  /// The core states the bound in seconds and the stepper offers whole minutes,
-  /// so both ends round inwards: a bound the stepper cannot land on exactly
-  /// would otherwise offer a minute the core refuses.
   var durationRange: ClosedRange<Int> {
-    Int((limits.plannedDurationMinSecs + 59) / 60)...Int(limits.plannedDurationMaxSecs / 60)
+    Int(limits.plannedDurationMinMins)...Int(limits.plannedDurationMaxMins)
   }
 
   static func initialRepTarget(for entry: SetlistEntryView, limits: LimitsView) -> Int {
@@ -48,7 +45,7 @@ struct EntrySettingsSheet: View {
   }
 
   static func initialPlannedMinutes(for entry: SetlistEntryView, limits: LimitsView) -> Int {
-    Int((entry.plannedDurationSecs ?? limits.plannedDurationDefaultSecs) / 60)
+    entry.plannedDurationSecs.map { Int($0) / 60 } ?? Int(limits.plannedDurationDefaultMins)
   }
 
   init(entry: SetlistEntryView, limits: LimitsView) {
@@ -95,10 +92,7 @@ struct EntrySettingsSheet: View {
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.ink)
         .onChange(of: intention) { _, value in
-          let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-          let next = trimmed.isEmpty ? nil : trimmed
-          guard next != entry.intention else { return }
-          store.send(.session(.setEntryIntention(entryId: entry.id, intention: next)))
+          store.send(.session(.setEntryIntention(entryId: entry.id, intention: value)))
         }
       if let suggested = live.record.suggestedFocus {
         OfferChip("Focus: \(suggested.label)", systemImage: "plus") {

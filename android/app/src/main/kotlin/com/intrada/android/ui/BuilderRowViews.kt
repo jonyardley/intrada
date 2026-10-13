@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.intrada.android.R
 import com.intrada.android.ui.components.HairlineDivider
-import com.intrada.android.ui.components.label
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.BuildingSetlistView
 import com.intrada.shared.ItemKind
@@ -123,7 +122,7 @@ private fun StandaloneRow(row: BuilderRow.Standalone, context: RowContext) {
             RowSpec(
                 RowCopy(
                     entry.itemTitle,
-                    entry.itemType.label + durationSuffix(row.block.durationDisplay),
+                    row.block.caption,
                     entry.itemType,
                 ),
                 entry,
@@ -170,7 +169,8 @@ private fun HeaderRow(row: BuilderRow.Header, context: RowContext) {
             RowSpec(
                 RowCopy(
                     title,
-                    headerSubtitle(block, row.collapsed) ?: relatedLabel(block),
+                    if (row.collapsed) block.plannedDisplay ?: block.relatedLabel
+                    else block.caption,
                     ItemKind.PIECE,
                 ),
                 block.piece,
@@ -223,7 +223,7 @@ private fun NestedRow(row: BuilderRow.Nested, context: RowContext) {
                 RowSpec(
                     RowCopy(
                         entry.itemTitle,
-                        "Related" + durationSuffix(entry.durationDisplay),
+                        "Related",
                         ItemKind.EXERCISE,
                         nested = true,
                     ),
