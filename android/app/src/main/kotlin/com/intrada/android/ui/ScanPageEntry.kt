@@ -1,13 +1,5 @@
 package com.intrada.android.ui
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,20 +38,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.intrada.android.R
 import com.intrada.android.core.PhotoFiles
-import com.intrada.android.core.SentryReporter
 import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.scaled
 import com.intrada.shared.PhotoRecognitionStatus
 import com.intrada.shared.PhotoRecognitionView
-import java.io.IOException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,50 +60,18 @@ fun ScanPageEntry(
     val context = LocalContext.current
     val photos = remember(context) { PhotoFiles.of(context) }
     val scope = rememberCoroutineScope()
-    val canScan =
-        remember(context) {
-            GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) ==
-                ConnectionResult.SUCCESS
-        }
     var failure by rememberSaveable { mutableStateOf<String?>(null) }
-
-    fun keep(source: Uri?) {
-        source ?: return
-        scope.launch {
-            val photoId =
-                withContext(io) {
-                    try {
-                        photos.save(context.contentResolver, source)
-                    } catch (e: IOException) {
-                        SentryReporter.report(e, "photo write")
-                        null
-                    } catch (e: SecurityException) {
-                        SentryReporter.report(e, "photo write")
-                        null
-                    } catch (e: IllegalArgumentException) {
-                        SentryReporter.report(e, "photo write")
-                        null
-                    }
+    val capture =
+        rememberPageCapture(
+            onPage = { source ->
+                scope.launch {
+                    val photoId = withContext(io) { photos.keep(context.contentResolver, source) }
+                    failure = if (photoId == null) PHOTO_SAVE_FAILED else null
+                    photoId?.let(onCapture)
                 }
-            failure = if (photoId == null) SAVE_FAILED else null
-            photoId?.let(onCapture)
-        }
-    }
-
-    val picker =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { keep(it) }
-    val scanner =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-            result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                keep(
-                    GmsDocumentScanningResult.fromActivityResultIntent(result.data)
-                        ?.pages
-                        ?.firstOrNull()
-                        ?.imageUri
-                )
-            }
-        }
+            },
+            onUnavailable = { failure = SCAN_UNAVAILABLE },
+        )
     val photoId = recognition.photoId
     val thumbnail by
         produceState<ImageBitmap?>(null, photoId) {
@@ -131,27 +84,14 @@ fun ScanPageEntry(
         failure,
         onScan = {
             failure = null
-            val activity = context.findActivity()
-            if (activity == null) {
-                failure = SCAN_UNAVAILABLE
-            } else {
-                GmsDocumentScanning.getClient(scannerOptions)
-                    .getStartScanIntent(activity)
-                    .addOnSuccessListener {
-                        scanner.launch(IntentSenderRequest.Builder(it).build())
-                    }
-                    .addOnFailureListener {
-                        SentryReporter.report(it, "page scanner")
-                        failure = SCAN_UNAVAILABLE
-                    }
-            }
+            capture.scan()
         },
         onChoose = {
             failure = null
-            picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            capture.choose()
         },
         modifier = modifier,
-        canScan = canScan,
+        canScan = capture.canScan,
     )
 }
 
@@ -294,22 +234,3 @@ internal fun FieldMark(weak: Boolean, modifier: Modifier = Modifier) {
         )
     }
 }
-
-private val scannerOptions =
-    GmsDocumentScannerOptions.Builder()
-        .setGalleryImportAllowed(false)
-        .setPageLimit(1)
-        .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
-        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
-        .build()
-
-private tailrec fun Context.findActivity(): Activity? =
-    when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
-    }
-
-private const val SAVE_FAILED = "Couldn't save the photo. Try again."
-private const val SCAN_UNAVAILABLE =
-    "Scanning isn't available on this phone. Choose a photo instead."

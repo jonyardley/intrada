@@ -16,6 +16,9 @@ import com.intrada.android.core.LiveBridge
 import com.intrada.android.core.PhotoFiles
 import com.intrada.android.core.Store
 import com.intrada.android.core.Ulid
+import com.intrada.android.ui.LoadedPhoto
+import com.intrada.android.ui.PhotoCardActions
+import com.intrada.android.ui.PhotoCardContent
 import com.intrada.android.ui.PieceNavigation
 import com.intrada.android.ui.PieceRoute
 import com.intrada.shared.Event
@@ -73,6 +76,46 @@ class PhotoCardTest {
         compose.onNodeWithText("That photo is missing.").performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun changeOffersAScanWhenThePhoneCanScan() {
+        var scanned = 0
+        var chosen = 0
+        compose.setContent {
+            PhotoCardContent(
+                PHOTO,
+                LoadedPhoto(PHOTO, null),
+                failure = null,
+                PhotoCardActions({ chosen++ }, {}, onScan = { scanned++ }),
+            )
+        }
+
+        compose.onNodeWithTag("piece.photo.choose").performClick()
+        compose.onNodeWithTag("piece.photo.library").assertIsDisplayed()
+        compose.onNodeWithTag("piece.photo.scan").performClick()
+
+        assertEquals(1, scanned)
+        assertEquals(0, chosen)
+        compose.onNodeWithTag("piece.photo.scan").assertDoesNotExist()
+    }
+
+    @Test
+    fun changeGoesStraightToThePhotosWhenThePhoneCannotScan() {
+        var chosen = 0
+        compose.setContent {
+            PhotoCardContent(
+                PHOTO,
+                LoadedPhoto(PHOTO, null),
+                failure = null,
+                PhotoCardActions({ chosen++ }, {}),
+            )
+        }
+
+        compose.onNodeWithTag("piece.photo.choose").performClick()
+
+        assertEquals(1, chosen)
+        compose.onNodeWithTag("piece.photo.scan").assertDoesNotExist()
+    }
+
     private suspend fun TestScope.pieceWithPhoto(written: Boolean): Store {
         val photoId = Ulid.generate()
         if (written) {
@@ -103,6 +146,7 @@ class PhotoCardTest {
 
     private companion object {
         const val PIECE = "01J0000000000000000000ITEM"
+        const val PHOTO = "01J0000000000000000000PHOT"
         const val PIXELS = 40
         const val QUALITY = 80
     }

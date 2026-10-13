@@ -1,8 +1,5 @@
 package com.intrada.android.ui
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +41,7 @@ import com.intrada.android.R
 import com.intrada.android.core.PhotoFiles
 import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
+import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
 import com.intrada.shared.Event
 import com.intrada.shared.ItemEvent
@@ -69,15 +68,17 @@ internal fun PhotoCard(
                 LoadedPhoto(it, withContext(io) { photos.preview(it) }?.asImageBitmap())
             }
         }
-    val picker =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { source ->
-            source ?: return@rememberLauncherForActivityResult
-            scope.launch {
-                val kept = withContext(io) { photos.keep(context.contentResolver, source) }
-                failure = if (kept == null) PHOTO_SAVE_FAILED else null
-                kept?.let { send(Event.Item(ItemEvent.SetPhoto(itemId, it))) }
-            }
-        }
+    val capture =
+        rememberPageCapture(
+            onPage = { source ->
+                scope.launch {
+                    val kept = withContext(io) { photos.keep(context.contentResolver, source) }
+                    failure = if (kept == null) PHOTO_SAVE_FAILED else null
+                    kept?.let { send(Event.Item(ItemEvent.SetPhoto(itemId, it))) }
+                }
+            },
+            onUnavailable = { failure = SCAN_UNAVAILABLE },
+        )
     PhotoCardContent(
         photoId,
         loaded?.takeIf { it.photoId == photoId },
@@ -85,15 +86,22 @@ internal fun PhotoCard(
         PhotoCardActions(
             onChoose = {
                 failure = null
-                picker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
+                capture.choose()
             },
             onRemove = {
                 failure = null
                 send(Event.Item(ItemEvent.ClearPhoto(itemId)))
             },
             loadFull = { photoId?.let { withContext(io) { photos.bitmap(it) }?.asImageBitmap() } },
+            onScan =
+                if (capture.canScan) {
+                    {
+                        failure = null
+                        capture.scan()
+                    }
+                } else {
+                    null
+                },
         ),
         modifier,
     )
@@ -105,6 +113,7 @@ internal class PhotoCardActions(
     val onChoose: () -> Unit,
     val onRemove: () -> Unit,
     val loadFull: suspend () -> ImageBitmap? = { null },
+    val onScan: (() -> Unit)? = null,
 )
 
 @Composable
@@ -117,9 +126,15 @@ internal fun PhotoCardContent(
 ) {
     var confirmingRemove by rememberSaveable { mutableStateOf(false) }
     var viewing by rememberSaveable { mutableStateOf(false) }
+    var capturing by rememberSaveable { mutableStateOf(false) }
     val image = loaded?.image
+    val onScan = actions.onScan
     Column(modifier.fillMaxWidth().cardSurface()) {
-        PhotoHeader(photoId, actions.onChoose) { confirmingRemove = true }
+        PhotoHeader(
+            photoId,
+            onAdd = { if (onScan == null) actions.onChoose() else capturing = true },
+            onRemove = { confirmingRemove = true },
+        )
         failure?.let {
             FormErrorBanner(
                 it,
@@ -130,11 +145,25 @@ internal fun PhotoCardContent(
         PhotoBody(photoId, loaded) { viewing = true }
     }
     if (viewing && image != null) PhotoViewer(image, actions.loadFull) { viewing = false }
+    if (capturing && onScan != null) {
+        CaptureMenu(
+            onScan = {
+                capturing = false
+                onScan()
+            },
+            onChoose = {
+                capturing = false
+                actions.onChoose()
+            },
+            onDismiss = { capturing = false },
+        )
+    }
     if (confirmingRemove) {
         ConfirmDialog(
             ConfirmCopy(
                 "Remove this photo?",
-                "You'll need to choose it again.",
+                if (onScan == null) "You'll need to choose it again."
+                else "You'll need to scan or choose it again.",
                 "Remove",
                 "piece.photo.removeConfirm",
             ),
@@ -174,11 +203,35 @@ private fun PhotoViewer(
     }
 }
 
-private val PHOTO_HEIGHT = 244.dp
-private const val PHOTO_SAVE_FAILED = "Couldn't save the photo. Try again."
+@Composable
+private fun CaptureMenu(onScan: () -> Unit, onChoose: () -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().cardSurface()) {
+            CaptureRow("Scan the page", "piece.photo.scan", onScan)
+            HairlineDivider()
+            CaptureRow("Choose a photo", "piece.photo.library", onChoose)
+        }
+    }
+}
 
 @Composable
-private fun PhotoHeader(photoId: String?, onChoose: () -> Unit, onRemove: () -> Unit) {
+private fun CaptureRow(title: String, tag: String, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(tag)
+            .padding(horizontal = IntradaSpacing.card, vertical = IntradaSpacing.cardCompact),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        BasicText(title, style = IntradaFont.body.copy(color = IntradaColor.ink))
+    }
+}
+
+private val PHOTO_HEIGHT = 244.dp
+
+@Composable
+private fun PhotoHeader(photoId: String?, onAdd: () -> Unit, onRemove: () -> Unit) {
     Row(
         Modifier.padding(start = IntradaSpacing.card, end = IntradaSpacing.controlGap),
         verticalAlignment = Alignment.CenterVertically,
@@ -195,7 +248,7 @@ private fun PhotoHeader(photoId: String?, onChoose: () -> Unit, onRemove: () -> 
         TextAction(
             if (photoId == null) "Add" else "Change",
             "piece.photo.choose",
-            onChoose,
+            onAdd,
             Modifier.semantics {
                 contentDescription = if (photoId == null) "Add a photo" else "Change the photo"
             },
