@@ -15,12 +15,13 @@ sound, the camera, and closing the app in the middle of a session (#2566).
 - **Which build:** the signed APK from the release workflow, never a debug
   build from `just android-run`. CI's own release build is unsigned (see
   `.github/workflows/ci.yml`), so a phone will not install it.
-- **Get the build.** From the main checkout, run the release workflow with the
-  Play upload off, then download its APK when the run finishes:
+- **Get the build.** Run the release workflow with the Play upload off. Give
+  it a few seconds to appear, find its run number, and download its APK when
+  the run finishes:
 
   ```bash
   gh workflow run release-play.yml --ref main -f upload=false
-  gh run list --workflow release-play.yml -L 1
+  gh run list --workflow release-play.yml --event workflow_dispatch -L 1
   gh run download <run id> -n intrada-apk -D /tmp/intrada-apk
   ```
 
@@ -65,9 +66,9 @@ sound, the camera, and closing the app in the middle of a session (#2566).
 | 2.1 | Tap the **Library** tab. | The list. | Your piece as a card: title, composer underneath, a coloured bar down the left. | Empty list, or "Pieces and exercises will live here." with a piece saved. | |
 | 2.2 | Tap the piece. | The piece page. | Title at the top, **Edit** top right, then Sections, Keys, Variations, Photo, Related exercises and **Delete piece** at the bottom. | A blank page, or "This item is no longer in your library." | |
 | 2.3 | Tap **Edit**, change the composer, tap **Save**. | The piece page. | The new composer under the title. | The old composer, or the form will not close. | |
-| 2.4 | Under Sections, tap **Add section**, name it "A", bars "1 to 8", tap **Save**. | The Sections card. | "A" listed with its bars. | Nothing added, or the bars lost. | |
+| 2.4 | Under Sections, tap **Add sections** (**Add section** once one exists). In "New section", type "A" for Name and "1 to 8" for Bars, tap **Save**. | The Sections card. | "A" listed with its bars. | Nothing added, or the bars lost. | |
 | 2.5 | Under Keys, tap **Choose** (or **Practise in other keys**), pick two keys, tap **Done**. | The Keys card. | Both keys shown. | The sheet will not close, or the keys vanish. | |
-| 2.6 | Under Variations, tap **Choose** (or **Choose variations**), type "Hands separately", tap **Add "Hands separately"**, tap **Done**. | The Variations card. | "Hands separately" shown. | It is not saved. | |
+| 2.6 | Under Variations, tap **Choose** (or **Choose variations**), type "Hands separately", tap **Add “Hands separately”**, tap **Done**. | The Variations card. | "Hands separately" shown. | It is not saved. | |
 | 2.7 | On the Photo card tap **Add**, choose a photo of a page. | The Photo card. | The page appears. Tapping it opens it full screen with **Close**. | "Couldn't save the photo. Try again.", or a blank card. | |
 
 ## 3. Add a piece and an exercise
@@ -75,25 +76,26 @@ sound, the camera, and closing the app in the middle of a session (#2566).
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
 | 3.1 | On Library, tap **+** at the top right. | The form. | "New Piece", **Cancel** and **Add**, Piece and Exercise pills, a **Scan a page** card ("Title, composer and tempo, read off the page") with **Scan the page** and **Choose a photo**. | No scan card, or **Add** enabled with an empty title. | |
-| 3.2 | Tap **Scan the page**. Allow the camera if asked. Point it at a printed page and take the scan. | The camera, then the form. | Google's page scanner opens, then "Reading the page", then the fields filled in with "From the photo" under them. | A crash, a black camera, or the form never leaves "Reading the page". | |
+| 3.2 | Tap **Scan the page**. Point it at a printed page and take the scan. | The camera, then the form. | Google's page scanner opens, then "Reading the page", then the fields filled in with "From the photo" under them. | A crash, a black camera, or the form never leaves "Reading the page". | |
 | 3.3 | If the scan read nothing useful. | The scan card. | "Nothing to read on that page." or "Couldn't read that page. Type the fields instead.", and the fields still editable. | The form looks as if it worked with nothing filled in. | |
 | 3.4 | Tap **Choose a photo** and pick a photo of a page. | The scan card. | Same as 3.2 from "Reading the page". | The picker opens and nothing comes back. | |
 | 3.5 | Fix the title if needed, tap **Add**. | Library. | The scanned piece listed. | The form stays open, or the piece is missing. | |
 | 3.6 | Tap **+**, tap the **Exercise** pill, title "C major scale", set a tempo marking and beats per minute, tap **Add**. | Library. | The exercise listed. Tapping it opens its edit form, not a piece page. | It saves as a piece. | |
 | 3.7 | Open the first piece, under Related exercises tap **Add exercise**, tick "C major scale", tap **Done**. | Related exercises. | "C major scale" listed under the piece. | Not linked. | |
 
-On the emulator the scanner may not download; then the card says "Scanning
-isn't available on this phone. Choose a photo instead." Note it and check the
-camera on the phone instead.
+A device without Google Play services cannot scan; there the card says
+"Scanning isn't available on this phone. Choose a photo instead." Whether the
+scanner runs on the `intrada-api36` emulator has not been tried yet: note what
+you see, and check the camera on the phone either way.
 
 ## 4. Build a session
 
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
-| 4.1 | Tap the **Practice** tab. | The top card. | Either the round play button marked **Start practising** under "First session" or "Last practised", or a "Today's plan" card with a "Start · " minutes button, **Change it first** and **Build my own instead**. | Neither shows. | |
-| 4.2 | Tap **Start practising** (or **Build my own instead**). | The builder. | "Build session", **Cancel**, "Add pieces and exercises to build the session.", a Today's length switch and **Add piece or exercise**. | It opens straight into a session. | |
-| 4.3 | Tap **Add piece or exercise**, tick the piece, tap **Done**. | The builder list. | The piece as a group with "C major scale" under Related exercises, and a **Start session** bar at the bottom. | The related exercise is missing, or no start bar. | |
-| 4.4 | Tap the piece's row. | Item settings. | "Item settings" with Aim, Key, Sections, **Track repetitions** and **Planned duration**. | A blank sheet. | |
+| 4.1 | Tap the **Practice** tab. | The top card. | Either the round play button under "First session" or "Last practised", or an "Up next" card ("Today's plan" when a session length is set) with a "Start · " minutes button, **Change it first** and **Build my own instead**. | Neither shows. | |
+| 4.2 | Tap the round play button (or **Build my own instead**). | The builder. | "Build session", **Cancel**, "Add pieces and exercises to build the session.", a Today's length switch and **Add piece or exercise**. | It opens straight into a session. | |
+| 4.3 | Tap **Add piece or exercise**, tick the piece, tap **Done**. | The builder list. | A card with the piece's title and "1 related, then piece" under it, "C major scale" beneath marked "Related", and a **Start session** bar at the bottom. | The related exercise is missing, or no start bar. | |
+| 4.4 | Tap the three dots on the piece's card, then **Piece settings**. | The settings screen. | The piece's title at the top with **Done**, then Aim, Key, Sections, **Track repetitions** and **Planned duration**. | A blank screen, or "This item is no longer in the session." | |
 | 4.5 | Turn on **Track repetitions** and **Planned duration**, set a short duration, tap **Done**. | The builder. | The row shows the planned time, and the start bar reads "Start session · " with the total. | The settings are lost. | |
 | 4.6 | Turn on **Today's length** and step it up and down. | The length card. | The minutes change by a step each tap and stop at the ends. | The value jumps or goes negative. | |
 | 4.7 | Tap **Cancel**. | The dialog. | "Discard session plan?" with **Discard**. Dismiss it and the plan is still there. | The plan clears without asking. | |
@@ -102,12 +104,12 @@ camera on the phone instead.
 
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
-| 5.1 | Tap **Start session**. | The player. | "Focus · 1 of 2" at the top, the item's title, a timer ring counting up, "Metronome" or the item's tempo, Repetitions with **Not quite** and **Got it**, **Next item**, **Skip this item** and "Next · " the next item. | The tab bar still shows, or the timer does not move. | |
+| 5.1 | Tap **Start session**. | The player. | "Focus · 1 of 2" at the top and "C major scale" (related exercises play before their piece), a timer ring counting up, "Metronome" or the item's tempo, Repetitions with **Not quite** and **Got it**, **Next item**, **Skip this item** and "Next · " the next item. | The tab bar still shows, or the timer does not move. | |
 | 5.2 | Leave it for a minute without touching it. | The screen. | It stays on. | The screen dims or locks. | |
 | 5.3 | Tap the metronome readout. | Listen, then look under it. | A steady click starts within a moment, the readout shows the beats per minute, **Slower** and **Faster** appear either side, and a bar of beat dots appears underneath with a ring moving along the beat being heard. | No sound, a late or uneven click, or the ring out of step with what you hear. | |
 | 5.4 | Tap **Faster** three times, then **Slower** once. Then drag up and down on the readout. | The readout and the sound. | The number and the click change together. | The number changes and the click does not. | |
-| 5.5 | Tap the beat dots bar. | The sheet. | "Metronome" with **Done**, Time signature pills, "From the piece. Changing it here holds for this session only.", and Sounds on with Every beat, Group starts and Downbeat and a tap per beat. | The click stops when the sheet opens. | |
-| 5.6 | Pick 3/4, choose **Downbeat**, tap **Done**. | Listen and look at the bar. | Three dots, only the first filled, and a click on the first beat only. | Four dots, or every beat still clicking. | |
+| 5.5 | Tap the beat dots bar. | The sheet. | "Metronome" with a close button, Time signature pills, "From the piece. Changing it here holds for this session only.", and Sounds on with pattern pills (Every beat, Downbeat and more) and a tap per beat. | The click stops when the sheet opens. | |
+| 5.6 | Pick 3/4, choose **Downbeat**, tap the close button. | Listen and look at the bar. | Three dots, only the first filled, and a click on the first beat only. | Four dots, or every beat still clicking. | |
 | 5.7 | Turn the phone sideways and back. | Listen. | The click keeps going without a stumble. | It stops or restarts. | |
 | 5.8 | Turn the volume down and up with the side buttons. | Listen. | The click follows the media volume. | The buttons change the ringer and the click stays loud. | |
 | 5.9 | Tap the readout again. | Listen. | The click stops and **Slower**, **Faster** and the bar go. | It keeps clicking. | |
@@ -122,7 +124,7 @@ camera on the phone instead.
 | --- | --- | --- | --- | --- | --- |
 | 6.1 | With the metronome running, tap **Next item**. | The screen and the sound. | "Item complete · " with the time, "How did it go?", the item's title, numbered marks, "Tempo reached" with the tempo you finished on, "Reflection · optional", **Save & continue** and **Skip rating**. The click keeps sounding while you mark. | The click cuts out, or the tempo shown is not the one you played. | |
 | 6.2 | Press the phone's Back. | The sheet. | It stays. | You lose the sheet or the item. | |
-| 6.3 | Tap a mark, type a note, tap **Save & continue**. | The player. | "Focus · 2 of 2" on the next item, the timer back at zero, and the click silent until you start it again. | The first item again, the old item's click still sounding, or "Couldn't save. Try again." | |
+| 6.3 | Tap a mark, type a note, tap **Save & continue**. | The player. | "Focus · 2 of 2" on the piece, the timer back at zero and showing the planned time from 4.5, Repetitions out of the target from 4.5, and the click silent until you start it again. | The first item again, the old item's click still sounding, or "Couldn't save. Try again." | |
 
 ## 7. Close the app mid-session and resume
 
@@ -130,26 +132,26 @@ camera on the phone instead.
 | --- | --- | --- | --- | --- | --- |
 | 7.1 | With the metronome running, press Home. | Listen. | The click carries on in the background (it stops by itself after ten minutes away). | The click stops at once, or stutters. | |
 | 7.2 | Wait just over a minute, then open intrada again. | The player. | The same item, the timer still counting, and a strip reading "Away 1 minute. Leave it out?" with **Leave it out** and a close button. | A fresh session, or the timer reset. | |
-| 7.3 | Tap **Leave it out**. | The timer. | The strip goes and stays gone. | The strip stays, or comes back on the next item. | |
+| 7.3 | Tap **Leave it out**. | The strip. | The strip goes and stays gone. | The strip stays, or comes back on the next item. | |
 | 7.4 | Swipe intrada away from the recent apps screen (on the emulator, `adb shell am force-stop com.intrada.android`). Open it again. | The first screen, then the Practice tab. | Library opens; Practice shows "Pick up where you left off?" with the item count and start time, **Resume** and **Discard**. | No card, or the session is gone. | |
-| 7.5 | Tap **Resume**. | The player. | The same item you were on, the marks from 6.3 kept. | Item 1 again, or a crash. | |
-| 7.6 | Repeat 7.4, then tap **Discard**. | The Practice tab. | The card goes and nothing is saved. Start a fresh session from 4.2 to carry on. | The card comes back on the next open. | |
+| 7.5 | Tap **Resume**. | The player. | "Focus · 2 of 2", the piece you were on. | Item 1 again, or a crash. | |
 
 ## 8. Session complete
 
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
-| 8.1 | On the last item tap **Finish session**, then **Save & continue**. | The screen. | "Session complete", the total time, "2 of 2", each item with its mark and **Add a note**, "A note on the whole session…", Overall marks, **Save session** and **Discard**. | The player again, or items missing. | |
+| 8.1 | Carry on from 7.5: tap **Finish session**, then **Save & continue**. | The screen. | "Session complete", the total time, "2 of 2", each item with its mark (the one from 6.3 kept through the restart) and **Add a note**, "A note on the whole session…", Overall marks, **Save session** and **Discard**. | The player again, or items missing. | |
 | 8.2 | Press the phone's Back. | The dialog. | "Discard this session?", "This practice won't be saved." Dismiss it. | The session is thrown away. | |
-| 8.3 | Change one item's mark, add a note, pick an Overall mark, tap **Save session**. | Where you land. | The tabs again, with the Practice tab's hero now saying "Last practised". | The summary will not close. | |
+| 8.3 | Change one item's mark, add a note, pick an Overall mark, tap **Save session**. | Where you land. | The tabs again, on Practice, with either "Last practised" over the round play button or an "Up next" card. | The summary will not close. | |
 | 8.4 | On Practice, under This week, tap today's session card. | The session page. | "Session", "How it went" with your overall mark, your note, "What you played" with each item. | Marks or notes missing. | |
 | 8.5 | Start another session, then from the menu tap **End session early**. | Session complete. | "ended early" next to the count; saving shows "Ended early" on its card. | It reads as a full session. | |
+| 8.6 | Start another session, then close the app as in 7.4 and open it again. On Practice tap **Discard**. | The Practice tab. | The card goes, nothing is saved, and it does not come back on the next open. | The card returns, or a session appears in This week. | |
 
 ## 9. Progress
 
 | Step | Do | Look at | Right | Wrong | Result |
 | --- | --- | --- | --- | --- | --- |
-| 9.1 | Before any session (clean install), tap **Progress**. | The screen. | "No sessions yet", "Minutes and marks will show here, week by week." and **Build a session**, which opens the builder. | A blank screen or a crash. | |
+| 9.1 | On a clean install, right after section 1 and before any session, tap **Progress**. | The screen. | "No sessions yet", "Minutes and marks will show here, week by week." and **Build a session**, which opens the builder. | A blank screen or a crash. | |
 | 9.2 | After 8.3, tap **Progress**. | The screen. | A line for this week, Overall mastery, "Last five weeks" with a bar for this week, and "Recent mastery" listing what you marked. | Still "No sessions yet", or numbers that do not match your marks. | |
 | 9.3 | Tap **Routines**. | The screen. | A "Routines" title on an empty page; nothing is built here yet. | A crash. | |
 
