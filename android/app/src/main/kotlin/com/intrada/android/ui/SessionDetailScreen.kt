@@ -25,11 +25,18 @@ import com.intrada.android.ui.components.cardSurface
 import com.intrada.android.ui.components.label
 import com.intrada.shared.CompletionStatus
 import com.intrada.shared.EntryStatus
+import com.intrada.shared.Event
 import com.intrada.shared.PracticeSessionView
+import com.intrada.shared.SessionEvent
 import com.intrada.shared.SetlistEntryView
 
 @Composable
-fun SessionDetailRoute(store: Store, id: String, modifier: Modifier = Modifier) {
+fun SessionDetailRoute(
+    store: Store,
+    id: String,
+    modifier: Modifier = Modifier,
+    onClose: () -> Unit = {},
+) {
     val viewModel by store.viewModel.collectAsState()
     val sessions by store.sessionHistory.collectAsState()
     val topMark = viewModel?.limits?.scoreMax?.toInt() ?: return
@@ -38,12 +45,20 @@ fun SessionDetailRoute(store: Store, id: String, modifier: Modifier = Modifier) 
         MissingItem("Session", "This session is no longer in your history.", modifier)
         return
     }
-    SessionDetailScreen(session, topMark, modifier)
+    SessionDetailScreen(session, topMark, modifier) {
+        store.send(Event.Session(SessionEvent.DeleteSaved(session.id, SessionClock.now())))
+        onClose()
+    }
 }
 
 /** Read-only: marks and notes are written on the summary screen, and this is the record of them. */
 @Composable
-fun SessionDetailScreen(session: PracticeSessionView, topMark: Int, modifier: Modifier = Modifier) {
+fun SessionDetailScreen(
+    session: PracticeSessionView,
+    topMark: Int,
+    modifier: Modifier = Modifier,
+    onDelete: () -> Unit = {},
+) {
     val subtitle =
         listOfNotNull(
                 session.totalDurationSummary,
@@ -74,6 +89,8 @@ fun SessionDetailScreen(session: PracticeSessionView, topMark: Int, modifier: Mo
                     }
                 }
             Played(session.entries, topMark)
+            // One tap, no confirm: the history offers Undo (T6).
+            DeleteButton("Delete session", "sessionDetail.delete", onDelete)
         }
     }
 }

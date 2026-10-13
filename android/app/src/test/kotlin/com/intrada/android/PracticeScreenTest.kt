@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import com.intrada.android.ui.HistoryActions
 import com.intrada.android.ui.PracticeModel
 import com.intrada.android.ui.PracticeScreen
 import com.intrada.android.ui.SessionDetailScreen
@@ -108,6 +109,37 @@ class PracticeScreenTest {
         compose
             .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
             .assertExists()
+    }
+
+    @Test
+    fun aLongSwipeOnASessionDeletesIt() {
+        val deleted = mutableListOf<String>()
+        compose.setContent {
+            PracticeScreen(
+                PracticeFixtures.filled,
+                onStart = {},
+                onOpen = {},
+                history = HistoryActions(onDelete = { deleted += it }),
+            )
+        }
+
+        compose
+            .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
+            .performTouchInput { swipeLeft(startX = right, endX = left) }
+
+        assertEquals(1, deleted.size)
+    }
+
+    @Test
+    fun theDeleteButtonDeletesTheSessionInOneTap() {
+        var deletes = 0
+        compose.setContent {
+            SessionDetailScreen(PracticeFixtures.withVariations, 5, onDelete = { deletes++ })
+        }
+
+        compose.onNodeWithTag("sessionDetail.delete").performScrollTo().performClick()
+
+        assertEquals(1, deletes)
     }
 
     @Test
