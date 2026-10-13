@@ -882,7 +882,8 @@ pub struct SetlistEntryView {
     pub record: EntryRecordView,
     pub planned_key: Option<crate::domain::key::Key>,
     /// The builder's tags under the row: each section, with its minutes when
-    /// the time is split, then the variations, then "Focus: A1 at 84" (#2467).
+    /// the time is split, then the variations still on the item, then
+    /// "Focus: A1 at 84" (#2467). Empty outside the builder.
     pub plan_tags: Vec<String>,
 }
 

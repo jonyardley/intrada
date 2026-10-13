@@ -62,6 +62,7 @@ class BuilderCopyRoundTripTest {
         val block = building?.blocks?.firstOrNull()
         assertEquals("Piece · 10 min", block?.caption)
         assertEquals("10 min", block?.plannedDisplay)
+        assertEquals("10 min", block?.durationDisplay)
         assertEquals("piece only", block?.relatedLabel)
         assertEquals("10 min · 1 item", building?.summary)
         assertEquals("Start session · 10 min", building?.startTitle)

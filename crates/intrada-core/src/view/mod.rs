@@ -11,6 +11,7 @@ use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
 use crate::view::session::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, picker_variations,
+    plan_tags,
 };
 
 pub mod cache;
@@ -68,7 +69,25 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let entries: Vec<_> = building
                 .entries
                 .iter()
-                .map(|e| entry_to_view(e, &labels))
+                .map(|e| {
+                    let mut view = entry_to_view(e, &labels);
+                    // The picker's own list: a variation deleted or taken off
+                    // the item since it was planned cannot be unticked, so it
+                    // is not shown either.
+                    let live = cached
+                        .library
+                        .iter()
+                        .find(|i| i.id == e.item_id)
+                        .map_or(&[][..], |i| i.variations.as_slice());
+                    view.plan_tags = plan_tags(
+                        &view.record.segments,
+                        e.planned_variation_ids.iter().filter_map(|id| {
+                            live.iter().find(|v| &v.id == id).map(|v| v.label.clone())
+                        }),
+                        view.record.focus.as_ref(),
+                    );
+                    view
+                })
                 .collect();
             let item_count = entries.len();
             let blocks = build_blocks(&entries);

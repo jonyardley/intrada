@@ -284,15 +284,6 @@ fn target_reached(play: &Play) -> Option<bool> {
 }
 
 pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryView {
-    let record = entry_record_view(entry, labels);
-    let plan_tags = plan_tags(
-        &record.segments,
-        entry
-            .planned_variation_ids
-            .iter()
-            .filter_map(|id| labels.variation(id).map(str::to_string)),
-        record.focus.as_ref(),
-    );
     SetlistEntryView {
         id: entry.id.clone(),
         item_id: entry.item_id.clone(),
@@ -319,14 +310,14 @@ pub fn entry_to_view(entry: &SetlistEntry, labels: &PlayLabels) -> SetlistEntryV
             .map(|p| play_to_view(p, entry, labels))
             .collect(),
         score_summary: entry.score_summary(),
-        record,
+        record: entry_record_view(entry, labels),
         planned_key: entry.planned_key,
-        plan_tags,
+        plan_tags: Vec::new(),
     }
 }
 
 /// A section's minutes show only when the time is split between several.
-fn plan_tags(
+pub(crate) fn plan_tags(
     segments: &[SegmentView],
     variations: impl Iterator<Item = String>,
     focus: Option<&FocusView>,
@@ -1279,6 +1270,11 @@ mod tests {
             assert_eq!(block.caption, caption, "{name}");
             assert_eq!(block.planned_display.as_deref(), planned_display, "{name}");
             assert_eq!(block.related_label, related_label, "{name}");
+            assert_eq!(
+                block.duration_display,
+                planned_display.unwrap_or_default(),
+                "{name}"
+            );
         }
     }
 
@@ -1368,24 +1364,6 @@ mod tests {
             );
             assert_eq!(tags, expected, "{name}");
         }
-    }
-
-    #[test]
-    fn the_tags_read_planned_variations_by_name() {
-        let entry = SetlistEntry {
-            planned_variation_ids: vec!["v-2".to_string(), "v-gone".to_string(), "v-1".to_string()],
-            focus: Some(IntentionFocus {
-                kind: session::FocusKind::Evenness,
-                section_id: None,
-                target: None,
-            }),
-            ..SetlistEntry::fixture()
-        };
-        let labels: PlayLabels = [("v-1", "Dotted"), ("v-2", "Swung")].into_iter().collect();
-
-        let view = entry_to_view(&entry, &labels);
-
-        assert_eq!(view.plan_tags, ["Swung", "Dotted", "Focus: Evenness"]);
     }
 
     // ── entry_to_view ──────────────────────────────────────────────────
