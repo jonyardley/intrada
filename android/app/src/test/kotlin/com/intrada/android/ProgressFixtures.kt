@@ -22,6 +22,7 @@ object ProgressFixtures {
             false,
             null,
             "Hanon No. 1, mastery up from 2 to 3",
+            Direction.UP,
         )
 
     val analytics =
@@ -52,6 +53,7 @@ object ProgressFixtures {
                         false,
                         null,
                         "Clair de Lune, mastery up from 3 to 4",
+                        Direction.UP,
                     ),
                     hanon,
                     ScoreChange(
@@ -63,6 +65,7 @@ object ProgressFixtures {
                         true,
                         "first time marked",
                         "Gymnopédie No. 1, first time marked, mastery 3",
+                        Direction.UP,
                     ),
                 ),
             variationCoverage =

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.intrada.android.ui.ProgressRoute
 import com.intrada.android.ui.ProgressScreen
+import com.intrada.shared.Direction
 import com.intrada.shared.ScoreChange
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -47,6 +48,7 @@ class ProgressScreenTest {
                 false,
                 null,
                 "Hanon No. 1, mastery down from 4 to 3",
+                Direction.DOWN,
             )
         compose.setContent {
             ProgressScreen(

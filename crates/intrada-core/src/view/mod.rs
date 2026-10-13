@@ -5,12 +5,13 @@ use crate::domain::profile::build_profile_view;
 use crate::domain::session::SessionStatus;
 use crate::model::{
     BuildingSetlistView, DrillOfferView, EntryVariationsView, FocusChoiceView, FocusTargetView,
-    LimitsView, Model, PhotoRecognitionView, ViewModel,
+    LimitsView, Model, PhotoRecognitionView, SetlistBlockView, ViewModel,
 };
 use crate::view::cache::ProjectionKey;
 use crate::view::library::{library_count_line, matches_query};
 use crate::view::session::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, picker_variations,
+    plan_tags,
 };
 
 pub mod cache;
@@ -68,7 +69,15 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
             let entries: Vec<_> = building
                 .entries
                 .iter()
-                .map(|e| entry_to_view(e, &labels))
+                .map(|e| {
+                    let mut view = entry_to_view(e, &labels);
+                    view.plan_tags = plan_tags(
+                        &view.record.segments,
+                        live_variation_labels(&cached.library, e).into_iter(),
+                        view.record.focus.as_ref(),
+                    );
+                    view
+                })
                 .collect();
             let item_count = entries.len();
             let blocks = build_blocks(&entries);
@@ -128,6 +137,11 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                 })
                 .collect();
             let drill_offers = drill_offers(model, &building.entries);
+            let summary = builder_summary(total_duration_summary.as_deref(), &blocks, item_count);
+            let start_title = match &total_duration_summary {
+                Some(total) => format!("Start session \u{b7} {total}"),
+                None => "Start session".to_string(),
+            };
             (
                 None,
                 Some(BuildingSetlistView {
@@ -159,6 +173,8 @@ pub(crate) fn build_view_at(model: &Model, now: chrono::DateTime<chrono::Utc>) -
                         .collect(),
                     entry_keys,
                     drill_offers,
+                    summary,
+                    start_title,
                 }),
                 None,
             )
@@ -343,6 +359,33 @@ fn photo_recognition_view(state: &crate::model::PhotoRecognition) -> PhotoRecogn
             read_nothing: false,
         },
     }
+}
+
+fn live_variation_labels(
+    library: &[crate::model::LibraryItemView],
+    entry: &crate::domain::session::SetlistEntry,
+) -> Vec<String> {
+    let live = library
+        .iter()
+        .find(|i| i.id == entry.item_id)
+        .map_or(&[][..], |i| i.variations.as_slice());
+    entry
+        .planned_variation_ids
+        .iter()
+        .filter_map(|id| live.iter().find(|v| &v.id == id).map(|v| v.label.clone()))
+        .collect()
+}
+
+fn builder_summary(total: Option<&str>, blocks: &[SetlistBlockView], items: usize) -> String {
+    let plural = |n: usize, one: &str| format!("{n} {one}{}", if n == 1 { "" } else { "s" });
+    let grouped = blocks.iter().any(|b| b.group_id.is_some());
+    total
+        .map(str::to_string)
+        .into_iter()
+        .chain(grouped.then(|| plural(blocks.len(), "block")))
+        .chain([plural(items, "item")])
+        .collect::<Vec<_>>()
+        .join(" \u{b7} ")
 }
 
 fn drill_offers(

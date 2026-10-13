@@ -3906,6 +3906,72 @@ mod tests {
         assert_eq!(building.total_duration_summary.as_deref(), Some("20 min"));
     }
 
+    fn grouped(id: &str, kind: ItemKind, group: &str, secs: Option<u32>) -> SetlistEntry {
+        SetlistEntry {
+            item_type: kind,
+            group_id: Some(group.to_string()),
+            ..building_entry(id, secs)
+        }
+    }
+
+    /// The builder's top line and start button, with their plurals (#2467).
+    #[test]
+    fn the_builder_states_its_summary_and_start_button() {
+        use ItemKind::{Exercise, Piece};
+        let cases: [(&str, Vec<SetlistEntry>, &str, &str); 6] = [
+            ("nothing in it", vec![], "0 items", "Start session"),
+            (
+                "one item, nothing planned",
+                vec![building_entry("e1", None)],
+                "1 item",
+                "Start session",
+            ),
+            (
+                "two items, one planned",
+                vec![building_entry("e1", Some(600)), building_entry("e2", None)],
+                "10 min \u{b7} 2 items",
+                "Start session \u{b7} 10 min",
+            ),
+            (
+                "one block of two",
+                vec![
+                    grouped("e1", Exercise, "g1", None),
+                    grouped("e2", Piece, "g1", None),
+                ],
+                "1 block \u{b7} 2 items",
+                "Start session",
+            ),
+            (
+                "a block and a standalone item, timed",
+                vec![
+                    grouped("e1", Exercise, "g1", Some(300)),
+                    grouped("e2", Piece, "g1", Some(600)),
+                    building_entry("e3", None),
+                ],
+                "15 min \u{b7} 2 blocks \u{b7} 3 items",
+                "Start session \u{b7} 15 min",
+            ),
+            (
+                "seconds left over",
+                vec![building_entry("e1", Some(630))],
+                "10m 30s \u{b7} 1 item",
+                "Start session \u{b7} 10m 30s",
+            ),
+        ];
+        for (name, entries, summary, start_title) in cases {
+            let model = Model {
+                session_status: SessionStatus::Building(crate::domain::session::BuildingSession {
+                    entries,
+                    length_mins: None,
+                }),
+                ..Default::default()
+            };
+            let building = Intrada.rendered(&model).view.building_setlist.unwrap();
+            assert_eq!(building.summary, summary, "{name}");
+            assert_eq!(building.start_title, start_title, "{name}");
+        }
+    }
+
     #[test]
     fn view_building_setlist_total_duration_none_when_unplanned() {
         let app = Intrada;

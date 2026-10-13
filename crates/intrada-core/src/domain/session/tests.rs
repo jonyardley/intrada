@@ -4741,6 +4741,163 @@ fn test_set_entry_intention() {
     }
 }
 
+/// The aim box sends every keystroke; the core keeps the trimmed text and
+/// treats a blank aim as none, so neither phone repeats the rule (#2467).
+#[test]
+fn an_aim_is_kept_trimmed_and_a_blank_one_is_none() {
+    let cases = [
+        (Some("  Work on left hand \n"), Some("Work on left hand")),
+        (Some("Even quavers"), Some("Even quavers")),
+        (Some("   "), None),
+        (Some(""), None),
+        (None, None),
+    ];
+    for (typed, kept) in cases {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        let SessionStatus::Building(ref b) = model.session_status else {
+            panic!("Expected Building state");
+        };
+        let entry_id = b.entries[0].id.clone();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id: entry_id.clone(),
+                intention: Some("Earlier aim".to_string()),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: typed.map(str::to_string),
+            }),
+        );
+
+        assert!(model.last_error.is_none(), "{typed:?}");
+        let SessionStatus::Building(ref b) = model.session_status else {
+            panic!("Expected Building state");
+        };
+        assert_eq!(b.entries[0].intention.as_deref(), kept, "{typed:?}");
+    }
+}
+
+/// The length check reads what is kept, so padding cannot push an aim over.
+#[test]
+fn an_aim_at_the_limit_with_padding_is_accepted() {
+    let mut model = model_with_library();
+    update(&mut model, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut model,
+        Event::Session(SessionEvent::AddToSetlist {
+            item_id: "piece-1".to_string(),
+        }),
+    );
+    let SessionStatus::Building(ref b) = model.session_status else {
+        panic!("Expected Building state");
+    };
+    let entry_id = b.entries[0].id.clone();
+    let full = "a".repeat(crate::validation::MAX_INTENTION);
+
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SetEntryIntention {
+            entry_id,
+            intention: Some(format!("  {full}  ")),
+        }),
+    );
+
+    assert!(model.last_error.is_none());
+    let SessionStatus::Building(ref b) = model.session_status else {
+        panic!("Expected Building state");
+    };
+    assert_eq!(b.entries[0].intention.as_deref(), Some(full.as_str()));
+}
+
+/// The tags read the picker's own list, so a variation deleted or taken off
+/// the item since it was planned, which the picker can no longer untick, is
+/// not shown (#2467).
+#[test]
+fn tags_name_only_the_variations_still_on_the_item() {
+    use crate::domain::item::ItemEvent;
+    use crate::domain::item::VariationEvent;
+    let mut model = model_with_library();
+    let set_variations = |ids: Vec<String>, new: Vec<&str>| {
+        Event::Item(ItemEvent::UpdateItemVariations {
+            id: "piece-1".to_string(),
+            variation_ids: ids,
+            new_labels: new.into_iter().map(str::to_string).collect(),
+        })
+    };
+    update(
+        &mut model,
+        set_variations(vec![], vec!["Dotted", "Swung", "Legato"]),
+    );
+    let id = |model: &Model, label: &str| {
+        model
+            .variations
+            .iter()
+            .find(|v| v.label == label)
+            .map(|v| v.id.clone())
+            .expect("minted")
+    };
+    let (dotted, swung, legato) = (
+        id(&model, "Dotted"),
+        id(&model, "Swung"),
+        id(&model, "Legato"),
+    );
+    update(&mut model, Event::Session(SessionEvent::StartBuilding));
+    update(
+        &mut model,
+        Event::Session(SessionEvent::AddToSetlist {
+            item_id: "piece-1".to_string(),
+        }),
+    );
+    let entry_id = crate::view::rendered(&model)
+        .view
+        .building_setlist
+        .expect("building")
+        .entries[0]
+        .id
+        .clone();
+    update(
+        &mut model,
+        Event::Session(SessionEvent::SetEntryVariations {
+            entry_id,
+            variation_ids: vec![dotted.clone(), swung.clone(), legato],
+        }),
+    );
+    let tags = |model: &Model| {
+        crate::view::rendered(model)
+            .view
+            .building_setlist
+            .expect("building")
+            .entries[0]
+            .plan_tags
+            .clone()
+    };
+    assert!(model.last_error.is_none(), "{:?}", model.last_error);
+    assert_eq!(tags(&model), ["Dotted", "Swung", "Legato"]);
+
+    update(
+        &mut model,
+        set_variations(vec![dotted, swung.clone()], vec![]),
+    );
+    update(
+        &mut model,
+        Event::Variation(VariationEvent::Delete { id: swung }),
+    );
+
+    assert_eq!(tags(&model), ["Dotted"]);
+}
+
 // --- Rep Counter Tests ---
 
 const TAP_AT: &str = "2026-09-03T09:00:00Z";
