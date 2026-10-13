@@ -18,22 +18,25 @@ mkdir -p "$out"
 
 android/gradlew -q -p android :app:installDebug :app:installDebugAndroidTest
 
-runner="$(adb shell pm list instrumentation | tr -d '\r' \
-    | sed -n "s/^instrumentation:\([^ ]*\) (target=$app)$/\1/p" | head -n 1)"
+instrumentations="$(adb shell pm list instrumentation | tr -d '\r' || true)"
+runner="$(printf '%s\n' "$instrumentations" \
+    | sed -n "s/^instrumentation:\([^ ]*\) (target=$app)$/\1/p" | sed -n 1p)"
 if [ -z "$runner" ]; then
     echo "✗ no instrumentation targets $app, so the kill check cannot run" >&2
+    adb uninstall "$app" >/dev/null || true
     exit 1
 fi
+trap 'adb uninstall "${runner%%/*}" >/dev/null || true; adb uninstall "$app" >/dev/null || true' EXIT
 
 status=0
 
-# A step passes only on one test reported OK and none failed, skipped or errored:
-# `am instrument` exits 0 whatever the tests did.
+# A step passes only on exactly one test reported OK and none failed, skipped or
+# errored: `am instrument` exits 0 whatever the tests did.
 step() {
     local name="$1" method="$2" log="$out/$1.txt"
     adb shell am instrument -w -r -e killRecovery "$name" -e class "$class#$method" "$runner" \
         | tr -d '\r' >"$log" || true
-    if grep -q '^INSTRUMENTATION_STATUS_CODE: 0$' "$log" \
+    if [ "$(grep -c '^INSTRUMENTATION_STATUS_CODE: 0$' "$log" || true)" -eq 1 ] \
         && ! grep -q '^INSTRUMENTATION_STATUS_CODE: -' "$log" \
         && grep -q '^INSTRUMENTATION_CODE: -1$' "$log"; then
         echo "✓ kill recovery: $name"
@@ -47,7 +50,4 @@ step() {
 step answer answerTheSheetBeforeTheKill
 adb shell am force-stop "$app"
 [ "$status" -eq 0 ] && step resume resumeWithTheAnswersAfterTheKill
-
-adb uninstall "${runner%%/*}" >/dev/null || true
-adb uninstall "$app" >/dev/null || true
 exit "$status"

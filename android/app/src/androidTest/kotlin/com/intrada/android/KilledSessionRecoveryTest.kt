@@ -40,6 +40,8 @@ class KilledSessionRecoveryTest {
         app.control("reflection.note").performTextInput("Pedal clearer in bar 12")
         app.await(hasTestTag("reflection.note") and hasText("Pedal clearer in bar 12"))
         expectedTempo().writeText(setTempo)
+        // The note sends on a typing pause or when the screen stops: stop it before the kill.
+        app.close()
     }
 
     @Test

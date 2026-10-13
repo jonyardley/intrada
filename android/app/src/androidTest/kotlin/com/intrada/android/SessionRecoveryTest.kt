@@ -16,8 +16,10 @@ import org.junit.runner.RunWith
 
 /**
  * A practice the app was closed on comes back on the next launch (#962), with the item-complete
- * sheet's answers (#2137). iPhone: SessionRecoveryUITests. Each test starts from an empty store and
- * no saved settings, so a session left by an earlier run can neither pass nor fail it.
+ * sheet's answers (#2137), each sent on its own. iPhone: SessionRecoveryUITests. The relaunch stays
+ * in one process, so it reads saves still in memory; KilledSessionRecoveryTest checks the disk
+ * (#2576). Each test starts from an empty store and no saved settings, so a session left by an
+ * earlier run can neither pass nor fail it.
  */
 @RunWith(AndroidJUnit4::class)
 class SessionRecoveryTest {
