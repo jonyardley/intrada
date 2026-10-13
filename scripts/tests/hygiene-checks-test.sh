@@ -438,6 +438,56 @@ expect 2 "a root that is not there" env FAINT_INK_ROOT="$work/nowhere" bash "$re
 
 expect 0 "the screens this repo actually ships" bash "$repo_root/scripts/check-faint-ink.sh"
 
+# ── The design token check ──────────────────────────────────────────────────
+
+tokens="$work/tokens"
+mkdir -p "$tokens"
+tokens_check() {
+  DESIGN_TOKENS_THEME="$tokens/Theme.swift" DESIGN_TOKENS_PAGE="$tokens/page.html" \
+    bash "$repo_root/scripts/check-design-tokens.sh"
+}
+write_theme() {
+  printf '%s\n' \
+    '  static let paperTop = Color(hex: 0xF7F4EF)' \
+    '  static let marker = Color(hex: 0xFFE9A3)' \
+    '  static let masteryTrack = Color(hex: 0xEDE8DC)' \
+    '  static func marker(_ colour: HighlighterColour) -> Color {' \
+    '    case .butter: marker' \
+    '    case .coral: Color(hex: 0xFFB4A2)' \
+    "$@" >"$tokens/Theme.swift"
+}
+write_tokens_page() {
+  local butter="$1" coral="$2"
+  printf '%s\n' \
+    '<style>' \
+    '  :root {' \
+    '    --paperTop: #F7F4EF;' \
+    "    --butter: $butter;" \
+    '    --track: #EDE8DC;' \
+    '  }' \
+    '</style>' \
+    '<span class="go" style="background:#FFE9A3;">Start</span>' \
+    "<span class=\"go\" style=\"background:$coral;\">Start</span>" >"$tokens/page.html"
+}
+
+write_theme
+write_tokens_page '#FFE9A3' '#FFB4A2'
+expect 0 "every colour shown, two through an alias and one only as a swatch" tokens_check
+
+write_theme '  static let iconInk = Color(hex: 0x3B2A1E)'
+expect 1 "a token colour the page never shows" tokens_check
+
+write_theme
+write_tokens_page '#FFE9A3' '#FFB4A9'
+expect 1 "a marker pastel the page never shows" tokens_check
+
+write_tokens_page '#FFE9A4' '#FFB4A2'
+expect 1 "an aliased property with a stale hex" tokens_check
+
+expect 2 "a page that is not there" env DESIGN_TOKENS_PAGE="$work/nowhere.html" bash "$repo_root/scripts/check-design-tokens.sh"
+
+expect 0 "the theme and page this repo actually ships" bash "$repo_root/scripts/check-design-tokens.sh"
+
 # ── The haptics check ───────────────────────────────────────────────────────
 
 haptics="$work/haptics"
