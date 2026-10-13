@@ -9,8 +9,8 @@ struct SegmentedPills<Option: Hashable>: View {
     case inlineScrolling(edgeInset: CGFloat)
     /// Equal-width segments on a bordered card track.
     case fullWidthTrack
-    /// The full-width track while every label fits on one row, then whole
-    /// pills over balanced rows rather than a broken label (#2490).
+    /// Equal segments while the widest label fits, then label-sized pills on one
+    /// row, then whole pills over balanced rows rather than a broken label (#2490).
     case wrappingTrack
   }
 
@@ -195,7 +195,8 @@ private struct SpareSharedRow: Layout {
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
     let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
     let natural = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
-    return CGSize(width: proposal.width ?? natural, height: sizes.map(\.height).max() ?? 0)
+    return CGSize(
+      width: max(proposal.width ?? natural, natural), height: sizes.map(\.height).max() ?? 0)
   }
 
   func placeSubviews(
