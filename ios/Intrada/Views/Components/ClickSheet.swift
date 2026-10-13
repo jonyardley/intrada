@@ -143,7 +143,7 @@ struct ClickSheet: View {
                 commitOther()
               }),
             label: { $0.map { $0.map(String.init).joined(separator: " + ") } ?? "Not grouped" },
-            layout: .fullWidthTrack)
+            layout: .wrappingTrack)
         }
       }
     }

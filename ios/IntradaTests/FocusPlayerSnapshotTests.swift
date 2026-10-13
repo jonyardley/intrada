@@ -153,6 +153,22 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
+  // Every grouping of a twelve-beat bar reads on one line (#2490).
+  func testClickSheetLongBar() throws {
+    let store = Store(bridge: SnapshotStubBridge())
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    let twelveEight = Metre(beats: 12, unit: 8, groups: nil)
+    var active = ActiveSessionView.previewActive
+    active.clickSeedMetre = twelveEight
+    active.clickSeedBpm = 168
+    active.clickSeedPresets = limits.clickPresets(for: twelveEight)
+    active.currentClickSounding = 0b1111_1111_1111
+    let click = ClickController()
+    click.reseed(from: active, limits: limits)
+    assertSnapshot(
+      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
+  }
+
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the
   // orientation slot's minimum. Full-screen because the whole strip reflows.
   func testFocusPlayerLongSession() {

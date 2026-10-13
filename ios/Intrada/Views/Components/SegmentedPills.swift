@@ -9,6 +9,9 @@ struct SegmentedPills<Option: Hashable>: View {
     case inlineScrolling(edgeInset: CGFloat)
     /// Equal-width segments on a bordered card track.
     case fullWidthTrack
+    /// Pills that hug their labels on a bordered card track, wrapping whole
+    /// pills to a new row rather than breaking a label (#2490).
+    case wrappingTrack
   }
 
   let options: [Option]
@@ -41,6 +44,8 @@ struct SegmentedPills<Option: Hashable>: View {
       } else {
         fullWidthTrack(.row)
       }
+    case .wrappingTrack:
+      wrappingTrack
     }
   }
 
@@ -68,6 +73,19 @@ struct SegmentedPills<Option: Hashable>: View {
         pillButton(option, style: style)
       }
     }
+    .padding(4)
+    .background(IntradaColor.cardFill, in: shape)
+    .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
+  }
+
+  private var wrappingTrack: some View {
+    let shape = RoundedRectangle(cornerRadius: IntradaRadius.card)
+    return FlowLayout(spacing: 4) {
+      ForEach(options, id: \.self) { option in
+        pillButton(option, style: .row)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(4)
     .background(IntradaColor.cardFill, in: shape)
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
@@ -105,6 +123,9 @@ struct SegmentedPills<Option: Hashable>: View {
     switch layout {
     case .inlineScrolling:
       text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
+    case .wrappingTrack:
+      text.lineLimit(1).fixedSize().padding(.horizontal, IntradaSpacing.card)
+        .frame(minHeight: 44)
     case .fullWidthTrack where style == .equalRow:
       // Sized to the longest label so the row wins only when every segment fits (#2133).
       ZStack {

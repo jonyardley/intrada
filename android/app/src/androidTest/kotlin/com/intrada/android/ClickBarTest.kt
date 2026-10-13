@@ -1,5 +1,8 @@
 package com.intrada.android
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -10,8 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The bar line appears only while the click sounds, and the sheet it opens changes which beats
- * sound. The reflection naming the beat unit (#1499) is not on Android yet: #2571.
+ * The bar line appears only while the click sounds, the sheet it opens changes which beats sound,
+ * and the metre chosen there reaches the item-complete sheet's tempo (#1499).
  */
 @RunWith(AndroidJUnit4::class)
 class ClickBarTest {
@@ -48,8 +51,13 @@ class ClickBarTest {
         app.assertGone(hasTestTag("click.bar"), "the bar line leaves with the click")
 
         app.tap("player.advance")
-        app.control("reflection.tempo.increase")
+        app.await(hasTestTag("reflection.tempo") and spokenIn("quaver beats per minute"))
     }
+
+    private fun spokenIn(unit: String) =
+        SemanticsMatcher("spoken in $unit") {
+            it.config.getOrNull(SemanticsProperties.StateDescription)?.endsWith(unit) == true
+        }
 
     private fun bar(spoken: String) =
         app.await(hasTestTag("click.bar") and hasStateDescription(spoken))
