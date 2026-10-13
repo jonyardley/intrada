@@ -413,7 +413,6 @@ private fun PlayMarks(
                 },
                 canDecrease = bpm > row.band.min.toInt(),
                 canIncrease = bpm < row.band.max.toInt(),
-                valueSpoken = words.spoken,
             )
         }
     }
