@@ -2,8 +2,8 @@
 
 > How one unit of work runs in this repo, in the order it runs: claim,
 > isolate, route, plan, build, review, ship, measure. Each section says what to
-> do at that step, what holds it, and the number it was set from. The tiers
-> are defined in step 4. Harness,
+> do at that step, what holds it, and the number it was set from. Step 4
+> defines the tiers. Harness,
 > process, isolation, routing, rung, context, speed, rework and spend are
 > defined in the glossary in [`reference.md`](reference.md). This file replaced
 > the OMP-era guides and `model-guide.md` on 2026-09-08; why OMP was retired is
@@ -272,7 +272,7 @@ column below is in that bill.
 
 | Input | Path | When it loads |
 |---|---|---|
-| Project rules | `CLAUDE.md` | Every session and every subagent, in full. About 550 words while the #2595 trial runs |
+| Project rules | `CLAUDE.md` | Every session and every subagent, in full. About 450 words while the #2595 trial runs; the rules that moved out need reading by hand in a worktree |
 | Path-scoped rules | `.claude/rules/*.md` | When a file matching the rule's `paths:` globs is read with the Read tool. A `cat` through Bash does not count, and a file inside a worktree driven from the main checkout does not fire them either: read them by hand there. They reload the same way after compaction |
 | Skills | `.claude/skills/*/SKILL.md` | The description every session; the body when invoked by name (`/ship`, `/intrada-parallel-streams`) |
 | Agents | `.claude/agents/*.md` | The description every session; the body becomes the subagent's system prompt |
@@ -312,7 +312,9 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   on a model. UI work does Claude Design first, and a new screen starts by
   reading an existing one, which loads the UI rules.
 - **Tier 3, lightweight spec** (architectural): net-new top-level features, Crux
-  core or non-additive bridge changes, auth or schema changes.
+  core or non-additive bridge changes, auth or schema changes. The plan
+  comment, then one `specs/<feature>.md` of 100 to 200 lines riding as the
+  first commit of Phase A, never its own PR.
 
 Lead-only work on the sensitive surfaces goes up at least one tier and ships as
 two PRs; an additive bridge change keeps its tier and ships as one
@@ -723,7 +725,7 @@ who reads it and when.
    the same change that adds the gate. The comment density check, the dash
    check and the simulator lock are the models.
 2. **`CLAUDE.md`.** Invariants every session needs: architecture, gotchas,
-   commands. Paid on every request, so it stays near 550 words (#2595).
+   commands. Paid on every request, so it stays near 450 words (#2595).
 3. **Path-scoped rules.** Code style and tests, offline-first, the UI and tone
    rules, the per-screen quality bar and the silent-failure hazards. Free until a covered file is
    read, then in context for the rest of the session.

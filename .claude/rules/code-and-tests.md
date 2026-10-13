@@ -2,13 +2,10 @@
 paths:
   - "crates/**"
   - "ios/**/*.swift"
-  - "android/**/*.kt"
+  - "android/**"
 ---
 
 # Code style and tests
-
-Binds every code file whether or not this loaded (moved from `CLAUDE.md`,
-#2595).
 
 ## Code style
 
@@ -37,21 +34,22 @@ Binds every code file whether or not this loaded (moved from `CLAUDE.md`,
 
 ## Tests
 
-**Ship tests with new code**, test-first for non-UI Tier 2, all Tier 3 and
-`intrada-core` changes: a test retrofit to pass agrees with the implementation
+**Ship tests with new code**, test-first by default for non-UI Tier 2, all
+Tier 3 and `intrada-core` changes: a test retrofit to pass agrees with the implementation
 by construction (#1256). Non-trivial pure logic covers edge cases, None and
 empty inputs. New iOS test files use Swift Testing; migrate an XCTest file only
-when already touching it; XCUITest stays on XCTest.
+when already touching it, never wholesale; XCUITest stays on XCTest.
 
 - **Before asserting, ask what the value was one line earlier** (#1223); if
   nothing distinguishes the behaviour present from absent, delete the test.
   **Mutation-test by deleting the line, not inverting it** (#1423).
 - **A parser or validator gets a table test against its consumer** from inputs
-  a user would produce (#1256). Fixtures for a many-field type live in one
+  a user would produce (#1256); cases you invented agree with your code by
+  construction. Fixtures for a many-field type live in one
   place (Rust `fixture()` with struct update, Swift a fixture enum with default
   arguments).
 - **Say so in the PR when you skip tests.** Tier 2+ carries a **Coverage** line
-  naming expected gaps, then checks the Codecov comment against it (70% patch
+  naming expected gaps before CI finishes, then checks the Codecov comment against it (70% patch
   target, informational; `ios/` ignored).
 - **UI verification means driving the app on the simulator**; if you cannot,
   name the hand check.

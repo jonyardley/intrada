@@ -1,14 +1,14 @@
 # intrada Development Guidelines
 
-<!-- Loads into every session: invariants, gotchas, commands, about 550 words. Everything
+<!-- Loads into every session: invariants, gotchas, commands, about 450 words. Everything
 else lives in the path-scoped rules, the skills and the docs below. Trial from 2026-10-13
 (#2595); the undo rule is in docs/harness-log.md. -->
 
 intrada is a **practice notebook** for musicians: build a session from the library, play it
-through with a timer and rep counting, and score how it went. Two native shells on one Rust
+through with a timer and rep counting, and score how it went (Plan, Practice, Track). Two native shells on one Rust
 core: SwiftUI in `ios/` ships, Compose in `android/` is being built (#2220). The web and
-Tauri shells were deleted (`docs/rebuild-review.md`): **a request implying web work, confirm
-the platform first.** Direction: `docs/roadmap.md`; in flight: `just status`.
+Tauri shells were deleted (`docs/rebuild-review.md`): **a request implying web work?
+Confirm the platform first.** Direction: `docs/roadmap.md`; in flight: `just status`.
 
 ## Commands
 
@@ -45,17 +45,19 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 - **JSON-only serde attrs break the bincode bridge silently** (#846); a stub-bridge test
   cannot catch it: use `LiveBridge`.
 - **A field inside the crash-recovery snapshot invalidates every blob** (#1345): bump
-  `ActiveSession::BLOB_VERSION` first, then re-pin.
+  `ActiveSession::BLOB_VERSION` first, then re-pin; the shell's key follows it (#1116).
 
 ## Where the rest lives
 
 - Code style, comments and testing: `.claude/rules/code-and-tests.md`, loaded on `crates/`,
-  `ios/` and `android/` files. Offline-first, UI, quality bars and the silent-failure
-  surfaces: the other `.claude/rules/`. They bind whether or not you have seen them.
-- Claim, worktree, tiers, plan comments and routing:
+  `ios/` and `android/` files; in a worktree, read it by hand before editing code.
+  Offline-first, UI, quality bars and the silent-failure surfaces: the other
+  `.claude/rules/`. Every rule binds whether or not it loaded.
+- Claim, worktree, tiers, plan comments and routing (unplanned work: discuss first):
   [`docs/working-with-agents.md`](docs/working-with-agents.md); epics:
   [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md#epics).
 - Shipping: `/ship` and the `intrada-shipping` skill; more than one session: the
-  `intrada-parallel-streams` skill. Both bind whether or not you loaded them.
-- Writing: British English, no em, en or double dashes, plain language
+  `intrada-parallel-streams` skill.
+- Writing: British English, no em, en or double dashes, plain language, in PR bodies,
+  issues and comments too, where nothing checks
   ([`docs/style-guide.md`](docs/style-guide.md), [`docs/tone-of-voice.md`](docs/tone-of-voice.md)).
