@@ -31,8 +31,8 @@ Look at: <!-- One line: the decision or risk Jon should judge before merging.
 ## What it looks like
 
 <!-- Screen changes only. After pushing the branch, run `just pr-visuals` and
-     paste its output here: a before and after image for every snapshot
-     reference this branch changed, pinned to the pushed commit so the
+     paste its output here: a before and after image, iPhone and Android, for
+     every snapshot reference this branch changed, pinned to the pushed commit so the
      pictures still resolve after the branch is gone. Run it before the push
      and the after-images point at a commit GitHub has never seen. Delete this
      section on a PR that touches no screen. -->
@@ -59,8 +59,10 @@ Coverage: <!-- Tier 2+: the expected patch-coverage gaps and why. What the new t
      unticked is a line still owed. -->
 
 - [ ] Roadmap item or issue: #___ (or explicitly agreed with Jon)
+- [ ] One PR across the stack: core, iOS and Android together, core commits first (on the sensitive surfaces, `reviewer` read the core commits alone before the screens commits)
 - [ ] `just check` passes (fmt + clippy + tests, mirrors CI's flags)
 - [ ] `ios/` changes: `just ios-fmt-check`, `just ios-test` and `just ios-test-ui-class` for each UI class the diff edits pass (CI runs every UI test); snapshots re-recorded and `just ios-snapshots-optimize` run if UI changed
+- [ ] `android/` changes: `just android-test` passes; a screen change carries the `just android-run` screenshot beside the iPhone one
 - [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
 - [ ] Persistence or new-entity changes: offline-first PR checklist in `.claude/rules/offline-first.md` applied (`updated_at` / `deleted_at`, client-minted ulid, a failed write resolving `Failed`)
 - [ ] CLAUDE.md updated (if architecture, components or patterns changed)

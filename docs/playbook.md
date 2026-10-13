@@ -16,7 +16,7 @@ the mechanics; you pick, approve, merge and clear.
 | 1. Pick | `just status` in the main checkout; choose the epic's next open child | | 1 |
 | 2. Open | A new session in the main checkout; type the issue number and one sentence of intent | Makes its worktree, claims the issue, reads it and its epic | 1 |
 | 3. Plan | Tier 1: nothing. Tier 2 and 3: read the plan comment on the issue, reply "go" or correct once. The next Tier 2 child of an epic whose body names it builds without waiting, unless it is on the sensitive surfaces or names a choice you have not made | Posts about 150 words on the [plan skeleton](../.claude/skills/intrada-shipping/SKILL.md#plan-comments) | 3 |
-| 4. Build | Nothing, or answer the one question it asks. A screen change: look at the screenshot on the draft PR and say yes or no | Test-first on the core; gates in `test-runner`; a screen change opens as a draft with its screenshot and goes ready only after your yes | 0 |
+| 4. Build | Nothing, or answer the one question it asks. A screen change: look at the iPhone and Android screenshots on the draft PR and say yes or no | Test-first on the core; gates in `test-runner`; a feature lands on both apps in one PR; a screen change opens as a draft with both screenshots and goes ready only after your yes | 0 |
 | 5. Ship | Read the PR body and the self-review comment; merge when green and mergeable | `/ship`: gates, `reviewer`, a draft PR marked ready after the self-review, CI watched to a conclusion | 5 |
 | 6. Close | `/clear`, or `just handover N` and paste what it prints into a fresh session | `Closes #N` closes the issue on merge and the board's automation moves it to Done; removes the worktree | 1 |
 
@@ -46,7 +46,7 @@ once, at the start, and leave effort alone off the sensitive surfaces.
 | To start a unit | A new session, the issue number, one sentence |
 | To carry a unit to the next session | `just handover N`, then paste what it prints |
 | To ship | `/ship` in the session |
-| To see a screen | `just ios-run` with seeded data; `SEED=0 just ios-run` to test persistence |
+| To see a screen | `just ios-run` and `just android-run` with seeded data; `SEED=0 just ios-run` to test persistence |
 | To design a screen | Claude Design, project "Intrada"; the session pulls the output by id |
 | An architecture answer | The graphify graph in the main checkout, never a full-repo read |
 | To know what the week cost | `just usage 7`; add `--quality` for corrections, rung switches and long subagent runs |

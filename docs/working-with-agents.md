@@ -316,9 +316,12 @@ Match ceremony to scope; if unsure, go one tier lighter and drift up.
   comment, then one `specs/<feature>.md` of 100 to 200 lines riding as the
   first commit of Phase A, never its own PR.
 
-Lead-only work on the sensitive surfaces goes up at least one tier and ships as
-two PRs; an additive bridge change keeps its tier and ships as one
-(`.claude/rules/sensitive-surfaces.md`).
+A feature ships as one PR across the stack: core, iOS and Android together,
+core commits first, never a core PR then a screens PR, because a merged core
+with no caller is shell-dead (#1374). On the sensitive surfaces `reviewer`
+reads the core commits on their own before the screens commits are added.
+Lead-only work there goes up at least one tier; an additive bridge change
+keeps its tier (`.claude/rules/sensitive-surfaces.md`).
 
 A Tier 2 or Tier 3 plan lives on its issue as a comment of about 150 words,
 on the skeleton in the shipping skill's
@@ -428,7 +431,7 @@ retyped), so it keeps its tier and may go to `task`.
    the fix.
 6. Verify on the running app, not just in CI. A core type change means iOS
    tests mean nothing until the UI tests have run, which CI does on the draft.
-7. Ship as one PR, core commits first; two PRs only for lead-only work
+7. Ship as one PR across core, iOS and Android, core commits first
    (`.claude/rules/sensitive-surfaces.md`).
 
 Opener for the first session:
@@ -610,7 +613,7 @@ screens half starts.
 | You are | Do |
 |---|---|
 | About to open or update a PR | `/ship`: gates through `test-runner`, `reviewer` over the diff, then `just pr-open` as a draft; watch CI to a conclusion in the same turn and read mergeability |
-| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its screenshot |
+| The PR is green and reviewed | `just pr-ready PR ISSUE`; a screen change also needs Jon's yes on its iPhone and Android screenshots |
 | The unit has shipped: PR green, issue closed, worktree removed | `/clear` in the same sitting |
 | About to leave the session for over an hour | Finish the unit or `/clear` first; the first turn back re-sends the whole context at write price, and the cold nudge will say so |
 
@@ -627,7 +630,7 @@ with no gate ended with a median of 544 words in the week to 2026-10-13, so
 
 **Verification, the standard held.**
 
-- UI changes: drive the simulator and show proof, or say explicitly "I cannot
+- UI changes: drive the simulator and the emulator and show proof, or say explicitly "I cannot
   reach the running app, here is what you need to verify by hand". Never claim
   "all green" when that means `cargo test` passed. Asking an agent to skip
   verification to save time costs more in rework.

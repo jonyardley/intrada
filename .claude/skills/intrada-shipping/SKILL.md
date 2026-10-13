@@ -43,11 +43,16 @@ ready and moves the board to In review (#1659); a screen change also waits for
 Jon's yes on its screenshot. The body's `Closes #N` closes the issue on merge,
 and the board follows.
 
-## Verifying a change on the simulator
+## Verifying a change on the simulator and the emulator
 
-A UI or interaction change is driven on the simulator before it ships, not
-described: `just ios-run` launches the app and the runtime tools tap, type and
-screenshot it. A snapshot proves a settled frame renders, not that a tap
+Every feature ships on both apps, in one PR across core, iOS and Android, the
+core commits first; on the sensitive surfaces `reviewer` reads the core commits
+on their own before the screens commits are added. One PR is the rule because
+a merged core with no caller is shell-dead (#1374).
+
+A UI or interaction change is driven on both apps before it ships, not
+described: `just ios-run` and `just android-run` launch them and the runtime
+tools tap, type and screenshot them. A snapshot proves a settled frame renders, not that a tap
 reveals anything or that a rejected write puts the old value back. Name in
 **What I checked** what you drove and what you saw.
 
@@ -57,8 +62,9 @@ Activities. Those PRs carry the label and their **What I checked** names exactly
 what a person has to do by hand. Reaching for it because driving the app looked
 like effort is the failure this rule exists to stop.
 
-A screen change ships with its before and after image, not prose describing
-one, and the draft's after image is the one Jon approves
+A screen change ships with its before and after images for iPhone and
+Android, not prose describing them, and the draft's after images are the ones
+Jon approves
 (`.claude/rules/ios-ui.md`: eyes before ready); a no is fixed by a push to the
 open PR. After pushing the branch, `just pr-visuals` reads the
 references it changed and prints the before/after markdown to paste under
@@ -144,12 +150,12 @@ the reviewer read it.
 **Done looks like**: two or three checks, as the musician or Jon sees them.
 **Time budget**: one session, or two; past it, stop and re-plan.
 **Decisions taken**: each choice, with the option rejected and why.
-**Files**: the files and lines it touches.
-**Tests**: what proves it, and the line a deletion should break.
+**Files**: the files and lines it touches, core, `ios/` and `android/`.
+**Tests**: what proves it on each shell, and the line a deletion should break.
 **Rabbit holes**: the risk most likely to eat the budget, and how it is avoided.
 **Out of scope**: what it deliberately leaves alone.
 **Routing**: the epic from `just claim`, sensitive surfaces or not, where it
-runs, and any parallel stream.
+runs on iOS and Android, and any parallel stream.
 ```
 
 The routing line follows the rules in `docs/working-with-agents.md`. A plan that
