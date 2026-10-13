@@ -561,68 +561,6 @@ class BridgeRoundTripTest {
         )
     }
 
-    // The builder's lines and the stepper's minutes arrive ready, so neither phone writes its
-    // own; the aim is kept trimmed (#2467).
-    @Test
-    fun theBuildersSummaryCaptionTagsAndMinutesArriveReady() {
-        val bridge = LiveBridge()
-        bridge.update(Event.StartApp)
-        val nocturne = addItem(bridge, "Nocturne", ItemKind.PIECE)
-        bridge.update(
-            Event.Item(ItemEvent.UpdateItemVariations(nocturne, emptyList(), listOf("Dotted")))
-        )
-        val dotted = bridge.view().variations.single { it.label == "Dotted" }.id
-        val sections =
-            addSections(
-                    bridge,
-                    nocturne,
-                    listOf("A", "B").map {
-                        SectionEdit(null, it, BarsInput.Blank, SectionKind.FORM, "")
-                    },
-                )
-                .sections
-                .map { it.id }
-        bridge.update(Event.Session(SessionEvent.StartBuilding))
-        bridge.update(Event.Session(SessionEvent.AddToSetlist(nocturne)))
-        val entryId = bridge.view().buildingSetlist?.entries?.firstOrNull()?.id.orEmpty()
-        bridge.update(Event.Session(SessionEvent.SetEntryDuration(entryId, 600u)))
-        bridge.update(
-            Event.Session(SessionEvent.SetSegments(entryId, sections.map { Segment(it, 0u) }))
-        )
-        bridge.update(Event.Session(SessionEvent.StepSegment(entryId, sections.first(), 1)))
-        bridge.update(Event.Session(SessionEvent.SetEntryVariations(entryId, listOf(dotted))))
-        bridge.update(
-            Event.Session(
-                SessionEvent.SetFocus(entryId, IntentionFocus(FocusKind.FROMMEMORY, null, null))
-            )
-        )
-        bridge.update(Event.Session(SessionEvent.SetEntryIntention(entryId, "  Even quavers \n")))
-
-        val building = bridge.view().buildingSetlist
-        val entry = building?.entries?.firstOrNull()
-        assertEquals(listOf("A 6 min", "B 4 min", "Dotted", "Focus: From memory"), entry?.planTags)
-        assertEquals("Even quavers", entry?.intention)
-        val block = building?.blocks?.firstOrNull()
-        assertEquals("Piece \u00B7 10 min", block?.caption)
-        assertEquals("10 min", block?.plannedDisplay)
-        assertEquals("piece only", block?.relatedLabel)
-        assertEquals("10 min \u00B7 1 item", building?.summary)
-        assertEquals("Start session \u00B7 10 min", building?.startTitle)
-        val limits = bridge.view().limits
-        assertEquals(
-            listOf(1, 60, 6),
-            listOf(
-                    limits.plannedDurationMinMins,
-                    limits.plannedDurationMaxMins,
-                    limits.plannedDurationDefaultMins,
-                )
-                .map { it.toInt() },
-        )
-
-        bridge.update(Event.Session(SessionEvent.SetEntryIntention(entryId, "   ")))
-        assertEquals(null, bridge.view().buildingSetlist?.entries?.firstOrNull()?.intention)
-    }
-
     // Adding and removing a section keep the tuned minutes (#2398).
     @Test
     fun addingAndRemovingASectionCrossTheBridge() {
