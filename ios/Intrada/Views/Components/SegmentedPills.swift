@@ -51,6 +51,7 @@ struct SegmentedPills<Option: Hashable>: View {
       } else {
         ViewThatFits(in: .horizontal) {
           fullWidthTrack(.equalRow)
+          fullWidthTrack(.labelSized)
           ForEach(wrappedRowLengths, id: \.self) { wrappedTrack(perRow: $0) }
           fullWidthTrack(.stacked)
         }
@@ -61,6 +62,7 @@ struct SegmentedPills<Option: Hashable>: View {
   private enum TrackStyle {
     case row
     case equalRow
+    case labelSized
     case stacked
   }
 
@@ -80,7 +82,11 @@ struct SegmentedPills<Option: Hashable>: View {
       ? AnyShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       : AnyShape(Capsule(style: .circular))
     let trackLayout =
-      stacked ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
+      switch style {
+      case .stacked: AnyLayout(VStackLayout(spacing: 4))
+      case .labelSized: AnyLayout(SpareSharedRow(spacing: 4))
+      default: AnyLayout(HStackLayout(spacing: 4))
+      }
     return trackLayout {
       ForEach(options, id: \.self) { option in
         pillButton(option, style: style)
@@ -158,6 +164,9 @@ struct SegmentedPills<Option: Hashable>: View {
       text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
     case .wrappingTrack where style == .stacked:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
+    case .wrappingTrack where style == .labelSized:
+      text.lineLimit(1).padding(.horizontal, 4)
+        .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack:
       // The row's widest label plus a margin, so a row that only just fits wraps instead (#2490).
       ZStack {
@@ -175,6 +184,33 @@ struct SegmentedPills<Option: Hashable>: View {
       .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .fullWidthTrack:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
+    }
+  }
+}
+
+/// One row where each pill takes its label's width plus an even share of what is left.
+private struct SpareSharedRow: Layout {
+  var spacing: CGFloat
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+    let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+    let natural = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+    return CGSize(width: proposal.width ?? natural, height: sizes.map(\.height).max() ?? 0)
+  }
+
+  func placeSubviews(
+    in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void
+  ) {
+    let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+    let natural = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+    let share = subviews.isEmpty ? 0 : max(bounds.width - natural, 0) / CGFloat(subviews.count)
+    var x = bounds.minX
+    for (subview, size) in zip(subviews, sizes) {
+      let width = size.width + share
+      subview.place(
+        at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading,
+        proposal: ProposedViewSize(width: width, height: bounds.height))
+      x += width + spacing
     }
   }
 }
