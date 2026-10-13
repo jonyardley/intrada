@@ -147,6 +147,7 @@ internal fun PhotoCardContent(
     if (viewing && image != null) PhotoViewer(image, actions.loadFull) { viewing = false }
     if (capturing && onScan != null) {
         CaptureMenu(
+            if (photoId == null) "Add a photo" else "Change the photo",
             onScan = {
                 capturing = false
                 onScan()
@@ -204,9 +205,22 @@ private fun PhotoViewer(
 }
 
 @Composable
-private fun CaptureMenu(onScan: () -> Unit, onChoose: () -> Unit, onDismiss: () -> Unit) {
+private fun CaptureMenu(
+    title: String,
+    onScan: () -> Unit,
+    onChoose: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     Dialog(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().cardSurface()) {
+            FieldLabel(
+                title,
+                Modifier.padding(
+                    horizontal = IntradaSpacing.card,
+                    vertical = IntradaSpacing.cardCompact,
+                ),
+            )
+            HairlineDivider()
             CaptureRow("Scan the page", "piece.photo.scan", onScan)
             HairlineDivider()
             CaptureRow("Choose a photo", "piece.photo.library", onChoose)

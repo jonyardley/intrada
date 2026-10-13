@@ -113,7 +113,22 @@ class PhotoCardTest {
         compose.onNodeWithTag("piece.photo.choose").performClick()
 
         assertEquals(1, chosen)
-        compose.onNodeWithTag("piece.photo.scan").assertDoesNotExist()
+    }
+
+    @Test
+    fun removingAsksToScanOrChooseAgainWhenThePhoneCanScan() {
+        compose.setContent {
+            PhotoCardContent(
+                PHOTO,
+                LoadedPhoto(PHOTO, null),
+                failure = null,
+                PhotoCardActions({}, {}, onScan = {}),
+            )
+        }
+
+        compose.onNodeWithTag("piece.photo.remove").performClick()
+
+        compose.onNodeWithText("You'll need to scan or choose it again.").assertIsDisplayed()
     }
 
     private suspend fun TestScope.pieceWithPhoto(written: Boolean): Store {
