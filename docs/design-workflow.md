@@ -78,7 +78,7 @@ Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md`
    - Reuse components and tokens; if something new is needed, that's a signal a
      new primitive/token belongs in `Theme.swift` **and** the design system.
 2. **Plan / tasks** — Reference the committed mockup. Build against it.
-3. **PR checklist** — add two gates:
+3. **PR checklist:** add three gates:
    - [ ] If a token changed, `Theme.swift` and
          `design/intrada-design-system.dc.html` were updated together.
    - [ ] If a component changed, its page in `design/components/` changed
