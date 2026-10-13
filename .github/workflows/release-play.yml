@@ -95,7 +95,7 @@ jobs:
         with:
           prefix-key: "release-play"
           cache-on-failure: true
-      - uses: taiki-e/install-action@v2.87.22
+      - uses: taiki-e/install-action@v2.87.26
         with:
           tool: just,cargo-ndk@4.1.2
       - uses: actions/setup-java@v6
