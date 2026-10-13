@@ -49,6 +49,18 @@ pub(super) fn dismiss_undo(model: &mut Model) -> Command<Effect, Event> {
     crux_core::render::render()
 }
 
+/// A reload that holds the deleted session again (a refused delete rolled
+/// back) ends its undo, so a later delete from another device cannot revive it.
+pub(crate) fn forget_restored_delete(model: &mut Model) {
+    let restored = model
+        .deleted_session
+        .as_ref()
+        .is_some_and(|(session, _)| model.sessions.iter().any(|s| s.id == session.id));
+    if restored {
+        model.deleted_session = None;
+    }
+}
+
 /// What the undo banner says while there is a delete to take back. A refused
 /// delete whose reload put the session back has nothing to undo.
 pub(crate) fn undo_offer(model: &Model) -> Option<String> {
@@ -370,11 +382,10 @@ mod tests {
     }
 
     #[test]
-    fn a_second_delete_offers_the_undo_of_the_second() {
+    fn a_second_delete_takes_over_the_undo() {
         let mut model = practised(&["first", "second"]);
         let _ = delete(&mut model, "first", at(10));
         let _ = delete(&mut model, "second", at(11));
-        assert_eq!(offer(&model).as_deref(), Some("Session deleted"));
 
         let _ = undo(&mut model, at(20));
         assert_eq!(ids(&model), vec!["second".to_string()]);
@@ -397,6 +408,14 @@ mod tests {
         let loaded = cmd.events().next().expect("the reload");
         let _ = Intrada.update(loaded, &mut model);
 
+        assert_eq!(offer(&model), None);
+        assert!(model.deleted_session.is_none());
+
+        // Another device's delete arriving later must not bring the offer back.
+        let _ = Intrada.update(
+            Event::SessionsStoreLoaded(PersistenceOutput::Sessions(vec![])),
+            &mut model,
+        );
         assert_eq!(offer(&model), None);
     }
 

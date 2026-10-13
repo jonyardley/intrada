@@ -873,7 +873,7 @@ pub use record::{
     Away, Felt, FocusKind, IntentionFocus, IntentionMet, NotePoint, NotePointKind, NoteSpan,
     Obstacle, Segment, SegmentClock,
 };
-pub(crate) use saved::undo_offer;
+pub(crate) use saved::{forget_restored_delete, undo_offer};
 
 use active::written_key_as_none;
 use plays::{record_rep, record_tempo_change};

@@ -308,6 +308,7 @@ impl Intrada {
                 PersistenceOutput::Sessions(sessions) => match model.sessions_sync.load_landed() {
                     persistence::Landed::Apply => {
                         model.sessions = sessions.into();
+                        crate::domain::session::forget_restored_delete(model);
                         model.practice_summaries = build_practice_summaries(&model.sessions).into();
                         crux_core::render::render()
                     }

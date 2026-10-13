@@ -67,7 +67,7 @@ deleted session's record and miss its delete.
 
 ## The core
 
-Three events, each appended after the last variant of its enum:
+Four events, each appended after the last variant of its enum:
 
 - `SessionEvent::DeleteSaved { session_id, now }` takes the session off the
   list and rebuilds the practice summaries at once, keeps it for undo, writes
@@ -79,7 +79,15 @@ Three events, each appended after the last variant of its enum:
   refused write raises the storage error and reloads the list, which rolls the
   change back (#825).
 
+- `SessionEvent::DismissUndoDelete` closes the undo banner and lets the
+  delete stand.
+
 Only the last delete can be undone, which is all the screen's undo needs.
+The view says so in `undo_delete`, appended last to `ViewModel`: "Session
+deleted" while there is a delete to take back, and `None` once it is
+undone, dismissed, taken over by the next delete, or put back by the reload
+after a refused write. That reload forgets the delete, so a later delete of
+the same session from another device does not bring the banner back.
 
 ## Tests, first
 
