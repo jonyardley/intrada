@@ -42,22 +42,9 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
             is PersistenceOperation.DeleteItem -> ack { delete(operation) }
             is PersistenceOperation.SaveSession -> ack { save(operation.value) }
             is PersistenceOperation.DeleteSession ->
-                ack {
-                    sessions[operation.id]?.let {
-                        sessions[operation.id] =
-                            it.copy(
-                                updatedAt = operation.deletedAt,
-                                deletedAt = operation.deletedAt,
-                            )
-                    }
-                }
+                ack { mark(operation.id, operation.deletedAt, operation.deletedAt) }
             is PersistenceOperation.RestoreSession ->
-                ack {
-                    sessions[operation.id]?.let {
-                        sessions[operation.id] =
-                            it.copy(updatedAt = operation.restoredAt, deletedAt = null)
-                    }
-                }
+                ack { mark(operation.id, operation.restoredAt, null) }
             PersistenceOperation.LoadVariations ->
                 PersistenceOutput.Variations(variations.values.toList())
             is PersistenceOperation.SaveVariations ->
@@ -66,6 +53,10 @@ class InMemoryItemStore(items: List<Item> = emptyList()) : ItemStore {
             PersistenceOperation.LoadAllRecords,
             is PersistenceOperation.ApplyMerged -> sync(operation)
         }
+
+    private fun mark(id: String, updatedAt: String, deletedAt: String?) {
+        sessions[id]?.let { sessions[id] = it.copy(updatedAt = updatedAt, deletedAt = deletedAt) }
+    }
 
     private fun sync(operation: PersistenceOperation): PersistenceOutput =
         when (operation) {
