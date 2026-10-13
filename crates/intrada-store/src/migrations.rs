@@ -287,6 +287,21 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
              GROUP BY item.id, j.value;",
         ),
     ),
+    // Coach era, reversed 2026-08-13; nothing reads them (#2317).
+    (
+        "v21_drop_coach_tables",
+        Step::Sql(
+            "DROP TABLE IF EXISTS block_record;
+             DROP TABLE IF EXISTS wander_record;
+             DROP TABLE IF EXISTS user_drill;
+             DROP TABLE IF EXISTS journal_item;
+             DROP TABLE IF EXISTS built_session;
+             DROP TABLE IF EXISTS play_through;
+             DROP TABLE IF EXISTS reflection;
+             DROP TABLE IF EXISTS feel_entry;
+             DROP TABLE IF EXISTS unmonitored_play;",
+        ),
+    ),
 ];
 
 pub(crate) fn latest() -> &'static str {

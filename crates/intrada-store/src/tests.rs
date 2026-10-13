@@ -639,6 +639,97 @@ fn v20_copies_every_link_as_a_whole_piece_link() {
     assert_eq!(links(&mut store, "x"), vec![link("x", "y-z", 0)]);
 }
 
+const COACH_TABLES: [&str; 9] = [
+    "block_record",
+    "wander_record",
+    "user_drill",
+    "journal_item",
+    "built_session",
+    "play_through",
+    "reflection",
+    "feel_entry",
+    "unmonitored_play",
+];
+
+fn tables(conn: &Connection) -> Vec<String> {
+    conn.prepare(
+        "SELECT name FROM sqlite_master
+         WHERE type = 'table' AND name NOT GLOB 'sqlite_*' AND name != 'grdb_migrations'
+         ORDER BY name",
+    )
+    .expect("prepares")
+    .query_map([], |row| row.get(0))
+    .expect("queries")
+    .collect::<rusqlite::Result<_>>()
+    .expect("reads")
+}
+
+fn rows(conn: &Connection, table: &str) -> Vec<Vec<rusqlite::types::Value>> {
+    let mut statement = conn
+        .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
+        .expect("prepares");
+    let width = statement.column_count();
+    statement
+        .query_map([], |row| (0..width).map(|i| row.get(i)).collect())
+        .expect("queries")
+        .collect::<rusqlite::Result<_>>()
+        .expect("reads")
+}
+
+#[test]
+fn v21_drops_the_coach_tables_and_leaves_every_live_row_alone() {
+    let seed = format!(
+        "INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+           VALUES ('p1', 'Waltz', 'piece', '[]', '{EARLY}', '{EARLY}');
+         INSERT INTO session (id, started_at, completed_at, total_duration_secs,
+             completion_status, entries, updated_at)
+           VALUES ('s1', '{EARLY}', '{EARLY}', 600, 'Completed', '[]', '{EARLY}');
+         INSERT INTO variant (id, item_id, label, position, updated_at)
+           VALUES ('v1', 'p1', 'Dotted', 0, '{EARLY}');
+         INSERT INTO section (id, item_id, name, kind, position, updated_at)
+           VALUES ('a1', 'p1', 'A1', 'form', 0, '{EARLY}');
+         INSERT INTO variation (id, label, updated_at) VALUES ('d', 'Dotted', '{EARLY}');
+         INSERT INTO exercise_link (id, piece_id, exercise_id, position, updated_at)
+           VALUES ('l1', 'p1', 'e1', 0, '{EARLY}');
+         INSERT INTO block_record (id, node, drill, gate, level_tempo_bpm,
+             level_click_level, circle, mode, started_at, ended_at, reps_after_gate,
+             active_ms, exit, updated_at)
+           VALUES ('b', 'n', 'd', 'g', 80, 'full', 'c', 'm', '{EARLY}', '{EARLY}', 0, 0,
+             'done', '{EARLY}');
+         INSERT INTO wander_record (id, started_at, ended_at, updated_at)
+           VALUES ('w', '{EARLY}', '{EARLY}', '{EARLY}');
+         INSERT INTO user_drill (id, name, criterion, passes_to_open, created_at, updated_at)
+           VALUES ('u', 'n', 'c', 3, '{EARLY}', '{EARLY}');
+         INSERT INTO journal_item (id, name, created_at, updated_at)
+           VALUES ('j', 'n', '{EARLY}', '{EARLY}');
+         INSERT INTO built_session (id, created_at, updated_at)
+           VALUES ('bs', '{EARLY}', '{EARLY}');
+         INSERT INTO play_through (id, item_id, started_at, ended_at, counted, updated_at)
+           VALUES ('pt', 'p1', '{EARLY}', '{EARLY}', 1, '{EARLY}');
+         INSERT INTO reflection (id, kind, at, updated_at)
+           VALUES ('r', 'k', '{EARLY}', '{EARLY}');
+         INSERT INTO feel_entry (id, block_id, feel, at, updated_at)
+           VALUES ('f', 'b', 'ok', '{EARLY}', '{EARLY}');
+         INSERT INTO unmonitored_play (id, started_at, ended_at, updated_at)
+           VALUES ('up', '{EARLY}', '{EARLY}', '{EARLY}');"
+    );
+    let mut conn = Connection::open_in_memory().expect("opens");
+    migrations::migrate(&mut conn, "v20_exercise_link", &mut vec![]).expect("migrates");
+    conn.execute_batch(&seed).expect("seeds");
+    let live: Vec<String> = tables(&conn)
+        .into_iter()
+        .filter(|t| !COACH_TABLES.contains(&t.as_str()))
+        .collect();
+    let before: Vec<_> = live.iter().map(|t| rows(&conn, t)).collect();
+    assert!(before.iter().all(|r| r.len() == 1), "{live:?}");
+
+    let store = Store::new(conn, migrations::latest()).expect("finishes");
+
+    assert_eq!(tables(&store.conn), live);
+    let after: Vec<_> = live.iter().map(|t| rows(&store.conn, t)).collect();
+    assert_eq!(after, before);
+}
+
 // ── Round trips ──
 
 #[test]
