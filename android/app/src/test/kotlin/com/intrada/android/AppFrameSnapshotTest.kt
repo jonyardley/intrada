@@ -16,9 +16,11 @@ import com.intrada.android.ui.AppTab
 import com.intrada.shared.AppEffect
 import com.intrada.shared.Effect
 import com.intrada.shared.Event
+import com.intrada.shared.FirstRunEvent
 import com.intrada.shared.PersistenceOutput
 import com.intrada.shared.RecognitionOutput
 import com.intrada.shared.Request
+import com.intrada.shared.SessionEvent
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -41,6 +43,26 @@ class AppFrameSnapshotTest {
     @Test fun routines() = capture(AppTab.ROUTINES, "src/test/snapshots/frame-routines.png")
 
     @Test fun progress() = capture(AppTab.PROGRESS, "src/test/snapshots/frame-progress.png")
+
+    @Test
+    fun undoOverLibrary() = runTest {
+        val store =
+            Store(
+                PinnedWeekBridge(),
+                InMemoryItemStore(),
+                this,
+                StandardTestDispatcher(testScheduler),
+                log = {},
+            )
+        store.send(Event.LoadSampleData)
+        store.send(Event.FirstRun(FirstRunEvent.SkipWelcome))
+        store.send(
+            Event.Session(SessionEvent.DeleteSaved("sample-session-3d", PlayerFixtures.STARTED))
+        )
+        store.settle()
+        compose.setContent { AppFrame(store) }
+        compose.onRoot().captureRoboImage("src/test/snapshots/frame-library-undo.png")
+    }
 
     private fun capture(tab: AppTab, reference: String) = runTest {
         val store =
