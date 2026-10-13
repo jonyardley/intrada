@@ -1080,6 +1080,8 @@ android-run: android-gen
     adb shell am force-stop com.intrada.android
     adb shell am start -W -n com.intrada.android/.MainActivity --ez seed "$seed" >/dev/null
     sleep 2
+    adb shell pidof com.intrada.android >/dev/null \
+        || { echo "✗ intrada is not running two seconds after launch, so it crashed or never opened" >&2; exit 1; }
     shot="${SCREENSHOT:-android/build/screenshots/library.png}"
     mkdir -p "$(dirname "$shot")"
     adb exec-out screencap -p > "$shot"

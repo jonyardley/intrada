@@ -298,6 +298,110 @@ expect 0 "the lane mentioning the release again further down" \
 
 expect 0 "the files this repo actually ships" bash "$repo_root/scripts/check-release-name.sh"
 
+kotlin_fixture() {
+  cat >"$1" <<EOF
+fun releaseName(packageName: String?, versionName: String?, versionCode: Long?): String? {
+    if (packageName.isNullOrEmpty() || versionName.isNullOrEmpty() || versionCode == null) {
+        return null
+    }
+    return "\$packageName$2\$versionName$3\$versionCode"
+}
+
+fun start(context: Context) {
+    val info = context.packageManager.getPackageInfo(context.packageName, 0)
+    releaseName(context.packageName, info?.versionName, info?.$4)?.let { options.release = it }
+    Log.w("intrada", "no package info for the Sentry release: \$it")
+}
+EOF
+}
+
+play_fixture() {
+  cat >"$1" <<EOF
+      - name: Build the signed release bundle
+        env:
+          ANDROID_VERSION_CODE: \${{ github.run_number }}
+          ANDROID_VERSION_NAME: \${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          ANDROID_VERSION_NAME="\${ANDROID_VERSION_NAME#v}"
+      - name: Create the Sentry release for this build
+        env:
+          VERSION_CODE: \${{ ${6:-github.run_number} }}
+        run: |
+          package=\$(sed -n 's/^ *${7:-applicationId} = "\\(.*\\)"\$/\\1/p' android/app/build.gradle.kts)
+          release="\$package$2$4$3$5"
+          echo "Sentry release: \$release"
+EOF
+}
+
+android_check() {
+  RELEASE_NAME_KOTLIN="$1" RELEASE_NAME_PLAY_WORKFLOW="$2" \
+    bash "$repo_root/scripts/check-release-name.sh"
+}
+
+good_kt="$work/Good.kt"
+good_play="$work/good-play.yml"
+kotlin_fixture "$good_kt" "@" "+" longVersionCode
+play_fixture "$good_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}'
+expect 0 "an Android app and Play lane that agree" android_check "$good_kt" "$good_play"
+
+swapped_kt="$work/Swapped.kt"
+kotlin_fixture "$swapped_kt" "+" "@" longVersionCode
+expect 1 "the Android app swapping its separators" android_check "$swapped_kt" "$good_play"
+
+wrong_field_kt="$work/WrongField.kt"
+kotlin_fixture "$wrong_field_kt" "@" "+" firstInstallTime
+expect 1 "the Android app reading no version code" android_check "$wrong_field_kt" "$good_play"
+
+swapped_play="$work/swapped-play.yml"
+play_fixture "$swapped_play" "+" "@" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}'
+expect 1 "the Play lane swapping its separators" android_check "$good_kt" "$swapped_play"
+
+reordered_play="$work/reordered-play.yml"
+play_fixture "$reordered_play" "@" "+" '${VERSION_CODE}' '${GITHUB_REF_NAME#v}'
+expect 1 "the Play lane putting the version code before the version name" \
+  android_check "$good_kt" "$reordered_play"
+
+unstripped_play="$work/unstripped-play.yml"
+play_fixture "$unstripped_play" "@" "+" '${GITHUB_REF_NAME}' '${VERSION_CODE}'
+expect 1 "the Play lane keeping the tag's v that Gradle strips" android_check "$good_kt" "$unstripped_play"
+
+run_id_play="$work/run-id-play.yml"
+play_fixture "$run_id_play" "@" "+" '${GITHUB_REF_NAME#v}' '${GITHUB_RUN_ID}'
+expect 1 "the Play lane using a build number Gradle does not build with" \
+  android_check "$good_kt" "$run_id_play"
+
+unbraced_play="$work/unbraced-play.yml"
+play_fixture "$unbraced_play" "@" "+" '${GITHUB_REF_NAME#v}' '$VERSION_CODE'
+expect 0 "the Play lane dropping the braces round a plain variable" android_check "$good_kt" "$unbraced_play"
+
+attempt_play="$work/attempt-play.yml"
+play_fixture "$attempt_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_attempt
+expect 1 "the Play lane's version code set from a run number Gradle does not take" \
+  android_check "$good_kt" "$attempt_play"
+
+namespace_play="$work/namespace-play.yml"
+play_fixture "$namespace_play" "@" "+" '${GITHUB_REF_NAME#v}' '${VERSION_CODE}' github.run_number namespace
+expect 1 "the Play lane reading the namespace, not the applicationId" \
+  android_check "$good_kt" "$namespace_play"
+
+two_templates_kt="$work/TwoTemplates.kt"
+kotlin_fixture "$two_templates_kt" "@" "+" longVersionCode
+printf 'fun legacyName(a: String, b: String, c: Long) = "$a-$b-$c"\n' >>"$two_templates_kt"
+expect 1 "the Android app composing two three-field names" android_check "$two_templates_kt" "$good_play"
+
+run_number_play="$work/run-number-play.yml"
+play_fixture "$run_number_play" "@" "+" '${GITHUB_REF_NAME#v}' '${GITHUB_RUN_NUMBER}'
+expect 0 "the Play lane reading the run number from the runner's own variable" \
+  android_check "$good_kt" "$run_number_play"
+
+quoted_play="$work/quoted-play.yml"
+sed -E 's/: (\$\{\{.*\}\})$/: "\1"/; s/^( *)ANDROID_VERSION_NAME="(.*)"$/\1ANDROID_VERSION_NAME=\2/' "$good_play" >"$quoted_play"
+grep -q 'VERSION_CODE: "' "$quoted_play" && grep -q 'ANDROID_VERSION_NAME=\$' "$quoted_play" || {
+  echo "  ✗ the quoted Play fixture did not take its edits" >&2
+  failures=$((failures + 1))
+}
+expect 0 "the Play lane quoting its env values and unquoting the strip" android_check "$good_kt" "$quoted_play"
+
 # ── The faint ink check ─────────────────────────────────────────────────────
 
 faint="$work/faint"

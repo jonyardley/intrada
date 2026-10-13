@@ -508,7 +508,7 @@ jobs:
   android:
     name: Android (build + unit test)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.android == 'true'
     steps:
@@ -574,6 +574,13 @@ jobs:
             android/app/build/test-results/roborazzi/
           retention-days: 7
           if-no-files-found: ignore
+      # Unsigned: the upload key exists only in release-play.yml. Last, because the release
+      # core replaces the debug libraries the tests above ran against (#2565).
+      - name: Build the release variant (release core, unsigned)
+        run: |
+          just android-gen release
+          android/gradlew -p android :app:assembleRelease
+          ls -l android/app/build/outputs/apk/release/
 
   # The iPhone's tap-through flows, ported (#2562): the real app on an x86_64 emulator,
   # through the same recipe a session runs locally.
@@ -629,7 +636,18 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: just android-test-ui
+          # The launch after the tests, so it cannot leave state on the device they read (#2565).
+          script: |
+            just android-test-ui
+            SCREENSHOT="$GITHUB_WORKSPACE/android-screenshots/library.png" just android-run
+      - name: Upload the launch screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-screenshot
+          path: android-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Upload the UI test results
         if: failure()
         uses: actions/upload-artifact@v7

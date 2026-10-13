@@ -117,7 +117,7 @@ jobs:
         env:
           CARGO_PROFILE_RELEASE_DEBUG: line-tables-only
         run: just android-gen release
-      - name: Build the signed release bundle
+      - name: Build the signed release bundle and APK
         working-directory: android
         env:
           ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
@@ -137,13 +137,21 @@ jobs:
           trap 'rm -f "$ANDROID_UPLOAD_KEYSTORE"' EXIT
           printf %s "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 -d > "$ANDROID_UPLOAD_KEYSTORE"
           # The signing passwords are read while Gradle configures, so keep them out of the saved cache.
-          ./gradlew --no-configuration-cache :app:bundleRelease
-          ls -l app/build/outputs/bundle/release/
+          ./gradlew --no-configuration-cache :app:bundleRelease :app:assembleRelease
+          ls -l app/build/outputs/bundle/release/ app/build/outputs/apk/release/
       - name: Upload the bundle as a run artifact
         uses: actions/upload-artifact@v7
         with:
           name: intrada-aab
           path: android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
+      # A phone cannot install the bundle, so testers sideload this before Play is set up (#2561).
+      - name: Upload the signed APK as a run artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: intrada-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
           if-no-files-found: error
       - uses: ruby/setup-ruby@v1
