@@ -39,11 +39,11 @@ sound, the camera, and closing the app in the middle of a session (#2566).
   from Play instead.
 - **Start clean.** The first section needs an empty app. Uninstalling does it;
   so does `adb shell pm clear com.intrada.android`.
-- **File faults** as issues in the **Android parity** milestone, one fault per
-  issue, with a screenshot and the step number:
+- **File faults** as issues in the **1.0.0** milestone, where the Android epic
+  (#2220) closes, one fault per issue, with a screenshot and the step number:
 
   ```bash
-  gh issue create --milestone "Android parity" --label android --label bug
+  gh issue create --milestone "1.0.0" --label android --label bug
   ```
 
   Put the issue number in the step's Result column. A step passes when every

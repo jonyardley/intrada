@@ -83,9 +83,8 @@ wins.
   (#1995). An item joins the current milestone only when it stops that
   milestone shipping. The Android epic (#2220) closes at 1.0.
 - **Both apps at parity**: from 2026-10-13 every new feature lands on iPhone
-  and Android together, in one PR. The
-  [Android parity milestone](https://github.com/jonyardley/intrada/milestone/13)
-  holds only the catch-up list from before that date.
+  and Android together, in one PR. The Android epic (#2220) holds only the
+  catch-up list from before that date.
 - **Postponed until after 1.0**: every screen at the largest text sizes
   (#2134), set aside again on 2026-10-13 with its children kept open.
 - **After 1.0, roughly in this order**: know what to practise next (#1978),
