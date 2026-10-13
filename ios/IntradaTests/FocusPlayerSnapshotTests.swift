@@ -171,16 +171,16 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
 
   // Too narrow for one row, the groupings move to balanced rows of whole pills (#2490).
   func testGroupedPillsWrap() {
-    let options: [[UInt8]?] = [nil, [3, 3, 3, 3], [2, 2, 2, 2, 2, 2]]
+    let options: [[UInt8]?] = [nil, [3, 2, 2], [2, 3, 2], [2, 2, 3]]
     let pills = SegmentedPills(
       options: options, selection: .constant(nil),
       label: { $0.map { $0.map(String.init).joined(separator: " + ") } ?? "Not grouped" },
       layout: .wrappingTrack
     )
-    .frame(width: 260)
+    .frame(width: 220)
     .padding(IntradaSpacing.card)
     .background(IntradaColor.paperTop)
-    assertSnapshot(of: pills, as: .image(precision: 0.99))
+    assertSnapshot(of: pills, as: .image(precision: 0.99, traits: .init(displayScale: 2)))
   }
 
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the

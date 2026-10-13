@@ -26,7 +26,7 @@ struct SegmentedPills<Option: Hashable>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var typeSize
   @Namespace private var pill
-  @ScaledMetric(relativeTo: .footnote) private var rowRadius: CGFloat = 19
+  @State private var pillHeight: CGFloat = 0
 
   var body: some View {
     switch layout {
@@ -51,7 +51,7 @@ struct SegmentedPills<Option: Hashable>: View {
       } else {
         ViewThatFits(in: .horizontal) {
           fullWidthTrack(.equalRow)
-          ForEach(2..<max(options.count, 2), id: \.self) { wrappedTrack(rows: $0) }
+          ForEach(wrappedRowLengths, id: \.self) { wrappedTrack(perRow: $0) }
           fullWidthTrack(.stacked)
         }
       }
@@ -91,12 +91,17 @@ struct SegmentedPills<Option: Hashable>: View {
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
 
-  private func wrappedTrack(rows: Int) -> some View {
-    let perRow = (options.count + rows - 1) / rows
+  private var wrappedRowLengths: [Int] {
+    let lengths = (2..<max(options.count, 2)).map { (options.count + $0 - 1) / $0 }
+    return lengths.enumerated().filter { $0.offset == 0 || lengths[$0.offset - 1] != $0.element }
+      .map(\.element)
+  }
+
+  private func wrappedTrack(perRow: Int) -> some View {
     let chunks = stride(from: 0, to: options.count, by: perRow).map {
       Array(options[$0..<min($0 + perRow, options.count)])
     }
-    let shape = RoundedRectangle(cornerRadius: rowRadius, style: .continuous)
+    let shape = RoundedRectangle(cornerRadius: pillHeight / 2 + 4, style: .circular)
     return VStack(spacing: 4) {
       ForEach(chunks, id: \.self) { row in
         HStack(spacing: 4) {
@@ -105,6 +110,11 @@ struct SegmentedPills<Option: Hashable>: View {
           }
         }
       }
+    }
+    .onGeometryChange(for: CGFloat.self) {
+      ($0.size.height - 4 * CGFloat(chunks.count - 1)) / CGFloat(chunks.count)
+    } action: {
+      pillHeight = $0
     }
     .padding(4)
     .background(IntradaColor.cardFill, in: shape)
@@ -149,7 +159,7 @@ struct SegmentedPills<Option: Hashable>: View {
     case .wrappingTrack where style == .stacked:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .wrappingTrack:
-      // A label's own width plus a margin, so a row that only just fits wraps instead (#2490).
+      // The row's widest label plus a margin, so a row that only just fits wraps instead (#2490).
       ZStack {
         ForEach(row, id: \.self) { Text(label($0)).font(font).hidden() }
         text
