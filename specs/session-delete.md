@@ -78,7 +78,6 @@ Four events, each appended after the last variant of its enum:
   event, not `SessionStoreWritten`, whose `Ack` closes a save in flight. A
   refused write raises the storage error and reloads the list, which rolls the
   change back (#825).
-
 - `SessionEvent::DismissUndoDelete` closes the undo banner and lets the
   delete stand.
 

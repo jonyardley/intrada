@@ -46,10 +46,17 @@ struct GlobalBanner: View {
         .foregroundStyle(ink)
         .frame(maxWidth: .infinity, alignment: .leading)
       if let action {
-        Button(action.label, action: action.perform)
-          .font(IntradaFont.button)
-          .foregroundStyle(IntradaColor.ink)
-          .buttonStyle(.plain)
+        Button(action: action.perform) {
+          Text(action.label)
+            .font(IntradaFont.button)
+            .foregroundStyle(IntradaColor.ink)
+            .padding(.horizontal, IntradaSpacing.controlGap)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // The 44pt target reaches into the bar's padding rather than growing the bar.
+        .padding(.vertical, -10)
       }
       if let onDismiss {
         Button(action: onDismiss) {

@@ -110,7 +110,7 @@ private fun RevealedDelete(label: String, width: Dp, onDelete: () -> Unit) {
         Image(
             painterResource(R.drawable.ic_trash),
             contentDescription = null,
-            modifier = Modifier.size(IntradaIconSize.caption.scaled()),
+            modifier = Modifier.size(IntradaIconSize.inline.scaled()),
             colorFilter = ColorFilter.tint(IntradaColor.onAccent),
         )
     }
