@@ -575,9 +575,7 @@ struct SessionBuilderScreen: View {
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Start session")
-    .accessibilityValue(
-      "\(entries.count) item\(entries.count == 1 ? "" : "s")"
-        + (setlist?.totalDurationSummary.map { ", \($0)" } ?? ""))
+    .accessibilityValue(setlist?.summary ?? "")
   }
 
   // ── Actions ──────────────────────────────────────────────────────────

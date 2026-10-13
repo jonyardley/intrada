@@ -1,10 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-/// A "was → now" mastery row on Progress. The now-figure is success green for a
-/// rise and plain ink otherwise, so a fall is never painted as a win (#2551); the
-/// was-figure is muted. Pairs with `analytics.scoreChanges`. A newly-scored item
-/// (`was == nil`) shows just the figure.
+/// A "was → now" mastery row on Progress; a fall is never painted as a win (#2551).
 struct MasteryDelta: View {
   let title: String
   var subtitle: String?

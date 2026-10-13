@@ -44,7 +44,6 @@ class ProgressSnapshotTest {
         }
     }
 
-    // A fall keeps plain ink, never the success colour of a rise (#2551).
     @Test
     fun masteryAfterAFall() {
         captureRoboImage("src/test/snapshots/progress-mastery-fall.png") {
@@ -55,15 +54,15 @@ class ProgressSnapshotTest {
             ) {
                 MasteryDelta(
                     ScoreChange(
-                        "exercise-2",
-                        "Arpeggios",
-                        6u,
-                        4u,
-                        -2,
-                        false,
-                        null,
-                        "Arpeggios, mastery down from 6 to 4",
-                        Direction.DOWN,
+                        itemId = "exercise-2",
+                        itemTitle = "Arpeggios",
+                        previousScore = 6u,
+                        currentScore = 4u,
+                        delta = -2,
+                        isNew = false,
+                        subtitle = null,
+                        spoken = "Arpeggios, mastery down from 6 to 4",
+                        direction = Direction.DOWN,
                     )
                 )
             }

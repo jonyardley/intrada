@@ -73,7 +73,6 @@ final class ProgressSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(rows), as: config)
   }
 
-  /// A fall keeps plain ink, never the success colour of a rise (#2551).
   func testMasteryDeltaRowAfterAFall() {
     let row = ZStack {
       PaperBackground()
