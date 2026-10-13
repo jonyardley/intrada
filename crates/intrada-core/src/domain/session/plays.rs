@@ -123,7 +123,7 @@ fn crotchet_tempo(reading: &TempoReading) -> Option<u16> {
 
 /// A stray tap on the picker is not practice: every terminal transition drops
 /// the plays that recorded nothing and ran for under five seconds. A practised
-/// entry always keeps at least one, though, so decision 3's invariant holds and
+/// entry always keeps at least one, though, so #1739 decision 3's invariant holds and
 /// the item-complete sheet always has a row to mark: dropping the only play
 /// would leave the shell sending a `play_id` the core has just deleted.
 pub(super) fn drop_incidental_play(entry: &mut SetlistEntry) {

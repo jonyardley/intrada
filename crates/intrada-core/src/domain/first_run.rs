@@ -1,4 +1,4 @@
-//! The welcome and the four first-session steps (`specs/first-run.md`).
+//! The welcome and the four first-session steps (#2116).
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};

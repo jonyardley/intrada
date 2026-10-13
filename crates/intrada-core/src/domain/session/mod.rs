@@ -436,7 +436,7 @@ pub struct ClickState {
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
     /// Today's length, copied from the preference when the build starts and
-    /// never carried onto `ActiveSession` (`specs/session-length.md`).
+    /// never carried onto `ActiveSession` (#1736).
     pub length_mins: Option<u16>,
 }
 

@@ -67,7 +67,7 @@ pub struct Item {
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
     /// An opaque ulid the shell resolves to a file; the bytes never cross the
-    /// bridge (`specs/piece-from-photo.md`, key decision 1).
+    /// bridge (`specs/piece-from-photo.md` decision 1, #1443).
     #[serde(default)]
     pub photo_id: Option<String>,
     /// The piece's time signature, the one source of truth the chart derives
@@ -129,7 +129,7 @@ pub enum ItemEvent {
     /// Read a photo the shell has already written to disk into a draft the
     /// user confirms. Takes only the `photo_id`, not an item id: on Add there
     /// is no item to name yet, and the draft is what fills the form
-    /// (#1446, spec open question 4).
+    /// (#1446).
     ReadPhoto {
         photo_id: String,
     },

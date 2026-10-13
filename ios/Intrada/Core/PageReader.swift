@@ -4,7 +4,7 @@ import Vision
 
 /// Runs Vision text recognition over a stored page and hands the core lines
 /// with geometry. Owns no interpretation: what a line *means* is
-/// `recognition::read_fields` in the core (spec decision 4).
+/// `recognition::read_fields` in the core (`specs/piece-from-photo.md` decision 4, #1439).
 enum PageReader {
   /// What crosses back from the recognition thread. The generated bridge types
   /// are not `Sendable`, so they are built on the main actor from this.

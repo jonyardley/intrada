@@ -1,7 +1,7 @@
 //! The repetition target and metronome start a session item begins with,
 //! and the length a new session starts at, set once by the musician and
 //! stored on the device (`specs/practice-defaults.md`,
-//! `specs/session-length.md`).
+//! #1736).
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};

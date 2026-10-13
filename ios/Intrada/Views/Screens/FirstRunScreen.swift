@@ -1,7 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-/// The three steps a new install meets once (#2117, `specs/first-run.md`):
+/// The three steps a new install meets once (#2117, #2116):
 /// the welcome, an optional profile, then a first piece. The core decides
 /// whether they show; which step is up is interaction state, held here.
 struct FirstRunScreen: View {

@@ -32,7 +32,7 @@ pub struct Staleness {
 /// How long an item can reasonably sit before coming back is worth suggesting.
 /// Fixed and deliberately lax: no published scheduler is validated for
 /// repertoire, one musician will never produce enough history to fit one, and a
-/// signal that cries wolf gets ignored (`space-layer.md` §4, §6).
+/// signal that cries wolf gets ignored (#1419, `space-layer.md` §4, §6).
 fn expected_interval_days(mark: Option<u8>, session_count: usize) -> u32 {
     let base = match mark {
         None => 10,
@@ -105,7 +105,7 @@ impl Staleness {
 
     /// How far through its interval the item has drifted, in hundredths.
     /// Ranking on this rather than raw days is what keeps
-    /// `specs/up-next-card.md` decision 3 true: the headline says the same
+    /// decision 3 of `specs/up-next-card.md` (#1082) true: the headline says the same
     /// thing the ranking used. Never practised is the stalest of all.
     pub fn overdue_key(&self) -> u32 {
         match self.days {

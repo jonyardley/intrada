@@ -1,7 +1,7 @@
 name: Release — TestFlight
 
 # Signed device build → TestFlight. Manual or on a v* tag ONLY — never per-PR
-# (macOS runners are 10×-billed). See specs/ios-testflight-cicd.md.
+# (macOS runners are 10×-billed; #784, #984).
 on:
   workflow_dispatch:
   push:

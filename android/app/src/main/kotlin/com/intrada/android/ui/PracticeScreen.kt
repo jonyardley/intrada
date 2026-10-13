@@ -167,7 +167,7 @@ fun PracticeScreen(
     suggestionDismissed: Boolean = false,
     top: @Composable ColumnScope.() -> Unit = {},
 ) {
-    // Shell state by decision 9 of specs/up-next-card.md: no domain consequence, never persisted.
+    // Shell state (specs/up-next-card.md decision 9, #1082): no domain consequence, not persisted.
     var dismissed by rememberSaveable { mutableStateOf(suggestionDismissed) }
     ScreenScaffold(
         "Practice",

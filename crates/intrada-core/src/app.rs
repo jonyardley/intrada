@@ -104,7 +104,8 @@ pub enum Effect {
     /// Local-first persistence (the core's first effect with typed-data output).
     Persistence(PersistenceOperation),
     /// On-device page recognition. The shell runs the frameworks and returns
-    /// text with geometry; the core decides what it means (spec decision 4).
+    /// text with geometry; the core decides what it means
+    /// (`specs/piece-from-photo.md` decision 4, #1439).
     Recognition(RecognitionOperation),
     /// iCloud sync (`specs/icloud-sync.md`); provisional until #2361 reports.
     Sync(crate::sync::SyncOperation),
@@ -124,13 +125,13 @@ pub enum AppEffect {
     /// on iOS / localStorage on web). Fire-and-forget; output is `()`.
     SaveLibrarySort(LibrarySort),
     /// Persist the musician's profile (UserDefaults, key versioned per
-    /// `specs/profile.md`). Fire-and-forget; output is `()`.
+    /// #1691). Fire-and-forget; output is `()`.
     SaveProfile(Profile),
     /// Persist the practice defaults (UserDefaults, key versioned per
     /// `specs/practice-defaults.md`). Fire-and-forget; output is `()`.
     SavePracticeDefaults(PracticeDefaults),
     /// Persist whether the welcome was dismissed (UserDefaults, key versioned
-    /// per `specs/first-run.md`). Fire-and-forget; output is `()`.
+    /// per #2116). Fire-and-forget; output is `()`.
     SaveFirstRun(FirstRun),
     /// Every library row in the Library's order. Sent only when a row changed,
     /// so a tap mid-practice does not replace them (#1801).

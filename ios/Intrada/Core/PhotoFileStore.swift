@@ -1,9 +1,10 @@
 import UIKit
 
-/// Where an item's photo bytes live. The core holds only the id (spec decision
-/// 1: a blob in the database fattens every row read on a table already loaded whole).
-/// Nothing here deletes: removing a photo tombstones the id and leaves the
-/// bytes (spec decision 2). Reaping is #1442.
+/// Where an item's photo bytes live. The core holds only the id
+/// (`specs/piece-from-photo.md` decision 1, #1443: a blob in the database
+/// fattens every row read on a table already loaded whole). Nothing here
+/// deletes: removing a photo tombstones the id and leaves the bytes
+/// (`specs/piece-from-photo.md` decision 2, #1443). Reaping is #1442.
 enum PhotoFileStore {
   enum Failure: Error, Equatable {
     case couldNotEncode
@@ -14,10 +15,10 @@ enum PhotoFileStore {
 
   private static let crockford = Set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 
-  /// JPEG, not the HEIC the spec first wrote (open question 6, settled
-  /// 2026-08-29): the scanner hands back a `UIImage` either way, so neither is
-  /// the camera's native format here, and HEIC has no encoder on some simulator
-  /// configurations the tests run on.
+  /// JPEG, not the HEIC the spec first wrote (`specs/piece-from-photo.md` open
+  /// question 6, #1439, settled 2026-08-29): the scanner hands back a `UIImage`
+  /// either way, so neither is the camera's native format here, and HEIC has no
+  /// encoder on some simulator configurations the tests run on.
   private static let quality: CGFloat = 0.8
   /// A page stays readable zoomed at this size, at roughly 400 to 600 KB.
   private static let longestEdge: CGFloat = 2048

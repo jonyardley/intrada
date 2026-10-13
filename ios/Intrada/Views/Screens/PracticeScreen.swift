@@ -12,7 +12,7 @@ struct PracticeScreen: View {
   /// The tapped day's `date` key; nil lets the week open on its own day.
   @State private var selectedDay: String?
   @State private var weekIndexOverride: Int?
-  // Shell state by decision 9 of specs/up-next-card.md: dismissal lasts the app
+  // Shell state by #1082 decision 9 (specs/up-next-card.md): dismissal lasts the app
   // run, has no domain consequence and is deliberately not persisted.
   @State private var suggestionDismissed = false
   @State private var openSessionId: String?

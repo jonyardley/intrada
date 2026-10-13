@@ -6614,7 +6614,7 @@ fn finishing_drops_a_play_that_recorded_nothing() {
 
 /// The drop must never empty a practised entry, or the item-complete sheet
 /// would hold a `play_id` the core has just deleted and every mark it sent
-/// would be refused (decision 3's invariant).
+/// would be refused (#1739 decision 3's invariant).
 #[test]
 fn finishing_keeps_the_only_play_however_short() {
     let (mut model, start) = model_with_variations();

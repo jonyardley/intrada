@@ -2,4 +2,4 @@ app_identifier("com.intrada.native")
 team_id("9S5FG4LQAF")
 
 # apple_id / itc_team_id intentionally omitted — the App Store Connect API key
-# supplies the account/team context (see specs/ios-testflight-cicd.md).
+# supplies the account/team context, with no 2FA or session expiry (#784, #984).
