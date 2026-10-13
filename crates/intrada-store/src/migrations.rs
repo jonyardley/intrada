@@ -288,7 +288,7 @@ pub(crate) const MIGRATIONS: &[(&str, Step)] = &[
         ),
     ),
     // Nothing reads these: the coach era (reversed 2026-08-13), the variant
-    // table variations replaced, and the retired columns (#2317, #2577).
+    // table, replaced by variations, and the retired columns (#2317, #2577).
     (
         "v21_drop_unread_tables_and_columns",
         Step::Sql(

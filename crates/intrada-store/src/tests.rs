@@ -1353,6 +1353,28 @@ fn a_v6_session_keeps_its_notes_and_score() {
 }
 
 #[test]
+fn an_edited_session_note_is_saved_over_the_old_one() {
+    let mut store = upgraded(
+        migrations::latest(),
+        "INSERT INTO session
+           (id, started_at, completed_at, total_duration_secs, completion_status,
+            session_notes, entries, updated_at, deleted_at)
+         VALUES ('s-old', '2026-05-01T10:00:00Z', '2026-05-01T10:30:00Z', 1800, 'completed',
+                 'old note', '[]', '2026-05-01T10:30:00Z', NULL)",
+    );
+    let mut reloaded = store.sessions().pop().expect("a session");
+    reloaded.session_notes = Some("edited".into());
+    store.save_session(&reloaded);
+
+    assert_eq!(
+        store.raw("SELECT session_notes FROM session WHERE id = 's-old'"),
+        Some("edited".into())
+    );
+}
+
+// ── More round trips (LibraryStoreTests.swift, LibraryStoreMigrationTests.swift) ──
+
+#[test]
 fn an_exercise_with_no_tempo_or_tags_reads_back_as_written() {
     let mut store = Store::in_memory().expect("opens");
     let exercise = Item {
