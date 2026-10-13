@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -290,9 +291,11 @@ private fun History(model: PracticeModel, onOpen: (String) -> Unit, onDelete: (S
             SectionHeader(day?.heading.orEmpty(), trailing = dayTrailing)
             if (daySessions.isEmpty()) EmptyDayCard(future = day?.isFuture == true)
             daySessions.forEach { session ->
-                val delete = { onDelete(session.id) }
-                SwipeToDelete("Delete session", delete) {
-                    SessionCard(session, onDelete = delete) { onOpen(session.id) }
+                key(session.id) {
+                    val delete = { onDelete(session.id) }
+                    SwipeToDelete("Delete session", delete) {
+                        SessionCard(session, onDelete = delete) { onOpen(session.id) }
+                    }
                 }
             }
         }

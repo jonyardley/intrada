@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +53,8 @@ internal fun SwipeToDelete(
     val reveal = with(density) { REVEAL_WIDTH.toPx() }
     val full = with(density) { FULL_SWIPE.toPx() }
     val offset = remember { Animatable(0f) }
+    // The gesture outlives recomposition, so it calls the latest delete (#2581).
+    val currentDelete by rememberUpdatedState(onDelete)
     val scope = rememberCoroutineScope()
     val motion =
         spring<Float>(
@@ -60,7 +64,7 @@ internal fun SwipeToDelete(
     val settle: (Float) -> Unit = { target -> scope.launch { offset.animateTo(target, motion) } }
     val perform = {
         settle(0f)
-        onDelete()
+        currentDelete()
     }
     Box(modifier) {
         if (offset.value < 0f) {

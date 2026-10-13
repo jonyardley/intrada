@@ -128,7 +128,42 @@ class PracticeScreenTest {
             .performScrollTo()
             .performTouchInput { swipeLeft(startX = right, endX = left) }
 
-        assertEquals(1, deleted.size)
+        assertEquals(listOf(PracticeFixtures.completed.id), deleted)
+    }
+
+    @Test
+    fun aLongSwipeAfterChangingDayDeletesThatDaysSession() {
+        val deleted = mutableListOf<String>()
+        compose.setContent {
+            PracticeScreen(
+                PracticeFixtures.filled,
+                onStart = {},
+                onOpen = {},
+                history = HistoryActions(onDelete = { deleted += it }),
+            )
+        }
+
+        compose.onNodeWithTag("practice.day.2026-10-06").performClick()
+        compose
+            .onNodeWithContentDescription("Tue 6 Oct, 18 min, 3 items", substring = true)
+            .performScrollTo()
+            .performTouchInput { swipeLeft(startX = right, endX = left) }
+
+        assertEquals(listOf(PracticeFixtures.withVariations.id), deleted)
+    }
+
+    @Test
+    fun aHalfSwipedCardStaysWithItsDay() {
+        compose.setContent { PracticeScreen(PracticeFixtures.filled, onStart = {}, onOpen = {}) }
+
+        compose
+            .onNodeWithContentDescription("Today, 24 min, 3 items", substring = true)
+            .performScrollTo()
+            .performTouchInput { swipeLeft(startX = right, endX = right - width / 3) }
+        compose.onNodeWithContentDescription("Delete session").assertExists()
+        compose.onNodeWithTag("practice.day.2026-10-06").performClick()
+
+        compose.onNodeWithContentDescription("Delete session").assertDoesNotExist()
     }
 
     @Test
