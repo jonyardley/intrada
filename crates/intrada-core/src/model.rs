@@ -363,9 +363,9 @@ pub struct LimitsView {
     pub planned_duration_default_mins: u16,
 }
 
-/// Seconds to the stepper's whole minutes: the lower bound rounds up and the
-/// upper one down, so every minute offered is one the core accepts. The range
-/// never inverts, since a stepper over `2...1` traps (#2467).
+/// Seconds to the stepper's whole minutes, the lower bound rounded up and the
+/// upper one down. When no whole minute fits, both sit on the lower one rather
+/// than invert, since a stepper over `2...1` traps (#2467).
 fn whole_minutes(min_secs: u32, max_secs: u32, default_secs: u32) -> (u16, u16, u16) {
     let mins = |m: u32| u16::try_from(m).unwrap_or(u16::MAX);
     let min = mins(min_secs.div_ceil(60));
@@ -1567,8 +1567,8 @@ mod tests {
         }
     }
 
-    /// The stepper offers whole minutes, so a bound in seconds rounds inwards
-    /// and never offers a minute the core refuses (#2467).
+    /// A bound in seconds rounds inwards, and a range no whole minute fits
+    /// collapses onto its lower bound rather than inverting (#2467).
     #[test]
     fn planned_minutes_round_inwards_from_the_bounds_in_seconds() {
         let cases = [
