@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The app has no dark theme yet, so the bars stay light whatever the phone says (#2598).
+        // No dark theme yet, so the bars keep dark icons whatever the phone's mode (#2598).
         val light = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = light, navigationBarStyle = light)
         val seed = intent.getBooleanExtra(EXTRA_SEED, false)
