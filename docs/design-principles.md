@@ -1187,8 +1187,7 @@ own, and a field's label had four looks. It read as busy and machine made.
 
 ### T36: Android behaves like Android, and looks like intrada
 
-**Status:** PROPOSED 2026-10-13 (jonyardley/intrada#2599), awaiting Jon's
-ruling. Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
+**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2599). Review page: https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
 
 On Android, intrada keeps its look and adopts the platform's behaviour. The
 look is paper, ink, one highlighter, Hanken Grotesk and DM Mono, the five
