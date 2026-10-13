@@ -28,7 +28,7 @@ The white surface every grouped block of content sits on, lifted faintly off the
 ## Anatomy
 
 1. **Fill:** `cardFill`, white.
-2. **Edge:** a one point `hairline` stroke, inside the corner.
+2. **Edge:** a one point `hairline` stroke along the corner (inside it on Android, centred on the edge on iPhone).
 3. **Corner:** `IntradaRadius.card`, 3 points.
 4. **Lift:** `IntradaShadow.card`, radius 1, one point down, through `cardShadow()`.
 
@@ -36,7 +36,7 @@ The white surface every grouped block of content sits on, lifted faintly off the
 
 - **Card with lift** (`cardSurface()` with `cardShadow()`): use for every card on paper. This is the look T24 decided ("white cards with a 3pt corner and a faint lift").
 - **Card without lift** (`cardSurface()` alone): use only inside something already lifted, such as a sheet or a card in a card.
-- **Custom corner** (`cardSurface(cornerRadius:)`): use for a card that has to match a larger shape, such as the player's band. Rare; say why at the call site.
+- **Custom corner** (`cardSurface(cornerRadius:)`): every caller today passes a 3 point radius, so it changes nothing; #2635 decides whether to keep it.
 
 ## States
 
@@ -46,7 +46,7 @@ A card has no states of its own. A pressable card (a library row) uses the press
 
 None. Motion belongs to what the card holds. A card that slides or fades in keeps its opaque fill, so the transition never ghosts.
 
-**Today the apps differ from this page:** on iPhone, 67 lines call `cardSurface()` and only four add `cardShadow()`, so most cards sit flat (audit I36). Android is the same: 69 lines call `cardSurface()` and two add `cardShadow()`. Restoring the lift everywhere is the first step of the refinement pass (#2638, direction 6a), not a fix on its own.
+**On 13 October 2026 no card on either app has the lift** (I36 in [the October audit](../../../docs/audit-2026-10-design.md)). On iPhone, 67 lines call `cardSurface()`; the four `cardShadow()` calls are on a capsule, a disc, a header and a hand-drawn card, none of them a `cardSurface()` card. On Android, 68 lines call `cardSurface()` and the one `cardShadow()` call is on the key wheel. Restoring the lift everywhere is the first step of the refinement pass (#2638, direction 6a), not a fix on its own.
 
 ## Content
 

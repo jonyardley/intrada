@@ -521,17 +521,40 @@ pending_names="" expect 1 "a row in the index with no page" components_check
 
 pending_names="Badge Pills" expect 1 "a name left on the pending list once its page exists" components_check
 
+pending_names="Badge Ghost" expect 1 "a pending name that is not in the index" components_check
+
+printf '| Component | What |\n|---|---|\n| [Pills](Pils/README.md) | choose |\n| Badge | kind |\n' \
+  >"$cat_root/design/components/README.md"
+expect 1 "an index link to the wrong page" components_check
+reset_catalogue
+
+write_component_page "${android_keys[@]}"
 mkdir -p "$cat_root/design/components/Stray"
-printf '%s\n' '---' 'name: Stray' 'not_on_android: none yet' '---' >"$cat_root/design/components/Stray/README.md"
+printf '%s\n' '---' 'name: Stray' 'ios_symbol: Pills' 'ios_file: ios/Views/Pills.swift' \
+  'ios_snapshots: C/testPills.1.png' 'not_on_android: none yet' '---' >"$cat_root/design/components/Stray/README.md"
 expect 1 "a page that is not in the index" components_check
 rm -rf "$cat_root/design/components/Stray"
 
-write_component_page 'android_symbol: Pills' 'android_file: android/ui/Gone.kt' 'android_snapshots: pills.png'
+write_component_page "${android_keys[@]}"
+sed -i.bak 's/^name: Pills$/name: Pill/' "$cat_root/design/components/Pills/README.md"
+expect 1 "a page whose name is not its folder" components_check
+
+write_component_page "${android_keys[@]}" 'not_on_android: none yet'
+expect 1 "Android keys beside a gap" components_check
+
+write_component_page 'android_symbol: Pills' 'android_file: android/ui/Parts.kt, android/ui/Gone.kt' 'android_snapshots: pills.png'
 expect 1 "an Android file that is not there" components_check
 
-printf 'struct Other: View {}\n' >"$cat_root/ios/Views/Pills.swift"
+printf 'internal fun <T> Pills(options: List<T>) {}\n' >"$cat_root/elsewhere.kt"
+write_component_page 'android_symbol: Pills' 'android_file: elsewhere.kt' 'android_snapshots: pills.png'
+expect 1 "an Android file outside android/" components_check
+
+write_component_page 'android_symbol: ,' 'android_file: ,' 'android_snapshots: ,'
+expect 1 "Android keys that name nothing" components_check
+
+printf 'struct Other: View {} // Pills\n' >"$cat_root/ios/Views/Pills.swift"
 write_component_page "${android_keys[@]}"
-expect 1 "an iOS symbol missing from its file" components_check
+expect 1 "an iOS symbol only mentioned, never declared" components_check
 reset_catalogue
 
 printf 'internal fun Other() {}\n' >"$cat_root/android/ui/Parts.kt"
@@ -555,7 +578,7 @@ expect 1 "a page with no Android version and no reason" components_check
 write_component_page 'not_on_android: built in #2605'
 expect 0 "an Android gap with a reason" components_check
 
-write_component_page 'not_on_android:'
+write_component_page "${android_keys[@]}" 'not_on_android:'
 expect 1 "an Android gap with an empty reason" components_check
 
 expect 2 "an index that is not there" env COMPONENTS_ROOT="$work/nowhere" bash "$repo_root/scripts/check-components.sh"

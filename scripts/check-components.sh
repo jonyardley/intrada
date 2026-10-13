@@ -31,11 +31,16 @@ fi
 problems=()
 
 # The first cell of each table row, link or not: `| [Card](Card/README.md) |` or `| TypeBadge |`.
-names=$(awk -F'|' '/^\|/ && !/^\|[ -:|]*$/ {
-  cell = $2; gsub(/^ +| +$/, "", cell)
-  if (cell ~ /^\[/) { sub(/^\[/, "", cell); sub(/\].*$/, "", cell) }
-  if (cell != "" && cell != "Component") print cell
+# Each row prints its name and, when linked, the link's target.
+rows=$(awk -F'|' '/^\|/ && !/^\|[ :|-]*$/ {
+  cell = $2; gsub(/^ +| +$/, "", cell); target = ""
+  if (cell ~ /^\[/) {
+    target = cell; sub(/^[^(]*\(/, "", target); sub(/\).*$/, "", target)
+    sub(/^\[/, "", cell); sub(/\].*$/, "", cell)
+  }
+  if (cell != "" && cell != "Component") print cell " " target
 }' "$index")
+names=$(printf '%s\n' "$rows" | cut -d' ' -f1)
 
 is_pending() { case " $pending " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 in_index() { printf '%s\n' "$names" | grep -qx "$1"; }
@@ -46,6 +51,12 @@ key() {
     NR > 1 { if (index($0, k ":") == 1) { sub("^" k ":[ ]*", ""); print; exit } }' "$2"
 }
 
+# A Swift or Kotlin declaration of the name, generics and receivers allowed:
+# `struct Pills<Option`, `func cardSurface(`, `fun <T> Pills(`, `fun Modifier.cardShadow(`.
+declares() {
+  printf '(struct|class|enum|protocol|func|fun|val|let|var)[[:space:]]+(<[^>]*>[[:space:]]+)?([A-Za-z]+\\.)?%s([^A-Za-z0-9_]|$)' "$1"
+}
+
 list() { printf '%s\n' "$1" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' || true; }
 
 check_side() {
@@ -53,17 +64,18 @@ check_side() {
   symbols=$(key "${side}_symbol" "$page")
   files=$(key "${side}_file" "$page")
   shots=$(key "${side}_snapshots" "$page")
-  if [ -z "$symbols" ] || [ -z "$files" ] || [ -z "$shots" ]; then
+  if [ -z "$(list "$symbols")" ] || [ -z "$(list "$files")" ] || [ -z "$(list "$shots")" ]; then
     problems+=("$page: needs ${side}_symbol, ${side}_file and ${side}_snapshots")
     return
   fi
   while IFS= read -r file; do
+    case "$file" in "$side"/*) ;; *) problems+=("$page: ${side}_file $file is not under $side/") ;; esac
     [ -f "$root/$file" ] || problems+=("$page: ${side}_file $file does not exist")
   done < <(list "$files")
   while IFS= read -r symbol; do
     found=0
     while IFS= read -r file; do
-      if [ -f "$root/$file" ] && grep -qw -- "$symbol" "$root/$file"; then found=1; fi
+      if [ -f "$root/$file" ] && grep -qE "$(declares "$symbol")" "$root/$file"; then found=1; fi
     done < <(list "$files")
     [ "$found" = 1 ] || problems+=("$page: ${side}_symbol $symbol is not in $(list "$files" | paste -sd' ' -)")
   done < <(list "$symbols")
@@ -72,9 +84,16 @@ check_side() {
   done < <(list "$shots")
 }
 
-while IFS= read -r name; do
+for name in $pending; do
+  in_index "$name" || problems+=("$name is on the pending list but not in the index")
+done
+
+while IFS=' ' read -r name target; do
   [ -n "$name" ] || continue
   page="$catalogue/$name/README.md"
+  if [ -n "$target" ] && [ "$target" != "$name/README.md" ]; then
+    problems+=("the index links $name to $target, not $name/README.md")
+  fi
   if [ -f "$page" ]; then
     if is_pending "$name"; then
       problems+=("$name has a page now: take it off the pending list in scripts/check-components.sh")
@@ -82,7 +101,7 @@ while IFS= read -r name; do
   elif ! is_pending "$name"; then
     problems+=("$name is in the index with no page at design/components/$name/README.md")
   fi
-done <<<"$names"
+done <<<"$rows"
 
 for page in "$catalogue"/*/README.md; do
   [ -f "$page" ] || continue
@@ -92,7 +111,9 @@ for page in "$catalogue"/*/README.md; do
   check_side "$page" ios "$ios_snaps"
   gap=$(key not_on_android "$page")
   if [ -n "$gap" ]; then
-    [ -n "$(key android_symbol "$page")" ] && problems+=("$page: has both android_symbol and not_on_android")
+    if grep -q '^android_' "$page"; then
+      problems+=("$page: has android_ keys beside not_on_android")
+    fi
   elif grep -q '^not_on_android:' "$page"; then
     problems+=("$page: not_on_android needs a reason")
   else

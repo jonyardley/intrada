@@ -16,7 +16,7 @@ Choosing one of two to five options in place, with the choice showing at once.
 
 ## When to use
 
-- A filter or a mode on the screen you are on: the library's Pieces and Exercises, a piece or an exercise on the add form.
+- A mode on the screen you are on: a piece or an exercise on the add form.
 - A small fixed set of values, such as a time signature grouping or the practice defaults.
 
 ## When not to use
@@ -33,7 +33,7 @@ Choosing one of two to five options in place, with the choice showing at once.
 
 ## Variants
 
-- **Inline scrolling** (`.inlineScrolling`): use for tabs at the top of a list. Pills hug their labels and scroll sideways when the text grows.
+- **Inline scrolling** (`.inlineScrolling`): pills that hug their labels and scroll sideways. No screen uses it on 13 October 2026; #2635 decides whether to keep it.
 - **Full width track** (`.fullWidthTrack`): use for a form choice. Equal segments on a bordered card track; at accessibility sizes the segments stack.
 - **Wrapping track** (`.wrappingTrack`): use when a label can be long, such as a grouping like 2 + 2 + 3. Whole pills move to a new row rather than a label breaking (#2490).
 
@@ -48,7 +48,7 @@ Chosen, not chosen. There is no disabled state: if an option cannot be chosen, l
 - Tapping a pill chooses it at once. On iPhone the fill slides to it with `IntradaMotion.snappy`, and does not move under Reduce Motion.
 - No haptic.
 
-**Today the apps draw it differently:**
+**On 13 October 2026 the apps draw it differently:**
 
 | | iPhone | Android |
 |---|---|---|
@@ -56,7 +56,7 @@ Chosen, not chosen. There is no disabled state: if an option cannot be chosen, l
 | Chosen pill | ink fill, white text | white fill, ink text |
 | Not chosen | secondary ink text | secondary ink text |
 
-The iPhone look is the one this page keeps: ink on white is the interactive colour (T24), and the chosen option has to read as chosen at a glance. Android moves to it in the fix for one look per job (#2605 to #2611). Neither app fills a pill with the highlighter; that is kept for the one call to action (`MarkerButton`, audit I9).
+The iPhone look is the one this page keeps: ink on white is the interactive colour (T24), and the chosen option has to read as chosen at a glance. Android moves to it in the fix for one look per job (#2605 to #2611). Neither app fills a pill with the highlighter; that is kept for the one call to action (`MarkerButton`, I9 in [the October audit](../../../docs/audit-2026-10-design.md)).
 
 ## Content
 
@@ -65,8 +65,8 @@ One or two words per label, sentence case. No icons alone; an icon pill needs a 
 ## Accessibility
 
 - Each pill is a button with the selected trait on iPhone and a tab with `selected` on Android, so a screen reader says which is chosen.
-- Pass `hint` (iPhone) or `spoken` (Android) when the label alone is unclear.
-- Android pills are at least 48dp tall. iPhone pills are shorter than 44 points in the inline and full width tracks; the touch area should grow to 44 without the drawn pill growing, as the audit notes for Android's focus chips.
+- On iPhone, `hint` adds a spoken hint to the label. On Android, `spoken` replaces the label for TalkBack. Use them when the label alone is unclear.
+- Android pills are at least 48dp tall. iPhone pills are shorter than 44 points on every track; the touch area should grow to 44 without the drawn pill growing.
 
 ## Do and don't
 

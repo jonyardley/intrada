@@ -3,11 +3,11 @@ name: Card
 status: stable
 ios_symbol: cardSurface, cardShadow
 ios_file: ios/Intrada/DesignSystem/CardSurface.swift, ios/Intrada/DesignSystem/CardShadow.swift
-ios_snapshots: ComponentSnapshotTests/testCardSurface.1.png
-android_symbol: cardSurface
-android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/CardSurface.kt
-android_snapshots: card-surface.png
-decisions: T24, T35
+ios_snapshots: ComponentSnapshotTests/testCard.1.png
+android_symbol: cardSurface, cardShadow
+android_file: android/app/src/main/kotlin/com/intrada/android/ui/components/CardSurface.kt, android/app/src/main/kotlin/com/intrada/android/ui/components/CardShadow.kt
+android_snapshots: card-surface.png, card-shadow.png
+decisions: T24, T36
 ---
 
 <!--
@@ -15,7 +15,7 @@ Copy this file to design/components/<Name>/README.md and add the name to the
 index. Keys sit one to a line so scripts/check-components.sh can read them:
 
 - status: stable, proposed or deprecated.
-- *_symbol and *_file: comma separated; each symbol must appear in one of the files.
+- *_symbol and *_file: comma separated; each symbol must be declared in one of the files, and the files sit under ios/ or android/.
 - ios_snapshots: paths under ios/IntradaTests/__Snapshots__/.
 - android_snapshots: paths under android/app/src/test/snapshots/.
 - No Android version: drop the three android_ keys and write

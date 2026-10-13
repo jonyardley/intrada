@@ -42,7 +42,10 @@ Every feature ships on both apps, so the Android half follows `.claude/rules/and
 2. Reuse before creating: the components to reach for are listed in
    `design/components/README.md`, one page each on how they look, behave and
    are used on both apps (#2620). Read the page before using or changing one;
-   a change to a component starts with its page.
+   a change to a component starts with its page. Smaller parts not listed
+   there yet (`TickRow`, `DeleteButton`, `AddRowButton`) live in
+   `ios/Intrada/DesignSystem/` and `ios/Intrada/Views/Components/`: check
+   both before building anything.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
    safe areas and background.
 4. If a primitive almost fits, add a parameter to it (as `SegmentedPills` and

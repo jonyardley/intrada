@@ -25,7 +25,7 @@ not exist. Rows without a link are still to be written.
 | [MarkerButton](MarkerButton/README.md) | The one call to action on a screen, in the musician's highlighter |
 | TagChip | A tag on an item, removable when editing |
 | TypeBadge | Piece or exercise, at a glance |
-| ScoreRing | A score from 1 to 5, or none yet |
+| ScoreRing | A score from 1 to 10, or none yet |
 | BottomSheet | A short task over the current screen |
 | GlobalBanner | An error or notice for the whole app |
 | FormErrorBanner | Why a form could not be saved |

@@ -79,8 +79,10 @@ Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md`
      new primitive/token belongs in `Theme.swift` **and** the design system.
 2. **Plan / tasks** — Reference the committed mockup. Build against it.
 3. **PR checklist** — add two gates:
-   - [ ] If a token or component changed, `Theme.swift` and
+   - [ ] If a token changed, `Theme.swift` and
          `design/intrada-design-system.dc.html` were updated together.
+   - [ ] If a component changed, its page in `design/components/` changed
+         first (see "Changing a component").
    - [ ] New screens have a committed Claude Design mockup, iPhone and Android
          frames, under their spec folder.
 
@@ -102,7 +104,8 @@ order, in one PR:
 
 ## Keeping code and design in sync
 
-- **New token or component** → change `Theme.swift` first, then update the design
+- **New component** → its page first, as in "Changing a component" above.
+- **New token** → change `Theme.swift` first, then update the design
   system reference and re-export the `.html`. Same PR.
 - **Exploring a direction** (e.g. the Liquid Glass tab bar) → mock it in Claude
   Design first, get sign-off, then implement in SwiftUI and Compose and fold the agreed result

@@ -68,8 +68,8 @@ bars, read in Kotlin and Compose.
   `MaterialTheme` colours or Material components standing in for an intrada
   primitive.
 - **Reach for a component in `design/components/README.md` first** (#2620).
-  Its page says how it looks on both apps; where they differ today, the page
-  names the one Android moves to.
+  Its page says how it looks on both apps; where they differ, the page names
+  the one look both move to.
 - `docs/design-principles.md` and `docs/tone-of-voice.md` bind every Android
   surface and string.
 

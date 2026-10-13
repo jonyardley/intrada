@@ -22,7 +22,7 @@ The one call to action on a screen, filled with the musician's chosen highlighte
 ## When not to use
 
 - A second or quieter action: use a plain ink text button.
-- Choosing an option: use `SegmentedPills` or `TickRow`. A selected choice is never highlighter (audit I9).
+- Choosing an option: use `SegmentedPills` or `TickRow`. A selected choice is never highlighter (I9 in [the October audit](../../../docs/audit-2026-10-design.md)).
 - Anything destructive: use `DeleteButton` and a confirm.
 
 ## Anatomy
@@ -47,26 +47,26 @@ One. Full width, with or without a glyph.
 
 Tapping it sends one event to the core. Any success haptic fires only after the core confirms.
 
-**Today there are three versions:**
+**On 13 October 2026 there are three versions:**
 
 | | Where | Glyph | Lift | Press |
 |---|---|---|---|---|
-| iPhone `MarkerButton` | first run, summary, page camera | no | no | rebound |
-| iPhone `BrandBarButton` | builder start, reflection save, piece detail, related exercises | yes | yes | none |
-| Android `MarkerButton` | first run only, private to that screen | no | no | none |
+| iPhone `MarkerButton` | first run, summary, page camera, every empty state's action | no | no | rebound |
+| iPhone `BrandBarButton` | builder start, reflection save, piece detail, related exercises, the player's Move on | yes | yes | system default |
+| Android `MarkerButton` | first run only, private to that screen | no | no | system default |
 
-Most Android primary buttons are black (`InkButton`, audit A4).
+Most Android primary buttons are black (`InkButton`, A4 in the audit).
 
 **Proposed:** one button with an optional glyph, the lift and the rebound, named `MarkerButton` on both apps. iPhone folds `BrandBarButton` into it; Android makes its version shared and replaces `InkButton` (#2605). This page moves to `stable` when Jon agrees.
 
 ## Content
 
-A verb first, two or three words: "Start session", "Save and continue". A count or time can follow after a middle dot: "Start session · 10 min".
+A verb first, two or three words: "Start session", "Save session". A count or time can follow after a middle dot: "Start session · 10 min".
 
 ## Accessibility
 
 - The label is the spoken name; a glyph adds nothing to it.
-- At least 44 points (iPhone) or 48dp (Android) tall; full width meets both.
+- At least 44 points (iPhone) or 48dp (Android) tall: the padding gives this on iPhone, `heightIn(min = 48.dp)` on Android.
 - Ink on butter is 11.3:1 (T24). No test yet checks ink on the other seven highlighters; one should land before this page moves to stable.
 
 ## Do and don't
