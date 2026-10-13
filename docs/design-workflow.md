@@ -78,15 +78,34 @@ Each feature already moves through `specs/NNN-feature/` (`spec.md` → `plan.md`
    - Reuse components and tokens; if something new is needed, that's a signal a
      new primitive/token belongs in `Theme.swift` **and** the design system.
 2. **Plan / tasks** — Reference the committed mockup. Build against it.
-3. **PR checklist** — add two gates:
-   - [ ] If a token or component changed, `Theme.swift` and
+3. **PR checklist:** add three gates:
+   - [ ] If a token changed, `Theme.swift` and
          `design/intrada-design-system.dc.html` were updated together.
+   - [ ] If a component changed, its page in `design/components/` changed
+         first (see "Changing a component").
    - [ ] New screens have a committed Claude Design mockup, iPhone and Android
          frames, under their spec folder.
 
+## Changing a component
+
+The component catalogue in `design/components/` is the source for how each
+component looks and behaves on both apps (#2620, T37). A change runs in this
+order, in one PR:
+
+1. **The page.** Change `design/components/<Name>/README.md`: an agent drafts,
+   Jon approves the words. A new component starts from `_template.md` and a
+   row in the index.
+2. **SwiftUI, then Compose.** Change the iPhone component, then the Android one.
+3. **Snapshots on both.** Record the pictures the page names, and look at them.
+4. **`just check`.** `scripts/check-components.sh` fails when a page and the
+   code disagree on a file, a symbol or a snapshot.
+5. **After merge,** republish the changed pages and pictures to the Claude
+   Design system. It is a published view, never edited as the source.
+
 ## Keeping code and design in sync
 
-- **New token or component** → change `Theme.swift` first, then update the design
+- **New component** → its page first, as in "Changing a component" above.
+- **New token** → change `Theme.swift` first, then update the design
   system reference and re-export the `.html`. Same PR.
 - **Exploring a direction** (e.g. the Liquid Glass tab bar) → mock it in Claude
   Design first, get sign-off, then implement in SwiftUI and Compose and fold the agreed result

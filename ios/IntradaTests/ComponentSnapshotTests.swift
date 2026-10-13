@@ -57,6 +57,51 @@ final class ComponentSnapshotTests: SnapshotTestCase {
     assertSnapshot(of: host(rings), as: config)
   }
 
+  func testCard() {
+    let cards = ZStack {
+      PaperBackground()
+      VStack(spacing: 24) {
+        Color.clear.frame(height: 64).cardSurface()
+        Color.clear.frame(height: 64).cardSurface().cardShadow()
+      }
+      .padding(24)
+    }
+    assertSnapshot(of: host(cards), as: config)
+  }
+
+  func testSegmentedPills() {
+    let pills = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: 24) {
+        SegmentedPills(
+          options: LibraryFilter.allCases, selection: .constant(.pieces), label: \.label)
+        SegmentedPills(
+          options: [ItemKind.piece, .exercise], selection: .constant(.exercise), label: \.label,
+          font: IntradaFont.segment, layout: .fullWidthTrack)
+        SegmentedPills(
+          options: ["2 + 2 + 3", "2 + 3 + 2", "3 + 2 + 2"], selection: .constant("2 + 3 + 2"),
+          label: { $0 }, layout: .wrappingTrack)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(pills), as: config)
+  }
+
+  func testPrimaryButtons() {
+    let buttons = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        MarkerButton("Save session") {}
+        BrandBarButton(action: {}) {
+          Image(systemName: "play.fill")
+          Text("Start session · 10 min")
+        }
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(buttons), as: config)
+  }
+
   func testAddRowButtonVariants() {
     let buttons = ZStack {
       PaperBackground()

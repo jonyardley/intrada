@@ -1200,3 +1200,21 @@ as bottom sheets; a reversible removal offers Undo rather than asking first;
 the keyboard's Next and Done move you on. When an iOS ruling such as T28 is
 about where something sits or how it moves, it binds iOS only, and Android
 takes the platform's answer drawn in intrada's look.
+
+### T37: One catalogue says how every component looks on both apps
+
+**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2620).
+
+Every component the screens are built from has one page in
+`design/components/`: what it is for, when to use it and when not, its parts,
+variants, states, behaviour, content and accessibility, with pictures from the
+snapshot tests on iPhone and Android. The page comes first: a change to a
+component changes its page, then the SwiftUI version, then the Compose one,
+then both sets of pictures, in one PR. Where the apps differ, the page names
+the one look both move to; where the audit found several looks for one job,
+the page picks one. `just check` fails when a page and the code disagree on a
+file, a symbol or a picture, and an Android gap passes only with a written
+reason. The Claude Design system shows the same pages, published from the
+repo and never edited there. Rejected: the Claude Design system as the source
+(two places that each look like the truth) and a hosted docs platform (no
+check against native code, and a cost).

@@ -11,7 +11,7 @@ Keep the component truth in the repo, one plain Markdown spec per component in a
 - Tokens: `ios/Intrada/DesignSystem/Theme.swift` is the source; `ThemeTokenParityTest.kt` reads the Swift file from a Kotlin test and fails when `Theme.kt` lacks a token without a written reason. `scripts/check-design-tokens.sh` requires every Swift colour on `design/intrada-design-system.dc.html`. Jon's decisions on #2603: stay on Claude Design, and `Theme.swift` stays the token source.
 - Component truth: the list of 17 primitives and the rules for using them are prose in `.claude/rules/ios-ui.md`; the design system page has a names-only table ("Everything the app builds its screens from, by its code name").
 - Pictures: iOS has 112 `#Preview` blocks and 5 component level snapshots (`ComponentSnapshotTests/`: add row button, score ring three ways, week strip). Android has no `@Preview` at all and 73 Roborazzi snapshots, several already component level (card shadow, card surface, hairline divider, field card, form error banner, banner, instrument glyph).
-- A rough grep by name: 11 of the 17 listed primitives have a same named Compose function; TypeBadge, BottomSheet, SegmentedPills, PlaceholderContent, SegmentedProgress and SectionTitle have none (they may exist under other names; not checked further).
+- A rough grep by name: 12 of the 17 listed primitives have a same named Compose function (SegmentedPills is generic, so a search for `fun SegmentedPills(` misses it); TypeBadge, BottomSheet, PlaceholderContent, SegmentedProgress and SectionTitle have none (they may exist under other names; not checked further).
 - The October audit (`docs/audit-2026-10-design.md`) found 40 iPhone and 30 Android findings, led by hand-rolled copies of primitives and one job done several ways (a ticked choice has five looks, I10).
 - `scripts/check-snapshots.sh` already walks both snapshot trees for orphans and size; it is the natural neighbour for a component check.
 
@@ -100,7 +100,7 @@ What catches drift:
 
 What agents read: the index, then one spec, both in the repo, with no login. Path scoped rules can point at them.
 
-Effort: one session for the template and the check with its self test; one to two sessions for the 17 specs (agents draft from code, the audit and `design-principles.md`; Jon reads each); one session per platform for missing snapshots (iOS needs most, roughly 12 primitives; Android needs the six with no counterpart decided as build or "does not apply"); half a session to seed the artifact. Running cost: no cash; each primitive change adds a spec edit and two snapshot records to work that already happens; one republish per merge that touches `design/components/`.
+Effort: one session for the template and the check with its self test; one to two sessions for the 17 specs (agents draft from code, the audit and `design-principles.md`; Jon reads each); one session per platform for missing snapshots (iOS needs most, roughly 12 primitives; Android needs the five with no counterpart decided as build or "does not apply"); half a session to seed the artifact. Running cost: no cash; each primitive change adds a spec edit and two snapshot records to work that already happens; one republish per merge that touches `design/components/`.
 
 ### Option B: the Design System artifact as the catalogue, repo checks read a copy
 
@@ -143,7 +143,7 @@ Step by step:
 - **Snapshot count and repo size.** One picture per state per platform adds perhaps 60 to 100 snapshot images; `check-snapshots.sh` already caps size.
 - **Artifact republish depends on an agent remembering.** No CI route was found. Mitigation: a line in the `intrada-shipping` skill, and `lastChange` in the artifact index shows when it last moved.
 - **Claude Design may draw components that do not exist.** Previews there are screenshots, so a mock can still invent; the spec rule "new component means spec first" is the guard.
-- **Android gaps are real work:** six listed primitives have no same named Compose function; each needs a build or a written reason, which the check forces into the open.
+- **Android gaps are real work:** five listed primitives have no same named Compose function; each needs a build or a written reason, which the check forces into the open.
 - **Unconfirmed items:** `/design-sync` framework support; the type's `format.md` and `from-code.md`; whether CI can publish to an artifact; DocC's image handling; Nord's team size.
 
 ## Sources

@@ -39,12 +39,13 @@ Every feature ships on both apps, so the Android half follows `.claude/rules/and
    `IntradaFont`, `IntradaSpacing` or `IntradaRadius`. Never a raw hex,
    `.padding(16)` or `cornerRadius: 12`. Genuine one-offs (a fixed component
    height, a 2pt baseline nudge) stay literal.
-2. Reuse before creating: check `ios/Intrada/DesignSystem/` and
-   `ios/Intrada/Views/Components/` first. Primitives to reach for: `TagChip`,
-   `TypeBadge`, `ScoreRing`, `BottomSheet`, `SegmentedPills`, `.cardSurface()`,
-   `.cardShadow()`, `GlobalBanner`, `FormErrorBanner`, `PlaceholderContent`,
-   `ScreenScaffold`, `SectionHeader`, `HairlineDivider`, `SegmentedProgress`,
-   `SectionTitle`, `FieldCard`, `FieldLabel`.
+2. Reuse before creating: the components to reach for are listed in
+   `design/components/README.md`, one page each on how they look, behave and
+   are used on both apps (#2620). Read the page before using or changing one;
+   a change to a component starts with its page. Smaller parts not listed
+   there yet (`TickRow`, `DeleteButton`, `AddRowButton`) live in
+   `ios/Intrada/DesignSystem/` and `ios/Intrada/Views/Components/`: check
+   both before building anything.
 3. Every top-level screen is built from `ScreenScaffold`, which owns chrome,
    safe areas and background.
 4. If a primitive almost fits, add a parameter to it (as `SegmentedPills` and
