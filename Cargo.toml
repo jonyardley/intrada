@@ -1,7 +1,7 @@
 [workspace]
-# Active build = the native iOS stack (core + ffi). The Leptos web shell, the
-# Tauri shell (see docs/rebuild-review.md) and the API (#1746) were removed;
-# the native SwiftUI app on the Crux core is the only shell going forward.
+# Active build = the core and FFI for both native apps. The Leptos web shell, the
+# Tauri shell (#1133) and the API (#1746) were removed;
+# the SwiftUI and Compose apps on the Crux core are the shells going forward.
 members = [
   "crates/intrada-core",
   "crates/intrada-ffi",

@@ -100,7 +100,7 @@ impl Operation for PersistenceOperation {
 }
 
 /// What one list has out with the store, so a load that may predate an edit
-/// never replaces it (#2067, `specs/list-reload-race.md`).
+/// never replaces it (#2067).
 #[derive(Debug, Default)]
 pub struct ListSync {
     writes_out: u32,

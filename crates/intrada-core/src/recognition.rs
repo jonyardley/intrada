@@ -86,8 +86,9 @@ pub struct PhotoDraft {
     pub chart_text: Option<TextDraftField>,
 }
 
-/// The spec pins this as `DraftField<T>`; it is split per payload type because
-/// facet typegen emits no generics across the bridge.
+/// `specs/piece-from-photo.md` (#1439) pins this as `DraftField<T>`; it is
+/// split per payload type because facet typegen emits no generics across the
+/// bridge.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TextDraftField {
@@ -122,7 +123,8 @@ pub enum DraftSource {
     Suggested,
 }
 
-/// Below this a read is shown as uncertain rather than hidden (decision 7).
+/// Below this a read is shown as uncertain rather than hidden
+/// (`specs/piece-from-photo.md` decision 7, #1439).
 pub const LOW_CONFIDENCE: f32 = 0.5;
 
 /// `MIN_BPM` is the floor for a tempo the user *typed*. One guessed off a page
@@ -168,7 +170,7 @@ pub struct FieldFill {
     pub weak: bool,
 }
 
-/// `specs/form-fill-from-page.md` holds the rules.
+/// Never overwrites text the musician typed (#2229).
 #[must_use]
 pub fn fill_form(draft: &PhotoDraft, fields: &[FieldNow]) -> Vec<FieldFill> {
     let takes = |field: ReadField| {
@@ -299,7 +301,8 @@ const CREDIT_PREFIXES: &[(&str, f32)] = &[
 const TITLE_BAND: f32 = 0.4;
 
 /// Deterministic. Prefers `suggested` where a field survives the substring
-/// clamp (decision 5), otherwise falls back to geometry heuristics.
+/// clamp (`specs/piece-from-photo.md` decision 5, #1439), otherwise falls back
+/// to geometry heuristics.
 #[must_use]
 pub fn read_fields(page: &PageReading) -> PhotoDraft {
     let heuristic = heuristic_draft(page);
@@ -333,7 +336,8 @@ struct Span {
 
 impl Haystack {
     /// Joined, not per line: a name Vision wrapped across two lines must still
-    /// be accepted (decision 5, as amended in phase B).
+    /// be accepted (`specs/piece-from-photo.md` decision 5, as amended in
+    /// phase B, #1439).
     fn of(lines: &[RecognisedLine]) -> Self {
         let mut text = String::new();
         let mut spans = Vec::new();
@@ -389,9 +393,10 @@ impl Haystack {
     }
 }
 
-/// Decision 5, the whole of it: a suggested value the page does not literally
-/// carry is discarded, so a model cannot invent a composer. Case- and
-/// whitespace-insensitive, because OCR spacing is not the user's problem.
+/// Decision 5 of `specs/piece-from-photo.md` (#1439), the whole of it: a
+/// suggested value the page does not literally carry is discarded, so a model
+/// cannot invent a composer. Case- and whitespace-insensitive, because OCR
+/// spacing is not the user's problem.
 fn clamped_text(value: Option<&str>, haystack: &Haystack, max: usize) -> Option<TextDraftField> {
     let value = value?.trim();
     if value.is_empty() || exceeds_chars(value, max) {
@@ -444,8 +449,8 @@ fn clamped_tempo(suggested: &SuggestedFields, haystack: &Haystack) -> Option<Tem
     })
 }
 
-/// Decision 5 keeps a suggested marking verbatim, print noise and all: "(MED.)"
-/// survives with its brackets (#1683).
+/// Decision 5 of `specs/piece-from-photo.md` (#1439) keeps a suggested marking
+/// verbatim, print noise and all: "(MED.)" survives with its brackets (#1683).
 fn canonical_marking(value: &str) -> Option<String> {
     let stripped = strip_print_noise(value);
     if stripped.is_empty() {
@@ -692,7 +697,7 @@ struct TempoRead {
 /// Only a number that follows an `=` counts. `♩= 120` OCRs with the glyph
 /// mangled or dropped, but the equals survives; a bare number near the top of a
 /// page is a page number or a bar number at least as often as it is a tempo
-/// (open question 3).
+/// (`specs/piece-from-photo.md` open question 3, #1439).
 fn bpm_in(text: &str) -> Option<u16> {
     let (_, after) = text.rsplit_once('=')?;
     digits_after_equals(after)
@@ -1059,8 +1064,9 @@ mod tests {
         }
     }
 
-    /// Open question 3, answered conservatively. Deleting the `=` requirement
-    /// reads the page number as a tempo.
+    /// Open question 3 of `specs/piece-from-photo.md` (#1439), answered
+    /// conservatively. Deleting the `=` requirement reads the page number as a
+    /// tempo.
     #[test]
     fn a_bare_number_is_not_a_bpm() {
         let draft = read_fields(&page(vec![
@@ -1095,7 +1101,7 @@ mod tests {
         assert_eq!(tempo.confidence, 0.4);
     }
 
-    // ── The substring clamp (key decision 5) ────────────────────────
+    // ── The substring clamp (`specs/piece-from-photo.md` decision 5, #1439) ──
 
     fn suggested_page(suggested: SuggestedFields) -> PageReading {
         PageReading {
@@ -1114,9 +1120,10 @@ mod tests {
         }
     }
 
-    /// The whole of decision 5: a ~3B model asked to extract will sometimes
-    /// produce a plausible composer that is not on the page. Deleting the
-    /// `haystack.contains` check lets "Cole Porter" through from a Kosma page.
+    /// The whole of `specs/piece-from-photo.md` decision 5 (#1439): a ~3B model
+    /// asked to extract will sometimes produce a plausible composer that is not
+    /// on the page. Deleting the `haystack.contains` check lets "Cole Porter"
+    /// through from a Kosma page.
     #[test]
     fn a_suggestion_the_page_does_not_carry_is_discarded() {
         let draft = read_fields(&suggested_page(SuggestedFields {
@@ -1266,8 +1273,9 @@ mod tests {
         assert!(title.weak, "a shaky read is shown as one (decision 7)");
     }
 
-    /// Decision 5 matches against the lines joined, so a name Vision wrapped is
-    /// still accepted, and it is then only as good as its shakiest half.
+    /// Decision 5 of `specs/piece-from-photo.md` (#1439) matches against the
+    /// lines joined, so a name Vision wrapped is still accepted, and it is then
+    /// only as good as its shakiest half.
     #[test]
     fn a_suggestion_spanning_two_lines_takes_the_weaker_of_them() {
         let mut lines = vec![
@@ -1991,9 +1999,10 @@ mod tests {
             );
         }
 
-        /// Key decision 7, decided once in the core so no shell thresholds for
-        /// itself. Deleting the `weak` derivation leaves a blurry read looking
-        /// exactly as clean as a sharp one.
+        /// Decision 7 of `specs/piece-from-photo.md` (#1439), decided once in
+        /// the core so no shell thresholds for itself. Deleting the `weak`
+        /// derivation leaves a blurry read looking exactly as clean as a sharp
+        /// one.
         #[test]
         fn a_weak_read_is_flagged_as_one_in_the_view() {
             let mut blurry = Model::default();

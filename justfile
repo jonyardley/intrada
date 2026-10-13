@@ -467,7 +467,7 @@ ios-gen slices="all": ios-typegen (ios-package "debug" slices)
 # Build a signed Release .ipa and upload it to TestFlight (internal testing).
 # Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
 # (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
-# one-time `fastlane match appstore` bootstrap. See specs/ios-testflight-cicd.md.
+# one-time `fastlane match appstore` bootstrap. See SETUP.md's TestFlight section (#784, #984).
 [doc("Build a signed Release app and upload it to TestFlight")]
 [group('iOS')]
 testflight: ios-typegen (ios-package "release")

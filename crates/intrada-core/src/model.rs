@@ -54,11 +54,11 @@ pub struct Model {
     /// mutation, since only the store can say it has recovered (#346, #1936).
     pub error_muted: bool,
     pub practice_summaries: Tracked<HashMap<String, ItemPracticeSummary>>,
-    /// Device data, not account data (`specs/profile.md`).
+    /// Device data, not account data (#1691).
     pub profile: Profile,
     /// Device data, like the profile (`specs/practice-defaults.md`).
     pub practice_defaults: PracticeDefaults,
-    /// Device data, never synced (`specs/first-run.md`).
+    /// Device data, never synced (#2116).
     pub first_run: FirstRun,
     /// Bumped each time an error is raised or surfaced, never because one is
     /// still standing, so a send accepted under the banner does not read as
@@ -242,7 +242,7 @@ pub enum FormErrorTarget {
     /// A staged exercise by position, from 0, in the exercises the event
     /// carried. `field` is `None` for a chosen exercise, which has no field of
     /// its own. The shell reorders that list without telling the core, so the
-    /// position holds only until it does (spec decision 12).
+    /// position holds only until it does (#1390 decision 12).
     Exercise {
         index: usize,
         field: Option<FormErrorField>,
@@ -891,7 +891,7 @@ pub struct SetlistEntryView {
     pub plan_tags: Vec<String>,
 }
 
-/// What v0.17 adds to an entry (`specs/practice-record-v017.md`).
+/// What v0.17 adds to an entry (#50).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EntryRecordView {
@@ -1201,7 +1201,7 @@ pub struct BuildingSetlistView {
     pub total_duration_summary: Option<String>,
     pub length_mins: Option<u16>,
     /// "20 of 30 min planned", or "30 min today" before anything is planned;
-    /// `None` without a length (`specs/session-length.md`).
+    /// `None` without a length (#1736).
     pub length_summary: Option<String>,
     /// The variations each entry can be tagged to, for the entries whose item
     /// has any. Looked up in the whole library, so a search cannot empty it.

@@ -1,4 +1,4 @@
-# Code-signing identity storage (see specs/ios-testflight-cicd.md, decision #2).
+# Code-signing identity storage: match, since cloud signing fails on fresh runners (#784, #984).
 # The git_url points at a PRIVATE certs repo you create once. CI authenticates
 # via MATCH_GIT_BASIC_AUTHORIZATION; decryption via MATCH_PASSWORD.
 git_url(ENV.fetch("MATCH_GIT_URL", "https://github.com/jonyardley/intrada-certificates.git"))

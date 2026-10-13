@@ -77,7 +77,7 @@ final class ItemFormModel {
   }
 
   /// Removing or re-choosing a row rewrites the list the core numbered, so a
-  /// mark on any row cannot survive it (#1595, and decision 12 of
+  /// mark on any row cannot survive it (#1595, and #1390 decision 12 of
   /// `specs/one-pass-create.md`).
   var stagedExercises: [StagedExercise] = [] {
     didSet {

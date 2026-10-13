@@ -45,7 +45,7 @@ pub const MIN_SESSION_LENGTH_MINS: u16 = 10;
 pub const MAX_SESSION_LENGTH_MINS: u16 = 120;
 pub const SESSION_LENGTH_STEP_MINS: u16 = 5;
 /// Where the stepper starts when a length is switched on, never a length
-/// applied on its own: no length is `None` (`specs/session-length.md`).
+/// applied on its own: no length is `None` (#1736).
 pub const DEFAULT_SESSION_LENGTH_MINS: u16 = 30;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;

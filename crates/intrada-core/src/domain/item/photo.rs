@@ -21,7 +21,8 @@ pub(super) fn read_photo(model: &mut Model, photo_id: String) -> Command<Effect,
 /// `next` is `None` for a clear. The file the item stops pointing at is left on
 /// disk for the reaping pass (#1442): a leaked file costs disk, an eagerly
 /// deleted one costs the user their photo, and the write that would justify
-/// deleting can still fail after the delete has run (spec, key decision 2).
+/// deleting can still fail after the delete has run
+/// (`specs/piece-from-photo.md` decision 2, #1443).
 pub(super) fn set_photo(
     model: &mut Model,
     id: String,

@@ -56,6 +56,7 @@ User → Events → crux_core (Rust) → Effects (Persistence, App, Render, Reco
 - Claim, worktree, tiers, plan comments and routing (unplanned work: discuss first):
   [`docs/working-with-agents.md`](docs/working-with-agents.md); epics:
   [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md#epics).
+- Decisions whose records were removed: [`docs/decisions.md`](docs/decisions.md).
 - Shipping: `/ship` and the `intrada-shipping` skill; more than one session: the
   `intrada-parallel-streams` skill.
 - Writing: British English, no em, en or double dashes, plain language, in PR bodies,

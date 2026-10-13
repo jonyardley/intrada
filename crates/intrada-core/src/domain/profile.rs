@@ -1,5 +1,5 @@
 //! The musician's profile: name, instrument, icon and highlighter colour,
-//! stored on the device (`specs/profile.md`).
+//! stored on the device (#1691).
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};

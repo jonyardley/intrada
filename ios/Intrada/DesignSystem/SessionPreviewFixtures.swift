@@ -279,7 +279,7 @@
   }
 
   // Reason strings below are copies of the core's, per the table in
-  // specs/up-next-card.md decision 6: reword there and these go stale silently.
+  // specs/up-next-card.md, #1082 decision 6: reword there and these go stale silently.
   extension SuggestedSession {
     /// The mock's case: starred and cold, one drill unmarked, one on a variation.
     static var previewStarred: SuggestedSession {

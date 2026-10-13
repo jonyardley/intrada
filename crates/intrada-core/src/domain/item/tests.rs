@@ -1567,9 +1567,9 @@ fn deleting_an_item_leaves_its_photo_file_alone() {
         },
     );
 
-    // Key decision 2: the row tombstones, the file stays for the reaping
-    // pass (#1442). Deleting here would destroy the photo whenever the
-    // delete write that justified it went on to fail.
+    // `specs/piece-from-photo.md` decision 2 (#1443): the row tombstones, the
+    // file stays for the reaping pass (#1442). Deleting here would destroy the
+    // photo whenever the delete write that justified it went on to fail.
     let ops: Vec<_> = cmd
         .effects()
         .filter_map(|e| match e {

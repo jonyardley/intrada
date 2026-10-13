@@ -35,7 +35,7 @@ final class ClickController {
   private(set) var soundsTarget = false
   /// `nil` until the click is started or its bar is changed: the core reads
   /// `Some` as a metre the player chose, and would normalise a tempo against
-  /// it (spec § question 2).
+  /// it (`specs/practice-instruments.md` question 2, #1499).
   var clickState: ClickState? {
     configured ? ClickState(metre: metre, sounding: sounding) : nil
   }

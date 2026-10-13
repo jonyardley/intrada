@@ -28,7 +28,7 @@ impl Default for Metre {
 impl Metre {
     /// `achieved_tempo` means crotchet BPM whatever the click displayed, so a
     /// quaver or minim reading is converted here, rounding half away from zero:
-    /// `♪ = 169` becomes 85, not 84 (specs/practice-instruments.md, question 2).
+    /// `♪ = 169` becomes 85, not 84 (specs/practice-instruments.md, #1499 question 2).
     pub fn crotchet_bpm(&self, displayed: u16) -> u16 {
         let unit = u32::from(self.unit);
         let crotchets = (u32::from(displayed) * 4 + unit / 2) / unit;
@@ -231,7 +231,7 @@ mod tests {
 
     /// Inputs a musician would actually set, asserting the property the tempo
     /// trend needs: every stored value is a crotchet count comparable with
-    /// every other, at the rounding the spec states.
+    /// every other, at the rounding `specs/practice-instruments.md` states (#1499).
     #[test]
     fn every_displayed_tempo_normalises_to_a_comparable_crotchet_bpm() {
         let table: [(Metre, u16, u16); 13] = [

@@ -167,6 +167,7 @@ specs/                # Design specs for major features
 | [`specs/README.md`](specs/README.md) | Which specs are live and which are records of shipped behaviour |
 | [`docs/where-we-are.md`](docs/where-we-are.md) | Which phase we are in: hand-written, changed when it changes |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
+| [`docs/decisions.md`](docs/decisions.md) | One line per past decision whose full record was removed; git history holds the record |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the ranking of what gets built next |
 | [`docs/how-the-work-runs.md`](docs/how-the-work-runs.md) | How issues, epics, the project board and releases are organised |
 | [`VISION.md`](VISION.md) | Product vision |

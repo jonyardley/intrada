@@ -1,4 +1,4 @@
-//! What v0.17 adds to the record (`specs/practice-record-v017.md`): segments,
+//! What v0.17 adds to the record (#50): segments,
 //! the intention's focus, time away and the finish answers. Facts and the
 //! musician's own answers only; anything the app works out is read here, when
 //! asked, and never stored.

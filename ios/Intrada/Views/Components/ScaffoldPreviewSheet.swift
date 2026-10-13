@@ -2,7 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// The exercises worked out from a piece's chord chart, as a selectable commit
-/// sheet (chart-to-scaffold Phase B). Offered as suggestions, not a syllabus
+/// sheet (chart-to-scaffold phase B). Offered as suggestions, not a syllabus
 /// (T18). The core derives; this only renders and
 /// hands back the ticked `kind`s — the core re-derives and materialises them,
 /// so no spec content crosses the wire (#1106). Already-linked specs are shown

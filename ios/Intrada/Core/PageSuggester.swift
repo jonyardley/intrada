@@ -6,7 +6,7 @@ private let logger = Logger(subsystem: "com.intrada.native", category: "recognit
 
 /// Phase C of `specs/piece-from-photo.md`: accuracy, not capability. Every
 /// device still gets the core's heuristics, and the core discards any
-/// suggestion the page does not literally carry (decision 5).
+/// suggestion the page does not literally carry (`specs/piece-from-photo.md` decision 5, #1439).
 enum PageSuggester {
   /// The generated bridge types are not `Sendable`, so what crosses back off
   /// the model's task is this, and `SuggestedFields` is built from it.
@@ -45,7 +45,7 @@ enum PageSuggester {
 
 extension PageSuggester.Suggestion {
   /// Whether a suggestion is any good is the core's judgement, not the shell's
-  /// (spec decision 4), so nothing here inspects one.
+  /// (`specs/piece-from-photo.md` decision 4, #1439), so nothing here inspects one.
   var bridged: SuggestedFields {
     SuggestedFields(
       title: title,

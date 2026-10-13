@@ -3,9 +3,10 @@ import UIKit
 
 @testable import Intrada
 
-/// The bytes behind a photo id. The store never deletes (spec decision 2), so
-/// there is nothing to test on that side. Assertions are in pixels: a stored
-/// photo is re-read at scale 1, so its `size` is its pixel count.
+/// The bytes behind a photo id. The store never deletes
+/// (`specs/piece-from-photo.md` decision 2, #1443), so there is nothing to test
+/// on that side. Assertions are in pixels: a stored photo is re-read at scale
+/// 1, so its `size` is its pixel count.
 @MainActor
 struct PhotoFileStoreTests {
   /// The store never deletes, so the tests clear up after themselves.
