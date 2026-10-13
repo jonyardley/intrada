@@ -153,6 +153,36 @@ final class FocusPlayerSnapshotTests: SnapshotTestCase {
       of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
   }
 
+  // Every grouping of a twelve-beat bar reads on one line (#2490).
+  func testClickSheetLongBar() throws {
+    let store = Store(bridge: SnapshotStubBridge())
+    let limits = try XCTUnwrap(store.viewModel?.limits)
+    let twelveEight = Metre(beats: 12, unit: 8, groups: nil)
+    var active = ActiveSessionView.previewActive
+    active.clickSeedMetre = twelveEight
+    active.clickSeedBpm = 168
+    active.clickSeedPresets = limits.clickPresets(for: twelveEight)
+    active.currentClickSounding = 0b1111_1111_1111
+    let click = ClickController()
+    click.reseed(from: active, limits: limits)
+    assertSnapshot(
+      of: host(ClickSheet(click: click, bpm: 168, limits: limits), store: store), as: config)
+  }
+
+  // Too narrow for one row, the groupings move to balanced rows of whole pills (#2490).
+  func testGroupedPillsWrap() {
+    let options: [[UInt8]?] = [nil, [3, 2, 2], [2, 3, 2], [2, 2, 3]]
+    let pills = SegmentedPills(
+      options: options, selection: .constant(nil),
+      label: { $0.map { $0.map(String.init).joined(separator: " + ") } ?? "Not grouped" },
+      layout: .wrappingTrack
+    )
+    .frame(width: 220)
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    assertSnapshot(of: pills, as: .image(precision: 0.99, traits: .init(displayScale: 2)))
+  }
+
   // A session past an hour, where the reading becomes `H:MM:SS` and outgrows the
   // orientation slot's minimum. Full-screen because the whole strip reflows.
   func testFocusPlayerLongSession() {

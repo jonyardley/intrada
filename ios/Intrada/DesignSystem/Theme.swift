@@ -224,8 +224,6 @@ enum IntradaRadius {
   static let panel: CGFloat = 3
   /// The Practice one-tap hero — the single largest card in the app.
   static let hero: CGFloat = 3
-  /// Fully-rounded pills (filter tabs, the rep/consistency chrome).
-  static let pill: CGFloat = 999
 }
 
 /// Instrument icon sizes from the profile mock (#1690): the header button, a

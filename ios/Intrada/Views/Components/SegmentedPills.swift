@@ -9,6 +9,9 @@ struct SegmentedPills<Option: Hashable>: View {
     case inlineScrolling(edgeInset: CGFloat)
     /// Equal-width segments on a bordered card track.
     case fullWidthTrack
+    /// Equal segments while the widest label fits, then label-sized pills on one
+    /// row, then whole pills over balanced rows rather than a broken label (#2490).
+    case wrappingTrack
   }
 
   let options: [Option]
@@ -23,6 +26,7 @@ struct SegmentedPills<Option: Hashable>: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var typeSize
   @Namespace private var pill
+  @State private var pillHeight: CGFloat = 0
 
   var body: some View {
     switch layout {
@@ -41,12 +45,24 @@ struct SegmentedPills<Option: Hashable>: View {
       } else {
         fullWidthTrack(.row)
       }
+    case .wrappingTrack:
+      if typeSize.isAccessibilitySize {
+        fullWidthTrack(.stacked)
+      } else {
+        ViewThatFits(in: .horizontal) {
+          fullWidthTrack(.equalRow)
+          fullWidthTrack(.labelSized)
+          ForEach(wrappedRowLengths, id: \.self) { wrappedTrack(perRow: $0) }
+          fullWidthTrack(.stacked)
+        }
+      }
     }
   }
 
   private enum TrackStyle {
     case row
     case equalRow
+    case labelSized
     case stacked
   }
 
@@ -60,9 +76,17 @@ struct SegmentedPills<Option: Hashable>: View {
 
   private func fullWidthTrack(_ style: TrackStyle) -> some View {
     let stacked = style == .stacked
-    let shape = RoundedRectangle(cornerRadius: stacked ? IntradaRadius.card : IntradaRadius.pill)
+    // Circular: a continuous capsule or a 999pt corner strokes a flat sliver at each end (#2490).
+    let shape =
+      stacked
+      ? AnyShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+      : AnyShape(Capsule(style: .circular))
     let trackLayout =
-      stacked ? AnyLayout(VStackLayout(spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
+      switch style {
+      case .stacked: AnyLayout(VStackLayout(spacing: 4))
+      case .labelSized: AnyLayout(SpareSharedRow(spacing: 4))
+      default: AnyLayout(HStackLayout(spacing: 4))
+      }
     return trackLayout {
       ForEach(options, id: \.self) { option in
         pillButton(option, style: style)
@@ -73,17 +97,50 @@ struct SegmentedPills<Option: Hashable>: View {
     .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
   }
 
-  private func pillButton(_ option: Option, style: TrackStyle) -> some View {
+  private var wrappedRowLengths: [Int] {
+    let lengths = (2..<max(options.count, 2)).map { (options.count + $0 - 1) / $0 }
+    return lengths.enumerated().filter { $0.offset == 0 || lengths[$0.offset - 1] != $0.element }
+      .map(\.element)
+  }
+
+  private func wrappedTrack(perRow: Int) -> some View {
+    let chunks = stride(from: 0, to: options.count, by: perRow).map {
+      Array(options[$0..<min($0 + perRow, options.count)])
+    }
+    let shape = RoundedRectangle(cornerRadius: pillHeight / 2 + 4, style: .circular)
+    return VStack(spacing: 4) {
+      ForEach(chunks, id: \.self) { row in
+        HStack(spacing: 4) {
+          ForEach(row, id: \.self) { option in
+            pillButton(option, style: .equalRow, sizedTo: row)
+          }
+        }
+      }
+    }
+    .onGeometryChange(for: CGFloat.self) {
+      ($0.size.height - 4 * CGFloat(chunks.count - 1)) / CGFloat(chunks.count)
+    } action: {
+      pillHeight = $0
+    }
+    .padding(4)
+    .background(IntradaColor.cardFill, in: shape)
+    .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
+  }
+
+  private func pillButton(_ option: Option, style: TrackStyle, sizedTo row: [Option]? = nil)
+    -> some View
+  {
     let isSelected = option == selection
     return Button {
       withAnimation(reduceMotion ? nil : IntradaMotion.snappy) {
         selection = option
       }
     } label: {
-      pillLabel(option, isSelected: isSelected, style: style)
+      pillLabel(option, isSelected: isSelected, style: style, sizedTo: row ?? options)
+        .contentShape(Capsule(style: .circular))
         .background {
           if isSelected {
-            Capsule()
+            Capsule(style: .circular)
               .fill(IntradaColor.accent)
               .matchedGeometryEffect(id: "selectedPill", in: pill)
           }
@@ -96,15 +153,28 @@ struct SegmentedPills<Option: Hashable>: View {
     .accessibilityAddTraits(isSelected ? [.isSelected] : [])
   }
 
-  @ViewBuilder private func pillLabel(_ option: Option, isSelected: Bool, style: TrackStyle)
-    -> some View
-  {
+  @ViewBuilder private func pillLabel(
+    _ option: Option, isSelected: Bool, style: TrackStyle, sizedTo row: [Option]
+  ) -> some View {
     let text = Text(label(option))
       .font(font)
       .foregroundStyle(isSelected ? IntradaColor.onAccent : unselectedColor)
     switch layout {
     case .inlineScrolling:
       text.lineLimit(1).padding(.vertical, 6).padding(.horizontal, IntradaSpacing.card)
+    case .wrappingTrack where style == .stacked:
+      text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
+    case .wrappingTrack where style == .labelSized:
+      text.lineLimit(1).padding(.horizontal, 4)
+        .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
+    case .wrappingTrack:
+      // The row's widest label plus a margin, so a row that only just fits wraps instead (#2490).
+      ZStack {
+        ForEach(row, id: \.self) { Text(label($0)).font(font).hidden() }
+        text
+      }
+      .padding(.horizontal, 4)
+      .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .fullWidthTrack where style == .equalRow:
       // Sized to the longest label so the row wins only when every segment fits (#2133).
       ZStack {
@@ -114,6 +184,34 @@ struct SegmentedPills<Option: Hashable>: View {
       .frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
     case .fullWidthTrack:
       text.frame(maxWidth: .infinity).padding(.vertical, IntradaSpacing.controlGap)
+    }
+  }
+}
+
+/// One row where each pill takes its label's width plus an even share of what is left.
+private struct SpareSharedRow: Layout {
+  var spacing: CGFloat
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+    let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+    let natural = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+    return CGSize(
+      width: max(proposal.width ?? natural, natural), height: sizes.map(\.height).max() ?? 0)
+  }
+
+  func placeSubviews(
+    in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void
+  ) {
+    let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+    let natural = sizes.map(\.width).reduce(0, +) + spacing * CGFloat(max(subviews.count - 1, 0))
+    let share = subviews.isEmpty ? 0 : max(bounds.width - natural, 0) / CGFloat(subviews.count)
+    var x = bounds.minX
+    for (subview, size) in zip(subviews, sizes) {
+      let width = size.width + share
+      subview.place(
+        at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading,
+        proposal: ProposedViewSize(width: width, height: bounds.height))
+      x += width + spacing
     }
   }
 }

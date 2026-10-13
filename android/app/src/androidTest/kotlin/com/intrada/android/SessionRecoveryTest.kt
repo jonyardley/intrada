@@ -78,15 +78,9 @@ internal fun App.startClairDeLune() {
     startWith("Clair de Lune")
 }
 
-/** The stepper's value is a plain text beside its buttons, so it is read from their parent. */
 internal fun App.reflectionTempo(): String? =
-    control("reflection.tempo.increase")
+    control("reflection.tempo")
         .fetchSemanticsNode()
-        .parent
-        ?.children
-        ?.firstNotNullOfOrNull {
-            it.config
-                .getOrElseNullable(SemanticsProperties.Text) { null }
-                ?.joinToString()
-                ?.takeIf { text -> text.endsWith(" bpm") }
-        }
+        .config
+        .getOrElseNullable(SemanticsProperties.Text) { null }
+        ?.joinToString()

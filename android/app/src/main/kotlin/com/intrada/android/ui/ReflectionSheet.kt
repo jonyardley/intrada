@@ -37,6 +37,7 @@ import com.intrada.android.ui.components.FieldLabel
 import com.intrada.android.ui.components.FormErrorBanner
 import com.intrada.android.ui.components.HairlineDivider
 import com.intrada.android.ui.components.cardSurface
+import com.intrada.ffi.clickTempoWords
 import com.intrada.shared.DraftMark
 import com.intrada.shared.DraftTempo
 import com.intrada.shared.Event
@@ -397,8 +398,9 @@ private fun PlayMarks(
             if (tempoHeading != null) {
                 FieldLabel(tempoHeading, Modifier.padding(top = IntradaSpacing.controlGap))
             }
+            val words = clickTempoWords(bpm.toUShort(), row.click.metre.unit)
             StepperRow(
-                "$bpm bpm",
+                words.text,
                 "Tempo for $title",
                 "reflection.tempo",
                 onStep = { direction ->
@@ -411,6 +413,7 @@ private fun PlayMarks(
                 },
                 canDecrease = bpm > row.band.min.toInt(),
                 canIncrease = bpm < row.band.max.toInt(),
+                valueSpoken = words.spoken,
             )
         }
     }

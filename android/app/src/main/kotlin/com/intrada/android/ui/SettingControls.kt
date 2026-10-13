@@ -79,6 +79,7 @@ internal fun StepperRow(
     modifier: Modifier = Modifier,
     canDecrease: Boolean = true,
     canIncrease: Boolean = true,
+    valueSpoken: String? = null,
 ) {
     Row(
         modifier.fillMaxWidth(),
@@ -87,7 +88,15 @@ internal fun StepperRow(
     ) {
         BasicText(
             value,
-            Modifier.weight(1f),
+            Modifier.weight(1f)
+                .then(
+                    if (valueSpoken == null) Modifier
+                    else
+                        Modifier.semantics {
+                            contentDescription = valueSpoken
+                            testTag = tag
+                        }
+                ),
             style = IntradaFont.body.copy(color = IntradaColor.ink),
         )
         IconAction(
