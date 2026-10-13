@@ -8,7 +8,14 @@ import XCTest
 
 final class SessionBuilderSnapshotTests: SnapshotTestCase {
   func testSessionBuilderEmpty() {
-    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }), as: config)
+    let store = Store(
+      bridge: PreviewBridge(
+        buildingSetlist: BuildingSetlistView(
+          entries: [], itemCount: 0, blocks: [],
+          totalDurationDisplay: nil, totalDurationSummary: nil, lengthMins: nil,
+          lengthSummary: nil, entryVariations: [], lastTimes: [], focusChoices: [], entryKeys: [],
+          drillOffers: [], summary: "0 items", startTitle: "Start session")))
+    assertSnapshot(of: host(NavigationStack { SessionBuilderScreen() }, store: store), as: config)
   }
 
   func testSessionBuilderEmptyWithLength() {

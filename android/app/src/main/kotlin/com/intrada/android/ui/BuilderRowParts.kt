@@ -178,9 +178,9 @@ private fun Modifier.rowSemantics(spec: RowSpec, context: RowContext): Modifier 
     val plan = spec.plan
     val offer = plan?.let { p -> context.setlist.lastTimes.firstOrNull { it.entryId == p.id } }
     val spoken =
-        (listOfNotNull(spec.copy.title, spec.copy.caption) +
-                plan?.let { planTags(it, context.setlist) }.orEmpty())
-            .joinToString(", ")
+        (listOfNotNull(spec.copy.title, spec.copy.caption) + plan?.planTags.orEmpty()).joinToString(
+            ", "
+        )
     val action = { label: String, perform: () -> Unit ->
         CustomAccessibilityAction(label) {
             perform()
@@ -224,7 +224,7 @@ internal fun MoveButtons(title: String, canUp: Boolean, canDown: Boolean, onMove
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlanLine(entry: SetlistEntryView, context: RowContext) {
-    val tags = planTags(entry, context.setlist)
+    val tags = entry.planTags
     val offer = context.setlist.lastTimes.firstOrNull { it.entryId == entry.id }
     Column {
         if (tags.isNotEmpty()) {

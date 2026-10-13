@@ -1,14 +1,13 @@
 import SharedTypes
 import SwiftUI
 
-/// A "was → now" mastery row on Progress. The now-figure is success green; the
-/// was-figure is muted. Pairs with `analytics.scoreChanges` (was = previousScore,
-/// now = currentScore). A newly-scored item (`was == nil`) shows just the figure.
+/// A "was → now" mastery row on Progress; a fall is never painted as a win (#2551).
 struct MasteryDelta: View {
   let title: String
   var subtitle: String?
   let was: Int?
   let now: Int
+  let direction: Direction
   let spoken: String
   // `ScoreChange` carries no item type — the leading dot defaults to the piece
   // accent; callers pass `.exercise` when they know it.
@@ -39,7 +38,7 @@ struct MasteryDelta: View {
             .foregroundStyle(IntradaColor.inkFaintIcon)
         }
         Text("\(now)")
-          .foregroundStyle(IntradaColor.success)
+          .foregroundStyle(direction == .up ? IntradaColor.success : IntradaColor.ink)
       }
       .font(IntradaFont.cardTitle)
     }
@@ -129,12 +128,16 @@ struct MasteryDeltaToast: View {
       VStack(spacing: IntradaSpacing.cardCompact) {
         MasteryDelta(
           title: "Clair de Lune", subtitle: "D♭ major · 3 weeks ago → now",
-          was: 3, now: 4,
+          was: 3, now: 4, direction: .up,
           spoken: "Clair de Lune, D♭ major · 3 weeks ago → now, mastery up from 3 to 4",
           kind: .piece)
         MasteryDelta(
           title: "Hanon No. 1", subtitle: "first time marked",
-          was: nil, now: 3, spoken: "Hanon No. 1, first time marked, mastery 3", kind: .exercise)
+          was: nil, now: 3, direction: .up, spoken: "Hanon No. 1, first time marked, mastery 3",
+          kind: .exercise)
+        MasteryDelta(
+          title: "Arpeggios", was: 6, now: 4, direction: .down,
+          spoken: "Arpeggios, mastery down from 6 to 4", kind: .exercise)
         MasteryDeltaToast(
           title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
       }

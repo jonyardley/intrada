@@ -20,7 +20,8 @@ struct SheetBoundsTests {
     clickMetrePresets: LimitsView.preview.clickMetrePresets,
     clickBars: LimitsView.preview.clickBars,
     sectionNameMax: LimitsView.preview.sectionNameMax, barMax: LimitsView.preview.barMax,
-    plannedDurationMinMins: 2, plannedDurationMaxMins: 10, plannedDurationDefaultMins: 8)
+    // Unlike the seconds on purpose: the sheet reads the core's minutes (#2467).
+    plannedDurationMinMins: 3, plannedDurationMaxMins: 9, plannedDurationDefaultMins: 7)
 
   private func clickSheet() -> ClickSheet {
     ClickSheet(click: ClickController(), bpm: 120, limits: limits)
@@ -42,10 +43,8 @@ struct SheetBoundsTests {
     #expect(entrySheet().repTargetRange == 2...4)
   }
 
-  /// 90s to 630s is a minute and a half to ten and a half, and every minute the
-  /// stepper offers has to be one the core would accept, so both ends round in.
-  @Test func theDurationStepperOffersTheCoresSecondsAsWholeMinutes() {
-    #expect(entrySheet().durationRange == 2...10)
+  @Test func theDurationStepperOffersTheCoresWholeMinutes() {
+    #expect(entrySheet().durationRange == 3...9)
   }
 
   private func scoreSelector(score: Int) -> ScoreSelector {
@@ -88,7 +87,7 @@ struct SheetBoundsTests {
 
   @Test func anEntryWithNoPlannedDurationStartsAtTheCoresDefault() {
     #expect(
-      EntrySettingsSheet.initialPlannedMinutes(for: .previewGroupedScales, limits: limits) == 8)
+      EntrySettingsSheet.initialPlannedMinutes(for: .previewGroupedScales, limits: limits) == 7)
   }
 
   @Test func anEntryThatAlreadyHasAPlannedDurationKeepsIt() {

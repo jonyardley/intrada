@@ -260,9 +260,7 @@
     ) -> SetlistEntryView {
       SetlistEntryView(
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
-        // Escaped rather than the glyph: check-dashes.sh reads changed lines,
-        // and an em dash is what the builder row has always shown here.
-        durationDisplay: "\u{2014}", status: .notAttempted, notes: nil, intention: nil,
+        durationDisplay: "0s", status: .notAttempted, notes: nil, intention: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, groupId: group, removable: removable,
         plannedSectionIds: [], plannedVariationIds: [], plannedLabel: nil, plannedRepTarget: nil,
         plays: [], scoreSummary: nil, record: .empty, plannedKey: nil,

@@ -20,7 +20,7 @@ import org.junit.Test
 
 // The builder's lines and the stepper's minutes arrive ready on Kotlin's decoder, so neither
 // phone writes its own, and the aim is kept trimmed (#2467).
-class BuilderCopyRoundTripTest {
+class BuilderViewRoundTripTest {
     @Test
     fun theBuildersSummaryCaptionTagsAndMinutesArriveReady() {
         val bridge = LiveBridge()
