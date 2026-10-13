@@ -1203,7 +1203,7 @@ takes the platform's answer drawn in intrada's look.
 
 ### T37: One catalogue says how every component looks on both apps
 
-**Status:** PROPOSED (jonyardley/intrada#2620).
+**Status:** DECIDED 2026-10-13 (jonyardley/intrada#2620).
 
 Every component the screens are built from has one page in
 `design/components/`: what it is for, when to use it and when not, its parts,
