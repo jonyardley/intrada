@@ -57,7 +57,7 @@ Tapping it sends one event to the core. Any success haptic fires only after the 
 
 Most Android primary buttons are black (`InkButton`, A4 in the audit).
 
-**Proposed:** one button with an optional glyph, the lift and the rebound, named `MarkerButton` on both apps. iPhone folds `BrandBarButton` into it; Android makes its version shared and replaces `InkButton` (#2605). This page moves to `stable` when Jon agrees.
+**Proposed:** one button with an optional glyph, named `MarkerButton` on both apps. iPhone folds `BrandBarButton` into it; Android makes its version shared and replaces `InkButton` (#2605). The two iPhone versions look almost the same on screen (Jon, 13 October 2026), so merging them changes no look. Whether the button has a lift and a bounce is settled in the refinement pass (#2638), where depth is visible enough to judge.
 
 ## Content
 
