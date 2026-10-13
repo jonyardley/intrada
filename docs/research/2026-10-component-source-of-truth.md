@@ -10,8 +10,8 @@ Keep the component truth in the repo, one plain Markdown spec per component in a
 
 - Tokens: `ios/Intrada/DesignSystem/Theme.swift` is the source; `ThemeTokenParityTest.kt` reads the Swift file from a Kotlin test and fails when `Theme.kt` lacks a token without a written reason. `scripts/check-design-tokens.sh` requires every Swift colour on `design/intrada-design-system.dc.html`. Jon's decisions on #2603: stay on Claude Design, and `Theme.swift` stays the token source.
 - Component truth: the list of 17 primitives and the rules for using them are prose in `.claude/rules/ios-ui.md`; the design system page has a names-only table ("Everything the app builds its screens from, by its code name").
-- Pictures: iOS has 112 `#Preview` blocks and 5 component level snapshots (`ComponentSnapshotTests/`: add row button, score ring three ways, week strip). Android has no `@Preview` at all and 73 Roborazzi references, several already component level (card shadow, card surface, hairline divider, field card, form error banner, banner, instrument glyph).
-- A rough grep by name: 12 of the 17 listed primitives have a same named Compose function; TypeBadge, BottomSheet, SegmentedPills, PlaceholderContent and SegmentedProgress have none (SectionTitle does exist, checked by the lead) (they may exist under other names; not checked further).
+- Pictures: iOS has 112 `#Preview` blocks and 5 component level snapshots (`ComponentSnapshotTests/`: add row button, score ring three ways, week strip). Android has no `@Preview` at all and 73 Roborazzi snapshots, several already component level (card shadow, card surface, hairline divider, field card, form error banner, banner, instrument glyph).
+- A rough grep by name: 11 of the 17 listed primitives have a same named Compose function; TypeBadge, BottomSheet, SegmentedPills, PlaceholderContent, SegmentedProgress and SectionTitle have none (they may exist under other names; not checked further).
 - The October audit (`docs/audit-2026-10-design.md`) found 40 iPhone and 30 Android findings, led by hand-rolled copies of primitives and one job done several ways (a ticked choice has five looks, I10).
 - `scripts/check-snapshots.sh` already walks both snapshot trees for orphans and size; it is the natural neighbour for a component check.
 
@@ -39,8 +39,8 @@ Maintenance read from GitHub today.
 |---|---|---|---|---|
 | swift-snapshot-testing | iOS | Already in use. | Release in September 2026 | [repo](https://github.com/pointfreeco/swift-snapshot-testing) |
 | Roborazzi | Android | Already in use. Can also generate tests from `@Preview` through ComposablePreviewScanner, marked "Experimental". | Release on 29 September 2026 | [preview support](https://takahirom.github.io/roborazzi/preview-support.html) |
-| Prefire | iOS | Turns `#Preview` blocks into swift-snapshot-testing tests and an in app "Playbook" catalogue. | Active, release yesterday | [repo](https://github.com/BarredEwe/Prefire) |
-| SnapshotPreviews (now Sentry) | iOS | Renders every Xcode preview to PNG with no test code. | Active, release last week | [repo](https://github.com/getsentry/SnapshotPreviews) |
+| Prefire | iOS | Turns `#Preview` blocks into swift-snapshot-testing tests and an in app "Playbook" catalogue. | Active, release on 12 October 2026 | [repo](https://github.com/BarredEwe/Prefire) |
+| SnapshotPreviews (now Sentry) | iOS | Renders every Xcode preview to PNG with no test code. | Active, release on 8 October 2026 | [repo](https://github.com/getsentry/SnapshotPreviews) |
 | ComposablePreviewScanner | Android | Finds `@Preview` functions for screenshot tests. | Active | [repo](https://github.com/sergio-sastre/ComposablePreviewScanner) |
 | Compose Preview Screenshot Testing (Google) | Android | `@PreviewTest` on a preview, HTML diff report. Alpha; its standalone plugin is already deprecated in favour of AGP test suites. | Alpha | [Android docs](https://developer.android.com/studio/preview/compose-screenshot-testing) |
 | Showkase (Airbnb) | Android | Generated in app component browser from previews. | Last release August 2025, last push March 2026 | [repo](https://github.com/airbnb/Showkase) |

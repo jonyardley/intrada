@@ -18,9 +18,9 @@ https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
   menus.
 - **Android:** 30 findings: 3 serious, 23 visible, 4 code only. 18 surfaces
   have no snapshot: no test opens a dialog or menu.
-- **Android behaviour:** 17 areas reviewed; the draft principle is T36 in
-  `docs/design-principles.md`, proposed.
-- **Verified by the lead in the code:** A1, A2, A4, I1, I2, I36, the
+- **Android behaviour:** 17 areas reviewed; the principle that came of it is T36 in
+  `docs/design-principles.md`, decided on 13 October.
+- **Checked in the code:** A1, A2, A4, I1, I2, I36, the
   reflection screen's back handler (deliberate, with a comment) and the
   missing ripple.
 
@@ -32,7 +32,7 @@ https://claude.ai/artifact/5djCUQ6eUx8EvAPirGQDXY.
 2. Android never shows a notice (A1), and an off switch is a white dot on
    paper (A2).
 3. iPhone cards have lost their lift: the shared card style draws a hairline
-   and no shadow in 55 places, with the shadow added in only 4 (I36).
+   and no shadow on 67 lines, with the shadow added in only 4 (I36).
 4. On iPhone the highlighter fills primary buttons and also half the selected
    choices (I9), and a ticked choice has five looks (I10).
 5. Smaller but seen: the gap in "D ♭ major" (I20), the tab bar drawing white
@@ -464,7 +464,7 @@ Severity: high is wrong or inaccessible; medium is visible drift from iOS or the
 - Surface: Build session start, Reflection save, Session summary save, player "Move on", recovery "Resume", trouble spot "Add spot". Android A/builder.png, A/player-reflection.png, A/player-summary.png; iOS I/SessionBuilderSnapshotTests/testSessionBuilderPopulated.1.png, I/SessionSummarySnapshotTests/testReflectionSheet.1.png.
 - Rule: T24, "The marker is a fill, with ink on it (11.3:1), on primary buttons" (docs/design-principles.md:911); ios-ui.md:49, "Never ship a parallel one-off".
 - On screen: "Start session · 10 min", "Save & continue" and "Save session" are black bars with white text and no glyph; iOS shows yellow bars with a play glyph or a trailing arrow and a faint lift.
-- Evidence: `InkButton` at K/PlayerParts.kt:53-81 (fill `IntradaGradient.inkBar` at :65), called at K/BuilderScreen.kt:233, K/ReflectionSheet.kt:250, K/SummaryScreen.kt:132, K/PlayerRecordParts.kt:90, K/RecoveryCard.kt:47, K/PlayerSheets.kt:149. A marker button already exists, private to the first run, at K/FirstRunScreen.kt:348.
+- Evidence: `InkButton` at K/PlayerParts.kt:53-81 (fill `IntradaGradient.inkBar` at :65), called at K/BuilderScreen.kt:233, K/ReflectionSheet.kt:250, K/SummaryScreen.kt:132, K/PlayerRecordParts.kt:90, K/RecoveryCard.kt:47, K/PlayerSheets.kt:152. A marker button already exists, private to the first run, at K/FirstRunScreen.kt:348.
 
 **A5. No highlighter swipe under page titles**
 - Surface: every screen title. Android A/frame-library.png and every full-screen snapshot; iOS I/LibrarySnapshotTests/testLibraryScreenPopulated.1.png.
@@ -708,7 +708,7 @@ Effort: small is under a day in one or two files; medium is a shared primitive p
 
 | | |
 |-|-|
-| **Today** | `MainActivity.kt:83` calls `enableEdgeToEdge()` with no arguments. Screens pad `WindowInsets.safeDrawing` (`ui/ScreenScaffold.kt:40`, `PlayerScreen.kt:134`, `FirstRunScreen.kt:127`); the tab bar pads the navigation bar and cutout (`AppFrame.kt:258-262`). The manifest theme is `@android:style/Theme.Material.Light.NoActionBar` and there is no `res/values` folder, so no `windowBackground`, no splash theme. |
+| **Today** | `MainActivity.kt:83` calls `enableEdgeToEdge()` with no arguments (since fixed: #2598 asks for dark bar icons, so only the launch frame part remains, #2616). Screens pad `WindowInsets.safeDrawing` (`ui/ScreenScaffold.kt:40`, `PlayerScreen.kt:134`, `FirstRunScreen.kt:127`); the tab bar pads the navigation bar and cutout (`AppFrame.kt:258-262`). The manifest theme is `@android:style/Theme.Material.Light.NoActionBar` and there is no `res/values` folder, so no `windowBackground`, no splash theme. |
 | **Android expects** | developer.android.com "Display content edge to edge": with no arguments, `enableEdgeToEdge` picks status bar icon colour from the system's dark setting, so on a phone in dark mode a light only app gets light icons on paper, close to invisible. Android 12 and later always show a system splash (icon on `windowBackground`, "Splash screens" guide). |
 | **Recommendation** | **Adopt.** Pass `SystemBarStyle.light(paper, paper)` for both bars until dark exists. Set `windowBackground` to paper in a small theme so the launch frame and the system splash are paper, not white, and use `core-splashscreen` so the system splash hands over to T34's wordmark splash rather than stacking a second one. Look stays intrada's. |
 | **Effort** | Small. |
@@ -804,11 +804,9 @@ Effort: small is under a day in one or two files; medium is a shared primitive p
 | **Effort** | Small for the guard; dark itself is out of scope. |
 
 
-### Draft principle
+### The principle
 
-#### T36: Android behaves like Android, and looks like intrada
-
-**Status:** PROPOSED (jonyardley/intrada#2599). On Android, intrada keeps its look and adopts the platform's behaviour. The look is paper, ink, one highlighter, Hanken Grotesk and DM Mono, the five sizes and the 3dp card; no Material colour, shape or type stands in for it, and wallpaper colour never replaces the highlighter. Behaviour and structure follow Android: back always does something, and predictive back shows where it goes; a pushed screen has a back arrow and a modal form has a close cross, with its one action on the right; a press ripples in ink; quick choices rise as bottom sheets; a reversible removal offers Undo rather than asking first; the keyboard's Next and Done move you on. When an iOS ruling such as T28 is about where something sits or how it moves, it binds iOS only, and Android takes the platform's answer drawn in intrada's look.
+T36, "Android behaves like Android, and looks like intrada", is in `docs/design-principles.md`, decided on 13 October (#2599).
 
 
 ### The five changes that would most make it feel native
